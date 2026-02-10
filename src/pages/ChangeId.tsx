@@ -73,8 +73,18 @@ const ChangeId: React.FC = () => {
       });
 
       if (error) {
-        setStatus("error");
-        setErrorMsg("حدث خطأ في الاتصال. حاول مرة أخرى.");
+        // Edge function may return error with data in the body
+        const errBody = typeof error === "object" && error?.context ? error.context : null;
+        const apiMsg = data?.error || errBody?.error || "";
+        if (apiMsg.toLowerCase().includes("invalid")) {
+          setStatus("error");
+          setErrorMsg("المعرف غير صالح. تأكد أنه يطابق إحدى الصيغ المتاحة لمستواك.");
+        } else if (apiMsg.toLowerCase().includes("taken") || apiMsg.toLowerCase().includes("used")) {
+          setStatus("taken");
+        } else {
+          setStatus("error");
+          setErrorMsg(apiMsg || "حدث خطأ في الاتصال. حاول مرة أخرى.");
+        }
         return;
       }
 
@@ -82,6 +92,9 @@ const ChangeId: React.FC = () => {
         const msg = data?.error || "";
         if (msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used")) {
           setStatus("taken");
+        } else if (msg.toLowerCase().includes("invalid")) {
+          setStatus("error");
+          setErrorMsg("المعرف غير صالح. تأكد أنه يطابق إحدى الصيغ المتاحة لمستواك.");
         } else {
           setStatus("error");
           setErrorMsg(msg || "فشل الطلب. حاول مرة أخرى.");
