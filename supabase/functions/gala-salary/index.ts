@@ -7,11 +7,11 @@ serve(async (req) => {
   }
 
   try {
-    const { uuid, amount } = await req.json();
+    const { uuid, amount, type } = await req.json();
 
-    if (!uuid || !amount) {
+    if (!uuid || !amount || !type) {
       return new Response(
-        JSON.stringify({ success: false, error: "uuid and amount are required" }),
+        JSON.stringify({ success: false, error: "uuid, amount, and type are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -23,7 +23,7 @@ serve(async (req) => {
     if (!BASE_URL) throw new Error("GALA_API_BASE_URL is not configured");
 
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const body = JSON.stringify({ uuid, amount });
+    const body = JSON.stringify({ uuid, amount, type });
     const signature = await createHmacSignature(API_SECRET, body + timestamp);
 
     const response = await fetch(`${BASE_URL}/api/newWebsite/transaction/check`, {

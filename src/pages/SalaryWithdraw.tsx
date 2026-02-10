@@ -50,7 +50,7 @@ const SalaryWithdraw: React.FC = () => {
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke("gala-salary", {
-        body: { uuid: user.uuid, amount: withdrawAmount },
+        body: { uuid: user.uuid, amount: withdrawAmount, type: withdrawType },
       });
 
       if (fnError) {
