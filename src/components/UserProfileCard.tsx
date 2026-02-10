@@ -34,7 +34,7 @@ const UserProfileCard: React.FC = () => {
             <img
               alt={user.name}
               className="w-full h-full rounded-full object-cover"
-              src={user.profile.image.startsWith("http") ? user.profile.image : `https://ybvlxzpioteopcemkngp.supabase.co/storage/v1/object/public/${user.profile.image}`}
+              src={user.profile.image}
             />
           ) : (
             <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
