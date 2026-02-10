@@ -4,9 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { LogIn, Eye, EyeOff, AlertCircle, Info } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import galaLogo from "@/assets/gala-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,12 +27,64 @@ const Login: React.FC = () => {
 
     setLoading(true);
 
-    // Placeholder: will be connected to API later
-    setTimeout(() => {
-      setLoading(false);
-      // For now, navigate to dashboard for demo
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("gala-login", {
+        body: { uuid: userId.trim(), password: password.trim() },
+      });
+
+      if (fnError) {
+        setError("حدث خطأ في الاتصال. حاول مرة أخرى.");
+        setLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        setError(data?.error || "فشل تسجيل الدخول. تأكد من البيانات.");
+        setLoading(false);
+        return;
+      }
+
+      const apiUser = data.data;
+      setUser({
+        id: apiUser.id,
+        uuid: apiUser.uuid,
+        name: apiUser.name,
+        phone: apiUser.phone,
+        type_user: apiUser.type_user,
+        profile: {
+          image: apiUser.profile?.image || "",
+          gender: apiUser.profile?.gender || 0,
+          birthday: apiUser.profile?.birthday || "",
+          age: apiUser.profile?.age || 0,
+          country: apiUser.country?.name || "",
+        },
+        level: {
+          receiver_level: apiUser.level?.receiver_level || 0,
+          sender_level: apiUser.level?.sender_level || 0,
+          charger_level: apiUser.level?.charger_level || 0,
+          receiver_num: apiUser.level?.receiver_num || 0,
+          sender_num: apiUser.level?.sender_num || 0,
+          charger_num: apiUser.level?.charger_num || 0,
+        },
+        my_store: {
+          coins: apiUser.my_store?.coins || 0,
+          diamonds: apiUser.my_store?.diamonds || 0,
+          usd: apiUser.my_store?.usd || 0,
+        },
+        vip: apiUser.vip || {},
+        country: {
+          id: apiUser.country?.id || 0,
+          name: apiUser.country?.name || "",
+          flag: apiUser.country?.flag || "",
+        },
+      });
+
       navigate("/dashboard");
-    }, 1500);
+    } catch {
+      setError("حدث خطأ غير متوقع. حاول مرة أخرى.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -156,7 +211,6 @@ const Login: React.FC = () => {
           </ul>
         </motion.div>
 
-        {/* How to activate section placeholder */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

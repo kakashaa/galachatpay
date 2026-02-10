@@ -5,18 +5,20 @@ import MobileLayout from "@/components/MobileLayout";
 import UserProfileCard from "@/components/UserProfileCard";
 import MenuGrid from "@/components/MenuGrid";
 import galaLogo from "@/assets/gala-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
 
-  // Demo data - will be replaced with real API data
-  const user = {
-    name: "محمد أحمد",
-    id: "123456789",
-    receiverLevel: 0,
-    senderLevel: 1,
-    chargerLevel: 7,
-  };
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (!user) return null;
 
   return (
     <MobileLayout>
@@ -27,7 +29,10 @@ const Dashboard: React.FC = () => {
           <span className="text-base font-bold gold-text">غلا لايف</span>
         </div>
         <button
-          onClick={() => navigate("/")}
+          onClick={() => {
+            logout();
+            navigate("/");
+          }}
           className="text-muted-foreground hover:text-destructive transition-colors p-2"
         >
           <LogOut className="w-5 h-5" />
@@ -37,10 +42,10 @@ const Dashboard: React.FC = () => {
       {/* User Profile Card */}
       <UserProfileCard
         name={user.name}
-        id={user.id}
-        receiverLevel={user.receiverLevel}
-        senderLevel={user.senderLevel}
-        chargerLevel={user.chargerLevel}
+        id={user.uuid}
+        receiverLevel={user.level.receiver_level}
+        senderLevel={user.level.sender_level}
+        chargerLevel={user.level.charger_level}
       />
 
       {/* Quick Actions Title */}

@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ChangeId from "./pages/ChangeId";
@@ -20,25 +21,27 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/change-id" element={<ChangeId />} />
-          <Route path="/request-vip" element={<RequestVip />} />
-          <Route path="/support" element={<QuickSupport />} />
-          <Route path="/salary" element={<SalaryWithdraw />} />
-          <Route path="/report" element={<ReportPage />} />
-          <Route path="/gift" element={<GiftRequest />} />
-          <Route path="/bd-request" element={<BDRequest />} />
-          <Route path="/bd-dashboard" element={<BDDashboard />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/change-id" element={<ChangeId />} />
+            <Route path="/request-vip" element={<RequestVip />} />
+            <Route path="/support" element={<QuickSupport />} />
+            <Route path="/salary" element={<SalaryWithdraw />} />
+            <Route path="/report" element={<ReportPage />} />
+            <Route path="/gift" element={<GiftRequest />} />
+            <Route path="/bd-request" element={<BDRequest />} />
+            <Route path="/bd-dashboard" element={<BDDashboard />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
