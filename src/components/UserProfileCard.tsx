@@ -8,9 +8,7 @@ interface UserProfileCardProps {
   avatarUrl?: string;
   receiverLevel: number;
   senderLevel: number;
-  wealth: number;
-  charisma: number;
-  recharge: number;
+  chargerLevel: number;
 }
 
 const UserProfileCard: React.FC<UserProfileCardProps> = ({
@@ -19,9 +17,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
   avatarUrl,
   receiverLevel,
   senderLevel,
-  wealth,
-  charisma,
-  recharge,
+  chargerLevel,
 }) => {
   return (
     <motion.div
@@ -60,11 +56,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
         <div className="w-px h-8 bg-border/30" />
         <StatItem icon={<Zap className="w-4 h-4" />} label="المرسل" value={senderLevel} />
         <div className="w-px h-8 bg-border/30" />
-        <StatItem icon={<Gem className="w-4 h-4" />} label="الثروة" value={wealth} />
-        <div className="w-px h-8 bg-border/30" />
-        <StatItem icon={<Zap className="w-4 h-4" />} label="الكاريزما" value={charisma} />
-        <div className="w-px h-8 bg-border/30" />
-        <StatItem icon={<Zap className="w-4 h-4" />} label="الشحن" value={recharge} />
+        <StatItem icon={<Zap className="w-4 h-4" />} label="الشحن" value={chargerLevel} />
       </div>
     </motion.div>
   );
