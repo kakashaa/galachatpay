@@ -6,35 +6,71 @@ import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
+const userTypeLabels: Record<number, string> = {
+  0: "مستخدم عادي",
+  1: "مستخدم عادي",
+  2: "مضيف",
+  3: "وكيل مضيفين",
+  4: "وكيل شحن",
+  5: "وكيل شحن ومضيفين",
+  6: "مضيف ووكيل شحن",
+};
 
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [withdrawType, setWithdrawType] = useState("");
   const [step, setStep] = useState<"select" | "transfer" | "confirm">("select");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Demo user data
-  const user = {
-    id: "123456789",
-    name: "محمد أحمد",
-    level: 35,
-    accountType: "مستخدم",
-    vipLevel: 3,
-    availableBalance: 15000,
-    monthlyLimit: 10000,
-    instantLimit: 5000,
-  };
+  if (!user) {
+    navigate("/");
+    return null;
+  }
 
+  const availableBalance = user.my_store.coins;
+  const monthlyLimit = 10000;
+  const instantLimit = 5000;
   const agencyId = "10000";
-  const withdrawAmount = withdrawType === "monthly" ? user.monthlyLimit : user.instantLimit;
+  const withdrawAmount = withdrawType === "monthly" ? monthlyLimit : instantLimit;
 
   const handleProceedToTransfer = () => {
     if (!withdrawType) return;
     setStep("transfer");
   };
 
-  const handleConfirmTransfer = () => {
-    setStep("confirm");
+  const handleConfirmTransfer = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("gala-salary", {
+        body: { uuid: user.uuid, amount: withdrawAmount },
+      });
+
+      if (fnError) {
+        setError("حدث خطأ في الاتصال. حاول مرة أخرى.");
+        setLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        setError(data?.error || "فشل التحقق من التحويل. تأكد من إتمام العملية.");
+        setLoading(false);
+        return;
+      }
+
+      setStep("confirm");
+    } catch {
+      setError("حدث خطأ غير متوقع.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = () => {
@@ -45,12 +81,7 @@ const SalaryWithdraw: React.FC = () => {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.6 }}
-            className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6"
-          >
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }} className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6">
             <CheckCircle className="w-10 h-10 text-success" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
@@ -58,9 +89,7 @@ const SalaryWithdraw: React.FC = () => {
             <p className="text-sm text-muted-foreground">سيتم معالجة طلبك وإشعارك بالنتيجة</p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-            <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">
-              العودة للرئيسية
-            </Button>
+            <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">العودة للرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>
@@ -79,20 +108,20 @@ const SalaryWithdraw: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">ID</span>
-              <span className="font-bold text-foreground">{user.id}</span>
+              <span className="font-bold text-foreground" dir="ltr">{user.uuid}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">المستوى</span>
-              <span className="font-bold text-foreground">{user.level}</span>
+              <span className="font-bold text-foreground">{Math.max(user.level.receiver_level, user.level.sender_level)}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">النوع</span>
-              <span className="font-bold text-foreground">{user.accountType}</span>
+              <span className="font-bold text-foreground">{userTypeLabels[user.type_user] || "مستخدم"}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">VIP</span>
+              <span className="text-muted-foreground">الرصيد</span>
               <span className="font-bold text-primary flex items-center gap-1">
-                <Crown className="w-3 h-3" /> {user.vipLevel}
+                <Crown className="w-3 h-3" /> {availableBalance.toLocaleString()}
               </span>
             </div>
           </div>
@@ -107,12 +136,20 @@ const SalaryWithdraw: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
-                <p className="text-xl font-bold text-foreground">{user.availableBalance.toLocaleString()}</p>
+                <p className="text-xl font-bold text-foreground">{availableBalance.toLocaleString()}</p>
               </div>
             </div>
             <ArrowDownToLine className="w-5 h-5 text-primary" />
           </div>
         </motion.div>
+
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
         {/* Step: Select Withdraw Type */}
         {step === "select" && (
@@ -123,45 +160,30 @@ const SalaryWithdraw: React.FC = () => {
                 نوع السحب
               </h3>
               <RadioGroup value={withdrawType} onValueChange={setWithdrawType} className="space-y-2">
-                <Label
-                  htmlFor="monthly"
-                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                    withdrawType === "monthly" ? "border-primary bg-primary/10" : "border-border/30 bg-muted/20 hover:bg-muted/40"
-                  }`}
-                >
+                <Label htmlFor="monthly" className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${withdrawType === "monthly" ? "border-primary bg-primary/10" : "border-border/30 bg-muted/20 hover:bg-muted/40"}`}>
                   <RadioGroupItem value="monthly" id="monthly" />
                   <div className={`p-2 rounded-lg ${withdrawType === "monthly" ? "bg-primary/20 text-primary" : "bg-muted/30 text-muted-foreground"}`}>
                     <Clock className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-foreground">سحب شهري</p>
-                    <p className="text-[11px] text-muted-foreground">الحد: {user.monthlyLimit.toLocaleString()}</p>
+                    <p className="text-[11px] text-muted-foreground">الحد: {monthlyLimit.toLocaleString()}</p>
                   </div>
                 </Label>
-                <Label
-                  htmlFor="instant"
-                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                    withdrawType === "instant" ? "border-primary bg-primary/10" : "border-border/30 bg-muted/20 hover:bg-muted/40"
-                  }`}
-                >
+                <Label htmlFor="instant" className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${withdrawType === "instant" ? "border-primary bg-primary/10" : "border-border/30 bg-muted/20 hover:bg-muted/40"}`}>
                   <RadioGroupItem value="instant" id="instant" />
                   <div className={`p-2 rounded-lg ${withdrawType === "instant" ? "bg-primary/20 text-primary" : "bg-muted/30 text-muted-foreground"}`}>
                     <Zap className="w-5 h-5" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-foreground">سحب فوري</p>
-                    <p className="text-[11px] text-muted-foreground">الحد: {user.instantLimit.toLocaleString()}</p>
+                    <p className="text-[11px] text-muted-foreground">الحد: {instantLimit.toLocaleString()}</p>
                   </div>
                 </Label>
               </RadioGroup>
             </motion.div>
-
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <Button
-                onClick={handleProceedToTransfer}
-                disabled={!withdrawType}
-                className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
-              >
+              <Button onClick={handleProceedToTransfer} disabled={!withdrawType} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40">
                 متابعة
               </Button>
             </motion.div>
@@ -176,7 +198,6 @@ const SalaryWithdraw: React.FC = () => {
                 <Info className="w-4 h-4 text-primary" />
                 تعليمات التحويل
               </h3>
-
               <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">المبلغ المطلوب تحويله</span>
@@ -187,7 +208,6 @@ const SalaryWithdraw: React.FC = () => {
                   <span className="text-lg font-bold text-foreground" dir="ltr">{agencyId}</span>
                 </div>
               </div>
-
               <div className="flex items-start gap-2 p-3 bg-accent/50 border border-accent/30 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <div className="text-[11px] text-muted-foreground space-y-1">
@@ -196,13 +216,12 @@ const SalaryWithdraw: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep("select")} className="flex-1 h-12 border-border/30">
+              <Button variant="outline" onClick={() => { setStep("select"); setError(""); }} className="flex-1 h-12 border-border/30">
                 رجوع
               </Button>
-              <Button onClick={handleConfirmTransfer} className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
-                تأكيد التحويل
+              <Button onClick={handleConfirmTransfer} disabled={loading} className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
+                {loading ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : "تأكيد التحويل"}
               </Button>
             </motion.div>
           </>
@@ -216,7 +235,6 @@ const SalaryWithdraw: React.FC = () => {
                 <CheckCircle className="w-4 h-4 text-success shrink-0" />
                 <p className="text-xs text-success">تم التحقق من عملية التحويل بنجاح</p>
               </div>
-
               <h3 className="text-sm font-bold text-foreground">ملخص الطلب</h3>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
@@ -233,7 +251,6 @@ const SalaryWithdraw: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <Button onClick={handleSubmit} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base">
                 <Send className="w-5 h-5 ml-2" />

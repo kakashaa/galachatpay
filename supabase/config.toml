@@ -2,3 +2,9 @@ project_id = "ybvlxzpioteopcemkngp"
 
 [functions.gala-login]
 verify_jwt = false
+
+[functions.gala-request]
+verify_jwt = false
+
+[functions.gala-salary]
+verify_jwt = false
