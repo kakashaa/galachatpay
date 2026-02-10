@@ -7,11 +7,11 @@ serve(async (req) => {
   }
 
   try {
-    const { uuid, amount } = await req.json();
+    const { uuid, amount, type } = await req.json();
 
-    if (!uuid || !amount) {
+    if (!uuid || !amount || !type) {
       return new Response(
-        JSON.stringify({ success: false, error: "uuid and amount are required" }),
+        JSON.stringify({ success: false, error: "uuid, amount, and type are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -27,7 +27,7 @@ serve(async (req) => {
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ uuid, amount }),
+      body: JSON.stringify({ uuid, amount, type }),
     });
 
     const data = await response.json();
