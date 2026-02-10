@@ -4,55 +4,56 @@
 
 @layer base {
   :root {
-    --background: 225 30% 7%;
-    --foreground: 40 20% 95%;
+    --background: 220 30% 6%;
+    --foreground: 210 10% 92%;
 
-    --card: 225 25% 11%;
-    --card-foreground: 40 20% 95%;
+    --card: 220 25% 10%;
+    --card-foreground: 210 10% 92%;
 
-    --popover: 225 25% 11%;
-    --popover-foreground: 40 20% 95%;
+    --popover: 220 25% 10%;
+    --popover-foreground: 210 10% 92%;
 
-    --primary: 40 85% 55%;
-    --primary-foreground: 225 30% 7%;
+    --primary: 8 88% 62%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 225 20% 16%;
-    --secondary-foreground: 40 20% 90%;
+    --secondary: 174 50% 55%;
+    --secondary-foreground: 220 30% 6%;
 
-    --muted: 225 15% 18%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 220 15% 16%;
+    --muted-foreground: 215 10% 50%;
 
-    --accent: 40 70% 45%;
-    --accent-foreground: 225 30% 7%;
+    --accent: 174 50% 55%;
+    --accent-foreground: 220 30% 6%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 225 15% 18%;
-    --input: 225 20% 14%;
-    --ring: 40 85% 55%;
+    --border: 220 15% 16%;
+    --input: 220 20% 12%;
+    --ring: 8 88% 62%;
 
     --radius: 1rem;
 
-    --sidebar-background: 225 25% 9%;
-    --sidebar-foreground: 40 20% 95%;
-    --sidebar-primary: 40 85% 55%;
-    --sidebar-primary-foreground: 225 30% 7%;
-    --sidebar-accent: 225 20% 14%;
-    --sidebar-accent-foreground: 40 20% 90%;
-    --sidebar-border: 225 15% 18%;
-    --sidebar-ring: 40 85% 55%;
+    --sidebar-background: 220 25% 8%;
+    --sidebar-foreground: 210 10% 92%;
+    --sidebar-primary: 8 88% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 14%;
+    --sidebar-accent-foreground: 210 10% 90%;
+    --sidebar-border: 220 15% 16%;
+    --sidebar-ring: 8 88% 62%;
 
     /* Custom tokens */
-    --gold-glow: 40 90% 60%;
-    --gold-dim: 40 50% 30%;
+    --gold-glow: 8 90% 65%;
+    --gold-dim: 8 50% 30%;
     --success: 152 60% 45%;
     --success-foreground: 152 60% 75%;
-    --surface-glass: 225 25% 12%;
-    --gradient-gold: linear-gradient(135deg, hsl(40 85% 55%), hsl(35 90% 45%));
-    --gradient-card: linear-gradient(145deg, hsl(225 25% 13%), hsl(225 25% 9%));
-    --gradient-hero: linear-gradient(180deg, hsl(225 30% 10%), hsl(225 30% 5%));
-    --shadow-gold: 0 4px 30px -5px hsl(40 85% 55% / 0.2);
+    --surface-glass: 220 25% 12%;
+    --gradient-primary: linear-gradient(135deg, hsl(8 88% 62%), hsl(174 50% 55%));
+    --gradient-gold: linear-gradient(135deg, hsl(8 88% 62%), hsl(174 50% 55%));
+    --gradient-card: linear-gradient(145deg, hsl(220 25% 13%), hsl(220 25% 9%));
+    --gradient-hero: linear-gradient(180deg, hsl(220 30% 10%), hsl(220 30% 5%));
+    --shadow-primary: 0 4px 30px -5px hsl(8 88% 62% / 0.25);
     --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.4);
   }
 }
@@ -63,30 +64,45 @@
   }
 
   body {
-    @apply bg-background text-foreground font-cairo antialiased;
+    @apply bg-background text-foreground font-display antialiased;
+    font-family: 'Tajawal', sans-serif;
+    -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl;
-    box-shadow: var(--shadow-card);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    @apply rounded-2xl;
   }
 
   .gold-gradient {
-    background: var(--gradient-gold);
+    background: var(--gradient-primary);
   }
 
-  .gold-text {
-    background: var(--gradient-gold);
+  .gradient-text {
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
+  .gold-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-primary {
+    box-shadow: var(--shadow-primary);
+  }
+
   .glow-gold {
-    box-shadow: var(--shadow-gold);
+    box-shadow: var(--shadow-primary);
   }
 
   .mobile-container {
