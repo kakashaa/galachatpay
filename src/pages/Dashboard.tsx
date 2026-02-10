@@ -15,9 +15,7 @@ const Dashboard: React.FC = () => {
     id: "123456789",
     receiverLevel: 0,
     senderLevel: 1,
-    wealth: 52300,
-    charisma: 1240,
-    recharge: 8900,
+    chargerLevel: 7,
   };
 
   return (
@@ -42,9 +40,7 @@ const Dashboard: React.FC = () => {
         id={user.id}
         receiverLevel={user.receiverLevel}
         senderLevel={user.senderLevel}
-        wealth={user.wealth}
-        charisma={user.charisma}
-        recharge={user.recharge}
+        chargerLevel={user.chargerLevel}
       />
 
       {/* Quick Actions Title */}
