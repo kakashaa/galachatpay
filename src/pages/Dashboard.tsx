@@ -46,6 +46,7 @@ const Dashboard: React.FC = () => {
         receiverLevel={user.level.receiver_level}
         senderLevel={user.level.sender_level}
         chargerLevel={user.level.charger_level}
+        userType={user.type_user}
       />
 
       {/* Quick Actions Title */}
