@@ -19,15 +19,17 @@ serve(async (req) => {
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
     if (!BASE_URL) throw new Error("GALA_API_BASE_URL is not configured");
 
-    const path = "api/newWebsite/request/create";
-    const headers = await getGalaHeaders("POST", path);
+    const endpoint = "request/create";
+    const signPath = "api/newWebsite/" + endpoint;
+    const headers = await getGalaHeaders("POST", signPath);
 
     const requestBody: Record<string, unknown> = { uuid, type };
     if (value) {
       requestBody.value = value;
     }
 
-    const response = await fetch(`${BASE_URL}/${path}`, {
+    const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
+    const response = await fetch(url, {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
