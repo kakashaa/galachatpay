@@ -5,6 +5,18 @@ import { IdCard, User, Crown, Shield, Send, CheckCircle, AlertCircle, XCircle, I
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
+const userTypeLabels: Record<number, string> = {
+  0: "مستخدم عادي",
+  1: "مستخدم عادي",
+  2: "مضيف",
+  3: "وكيل مضيفين",
+  4: "وكيل شحن",
+  5: "وكيل شحن ومضيفين",
+  6: "مضيف ووكيل شحن",
+};
 
 const levelRanges = [
   { min: 20, max: 29, label: "Level 20-29", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
@@ -19,42 +31,56 @@ const levelRanges = [
 
 const ChangeId: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [newId, setNewId] = useState("");
-  const [status, setStatus] = useState<"idle" | "success" | "taken" | "ineligible">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  // Demo user data
-  const user = {
-    id: "123456789",
-    name: "محمد أحمد",
-    receiverLevel: 0,
-    senderLevel: 1,
-    accountType: "مستخدم",
-    vipLevel: 3,
-    changesUsed: [] as number[],
-  };
+  if (!user) {
+    navigate("/");
+    return null;
+  }
 
-  const maxLevel = Math.max(user.receiverLevel, user.senderLevel);
-
+  const maxLevel = Math.max(user.level.receiver_level, user.level.sender_level);
   const currentRange = levelRanges.find((r) => maxLevel >= r.min && maxLevel <= r.max);
   const availableRanges = levelRanges.filter((r) => maxLevel >= r.min);
-  const alreadyUsed = currentRange ? user.changesUsed.includes(currentRange.min) : false;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!newId.trim() || !currentRange) return;
     if (maxLevel < 20) {
       setStatus("ineligible");
       return;
     }
-    if (alreadyUsed) {
-      setStatus("ineligible");
-      return;
-    }
-    // Simulate API check - placeholder
-    const isTaken = newId.toLowerCase() === "taken";
-    if (isTaken) {
-      setStatus("taken");
-    } else {
+
+    setStatus("loading");
+    setErrorMsg("");
+
+    try {
+      const { data, error } = await supabase.functions.invoke("gala-request", {
+        body: { uuid: user.uuid, type: "uuid", new_uuid: newId.trim() },
+      });
+
+      if (error) {
+        setStatus("error");
+        setErrorMsg("حدث خطأ في الاتصال. حاول مرة أخرى.");
+        return;
+      }
+
+      if (!data?.success) {
+        const msg = data?.error || "";
+        if (msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used")) {
+          setStatus("taken");
+        } else {
+          setStatus("error");
+          setErrorMsg(msg || "فشل الطلب. حاول مرة أخرى.");
+        }
+        return;
+      }
+
       setStatus("success");
+    } catch {
+      setStatus("error");
+      setErrorMsg("حدث خطأ غير متوقع.");
     }
   };
 
@@ -62,22 +88,15 @@ const ChangeId: React.FC = () => {
     return (
       <MobileLayout showHeader headerTitle="تغيير الـ ID" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.6 }}
-            className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6"
-          >
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }} className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6">
             <CheckCircle className="w-10 h-10 text-success" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم تغيير الـ ID بنجاح</h2>
-            <p className="text-sm text-muted-foreground">معرفك الجديد: <span className="font-bold text-primary" dir="ltr">{newId}</span></p>
+            <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلب تغيير الـ ID</h2>
+            <p className="text-sm text-muted-foreground">المعرف المطلوب: <span className="font-bold text-primary" dir="ltr">{newId}</span></p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-            <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">
-              العودة للرئيسية
-            </Button>
+            <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">العودة للرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>
@@ -96,25 +115,19 @@ const ChangeId: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">ID الحالي</span>
-              <span className="font-bold text-foreground" dir="ltr">{user.id}</span>
+              <span className="font-bold text-foreground" dir="ltr">{user.uuid}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">مستوى المستقبل</span>
-              <span className="font-bold text-foreground">{user.receiverLevel}</span>
+              <span className="font-bold text-foreground">{user.level.receiver_level}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">مستوى المرسل</span>
-              <span className="font-bold text-foreground">{user.senderLevel}</span>
+              <span className="font-bold text-foreground">{user.level.sender_level}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">النوع</span>
-              <span className="font-bold text-foreground">{user.accountType}</span>
-            </div>
-            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">VIP</span>
-              <span className="font-bold text-primary flex items-center gap-1">
-                <Crown className="w-3 h-3" /> {user.vipLevel}
-              </span>
+              <span className="font-bold text-foreground">{userTypeLabels[user.type_user] || "مستخدم"}</span>
             </div>
           </div>
         </motion.div>
@@ -136,18 +149,10 @@ const ChangeId: React.FC = () => {
               </p>
             </div>
           </div>
-
           {maxLevel < 20 && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
               <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
               <p className="text-xs text-destructive">مستواك أقل من 20. لا يمكنك تغيير الـ ID حالياً.</p>
-            </div>
-          )}
-
-          {alreadyUsed && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
-              <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-              <p className="text-xs text-destructive">لقد استخدمت فرصة تغيير الـ ID لهذا المستوى.</p>
             </div>
           )}
         </motion.div>
@@ -160,25 +165,15 @@ const ChangeId: React.FC = () => {
           </h3>
           <div className="space-y-2">
             {availableRanges.map((range, idx) => (
-              <div
-                key={idx}
-                className={`p-3 rounded-xl border transition-colors ${
-                  currentRange === range
-                    ? "border-primary/30 bg-primary/5"
-                    : "border-border/20 bg-muted/20"
-                }`}
-              >
+              <div key={idx} className={`p-3 rounded-xl border transition-colors ${currentRange === range ? "border-primary/30 bg-primary/5" : "border-border/20 bg-muted/20"}`}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-foreground">{range.label}</span>
-                  {currentRange === range && (
-                    <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">مستواك</span>
-                  )}
+                  {currentRange === range && <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">مستواك</span>}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">الصيغة: {range.format}</p>
               </div>
             ))}
           </div>
-
           <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-xl">
             <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground">يُسمح بتغيير الـ ID مرة واحدة فقط لكل فئة مستوى.</p>
@@ -191,27 +186,28 @@ const ChangeId: React.FC = () => {
           <Input
             type="text"
             value={newId}
-            onChange={(e) => {
-              setNewId(e.target.value);
-              setStatus("idle");
-            }}
+            onChange={(e) => { setNewId(e.target.value); setStatus("idle"); }}
             placeholder="اكتب الـ ID الذي تريده"
             dir="ltr"
             className="h-12 bg-muted/30 border-border/30 text-center text-base"
-            disabled={maxLevel < 20 || alreadyUsed}
+            disabled={maxLevel < 20}
           />
-
           {status === "taken" && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
               <XCircle className="w-4 h-4 text-destructive shrink-0" />
               <p className="text-xs text-destructive">عذراً، هذا المعرف مستخدم من قبل شخص آخر</p>
             </div>
           )}
-
           {status === "ineligible" && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
               <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
               <p className="text-xs text-destructive">غير مؤهل لتغيير الـ ID حالياً</p>
+            </div>
+          )}
+          {status === "error" && errorMsg && (
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">{errorMsg}</p>
             </div>
           )}
         </motion.div>
@@ -220,11 +216,17 @@ const ChangeId: React.FC = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <Button
             onClick={handleSubmit}
-            disabled={!newId.trim() || maxLevel < 20 || alreadyUsed}
+            disabled={!newId.trim() || maxLevel < 20 || status === "loading"}
             className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
           >
-            <Send className="w-5 h-5 ml-2" />
-            إرسال الطلب
+            {status === "loading" ? (
+              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : (
+              <>
+                <Send className="w-5 h-5 ml-2" />
+                إرسال الطلب
+              </>
+            )}
           </Button>
         </motion.div>
       </div>

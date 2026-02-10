@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Crown, Check, Lock, Users } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VipTier {
   level: number;
@@ -22,45 +24,73 @@ const vipTiers: VipTier[] = [
   { level: 6, label: "VIP 6", description: "خاص - شروط متقدمة", available: false, requiresCheck: true, color: "from-yellow-200/30 to-yellow-500/10" },
 ];
 
-// Demo user type: 0=user, 1=host, 2=host agent, 3=recharge agent, 4=both agents
-const userRoleLabels: Record<number, string> = {
+const userTypeLabels: Record<number, string> = {
   0: "مستخدم",
-  1: "مضيف",
-  2: "وكيل مضيفين",
-  3: "وكيل شحن",
-  4: "وكيل مضيفين وشحن",
+  1: "مستخدم",
+  2: "مضيف",
+  3: "وكيل مضيفين",
+  4: "وكيل شحن",
+  5: "وكيل شحن ومضيفين",
+  6: "مضيف ووكيل شحن",
 };
 
 const RequestVip: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedVip, setSelectedVip] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Demo data
-  const userRole = 0;
-  const isAgent = userRole >= 2;
+  if (!user) {
+    navigate("/");
+    return null;
+  }
 
-  const handleRequest = () => {
+  const isAgent = user.type_user >= 3;
+
+  const handleRequest = async () => {
     if (selectedVip === null) return;
-    setSubmitted(true);
+    setLoading(true);
+    setError("");
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("gala-request", {
+        body: { uuid: user.uuid, type: "vip", vip_level: selectedVip },
+      });
+
+      if (fnError) {
+        setError("حدث خطأ في الاتصال. حاول مرة أخرى.");
+        setLoading(false);
+        return;
+      }
+
+      if (!data?.success) {
+        setError(data?.error || "فشل الطلب. حاول مرة أخرى.");
+        setLoading(false);
+        return;
+      }
+
+      setSubmitted(true);
+    } catch {
+      setError("حدث خطأ غير متوقع.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <MobileLayout showHeader headerTitle="طلب VIP" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-6 space-y-6">
         {/* User Role */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-4"
-        >
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center">
               <Users className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">نوع حسابك</p>
-              <p className="text-xs text-primary font-semibold">{userRoleLabels[userRole]}</p>
+              <p className="text-xs text-primary font-semibold">{userTypeLabels[user.type_user] || "مستخدم"}</p>
             </div>
           </div>
           {isAgent && (
@@ -84,6 +114,7 @@ const RequestVip: React.FC = () => {
                   if (tier.available || isAgent) {
                     setSelectedVip(tier.level);
                     setSubmitted(false);
+                    setError("");
                   }
                 }}
                 className={`w-full glass-card p-4 flex items-center gap-4 text-right transition-all bg-gradient-to-br ${tier.color} ${
@@ -107,6 +138,13 @@ const RequestVip: React.FC = () => {
           </div>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
         {/* Submit */}
         {submitted ? (
           <motion.div
@@ -121,11 +159,17 @@ const RequestVip: React.FC = () => {
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleRequest}
-            disabled={selectedVip === null}
+            disabled={selectedVip === null || loading}
             className="w-full h-12 gold-gradient rounded-xl text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
           >
-            <Crown className="w-5 h-5" />
-            تقديم الطلب
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : (
+              <>
+                <Crown className="w-5 h-5" />
+                تقديم الطلب
+              </>
+            )}
           </motion.button>
         )}
       </div>
