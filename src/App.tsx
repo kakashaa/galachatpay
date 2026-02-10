@@ -11,6 +11,7 @@ import QuickSupport from "./pages/QuickSupport";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import GiftRequest from "./pages/GiftRequest";
 import ReportPage from "./pages/ReportPage";
+import SalaryWithdraw from "./pages/SalaryWithdraw";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,7 +28,7 @@ const App = () => (
           <Route path="/change-id" element={<ChangeId />} />
           <Route path="/request-vip" element={<RequestVip />} />
           <Route path="/support" element={<QuickSupport />} />
-          <Route path="/salary" element={<PlaceholderPage title="سحب الراتب" />} />
+          <Route path="/salary" element={<SalaryWithdraw />} />
           <Route path="/report" element={<ReportPage />} />
           <Route path="/gift" element={<GiftRequest />} />
           <Route path="*" element={<NotFound />} />
