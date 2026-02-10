@@ -35,11 +35,23 @@ serve(async (req) => {
       body: JSON.stringify(requestBody),
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    console.log("gala-request API response status:", response.status);
+    console.log("gala-request API response body:", rawText);
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid API response: " + rawText.substring(0, 200) }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!response.ok || !data.success) {
       return new Response(
-        JSON.stringify({ success: false, error: data.message || data.error || "Request failed" }),
+        JSON.stringify({ success: false, error: data.message || data.error || "Request failed", api_status: response.status }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
