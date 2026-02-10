@@ -36,7 +36,17 @@ serve(async (req) => {
       body,
     });
 
-    const data = await response.json();
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error("Non-JSON response:", text.substring(0, 200));
+      return new Response(
+        JSON.stringify({ success: false, error: "API returned invalid response. Check BASE_URL." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!response.ok || !data.success) {
       return new Response(
