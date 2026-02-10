@@ -39,8 +39,8 @@ serve(async (req) => {
 
     if (!response.ok || !data.success) {
       return new Response(
-        JSON.stringify({ success: false, error: data.message || "Request failed" }),
-        { status: response.status === 200 ? 400 : response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: data.message || data.error || "Request failed" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
