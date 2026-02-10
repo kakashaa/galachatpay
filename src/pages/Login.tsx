@@ -77,6 +77,16 @@ const Login: React.FC = () => {
       }
 
       const apiUser = data.data;
+      const levelData = typeof apiUser.level === "number"
+        ? { receiver_level: apiUser.level, sender_level: 0, charger_level: 0, receiver_num: 0, sender_num: 0, charger_num: 0 }
+        : {
+            receiver_level: apiUser.level?.receiver_level || 0,
+            sender_level: apiUser.level?.sender_level || 0,
+            charger_level: apiUser.level?.charger_level || 0,
+            receiver_num: apiUser.level?.receiver_num || 0,
+            sender_num: apiUser.level?.sender_num || 0,
+            charger_num: apiUser.level?.charger_num || 0,
+          };
       setUser({
         id: apiUser.id,
         uuid: apiUser.uuid,
@@ -85,19 +95,12 @@ const Login: React.FC = () => {
         type_user: apiUser.type_user,
         profile: {
           image: apiUser.profile?.image || "",
-          gender: apiUser.profile?.gender || 0,
+          gender: apiUser.profile?.gender || apiUser.gender || 0,
           birthday: apiUser.profile?.birthday || "",
           age: apiUser.profile?.age || 0,
           country: apiUser.country?.name || "",
         },
-        level: {
-          receiver_level: apiUser.level?.receiver_level || 0,
-          sender_level: apiUser.level?.sender_level || 0,
-          charger_level: apiUser.level?.charger_level || 0,
-          receiver_num: apiUser.level?.receiver_num || 0,
-          sender_num: apiUser.level?.sender_num || 0,
-          charger_num: apiUser.level?.charger_num || 0,
-        },
+        level: levelData,
         my_store: {
           coins: apiUser.my_store?.coins || 0,
           diamonds: apiUser.my_store?.diamonds || 0,

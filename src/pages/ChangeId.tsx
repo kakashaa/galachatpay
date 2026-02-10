@@ -57,7 +57,7 @@ const ChangeId: React.FC = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("gala-request", {
-        body: { uuid: user.uuid, type: "uuid", new_uuid: newId.trim() },
+        body: { uuid: user.uuid, type: "uuid", value: newId.trim() },
       });
 
       if (error) {

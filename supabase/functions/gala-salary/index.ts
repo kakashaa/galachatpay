@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, createHmacSignature } from "../_shared/hmac.ts";
+import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -7,33 +7,25 @@ serve(async (req) => {
   }
 
   try {
-    const { uuid, amount, type } = await req.json();
+    const { uuid, amount } = await req.json();
 
-    if (!uuid || !amount || !type) {
+    if (!uuid || !amount) {
       return new Response(
-        JSON.stringify({ success: false, error: "uuid, amount, and type are required" }),
+        JSON.stringify({ success: false, error: "uuid and amount are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const API_SECRET = Deno.env.get("GALA_API_SECRET");
-    if (!API_SECRET) throw new Error("GALA_API_SECRET is not configured");
-
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
     if (!BASE_URL) throw new Error("GALA_API_BASE_URL is not configured");
 
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const body = JSON.stringify({ uuid, amount, type });
-    const signature = await createHmacSignature(API_SECRET, body + timestamp);
+    const path = "api/newWebsite/transaction/check";
+    const headers = await getGalaHeaders("POST", path);
 
-    const response = await fetch(`${BASE_URL}/api/newWebsite/transaction/check`, {
+    const response = await fetch(`${BASE_URL}/${path}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-SIGNATURE": signature,
-        "X-TIMESTAMP": timestamp,
-      },
-      body,
+      headers,
+      body: JSON.stringify({ uuid, amount }),
     });
 
     const data = await response.json();
