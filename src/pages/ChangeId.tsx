@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import IdFormatCarousel from "@/components/IdFormatCarousel";
 import { levelFormats } from "@/data/idFormats";
+import { validateIdAgainstPatterns } from "@/utils/idPatternValidator";
 
 const userTypeLabels: Record<number, string> = {
   0: "مستخدم عادي",
@@ -61,6 +62,18 @@ const ChangeId: React.FC = () => {
     if (!uniqueAllowedDigits.includes(trimmedId.length)) {
       setStatus("error");
       setErrorMsg(`عدد الأرقام غير مسموح. الأطوال المتاحة لمستواك: ${uniqueAllowedDigits.join("، ")}`);
+      return;
+    }
+
+    // Validate: check ID matches at least one allowed pattern for the user's level
+    const allAllowedPatterns = availableRanges
+      .flatMap((r) => r.groups)
+      .filter((g) => g.digits === trimmedId.length)
+      .flatMap((g) => g.patterns);
+
+    if (!validateIdAgainstPatterns(trimmedId, allAllowedPatterns)) {
+      setStatus("error");
+      setErrorMsg("الـ ID لا يطابق أي صيغة متاحة لمستواك. تأكد من أن نمط الأرقام يتوافق مع إحدى الصيغ المعروضة.");
       return;
     }
 
