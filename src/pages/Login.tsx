@@ -60,34 +60,28 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("gala-login", {
-        body: { uuid: userId.trim(), password: password.trim() },
-      });
+      let data: any = null;
+      let fnError: any = null;
 
-      if (fnError) {
-        // When edge function returns non-2xx, data may still contain the parsed body
-        if (data?.error) {
-          const msg = data.error === "Invalid credentials"
-            ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
-            : data.error;
-          setError(msg);
-        } else {
-          // Try reading from the error context (Response object)
-          let errorMsg = "حدث خطأ في الاتصال. حاول مرة أخرى.";
-          try {
-            if (fnError.context && typeof fnError.context.json === "function") {
-              const errorBody = await fnError.context.json();
-              if (errorBody?.error) {
-                errorMsg = errorBody.error === "Invalid credentials"
-                  ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
-                  : errorBody.error;
-              }
-            }
-          } catch {
-            // fallback
-          }
-          setError(errorMsg);
-        }
+      try {
+        const result = await supabase.functions.invoke("gala-login", {
+          body: { uuid: userId.trim(), password: password.trim() },
+        });
+        data = result.data;
+        fnError = result.error;
+      } catch (invokeErr: any) {
+        // supabase.functions.invoke can throw on non-2xx
+        setError("بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز.");
+        setLoading(false);
+        return;
+      }
+
+      if (fnError || !data?.success) {
+        const errorText = data?.error || "فشل تسجيل الدخول. تأكد من البيانات.";
+        const msg = errorText === "Invalid credentials"
+          ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
+          : errorText;
+        setError(msg);
         setLoading(false);
         return;
       }
