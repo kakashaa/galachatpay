@@ -86,15 +86,6 @@ const Login: React.FC = () => {
         return;
       }
 
-      if (!data?.success) {
-        const msg = data?.error === "Invalid credentials"
-          ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
-          : (data?.error || "فشل تسجيل الدخول. تأكد من البيانات.");
-        setError(msg);
-        setLoading(false);
-        return;
-      }
-
       const apiUser = data.data;
       const levelData = typeof apiUser.level === "number"
         ? { receiver_level: apiUser.level, sender_level: 0, charger_level: 0, receiver_num: 0, sender_num: 0, charger_num: 0 }
