@@ -6,7 +6,8 @@ interface UserProfileCardProps {
   name: string;
   id: string;
   avatarUrl?: string;
-  level: number;
+  receiverLevel: number;
+  senderLevel: number;
   wealth: number;
   charisma: number;
   recharge: number;
@@ -16,7 +17,8 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
   name,
   id,
   avatarUrl,
-  level,
+  receiverLevel,
+  senderLevel,
   wealth,
   charisma,
   recharge,
@@ -41,7 +43,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
             </div>
           </div>
           <div className="absolute -bottom-1 -left-1 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
-            Lv.{level}
+            Lv.{Math.max(receiverLevel, senderLevel)}
           </div>
         </div>
 
@@ -54,6 +56,10 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
 
       {/* Stats */}
       <div className="flex items-center justify-around mt-5 pt-4 border-t border-border/30">
+        <StatItem icon={<Gem className="w-4 h-4" />} label="المستقبل" value={receiverLevel} />
+        <div className="w-px h-8 bg-border/30" />
+        <StatItem icon={<Zap className="w-4 h-4" />} label="المرسل" value={senderLevel} />
+        <div className="w-px h-8 bg-border/30" />
         <StatItem icon={<Gem className="w-4 h-4" />} label="الثروة" value={wealth} />
         <div className="w-px h-8 bg-border/30" />
         <StatItem icon={<Zap className="w-4 h-4" />} label="الكاريزما" value={charisma} />

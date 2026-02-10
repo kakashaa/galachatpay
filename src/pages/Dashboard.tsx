@@ -13,7 +13,8 @@ const Dashboard: React.FC = () => {
   const user = {
     name: "محمد أحمد",
     id: "123456789",
-    level: 35,
+    receiverLevel: 0,
+    senderLevel: 1,
     wealth: 52300,
     charisma: 1240,
     recharge: 8900,
@@ -39,7 +40,8 @@ const Dashboard: React.FC = () => {
       <UserProfileCard
         name={user.name}
         id={user.id}
-        level={user.level}
+        receiverLevel={user.receiverLevel}
+        senderLevel={user.senderLevel}
         wealth={user.wealth}
         charisma={user.charisma}
         recharge={user.recharge}
