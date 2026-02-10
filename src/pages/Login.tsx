@@ -65,13 +65,28 @@ const Login: React.FC = () => {
       });
 
       if (fnError) {
-        setError("حدث خطأ في الاتصال. حاول مرة أخرى.");
+        // Try to extract error message from the response body
+        let errorMsg = "حدث خطأ في الاتصال. حاول مرة أخرى.";
+        try {
+          const errorBody = fnError.context?.body ? await fnError.context.json() : null;
+          if (errorBody?.error) {
+            errorMsg = errorBody.error === "Invalid credentials"
+              ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
+              : errorBody.error;
+          }
+        } catch {
+          // fallback to generic message
+        }
+        setError(errorMsg);
         setLoading(false);
         return;
       }
 
       if (!data?.success) {
-        setError(data?.error || "فشل تسجيل الدخول. تأكد من البيانات.");
+        const msg = data?.error === "Invalid credentials"
+          ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
+          : (data?.error || "فشل تسجيل الدخول. تأكد من البيانات.");
+        setError(msg);
         setLoading(false);
         return;
       }
