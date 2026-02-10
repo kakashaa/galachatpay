@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { IdCard, User, Crown, Shield, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
+import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import IdFormatCarousel from "@/components/IdFormatCarousel";
+import { levelFormats } from "@/data/idFormats";
 
 const userTypeLabels: Record<number, string> = {
   0: "مستخدم عادي",
@@ -18,16 +20,6 @@ const userTypeLabels: Record<number, string> = {
   6: "مضيف ووكيل شحن",
 };
 
-const levelRanges = [
-  { min: 20, max: 29, label: "Level 20-29", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-  { min: 30, max: 39, label: "Level 30-39", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-  { min: 40, max: 49, label: "Level 40-49", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-  { min: 50, max: 59, label: "Level 50-59", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-  { min: 60, max: 69, label: "Level 60-69", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-  { min: 70, max: 79, label: "Level 70-79", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-  { min: 80, max: 89, label: "Level 80-89", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-  { min: 90, max: 100, label: "Level 90-100", format: "سيتم تحديد الصيغة لاحقاً", example: "---" },
-];
 
 const ChangeId: React.FC = () => {
   const navigate = useNavigate();
@@ -42,8 +34,9 @@ const ChangeId: React.FC = () => {
   }
 
   const maxLevel = Math.max(user.level.receiver_level, user.level.sender_level);
-  const currentRange = levelRanges.find((r) => maxLevel >= r.min && maxLevel <= r.max);
-  const availableRanges = levelRanges.filter((r) => maxLevel >= r.min);
+  const currentRange = levelFormats.find((r) => maxLevel >= r.minLevel && maxLevel <= r.maxLevel);
+  const availableRanges = levelFormats.filter((r) => maxLevel >= r.minLevel);
+  const currentLevelIndex = availableRanges.findIndex((r) => r === currentRange);
 
   const handleSubmit = async () => {
     if (!newId.trim() || !currentRange) return;
@@ -158,23 +151,23 @@ const ChangeId: React.FC = () => {
         </motion.div>
 
         {/* Available Formats */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" />
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
+            <IdCard className="w-4 h-4 text-primary" />
             الصيغ المتاحة لمستواك
           </h3>
-          <div className="space-y-2">
-            {availableRanges.map((range, idx) => (
-              <div key={idx} className={`p-3 rounded-xl border transition-colors ${currentRange === range ? "border-primary/30 bg-primary/5" : "border-border/20 bg-muted/20"}`}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-foreground">{range.label}</span>
-                  {currentRange === range && <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">مستواك</span>}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">الصيغة: {range.format}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-xl">
+          {availableRanges.length > 0 ? (
+            <IdFormatCarousel
+              availableLevels={availableRanges}
+              currentLevelIndex={Math.max(0, currentLevelIndex)}
+              maxLevel={maxLevel}
+            />
+          ) : (
+            <div className="glass-card p-4 text-center">
+              <p className="text-sm text-muted-foreground">يجب أن يكون مستواك 20 أو أعلى لعرض الصيغ المتاحة</p>
+            </div>
+          )}
+          <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-xl mt-3">
             <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground">يُسمح بتغيير الـ ID مرة واحدة فقط لكل فئة مستوى.</p>
           </div>
