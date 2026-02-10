@@ -23,7 +23,7 @@ const userTypeLabels: Record<number, string> = {
 
 const ChangeId: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [newId, setNewId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -70,6 +70,7 @@ const ChangeId: React.FC = () => {
         return;
       }
 
+      setUser({ ...user, uuid: newId.trim() });
       setStatus("success");
     } catch {
       setStatus("error");
