@@ -9,7 +9,19 @@ interface UserProfileCardProps {
   receiverLevel: number;
   senderLevel: number;
   chargerLevel: number;
+  userType?: number;
 }
+
+const getUserTypeLabel = (type: number): string | null => {
+  switch (type) {
+    case 2: return "مضيف";
+    case 3: return "وكيل مضيفين";
+    case 4: return "وكيل شحن";
+    case 5: return "وكيل شحن ومضيفين";
+    case 6: return "مضيف ووكيل شحن";
+    default: return null;
+  }
+};
 
 const UserProfileCard: React.FC<UserProfileCardProps> = ({
   name,
@@ -18,7 +30,9 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
   receiverLevel,
   senderLevel,
   chargerLevel,
+  userType,
 }) => {
+  const typeLabel = userType ? getUserTypeLabel(userType) : null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -46,7 +60,14 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-foreground truncate">{name}</h2>
-          <p className="text-sm text-muted-foreground font-mono" dir="ltr">ID: {id}</p>
+          <p className="text-sm text-muted-foreground font-mono flex items-center gap-2" dir="ltr">
+            ID: {id}
+            {typeLabel && (
+              <span className="text-[10px] font-sans font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                {typeLabel}
+              </span>
+            )}
+          </p>
         </div>
       </div>
 
