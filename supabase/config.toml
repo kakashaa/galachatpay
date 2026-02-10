@@ -1,1 +1,4 @@
 project_id = "ybvlxzpioteopcemkngp"
+
+[functions.gala-login]
+verify_jwt = false
