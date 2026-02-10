@@ -1,12 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut } from "lucide-react";
-import MobileLayout from "@/components/MobileLayout";
-import UserProfileCard from "@/components/UserProfileCard";
-import MenuGrid from "@/components/MenuGrid";
-import galaLogo from "@/assets/gala-logo.png";
+import { Share2, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
+import UserProfileCard from "@/components/UserProfileCard";
+import LevelBars from "@/components/LevelBars";
+import MenuGrid from "@/components/MenuGrid";
+import BottomNav from "@/components/BottomNav";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -21,43 +20,43 @@ const Dashboard: React.FC = () => {
   if (!user) return null;
 
   return (
-    <MobileLayout>
-      {/* Top Bar */}
-      <div className="sticky top-0 z-50 flex items-center justify-between px-5 py-3 bg-background/80 backdrop-blur-xl border-b border-border/20">
-        <div className="flex items-center gap-3">
-          <img src={galaLogo} alt="غلا لايف" className="w-9 h-9 rounded-lg" />
-          <span className="text-base font-bold gold-text">غلا لايف</span>
-        </div>
+    <div className="mobile-container text-foreground min-h-screen pb-28 overflow-x-hidden relative">
+      {/* Aurora Background */}
+      <div className="aurora-bg" />
+      <div className="particles-layer" />
+
+      {/* Header */}
+      <header className="relative z-10 flex justify-between items-center p-6 pt-8">
         <button
-          onClick={() => {
-            logout();
-            navigate("/");
-          }}
-          className="text-muted-foreground hover:text-destructive transition-colors p-2"
+          onClick={() => { logout(); navigate("/"); }}
+          className="w-10 h-10 flex items-center justify-center rounded-full glass-card"
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5 text-foreground" />
         </button>
-      </div>
+        <div className="flex gap-4">
+          <button className="w-10 h-10 flex items-center justify-center rounded-full glass-card">
+            <Share2 className="w-5 h-5 text-foreground" />
+          </button>
+        </div>
+      </header>
 
-      {/* User Profile Card */}
-      <UserProfileCard
-        name={user.name}
-        id={user.uuid}
-        receiverLevel={user.level.receiver_level}
-        senderLevel={user.level.sender_level}
-        chargerLevel={user.level.charger_level}
-        userType={user.type_user}
-      />
+      {/* Main Content */}
+      <main className="relative z-10 px-6">
+        <UserProfileCard />
+        <LevelBars />
 
-      {/* Quick Actions Title */}
-      <div className="px-5 mt-6">
-        <h3 className="text-base font-bold text-foreground">الخدمات المتاحة</h3>
-        <p className="text-xs text-muted-foreground mt-1">اختر الخدمة التي تريدها</p>
-      </div>
+        {/* Services Title */}
+        <h3 className="text-base font-bold mb-5 pr-2 flex items-center gap-2 text-foreground">
+          <span className="w-1.5 h-4 bg-primary rounded-full" />
+          الخدمات المميزة
+        </h3>
 
-      {/* Menu Grid */}
-      <MenuGrid />
-    </MobileLayout>
+        <MenuGrid />
+      </main>
+
+      {/* Bottom Navigation */}
+      <BottomNav />
+    </div>
   );
 };
 
