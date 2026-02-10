@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { IdCard, Crown, Wallet, ShieldAlert, Headset, Gift } from "lucide-react";
+import { IdCard, Crown, Wallet, ShieldAlert, Headset, Gift, Briefcase } from "lucide-react";
 
 interface MenuItem {
   icon: React.ReactNode;
@@ -53,6 +53,13 @@ const menuItems: MenuItem[] = [
     description: "مخصصة أو إطار",
     route: "/gift",
     color: "from-purple-500/20 to-pink-700/10",
+  },
+  {
+    icon: <Briefcase className="w-7 h-7" />,
+    label: "طلب BD",
+    description: "Business Developer",
+    route: "/bd-request",
+    color: "from-cyan-500/20 to-teal-700/10",
   },
 ];
 
