@@ -23,7 +23,7 @@ const userTypeLabels: Record<number, string> = {
 
 const ChangeId: React.FC = () => {
   const navigate = useNavigate();
-  const { user, setUser } = useAuth();
+  const { user } = useAuth();
   const [newId, setNewId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -38,10 +38,29 @@ const ChangeId: React.FC = () => {
   const availableRanges = levelFormats.filter((r) => maxLevel >= r.minLevel);
   const currentLevelIndex = availableRanges.findIndex((r) => r === currentRange);
 
+  // Get allowed digit counts for the user's level
+  const allowedDigits = availableRanges.flatMap((r) => r.groups.map((g) => g.digits));
+  const uniqueAllowedDigits = [...new Set(allowedDigits)].sort((a, b) => a - b);
+
   const handleSubmit = async () => {
-    if (!newId.trim() || !currentRange) return;
+    const trimmedId = newId.trim();
+    if (!trimmedId || !currentRange) return;
     if (maxLevel < 20) {
       setStatus("ineligible");
+      return;
+    }
+
+    // Validate: must be numeric only
+    if (!/^\d+$/.test(trimmedId)) {
+      setStatus("error");
+      setErrorMsg("الـ ID يجب أن يحتوي على أرقام فقط.");
+      return;
+    }
+
+    // Validate: check digit count matches allowed formats
+    if (!uniqueAllowedDigits.includes(trimmedId.length)) {
+      setStatus("error");
+      setErrorMsg(`عدد الأرقام غير مسموح. الأطوال المتاحة لمستواك: ${uniqueAllowedDigits.join("، ")}`);
       return;
     }
 
@@ -50,7 +69,7 @@ const ChangeId: React.FC = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("gala-request", {
-        body: { uuid: user.uuid, type: "uuid", value: newId.trim() },
+        body: { uuid: user.uuid, type: "uuid", value: trimmedId },
       });
 
       if (error) {
@@ -70,7 +89,6 @@ const ChangeId: React.FC = () => {
         return;
       }
 
-      setUser({ ...user, uuid: newId.trim() });
       setStatus("success");
     } catch {
       setStatus("error");
@@ -86,8 +104,8 @@ const ChangeId: React.FC = () => {
             <CheckCircle className="w-10 h-10 text-success" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم تغيير الـ ID بنجاح!</h2>
-            <p className="text-sm text-muted-foreground">المعرف الجديد: <span className="font-bold text-primary" dir="ltr">{newId}</span></p>
+            <h2 className="text-lg font-bold text-foreground mb-2">تم رفع طلب تغيير الـ ID</h2>
+            <p className="text-sm text-muted-foreground">المعرف المطلوب: <span className="font-bold text-primary" dir="ltr">{newId}</span></p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
             <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">العودة للرئيسية</Button>
