@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ChangeId from "./pages/ChangeId";
 import RequestVip from "./pages/RequestVip";
+import QuickSupport from "./pages/QuickSupport";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -23,9 +24,9 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/change-id" element={<ChangeId />} />
           <Route path="/request-vip" element={<RequestVip />} />
+          <Route path="/support" element={<QuickSupport />} />
           <Route path="/salary" element={<PlaceholderPage title="سحب الراتب" />} />
           <Route path="/report" element={<PlaceholderPage title="بلاغ / حظر" />} />
-          <Route path="/support" element={<PlaceholderPage title="الدعم السريع" />} />
           <Route path="/gift" element={<PlaceholderPage title="طلب هدية" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
