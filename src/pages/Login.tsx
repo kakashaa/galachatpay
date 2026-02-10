@@ -65,19 +65,29 @@ const Login: React.FC = () => {
       });
 
       if (fnError) {
-        // Try to extract error message from the response body
-        let errorMsg = "حدث خطأ في الاتصال. حاول مرة أخرى.";
-        try {
-          const errorBody = fnError.context?.body ? await fnError.context.json() : null;
-          if (errorBody?.error) {
-            errorMsg = errorBody.error === "Invalid credentials"
-              ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
-              : errorBody.error;
+        // When edge function returns non-2xx, data may still contain the parsed body
+        if (data?.error) {
+          const msg = data.error === "Invalid credentials"
+            ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
+            : data.error;
+          setError(msg);
+        } else {
+          // Try reading from the error context (Response object)
+          let errorMsg = "حدث خطأ في الاتصال. حاول مرة أخرى.";
+          try {
+            if (fnError.context && typeof fnError.context.json === "function") {
+              const errorBody = await fnError.context.json();
+              if (errorBody?.error) {
+                errorMsg = errorBody.error === "Invalid credentials"
+                  ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
+                  : errorBody.error;
+              }
+            }
+          } catch {
+            // fallback
           }
-        } catch {
-          // fallback to generic message
+          setError(errorMsg);
         }
-        setError(errorMsg);
         setLoading(false);
         return;
       }
