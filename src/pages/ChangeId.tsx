@@ -6,6 +6,7 @@ import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { GalaUser } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import IdFormatCarousel from "@/components/IdFormatCarousel";
 import { levelFormats } from "@/data/idFormats";
@@ -24,7 +25,7 @@ const userTypeLabels: Record<number, string> = {
 
 const ChangeId: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [newId, setNewId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -115,6 +116,8 @@ const ChangeId: React.FC = () => {
         return;
       }
 
+      // Update the local user data with the new ID immediately
+      setUser({ ...user, uuid: trimmedId } as GalaUser);
       setStatus("success");
     } catch {
       setStatus("error");
@@ -130,8 +133,8 @@ const ChangeId: React.FC = () => {
             <CheckCircle className="w-10 h-10 text-success" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم رفع طلب تغيير الـ ID</h2>
-            <p className="text-sm text-muted-foreground">المعرف المطلوب: <span className="font-bold text-primary" dir="ltr">{newId}</span></p>
+           <h2 className="text-lg font-bold text-foreground mb-2">تم تغيير الـ ID بنجاح!</h2>
+            <p className="text-sm text-muted-foreground">المعرف الجديد: <span className="font-bold text-primary" dir="ltr">{newId}</span></p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
             <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">العودة للرئيسية</Button>
