@@ -10,6 +10,7 @@ import RequestVip from "./pages/RequestVip";
 import QuickSupport from "./pages/QuickSupport";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import GiftRequest from "./pages/GiftRequest";
+import ReportPage from "./pages/ReportPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,7 +28,7 @@ const App = () => (
           <Route path="/request-vip" element={<RequestVip />} />
           <Route path="/support" element={<QuickSupport />} />
           <Route path="/salary" element={<PlaceholderPage title="سحب الراتب" />} />
-          <Route path="/report" element={<PlaceholderPage title="بلاغ / حظر" />} />
+          <Route path="/report" element={<ReportPage />} />
           <Route path="/gift" element={<GiftRequest />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
