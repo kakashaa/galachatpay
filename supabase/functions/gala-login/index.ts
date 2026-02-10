@@ -30,6 +30,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_SECRET}`,
         "X-SIGNATURE": signature,
         "X-TIMESTAMP": timestamp,
       },
