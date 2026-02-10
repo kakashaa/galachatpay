@@ -26,19 +26,22 @@ const ChangeId: React.FC = () => {
   const user = {
     id: "123456789",
     name: "محمد أحمد",
-    level: 35,
+    receiverLevel: 0,
+    senderLevel: 1,
     accountType: "مستخدم",
     vipLevel: 3,
-    changesUsed: [] as number[], // level ranges where ID was already changed
+    changesUsed: [] as number[],
   };
 
-  const currentRange = levelRanges.find((r) => user.level >= r.min && user.level <= r.max);
-  const availableRanges = levelRanges.filter((r) => user.level >= r.min);
+  const maxLevel = Math.max(user.receiverLevel, user.senderLevel);
+
+  const currentRange = levelRanges.find((r) => maxLevel >= r.min && maxLevel <= r.max);
+  const availableRanges = levelRanges.filter((r) => maxLevel >= r.min);
   const alreadyUsed = currentRange ? user.changesUsed.includes(currentRange.min) : false;
 
   const handleSubmit = () => {
     if (!newId.trim() || !currentRange) return;
-    if (user.level < 20) {
+    if (maxLevel < 20) {
       setStatus("ineligible");
       return;
     }
@@ -96,8 +99,12 @@ const ChangeId: React.FC = () => {
               <span className="font-bold text-foreground" dir="ltr">{user.id}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">المستوى</span>
-              <span className="font-bold text-foreground">{user.level}</span>
+              <span className="text-muted-foreground">مستوى المستقبل</span>
+              <span className="font-bold text-foreground">{user.receiverLevel}</span>
+            </div>
+            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
+              <span className="text-muted-foreground">مستوى المرسل</span>
+              <span className="font-bold text-foreground">{user.senderLevel}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">النوع</span>
@@ -120,17 +127,17 @@ const ChangeId: React.FC = () => {
           </h3>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full gold-gradient flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">{user.level}</span>
+              <span className="text-primary-foreground font-bold text-sm">{maxLevel}</span>
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">{currentRange?.label || "غير مؤهل"}</p>
               <p className="text-[11px] text-muted-foreground">
-                {user.level >= 20 ? "مؤهل لتغيير الـ ID" : "يجب أن يكون مستواك 20 أو أعلى"}
+                {maxLevel >= 20 ? "مؤهل لتغيير الـ ID" : "يجب أن يكون مستواك 20 أو أعلى"}
               </p>
             </div>
           </div>
 
-          {user.level < 20 && (
+          {maxLevel < 20 && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
               <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
               <p className="text-xs text-destructive">مستواك أقل من 20. لا يمكنك تغيير الـ ID حالياً.</p>
@@ -191,7 +198,7 @@ const ChangeId: React.FC = () => {
             placeholder="اكتب الـ ID الذي تريده"
             dir="ltr"
             className="h-12 bg-muted/30 border-border/30 text-center text-base"
-            disabled={user.level < 20 || alreadyUsed}
+            disabled={maxLevel < 20 || alreadyUsed}
           />
 
           {status === "taken" && (
@@ -213,7 +220,7 @@ const ChangeId: React.FC = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <Button
             onClick={handleSubmit}
-            disabled={!newId.trim() || user.level < 20 || alreadyUsed}
+            disabled={!newId.trim() || maxLevel < 20 || alreadyUsed}
             className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
           >
             <Send className="w-5 h-5 ml-2" />
