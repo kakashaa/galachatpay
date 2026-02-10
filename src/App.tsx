@@ -12,6 +12,8 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import GiftRequest from "./pages/GiftRequest";
 import ReportPage from "./pages/ReportPage";
 import SalaryWithdraw from "./pages/SalaryWithdraw";
+import BDRequest from "./pages/BDRequest";
+import BDDashboard from "./pages/BDDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,8 @@ const App = () => (
           <Route path="/salary" element={<SalaryWithdraw />} />
           <Route path="/report" element={<ReportPage />} />
           <Route path="/gift" element={<GiftRequest />} />
+          <Route path="/bd-request" element={<BDRequest />} />
+          <Route path="/bd-dashboard" element={<BDDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
