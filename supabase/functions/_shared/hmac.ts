@@ -23,4 +23,25 @@ async function createHmacSignature(secret: string, data: string): Promise<string
   return toHex(signature);
 }
 
-export { corsHeaders, createHmacSignature };
+async function getGalaHeaders(method: string, path: string): Promise<Record<string, string>> {
+  const API_KEY = Deno.env.get("GALA_API_KEY");
+  const API_SECRET = Deno.env.get("GALA_API_SECRET");
+  if (!API_KEY) throw new Error("GALA_API_KEY is not configured");
+  if (!API_SECRET) throw new Error("GALA_API_SECRET is not configured");
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const stringToSign = method + path + timestamp + nonce;
+  const signature = await createHmacSignature(API_SECRET, stringToSign);
+
+  return {
+    "X-API-KEY": API_KEY,
+    "X-TIMESTAMP": timestamp,
+    "X-NONCE": nonce,
+    "X-SIGNATURE": signature,
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+  };
+}
+
+export { corsHeaders, createHmacSignature, getGalaHeaders };
