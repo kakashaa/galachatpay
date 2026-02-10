@@ -56,7 +56,7 @@ const RequestVip: React.FC = () => {
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke("gala-request", {
-        body: { uuid: user.uuid, type: "vip", vip_level: selectedVip },
+        body: { uuid: user.uuid, type: "vip", value: selectedVip },
       });
 
       if (fnError) {
