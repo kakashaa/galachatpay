@@ -50,6 +50,27 @@ serve(async (req) => {
       );
     }
 
+    // Derive storage base URL from API base URL
+    const storageBase = BASE_URL.replace(/\/api\/newWebsite\/?$/, "").replace(/\/+$/, "") + "/storage/";
+
+    // Helper to build full image URL
+    const fullUrl = (path: string | null | undefined): string => {
+      if (!path) return "";
+      if (path.startsWith("http")) return path;
+      return storageBase + path;
+    };
+
+    // Enrich image paths with full URLs
+    if (data.data) {
+      const d = data.data;
+      if (d.profile?.image) d.profile.image = fullUrl(d.profile.image);
+      if (d.profile?.cover) d.profile.cover = fullUrl(d.profile.cover);
+      if (d.level?.receiver_img) d.level.receiver_img = fullUrl(d.level.receiver_img);
+      if (d.level?.sender_img) d.level.sender_img = fullUrl(d.level.sender_img);
+      if (d.level?.charger_img) d.level.charger_img = fullUrl(d.level.charger_img);
+      if (d.country?.flag) d.country.flag = fullUrl(d.country.flag);
+    }
+
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
