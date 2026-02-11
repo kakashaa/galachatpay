@@ -263,7 +263,19 @@ const AdminDashboardPage: React.FC = () => {
     setSalaryActionLoading(true);
     try {
       const receiptUrl = await uploadFile(approveReceiptFile);
+      const request = salaryRequests.find(r => r.id === id);
       await adminCall("update_salary_request", { id, status: "approved", transfer_image_url: receiptUrl });
+      
+      // إضافة إشعار للمستخدم
+      if (request) {
+        await supabase.from("notifications").insert({
+          user_uuid: request.user_uuid,
+          title: "✅ تم قبول طلبك",
+          body: `تم قبول طلب سحب ${request.amount_usd}$ بنجاح. سيتم تحويل المبلغ إلى حسابك قريباً.`,
+          target: "personal"
+        });
+      }
+      
       toast.success("تم قبول الطلب ورفع الإيصال");
       setSalaryAction(null); setApproveReceiptFile(null);
       loadData();
@@ -275,7 +287,19 @@ const AdminDashboardPage: React.FC = () => {
     if (!rejectReason.trim()) { toast.error("يرجى كتابة سبب الرفض"); return; }
     setSalaryActionLoading(true);
     try {
+      const request = salaryRequests.find(r => r.id === id);
       await adminCall("update_salary_request", { id, status: "rejected", admin_note: rejectReason.trim() });
+      
+      // إضافة إشعار للمستخدم
+      if (request) {
+        await supabase.from("notifications").insert({
+          user_uuid: request.user_uuid,
+          title: "❌ تم رفض طلبك",
+          body: `للأسف، تم رفض طلبك. السبب: ${rejectReason.trim()}\n\nيمكنك إعادة إرسال الطلب مع التعديلات المطلوبة.`,
+          target: "personal"
+        });
+      }
+      
       toast.success("تم رفض الطلب");
       setSalaryAction(null); setRejectReason("");
       loadData();
