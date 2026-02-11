@@ -62,6 +62,42 @@ export type Database = {
         }
         Relationships: []
       }
+      login_attempts: {
+        Row: {
+          admin_unblocked_at: string | null
+          block_count: number
+          blocked_until: string | null
+          created_at: string
+          failed_attempts: number
+          id: string
+          is_permanently_blocked: boolean
+          target_uuid: string
+          updated_at: string
+        }
+        Insert: {
+          admin_unblocked_at?: string | null
+          block_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          failed_attempts?: number
+          id?: string
+          is_permanently_blocked?: boolean
+          target_uuid: string
+          updated_at?: string
+        }
+        Update: {
+          admin_unblocked_at?: string | null
+          block_count?: number
+          blocked_until?: string | null
+          created_at?: string
+          failed_attempts?: number
+          id?: string
+          is_permanently_blocked?: boolean
+          target_uuid?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string
