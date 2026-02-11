@@ -1,40 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, HelpCircle, User, Lock, Shield, Fingerprint, Timer, Ban } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import LoginInstructions from "@/components/LoginInstructions";
-
-const Mascot = () => (
-  <div className="relative animate-bounce-slow flex items-center justify-center">
-    <div className="absolute inset-0 bg-primary/30 blur-3xl rounded-full scale-75" />
-    <div className="relative w-32 h-32 bg-primary rounded-full flex items-center justify-center shadow-2xl">
-      <div className="absolute -top-2 w-1 h-6 bg-primary rounded-full origin-bottom rotate-[15deg]" />
-      <div className="absolute -top-2 w-1 h-6 bg-primary rounded-full origin-bottom -rotate-[15deg]" />
-      <div className="flex gap-4">
-        <div className="w-3 h-3 bg-black rounded-full" />
-        <div className="w-3 h-3 bg-black rounded-full" />
-      </div>
-      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-6 bg-primary rounded-l-full" />
-      <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-6 bg-primary rounded-r-full" />
-      <div className="absolute -bottom-1 left-1/3 w-3 h-3 bg-primary/80 rounded-b-md" />
-      <div className="absolute -bottom-1 right-1/3 w-3 h-3 bg-primary/80 rounded-b-md" />
-    </div>
-  </div>
-);
-
-const Particles = () => (
-  <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-    <div className="absolute w-1 h-1 bg-white/20 rounded-full top-1/4 left-1/4 animate-pulse" />
-    <div className="absolute w-2 h-2 bg-white/20 rounded-full top-1/3 right-1/4 animate-bounce-slow" style={{ animationDelay: "1s" }} />
-    <div className="absolute w-1 h-1 bg-white/20 rounded-full bottom-1/4 left-1/3 animate-pulse" style={{ animationDelay: "2s" }} />
-    <div className="absolute w-1.5 h-1.5 bg-white/20 rounded-full top-1/2 right-1/3 animate-float" />
-    <div className="absolute w-1 h-1 bg-white/20 rounded-full bottom-1/3 right-1/2 animate-bounce-slow" />
-    <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/20 rounded-full blur-[120px] animate-pulse-glow" />
-    <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-accent/20 rounded-full blur-[120px] animate-pulse-glow" style={{ animationDelay: "2s" }} />
-  </div>
-);
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -47,6 +16,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [blockInfo, setBlockInfo] = useState<{ blocked: boolean; permanent: boolean; blockedUntil?: string; blockCount?: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Quick login state
   const [savedUser, setSavedUser] = useState<{ uuid: string; name: string } | null>(null);
@@ -54,7 +24,8 @@ const Login: React.FC = () => {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
 
   useEffect(() => {
-    // Check for saved quick login
+    setMounted(true);
+
     const saved = localStorage.getItem("gala_quick_login");
     if (saved) {
       try {
@@ -64,7 +35,6 @@ const Login: React.FC = () => {
       } catch { /* ignore */ }
     }
 
-    // Check biometric availability
     if (window.PublicKeyCredential) {
       PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.()
         .then(available => setBiometricAvailable(available))
@@ -75,10 +45,8 @@ const Login: React.FC = () => {
   const handleQuickLogin = async () => {
     if (!savedUser) return;
     
-    // If biometric available, try to verify
     if (biometricAvailable) {
       try {
-        // Use a simple credential check as biometric gate
         const credential = await navigator.credentials.get({
           publicKey: {
             challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -89,21 +57,18 @@ const Login: React.FC = () => {
           }
         }).catch(() => null);
 
-        // If biometric was cancelled, fall back to password
         if (!credential) {
           setUserId(savedUser.uuid);
           setShowQuickLogin(false);
           return;
         }
       } catch {
-        // Biometric not set up, fall back
         setUserId(savedUser.uuid);
         setShowQuickLogin(false);
         return;
       }
     }
 
-    // No biometric or not available — just prefill UUID
     setUserId(savedUser.uuid);
     setShowQuickLogin(false);
   };
@@ -151,7 +116,6 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Handle block response
       if (data?.blocked) {
         setBlockInfo({
           blocked: true,
@@ -164,7 +128,6 @@ const Login: React.FC = () => {
         return;
       }
 
-      // Handle warning about remaining attempts
       if (data?.warning) {
         setWarning(data.warning);
       }
@@ -228,8 +191,6 @@ const Login: React.FC = () => {
       };
 
       setUser(userObj);
-
-      // Save quick login info
       localStorage.setItem("gala_quick_login", JSON.stringify({
         uuid: apiUser.uuid,
         name: apiUser.name,
@@ -245,112 +206,92 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden relative bg-background">
-      <Particles />
+      {/* Lightweight CSS-only background glow */}
+      <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/15 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-accent/15 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="w-full max-w-md flex flex-col items-center z-10">
-        {/* Mascot */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, type: "spring" }}
-          className="mb-8"
-        >
-          <Mascot />
-        </motion.div>
+      <div className={`w-full max-w-md flex flex-col items-center z-10 transition-opacity duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}>
+        {/* Logo circle */}
+        <div className="mb-8">
+          <div className="relative w-28 h-28 bg-primary rounded-full flex items-center justify-center shadow-2xl animate-bounce-slow">
+            <div className="flex gap-3.5">
+              <div className="w-2.5 h-2.5 bg-black rounded-full" />
+              <div className="w-2.5 h-2.5 bg-black rounded-full" />
+            </div>
+          </div>
+        </div>
 
         {/* Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.5 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-7xl font-black mb-4 tracking-tight gradient-text">
+        <div className={`text-center mb-10 transition-all duration-700 delay-100 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <h1 className="text-6xl font-black mb-3 tracking-tight gradient-text">
             غلا شات
           </h1>
           <p className="text-muted-foreground text-sm font-bold tracking-wide leading-relaxed max-w-xs mx-auto">
             سجّل دخولك الآن وابدأ تجربة جديدة كلياً! كن مدير نفسك، أنشئ طلبك خلال ثواني، وتابع كل شيء بسهولة وبدون انتظار أو زيارة خدمة العملاء.
           </p>
-        </motion.div>
+        </div>
 
         {/* Quick Login */}
-        <AnimatePresence>
-          {showQuickLogin && savedUser && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="w-full mb-4"
-            >
-              <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <button onClick={clearQuickLogin} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
-                    حذف
-                  </button>
-                  <div className="flex items-center gap-2 text-right">
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{savedUser.name}</p>
-                      <p className="text-xs text-muted-foreground" dir="ltr">ID: {savedUser.uuid}</p>
-                    </div>
-                    <Fingerprint className="w-5 h-5 text-primary" />
-                  </div>
-                </div>
-                <button
-                  onClick={handleQuickLogin}
-                  className="w-full h-12 rounded-xl bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-sm flex items-center justify-center gap-2 transition-all"
-                >
-                  <Fingerprint className="w-4 h-4" />
-                  {biometricAvailable ? "دخول سريع بالبصمة" : "دخول سريع"}
+        {showQuickLogin && savedUser && (
+          <div className={`w-full mb-4 transition-all duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}>
+            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <button onClick={clearQuickLogin} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                  حذف
                 </button>
+                <div className="flex items-center gap-2 text-right">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{savedUser.name}</p>
+                    <p className="text-xs text-muted-foreground" dir="ltr">ID: {savedUser.uuid}</p>
+                  </div>
+                  <Fingerprint className="w-5 h-5 text-primary" />
+                </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <button
+                onClick={handleQuickLogin}
+                className="w-full h-12 rounded-xl bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-sm flex items-center justify-center gap-2 transition-all"
+              >
+                <Fingerprint className="w-4 h-4" />
+                {biometricAvailable ? "دخول سريع بالبصمة" : "دخول سريع"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Block Warning Banner */}
-        <AnimatePresence>
-          {blockInfo && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full mb-4"
-            >
-              <div className={`rounded-2xl p-4 border space-y-2 ${
-                blockInfo.permanent
-                  ? "bg-destructive/10 border-destructive/30"
-                  : "bg-warning/10 border-warning/30"
-              }`}>
-                <div className="flex items-center gap-2 justify-end">
-                  <div className="text-right">
-                    <p className={`text-sm font-bold ${blockInfo.permanent ? "text-destructive" : "text-warning"}`}>
-                      {blockInfo.permanent ? "🚫 حظر نهائي" : "⏳ حظر مؤقت"}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {blockInfo.permanent
-                        ? "تواصل مع الإدارة لفك الحظر"
-                        : `التحذير رقم ${blockInfo.blockCount}`
-                      }
-                    </p>
-                  </div>
-                  {blockInfo.permanent ? (
-                    <Ban className="w-6 h-6 text-destructive" />
-                  ) : (
-                    <Timer className="w-6 h-6 text-warning" />
-                  )}
+        {blockInfo && (
+          <div className="w-full mb-4">
+            <div className={`rounded-2xl p-4 border space-y-2 ${
+              blockInfo.permanent
+                ? "bg-destructive/10 border-destructive/30"
+                : "bg-warning/10 border-warning/30"
+            }`}>
+              <div className="flex items-center gap-2 justify-end">
+                <div className="text-right">
+                  <p className={`text-sm font-bold ${blockInfo.permanent ? "text-destructive" : "text-warning"}`}>
+                    {blockInfo.permanent ? "🚫 حظر نهائي" : "⏳ حظر مؤقت"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {blockInfo.permanent
+                      ? "تواصل مع الإدارة لفك الحظر"
+                      : `التحذير رقم ${blockInfo.blockCount}`
+                    }
+                  </p>
                 </div>
+                {blockInfo.permanent ? (
+                  <Ban className="w-6 h-6 text-destructive" />
+                ) : (
+                  <Timer className="w-6 h-6 text-warning" />
+                )}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        )}
 
         {/* Form */}
-        <motion.form
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.5 }}
+        <form
           onSubmit={handleLogin}
-          className="w-full space-y-4"
+          className={`w-full space-y-4 transition-all duration-700 delay-200 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
           {/* User ID */}
           <div className="relative">
@@ -363,7 +304,7 @@ const Login: React.FC = () => {
               onChange={(e) => setUserId(e.target.value)}
               placeholder="آيدي حسابك"
               dir="ltr"
-              className="w-full h-14 pr-12 pl-4 rounded-2xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none backdrop-blur-md text-right"
+              className="w-full h-14 pr-12 pl-4 rounded-2xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 outline-none text-right"
             />
           </div>
 
@@ -383,7 +324,7 @@ const Login: React.FC = () => {
               }}
               placeholder="رمز حسابك (أرقام فقط)"
               dir="ltr"
-              className="w-full h-14 pr-12 pl-12 rounded-2xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none backdrop-blur-md text-right"
+              className="w-full h-14 pr-12 pl-12 rounded-2xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 outline-none text-right"
             />
             <button
               type="button"
@@ -395,37 +336,25 @@ const Login: React.FC = () => {
           </div>
 
           {/* Warning */}
-          <AnimatePresence>
-            {warning && !error && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-2xl"
-              >
-                <AlertCircle className="w-4 h-4 text-warning flex-shrink-0" />
-                <p className="text-sm text-warning font-medium">{warning}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {warning && !error && (
+            <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-2xl">
+              <AlertCircle className="w-4 h-4 text-warning flex-shrink-0" />
+              <p className="text-sm text-warning font-medium">{warning}</p>
+            </div>
+          )}
 
           {/* Error */}
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-2xl"
-            >
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-2xl">
               <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
               <p className="text-sm text-destructive">{error}</p>
-            </motion.div>
+            </div>
           )}
 
           {/* Login Button */}
-          <motion.button
+          <button
             type="submit"
             disabled={loading || (blockInfo?.blocked && blockInfo?.permanent)}
-            whileTap={{ scale: 0.98 }}
             className="w-full h-14 rounded-2xl gold-gradient text-white font-bold text-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-60"
           >
             {loading ? (
@@ -433,16 +362,11 @@ const Login: React.FC = () => {
             ) : (
               "تسجيل الدخول"
             )}
-          </motion.button>
-        </motion.form>
+          </button>
+        </form>
 
         {/* Instructions Link */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-          className="mt-12 text-center space-y-3"
-        >
+        <div className={`mt-10 text-center space-y-3 transition-all duration-700 delay-300 ${mounted ? "opacity-100" : "opacity-0"}`}>
           <button
             onClick={() => setShowInstructions(true)}
             className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium flex items-center justify-center gap-2 group mx-auto"
@@ -457,7 +381,7 @@ const Login: React.FC = () => {
             <Shield className="w-3 h-3" />
             <span>الدخول كمسؤول</span>
           </button>
-        </motion.div>
+        </div>
       </div>
 
       <LoginInstructions open={showInstructions} onClose={() => setShowInstructions(false)} />
