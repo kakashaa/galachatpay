@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, User, Crown, Send, CheckCircle, Upload, Image, X, FileText } from "lucide-react";
+import { Briefcase, User, Crown, Send, CheckCircle, Upload, Image, X, FileText, Loader2, Clock } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+type BDStatus = "loading" | "none" | "pending" | "approved" | "rejected";
 
 const BDRequest: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +23,39 @@ const BDRequest: React.FC = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [bdStatus, setBdStatus] = useState<BDStatus>("loading");
+
+  useEffect(() => {
+    if (!authUser) return;
+    checkExistingRequest();
+  }, [authUser]);
+
+  const checkExistingRequest = async () => {
+    try {
+      const { data } = await supabase.functions.invoke(
+        "gala-actions?action=list-requests&request_type=bd_verify&user_uuid=" + authUser!.uuid,
+        { method: "GET" }
+      );
+      
+      if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+        const latest = data.data[0];
+        if (latest.status === "approved" || latest.status === 1) {
+          setBdStatus("approved");
+        } else if (latest.status === "pending" || latest.status === 0) {
+          setBdStatus("pending");
+        } else if (latest.status === "rejected" || latest.status === 2) {
+          setBdStatus("rejected");
+        } else {
+          setBdStatus("none");
+        }
+      } else {
+        setBdStatus("none");
+      }
+    } catch {
+      // If check fails, allow form submission
+      setBdStatus("none");
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,7 +67,6 @@ const BDRequest: React.FC = () => {
     if (previousBD === "yes" && !attachment) return;
     setSubmitting(true);
     try {
-      // Upload attachment if exists
       let documentUrl = "";
       if (attachment) {
         const fileName = `bd/${authUser.uuid}_${Date.now()}_${attachment.name}`;
@@ -67,6 +101,55 @@ const BDRequest: React.FC = () => {
 
   const isFormValid = experience.trim() && hostsCount && agentsCount && previousBD && (previousBD === "no" || attachment);
 
+  // Loading state
+  if (bdStatus === "loading") {
+    return (
+      <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
+        <div className="flex flex-col items-center justify-center py-32">
+          <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+          <p className="text-sm text-muted-foreground">جاري التحقق...</p>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // Approved → redirect to BD Dashboard
+  if (bdStatus === "approved") {
+    return (
+      <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
+        <div className="flex flex-col items-center justify-center px-6 py-20">
+          <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mb-6">
+            <CheckCircle className="w-10 h-10 text-green-500" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-2">تم قبول طلبك كـ BD</h2>
+          <p className="text-sm text-muted-foreground mb-6 text-center">يمكنك الآن الوصول إلى لوحة تقارير BD الخاصة بك</p>
+          <Button onClick={() => navigate("/bd-dashboard")} className="gold-gradient text-primary-foreground font-bold">
+            <Briefcase className="w-5 h-5 ml-2" /> فتح لوحة BD
+          </Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // Pending → show waiting message
+  if (bdStatus === "pending") {
+    return (
+      <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
+        <div className="flex flex-col items-center justify-center px-6 py-20">
+          <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-6">
+            <Clock className="w-10 h-10 text-primary" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-2">لقد قدمت طلباً مسبقاً</h2>
+          <p className="text-sm text-muted-foreground text-center mb-2">طلبك قيد المراجعة حالياً، يرجى الانتظار حتى يتم الرد عليه.</p>
+          <p className="text-xs text-muted-foreground text-center">سيتم إشعارك عند قبول أو رفض الطلب</p>
+          <Button onClick={() => navigate("/dashboard")} variant="outline" className="mt-8">
+            العودة للرئيسية
+          </Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   if (submitted) {
     return (
       <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
@@ -91,6 +174,14 @@ const BDRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
+        {/* Rejected notice */}
+        {bdStatus === "rejected" && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex items-start gap-2">
+            <X className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+            <p className="text-xs text-destructive">تم رفض طلبك السابق. يمكنك إعادة التقديم مع تعديل البيانات.</p>
+          </div>
+        )}
+
         <div className="glass-card p-4 space-y-3 css-fade-up">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <User className="w-4 h-4 text-primary" /> معلومات الحساب

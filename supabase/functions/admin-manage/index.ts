@@ -292,6 +292,63 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Admin send stars
+      case "admin_send_stars": {
+        const { target_uuid, amount } = data;
+        if (!target_uuid || !amount || amount <= 0) throw new Error("UUID وعدد النجوم مطلوبان");
+        
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        
+        // Check if user has a star balance record
+        const { data: existing } = await supabase
+          .from("user_star_balance")
+          .select("*")
+          .eq("user_uuid", target_uuid)
+          .single();
+        
+        if (existing) {
+          const { error } = await supabase
+            .from("user_star_balance")
+            .update({
+              total_stars: existing.total_stars + amount,
+              monthly_stars: existing.monthly_stars + amount,
+            })
+            .eq("user_uuid", target_uuid);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("user_star_balance")
+            .insert({
+              user_uuid: target_uuid,
+              current_month: currentMonth,
+              total_stars: amount,
+              monthly_stars: amount,
+              carryover_stars: 0,
+              last_level: 0,
+            });
+          if (error) throw error;
+        }
+        
+        // Log the gift
+        await supabase.from("star_gift_logs").insert({
+          sender_uuid: "admin",
+          sender_name: "الإدارة",
+          recipient_uuid: target_uuid,
+          amount,
+        });
+        
+        // Notify the user
+        await supabase.from("notifications").insert({
+          user_uuid: target_uuid,
+          title: "⭐ تم منحك نجوم",
+          body: `تم إضافة ${amount} نجمة إلى رصيدك من قبل الإدارة.`,
+          target: "personal",
+        });
+        
+        result = { success: true };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),
