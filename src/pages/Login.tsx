@@ -173,7 +173,7 @@ const Login: React.FC = () => {
             غلا شات
           </h1>
           <p className="text-muted-foreground text-sm font-bold tracking-wide leading-relaxed max-w-xs mx-auto">
-            مع غلا شات يصير مدير نفسك ورفع طلبك بثواني
+            سجّل دخولك الآن وابدأ تجربة جديدة كلياً! كن مدير نفسك، أنشئ طلبك خلال ثواني، وتابع كل شيء بسهولة وبدون انتظار أو زيارة خدمة العملاء.
           </p>
         </motion.div>
 
