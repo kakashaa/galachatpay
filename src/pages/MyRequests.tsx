@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
-  Wallet, Zap, Globe, CreditCard, User, Image as ImageIcon, Sparkles, Frame,
+  Wallet, Zap, Globe, CreditCard, User, Image as ImageIcon, Sparkles, Frame, RefreshCw,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -253,8 +254,10 @@ const MyRequests: React.FC = () => {
                         </div>
 
                         {req.admin_note && (
-                          <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl">
-                            <p className="text-[11px] text-muted-foreground mb-1">ملاحظة الإدارة:</p>
+                          <div className={`p-3 rounded-xl ${req.status === "rejected" ? "bg-red-500/5 border border-red-500/10" : "bg-primary/5 border border-primary/10"}`}>
+                            <p className="text-[11px] text-muted-foreground mb-1">
+                              {req.status === "rejected" ? "سبب الرفض:" : "ملاحظة الإدارة:"}
+                            </p>
                             <p className="text-xs text-foreground">{req.admin_note}</p>
                           </div>
                         )}
@@ -267,6 +270,17 @@ const MyRequests: React.FC = () => {
                             <ImageIcon className="w-4 h-4 text-emerald-400" />
                             <span className="text-xs font-bold text-emerald-400">عرض صورة الحوالة</span>
                           </button>
+                        )}
+
+                        {req.status === "rejected" && (
+                          <Button
+                            onClick={() => navigate(req.request_type === "instant" ? "/instant-request" : "/salary")}
+                            className="w-full"
+                            size="sm"
+                          >
+                            <RefreshCw className="w-4 h-4 ml-1" />
+                            إعادة إرسال الطلب مع التعديل
+                          </Button>
                         )}
                       </div>
                     </div>

@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
-  Loader2, Eye, EyeOff, 
+  Loader2, Eye, EyeOff, Upload,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Textarea } from "@/components/ui/textarea";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts";
 
@@ -125,6 +126,10 @@ const AdminDashboardPage: React.FC = () => {
   // Salary state
   const [salaryRequests, setSalaryRequests] = useState<SalaryRequest[]>([]);
   const [expandedSalary, setExpandedSalary] = useState<string | null>(null);
+  const [salaryAction, setSalaryAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [approveReceiptFile, setApproveReceiptFile] = useState<File | null>(null);
+  const [salaryActionLoading, setSalaryActionLoading] = useState(false);
 
   // Ban reports state
   const [banReports, setBanReports] = useState<BanReport[]>([]);
@@ -253,9 +258,29 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   // Salary actions
-  const updateSalaryStatus = async (id: string, status: string, adminNote?: string) => {
-    try { const updateData: any = { id, status }; if (adminNote !== undefined) updateData.admin_note = adminNote; await adminCall("update_salary_request", updateData); toast.success("تم تحديث الطلب"); loadData(); }
-    catch { toast.error("فشل التحديث"); }
+  const handleApproveWithReceipt = async (id: string) => {
+    if (!approveReceiptFile) { toast.error("يرجى رفع صورة الإيصال"); return; }
+    setSalaryActionLoading(true);
+    try {
+      const receiptUrl = await uploadFile(approveReceiptFile);
+      await adminCall("update_salary_request", { id, status: "approved", transfer_image_url: receiptUrl });
+      toast.success("تم قبول الطلب ورفع الإيصال");
+      setSalaryAction(null); setApproveReceiptFile(null);
+      loadData();
+    } catch { toast.error("فشل التحديث"); }
+    finally { setSalaryActionLoading(false); }
+  };
+
+  const handleRejectWithReason = async (id: string) => {
+    if (!rejectReason.trim()) { toast.error("يرجى كتابة سبب الرفض"); return; }
+    setSalaryActionLoading(true);
+    try {
+      await adminCall("update_salary_request", { id, status: "rejected", admin_note: rejectReason.trim() });
+      toast.success("تم رفض الطلب");
+      setSalaryAction(null); setRejectReason("");
+      loadData();
+    } catch { toast.error("فشل التحديث"); }
+    finally { setSalaryActionLoading(false); }
   };
 
   const updateBanReport = async (id: string, updates: Partial<BanReport>) => {
@@ -533,14 +558,40 @@ const AdminDashboardPage: React.FC = () => {
                           <div className="col-span-2"><span className="text-muted-foreground">التفاصيل:</span> {req.payment_details}</div>
                           <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar")}</div>
                         </div>
-                        {req.status === "pending" && (
+                        {req.status === "pending" && salaryAction?.id !== req.id && (
                           <div className="flex gap-2">
-                            <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => updateSalaryStatus(req.id, "approved")}>
+                            <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
                               <CheckCircle className="w-4 h-4 ml-1" />قبول
                             </Button>
-                            <Button size="sm" variant="destructive" className="flex-1" onClick={() => updateSalaryStatus(req.id, "rejected")}>
+                            <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setSalaryAction({ id: req.id, type: "reject" }); setRejectReason(""); }}>
                               <XCircle className="w-4 h-4 ml-1" />رفض
                             </Button>
+                          </div>
+                        )}
+                        {salaryAction?.id === req.id && salaryAction.type === "approve" && (
+                          <div className="space-y-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl">
+                            <p className="text-xs font-bold text-green-500">رفع صورة إيصال التحويل</p>
+                            <input type="file" accept="image/*" onChange={(e) => setApproveReceiptFile(e.target.files?.[0] || null)}
+                              className="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-green-600 file:text-white bg-muted/20 border border-border/30 rounded-lg p-1" />
+                            {approveReceiptFile && <p className="text-[10px] text-muted-foreground">{approveReceiptFile.name}</p>}
+                            <div className="flex gap-2">
+                              <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={salaryActionLoading} onClick={() => handleApproveWithReceipt(req.id)}>
+                                {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" />تأكيد القبول</>}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)}>إلغاء</Button>
+                            </div>
+                          </div>
+                        )}
+                        {salaryAction?.id === req.id && salaryAction.type === "reject" && (
+                          <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
+                            <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
+                            <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)}>
+                                {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />تأكيد الرفض</>}
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)}>إلغاء</Button>
+                            </div>
                           </div>
                         )}
                       </div>
