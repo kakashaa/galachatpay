@@ -9,7 +9,6 @@ import UserProfileCard from "@/components/UserProfileCard";
 import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
 import BottomNav from "@/components/BottomNav";
-import StarWallet from "@/components/StarWallet";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -85,7 +84,6 @@ const Dashboard: React.FC = () => {
         <VideoStoryCircle />
         <div className="mt-3" />
         {isAuthenticated ? <UserProfileCard /> : <GuestProfileCard />}
-        {isAuthenticated && <StarWallet />}
 
         {/* Services Title */}
         <div className="flex items-center gap-2 mb-3 pr-1">
