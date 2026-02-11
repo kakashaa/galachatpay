@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Star, Send, User as UserIcon, HelpCircle, Lock, Frame } from "lucide-react";
 import TikTokInteraction from "@/components/TikTokInteraction";
@@ -11,6 +11,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { toast } from "sonner";
 import SvgaPlayer from "@/components/SvgaPlayer";
 import GuestLoginPrompt from "@/components/GuestLoginPrompt";
+import StarSystemTutorial from "@/components/StarSystemTutorial";
 
 interface FrameItem {
   id: string;
@@ -22,19 +23,27 @@ interface FrameItem {
   display_order: number;
 }
 
-interface FrameClaim {
+interface UserStarBalance {
   id: string;
-  frame_id: string;
-  claim_type: string;
-  claim_month: string;
-  charger_level_at_claim: number;
+  user_uuid: string;
+  current_month: string;
+  monthly_stars: number;
+  carryover_stars: number;
+  total_stars: number;
+  last_level: number;
 }
 
-const getLevelConfig = (chargerLevel: number) => {
-  if (chargerLevel >= 50) return { maxStars: 3, monthlyLimit: 6 };
-  if (chargerLevel >= 40) return { maxStars: 2, monthlyLimit: 3 };
-  if (chargerLevel >= 30) return { maxStars: 1, monthlyLimit: 2 };
-  return { maxStars: 0, monthlyLimit: 0 };
+// Get monthly stars based on level
+const getMonthlyStars = (chargerLevel: number) => {
+  if (chargerLevel >= 100) return 8;
+  if (chargerLevel >= 90) return 7;
+  if (chargerLevel >= 80) return 6;
+  if (chargerLevel >= 70) return 5;
+  if (chargerLevel >= 60) return 4;
+  if (chargerLevel >= 50) return 3;
+  if (chargerLevel >= 40) return 2;
+  if (chargerLevel >= 30) return 1;
+  return 0;
 };
 
 const getCurrentMonth = () => {
@@ -52,49 +61,22 @@ const FramesRequest: React.FC = () => {
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [claimType, setClaimType] = useState<"self" | "friend">("self");
   const [friendUuid, setFriendUuid] = useState("");
-  const [claims, setClaims] = useState<FrameClaim[]>([]);
   const [showRules, setShowRules] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showGuestLogin, setShowGuestLogin] = useState(false);
+  const [starBalance, setStarBalance] = useState<UserStarBalance | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const chargerLevel = user?.level?.charger_level ?? 0;
-  const config = getLevelConfig(chargerLevel);
   const currentMonth = getCurrentMonth();
-
-  const getLastMonthLevel = useCallback(() => {
-    if (!user?.uuid) return chargerLevel;
-    const stored = localStorage.getItem(`frame_charger_${user.uuid}`);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.month === currentMonth) return parsed.lastLevel;
-    }
-    return null;
-  }, [user?.uuid, chargerLevel, currentMonth]);
-
-  useEffect(() => {
-    if (!user?.uuid) return;
-    const key = `frame_charger_${user.uuid}`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.month !== currentMonth) {
-        localStorage.setItem(key, JSON.stringify({ month: currentMonth, lastLevel: parsed.currentLevel }));
-      } else {
-        localStorage.setItem(key, JSON.stringify({ ...parsed, currentLevel: chargerLevel }));
-      }
-    } else {
-      localStorage.setItem(key, JSON.stringify({ month: currentMonth, lastLevel: chargerLevel, currentLevel: chargerLevel }));
-    }
-  }, [user?.uuid, chargerLevel, currentMonth]);
-
-  const monthClaims = claims.filter((c) => c.claim_month === currentMonth);
-  const remainingClaims = config.monthlyLimit - monthClaims.length;
-  const lastLevel = getLastMonthLevel();
-  const levelIncreased = lastLevel !== null && chargerLevel > lastLevel;
+  const monthlyStars = getMonthlyStars(chargerLevel);
+  const totalStars = starBalance?.total_stars ?? 0;
 
   useEffect(() => {
     fetchFrames();
-    if (user?.uuid) fetchClaims();
+    if (user?.uuid) {
+      fetchStarBalance();
+    }
   }, [user?.uuid]);
 
   const fetchFrames = async () => {
@@ -113,25 +95,63 @@ const FramesRequest: React.FC = () => {
     }
   };
 
-  const fetchClaims = async () => {
+  const fetchStarBalance = async () => {
     if (!user?.uuid) return;
     try {
       const { data, error } = await supabase
-        .from("frame_claims")
+        .from("user_star_balance")
         .select("*")
-        .eq("user_uuid", user.uuid);
-      if (error) throw error;
-      setClaims((data || []) as unknown as FrameClaim[]);
+        .eq("user_uuid", user.uuid)
+        .eq("current_month", currentMonth)
+        .single();
+      
+      if (error && error.code !== "PGRST116") throw error;
+      
+      if (!data) {
+        // Create new balance for this month
+        const lastLevel = localStorage.getItem(`frame_last_level_${user.uuid}`)
+          ? parseInt(localStorage.getItem(`frame_last_level_${user.uuid}`)!)
+          : chargerLevel;
+        
+        const levelDiff = chargerLevel - lastLevel;
+        const levelBonus = levelDiff >= 5 ? Math.floor(levelDiff / 5) : 0;
+        const carryover = starBalance?.carryover_stars ?? 0;
+        const newTotal = monthlyStars + levelBonus + carryover;
+        
+        const { error: insertError } = await supabase
+          .from("user_star_balance")
+          .insert({
+            user_uuid: user.uuid,
+            current_month: currentMonth,
+            monthly_stars: monthlyStars,
+            carryover_stars: carryover,
+            total_stars: newTotal,
+            last_level: chargerLevel,
+          });
+        if (insertError) throw insertError;
+        
+        localStorage.setItem(`frame_last_level_${user.uuid}`, chargerLevel.toString());
+        
+        setStarBalance({
+          id: "",
+          user_uuid: user.uuid,
+          current_month: currentMonth,
+          monthly_stars: monthlyStars,
+          carryover_stars: carryover,
+          total_stars: newTotal,
+          last_level: chargerLevel,
+        });
+      } else {
+        setStarBalance(data as UserStarBalance);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching star balance:", err);
     }
   };
 
   const canClaimFrame = (frame: FrameItem) => {
-    if (config.monthlyLimit === 0) return false;
-    if (frame.star_level > config.maxStars) return false;
-    if (remainingClaims <= 0 && !levelIncreased) return false;
-    return true;
+    if (!starBalance) return false;
+    return totalStars >= frame.star_level;
   };
 
   const handleClaimStart = (frame: FrameItem) => {
@@ -146,14 +166,15 @@ const FramesRequest: React.FC = () => {
   };
 
   const handleSubmitClaim = async () => {
-    if (!user?.uuid || !selectedFrame) return;
+    if (!user?.uuid || !selectedFrame || !starBalance) return;
     if (claimType === "friend" && !friendUuid.trim()) {
       toast.error("أدخل UUID الصديق");
       return;
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("frame_claims").insert({
+      // Insert claim record
+      const { error: claimError } = await supabase.from("frame_claims").insert({
         user_uuid: user.uuid,
         frame_id: selectedFrame.id,
         claim_type: claimType,
@@ -161,10 +182,24 @@ const FramesRequest: React.FC = () => {
         claim_month: currentMonth,
         charger_level_at_claim: chargerLevel,
       } as any);
-      if (error) throw error;
+      if (claimError) throw claimError;
+
+      // Deduct stars from balance
+      const newTotal = totalStars - selectedFrame.star_level;
+      const carryover = Math.max(0, newTotal);
+      
+      const { error: updateError } = await supabase
+        .from("user_star_balance")
+        .update({
+          total_stars: newTotal,
+          carryover_stars: carryover,
+        })
+        .eq("id", starBalance.id);
+      if (updateError) throw updateError;
+
       toast.success(claimType === "self" ? "تم لبس الإطار بنجاح!" : "تم إرسال الإطار لصديقك!");
       setShowClaimDialog(false);
-      fetchClaims();
+      fetchStarBalance();
     } catch (err: any) {
       toast.error(err?.message || "فشل الإرسال");
     } finally {
@@ -197,7 +232,7 @@ const FramesRequest: React.FC = () => {
         <div className="glass-card p-3 css-fade-up">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowRules(true)} className="p-1.5 rounded-full bg-primary/10 animate-bounce-slow shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
+              <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-full bg-primary/10 animate-bounce-slow shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
                 <HelpCircle className="w-4 h-4 text-primary" />
               </button>
               <span className="text-[10px] text-muted-foreground">الشروط</span>
@@ -208,12 +243,12 @@ const FramesRequest: React.FC = () => {
                 <span className="font-bold text-primary">{chargerLevel}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">المتبقي:</span>
-                <span className="font-bold text-accent">{Math.max(0, remainingClaims)}/{config.monthlyLimit}</span>
+                <span className="text-muted-foreground">النجوم:</span>
+                <span className="font-bold text-accent">{totalStars}/{monthlyStars}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">الحد:</span>
-                {renderStars(config.maxStars)}
+                <span className="text-muted-foreground">الشهرية:</span>
+                {renderStars(Math.min(3, monthlyStars))}
               </div>
             </div>
           </div>
@@ -353,6 +388,11 @@ const FramesRequest: React.FC = () => {
               </div>
             )}
 
+            <div className="bg-accent/10 rounded-xl p-3 text-xs text-muted-foreground">
+              <p className="font-bold text-accent mb-1">التكلفة: {selectedFrame?.star_level} نجوم</p>
+              <p>النجوم المتبقية: {totalStars - (selectedFrame?.star_level ?? 0)}</p>
+            </div>
+
             <Button onClick={handleSubmitClaim} disabled={submitting} className="w-full gold-gradient text-primary-foreground font-bold h-11">
               {submitting ? "جاري الإرسال..." : claimType === "self" ? "تأكيد اللبس" : "إرسال للصديق"}
             </Button>
@@ -361,32 +401,8 @@ const FramesRequest: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Rules Dialog */}
-      <Dialog open={showRules} onOpenChange={() => setShowRules(false)}>
-        <DialogContent className="max-w-sm rounded-2xl">
-          <DialogTitle className="text-center font-bold">شروط الإطارات</DialogTitle>
-          <div className="space-y-3 text-sm" dir="rtl">
-            <div className="bg-muted/30 rounded-xl p-3 space-y-2">
-              <p className="font-bold text-primary">⭐ نجمة واحدة</p>
-              <p className="text-xs text-muted-foreground">لفل الشحن 30+ • إطارين بالشهر</p>
-            </div>
-            <div className="bg-muted/30 rounded-xl p-3 space-y-2">
-              <p className="font-bold text-primary">⭐⭐ نجمتين</p>
-              <p className="text-xs text-muted-foreground">لفل الشحن 40+ • 3 إطارات بالشهر</p>
-            </div>
-            <div className="bg-muted/30 rounded-xl p-3 space-y-2">
-              <p className="font-bold text-primary">⭐⭐⭐ ثلاث نجوم</p>
-              <p className="text-xs text-muted-foreground">لفل الشحن 50+ • 6 إطارات بالشهر</p>
-            </div>
-            <div className="bg-accent/10 rounded-xl p-3">
-              <p className="text-xs text-muted-foreground">
-                💡 إذا زاد لفل الشحن عن الشهر السابق بدرجة واحدة على الأقل، تتجدد الصلاحيات.
-                <br />الإطارات متاحة للملف الشخصي فقط.
-              </p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Tutorial Dialog */}
+      <StarSystemTutorial open={showTutorial} onClose={() => setShowTutorial(false)} itemType="frames" />
 
       <GuestLoginPrompt open={showGuestLogin} onClose={() => setShowGuestLogin(false)} />
     </MobileLayout>

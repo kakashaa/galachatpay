@@ -479,6 +479,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_star_balance: {
+        Row: {
+          carryover_stars: number
+          created_at: string
+          current_month: string
+          id: string
+          last_level: number
+          monthly_stars: number
+          total_stars: number
+          updated_at: string
+          user_uuid: string
+        }
+        Insert: {
+          carryover_stars?: number
+          created_at?: string
+          current_month: string
+          id?: string
+          last_level?: number
+          monthly_stars?: number
+          total_stars?: number
+          updated_at?: string
+          user_uuid: string
+        }
+        Update: {
+          carryover_stars?: number
+          created_at?: string
+          current_month?: string
+          id?: string
+          last_level?: number
+          monthly_stars?: number
+          total_stars?: number
+          updated_at?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       video_tutorials: {
         Row: {
           created_at: string
