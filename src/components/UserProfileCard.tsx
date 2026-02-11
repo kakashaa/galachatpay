@@ -115,7 +115,7 @@ const UserProfileCard: React.FC = () => {
                 <img src={avatarSrc} alt={user.name} className="w-full h-full object-cover" loading="lazy" />
               </div>
             </div>
-            <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background animate-pulse" />
+            <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -180,7 +180,7 @@ const UserProfileCard: React.FC = () => {
             border: "1px solid rgba(234,179,8,0.18)",
           }}
         >
-          <div className="absolute inset-0 premium-shimmer pointer-events-none opacity-30" />
+          <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)" }} />
 
           <div className="flex items-center justify-between gap-2" dir="rtl">
             <div className="flex items-center gap-1.5">

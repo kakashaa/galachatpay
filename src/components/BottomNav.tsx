@@ -38,9 +38,8 @@ const BottomNav: React.FC = () => {
         <nav
           className="relative flex items-center justify-around px-3 py-3 rounded-[28px] border border-white/10 css-slide-up"
           style={{
-            background: "rgba(15, 15, 25, 0.85)",
-            backdropFilter: "blur(24px)",
-            boxShadow: "0 8px 40px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 -2px 20px -2px hsl(8 88% 62% / 0.15)",
+            background: "rgba(15, 15, 25, 0.92)",
+            boxShadow: "0 8px 40px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset",
           }}
         >
           {navItems.map((item, index) => {
