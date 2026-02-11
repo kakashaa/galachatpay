@@ -143,6 +143,14 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
         if (insertError) throw insertError;
       }
 
+      // Log the gift
+      await supabase.from("star_gift_logs").insert({
+        sender_uuid: user.uuid,
+        sender_name: user.name,
+        recipient_uuid: friendUuid.trim(),
+        amount: giftAmount,
+      } as any);
+
       // Create notification for recipient
       await supabase.from("notifications").insert({
         user_uuid: friendUuid.trim(),

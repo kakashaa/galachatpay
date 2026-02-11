@@ -8,11 +8,11 @@ import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, 
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList,
+  CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims";
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts";
 
 interface VideoTutorial {
   id: string;
@@ -100,6 +100,15 @@ interface ClaimRecord {
   created_at: string;
 }
 
+interface StarGiftLog {
+  id: string;
+  sender_uuid: string;
+  sender_name: string;
+  recipient_uuid: string;
+  amount: number;
+  created_at: string;
+}
+
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("videos");
@@ -146,6 +155,9 @@ const AdminDashboardPage: React.FC = () => {
   const [entryClaims, setEntryClaims] = useState<ClaimRecord[]>([]);
   const [frameClaims, setFrameClaims] = useState<ClaimRecord[]>([]);
 
+  // Star gifts state
+  const [starGifts, setStarGifts] = useState<StarGiftLog[]>([]);
+
   const adminPassword = sessionStorage.getItem("admin_token");
 
   useEffect(() => {
@@ -190,6 +202,10 @@ const AdminDashboardPage: React.FC = () => {
           const [ec, fc] = await Promise.all([adminCall("list_entry_claims"), adminCall("list_frame_claims")]);
           setEntryClaims(ec || []);
           setFrameClaims(fc || []);
+          break;
+        }
+        case "gifts": {
+          setStarGifts(await adminCall("list_star_gifts") || []);
           break;
         }
       }
@@ -328,6 +344,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" /> },
     { key: "claims", label: "طلبات", icon: <ClipboardList className="w-4 h-4" />, count: entryClaims.length + frameClaims.length },
     { key: "salary", label: "رواتب", icon: <DollarSign className="w-4 h-4" />, count: salaryRequests.filter(r => r.status === "pending").length },
+    { key: "gifts", label: "إهداءات", icon: <Gift className="w-4 h-4" />, count: starGifts.length },
     { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-4 h-4" />, count: banReports.filter(r => !r.is_verified).length },
     { key: "blocks", label: "محظورين", icon: <Ban className="w-4 h-4" />, count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
   ];
@@ -747,6 +764,30 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </motion.div>
+            )}
+
+            {/* Star Gifts Tab */}
+            {activeTab === "gifts" && (
+              <motion.div key="gifts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {starGifts.map((gift) => (
+                  <div key={gift.id} className="bg-card border rounded-xl p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/20 text-accent">{gift.amount} ⭐</span>
+                        <span className="text-xs font-bold">{gift.sender_name}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{new Date(gift.created_at).toLocaleDateString("ar")}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-[11px]">
+                      <div><span className="text-muted-foreground">المرسل:</span> <span className="font-mono">{gift.sender_uuid}</span></div>
+                      <div><span className="text-muted-foreground">المستقبل:</span> <span className="font-mono">{gift.recipient_uuid}</span></div>
+                    </div>
+                  </div>
+                ))}
+                {starGifts.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground"><Gift className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد عمليات إهداء</p></div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
