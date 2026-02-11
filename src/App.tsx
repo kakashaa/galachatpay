@@ -16,6 +16,9 @@ import SalaryWithdraw from "./pages/SalaryWithdraw";
 import BDRequest from "./pages/BDRequest";
 import BDDashboard from "./pages/BDDashboard";
 import MyRequests from "./pages/MyRequests";
+import InstantIntro from "./pages/InstantIntro";
+import InstantBanks from "./pages/InstantBanks";
+import InstantRequest from "./pages/InstantRequest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +42,9 @@ const App = () => (
             <Route path="/bd-request" element={<BDRequest />} />
             <Route path="/bd-dashboard" element={<BDDashboard />} />
             <Route path="/my-requests" element={<MyRequests />} />
+            <Route path="/instant" element={<InstantIntro />} />
+            <Route path="/instant/banks" element={<InstantBanks />} />
+            <Route path="/instant/request" element={<InstantRequest />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
