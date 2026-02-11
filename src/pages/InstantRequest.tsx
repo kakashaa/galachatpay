@@ -62,7 +62,7 @@ const InstantRequest: React.FC = () => {
   const selectedCountry: CountryConfig | undefined = countries.find((c) => c.id === selectedCountryId);
   const selectedMethod: PaymentMethod | undefined = selectedCountry?.methods.find((m) => m.id === selectedMethodId);
   const coinsAmount = supporterAmountUsd ? Math.round(parseFloat(supporterAmountUsd) * COINS_PER_DOLLAR) : 0;
-  const isNameValid = fullName.trim().split(/\s+/).length >= 4;
+  const isNameValid = fullName.trim().length >= 2;
   const isAccountValid = (): boolean => {
     if (!selectedMethod || !accountInfo.trim()) return false;
     if (selectedMethod.requiresWallet) return isValidERC20Address(accountInfo);
@@ -319,10 +319,10 @@ const InstantRequest: React.FC = () => {
             {/* Full Name */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card p-4 space-y-3">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-primary" /> الاسم الرباعي
+                <UserCheck className="w-4 h-4 text-primary" /> اسم المستلم
               </h3>
-              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="الاسم الأول - الأب - الجد - العائلة" className="text-right bg-muted/20 border-border/30" dir="rtl" />
-              {fullName && !isNameValid && <p className="text-[11px] text-destructive">يرجى إدخال الاسم الرباعي كاملاً (4 كلمات)</p>}
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="أدخل اسم المستلم" className="text-right bg-muted/20 border-border/30" dir="rtl" />
+              {fullName && !isNameValid && <p className="text-[11px] text-destructive">يرجى إدخال اسم المستلم</p>}
             </motion.div>
 
             {/* Country */}
@@ -391,7 +391,7 @@ const InstantRequest: React.FC = () => {
                   { label: "مبلغ الداعم", value: `$${supporterAmountUsd}` },
                   { label: "المبلغ المؤكد (كوينز)", value: (confirmedAmount ?? 0).toLocaleString() },
                   { label: "تاريخ التحويل", value: confirmedDate || "اليوم" },
-                  { label: "الاسم الرباعي", value: fullName },
+                  { label: "اسم المستلم", value: fullName },
                   { label: "الدولة", value: `${selectedCountry?.flag} ${selectedCountry?.name}` },
                   { label: "طريقة الدفع", value: selectedMethod?.label || "" },
                   { label: "معلومات الحساب", value: accountInfo },
