@@ -294,9 +294,9 @@ const SalaryWithdraw: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-start gap-2 p-3 bg-accent/50 border border-accent/30 rounded-xl">
+              <div className="flex items-start gap-2 p-3 bg-primary/10 border border-primary/20 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <div className="text-[11px] text-muted-foreground space-y-1">
+                <div className="text-[11px] text-foreground/80 space-y-1.5">
                   <p>١. حوّل المبلغ إلى حساب الوكالة رقم <span className="font-bold text-foreground" dir="ltr">{agencyId}</span> في تطبيق غلا لايف</p>
                   <p>٢. أدخل المبلغ الذي حوّلته في الحقل أعلاه</p>
                   <p>٣. اضغط "تأكيد التحويل" للتحقق</p>
