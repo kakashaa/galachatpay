@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Play, X, Star, Send, User as UserIcon, HelpCircle, Lock } from "lucide-react";
-import ItemComments from "@/components/ItemComments";
+import TikTokInteraction from "@/components/TikTokInteraction";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -393,33 +393,21 @@ const EntryRequest: React.FC = () => {
 
       {/* Video Fullscreen Dialog (TikTok style) */}
       <Dialog open={showVideo} onOpenChange={() => setShowVideo(false)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden flex flex-col [&>button]:hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
           <VisuallyHidden><DialogTitle>{selectedGift?.title || "دخولية"}</DialogTitle></VisuallyHidden>
-          <div className="relative w-full h-full flex flex-col">
+          <div className="relative w-full h-full">
             <button onClick={() => setShowVideo(false)} className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
               <X className="w-5 h-5" />
             </button>
 
             {selectedGift && (
-              <div className="flex-1 flex items-center justify-center bg-black min-h-0">
+              <div className="absolute inset-0 flex items-center justify-center bg-black">
                 {isVideoFormat(selectedGift.video_url) ? (
-                  <video
-                    key={selectedGift.id}
-                    src={selectedGift.video_url}
-                    autoPlay
-                    loop
-                    muted={false}
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
+                  <video key={selectedGift.id} src={selectedGift.video_url} autoPlay loop muted={false} playsInline className="w-full h-full object-contain" />
                 ) : isSvga(selectedGift.video_url) ? (
                   <SvgaPlayer src={selectedGift.video_url} width={300} height={500} className="w-full h-full" />
                 ) : selectedGift.video_url.toLowerCase().endsWith(".webp") ? (
-                  <img
-                    src={selectedGift.video_url}
-                    alt={selectedGift.title}
-                    className="w-full h-full object-contain"
-                  />
+                  <img src={selectedGift.video_url} alt={selectedGift.title} className="w-full h-full object-contain" />
                 ) : (
                   <div className="text-white text-center p-4">
                     <Play className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -429,36 +417,32 @@ const EntryRequest: React.FC = () => {
               </div>
             )}
 
+            {/* Bottom info overlay */}
             {selectedGift && (
-              <div className="bg-gradient-to-t from-black/90 to-transparent p-4 pt-8">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-white text-lg font-bold">{selectedGift.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {renderStars(selectedGift.star_level)}
-                      <span className="text-white/60 text-xs">
-                        {selectedGift.gift_type === "profile" ? "ملف شخصي" : selectedGift.gift_type === "room" ? "روم" : "ملف + روم"}
-                      </span>
-                    </div>
-                  </div>
-                  {canClaimGift(selectedGift) && (
-                    <Button
-                      onClick={() => { setShowVideo(false); handleClaimStart(selectedGift); }}
-                      className="gold-gradient text-primary-foreground font-bold"
-                      size="sm"
-                    >
-                      <Send className="w-4 h-4 ml-1" />
-                      احصل عليها
-                    </Button>
-                  )}
+              <div className="absolute bottom-0 left-0 right-14 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
+                <h3 className="text-white text-base font-bold">{selectedGift.title}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  {renderStars(selectedGift.star_level)}
+                  <span className="text-white/60 text-xs">
+                    {selectedGift.gift_type === "profile" ? "ملف شخصي" : selectedGift.gift_type === "room" ? "روم" : "ملف + روم"}
+                  </span>
                 </div>
+                {canClaimGift(selectedGift) && (
+                  <Button
+                    onClick={() => { setShowVideo(false); handleClaimStart(selectedGift); }}
+                    className="gold-gradient text-primary-foreground font-bold mt-3"
+                    size="sm"
+                  >
+                    <Send className="w-4 h-4 ml-1" />
+                    احصل عليها
+                  </Button>
+                )}
               </div>
             )}
 
+            {/* TikTok-style interaction */}
             {selectedGift && (
-              <div className="bg-background rounded-b-2xl">
-                <ItemComments itemType="entry_gift" itemId={selectedGift.id} />
-              </div>
+              <TikTokInteraction itemType="entry_gift" itemId={selectedGift.id} />
             )}
           </div>
         </DialogContent>
@@ -587,25 +571,17 @@ const EntryRequest: React.FC = () => {
 
       {/* Custom Gift Video Dialog */}
       <Dialog open={showCustomVideo} onOpenChange={() => setShowCustomVideo(false)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden flex flex-col [&>button]:hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
           <VisuallyHidden><DialogTitle>{selectedCustomGift?.title || "هدية مخصصة"}</DialogTitle></VisuallyHidden>
-          <div className="relative w-full h-full flex flex-col">
+          <div className="relative w-full h-full">
             <button onClick={() => setShowCustomVideo(false)} className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
               <X className="w-5 h-5" />
             </button>
 
             {selectedCustomGift && (
-              <div className="flex-1 flex items-center justify-center bg-black min-h-0">
+              <div className="absolute inset-0 flex items-center justify-center bg-black">
                 {isVideoFormat(selectedCustomGift.video_url) ? (
-                  <video
-                    key={selectedCustomGift.id}
-                    src={selectedCustomGift.video_url}
-                    autoPlay
-                    loop
-                    muted={false}
-                    playsInline
-                    className="w-full h-full object-contain"
-                  />
+                  <video key={selectedCustomGift.id} src={selectedCustomGift.video_url} autoPlay loop muted={false} playsInline className="w-full h-full object-contain" />
                 ) : (
                   <div className="text-white text-center p-4">
                     <Play className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -615,9 +591,10 @@ const EntryRequest: React.FC = () => {
               </div>
             )}
 
+            {/* Bottom info */}
             {selectedCustomGift && (
-              <div className="bg-gradient-to-t from-black/90 to-transparent p-4 pt-8">
-                <h3 className="text-white text-lg font-bold">{selectedCustomGift.title}</h3>
+              <div className="absolute bottom-0 left-0 right-14 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
+                <h3 className="text-white text-base font-bold">{selectedCustomGift.title}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="bg-primary/90 rounded-full px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
                     {selectedCustomGift.user_gala_id}
@@ -628,10 +605,9 @@ const EntryRequest: React.FC = () => {
               </div>
             )}
 
+            {/* TikTok-style interaction */}
             {selectedCustomGift && (
-              <div className="bg-background rounded-b-2xl">
-                <ItemComments itemType="custom_gift" itemId={selectedCustomGift.id} />
-              </div>
+              <TikTokInteraction itemType="custom_gift" itemId={selectedCustomGift.id} />
             )}
           </div>
         </DialogContent>
