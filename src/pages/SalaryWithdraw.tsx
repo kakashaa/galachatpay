@@ -594,11 +594,11 @@ const SalaryWithdraw: React.FC = () => {
             <Button
               onClick={() => {
                 setShowInstantInstructions(false);
-                setWithdrawType("instant");
+                navigate("/instant");
               }}
               className="w-full gold-gradient text-primary-foreground font-bold h-11"
             >
-              <CheckCircle className="w-4 h-4 ml-1" /> فهمت، متابعة
+              <CheckCircle className="w-4 h-4 ml-1" /> فهمت، عرض البنوك
             </Button>
           </div>
         </DialogContent>
