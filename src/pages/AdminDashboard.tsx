@@ -9,11 +9,12 @@ import {
   Loader2, Eye, EyeOff, Upload,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift,
+  ArrowRight, Bell,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications";
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | null;
 
 interface VideoTutorial {
   id: string;
@@ -112,7 +113,7 @@ interface StarGiftLog {
 
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>("videos");
+  const [activeTab, setActiveTab] = useState<Tab>(null);
   const [loading, setLoading] = useState(false);
 
   // Videos state
@@ -199,6 +200,7 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const loadData = async () => {
+    if (!activeTab) return;
     setLoading(true);
     try {
       switch (activeTab) {
@@ -414,16 +416,16 @@ const AdminDashboardPage: React.FC = () => {
     </div>
   );
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
-    { key: "videos", label: "فيديو", icon: <Video className="w-4 h-4" /> },
-    { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" /> },
-    { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" /> },
-    { key: "claims", label: "طلبات", icon: <ClipboardList className="w-4 h-4" />, count: entryClaims.length + frameClaims.length },
-    { key: "salary", label: "رواتب", icon: <DollarSign className="w-4 h-4" />, count: salaryRequests.filter(r => r.status === "pending").length },
-    { key: "gifts", label: "إهداءات", icon: <Gift className="w-4 h-4" />, count: starGifts.length },
-    { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-4 h-4" />, count: banReports.filter(r => !r.is_verified).length },
-    { key: "blocks", label: "محظورين", icon: <Ban className="w-4 h-4" />, count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
-    { key: "notifications", label: "إشعارات", icon: <Sparkles className="w-4 h-4" /> },
+  const tabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
+    { key: "entries", label: "دخوليات", icon: <Sparkles className="w-7 h-7" />, color: "from-purple-500/20 to-purple-600/10 text-purple-400" },
+    { key: "frames", label: "إطارات", icon: <Frame className="w-7 h-7" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400" },
+    { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400" },
+    { key: "salary", label: "رواتب", icon: <DollarSign className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
+    { key: "claims", label: "طلبات", icon: <ClipboardList className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: entryClaims.length + frameClaims.length },
+    { key: "videos", label: "فيديوهات", icon: <Video className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400" },
+    { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400", count: banReports.filter(r => !r.is_verified).length },
+    { key: "blocks", label: "محظورين", icon: <Ban className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
+    { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
   ];
 
   // Reusable item card for entries/frames with edit
@@ -501,8 +503,16 @@ const AdminDashboardPage: React.FC = () => {
       <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
-            <Shield className="w-6 h-6 text-primary" />
-            <h1 className="font-bold text-lg">لوحة التحكم</h1>
+            {activeTab ? (
+              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-xl hover:bg-muted transition-colors">
+                <ArrowRight className="w-5 h-5 text-foreground" />
+              </button>
+            ) : (
+              <Shield className="w-6 h-6 text-primary" />
+            )}
+            <h1 className="font-bold text-lg">
+              {activeTab ? tabs.find(t => t.key === activeTab)?.label : "لوحة التحكم"}
+            </h1>
           </div>
           <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-muted transition-colors">
             <LogOut className="w-5 h-5 text-muted-foreground" />
@@ -510,32 +520,35 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Tabs - scrollable */}
-      <div className="sticky top-[57px] z-10 bg-background/90 backdrop-blur-xl border-b border-border overflow-x-auto">
-        <div className="flex min-w-max max-w-2xl mx-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center justify-center gap-1.5 py-3 px-3 text-xs font-medium transition-colors relative whitespace-nowrap ${
-                activeTab === tab.key ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-              {tab.count && tab.count > 0 ? (
-                <span className="w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] flex items-center justify-center font-bold">{tab.count}</span>
-              ) : null}
-              {activeTab === tab.key && (
-                <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-              )}
-            </button>
-          ))}
+      {/* Home Grid */}
+      {!activeTab && (
+        <div className="max-w-2xl mx-auto p-4">
+          <div className="grid grid-cols-3 gap-3" dir="rtl">
+            {tabs.map((tab) => (
+              <motion.button
+                key={tab.key}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveTab(tab.key)}
+                className="relative flex flex-col items-center gap-2.5 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/30 transition-all"
+              >
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center`}>
+                  {tab.icon}
+                </div>
+                <span className="text-xs font-bold text-foreground">{tab.label}</span>
+                {tab.count && tab.count > 0 ? (
+                  <span className="absolute top-2 left-2 min-w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold px-1">
+                    {tab.count}
+                  </span>
+                ) : null}
+              </motion.button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto p-4">
+      {activeTab && (
+        <div className="max-w-2xl mx-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
         ) : (
@@ -936,7 +949,8 @@ const AdminDashboardPage: React.FC = () => {
             )}
           </AnimatePresence>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
