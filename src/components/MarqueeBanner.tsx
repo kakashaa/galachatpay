@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { Megaphone } from "lucide-react";
 
 interface MarqueeBannerProps {
@@ -11,22 +10,20 @@ const MarqueeBanner: React.FC<MarqueeBannerProps> = ({
 }) => {
   return (
     <div
-      className="rounded-xl overflow-hidden mb-4 flex items-center gap-2 px-3 py-2"
+      className="rounded-lg overflow-hidden mb-3 flex items-center gap-2 px-2.5 py-1.5"
       style={{
         background: "linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
         border: "1px solid rgba(255,255,255,0.06)",
       }}
     >
-      <Megaphone className="w-4 h-4 text-primary flex-shrink-0" />
+      <Megaphone className="w-3.5 h-3.5 text-primary flex-shrink-0" />
       <div className="overflow-hidden flex-1">
-        <motion.div
-          animate={{ x: ["100%", "-100%"] }}
-          transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
-          className="whitespace-nowrap text-xs font-bold text-muted-foreground"
+        <div
+          className="whitespace-nowrap text-[10px] font-bold text-muted-foreground animate-marquee"
           dir="rtl"
         >
           {text}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

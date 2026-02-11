@@ -50,36 +50,44 @@ export const VideoStoryCircle = () => {
     setSelectedVideo(null);
   };
 
-  if (loading || videos.length === 0) return null;
+  // Demo videos when DB is empty
+  const demoVideos: VideoTutorial[] = [
+    { id: "demo-1", title: "كيف تشحن؟", description: "طريقة الشحن", video_url: "", thumbnail_url: null },
+    { id: "demo-2", title: "سحب الراتب", description: "خطوات السحب", video_url: "", thumbnail_url: null },
+    { id: "demo-3", title: "طلب VIP", description: "كيف تطلب VIP", video_url: "", thumbnail_url: null },
+    { id: "demo-4", title: "تغيير الآيدي", description: "خطوات التغيير", video_url: "", thumbnail_url: null },
+    { id: "demo-5", title: "الدعم السريع", description: "تواصل معنا", video_url: "", thumbnail_url: null },
+  ];
+
+  const displayVideos = videos.length > 0 ? videos : demoVideos;
+
+  if (loading) return null;
 
   return (
     <>
       {/* Stories Row */}
-      <div className="flex gap-4 overflow-x-auto pb-2 px-2 scrollbar-hide z-10" dir="rtl">
-        {videos.map((video, index) => (
-          <div key={video.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+      <div className="flex gap-3 overflow-x-auto pb-1.5 px-1 scrollbar-hide z-10" dir="rtl">
+        {displayVideos.map((video, index) => (
+          <div key={video.id} className="flex flex-col items-center gap-1 flex-shrink-0">
             <button onClick={() => openVideo(video)} className="relative group">
-              <div className="w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-primary via-accent to-warning">
+              <div className="w-12 h-12 rounded-full p-[2px] bg-gradient-to-tr from-primary via-accent to-primary">
                 <div className="w-full h-full rounded-full bg-background p-[1.5px]">
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
                     {video.thumbnail_url ? (
                       <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover rounded-full" />
                     ) : (
                       <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
-                        <Play className="w-5 h-5 text-primary" />
+                        <Play className="w-4 h-4 text-primary" />
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-background">
-                <Play className="w-2.5 h-2.5 text-primary-foreground fill-current" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-background">
+                <Play className="w-2 h-2 text-primary-foreground fill-current" />
               </div>
-              {index === 0 && (
-                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-75" style={{ animationDuration: '2s' }} />
-              )}
             </button>
-            <span className="text-[10px] font-medium text-foreground text-center max-w-[56px] line-clamp-2">
+            <span className="text-[9px] font-medium text-foreground text-center max-w-[48px] line-clamp-1">
               {video.title}
             </span>
           </div>
