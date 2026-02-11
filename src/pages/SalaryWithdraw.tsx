@@ -32,6 +32,7 @@ const SalaryWithdraw: React.FC = () => {
   const [withdrawType, setWithdrawType] = useState("");
   const [step, setStep] = useState<Step>("select");
   const [submitted, setSubmitted] = useState(false);
+  const [requestId, setRequestId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
@@ -225,6 +226,8 @@ const SalaryWithdraw: React.FC = () => {
           .eq("code", starCode.trim().toUpperCase());
       }
 
+      const refId = ((insertedRequest as any)?.id as string)?.slice(0, 8)?.toUpperCase() || "";
+      setRequestId(refId);
       setSubmitted(true);
     } catch {
       setError("حدث خطأ غير متوقع.");
@@ -244,6 +247,13 @@ const SalaryWithdraw: React.FC = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
             <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلب السحب بنجاح</h2>
             <p className="text-sm text-muted-foreground">سيتم معالجة طلبك وإشعارك بالنتيجة</p>
+            {requestId && (
+              <div className="mt-4 rounded-xl p-3 bg-muted/30 border border-border/20">
+                <p className="text-[10px] text-muted-foreground mb-1">رقم المرجع</p>
+                <p className="text-lg font-black text-primary font-mono tracking-wider">#{requestId}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">احتفظ بهذا الرقم لمتابعة طلبك</p>
+              </div>
+            )}
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8">
             <Button onClick={() => navigate("/my-requests")} variant="outline" className="flex-1 border-border/30 font-bold">طلباتي</Button>
