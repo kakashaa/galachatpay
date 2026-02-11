@@ -242,10 +242,9 @@ const FramesRequest: React.FC = () => {
                       {renderFramePreview(frame, "sm")}
                     </div>
 
-                    {/* Overlay */}
+                    {/* Overlay - stars only */}
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 pt-4 z-10">
-                      <p className="text-[9px] font-bold text-white line-clamp-1 text-center">{frame.title}</p>
-                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                      <div className="flex items-center justify-center gap-1">
                         {renderStars(frame.star_level)}
                       </div>
                     </div>
