@@ -1,32 +1,47 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Wallet, User, Crown, Send, CheckCircle, Info, ArrowDownToLine, Clock, Zap, AlertCircle } from "lucide-react";
+import {
+  Wallet, User, Crown, Send, CheckCircle, Info, ArrowDownToLine,
+  Clock, Zap, AlertCircle, Globe, CreditCard, UserCheck,
+} from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 
 const userTypeLabels: Record<number, string> = {
-  0: "مستخدم عادي",
-  1: "مستخدم عادي",
-  2: "مضيف",
-  3: "وكيل مضيفين",
-  4: "وكيل شحن",
-  5: "وكيل شحن ومضيفين",
-  6: "مضيف ووكيل شحن",
+  0: "مستخدم عادي", 1: "مستخدم عادي", 2: "مضيف",
+  3: "وكيل مضيفين", 4: "وكيل شحن", 5: "وكيل شحن ومضيفين", 6: "مضيف ووكيل شحن",
 };
+
+type Step = "select" | "transfer" | "details" | "confirm";
 
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [withdrawType, setWithdrawType] = useState("");
-  const [step, setStep] = useState<"select" | "transfer" | "confirm">("select");
+  const [step, setStep] = useState<Step>("select");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // API confirmed amount
+  const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
+
+  // Details form
+  const [fullName, setFullName] = useState("");
+  const [selectedCountryId, setSelectedCountryId] = useState("");
+  const [selectedMethodId, setSelectedMethodId] = useState("");
+  const [accountInfo, setAccountInfo] = useState("");
 
   if (!user) {
     navigate("/");
@@ -39,6 +54,9 @@ const SalaryWithdraw: React.FC = () => {
   const agencyId = "10000";
   const withdrawAmount = withdrawType === "monthly" ? monthlyLimit : instantLimit;
 
+  const selectedCountry: CountryConfig | undefined = countries.find((c) => c.id === selectedCountryId);
+  const selectedMethod: PaymentMethod | undefined = selectedCountry?.methods.find((m) => m.id === selectedMethodId);
+
   const handleProceedToTransfer = () => {
     if (!withdrawType) return;
     setStep("transfer");
@@ -47,7 +65,6 @@ const SalaryWithdraw: React.FC = () => {
   const handleConfirmTransfer = async () => {
     setLoading(true);
     setError("");
-
     try {
       const { data, error: fnError } = await supabase.functions.invoke("gala-salary", {
         body: { uuid: user.uuid, amount: withdrawAmount },
@@ -65,7 +82,9 @@ const SalaryWithdraw: React.FC = () => {
         return;
       }
 
-      setStep("confirm");
+      // API returns the confirmed amount
+      setConfirmedAmount(data.amount ?? withdrawAmount);
+      setStep("details");
     } catch {
       setError("حدث خطأ غير متوقع.");
     } finally {
@@ -73,10 +92,29 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
+  const isNameValid = fullName.trim().split(/\s+/).length >= 4;
+
+  const isAccountValid = (): boolean => {
+    if (!selectedMethod) return false;
+    if (!accountInfo.trim()) return false;
+    if (selectedMethod.requiresWallet) {
+      return isValidERC20Address(accountInfo);
+    }
+    return accountInfo.trim().length >= 4;
+  };
+
+  const canSubmitDetails = isNameValid && selectedCountryId && selectedMethodId && isAccountValid();
+
+  const handleProceedToConfirm = () => {
+    if (!canSubmitDetails) return;
+    setStep("confirm");
+  };
+
   const handleSubmit = () => {
     setSubmitted(true);
   };
 
+  // ── SUCCESS SCREEN ──
   if (submitted) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
@@ -102,8 +140,7 @@ const SalaryWithdraw: React.FC = () => {
         {/* User Info */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <User className="w-4 h-4 text-primary" />
-            معلومات الحساب
+            <User className="w-4 h-4 text-primary" /> معلومات الحساب
           </h3>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
@@ -151,13 +188,12 @@ const SalaryWithdraw: React.FC = () => {
           </div>
         )}
 
-        {/* Step: Select Withdraw Type */}
+        {/* ── STEP 1: Select Withdraw Type ── */}
         {step === "select" && (
           <>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4 space-y-3">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-primary" />
-                نوع السحب
+                <Wallet className="w-4 h-4 text-primary" /> نوع السحب
               </h3>
               <RadioGroup value={withdrawType} onValueChange={setWithdrawType} className="space-y-2">
                 <Label htmlFor="monthly" className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${withdrawType === "monthly" ? "border-primary bg-primary/10" : "border-border/30 bg-muted/20 hover:bg-muted/40"}`}>
@@ -190,13 +226,12 @@ const SalaryWithdraw: React.FC = () => {
           </>
         )}
 
-        {/* Step: Transfer Instructions */}
+        {/* ── STEP 2: Transfer Instructions ── */}
         {step === "transfer" && (
           <>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-4">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Info className="w-4 h-4 text-primary" />
-                تعليمات التحويل
+                <Info className="w-4 h-4 text-primary" /> تعليمات التحويل
               </h3>
               <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-3">
                 <div className="flex justify-between items-center">
@@ -217,9 +252,7 @@ const SalaryWithdraw: React.FC = () => {
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-3">
-              <Button variant="outline" onClick={() => { setStep("select"); setError(""); }} className="flex-1 h-12 border-border/30">
-                رجوع
-              </Button>
+              <Button variant="outline" onClick={() => { setStep("select"); setError(""); }} className="flex-1 h-12 border-border/30">رجوع</Button>
               <Button onClick={handleConfirmTransfer} disabled={loading} className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
                 {loading ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : "تأكيد التحويل"}
               </Button>
@@ -227,14 +260,121 @@ const SalaryWithdraw: React.FC = () => {
           </>
         )}
 
-        {/* Step: Confirm & Submit */}
+        {/* ── STEP 3: Details Form ── */}
+        {step === "details" && (
+          <>
+            {/* Confirmed Amount */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-2">
+              <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/20 rounded-xl">
+                <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                <p className="text-xs text-success">تم التحقق من التحويل بنجاح</p>
+              </div>
+              <div className="flex justify-between items-center bg-primary/5 rounded-xl p-3">
+                <span className="text-xs text-muted-foreground">المبلغ المؤكد</span>
+                <span className="text-lg font-bold text-primary">{(confirmedAmount ?? 0).toLocaleString()}</span>
+              </div>
+            </motion.div>
+
+            {/* Full Name */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card p-4 space-y-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-primary" /> الاسم الرباعي
+              </h3>
+              <Input
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="الاسم الأول - الأب - الجد - العائلة"
+                className="text-right bg-muted/20 border-border/30"
+                dir="rtl"
+              />
+              {fullName && !isNameValid && (
+                <p className="text-[11px] text-destructive">يرجى إدخال الاسم الرباعي كاملاً (4 كلمات على الأقل)</p>
+              )}
+            </motion.div>
+
+            {/* Country */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4 space-y-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Globe className="w-4 h-4 text-primary" /> الدولة
+              </h3>
+              <Select
+                value={selectedCountryId}
+                onValueChange={(v) => {
+                  setSelectedCountryId(v);
+                  setSelectedMethodId("");
+                  setAccountInfo("");
+                }}
+              >
+                <SelectTrigger className="bg-muted/20 border-border/30 text-right">
+                  <SelectValue placeholder="اختر الدولة" />
+                </SelectTrigger>
+                <SelectContent>
+                  {countries.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="flex items-center gap-2">
+                        <span>{c.flag}</span>
+                        <span>{c.name}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </motion.div>
+
+            {/* Payment Method */}
+            {selectedCountry && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-primary" /> طريقة الدفع
+                </h3>
+                <Select
+                  value={selectedMethodId}
+                  onValueChange={(v) => {
+                    setSelectedMethodId(v);
+                    setAccountInfo("");
+                  }}
+                >
+                  <SelectTrigger className="bg-muted/20 border-border/30 text-right">
+                    <SelectValue placeholder="اختر طريقة الدفع" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedCountry.methods.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Account / Wallet Input */}
+                {selectedMethod && (
+                  <div className="space-y-2">
+                    <Input
+                      value={accountInfo}
+                      onChange={(e) => setAccountInfo(e.target.value)}
+                      placeholder={selectedMethod.placeholder || "أدخل معلومات الحساب"}
+                      className="bg-muted/20 border-border/30"
+                      dir={selectedMethod.requiresWallet ? "ltr" : "rtl"}
+                    />
+                    {selectedMethod.requiresWallet && accountInfo && !isValidERC20Address(accountInfo) && (
+                      <p className="text-[11px] text-destructive">عنوان المحفظة غير صحيح. يجب أن يبدأ بـ 0x ويتكون من 42 حرف</p>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex gap-3">
+              <Button variant="outline" onClick={() => { setStep("transfer"); setError(""); }} className="flex-1 h-12 border-border/30">رجوع</Button>
+              <Button onClick={handleProceedToConfirm} disabled={!canSubmitDetails} className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
+                متابعة
+              </Button>
+            </motion.div>
+          </>
+        )}
+
+        {/* ── STEP 4: Confirm & Submit ── */}
         {step === "confirm" && (
           <>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
-              <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/20 rounded-xl">
-                <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                <p className="text-xs text-success">تم التحقق من عملية التحويل بنجاح</p>
-              </div>
               <h3 className="text-sm font-bold text-foreground">ملخص الطلب</h3>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
@@ -242,19 +382,31 @@ const SalaryWithdraw: React.FC = () => {
                   <span className="font-bold text-foreground">{withdrawType === "monthly" ? "شهري" : "فوري"}</span>
                 </div>
                 <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-                  <span className="text-muted-foreground">المبلغ</span>
-                  <span className="font-bold text-foreground">{withdrawAmount.toLocaleString()}</span>
+                  <span className="text-muted-foreground">المبلغ المؤكد</span>
+                  <span className="font-bold text-primary">{(confirmedAmount ?? 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-                  <span className="text-muted-foreground">حساب الوكالة</span>
-                  <span className="font-bold text-foreground" dir="ltr">{agencyId}</span>
+                  <span className="text-muted-foreground">الاسم الرباعي</span>
+                  <span className="font-bold text-foreground">{fullName}</span>
+                </div>
+                <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
+                  <span className="text-muted-foreground">الدولة</span>
+                  <span className="font-bold text-foreground">{selectedCountry?.flag} {selectedCountry?.name}</span>
+                </div>
+                <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
+                  <span className="text-muted-foreground">طريقة الدفع</span>
+                  <span className="font-bold text-foreground">{selectedMethod?.label}</span>
+                </div>
+                <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
+                  <span className="text-muted-foreground">معلومات الحساب</span>
+                  <span className="font-bold text-foreground" dir="ltr">{accountInfo}</span>
                 </div>
               </div>
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              <Button onClick={handleSubmit} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base">
-                <Send className="w-5 h-5 ml-2" />
-                إرسال الطلب
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-3">
+              <Button variant="outline" onClick={() => setStep("details")} className="flex-1 h-12 border-border/30">رجوع</Button>
+              <Button onClick={handleSubmit} className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
+                <Send className="w-5 h-5 ml-2" /> إرسال الطلب
               </Button>
             </motion.div>
           </>
