@@ -207,6 +207,36 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Custom gifts management
+      case "list_custom_gifts": {
+        const { data: customGifts, error } = await supabase
+          .from("custom_gifts")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        result = customGifts;
+        break;
+      }
+      case "update_custom_gift": {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from("custom_gifts")
+          .update(updateData)
+          .eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "delete_custom_gift": {
+        const { error } = await supabase
+          .from("custom_gifts")
+          .delete()
+          .eq("id", data.id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),

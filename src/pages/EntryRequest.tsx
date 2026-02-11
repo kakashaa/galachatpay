@@ -21,6 +21,17 @@ interface EntryGift {
   display_order: number;
 }
 
+interface CustomGift {
+  id: string;
+  title: string;
+  video_url: string;
+  thumbnail_url: string | null;
+  user_name: string;
+  user_gala_id: string | null;
+  user_uuid: string;
+  status: string;
+}
+
 interface ClaimRecord {
   id: string;
   gift_id: string;
@@ -57,6 +68,9 @@ const EntryRequest: React.FC = () => {
   const [claims, setClaims] = useState<ClaimRecord[]>([]);
   const [showRules, setShowRules] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [customGifts, setCustomGifts] = useState<CustomGift[]>([]);
+  const [selectedCustomGift, setSelectedCustomGift] = useState<CustomGift | null>(null);
+  const [showCustomVideo, setShowCustomVideo] = useState(false);
 
   const chargerLevel = user?.level?.charger_level ?? 0;
   const config = getLevelConfig(chargerLevel);
@@ -101,6 +115,7 @@ const EntryRequest: React.FC = () => {
 
   useEffect(() => {
     fetchGifts();
+    fetchCustomGifts();
     if (user?.uuid) fetchClaims();
   }, [user?.uuid]);
 
@@ -117,6 +132,19 @@ const EntryRequest: React.FC = () => {
       console.error("Error fetching entry gifts:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCustomGifts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("custom_gifts")
+        .select("*")
+        .eq("status", "approved") as any;
+      if (error) throw error;
+      setCustomGifts((data || []) as CustomGift[]);
+    } catch (err) {
+      console.error("Error fetching custom gifts:", err);
     }
   };
 
@@ -302,6 +330,50 @@ const EntryRequest: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Custom Gifts Section */}
+        {customGifts.length > 0 && (
+          <div className="space-y-3 css-fade-up-d2">
+            <div className="flex items-center gap-2 pr-1">
+              <div className="w-1 h-3.5 rounded-full bg-gradient-to-b from-pink-400 to-purple-500" />
+              <h3 className="text-xs font-black text-foreground">هدايا مخصصة</h3>
+              <span className="text-[10px] text-muted-foreground">(للمشاهدة فقط)</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2" dir="rtl">
+              {customGifts.map((cg) => (
+                <div key={cg.id} className="relative">
+                  <button
+                    onClick={() => { setSelectedCustomGift(cg); setShowCustomVideo(true); }}
+                    className="w-full aspect-[9/16] rounded-xl overflow-hidden bg-muted/30 border border-border/20 relative"
+                  >
+                    {cg.thumbnail_url ? (
+                      <img src={cg.thumbnail_url} alt={cg.title} className="w-full h-full object-cover" />
+                    ) : isVideoFormat(cg.video_url) ? (
+                      <video src={cg.video_url} muted autoPlay loop playsInline className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
+                        <Play className="w-8 h-8 text-primary/50" />
+                      </div>
+                    )}
+                    {/* Owner badge */}
+                    <div className="absolute top-1.5 right-1.5 bg-primary/90 rounded-full px-1.5 py-0.5">
+                      <span className="text-[7px] font-bold text-primary-foreground">{cg.user_gala_id}</span>
+                    </div>
+                    {/* Overlay info */}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6">
+                      <p className="text-[10px] font-bold text-white line-clamp-1">{cg.title}</p>
+                      <p className="text-[8px] text-white/60">{cg.user_name}</p>
+                    </div>
+                    {/* View-only overlay */}
+                    <div className="absolute top-1.5 left-1.5 bg-black/50 rounded-full px-1.5 py-0.5">
+                      <span className="text-[7px] text-white/80">👁 مشاهدة</span>
+                    </div>
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -490,6 +562,52 @@ const EntryRequest: React.FC = () => {
               <p className="text-xs text-muted-foreground">• الدخوليات تنقسم إلى: ملف شخصي، روم، أو كلاهما</p>
             </div>
             <Button onClick={() => setShowRules(false)} variant="outline" className="w-full">فهمت</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Gift Video Dialog */}
+      <Dialog open={showCustomVideo} onOpenChange={() => setShowCustomVideo(false)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden flex flex-col [&>button]:hidden">
+          <VisuallyHidden><DialogTitle>{selectedCustomGift?.title || "هدية مخصصة"}</DialogTitle></VisuallyHidden>
+          <div className="relative w-full h-full flex flex-col">
+            <button onClick={() => setShowCustomVideo(false)} className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            {selectedCustomGift && (
+              <div className="flex-1 flex items-center justify-center bg-black min-h-0">
+                {isVideoFormat(selectedCustomGift.video_url) ? (
+                  <video
+                    key={selectedCustomGift.id}
+                    src={selectedCustomGift.video_url}
+                    autoPlay
+                    loop
+                    muted={false}
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="text-white text-center p-4">
+                    <Play className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p>صيغة غير مدعومة</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedCustomGift && (
+              <div className="bg-gradient-to-t from-black/90 to-transparent p-4 pt-8">
+                <h3 className="text-white text-lg font-bold">{selectedCustomGift.title}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="bg-primary/90 rounded-full px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                    {selectedCustomGift.user_gala_id}
+                  </span>
+                  <span className="text-white/60 text-xs">{selectedCustomGift.user_name}</span>
+                </div>
+                <p className="text-white/40 text-[10px] mt-1">هدية مخصصة - للمشاهدة فقط</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

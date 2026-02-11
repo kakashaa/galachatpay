@@ -14,6 +14,7 @@ const RequestVip = lazy(() => import("./pages/RequestVip"));
 const QuickSupport = lazy(() => import("./pages/QuickSupport"));
 const PlaceholderPage = lazy(() => import("./pages/PlaceholderPage"));
 const GiftRequest = lazy(() => import("./pages/GiftRequest"));
+const CustomGiftUpload = lazy(() => import("./pages/CustomGiftUpload"));
 const AnimatedPhotoRequest = lazy(() => import("./pages/AnimatedPhotoRequest"));
 const EntryRequest = lazy(() => import("./pages/EntryRequest"));
 const FramesRequest = lazy(() => import("./pages/FramesRequest"));
@@ -55,6 +56,7 @@ const App = () => (
               <Route path="/salary" element={<SalaryWithdraw />} />
               <Route path="/report" element={<ReportPage />} />
               <Route path="/gift" element={<GiftRequest />} />
+              <Route path="/custom-gift" element={<CustomGiftUpload />} />
               <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
               <Route path="/entry-request" element={<EntryRequest />} />
               <Route path="/frames" element={<FramesRequest />} />

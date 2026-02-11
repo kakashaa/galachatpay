@@ -6,19 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
 
 const GiftRequest: React.FC = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [giftType, setGiftType] = useState("");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const user = {
-    id: "123456789",
-    name: "محمد أحمد",
-    level: 35,
-    accountType: "مستخدم",
-    vipLevel: 3,
+  const chargerLevel = authUser?.level?.charger_level ?? 0;
+
+  // Redirect to custom gift upload page if "custom" is selected
+  const handleGiftTypeChange = (value: string) => {
+    if (value === "custom") {
+      navigate("/custom-gift");
+      return;
+    }
+    setGiftType(value);
   };
 
   const giftTypes = [
@@ -64,21 +69,19 @@ const GiftRequest: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">ID</span>
-              <span className="font-bold text-foreground">{user.id}</span>
+              <span className="font-bold text-foreground">{authUser?.id}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">المستوى</span>
-              <span className="font-bold text-foreground">{user.level}</span>
+              <span className="font-bold text-foreground">{authUser?.level?.charger_level ?? 0}</span>
+            </div>
+            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
+              <span className="text-muted-foreground">الاسم</span>
+              <span className="font-bold text-foreground">{authUser?.name}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">النوع</span>
-              <span className="font-bold text-foreground">{user.accountType}</span>
-            </div>
-            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">VIP</span>
-              <span className="font-bold text-primary flex items-center gap-1">
-                <Crown className="w-3 h-3" /> {user.vipLevel}
-              </span>
+              <span className="font-bold text-foreground">{authUser?.type_user === 1 ? "مستخدم" : "وكيل"}</span>
             </div>
           </div>
         </div>
@@ -88,7 +91,7 @@ const GiftRequest: React.FC = () => {
             <Gift className="w-4 h-4 text-primary" />
             نوع الهدية
           </h3>
-          <RadioGroup value={giftType} onValueChange={setGiftType} className="space-y-2">
+          <RadioGroup value={giftType} onValueChange={handleGiftTypeChange} className="space-y-2">
             {giftTypes.map((type) => (
               <Label
                 key={type.value}
