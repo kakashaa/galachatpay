@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { lazy, Suspense } from "react";
-import Login from "./pages/Login";
+
+const Login = lazy(() => import("./pages/Login"));
 
 // Lazy load all pages except Login (entry point)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
