@@ -16,7 +16,7 @@ serve(async (req) => {
       );
     }
 
-    const AGENCY_ID = 10000;
+    const AGENCY_ID = 23;
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
     if (!BASE_URL) throw new Error("GALA_API_BASE_URL is not configured");
 
