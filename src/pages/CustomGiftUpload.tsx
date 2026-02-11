@@ -303,7 +303,7 @@ const CustomGiftUpload: React.FC = () => {
         <div className="glass-card p-3 css-fade-up">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowInfo(true)} className="p-1.5 rounded-full bg-primary/10">
+              <button onClick={() => setShowInfo(true)} className="p-1.5 rounded-full bg-primary/10 animate-bounce-slow shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
                 <HelpCircle className="w-4 h-4 text-primary" />
               </button>
               <span className="text-[10px] text-muted-foreground">معلومات</span>

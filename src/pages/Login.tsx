@@ -369,9 +369,9 @@ const Login: React.FC = () => {
         <div className={`mt-10 text-center space-y-3 transition-all duration-700 delay-300 ${mounted ? "opacity-100" : "opacity-0"}`}>
           <button
             onClick={() => setShowInstructions(true)}
-            className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium flex items-center justify-center gap-2 group mx-auto"
+            className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium flex items-center justify-center gap-2 group mx-auto animate-pulse-glow"
           >
-            <HelpCircle className="w-4 h-4" />
+            <HelpCircle className="w-4 h-4 animate-bounce-slow" />
             <span className="border-b border-transparent group-hover:border-primary pb-0.5">تعليمات تسجيل الدخول</span>
           </button>
           <button
