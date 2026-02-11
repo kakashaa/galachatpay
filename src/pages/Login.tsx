@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, HelpCircle, User, Lock } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, HelpCircle, User, Lock, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import LoginInstructions from "@/components/LoginInstructions";
@@ -259,7 +259,7 @@ const Login: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7, duration: 0.5 }}
-          className="mt-12 text-center"
+          className="mt-12 text-center space-y-3"
         >
           <button
             onClick={() => setShowInstructions(true)}
@@ -267,6 +267,13 @@ const Login: React.FC = () => {
           >
             <HelpCircle className="w-4 h-4" />
             <span className="border-b border-transparent group-hover:border-primary pb-0.5">تعليمات تسجيل الدخول</span>
+          </button>
+          <button
+            onClick={() => navigate("/admin")}
+            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors text-xs flex items-center justify-center gap-1.5 mx-auto"
+          >
+            <Shield className="w-3 h-3" />
+            <span>الدخول كمسؤول</span>
           </button>
         </motion.div>
       </div>

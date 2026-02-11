@@ -19,6 +19,8 @@ import MyRequests from "./pages/MyRequests";
 import InstantIntro from "./pages/InstantIntro";
 import InstantBanks from "./pages/InstantBanks";
 import InstantRequest from "./pages/InstantRequest";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboardPage from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +47,8 @@ const App = () => (
             <Route path="/instant" element={<InstantIntro />} />
             <Route path="/instant/banks" element={<InstantBanks />} />
             <Route path="/instant/request" element={<InstantRequest />} />
+            <Route path="/admin" element={<AdminLogin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
