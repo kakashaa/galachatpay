@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
@@ -27,53 +26,38 @@ const menuItems: MenuItem[] = [
   { icon: FileText, label: "طلباتي", route: "/my-requests", bg: "rgba(20,184,166,0.12)", iconColor: "text-teal-400" },
 ];
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.03, delayChildren: 0.1 } },
-};
-
-const itemVariant = {
-  hidden: { opacity: 0, scale: 0.8 },
-  show: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 400, damping: 20 } },
-};
-
 const MenuGrid: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="grid grid-cols-4 gap-y-5 gap-x-2 mb-28 px-1"
+    <div
+      className="grid grid-cols-4 gap-y-4 gap-x-1.5 mb-24 px-1"
       dir="rtl"
     >
       {menuItems.map((item, index) => {
         const Icon = item.icon;
         return (
-          <motion.button
+          <button
             key={index}
-            variants={itemVariant}
-            whileTap={{ scale: 0.8, y: -4 }}
             onClick={() => navigate(item.route)}
-            className="flex flex-col items-center gap-1.5"
+            className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
           >
             <div
-              className="w-14 h-14 rounded-[16px] flex items-center justify-center transition-shadow"
+              className="w-12 h-12 rounded-[14px] flex items-center justify-center"
               style={{
                 background: item.bg,
                 border: "1px solid rgba(255,255,255,0.06)",
               }}
             >
-              <Icon className={`w-6 h-6 ${item.iconColor}`} />
+              <Icon className={`w-5 h-5 ${item.iconColor}`} />
             </div>
-            <span className="text-[10px] font-bold text-muted-foreground leading-tight text-center">
+            <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">
               {item.label}
             </span>
-          </motion.button>
+          </button>
         );
       })}
-    </motion.div>
+    </div>
   );
 };
 
