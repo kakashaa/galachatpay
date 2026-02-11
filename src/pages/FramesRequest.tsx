@@ -5,6 +5,7 @@ import TikTokInteraction from "@/components/TikTokInteraction";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStarBalance } from "@/hooks/use-star-balance";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -23,34 +24,6 @@ interface FrameItem {
   display_order: number;
 }
 
-interface UserStarBalance {
-  id: string;
-  user_uuid: string;
-  current_month: string;
-  monthly_stars: number;
-  carryover_stars: number;
-  total_stars: number;
-  last_level: number;
-}
-
-// Get monthly stars based on level
-const getMonthlyStars = (chargerLevel: number) => {
-  if (chargerLevel >= 100) return 8;
-  if (chargerLevel >= 90) return 7;
-  if (chargerLevel >= 80) return 6;
-  if (chargerLevel >= 70) return 5;
-  if (chargerLevel >= 60) return 4;
-  if (chargerLevel >= 50) return 3;
-  if (chargerLevel >= 40) return 2;
-  if (chargerLevel >= 30) return 1;
-  return 0;
-};
-
-const getCurrentMonth = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-};
-
 const FramesRequest: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -64,12 +37,11 @@ const FramesRequest: React.FC = () => {
   const [showRules, setShowRules] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showGuestLogin, setShowGuestLogin] = useState(false);
-  const [starBalance, setStarBalance] = useState<UserStarBalance | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
 
   const chargerLevel = user?.level?.charger_level ?? 0;
-  const currentMonth = getCurrentMonth();
-  const monthlyStars = getMonthlyStars(chargerLevel);
+  const { starBalance, fetchStarBalance, currentMonth, monthlyStars } = 
+    useStarBalance(user?.uuid, chargerLevel);
   const totalStars = starBalance?.total_stars ?? 0;
 
   useEffect(() => {
@@ -77,7 +49,7 @@ const FramesRequest: React.FC = () => {
     if (user?.uuid) {
       fetchStarBalance();
     }
-  }, [user?.uuid]);
+  }, [user?.uuid, fetchStarBalance]);
 
   const fetchFrames = async () => {
     try {
@@ -95,59 +67,6 @@ const FramesRequest: React.FC = () => {
     }
   };
 
-  const fetchStarBalance = async () => {
-    if (!user?.uuid) return;
-    try {
-      const { data, error } = await supabase
-        .from("user_star_balance")
-        .select("*")
-        .eq("user_uuid", user.uuid)
-        .eq("current_month", currentMonth)
-        .single();
-      
-      if (error && error.code !== "PGRST116") throw error;
-      
-      if (!data) {
-        // Create new balance for this month
-        const lastLevel = localStorage.getItem(`frame_last_level_${user.uuid}`)
-          ? parseInt(localStorage.getItem(`frame_last_level_${user.uuid}`)!)
-          : chargerLevel;
-        
-        const levelDiff = chargerLevel - lastLevel;
-        const levelBonus = levelDiff >= 5 ? Math.floor(levelDiff / 5) : 0;
-        const carryover = starBalance?.carryover_stars ?? 0;
-        const newTotal = monthlyStars + levelBonus + carryover;
-        
-        const { error: insertError } = await supabase
-          .from("user_star_balance")
-          .insert({
-            user_uuid: user.uuid,
-            current_month: currentMonth,
-            monthly_stars: monthlyStars,
-            carryover_stars: carryover,
-            total_stars: newTotal,
-            last_level: chargerLevel,
-          });
-        if (insertError) throw insertError;
-        
-        localStorage.setItem(`frame_last_level_${user.uuid}`, chargerLevel.toString());
-        
-        setStarBalance({
-          id: "",
-          user_uuid: user.uuid,
-          current_month: currentMonth,
-          monthly_stars: monthlyStars,
-          carryover_stars: carryover,
-          total_stars: newTotal,
-          last_level: chargerLevel,
-        });
-      } else {
-        setStarBalance(data as UserStarBalance);
-      }
-    } catch (err) {
-      console.error("Error fetching star balance:", err);
-    }
-  };
 
   const canClaimFrame = (frame: FrameItem) => {
     if (!starBalance) return false;
