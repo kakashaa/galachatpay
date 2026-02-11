@@ -30,6 +30,7 @@ const InstantRequest: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [requestId, setRequestId] = useState("");
   const [showExitDialog, setShowExitDialog] = useState(false);
 
   // Supporter info
@@ -150,7 +151,7 @@ const InstantRequest: React.FC = () => {
     setLoading(true);
     try {
       const receiptUrl = await uploadReceipt();
-      const { error: insertError } = await supabase.from("salary_requests").insert({
+      const { data: insertedData, error: insertError } = await supabase.from("salary_requests").insert({
         user_uuid: user.uuid,
         user_name: user.name,
         user_phone: user.phone,
@@ -163,12 +164,14 @@ const InstantRequest: React.FC = () => {
         payment_details: accountInfo,
         status: "pending",
         transfer_image_url: receiptUrl,
-      });
+      }).select("id").single();
       if (insertError) {
         setError("حدث خطأ في حفظ الطلب.");
         setLoading(false);
         return;
       }
+      const refId = ((insertedData as any)?.id as string)?.slice(0, 8)?.toUpperCase() || "";
+      setRequestId(refId);
       setSubmitted(true);
     } catch {
       setError("حدث خطأ غير متوقع.");
@@ -188,6 +191,13 @@ const InstantRequest: React.FC = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
             <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلب السحب الفوري بنجاح ⚡</h2>
             <p className="text-sm text-muted-foreground">سيتم معالجة طلبك والتواصل معك قريباً</p>
+            {requestId && (
+              <div className="mt-4 rounded-xl p-3 bg-muted/30 border border-border/20">
+                <p className="text-[10px] text-muted-foreground mb-1">رقم المرجع</p>
+                <p className="text-lg font-black text-primary font-mono tracking-wider">#{requestId}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">احتفظ بهذا الرقم لمتابعة طلبك</p>
+              </div>
+            )}
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8">
             <Button onClick={() => navigate("/my-requests")} variant="outline" className="flex-1 border-border/30 font-bold">طلباتي</Button>
