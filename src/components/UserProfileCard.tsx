@@ -1,17 +1,61 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { User } from "lucide-react";
+import { Copy, Zap, Diamond, Gift } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import avatarMale from "@/assets/avatar-male.png";
+import avatarFemale from "@/assets/avatar-female.png";
 
-const getUserTypeLabel = (type: number): string | null => {
+const getUserTypeLabel = (type: number): string => {
   switch (type) {
     case 2: return "مضيف";
     case 3: return "وكيل مضيفين";
     case 4: return "وكيل شحن";
     case 5: return "وكيل شحن ومضيفين";
     case 6: return "مضيف ووكيل شحن";
-    default: return null;
+    default: return "مستخدم";
   }
+};
+
+const getUserTypeBadgeStyle = (type: number) => {
+  if (type >= 2) {
+    return "gold-leaf-badge text-black";
+  }
+  return "bg-white/10 border border-white/20 text-foreground";
+};
+
+interface LevelItemProps {
+  icon: React.ReactNode;
+  label: string;
+  level: number;
+  gradientFrom: string;
+  gradientTo: string;
+  percentage: number;
+}
+
+const LevelItem: React.FC<LevelItemProps> = ({ icon, label, level, gradientFrom, gradientTo, percentage }) => {
+  const clampedPercent = Math.min(Math.max(percentage, 5), 100);
+
+  return (
+    <div className="flex flex-col items-center gap-2 flex-1">
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center"
+        style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
+      >
+        {icon}
+      </div>
+      <span className="text-[11px] font-bold text-muted-foreground">{label}</span>
+      <span className="text-sm font-black text-foreground">Lv.{level}</span>
+      <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${clampedPercent}%` }}
+          transition={{ duration: 1, delay: 0.5 }}
+          className="h-full rounded-full"
+          style={{ background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }}
+        />
+      </div>
+    </div>
+  );
 };
 
 const UserProfileCard: React.FC = () => {
@@ -19,52 +63,105 @@ const UserProfileCard: React.FC = () => {
   if (!user) return null;
 
   const typeLabel = getUserTypeLabel(user.type_user);
+  const badgeStyle = getUserTypeBadgeStyle(user.type_user);
+  
+  // gender: 1 = male, 2 = female (based on API)
+  const avatarSrc = user.profile?.gender === 2 ? avatarFemale : avatarMale;
+
+  const chargerPct = Math.min((user.level.charger_level / 50) * 100, 100);
+  const receiverPct = Math.min((user.level.receiver_level / 50) * 100, 100);
+  const senderPct = Math.min((user.level.sender_level / 50) * 100, 100);
+
+  const copyId = () => {
+    navigator.clipboard.writeText(user.uuid);
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="flex flex-col items-center mb-8"
+      className="mb-8"
     >
-      {/* Avatar */}
-      <div className="relative mb-6">
-        <div className="w-32 h-32 rounded-full overflow-hidden gold-glow-ring p-1 bg-black/50 backdrop-blur-md">
-          {user.profile?.image ? (
-            <img
-              alt={user.name}
-              className="w-full h-full rounded-full object-cover"
-              src={user.profile.image}
-            />
-          ) : (
-            <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
-              <User className="w-12 h-12 text-muted-foreground" />
-            </div>
-          )}
-        </div>
-        {typeLabel && (
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 gold-leaf-badge text-black px-4 py-1 rounded-full text-[11px] font-black tracking-wider shadow-xl whitespace-nowrap">
-            {typeLabel}
-          </div>
-        )}
-      </div>
+      {/* Main Card */}
+      <div
+        className="rounded-3xl p-5 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 8px 32px -8px rgba(0,0,0,0.4)",
+        }}
+      >
+        {/* Decorative glow */}
+        <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-accent/10 blur-3xl" />
 
-      {/* Name & Info */}
-      <div className="text-center">
-        <div className="flex flex-col items-center gap-2">
-          <h2 className="text-3xl font-black text-foreground flex items-center justify-center gap-2">
-            {user.name}
-            {user.country?.name && <span className="text-2xl">🏳️</span>}
-          </h2>
-          {typeLabel && (
-            <div className="gold-leaf-badge px-3 py-0.5 rounded-md flex items-center gap-1 shadow-sm">
-              <span className="text-[11px] font-bold text-black">{typeLabel}</span>
+        {/* Top Row: Avatar + Info */}
+        <div className="relative z-10 flex items-center gap-4 mb-5" dir="rtl">
+          {/* Avatar */}
+          <div className="relative flex-shrink-0">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden p-[2px] bg-gradient-to-br from-primary via-accent to-primary">
+              <div className="w-full h-full rounded-[14px] overflow-hidden bg-background">
+                <img
+                  src={avatarSrc}
+                  alt={user.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </div>
-          )}
+            {/* Online dot */}
+            <div className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-[3px] border-background" />
+          </div>
+
+          {/* Name + ID + Badge */}
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-black text-foreground truncate mb-1">
+              {user.name}
+            </h2>
+            <button
+              onClick={copyId}
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors mb-2"
+            >
+              <span className="text-xs font-mono tracking-wider">ID: {user.uuid}</span>
+              <Copy className="w-3 h-3" />
+            </button>
+            <div className={`inline-flex items-center px-3 py-1 rounded-lg text-[11px] font-bold ${badgeStyle}`}>
+              {typeLabel}
+            </div>
+          </div>
         </div>
-        <p className="text-muted-foreground text-sm mt-3 font-mono tracking-widest opacity-80">
-          ID: {user.uuid}
-        </p>
+
+        {/* Divider */}
+        <div className="h-px bg-white/10 mb-4" />
+
+        {/* Levels Row */}
+        <div className="relative z-10 flex gap-4 px-2" dir="rtl">
+          <LevelItem
+            icon={<Zap className="w-5 h-5 text-white" />}
+            label="الشحن"
+            level={user.level.charger_level}
+            gradientFrom="#22c55e"
+            gradientTo="#16a34a"
+            percentage={chargerPct}
+          />
+          <LevelItem
+            icon={<Diamond className="w-5 h-5 text-white" />}
+            label="الاستقبال"
+            level={user.level.receiver_level}
+            gradientFrom="#ec4899"
+            gradientTo="#db2777"
+            percentage={receiverPct}
+          />
+          <LevelItem
+            icon={<Gift className="w-5 h-5 text-white" />}
+            label="الإرسال"
+            level={user.level.sender_level}
+            gradientFrom="#eab308"
+            gradientTo="#ca8a04"
+            percentage={senderPct}
+          />
+        </div>
       </div>
     </motion.div>
   );
