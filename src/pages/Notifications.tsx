@@ -18,6 +18,37 @@ const Notifications: React.FC = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [prevCount, setPrevCount] = useState(0);
+
+  // تشغيل سوند وهزة عند إشعار جديد
+  const playNotificationSound = () => {
+    // إنشاء نغمة بسيطة باستخدام Web Audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 800;
+    oscillator.type = "sine";
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
+  };
+
+  const triggerNotificationEffect = () => {
+    // تشغيل السوند
+    playNotificationSound();
+
+    // هزة الجوال
+    if (navigator.vibrate) {
+      navigator.vibrate([100, 50, 100]);
+    }
+  };
 
   useEffect(() => {
     if (!user?.uuid) return;
@@ -28,7 +59,15 @@ const Notifications: React.FC = () => {
         .or(`target.eq.all,user_uuid.eq.${user.uuid}`)
         .order("created_at", { ascending: false })
         .limit(50);
-      setNotifications((data as unknown as Notification[]) ?? []);
+      const newNotifications = (data as unknown as Notification[]) ?? [];
+      
+      // تشغيل السوند والهزة عند إشعار جديد
+      if (prevCount > 0 && newNotifications.length > prevCount) {
+        triggerNotificationEffect();
+      }
+      
+      setNotifications(newNotifications);
+      setPrevCount(newNotifications.length);
       setLoading(false);
 
       // Mark all as read
@@ -45,7 +84,7 @@ const Notifications: React.FC = () => {
       }
     };
     fetchNotifs();
-  }, [user?.uuid]);
+  }, [user?.uuid, prevCount]);
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
