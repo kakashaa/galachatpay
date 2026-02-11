@@ -182,11 +182,10 @@ const FramesRequest: React.FC = () => {
   const isSvga = (url: string) => url.toLowerCase().endsWith(".svga");
 
   const renderFramePreview = (frame: FrameItem, size: "sm" | "lg" = "sm") => {
-    const dim = size === "sm" ? 100 : 280;
+    const dim = size === "sm" ? 120 : 280;
     if (isSvga(frame.file_url)) {
-      return <SvgaPlayer src={frame.file_url} width={dim} height={dim} className="w-full h-full" />;
+      return <SvgaPlayer src={frame.file_url} width={dim} height={dim} className={size === "sm" ? "w-full h-full object-contain" : "w-[280px] h-[280px]"} />;
     }
-    // WebP or image
     return <img src={frame.file_url} alt={frame.title} className="w-full h-full object-contain" />;
   };
 
@@ -230,29 +229,30 @@ const FramesRequest: React.FC = () => {
             <p className="text-sm">لا توجد إطارات حالياً</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2 css-fade-up-d1" dir="rtl">
+          <div className="grid grid-cols-3 gap-3 css-fade-up-d1" dir="rtl">
             {frames.map((frame) => {
               const canClaim = canClaimFrame(frame);
               return (
                 <div key={frame.id} className="relative group">
                   <button
                     onClick={() => { setSelectedFrame(frame); setShowPreview(true); }}
-                    className="w-full aspect-square rounded-xl overflow-hidden bg-muted/30 border border-border/20 relative flex items-center justify-center"
+                    className="w-full aspect-square rounded-xl overflow-hidden bg-muted/30 border border-border/20 relative"
                   >
-                    {renderFramePreview(frame, "sm")}
+                    <div className="absolute inset-0 flex items-center justify-center p-1">
+                      {renderFramePreview(frame, "sm")}
+                    </div>
 
                     {/* Overlay */}
-                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-4">
-                      <p className="text-[10px] font-bold text-white line-clamp-1">{frame.title}</p>
-                      <div className="flex items-center justify-between mt-0.5">
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 pt-4 z-10">
+                      <p className="text-[9px] font-bold text-white line-clamp-1 text-center">{frame.title}</p>
+                      <div className="flex items-center justify-center gap-1 mt-0.5">
                         {renderStars(frame.star_level)}
-                        <span className="text-[8px] text-white/60">ملف شخصي</span>
                       </div>
                     </div>
 
                     {!canClaim && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <Lock className="w-6 h-6 text-white/60" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                        <Lock className="w-5 h-5 text-white/60" />
                       </div>
                     )}
                   </button>
@@ -260,7 +260,7 @@ const FramesRequest: React.FC = () => {
                   {canClaim && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleClaimStart(frame); }}
-                      className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full bg-primary/90 flex items-center justify-center shadow-lg"
+                      className="absolute top-1.5 left-1.5 z-20 w-6 h-6 rounded-full bg-primary/90 flex items-center justify-center shadow-lg"
                     >
                       <Send className="w-3 h-3 text-primary-foreground" />
                     </button>
