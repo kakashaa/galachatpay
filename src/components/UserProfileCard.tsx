@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
-import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import avatarMale from "@/assets/avatar-male.png";
@@ -88,39 +87,24 @@ const UserProfileCard: React.FC = () => {
   ];
 
   return (
-    <motion.div
-      className="mb-3"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-    >
-      <motion.div
-        className="rounded-2xl p-3 relative overflow-hidden"
+    <div className="mb-3 animate-fade-in">
+      <div
+        className="rounded-2xl p-3 relative overflow-hidden transition-shadow duration-300 hover:shadow-lg"
         style={{
           background: "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
           border: "1px solid rgba(255,255,255,0.08)",
         }}
-        whileHover={{ scale: 1.01, boxShadow: "0 8px 30px rgba(0,0,0,0.2)" }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
         {/* Top: Avatar + Info + Mini Levels */}
         <div className="relative z-10 flex items-center gap-2.5 mb-2" dir="rtl">
-          <motion.div
-            className="relative flex-shrink-0"
-            whileHover={{ rotate: [0, -5, 5, 0] }}
-            transition={{ duration: 0.5 }}
-          >
+          <div className="relative flex-shrink-0">
             <div className="w-11 h-11 rounded-xl overflow-hidden p-[1.5px] bg-gradient-to-br from-primary via-accent to-primary">
               <div className="w-full h-full rounded-[9px] overflow-hidden bg-background">
                 <img src={avatarSrc} alt={user.name} className="w-full h-full object-cover" loading="lazy" />
               </div>
             </div>
-            <motion.div
-              className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background"
-              animate={{ scale: [1, 1.3, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </motion.div>
+            <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background animate-pulse" />
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
@@ -137,21 +121,17 @@ const UserProfileCard: React.FC = () => {
             {/* Wallet Row */}
             <div className="flex gap-2 mb-1.5 text-[9px]">
               {[
-                { value: user.my_store.coins, emoji: "💰", color: "yellow", delay: 0.1 },
-                { value: user.my_store.diamonds, emoji: "💎", color: "purple", delay: 0.2 },
-                { value: `$${user.my_store.usd}`, emoji: "💵", color: "green", delay: 0.3 },
+                { value: user.my_store.coins, emoji: "💰", color: "yellow" },
+                { value: user.my_store.diamonds, emoji: "💎", color: "purple" },
+                { value: `$${user.my_store.usd}`, emoji: "💵", color: "green" },
               ].map((w, i) => (
-                <motion.div
+                <div
                   key={i}
                   className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-${w.color}-500/10 border border-${w.color}-500/20`}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: w.delay, duration: 0.3 }}
-                  whileHover={{ scale: 1.1, y: -2 }}
                 >
                   <span className={`text-${w.color}-400 font-black`}>{w.value}</span>
                   <span className="text-muted-foreground">{w.emoji}</span>
-                </motion.div>
+                </div>
               ))}
             </div>
             
@@ -180,7 +160,7 @@ const UserProfileCard: React.FC = () => {
           </div>
         </div>
 
-        {/* ⭐ Star Banner - replaces wallet */}
+        {/* ⭐ Star Banner */}
         <div
           className="rounded-xl p-2 relative overflow-hidden group"
           style={{
@@ -188,11 +168,9 @@ const UserProfileCard: React.FC = () => {
             border: "1px solid rgba(234,179,8,0.18)",
           }}
         >
-          {/* Shimmer effect */}
           <div className="absolute inset-0 premium-shimmer pointer-events-none opacity-30" />
 
           <div className="flex items-center justify-between gap-2" dir="rtl">
-            {/* Star count */}
             <div className="flex items-center gap-1.5">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center"
                 style={{ background: "linear-gradient(135deg, #eab308, #f59e0b)", boxShadow: "0 0 10px rgba(234,179,8,0.35)" }}>
@@ -204,7 +182,6 @@ const UserProfileCard: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => { setStarWalletView("main"); setShowStarWallet(true); }}
@@ -247,11 +224,11 @@ const UserProfileCard: React.FC = () => {
             ))}
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} initialView={starWalletView} />
       <StarSystemTutorial open={showTutorial} onClose={() => setShowTutorial(false)} itemType="entry" />
-    </motion.div>
+    </div>
   );
 };
 
