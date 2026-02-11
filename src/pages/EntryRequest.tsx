@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { toast } from "sonner";
 import SvgaPlayer from "@/components/SvgaPlayer";
-import entryBg from "@/assets/entry-bg.png";
 
 interface EntryGift {
   id: string;
@@ -203,11 +202,7 @@ const EntryRequest: React.FC = () => {
 
   return (
     <MobileLayout showHeader headerTitle="الدخوليات" onBack={() => navigate("/dashboard")}>
-      {/* Background Image */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <img src={entryBg} alt="" className="w-full h-full object-cover opacity-30" />
-      </div>
-      <div className="px-3 py-4 space-y-4 relative z-10">
+      <div className="px-3 py-4 space-y-4">
         {/* User Status Bar */}
         <div className="glass-card p-3 css-fade-up">
           <div className="flex items-center justify-between">
