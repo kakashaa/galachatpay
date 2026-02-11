@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Camera } from "lucide-react";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | null;
 
 interface VideoTutorial {
   id: string;
@@ -201,6 +201,11 @@ const AdminDashboardPage: React.FC = () => {
   const [animatedRejectReason, setAnimatedRejectReason] = useState("");
   const [animatedActionLoading, setAnimatedActionLoading] = useState(false);
   const [expandedAnimated, setExpandedAnimated] = useState<string | null>(null);
+
+  // Admin stars state
+  const [adminStarUuid, setAdminStarUuid] = useState("");
+  const [adminStarAmount, setAdminStarAmount] = useState("");
+  const [adminStarLoading, setAdminStarLoading] = useState(false);
 
   const adminPassword = sessionStorage.getItem("admin_token");
 
@@ -404,6 +409,28 @@ const AdminDashboardPage: React.FC = () => {
       setSendingNotification(false);
     }
   };
+
+  // Admin send stars
+  const handleAdminSendStars = async () => {
+    const uuid = adminStarUuid.trim();
+    const amount = parseInt(adminStarAmount);
+    if (!uuid || !amount || amount <= 0) {
+      toast.error("يرجى إدخال UUID وعدد نجوم صحيح");
+      return;
+    }
+    setAdminStarLoading(true);
+    try {
+      await adminCall("admin_send_stars", { target_uuid: uuid, amount });
+      toast.success(`تم إرسال ${amount} نجمة إلى ${uuid}`);
+      setAdminStarUuid("");
+      setAdminStarAmount("");
+    } catch (err: any) {
+      toast.error(err?.message || "فشل إرسال النجوم");
+    } finally {
+      setAdminStarLoading(false);
+    }
+  };
+
   const updateBanReport = async (id: string, updates: Partial<BanReport>) => {
     try { await adminCall("update_ban_report", { id, ...updates }); toast.success("تم التحديث"); loadData(); }
     catch { toast.error("فشل التحديث"); }
@@ -496,6 +523,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "blocks", label: "محظورين", icon: <Ban className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
     { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
+    { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
   ];
 
   // Reusable item card for entries/frames with edit
@@ -1377,6 +1405,44 @@ const AdminDashboardPage: React.FC = () => {
                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
                   <p className="text-xs text-blue-600 leading-relaxed">
                     💡 الإشعارات العامة سيتم إرسالها لجميع المستخدمين المتصلين وسيراها عند فتح صفحة الإشعارات أو عند وصول إشعار جديد.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === "admin_stars" && (
+              <motion.div key="admin_stars" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                <div className="bg-card border rounded-xl p-4 space-y-3">
+                  <h3 className="font-bold text-sm flex items-center gap-2"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />منح نجوم لمستخدم عبر UUID</h3>
+                  <Input
+                    placeholder="UUID المستخدم *"
+                    value={adminStarUuid}
+                    onChange={(e) => setAdminStarUuid(e.target.value)}
+                    dir="ltr"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="عدد النجوم *"
+                    value={adminStarAmount}
+                    onChange={(e) => setAdminStarAmount(e.target.value)}
+                    min="1"
+                    dir="ltr"
+                  />
+                  <Button
+                    onClick={handleAdminSendStars}
+                    disabled={adminStarLoading || !adminStarUuid.trim() || !adminStarAmount}
+                    className="w-full"
+                  >
+                    {adminStarLoading ? (
+                      <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإرسال...</>
+                    ) : (
+                      <><Star className="w-4 h-4 ml-2" />إرسال النجوم</>
+                    )}
+                  </Button>
+                </div>
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+                  <p className="text-xs text-amber-600 leading-relaxed">
+                    ⭐ سيتم إضافة النجوم مباشرة إلى رصيد المستخدم وتسجيل العملية في سجل الإهداءات.
                   </p>
                 </div>
               </motion.div>
