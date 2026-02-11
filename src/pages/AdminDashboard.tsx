@@ -169,6 +169,9 @@ const AdminDashboardPage: React.FC = () => {
   const [notificationBody, setNotificationBody] = useState("");
   const [sendingNotification, setSendingNotification] = useState(false);
 
+  // Statistics state
+  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0 });
+
   const adminPassword = sessionStorage.getItem("admin_token");
 
   useEffect(() => {
@@ -177,7 +180,27 @@ const AdminDashboardPage: React.FC = () => {
       return;
     }
     loadData();
+    if (!activeTab) loadStats();
   }, [activeTab]);
+
+  const loadStats = async () => {
+    try {
+      const [salary, reports] = await Promise.all([
+        supabase.from("salary_requests").select("status"),
+        supabase.from("ban_reports").select("is_verified")
+      ]);
+      
+      const pending = (salary.data?.filter(r => r.status === "pending").length || 0) + 
+                      (reports.data?.filter(r => !r.is_verified).length || 0);
+      const approved = (salary.data?.filter(r => r.status === "approved").length || 0) +
+                       (reports.data?.filter(r => r.is_verified).length || 0);
+      const rejected = salary.data?.filter(r => r.status === "rejected").length || 0;
+      
+      setStats({ pending, approved, rejected });
+    } catch (err) {
+      console.error("فشل تحميل الإحصائيات", err);
+    }
+  };
 
   const adminCall = async (action: string, data: any = {}) => {
     const { data: result, error } = await supabase.functions.invoke("admin-manage", {
@@ -522,7 +545,44 @@ const AdminDashboardPage: React.FC = () => {
 
       {/* Home Grid */}
       {!activeTab && (
-        <div className="max-w-2xl mx-auto p-4">
+        <div className="max-w-2xl mx-auto p-4 space-y-6">
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-3 gap-3" dir="rtl">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-4 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm"
+            >
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground mb-1">معلقة</div>
+                <div className="text-3xl font-bold text-orange-500">{stats.pending}</div>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="p-4 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm"
+            >
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground mb-1">مقبولة</div>
+                <div className="text-3xl font-bold text-green-500">{stats.approved}</div>
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="p-4 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm"
+            >
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground mb-1">مرفوضة</div>
+                <div className="text-3xl font-bold text-red-500">{stats.rejected}</div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Grid */}
           <div className="grid grid-cols-3 gap-3" dir="rtl">
             {tabs.map((tab) => (
               <motion.button
