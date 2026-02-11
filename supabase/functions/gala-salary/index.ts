@@ -24,17 +24,30 @@ serve(async (req) => {
     const headers = await getGalaHeaders("POST", signPath);
 
     const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
+    console.log("gala-salary request:", { uuid, amount, url });
+
     const response = await fetch(url, {
       method: "POST",
       headers,
       body: JSON.stringify({ uuid, amount: Number(amount) }),
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    console.log("gala-salary response status:", response.status, "body:", rawText);
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid API response" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!response.ok || !data.success) {
       return new Response(
-        JSON.stringify({ success: false, error: data.message || data.error || "Transaction check failed" }),
+        JSON.stringify({ success: false, error: data.message || data.error || "Transaction check failed", raw: data }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
