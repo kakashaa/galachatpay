@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlayCircle, User, Shield, Send, CheckCircle, HelpCircle, Clock, Star } from "lucide-react";
+import { PlayCircle, User, Shield, Send, CheckCircle, Clock, Star } from "lucide-react";
+import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,7 +73,7 @@ const AnimatedPhotoRequest: React.FC = () => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                  <PulsingHelpIcon size={16} />
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-[260px] text-xs text-right" dir="rtl">
                   <p>أعلى لفل بين (الشحن، الكاريزما، الدعم) يحدد المدة. اللفل يشمل أي نوع من الثلاثة.</p>

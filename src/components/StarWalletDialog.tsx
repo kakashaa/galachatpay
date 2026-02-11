@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Star, HelpCircle, Gift, DollarSign } from "lucide-react";
+import { Star, Gift, DollarSign } from "lucide-react";
+import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -290,8 +291,8 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                   transition={{ duration: 0.2 }}
                 >
                   <Button onClick={() => setShowTutorial(true)} variant="outline" className="flex-1">
-                    <HelpCircle className="w-4 h-4 ml-1" />
-                    الشروط
+                    <PulsingHelpIcon size={16} />
+                    <span className="mr-1">الشروط</span>
                   </Button>
                 </motion.div>
               </motion.div>
