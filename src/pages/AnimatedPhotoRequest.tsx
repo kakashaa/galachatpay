@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlayCircle, User, Shield, Send, CheckCircle, Clock, Star } from "lucide-react";
+import { PlayCircle, User, Shield, Send, CheckCircle, Star, Upload, Image } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const getDurationConfig = (user: { level: { charger_level: number; sender_level: number; receiver_level: number } } | null) => {
   if (!user) return null;
   const maxLevel = Math.max(user.level.charger_level, user.level.sender_level, user.level.receiver_level);
-  if (maxLevel >= 50) return { days: 0, label: "مؤبدة (دائمة)", eligible: true, icon: Infinity };
-  if (maxLevel >= 40) return { days: 60, label: "60 يوم", eligible: true, icon: Clock };
-  if (maxLevel >= 30) return { days: 30, label: "30 يوم", eligible: true, icon: Clock };
-  return { days: 0, label: "غير مؤهل", eligible: false, icon: null };
+  if (maxLevel >= 50) return { days: 0, label: "مؤبدة (دائمة)", eligible: true };
+  if (maxLevel >= 40) return { days: 60, label: "60 يوم", eligible: true };
+  if (maxLevel >= 30) return { days: 30, label: "30 يوم", eligible: true };
+  return { days: 0, label: "غير مؤهل", eligible: false };
 };
 
 const AnimatedPhotoRequest: React.FC = () => {
@@ -25,23 +25,87 @@ const AnimatedPhotoRequest: React.FC = () => {
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [gifFile, setGifFile] = useState<File | null>(null);
+  const [gifPreview, setGifPreview] = useState<string | null>(null);
+  const [alreadyRequested, setAlreadyRequested] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const durationConfig = getDurationConfig(authUser);
   const maxLevel = authUser ? Math.max(authUser.level.charger_level, authUser.level.sender_level, authUser.level.receiver_level) : 0;
 
+  // Check if user already submitted
+  useEffect(() => {
+    if (!authUser?.uuid) { setChecking(false); return; }
+    const check = async () => {
+      const { data } = await supabase
+        .from("animated_photo_requests")
+        .select("id")
+        .eq("user_uuid", authUser.uuid)
+        .limit(1);
+      setAlreadyRequested((data?.length ?? 0) > 0);
+      setChecking(false);
+    };
+    check();
+  }, [authUser?.uuid]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "image/gif") {
+      toast.error("يجب أن تكون الصورة بصيغة GIF فقط");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("حجم الصورة يجب أن لا يتجاوز 10 ميغابايت");
+      return;
+    }
+    setGifFile(file);
+    setGifPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = async () => {
-    if (!description.trim() || !durationConfig?.eligible || !authUser) return;
+    if (!gifFile || !durationConfig?.eligible || !authUser) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.functions.invoke("gala-actions?action=submit-request", {
+      // Upload GIF to storage
+      const fileName = `animated-photos/${authUser.uuid}-${Date.now()}.gif`;
+      const { error: uploadError } = await supabase.storage
+        .from("attachments")
+        .upload(fileName, gifFile, { contentType: "image/gif", upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(fileName);
+      const gifUrl = urlData.publicUrl;
+
+      // Save to DB (unique constraint enforces one per user)
+      const { error: dbError } = await supabase.from("animated_photo_requests").insert({
+        user_uuid: authUser.uuid,
+        user_name: authUser.name,
+        gif_url: gifUrl,
+        description: description.trim() || null,
+        duration_label: durationConfig.label,
+        max_level: maxLevel,
+      } as any);
+      if (dbError) {
+        if (dbError.message?.includes("duplicate") || dbError.code === "23505") {
+          toast.error("لقد أرسلت طلباً مسبقاً، مسموح مرة واحدة فقط");
+          setAlreadyRequested(true);
+          return;
+        }
+        throw dbError;
+      }
+
+      // Send to admin API
+      await supabase.functions.invoke("gala-actions?action=submit-request", {
         body: {
           user_uuid: authUser.uuid,
           user_name: authUser.name,
           request_type: "animated_photo",
-          details: { description: description.trim(), image_url: authUser.profile?.image || "" },
+          details: { description: description.trim(), gif_url: gifUrl },
         },
       });
-      if (error) throw error;
+
       setSubmitted(true);
       toast.success("تم إرسال الطلب بنجاح");
     } catch (err: any) {
@@ -50,6 +114,33 @@ const AnimatedPhotoRequest: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  if (checking) {
+    return (
+      <MobileLayout showHeader headerTitle="صورة متحركة" onBack={() => navigate("/dashboard")}>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  if (alreadyRequested) {
+    return (
+      <MobileLayout showHeader headerTitle="صورة متحركة" onBack={() => navigate("/dashboard")}>
+        <div className="flex flex-col items-center justify-center px-6 py-20">
+          <div className="w-20 h-20 rounded-full bg-yellow-500/20 flex items-center justify-center mb-6">
+            <Shield className="w-10 h-10 text-yellow-400" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground mb-2">لقد أرسلت طلباً مسبقاً</h2>
+          <p className="text-sm text-muted-foreground text-center">مسموح لك بطلب صورة متحركة واحدة فقط</p>
+          <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">
+            العودة للرئيسية
+          </Button>
+        </div>
+      </MobileLayout>
+    );
+  }
 
   if (submitted) {
     return (
@@ -82,7 +173,7 @@ const AnimatedPhotoRequest: React.FC = () => {
             <PlayCircle className="w-8 h-8 text-orange-400" />
           </div>
           <h2 className="text-base font-black text-foreground">طلب صورة متحركة</h2>
-          <p className="text-xs text-muted-foreground text-center">صمّم صورة متحركة مميزة لملفك الشخصي</p>
+          <p className="text-xs text-muted-foreground text-center">ارفع صورة GIF متحركة لملفك الشخصي (مرة واحدة فقط)</p>
         </div>
 
         {/* شروط الأهلية */}
@@ -164,26 +255,63 @@ const AnimatedPhotoRequest: React.FC = () => {
           </div>
         )}
 
-        {/* وصف الصورة */}
+        {/* رفع صورة GIF */}
         <div className="glass-card p-4 space-y-3 css-fade-up-d3">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Image className="w-4 h-4 text-orange-400" />
+            رفع الصورة المتحركة (GIF)
+          </h3>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/gif"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          {gifPreview ? (
+            <div className="relative rounded-xl overflow-hidden border border-border/30 bg-muted/20">
+              <img src={gifPreview} alt="GIF Preview" className="w-full max-h-[200px] object-contain mx-auto" />
+              <button
+                onClick={() => { setGifFile(null); setGifPreview(null); }}
+                className="absolute top-2 left-2 bg-destructive/80 text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border-2 border-dashed border-border/40 rounded-xl p-8 flex flex-col items-center gap-3 hover:border-primary/40 transition-colors"
+            >
+              <Upload className="w-8 h-8 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">اضغط لرفع صورة GIF</span>
+              <span className="text-[10px] text-muted-foreground/60">الحد الأقصى 10 ميغابايت</span>
+            </button>
+          )}
+        </div>
+
+        {/* وصف اختياري */}
+        <div className="glass-card p-4 space-y-3 css-fade-up-d4">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Shield className="w-4 h-4 text-orange-400" />
-            وصف الصورة المطلوبة
+            وصف (اختياري)
           </h3>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-            placeholder="اكتب وصفاً للصورة المتحركة التي تريدها..."
-            className="bg-muted/30 border-border/30 min-h-[100px] text-sm resize-none"
+            placeholder="أضف ملاحظة أو وصف إن أردت..."
+            className="bg-muted/30 border-border/30 min-h-[80px] text-sm resize-none"
             dir="rtl"
           />
           <p className="text-[11px] text-muted-foreground text-left">{description.length}/500</p>
         </div>
 
-        <div className="css-fade-up-d4">
+        <div className="css-fade-up-d5">
           <Button
             onClick={handleSubmit}
-            disabled={!description.trim() || !durationConfig?.eligible || submitting}
+            disabled={!gifFile || !durationConfig?.eligible || submitting}
             className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
           >
             {submitting ? (

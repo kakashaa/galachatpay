@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      animated_photo_requests: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_label: string
+          gif_url: string
+          id: string
+          max_level: number
+          status: string
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_label: string
+          gif_url: string
+          id?: string
+          max_level?: number
+          status?: string
+          user_name: string
+          user_uuid: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_label?: string
+          gif_url?: string
+          id?: string
+          max_level?: number
+          status?: string
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       ban_reports: {
         Row: {
           admin_notes: string | null
