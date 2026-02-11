@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Globe, CheckCircle, AlertCircle, ChevronLeft, Copy, ChevronDown, ChevronUp,
@@ -23,8 +22,7 @@ interface BankAccount {
 
 const banksByCountry: Record<string, { name: string; flag: string; banks: BankAccount[] }> = {
   US: {
-    name: "أمريكا",
-    flag: "🇺🇸",
+    name: "أمريكا", flag: "🇺🇸",
     banks: [
       { name: "CashApp", nameArabic: "كاش آب", tag: "$Galalive313", accountHolder: "Dobeee Soneee" },
       { name: "CashApp", nameArabic: "كاش آب (حساب 2)", tag: "$cashalk1", accountHolder: "Gala live chat" },
@@ -34,8 +32,7 @@ const banksByCountry: Record<string, { name: string; flag: string; banks: BankAc
     ],
   },
   YE: {
-    name: "اليمن",
-    flag: "🇾🇪",
+    name: "اليمن", flag: "🇾🇪",
     banks: [
       { name: "Kuraimi SAR", nameArabic: "الكريمي - ريال سعودي", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183733892" },
       { name: "Kuraimi USD", nameArabic: "الكريمي - دولار", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183929703" },
@@ -44,8 +41,7 @@ const banksByCountry: Record<string, { name: string; flag: string; banks: BankAc
     ],
   },
   SA: {
-    name: "السعودية",
-    flag: "🇸🇦",
+    name: "السعودية", flag: "🇸🇦",
     banks: [
       { name: "Al Rajhi Bank", nameArabic: "بنك الراجحي", accountHolder: "ASSAF ALI GHALIB", accountNumber: "618000010006080901670", iban: "SA67 8000 0618 6080 1090 1670", additionalInfo: { "كود السويفت": "RJHISARI" } },
     ],
@@ -73,15 +69,8 @@ const BankCard: React.FC<{ bank: BankAccount }> = ({ bank }) => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="glass-card overflow-hidden"
-    >
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full p-4 flex items-center justify-between"
-      >
+    <div className="glass-card overflow-hidden css-fade-up">
+      <button onClick={() => setExpanded(!expanded)} className="w-full p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Globe className="w-5 h-5 text-primary" />
@@ -95,11 +84,7 @@ const BankCard: React.FC<{ bank: BankAccount }> = ({ bank }) => {
       </button>
 
       {expanded && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          className="px-4 pb-4 space-y-2"
-        >
+        <div className="px-4 pb-4 space-y-2 css-expand">
           <div className="border-t border-border/20 pt-3 space-y-2">
             {details.map((d, i) => (
               <div key={i} className="flex justify-between items-center bg-muted/20 rounded-lg p-2.5">
@@ -113,9 +98,9 @@ const BankCard: React.FC<{ bank: BankAccount }> = ({ bank }) => {
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 
@@ -124,33 +109,23 @@ const InstantBanks: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useState("US");
   const [confirmed, setConfirmed] = useState(false);
 
-  const _currentCountry = banksByCountry[selectedCountry];
-
   return (
     <MobileLayout showHeader headerTitle="حسابات الدفع" onBack={() => navigate("/instant")}>
       <div className="px-5 py-4 space-y-5 pb-32">
-        {/* Instructions */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4">
+        <div className="glass-card p-4 css-fade-up">
           <div className="flex items-start gap-3">
             <Globe className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div>
               <h3 className="font-bold text-foreground mb-1 gradient-text">اختر دولة الداعم</h3>
-              <p className="text-xs text-muted-foreground">
-                اختر الدولة التي سيحوّل منها الداعم، ثم شارك معه تفاصيل الحساب المناسب
-              </p>
+              <p className="text-xs text-muted-foreground">اختر الدولة التي سيحوّل منها الداعم، ثم شارك معه تفاصيل الحساب المناسب</p>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Country Tabs */}
         <Tabs value={selectedCountry} onValueChange={setSelectedCountry} className="w-full">
           <TabsList className="grid w-full grid-cols-3 h-auto p-1 bg-muted/30 backdrop-blur-sm">
             {Object.entries(banksByCountry).map(([code, country]) => (
-              <TabsTrigger
-                key={code}
-                value={code}
-                className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-xl"
-              >
+              <TabsTrigger key={code} value={code} className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-xl">
                 <span className="text-2xl">{country.flag}</span>
                 <span className="text-xs font-medium">{country.name}</span>
               </TabsTrigger>
@@ -159,9 +134,7 @@ const InstantBanks: React.FC = () => {
 
           {Object.entries(banksByCountry).map(([code, country]) => (
             <TabsContent key={code} value={code} className="mt-4 space-y-3">
-              <p className="text-xs text-muted-foreground text-center mb-3">
-                الحسابات المتاحة في {country.name} - اضغط لعرض التفاصيل
-              </p>
+              <p className="text-xs text-muted-foreground text-center mb-3">الحسابات المتاحة في {country.name} - اضغط لعرض التفاصيل</p>
               {country.banks.map((bank, index) => (
                 <BankCard key={`${code}-${index}`} bank={bank} />
               ))}
@@ -169,20 +142,16 @@ const InstantBanks: React.FC = () => {
           ))}
         </Tabs>
 
-        {/* Warning */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl">
+        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl css-fade-up-d2">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
             <div>
               <h3 className="font-bold text-foreground text-sm mb-1">تنبيه مهم</h3>
-              <p className="text-xs text-muted-foreground">
-                تأكد من إرسال الداعم للإيصال بعد التحويل، ستحتاجه في الخطوة التالية
-              </p>
+              <p className="text-xs text-muted-foreground">تأكد من إرسال الداعم للإيصال بعد التحويل، ستحتاجه في الخطوة التالية</p>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Confirm */}
         <button
           onClick={() => setConfirmed(!confirmed)}
           className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-3 ${
@@ -198,13 +167,8 @@ const InstantBanks: React.FC = () => {
         </button>
       </div>
 
-      {/* Fixed Bottom */}
       <div className="fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto p-5 bg-background/80 backdrop-blur-xl border-t border-border/30 z-50">
-        <Button
-          onClick={() => navigate("/instant/request")}
-          disabled={!confirmed}
-          className="w-full h-12 gold-gradient text-primary-foreground font-bold text-base disabled:opacity-40"
-        >
+        <Button onClick={() => navigate("/instant/request")} disabled={!confirmed} className="w-full h-12 gold-gradient text-primary-foreground font-bold text-base disabled:opacity-40">
           متابعة رفع الطلب <ChevronLeft className="w-5 h-5 mr-1" />
         </Button>
       </div>

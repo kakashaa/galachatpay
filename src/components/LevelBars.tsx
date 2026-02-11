@@ -1,5 +1,4 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface LevelBarProps {
@@ -27,6 +26,12 @@ const colorMap = {
 const LevelBar: React.FC<LevelBarProps> = ({ level, color, icon, percentage }) => {
   const colors = colorMap[color];
   const clampedPercent = Math.min(Math.max(percentage, 5), 100);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const t = setTimeout(() => setWidth(clampedPercent), 300);
+    return () => clearTimeout(t);
+  }, [clampedPercent]);
 
   return (
     <div className="glass-card rounded-2xl p-3 flex flex-col items-center">
@@ -35,14 +40,12 @@ const LevelBar: React.FC<LevelBarProps> = ({ level, color, icon, percentage }) =
         <span className={`text-[11px] font-bold ${colors.text}`}>Lv. {level}</span>
       </div>
       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden relative">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${clampedPercent}%` }}
-          transition={{ duration: 1, delay: 0.3 }}
-          className={`absolute top-0 right-0 h-full ${colors.gradient} rounded-full`}
+        <div
+          style={{ width: `${width}%` }}
+          className={`absolute top-0 right-0 h-full ${colors.gradient} rounded-full css-bar-fill`}
         >
           <div className="premium-shimmer absolute inset-0 opacity-40" />
-        </motion.div>
+        </div>
       </div>
     </div>
   );
@@ -52,7 +55,6 @@ const LevelBars: React.FC = () => {
   const { user } = useAuth();
   if (!user) return null;
 
-  // Calculate rough percentages based on level (max ~50 levels)
   const chargerPct = Math.min((user.level.charger_level / 50) * 100, 100);
   const receiverPct = Math.min((user.level.receiver_level / 50) * 100, 100);
   const senderPct = Math.min((user.level.sender_level / 50) * 100, 100);

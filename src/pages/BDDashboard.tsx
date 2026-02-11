@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Briefcase, User, Crown, DollarSign, TrendingUp, Building2, CheckCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
@@ -43,13 +42,11 @@ const BDDashboard: React.FC = () => {
     setError("");
     try {
       const { data, error: fnError } = await supabase.functions.invoke("gala-transactions");
-
       if (fnError || !data?.success) {
         setError(data?.error || "فشل في تحميل البيانات");
         setLoading(false);
         return;
       }
-
       setMonth(data.month || "");
       setCharges(data.charges || []);
       setCoinLogs(data.coin_logs || []);
@@ -61,10 +58,7 @@ const BDDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!user) {
-      navigate("/");
-      return;
-    }
+    if (!user) { navigate("/"); return; }
     fetchData();
   }, []);
 
@@ -87,8 +81,7 @@ const BDDashboard: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="التقارير الشهرية" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4">
+        <div className="glass-card p-4 css-fade-up">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full gold-gradient flex items-center justify-center">
@@ -105,9 +98,8 @@ const BDDashboard: React.FC = () => {
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Error */}
         {error && (
           <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
             <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
@@ -115,8 +107,7 @@ const BDDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Stats Grid */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 css-fade-up-d1">
           <div className="glass-card p-3 text-center">
             <DollarSign className="w-5 h-5 text-primary mx-auto mb-1" />
             <p className="text-lg font-bold text-foreground">{charges.length}</p>
@@ -137,13 +128,11 @@ const BDDashboard: React.FC = () => {
             <p className="text-lg font-bold text-primary">${totalCoinLogsUsd.toLocaleString()}</p>
             <p className="text-[10px] text-muted-foreground">إجمالي USD</p>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Charges List */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4 space-y-3">
+        <div className="glass-card p-4 space-y-3 css-fade-up-d2">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-primary" />
-            عمليات الشحن ({charges.length})
+            <DollarSign className="w-4 h-4 text-primary" /> عمليات الشحن ({charges.length})
           </h3>
           {charges.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">لا توجد عمليات شحن لهذا الشهر</p>
@@ -170,13 +159,11 @@ const BDDashboard: React.FC = () => {
               )}
             </div>
           )}
-        </motion.div>
+        </div>
 
-        {/* Coin Logs List */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-4 space-y-3">
+        <div className="glass-card p-4 space-y-3 css-fade-up-d3">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Crown className="w-4 h-4 text-primary" />
-            سجلات العملات ({coinLogs.length})
+            <Crown className="w-4 h-4 text-primary" /> سجلات العملات ({coinLogs.length})
           </h3>
           {coinLogs.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-4">لا توجد سجلات لهذا الشهر</p>
@@ -204,7 +191,7 @@ const BDDashboard: React.FC = () => {
               )}
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
     </MobileLayout>
   );
