@@ -173,12 +173,13 @@ const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0 });
 
   // All requests state
-  const [allRequestsFilter, setAllRequestsFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
-  const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
-  const [allSalaryRequests, setAllSalaryRequests] = useState<SalaryRequest[]>([]);
-  const [allEntryClaims, setAllEntryClaims] = useState<ClaimRecord[]>([]);
-  const [allFrameClaims, setAllFrameClaims] = useState<ClaimRecord[]>([]);
-  const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
+   const [allRequestsFilter, setAllRequestsFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+   const [allRequestsSearch, setAllRequestsSearch] = useState("");
+   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
+   const [allSalaryRequests, setAllSalaryRequests] = useState<SalaryRequest[]>([]);
+   const [allEntryClaims, setAllEntryClaims] = useState<ClaimRecord[]>([]);
+   const [allFrameClaims, setAllFrameClaims] = useState<ClaimRecord[]>([]);
+   const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
 
   const adminPassword = sessionStorage.getItem("admin_token");
 
@@ -990,6 +991,17 @@ const AdminDashboardPage: React.FC = () => {
             {/* All Requests Tab */}
             {activeTab === "all_requests" && (
               <motion.div key="all_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                {/* Search Bar */}
+                <div className="mb-4">
+                  <Input
+                    type="text"
+                    placeholder="ابحث باسم المستخدم أو UUID..."
+                    value={allRequestsSearch}
+                    onChange={(e) => setAllRequestsSearch(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
                 {/* Filter Buttons */}
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {(["all", "pending", "approved", "rejected"] as const).map((f) => (
@@ -1010,8 +1022,14 @@ const AdminDashboardPage: React.FC = () => {
                 {/* Salary Requests Section */}
                 {(() => {
                   const filtered = allSalaryRequests.filter(r => allRequestsFilter === "all" || r.status === allRequestsFilter);
-                  const monthlyReqs = filtered.filter(r => r.request_type === "monthly" || r.request_type === "salary");
-                  const instantReqs = filtered.filter(r => r.request_type === "instant" || r.request_type === "stars");
+                  const searched = filtered.filter(r => 
+                    allRequestsSearch === "" ||
+                    r.user_name.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    r.user_uuid.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    r.id.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  const monthlyReqs = searched.filter(r => r.request_type === "monthly" || r.request_type === "salary");
+                  const instantReqs = searched.filter(r => r.request_type === "instant" || r.request_type === "stars");
                   
                   return (
                     <>
@@ -1209,12 +1227,18 @@ const AdminDashboardPage: React.FC = () => {
                 })()}
 
                 {/* Entry Claims Section */}
-                {allEntryClaims.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-500" /> طلبات دخوليات ({allEntryClaims.length})
-                    </h3>
-                    {allEntryClaims.map((claim) => (
+                {(() => {
+                  const filtered = allEntryClaims.filter(c =>
+                    allRequestsSearch === "" ||
+                    c.user_uuid.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    c.id.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  return filtered.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-500" /> طلبات دخوليات ({filtered.length})
+                      </h3>
+                      {filtered.map((claim) => (
                       <div key={claim.id} className="bg-card border rounded-xl p-3">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
@@ -1231,35 +1255,43 @@ const AdminDashboardPage: React.FC = () => {
                           {claim.friend_uuid && <div className="col-span-2"><span className="text-muted-foreground">صديق:</span> <span className="font-mono text-[10px]">{claim.friend_uuid}</span></div>}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Frame Claims Section */}
-                {allFrameClaims.length > 0 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Frame className="w-4 h-4 text-blue-500" /> طلبات إطارات ({allFrameClaims.length})
-                    </h3>
-                    {allFrameClaims.map((claim) => (
-                      <div key={claim.id} className="bg-card border rounded-xl p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
-                            <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
+                {(() => {
+                  const filtered = allFrameClaims.filter(c =>
+                    allRequestsSearch === "" ||
+                    c.user_uuid.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    c.id.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  return filtered.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Frame className="w-4 h-4 text-blue-500" /> طلبات إطارات ({filtered.length})
+                      </h3>
+                      {filtered.map((claim) => (
+                        <div key={claim.id} className="bg-card border rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
+                              <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
+                          <div className="grid grid-cols-2 gap-1 text-[11px]">
+                            <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{claim.user_uuid}</span></div>
+                            <div><span className="text-muted-foreground">الشهر:</span> {claim.claim_month}</div>
+                            <div><span className="text-muted-foreground">لفل:</span> {claim.charger_level_at_claim}</div>
+                            {claim.friend_uuid && <div className="col-span-2"><span className="text-muted-foreground">صديق:</span> <span className="font-mono text-[10px]">{claim.friend_uuid}</span></div>}
+                          </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-1 text-[11px]">
-                          <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{claim.user_uuid}</span></div>
-                          <div><span className="text-muted-foreground">الشهر:</span> {claim.claim_month}</div>
-                          <div><span className="text-muted-foreground">لفل:</span> {claim.charger_level_at_claim}</div>
-                          {claim.friend_uuid && <div className="col-span-2"><span className="text-muted-foreground">صديق:</span> <span className="font-mono text-[10px]">{claim.friend_uuid}</span></div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Empty State */}
                 {allSalaryRequests.length === 0 && allEntryClaims.length === 0 && allFrameClaims.length === 0 && (
