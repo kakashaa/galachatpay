@@ -237,6 +237,28 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Entry gift claims
+      case "list_entry_claims": {
+        const { data: claims, error } = await supabase
+          .from("entry_gift_claims")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        result = claims;
+        break;
+      }
+
+      // Frame claims
+      case "list_frame_claims": {
+        const { data: claims, error } = await supabase
+          .from("frame_claims")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        result = claims;
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),

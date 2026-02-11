@@ -8,11 +8,11 @@ import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, 
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame,
+  CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames";
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims";
 
 interface VideoTutorial {
   id: string;
@@ -87,6 +87,19 @@ interface FrameItem {
   display_order: number;
 }
 
+interface ClaimRecord {
+  id: string;
+  user_uuid: string;
+  gift_id?: string;
+  frame_id?: string;
+  claim_type: string;
+  gift_usage?: string;
+  friend_uuid: string | null;
+  claim_month: string;
+  charger_level_at_claim: number;
+  created_at: string;
+}
+
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("videos");
@@ -129,6 +142,10 @@ const AdminDashboardPage: React.FC = () => {
   const [editingFrame, setEditingFrame] = useState<string | null>(null);
   const [editFrameData, setEditFrameData] = useState<Partial<FrameItem>>({});
 
+  // Claims state
+  const [entryClaims, setEntryClaims] = useState<ClaimRecord[]>([]);
+  const [frameClaims, setFrameClaims] = useState<ClaimRecord[]>([]);
+
   const adminPassword = sessionStorage.getItem("admin_token");
 
   useEffect(() => {
@@ -169,6 +186,12 @@ const AdminDashboardPage: React.FC = () => {
         case "blocks": setBlockedAccounts(await adminCall("list_blocked_accounts")); break;
         case "entries": setEntryGifts(await adminCall("list_entry_gifts")); break;
         case "frames": setFrameItems(await adminCall("list_frames")); break;
+        case "claims": {
+          const [ec, fc] = await Promise.all([adminCall("list_entry_claims"), adminCall("list_frame_claims")]);
+          setEntryClaims(ec || []);
+          setFrameClaims(fc || []);
+          break;
+        }
       }
     } catch (err) {
       console.error(err);
@@ -303,6 +326,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "videos", label: "فيديو", icon: <Video className="w-4 h-4" /> },
     { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" /> },
     { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" /> },
+    { key: "claims", label: "طلبات", icon: <ClipboardList className="w-4 h-4" />, count: entryClaims.length + frameClaims.length },
     { key: "salary", label: "رواتب", icon: <DollarSign className="w-4 h-4" />, count: salaryRequests.filter(r => r.status === "pending").length },
     { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-4 h-4" />, count: banReports.filter(r => !r.is_verified).length },
     { key: "blocks", label: "محظورين", icon: <Ban className="w-4 h-4" />, count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
@@ -667,6 +691,62 @@ const AdminDashboardPage: React.FC = () => {
                 {frameItems.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground"><Frame className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد إطارات</p></div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Claims Tab */}
+            {activeTab === "claims" && (
+              <motion.div key="claims" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                {/* Entry Claims */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" /> طلبات الدخوليات ({entryClaims.length})
+                  </h3>
+                  {entryClaims.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">لا توجد طلبات دخوليات</p>}
+                  {entryClaims.map((claim) => (
+                    <div key={claim.id} className="bg-card border rounded-xl p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
+                          <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-[11px]">
+                        <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{claim.user_uuid}</span></div>
+                        <div><span className="text-muted-foreground">الشهر:</span> {claim.claim_month}</div>
+                        <div><span className="text-muted-foreground">الاستخدام:</span> {claim.gift_usage === "profile" ? "ملف شخصي" : "روم"}</div>
+                        <div><span className="text-muted-foreground">لفل الشحن:</span> {claim.charger_level_at_claim}</div>
+                        {claim.friend_uuid && <div className="col-span-2"><span className="text-muted-foreground">UUID الصديق:</span> <span className="font-mono">{claim.friend_uuid}</span></div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Frame Claims */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Frame className="w-4 h-4 text-primary" /> طلبات الإطارات ({frameClaims.length})
+                  </h3>
+                  {frameClaims.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">لا توجد طلبات إطارات</p>}
+                  {frameClaims.map((claim) => (
+                    <div key={claim.id} className="bg-card border rounded-xl p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
+                          <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 text-[11px]">
+                        <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{claim.user_uuid}</span></div>
+                        <div><span className="text-muted-foreground">الشهر:</span> {claim.claim_month}</div>
+                        <div><span className="text-muted-foreground">لفل الشحن:</span> {claim.charger_level_at_claim}</div>
+                        {claim.friend_uuid && <div className="col-span-2"><span className="text-muted-foreground">UUID الصديق:</span> <span className="font-mono">{claim.friend_uuid}</span></div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
