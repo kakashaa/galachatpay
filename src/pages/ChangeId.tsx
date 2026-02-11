@@ -15,7 +15,6 @@ const userTypeLabels: Record<number, string> = {
   3: "وكيل مضيفين", 4: "وكيل شحن", 5: "وكيل شحن ومضيفين", 6: "مضيف ووكيل شحن",
 };
 
-const ID_CHANGE_KEY = "gala_id_changed";
 const LEVEL_MILESTONES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
 function getCurrentMilestone(level: number): number {
@@ -32,26 +31,6 @@ function getNextMilestone(level: number): number | null {
   return LEVEL_MILESTONES[idx + 1];
 }
 
-function getIdChangeInfo(uuid: string, currentLevel: number) {
-  try {
-    const stored = localStorage.getItem(ID_CHANGE_KEY);
-    if (!stored) return { changed: false, lastLevel: null, newId: null, date: null };
-    const data = JSON.parse(stored);
-    if (data.uuid !== uuid) return { changed: false, lastLevel: null, newId: null, date: null };
-    const lastMilestone = data.levelMilestone || 0;
-    const currentMilestone = getCurrentMilestone(currentLevel);
-    if (currentMilestone > lastMilestone) return { changed: false, lastLevel: lastMilestone, newId: data.newId, date: data.date };
-    return { changed: true, lastLevel: lastMilestone, newId: data.newId, date: data.date };
-  } catch {
-    return { changed: false, lastLevel: null, newId: null, date: null };
-  }
-}
-
-function saveIdChange(uuid: string, newId: string, level: number) {
-  const milestone = getCurrentMilestone(level);
-  localStorage.setItem(ID_CHANGE_KEY, JSON.stringify({ uuid, newId, levelMilestone: milestone, date: new Date().toISOString() }));
-}
-
 const ChangeId: React.FC = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
@@ -60,12 +39,52 @@ const ChangeId: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [showFormats, setShowFormats] = useState(false);
   const [alreadyChanged, setAlreadyChanged] = useState<{ changed: boolean; lastLevel: number | null; newId: string | null; date: string | null }>({ changed: false, lastLevel: null, newId: null, date: null });
+  const [loadingCheck, setLoadingCheck] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      const maxLvl = Math.max(user.level.receiver_level, user.level.sender_level);
-      setAlreadyChanged(getIdChangeInfo(user.uuid, maxLvl));
-    }
+    if (!user) return;
+    const maxLvl = Math.max(user.level.receiver_level, user.level.sender_level);
+    
+    // Check database for previous ID changes
+    const checkDbHistory = async () => {
+      setLoadingCheck(true);
+      try {
+        // Search by current uuid OR by new_id (since uuid changes after ID change)
+        const { data, error } = await supabase
+          .from("id_changes")
+          .select("*")
+          .or(`user_uuid.eq.${user.uuid},new_id.eq.${user.uuid}`)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        
+        if (error) {
+          console.error("Error checking id_changes:", error);
+          setLoadingCheck(false);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const lastChange = data[0];
+          const lastMilestone = lastChange.level_milestone;
+          const currentMilestone = getCurrentMilestone(maxLvl);
+          
+          if (currentMilestone > lastMilestone) {
+            // User has reached a new milestone, can change again
+            setAlreadyChanged({ changed: false, lastLevel: lastMilestone, newId: lastChange.new_id, date: lastChange.created_at });
+          } else {
+            // Same milestone, can't change
+            setAlreadyChanged({ changed: true, lastLevel: lastMilestone, newId: lastChange.new_id, date: lastChange.created_at });
+          }
+        } else {
+          setAlreadyChanged({ changed: false, lastLevel: null, newId: null, date: null });
+        }
+      } catch (err) {
+        console.error("Error checking id change history:", err);
+      }
+      setLoadingCheck(false);
+    };
+
+    checkDbHistory();
   }, [user]);
 
   if (!user) { navigate("/"); return null; }
@@ -108,8 +127,16 @@ const ChangeId: React.FC = () => {
         else { setStatus("error"); setErrorMsg(msg || "فشل الطلب."); }
         return;
       }
-      saveIdChange(user.uuid, trimmedId, maxLevel);
-      setAlreadyChanged({ changed: true, lastLevel: getCurrentMilestone(maxLevel), newId: trimmedId, date: new Date().toISOString() });
+
+      // Save to database
+      const milestone = getCurrentMilestone(maxLevel);
+      await supabase.from("id_changes").insert({
+        user_uuid: user.uuid,
+        new_id: trimmedId,
+        level_milestone: milestone,
+      });
+
+      setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
       setUser({ ...user, uuid: trimmedId });
       setStatus("success");
     } catch { setStatus("error"); setErrorMsg("حدث خطأ غير متوقع."); }
@@ -208,7 +235,7 @@ const ChangeId: React.FC = () => {
         {/* Info tip */}
         <div className="flex items-start gap-1.5 px-1">
           <Info className="w-3 h-3 text-primary shrink-0 mt-0.5" />
-          <p className="text-[10px] text-muted-foreground">تغيير الـ ID <strong>مرة واحدة لكل 10 مستويات</strong>.</p>
+          <p className="text-[10px] text-muted-foreground">تغيير الـ ID <strong>مرة واحدة لكل 10 مستويات</strong>. السجل محفوظ في النظام.</p>
         </div>
 
         {/* Input + Submit */}
@@ -221,7 +248,7 @@ const ChangeId: React.FC = () => {
             placeholder="اكتب الـ ID الذي تريده"
             dir="ltr"
             className="h-10 bg-muted/20 border-border/20 text-center text-sm"
-            disabled={maxLevel < 20 || alreadyChanged.changed}
+            disabled={maxLevel < 20 || alreadyChanged.changed || loadingCheck}
           />
           {status === "taken" && (
             <div className="flex items-center gap-1.5 p-2 bg-destructive/10 border border-destructive/15 rounded-lg">
@@ -243,10 +270,10 @@ const ChangeId: React.FC = () => {
           )}
           <Button
             onClick={handleSubmit}
-            disabled={!newId.trim() || maxLevel < 20 || status === "loading" || alreadyChanged.changed}
+            disabled={!newId.trim() || maxLevel < 20 || status === "loading" || alreadyChanged.changed || loadingCheck}
             className="w-full gold-gradient text-primary-foreground font-bold h-10 text-sm disabled:opacity-40"
           >
-            {status === "loading" ? (
+            {status === "loading" || loadingCheck ? (
               <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
             ) : alreadyChanged.changed ? (
               <><AlertCircle className="w-4 h-4 ml-1.5" /> لم تصل للفل المطلوب</>
