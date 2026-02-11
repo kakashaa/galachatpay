@@ -6,6 +6,8 @@ import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const getDurationConfig = (user: { level: { charger_level: number; sender_level: number; receiver_level: number } } | null) => {
@@ -22,13 +24,31 @@ const AnimatedPhotoRequest: React.FC = () => {
   const { user: authUser } = useAuth();
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const durationConfig = getDurationConfig(authUser);
   const maxLevel = authUser ? Math.max(authUser.level.charger_level, authUser.level.sender_level, authUser.level.receiver_level) : 0;
 
-  const handleSubmit = () => {
-    if (!description.trim() || !durationConfig?.eligible) return;
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    if (!description.trim() || !durationConfig?.eligible || !authUser) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.functions.invoke("gala-actions?action=submit-request", {
+        body: {
+          user_uuid: authUser.uuid,
+          user_name: authUser.name,
+          request_type: "animated_photo",
+          details: { description: description.trim(), image_url: authUser.profile?.image || "" },
+        },
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      toast.success("تم إرسال الطلب بنجاح");
+    } catch (err: any) {
+      toast.error(err?.message || "فشل إرسال الطلب");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -163,11 +183,17 @@ const AnimatedPhotoRequest: React.FC = () => {
         <div className="css-fade-up-d4">
           <Button
             onClick={handleSubmit}
-            disabled={!description.trim() || !durationConfig?.eligible}
+            disabled={!description.trim() || !durationConfig?.eligible || submitting}
             className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
           >
-            <Send className="w-5 h-5 ml-2" />
-            إرسال الطلب
+            {submitting ? (
+              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : (
+              <>
+                <Send className="w-5 h-5 ml-2" />
+                إرسال الطلب
+              </>
+            )}
           </Button>
         </div>
       </div>

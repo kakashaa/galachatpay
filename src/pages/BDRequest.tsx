@@ -7,27 +7,62 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const BDRequest: React.FC = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [experience, setExperience] = useState("");
   const [hostsCount, setHostsCount] = useState("");
   const [agentsCount, setAgentsCount] = useState("");
   const [previousBD, setPreviousBD] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
-
-  const user = { id: "123456789", name: "محمد أحمد", level: 35, accountType: "مستخدم", vipLevel: 3 };
+  const [submitting, setSubmitting] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) setAttachment(file);
   };
 
-  const handleSubmit = () => {
-    if (!experience.trim() || !hostsCount || !agentsCount || !previousBD) return;
+  const handleSubmit = async () => {
+    if (!experience.trim() || !hostsCount || !agentsCount || !previousBD || !authUser) return;
     if (previousBD === "yes" && !attachment) return;
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      // Upload attachment if exists
+      let documentUrl = "";
+      if (attachment) {
+        const fileName = `bd/${authUser.uuid}_${Date.now()}_${attachment.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("attachments")
+          .upload(fileName, attachment);
+        if (uploadError) throw uploadError;
+        const { data: publicUrlData } = supabase.storage.from("attachments").getPublicUrl(fileName);
+        documentUrl = publicUrlData.publicUrl;
+      }
+
+      const { error } = await supabase.functions.invoke("gala-actions?action=submit-request", {
+        body: {
+          user_uuid: authUser.uuid,
+          user_name: authUser.name,
+          request_type: "bd_verify",
+          details: {
+            description: `خبرة: ${experience.trim()} | مضيفين: ${hostsCount} | وكلاء: ${agentsCount} | BD سابق: ${previousBD === "yes" ? "نعم" : "لا"}`,
+            document_url: documentUrl,
+          },
+        },
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      toast.success("تم إرسال الطلب بنجاح");
+    } catch (err: any) {
+      toast.error(err?.message || "فشل إرسال الطلب");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isFormValid = experience.trim() && hostsCount && agentsCount && previousBD && (previousBD === "no" || attachment);
@@ -63,20 +98,20 @@ const BDRequest: React.FC = () => {
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">ID</span>
-              <span className="font-bold text-foreground">{user.id}</span>
+              <span className="font-bold text-foreground">{authUser?.uuid}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">المستوى</span>
-              <span className="font-bold text-foreground">{user.level}</span>
+              <span className="font-bold text-foreground">{authUser?.level?.charger_level ?? 0}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">النوع</span>
-              <span className="font-bold text-foreground">{user.accountType}</span>
+              <span className="text-muted-foreground">الاسم</span>
+              <span className="font-bold text-foreground">{authUser?.name}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
               <span className="text-muted-foreground">VIP</span>
               <span className="font-bold text-primary flex items-center gap-1">
-                <Crown className="w-3 h-3" /> {user.vipLevel}
+                <Crown className="w-3 h-3" /> {String(authUser?.vip?.vip_level ?? authUser?.vip?.level ?? 0)}
               </span>
             </div>
           </div>
@@ -144,8 +179,14 @@ const BDRequest: React.FC = () => {
         )}
 
         <div className="css-fade-up-d3">
-          <Button onClick={handleSubmit} disabled={!isFormValid} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40">
-            <Send className="w-5 h-5 ml-2" /> إرسال الطلب
+          <Button onClick={handleSubmit} disabled={!isFormValid || submitting} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40">
+            {submitting ? (
+              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : (
+              <>
+                <Send className="w-5 h-5 ml-2" /> إرسال الطلب
+              </>
+            )}
           </Button>
         </div>
       </div>

@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, User, Shield, Crown, Send, CheckCircle, Sparkles, Frame, DoorOpen } from "lucide-react";
+import { Gift, User, Shield, Send, CheckCircle, Sparkles, Frame, DoorOpen } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const GiftRequest: React.FC = () => {
   const navigate = useNavigate();
@@ -14,10 +16,8 @@ const GiftRequest: React.FC = () => {
   const [giftType, setGiftType] = useState("");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const chargerLevel = authUser?.level?.charger_level ?? 0;
-
-  // Redirect to custom gift upload page if "custom" is selected
   const handleGiftTypeChange = (value: string) => {
     if (value === "custom") {
       navigate("/custom-gift");
@@ -32,9 +32,26 @@ const GiftRequest: React.FC = () => {
     { value: "frame", label: "إطار", icon: <Frame className="w-5 h-5" />, desc: "إطار مميز لصورتك" },
   ];
 
-  const handleSubmit = () => {
-    if (!giftType || !description.trim()) return;
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    if (!giftType || !description.trim() || !authUser) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.functions.invoke("gala-actions?action=submit-request", {
+        body: {
+          user_uuid: authUser.uuid,
+          user_name: authUser.name,
+          request_type: "gift",
+          details: { gift_type: giftType, description: description.trim() },
+        },
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      toast.success("تم إرسال الطلب بنجاح");
+    } catch (err: any) {
+      toast.error(err?.message || "فشل إرسال الطلب");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -133,11 +150,17 @@ const GiftRequest: React.FC = () => {
         <div className="css-fade-up-d3">
           <Button
             onClick={handleSubmit}
-            disabled={!giftType || !description.trim()}
+            disabled={!giftType || !description.trim() || submitting}
             className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
           >
-            <Send className="w-5 h-5 ml-2" />
-            إرسال الطلب
+            {submitting ? (
+              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : (
+              <>
+                <Send className="w-5 h-5 ml-2" />
+                إرسال الطلب
+              </>
+            )}
           </Button>
         </div>
       </div>

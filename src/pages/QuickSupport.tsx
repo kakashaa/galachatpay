@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Headset, ShieldCheck, Send, AlertTriangle, User, Crown, Star, Lock } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const requestTypes = [
   "مشكلة تقنية",
@@ -14,25 +17,37 @@ const requestTypes = [
 
 const QuickSupport: React.FC = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [selectedType, setSelectedType] = useState("");
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const userVipLevel = 5;
+  // Use real VIP data from authUser
+  const userVipLevel = Number(authUser?.vip?.vip_level ?? authUser?.vip?.level ?? 0);
   const hasAccess = userVipLevel >= 5;
 
-  const user = {
-    id: "123456789",
-    name: "محمد أحمد",
-    level: 35,
-    role: "مستخدم",
-    vip: userVipLevel,
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedType || !description.trim()) return;
-    setSubmitted(true);
+    if (!selectedType || !description.trim() || !authUser) return;
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.functions.invoke("gala-actions?action=submit-request", {
+        body: {
+          user_uuid: authUser.uuid,
+          user_name: authUser.name,
+          request_type: "support",
+          details: { subject: selectedType, message: description.trim() },
+        },
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      toast.success("تم إرسال الطلب بنجاح");
+    } catch (err: any) {
+      toast.error(err?.message || "فشل إرسال الطلب");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!hasAccess) {
@@ -92,7 +107,7 @@ const QuickSupport: React.FC = () => {
           </div>
           <div className="w-full mt-8 glass-card p-4 space-y-2 css-fade-up-d5">
             <InfoRow label="نوع الطلب" value={selectedType} />
-            <InfoRow label="معرف الحساب" value={user.id} />
+            <InfoRow label="معرف الحساب" value={authUser?.uuid || ""} />
             <InfoRow label="الأولوية" value="عالية جدًا" highlight />
           </div>
           <button
@@ -115,7 +130,7 @@ const QuickSupport: React.FC = () => {
           </div>
           <div className="flex-1">
             <p className="text-sm font-bold text-foreground">دعم كبار الشخصيات</p>
-            <p className="text-[11px] text-muted-foreground">VIP {user.vip} • أولوية عالية جدًا</p>
+            <p className="text-[11px] text-muted-foreground">VIP {String(userVipLevel)} • أولوية عالية جدًا</p>
           </div>
           <Headset className="w-5 h-5 text-primary" />
         </div>
@@ -126,10 +141,10 @@ const QuickSupport: React.FC = () => {
             <p className="text-sm font-bold text-foreground">معلومات الحساب</p>
           </div>
           <div className="space-y-2">
-            <InfoRow label="المعرف" value={user.id} />
-            <InfoRow label="نوع الحساب" value={user.role} />
-            <InfoRow label="المستوى" value={`Level ${user.level}`} />
-            <InfoRow label="VIP" value={`VIP ${user.vip}`} highlight />
+            <InfoRow label="المعرف" value={authUser?.uuid || ""} />
+            <InfoRow label="الاسم" value={authUser?.name || ""} />
+            <InfoRow label="المستوى" value={`Level ${authUser?.level?.charger_level ?? 0}`} />
+            <InfoRow label="VIP" value={`VIP ${String(userVipLevel)}`} highlight />
           </div>
         </div>
 
@@ -171,11 +186,17 @@ const QuickSupport: React.FC = () => {
 
           <button
             type="submit"
-            disabled={!selectedType || !description.trim()}
+            disabled={!selectedType || !description.trim() || submitting}
             className="w-full h-12 gold-gradient rounded-xl text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity active:scale-95"
           >
-            <Send className="w-5 h-5" />
-            إرسال الطلب
+            {submitting ? (
+              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : (
+              <>
+                <Send className="w-5 h-5" />
+                إرسال الطلب
+              </>
+            )}
           </button>
         </form>
       </div>

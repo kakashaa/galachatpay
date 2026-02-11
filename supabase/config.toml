@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.admin-upload-video]
 verify_jwt = false
+
+[functions.gala-actions]
+verify_jwt = false
