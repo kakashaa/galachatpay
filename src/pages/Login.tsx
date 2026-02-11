@@ -196,7 +196,7 @@ const Login: React.FC = () => {
         name: apiUser.name,
       }));
 
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch {
       setError("حدث خطأ غير متوقع. حاول مرة أخرى.");
     } finally {

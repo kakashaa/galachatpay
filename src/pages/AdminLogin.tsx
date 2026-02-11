@@ -27,7 +27,7 @@ const AdminLogin: React.FC = () => {
         return;
       }
       sessionStorage.setItem("admin_token", password);
-      navigate("/admin/dashboard");
+      navigate("/admin/dashboard", { replace: true });
     } catch {
       setError("حدث خطأ. حاول مرة أخرى.");
     } finally {
