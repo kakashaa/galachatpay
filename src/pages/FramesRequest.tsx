@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Star, Send, User as UserIcon, HelpCircle, Lock, Frame } from "lucide-react";
-import ItemComments from "@/components/ItemComments";
+import TikTokInteraction from "@/components/TikTokInteraction";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -274,36 +274,37 @@ const FramesRequest: React.FC = () => {
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={() => setShowPreview(false)}>
-        <DialogContent className="max-w-sm w-full p-0 bg-background border rounded-2xl overflow-hidden [&>button]:hidden">
+        <DialogContent className="max-w-sm w-full h-[80vh] max-h-[700px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
           <VisuallyHidden><DialogTitle>{selectedFrame?.title || "إطار"}</DialogTitle></VisuallyHidden>
-          <div className="relative">
+          <div className="relative w-full h-full">
             <button onClick={() => setShowPreview(false)} className="absolute top-3 right-3 z-20 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
               <X className="w-4 h-4" />
             </button>
-            <div className="flex items-center justify-center p-6 min-h-[300px] bg-muted/10">
+
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-muted/5 to-muted/20 p-6">
               {selectedFrame && renderFramePreview(selectedFrame, "lg")}
             </div>
+
+            {/* Bottom info */}
             {selectedFrame && (
-              <div className="p-4 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold">{selectedFrame.title}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      {renderStars(selectedFrame.star_level)}
-                      <span className="text-xs text-muted-foreground">ملف شخصي فقط</span>
-                    </div>
-                  </div>
-                  {canClaimFrame(selectedFrame) && (
-                    <Button onClick={() => { setShowPreview(false); handleClaimStart(selectedFrame); }} className="gold-gradient text-primary-foreground font-bold" size="sm">
-                      <Send className="w-4 h-4 ml-1" />
-                      احصل عليه
-                    </Button>
-                  )}
+              <div className="absolute bottom-0 left-0 right-14 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-12">
+                <h3 className="text-white font-bold">{selectedFrame.title}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  {renderStars(selectedFrame.star_level)}
+                  <span className="text-white/60 text-xs">ملف شخصي فقط</span>
                 </div>
+                {canClaimFrame(selectedFrame) && (
+                  <Button onClick={() => { setShowPreview(false); handleClaimStart(selectedFrame); }} className="gold-gradient text-primary-foreground font-bold mt-3" size="sm">
+                    <Send className="w-4 h-4 ml-1" />
+                    احصل عليه
+                  </Button>
+                )}
               </div>
             )}
+
+            {/* TikTok-style interaction */}
             {selectedFrame && (
-              <ItemComments itemType="frame" itemId={selectedFrame.id} />
+              <TikTokInteraction itemType="frame" itemId={selectedFrame.id} />
             )}
           </div>
         </DialogContent>
