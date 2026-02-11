@@ -248,6 +248,18 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Star gift logs
+      case "list_star_gifts": {
+        const { data: gifts, error } = await supabase
+          .from("star_gift_logs")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        result = gifts;
+        break;
+      }
+
       // Frame claims
       case "list_frame_claims": {
         const { data: claims, error } = await supabase

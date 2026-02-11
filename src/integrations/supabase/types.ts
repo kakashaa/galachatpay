@@ -479,6 +479,33 @@ export type Database = {
         }
         Relationships: []
       }
+      star_gift_logs: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          recipient_uuid: string
+          sender_name: string
+          sender_uuid: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          recipient_uuid: string
+          sender_name: string
+          sender_uuid: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          recipient_uuid?: string
+          sender_name?: string
+          sender_uuid?: string
+        }
+        Relationships: []
+      }
       user_star_balance: {
         Row: {
           carryover_stars: number
