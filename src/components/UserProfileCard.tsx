@@ -1,9 +1,11 @@
-import React, { useState } from "react";
-import { Copy, Zap, Diamond, Gift, Coins, DollarSign, Star } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Copy, Zap, Diamond, Gift, Coins, DollarSign, Sparkles, HelpCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
 import StarWalletDialog from "@/components/StarWalletDialog";
+import StarSystemTutorial from "@/components/StarSystemTutorial";
 
 const getUserTypeLabel = (type: number): string => {
   switch (type) {
@@ -21,9 +23,47 @@ const getUserTypeBadgeStyle = (type: number) => {
   return "bg-white/10 border border-white/20 text-foreground";
 };
 
+const getMonthlyStars = (chargerLevel: number) => {
+  if (chargerLevel >= 100) return 8;
+  if (chargerLevel >= 90) return 7;
+  if (chargerLevel >= 80) return 6;
+  if (chargerLevel >= 70) return 5;
+  if (chargerLevel >= 60) return 4;
+  if (chargerLevel >= 50) return 3;
+  if (chargerLevel >= 40) return 2;
+  if (chargerLevel >= 30) return 1;
+  return 0;
+};
+
+const getCurrentMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
 const UserProfileCard: React.FC = () => {
   const { user } = useAuth();
   const [showStarWallet, setShowStarWallet] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [totalStars, setTotalStars] = useState(0);
+
+  useEffect(() => {
+    if (!user?.uuid) return;
+    const fetchStars = async () => {
+      const currentMonth = getCurrentMonth();
+      const { data } = await supabase
+        .from("user_star_balance")
+        .select("total_stars")
+        .eq("user_uuid", user.uuid)
+        .eq("current_month", currentMonth)
+        .single();
+      if (data) setTotalStars((data as any).total_stars ?? 0);
+      else {
+        const monthly = getMonthlyStars(user.level?.charger_level ?? 0);
+        setTotalStars(monthly);
+      }
+    };
+    fetchStars();
+  }, [user?.uuid]);
 
   if (!user) return null;
 
@@ -37,8 +77,72 @@ const UserProfileCard: React.FC = () => {
 
   const copyId = () => navigator.clipboard.writeText(user.uuid);
 
+  const idRewards = [
+    { stars: 10, format: "AAAAA", label: "خماسي موحد" },
+    { stars: 9, format: "AAAAB", label: "خماسي مع حرف" },
+    { stars: 8, format: "AAABB", label: "ثلاثي + ثنائي" },
+    { stars: 7, format: "AABABA", label: "نمط متكرر" },
+  ];
+
   return (
     <div className="mb-3">
+      {/* ⭐ Star Banner - Above Profile */}
+      <div
+        className="rounded-2xl mb-2 p-2.5 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, rgba(234,179,8,0.15), rgba(45,212,191,0.1), rgba(168,85,247,0.08))",
+          border: "1px solid rgba(234,179,8,0.2)",
+        }}
+      >
+        <div className="flex items-center justify-between gap-2" dir="rtl">
+          {/* Star count */}
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center relative"
+              style={{ background: "linear-gradient(135deg, #eab308, #f59e0b)", boxShadow: "0 0 12px rgba(234,179,8,0.4)" }}>
+              <Sparkles className="w-4.5 h-4.5 text-white" />
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground leading-none">نجومي</p>
+              <p className="text-lg font-black text-yellow-400 leading-tight">{totalStars}</p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowStarWallet(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold active:scale-95 transition-transform"
+              style={{ background: "rgba(234,179,8,0.2)", border: "1px solid rgba(234,179,8,0.3)" }}
+            >
+              <Gift className="w-3 h-3 text-yellow-400" />
+              <span className="text-yellow-300">إهداء</span>
+            </button>
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold active:scale-95 transition-transform"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+            >
+              <HelpCircle className="w-3 h-3 text-muted-foreground" />
+              <span className="text-muted-foreground">الشروط</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ID Rewards Row */}
+        <div className="flex gap-1 mt-2" dir="rtl">
+          {idRewards.map((r, i) => (
+            <div
+              key={i}
+              className={`flex-1 rounded-lg py-1 px-1 text-center ${totalStars >= r.stars ? 'opacity-100' : 'opacity-40'}`}
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <p className="text-[8px] text-muted-foreground">{r.stars}⭐</p>
+              <p className="text-[10px] font-black text-foreground font-mono">{r.format}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div
         className="rounded-2xl p-3 relative overflow-hidden"
         style={{
@@ -83,16 +187,6 @@ const UserProfileCard: React.FC = () => {
               <p className="text-[11px] font-black text-foreground">{typeof w.value === 'number' ? w.value.toLocaleString() : w.value}</p>
             </div>
           ))}
-          {/* Star Wallet Mini */}
-          <button
-            onClick={() => setShowStarWallet(true)}
-            className="flex-1 rounded-lg py-1.5 px-1 text-center active:scale-95 transition-transform"
-            style={{ background: "rgba(45,212,191,0.12)", border: "1px solid rgba(45,212,191,0.15)" }}
-          >
-            <Star className="w-3.5 h-3.5 mx-auto mb-0.5 text-accent fill-accent" />
-            <p className="text-[8px] text-muted-foreground">النجوم</p>
-            <p className="text-[11px] font-black text-accent">⭐</p>
-          </button>
         </div>
 
         {/* Levels Row */}
@@ -125,6 +219,7 @@ const UserProfileCard: React.FC = () => {
       </div>
 
       <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} />
+      <StarSystemTutorial open={showTutorial} onClose={() => setShowTutorial(false)} itemType="entry" />
     </div>
   );
 };
