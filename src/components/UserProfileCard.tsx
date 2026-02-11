@@ -117,21 +117,24 @@ const UserProfileCard: React.FC = () => {
               <Copy className="w-2.5 h-2.5" />
             </button>
             {/* Mini Levels Strip */}
-            <div className="flex gap-1.5 items-center">
+            <div className="flex gap-2 items-end">
               {[
                 { icon: Zap, level: user.level.charger_level, pct: chargerPct, from: "#22c55e", to: "#16a34a", label: "شحن" },
                 { icon: Diamond, level: user.level.receiver_level, pct: receiverPct, from: "#ec4899", to: "#db2777", label: "استقبال" },
                 { icon: Gift, level: user.level.sender_level, pct: senderPct, from: "#eab308", to: "#ca8a04", label: "إرسال" },
               ].map((l, i) => (
-                <div key={i} className="flex items-center gap-0.5">
-                  <l.icon className="w-2.5 h-2.5" style={{ color: l.from }} />
-                  <span className="text-[8px] font-bold text-muted-foreground">{l.level}</span>
-                  <div className="w-8 bg-white/10 h-1 rounded-full overflow-hidden">
+                <div key={i} className="flex flex-col items-center gap-0.5">
+                  <div className="flex items-center gap-0.5">
+                    <l.icon className="w-2.5 h-2.5" style={{ color: l.from }} />
+                    <span className="text-[8px] font-bold text-muted-foreground">{l.level}</span>
+                  </div>
+                  <div className="w-12 bg-white/10 h-1.5 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all duration-1000"
                       style={{ width: `${Math.max(l.pct, 5)}%`, background: `linear-gradient(90deg, ${l.from}, ${l.to})` }}
                     />
                   </div>
+                  <span className="text-[7px] text-muted-foreground font-semibold">{l.label}</span>
                 </div>
               ))}
             </div>
