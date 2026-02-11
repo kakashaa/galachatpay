@@ -228,28 +228,38 @@ const FramesRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="الإطارات" onBack={() => navigate("/dashboard")}>
       <div className="px-3 py-4 space-y-4">
-        {/* Status Bar */}
-        <div className="glass-card p-3 css-fade-up">
-          <div className="flex items-center justify-between">
+        {/* Star Wallet */}
+        <div className="glass-card p-3 css-fade-up overflow-hidden relative" dir="rtl">
+          <div className="absolute top-0 left-0 w-20 h-20 bg-accent/10 rounded-full blur-[40px] -translate-x-1/2 -translate-y-1/2" />
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-full bg-primary/10 animate-bounce-slow shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
-                <HelpCircle className="w-4 h-4 text-primary" />
-              </button>
-              <span className="text-[10px] text-muted-foreground">الشروط</span>
+              <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center">
+                <Star className="w-4 h-4 text-accent fill-accent" />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">محفظة النجوم</p>
+                <p className="text-base font-black text-accent leading-none">{totalStars} <span className="text-[10px] font-normal text-muted-foreground">⭐</span></p>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-xs">
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">لفل الشحن:</span>
-                <span className="font-bold text-primary">{chargerLevel}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">النجوم:</span>
-                <span className="font-bold text-accent">{totalStars}/{monthlyStars}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">الشهرية:</span>
-                {renderStars(Math.min(3, monthlyStars))}
-              </div>
+            <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-full bg-primary/10 animate-bounce-slow shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
+              <HelpCircle className="w-4 h-4 text-primary" />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 text-[10px] border-t border-border/20 pt-2">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">لفل الشحن:</span>
+              <span className="font-bold text-primary">{chargerLevel}</span>
+            </div>
+            <div className="w-px h-3 bg-border/30" />
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">الشهرية:</span>
+              <span className="font-bold text-foreground">{monthlyStars}</span>
+              {renderStars(Math.min(3, monthlyStars))}
+            </div>
+            <div className="w-px h-3 bg-border/30" />
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">مُرحّلة:</span>
+              <span className="font-bold text-foreground">{starBalance?.carryover_stars ?? 0}</span>
             </div>
           </div>
         </div>
