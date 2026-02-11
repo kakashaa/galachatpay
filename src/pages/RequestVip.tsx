@@ -153,7 +153,8 @@ const RequestVip: React.FC = () => {
             className="p-4 bg-[hsl(var(--success)/0.1)] border border-[hsl(var(--success)/0.3)] rounded-xl text-center"
           >
             <Check className="w-8 h-8 text-[hsl(var(--success-foreground))] mx-auto mb-2" />
-            <p className="text-sm font-bold text-[hsl(var(--success-foreground))]">تم إرسال طلب VIP {selectedVip} بنجاح!</p>
+            <p className="text-sm font-bold text-[hsl(var(--success-foreground))]">تم تفعيل VIP {selectedVip} بنجاح! 🎉</p>
+            <p className="text-xs text-muted-foreground mt-1">تم تطبيق الـ VIP على حسابك تلقائياً</p>
           </motion.div>
         ) : (
           <motion.button
