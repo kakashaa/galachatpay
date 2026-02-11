@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.gala-salary]
 verify_jwt = false
+
+[functions.gala-transactions]
+verify_jwt = false
