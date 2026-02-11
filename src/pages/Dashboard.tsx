@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import UserProfileCard from "@/components/UserProfileCard";
-import LevelBars from "@/components/LevelBars";
 import MenuGrid from "@/components/MenuGrid";
 import BottomNav from "@/components/BottomNav";
 import { VideoStoryCircle } from "@/components/VideoStoryCircle";
@@ -50,7 +49,6 @@ const Dashboard: React.FC = () => {
       <main className="relative z-10 px-5">
         <VideoStoryCircle />
         <UserProfileCard />
-        <LevelBars />
 
         {/* Services Title */}
         <motion.div
