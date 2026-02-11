@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, User, Crown, Send, CheckCircle, Info, ArrowDownToLine,
-  Clock, Zap, AlertCircle, Globe, CreditCard, UserCheck, Lock, Shield, DollarSign, Users,
+  Clock, Zap, AlertCircle, Globe, CreditCard, UserCheck, Lock, Shield, DollarSign, Users, Star,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,11 @@ const SalaryWithdraw: React.FC = () => {
   const [transferAmount, setTransferAmount] = useState("");
   const [showMonthlyLocked, setShowMonthlyLocked] = useState(false);
   const [showInstantInstructions, setShowInstantInstructions] = useState(false);
+
+  // Star code redemption
+  const [starCode, setStarCode] = useState("");
+  const [starCodeData, setStarCodeData] = useState<{ code: string; usd_amount: number; stars_amount: number } | null>(null);
+  const [starCodeError, setStarCodeError] = useState("");
 
   // API confirmed data
   const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
@@ -79,7 +84,50 @@ const SalaryWithdraw: React.FC = () => {
       setShowInstantInstructions(true);
       return;
     }
+    if (value === "star_code") {
+      setWithdrawType("star_code");
+      return;
+    }
     setWithdrawType(value);
+  };
+
+  const handleValidateStarCode = async () => {
+    if (!starCode.trim()) { setStarCodeError("أدخل الكود"); return; }
+    setLoading(true);
+    setStarCodeError("");
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("star_cashout_codes")
+        .select("*")
+        .eq("code", starCode.trim().toUpperCase())
+        .single();
+
+      if (fetchError || !data) {
+        setStarCodeError("الكود غير صحيح أو غير موجود");
+        setLoading(false);
+        return;
+      }
+
+      if ((data as any).is_used) {
+        setStarCodeError("هذا الكود مستخدم من قبل");
+        setLoading(false);
+        return;
+      }
+
+      setStarCodeData({
+        code: (data as any).code,
+        usd_amount: (data as any).usd_amount,
+        stars_amount: (data as any).stars_amount,
+      });
+      setTransferAmount(String((data as any).usd_amount));
+      setConfirmedAmount((data as any).usd_amount);
+      setConfirmedDate(new Date().toISOString().split("T")[0]);
+      setStep("details");
+    } catch {
+      setStarCodeError("حدث خطأ");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleProceedToTransfer = () => {
@@ -149,7 +197,7 @@ const SalaryWithdraw: React.FC = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const { error: insertError } = await supabase.from("salary_requests").insert({
+      const { data: insertedRequest, error: insertError } = await supabase.from("salary_requests").insert({
         user_uuid: user.uuid,
         user_name: user.name,
         user_phone: user.phone,
@@ -159,15 +207,24 @@ const SalaryWithdraw: React.FC = () => {
         recipient_name: fullName,
         recipient_country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
         payment_method: selectedMethod?.label || "",
-        payment_details: accountInfo,
+        payment_details: withdrawType === "star_code" ? `كود نجوم: ${starCode}` : accountInfo,
         status: "pending",
-      });
+      }).select("id").single();
       if (insertError) {
         console.error("Insert error:", insertError);
         setError("حدث خطأ في حفظ الطلب. حاول مرة أخرى.");
         setLoading(false);
         return;
       }
+
+      // Mark star code as used
+      if (withdrawType === "star_code" && starCode) {
+        await supabase
+          .from("star_cashout_codes")
+          .update({ is_used: true, used_at: new Date().toISOString(), used_in_request_id: (insertedRequest as any)?.id })
+          .eq("code", starCode.trim().toUpperCase());
+      }
+
       setSubmitted(true);
     } catch {
       setError("حدث خطأ غير متوقع.");
@@ -301,13 +358,65 @@ const SalaryWithdraw: React.FC = () => {
                     <p className="text-[11px] text-muted-foreground">متاح دائماً • بيع الكوينزات لأي داعم</p>
                   </div>
                 </button>
+
+                {/* Star Code */}
+                <button
+                  onClick={() => handleWithdrawTypeChange("star_code")}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                    withdrawType === "star_code"
+                      ? "border-yellow-500 bg-yellow-500/10"
+                      : "border-border/30 bg-muted/20 hover:bg-muted/40"
+                  }`}
+                >
+                  <div className={`p-2 rounded-lg ${withdrawType === "star_code" ? "bg-yellow-500/20 text-yellow-400" : "bg-muted/30 text-muted-foreground"}`}>
+                    <Star className="w-5 h-5" />
+                  </div>
+                  <div className="text-right flex-1">
+                    <p className="text-sm font-bold text-foreground">سحب عبر كود النجوم ⭐</p>
+                    <p className="text-[11px] text-muted-foreground">أدخل كود النجوم لسحب فلوسك</p>
+                  </div>
+                </button>
               </div>
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-              <Button onClick={handleProceedToTransfer} disabled={!withdrawType} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40">
-                متابعة
-              </Button>
-            </motion.div>
+
+            {/* Star Code Input - shown when star_code selected */}
+            {withdrawType === "star_code" && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Star className="w-4 h-4 text-yellow-400" /> أدخل كود النجوم
+                </h3>
+                <Input
+                  type="text"
+                  value={starCode}
+                  onChange={(e) => { setStarCode(e.target.value.toUpperCase()); setStarCodeError(""); }}
+                  placeholder="مثال: STAR-ABCD1234"
+                  className="bg-muted/20 border-border/30 text-center font-mono text-lg tracking-wider"
+                  dir="ltr"
+                />
+                {starCodeError && (
+                  <div className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/30 rounded-lg">
+                    <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                    <p className="text-xs text-destructive">{starCodeError}</p>
+                  </div>
+                )}
+                <Button
+                  onClick={handleValidateStarCode}
+                  disabled={loading || !starCode.trim()}
+                  className="w-full gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40"
+                >
+                  {loading ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : "تحقق من الكود"}
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Regular proceed button for monthly */}
+            {withdrawType && withdrawType !== "star_code" && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <Button onClick={handleProceedToTransfer} disabled={!withdrawType} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40">
+                  متابعة
+                </Button>
+              </motion.div>
+            )}
           </>
         )}
 

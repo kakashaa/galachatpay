@@ -479,6 +479,45 @@ export type Database = {
         }
         Relationships: []
       }
+      star_cashout_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_used: boolean
+          stars_amount: number
+          usd_amount: number
+          used_at: string | null
+          used_in_request_id: string | null
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_used?: boolean
+          stars_amount: number
+          usd_amount: number
+          used_at?: string | null
+          used_in_request_id?: string | null
+          user_name: string
+          user_uuid: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_used?: boolean
+          stars_amount?: number
+          usd_amount?: number
+          used_at?: string | null
+          used_in_request_id?: string | null
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       star_gift_logs: {
         Row: {
           amount: number
