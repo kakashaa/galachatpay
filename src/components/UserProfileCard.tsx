@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, HelpCircle } from "lucide-react";
+import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles } from "lucide-react";
+import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -226,8 +227,8 @@ const UserProfileCard: React.FC = () => {
                 className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[8px] font-bold active:scale-95 transition-transform"
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
               >
-                <HelpCircle className="w-2.5 h-2.5 text-muted-foreground" />
-                <span className="text-muted-foreground">الشروط</span>
+                <PulsingHelpIcon size={10} />
+                <span className="text-destructive font-bold">الشروط</span>
               </button>
             </div>
           </div>

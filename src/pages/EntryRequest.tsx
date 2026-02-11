@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Play, X, Star, Send, User as UserIcon, HelpCircle, Lock } from "lucide-react";
+import { Play, X, Star, Send, User as UserIcon, Lock } from "lucide-react";
+import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import TikTokInteraction from "@/components/TikTokInteraction";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -202,8 +203,8 @@ const EntryRequest: React.FC = () => {
                 <p className="text-base font-black text-accent leading-none">{totalStars} <span className="text-[10px] font-normal text-muted-foreground">⭐</span></p>
               </div>
             </div>
-            <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-full bg-primary/10 animate-bounce-slow shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
-              <HelpCircle className="w-4 h-4 text-primary" />
+            <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-full bg-destructive/10 shadow-[0_0_8px_hsl(var(--destructive)/0.4)]">
+              <PulsingHelpIcon size={16} />
             </button>
           </div>
           <div className="flex items-center gap-3 text-[10px] border-t border-border/20 pt-2">

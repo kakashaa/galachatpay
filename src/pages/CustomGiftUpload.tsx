@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, Sparkles, HelpCircle, CheckCircle, AlertTriangle, User, Clock, Image as ImageIcon } from "lucide-react";
+import { Upload, Sparkles, CheckCircle, AlertTriangle, User, Clock, Image as ImageIcon } from "lucide-react";
+import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -207,7 +208,7 @@ const CustomGiftUpload: React.FC = () => {
           {/* Requirements */}
           <div className="glass-card p-4 space-y-3 css-fade-up-d1">
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-primary" />
+              <PulsingHelpIcon size={16} />
               المطلوبات
             </h3>
             <ul className="space-y-2 text-xs text-muted-foreground" dir="rtl">
@@ -303,8 +304,8 @@ const CustomGiftUpload: React.FC = () => {
         <div className="glass-card p-3 css-fade-up">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={() => setShowInfo(true)} className="p-1.5 rounded-full bg-primary/10 animate-bounce-slow shadow-[0_0_8px_hsl(var(--primary)/0.4)]">
-                <HelpCircle className="w-4 h-4 text-primary" />
+              <button onClick={() => setShowInfo(true)} className="p-1.5 rounded-full bg-destructive/10 shadow-[0_0_8px_hsl(var(--destructive)/0.4)]">
+                <PulsingHelpIcon size={16} />
               </button>
               <span className="text-[10px] text-muted-foreground">معلومات</span>
             </div>

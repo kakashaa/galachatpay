@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, HelpCircle, User, Lock, Shield, Fingerprint, Timer, Ban } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Fingerprint, Timer, Ban } from "lucide-react";
+import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import LoginInstructions from "@/components/LoginInstructions";
@@ -371,7 +372,7 @@ const Login: React.FC = () => {
             onClick={() => setShowInstructions(true)}
             className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium flex items-center justify-center gap-2 group mx-auto animate-pulse-glow"
           >
-            <HelpCircle className="w-4 h-4 animate-bounce-slow" />
+            <PulsingHelpIcon size={16} />
             <span className="border-b border-transparent group-hover:border-primary pb-0.5">تعليمات تسجيل الدخول</span>
           </button>
           <button
