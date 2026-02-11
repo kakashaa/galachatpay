@@ -123,8 +123,34 @@ const SalaryWithdraw: React.FC = () => {
     setStep("confirm");
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const { error: insertError } = await supabase.from("salary_requests").insert({
+        user_uuid: user.uuid,
+        user_name: user.name,
+        user_phone: user.phone,
+        request_type: withdrawType,
+        amount_usd: Number(transferAmount),
+        amount_coins: confirmedAmount,
+        recipient_name: fullName,
+        recipient_country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
+        payment_method: selectedMethod?.label || "",
+        payment_details: accountInfo,
+        status: "pending",
+      });
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        setError("حدث خطأ في حفظ الطلب. حاول مرة أخرى.");
+        setLoading(false);
+        return;
+      }
+      setSubmitted(true);
+    } catch {
+      setError("حدث خطأ غير متوقع.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── SUCCESS SCREEN ──
@@ -139,8 +165,9 @@ const SalaryWithdraw: React.FC = () => {
             <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلب السحب بنجاح</h2>
             <p className="text-sm text-muted-foreground">سيتم معالجة طلبك وإشعارك بالنتيجة</p>
           </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-            <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">العودة للرئيسية</Button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8">
+            <Button onClick={() => navigate("/my-requests")} variant="outline" className="flex-1 border-border/30 font-bold">طلباتي</Button>
+            <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>

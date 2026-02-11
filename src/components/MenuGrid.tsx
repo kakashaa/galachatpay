@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
-  Sparkles, PlayCircle, Frame, ShieldCheck,
+  Sparkles, PlayCircle, Frame, ShieldCheck, FileText,
 } from "lucide-react";
 
 interface MenuItem {
@@ -79,6 +79,13 @@ const menuItems: MenuItem[] = [
     route: "/bd-request",
     iconColor: "text-red-400",
     bgColor: "bg-red-500/10",
+  },
+  {
+    icon: <FileText className="w-6 h-6" />,
+    label: "طلباتي",
+    route: "/my-requests",
+    iconColor: "text-teal-400",
+    bgColor: "bg-teal-500/10",
   },
 ];
 
