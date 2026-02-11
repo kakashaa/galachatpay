@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Shield, Lock, ArrowRight, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -16,22 +15,17 @@ const AdminLogin: React.FC = () => {
       setError("يرجى إدخال كلمة المرور");
       return;
     }
-
     setLoading(true);
     setError("");
-
     try {
       const { data, error: fnError } = await supabase.functions.invoke("admin-manage", {
         body: { password, action: "list_videos", data: {} },
       });
-
       if (fnError || !data?.data) {
         setError("كلمة المرور غير صحيحة");
         setLoading(false);
         return;
       }
-
-      // Store admin session
       sessionStorage.setItem("admin_token", password);
       navigate("/admin/dashboard");
     } catch {
@@ -44,27 +38,16 @@ const AdminLogin: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background relative">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
-
       <div className="w-full max-w-sm z-10">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
+        <div className="text-center mb-8 css-fade-up">
           <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4">
             <Shield className="w-10 h-10 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">لوحة التحكم</h1>
           <p className="text-sm text-muted-foreground mt-1">تسجيل دخول المسؤول</p>
-        </motion.div>
+        </div>
 
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          onSubmit={handleLogin}
-          className="space-y-4"
-        >
+        <form onSubmit={handleLogin} className="space-y-4 css-fade-up-d2">
           <div className="relative">
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
               <Lock className="w-5 h-5" />
@@ -80,36 +63,22 @@ const AdminLogin: React.FC = () => {
           </div>
 
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-2xl"
-            >
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-2xl css-fade-up">
               <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
               <p className="text-sm text-destructive">{error}</p>
-            </motion.div>
+            </div>
           )}
 
-          <motion.button
+          <button
             type="submit"
             disabled={loading}
-            whileTap={{ scale: 0.98 }}
-            className="w-full h-14 rounded-2xl gold-gradient text-white font-bold text-lg shadow-lg shadow-primary/20 disabled:opacity-60 transition-all"
+            className="w-full h-14 rounded-2xl gold-gradient text-white font-bold text-lg shadow-lg shadow-primary/20 disabled:opacity-60 transition-all active:scale-95"
           >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-            ) : (
-              "دخول"
-            )}
-          </motion.button>
-        </motion.form>
+            {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "دخول"}
+          </button>
+        </form>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-6 text-center"
-        >
+        <div className="mt-6 text-center css-fade-up-d4">
           <button
             onClick={() => navigate("/")}
             className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-2 mx-auto"
@@ -117,7 +86,7 @@ const AdminLogin: React.FC = () => {
             <ArrowRight className="w-4 h-4" />
             العودة لتسجيل الدخول
           </button>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

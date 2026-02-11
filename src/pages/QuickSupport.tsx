@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Headset, ShieldCheck, Send, AlertTriangle, User, Crown, Star, Lock } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
@@ -19,8 +18,7 @@ const QuickSupport: React.FC = () => {
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  // Demo user data — will be replaced by API
-  const userVipLevel = 5; // Change to test: 0-4 = blocked, 5-6 = allowed
+  const userVipLevel = 5;
   const hasAccess = userVipLevel >= 5;
 
   const user = {
@@ -37,36 +35,21 @@ const QuickSupport: React.FC = () => {
     setSubmitted(true);
   };
 
-  // Access denied state
   if (!hasAccess) {
     return (
       <MobileLayout showHeader headerTitle="الدعم السريع" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-6"
-          >
+          <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-6 css-scale-up">
             <Lock className="w-10 h-10 text-destructive" />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-center"
-          >
+          </div>
+          <div className="text-center css-fade-up-d2">
             <h2 className="text-lg font-bold text-foreground mb-2">غير متاح</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               خدمة الدعم السريع مخصصة حصريًا لكبار الشخصيات
             </p>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="w-full mt-8 glass-card p-5"
-          >
+          <div className="w-full mt-8 glass-card p-5 css-fade-up-d4">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="w-4 h-4 text-primary flex-shrink-0" />
               <p className="text-sm font-bold text-foreground">الشروط المطلوبة</p>
@@ -90,69 +73,43 @@ const QuickSupport: React.FC = () => {
             <p className="text-[11px] text-muted-foreground mt-4 text-center">
               مستوى VIP الحالي: <span className="text-destructive font-bold">VIP {userVipLevel || "بدون"}</span>
             </p>
-          </motion.div>
+          </div>
         </div>
       </MobileLayout>
     );
   }
 
-  // Success state
   if (submitted) {
     return (
       <MobileLayout showHeader headerTitle="الدعم السريع" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 200 }}
-            className="w-20 h-20 rounded-full bg-[hsl(var(--success)/0.15)] flex items-center justify-center mb-6"
-          >
+          <div className="w-20 h-20 rounded-full bg-[hsl(var(--success)/0.15)] flex items-center justify-center mb-6 css-scale-up">
             <ShieldCheck className="w-10 h-10 text-[hsl(var(--success-foreground))]" />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-center"
-          >
+          </div>
+          <div className="text-center css-fade-up-d3">
             <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلبك بنجاح</h2>
             <p className="text-sm text-muted-foreground">سيتم معالجة طلبك بأولوية عالية</p>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="w-full mt-8 glass-card p-4 space-y-2"
-          >
+          </div>
+          <div className="w-full mt-8 glass-card p-4 space-y-2 css-fade-up-d5">
             <InfoRow label="نوع الطلب" value={selectedType} />
             <InfoRow label="معرف الحساب" value={user.id} />
             <InfoRow label="الأولوية" value="عالية جدًا" highlight />
-          </motion.div>
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.7 }}
-            whileTap={{ scale: 0.97 }}
+          </div>
+          <button
             onClick={() => navigate("/dashboard")}
-            className="mt-6 w-full h-12 rounded-xl border border-primary/30 text-primary font-bold bg-primary/5 hover:bg-primary/10 transition-colors"
+            className="mt-6 w-full h-12 rounded-xl border border-primary/30 text-primary font-bold bg-primary/5 hover:bg-primary/10 transition-colors css-fade-up-d7 active:scale-95"
           >
             العودة للرئيسية
-          </motion.button>
+          </button>
         </div>
       </MobileLayout>
     );
   }
 
-  // Main form
   return (
     <MobileLayout showHeader headerTitle="الدعم السريع" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-6 space-y-6">
-        {/* VIP Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-4 flex items-center gap-4 glow-gold"
-        >
+        <div className="glass-card p-4 flex items-center gap-4 glow-gold css-fade-up">
           <div className="w-12 h-12 rounded-full gold-gradient flex items-center justify-center flex-shrink-0">
             <Crown className="w-6 h-6 text-primary-foreground" />
           </div>
@@ -161,15 +118,9 @@ const QuickSupport: React.FC = () => {
             <p className="text-[11px] text-muted-foreground">VIP {user.vip} • أولوية عالية جدًا</p>
           </div>
           <Headset className="w-5 h-5 text-primary" />
-        </motion.div>
+        </div>
 
-        {/* User Info (auto-filled) */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-card p-4"
-        >
+        <div className="glass-card p-4 css-fade-up-d1">
           <div className="flex items-center gap-2 mb-3">
             <User className="w-4 h-4 text-primary" />
             <p className="text-sm font-bold text-foreground">معلومات الحساب</p>
@@ -180,17 +131,9 @@ const QuickSupport: React.FC = () => {
             <InfoRow label="المستوى" value={`Level ${user.level}`} />
             <InfoRow label="VIP" value={`VIP ${user.vip}`} highlight />
           </div>
-        </motion.div>
+        </div>
 
-        {/* Support Form */}
-        <motion.form
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          onSubmit={handleSubmit}
-          className="space-y-4"
-        >
-          {/* Request Type */}
+        <form onSubmit={handleSubmit} className="space-y-4 css-fade-up-d2">
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground">نوع الطلب / المشكلة</label>
             <div className="grid grid-cols-2 gap-2">
@@ -211,7 +154,6 @@ const QuickSupport: React.FC = () => {
             </div>
           </div>
 
-          {/* Description */}
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground">وصف المشكلة</label>
             <textarea
@@ -227,17 +169,15 @@ const QuickSupport: React.FC = () => {
             </p>
           </div>
 
-          {/* Submit */}
-          <motion.button
+          <button
             type="submit"
-            whileTap={{ scale: 0.97 }}
             disabled={!selectedType || !description.trim()}
-            className="w-full h-12 gold-gradient rounded-xl text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity"
+            className="w-full h-12 gold-gradient rounded-xl text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity active:scale-95"
           >
             <Send className="w-5 h-5" />
             إرسال الطلب
-          </motion.button>
-        </motion.form>
+          </button>
+        </form>
       </div>
     </MobileLayout>
   );

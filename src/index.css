@@ -187,3 +187,37 @@
 .animate-water-wave {
   animation: water-wave 2s ease-in-out infinite;
 }
+
+/* Lightweight CSS animations to replace framer-motion */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-up {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(80px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes expand-in {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; }
+}
+.css-fade-up { animation: fade-up 0.4s ease-out both; }
+.css-fade-up-d1 { animation: fade-up 0.4s ease-out 0.05s both; }
+.css-fade-up-d2 { animation: fade-up 0.4s ease-out 0.1s both; }
+.css-fade-up-d3 { animation: fade-up 0.4s ease-out 0.15s both; }
+.css-fade-up-d4 { animation: fade-up 0.4s ease-out 0.2s both; }
+.css-fade-up-d5 { animation: fade-up 0.4s ease-out 0.25s both; }
+.css-fade-up-d6 { animation: fade-up 0.4s ease-out 0.3s both; }
+.css-fade-up-d7 { animation: fade-up 0.4s ease-out 0.35s both; }
+.css-fade-up-d8 { animation: fade-up 0.4s ease-out 0.4s both; }
+.css-fade-up-d9 { animation: fade-up 0.4s ease-out 0.45s both; }
+.css-fade-up-d10 { animation: fade-up 0.4s ease-out 0.5s both; }
+.css-scale-up { animation: scale-up 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.css-scale-up-d3 { animation: scale-up 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both; }
+.css-slide-up { animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both; }
+.css-expand { animation: expand-in 0.3s ease-out both; overflow: hidden; }
+.css-bar-fill { transition: width 1s ease-out 0.3s; }

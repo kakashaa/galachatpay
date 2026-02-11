@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Gift, User, Shield, Crown, Send, CheckCircle, Sparkles, Frame, DoorOpen } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
@@ -14,7 +13,6 @@ const GiftRequest: React.FC = () => {
   const [description, setDescription] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  // Demo user data
   const user = {
     id: "123456789",
     name: "محمد أحمد",
@@ -38,23 +36,18 @@ const GiftRequest: React.FC = () => {
     return (
       <MobileLayout showHeader headerTitle="طلب هدية" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.6 }}
-            className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6"
-          >
+          <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6 css-scale-up">
             <CheckCircle className="w-10 h-10 text-success" />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
+          </div>
+          <div className="text-center css-fade-up-d3">
             <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلبك بنجاح</h2>
             <p className="text-sm text-muted-foreground">سيتم مراجعة طلبك وإشعارك بالنتيجة</p>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+          </div>
+          <div className="css-fade-up-d5">
             <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">
               العودة للرئيسية
             </Button>
-          </motion.div>
+          </div>
         </div>
       </MobileLayout>
     );
@@ -63,8 +56,7 @@ const GiftRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="طلب هدية" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
-        {/* User Info */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
+        <div className="glass-card p-4 space-y-3 css-fade-up">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <User className="w-4 h-4 text-primary" />
             معلومات الحساب
@@ -89,10 +81,9 @@ const GiftRequest: React.FC = () => {
               </span>
             </div>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Gift Type Selection */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4 space-y-3">
+        <div className="glass-card p-4 space-y-3 css-fade-up-d1">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Gift className="w-4 h-4 text-primary" />
             نوع الهدية
@@ -119,10 +110,9 @@ const GiftRequest: React.FC = () => {
               </Label>
             ))}
           </RadioGroup>
-        </motion.div>
+        </div>
 
-        {/* Description */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-4 space-y-3">
+        <div className="glass-card p-4 space-y-3 css-fade-up-d2">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Shield className="w-4 h-4 text-primary" />
             وصف الهدية أو الفكرة
@@ -135,10 +125,9 @@ const GiftRequest: React.FC = () => {
             dir="rtl"
           />
           <p className="text-[11px] text-muted-foreground text-left">{description.length}/500</p>
-        </motion.div>
+        </div>
 
-        {/* Submit */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <div className="css-fade-up-d3">
           <Button
             onClick={handleSubmit}
             disabled={!giftType || !description.trim()}
@@ -147,7 +136,7 @@ const GiftRequest: React.FC = () => {
             <Send className="w-5 h-5 ml-2" />
             إرسال الطلب
           </Button>
-        </motion.div>
+        </div>
       </div>
     </MobileLayout>
   );

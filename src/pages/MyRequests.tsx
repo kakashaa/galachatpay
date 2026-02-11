@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   FileText, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
@@ -90,11 +89,7 @@ const MyRequests: React.FC = () => {
     <MobileLayout showHeader headerTitle="طلباتي" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-4">
         {/* Summary Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-3 gap-3"
-        >
+        <div className="grid grid-cols-3 gap-3 css-fade-up">
           <div className="glass-card p-3 text-center">
             <p className="text-lg font-bold text-foreground">{requests.length}</p>
             <p className="text-[10px] text-muted-foreground">إجمالي</p>
@@ -111,22 +106,16 @@ const MyRequests: React.FC = () => {
             </p>
             <p className="text-[10px] text-muted-foreground">تم التحويل</p>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Loading */}
         {loading && (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
           </div>
         )}
 
-        {/* Empty State */}
         {!loading && requests.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center py-16 text-center"
-          >
+          <div className="flex flex-col items-center py-16 text-center css-fade-up">
             <div className="w-16 h-16 rounded-full bg-muted/30 flex items-center justify-center mb-4">
               <FileText className="w-8 h-8 text-muted-foreground" />
             </div>
@@ -138,24 +127,20 @@ const MyRequests: React.FC = () => {
             >
               سحب راتب جديد
             </button>
-          </motion.div>
+          </div>
         )}
 
-        {/* Requests List */}
         {!loading &&
           requests.map((req, index) => {
             const status = statusConfig[req.status] || statusConfig.pending;
             const isExpanded = expandedId === req.id;
 
             return (
-              <motion.div
+              <div
                 key={req.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`glass-card overflow-hidden border ${status.bg}`}
+                className={`glass-card overflow-hidden border ${status.bg} css-fade-up`}
+                style={{ animationDelay: `${index * 0.05}s` }}
               >
-                {/* Header - clickable */}
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : req.id)}
                   className="w-full p-4 flex items-center justify-between"
@@ -192,14 +177,8 @@ const MyRequests: React.FC = () => {
                   </div>
                 </button>
 
-                {/* Expanded Details */}
                 {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="px-4 pb-4 space-y-2"
-                  >
+                  <div className="px-4 pb-4 space-y-2 css-expand">
                     <div className="border-t border-border/20 pt-3 space-y-2 text-xs">
                       <div className="flex justify-between bg-muted/20 rounded-lg p-2.5">
                         <span className="text-muted-foreground flex items-center gap-1">
@@ -236,7 +215,6 @@ const MyRequests: React.FC = () => {
                         <span className="font-bold text-foreground" dir="ltr">{req.payment_details}</span>
                       </div>
 
-                      {/* Admin Note */}
                       {req.admin_note && (
                         <div className="p-3 bg-primary/5 border border-primary/10 rounded-xl">
                           <p className="text-[11px] text-muted-foreground mb-1">ملاحظة الإدارة:</p>
@@ -244,7 +222,6 @@ const MyRequests: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Transfer Image */}
                       {req.transfer_image_url && req.status === "approved" && (
                         <button
                           onClick={() => setImagePreview(req.transfer_image_url)}
@@ -255,25 +232,22 @@ const MyRequests: React.FC = () => {
                         </button>
                       )}
                     </div>
-                  </motion.div>
+                  </div>
                 )}
-              </motion.div>
+              </div>
             );
           })}
       </div>
 
-      {/* Image Preview Modal */}
       {imagePreview && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-6"
           onClick={() => setImagePreview(null)}
         >
-          <motion.img
+          <img
             src={imagePreview}
             alt="صورة الحوالة"
-            className="max-w-full max-h-[80vh] rounded-2xl"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+            className="max-w-full max-h-[80vh] rounded-2xl css-scale-up"
           />
         </div>
       )}
