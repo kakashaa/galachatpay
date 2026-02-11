@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { toast } from "sonner";
 import SvgaPlayer from "@/components/SvgaPlayer";
+import GuestLoginPrompt from "@/components/GuestLoginPrompt";
 
 interface FrameItem {
   id: string;
@@ -53,6 +54,7 @@ const FramesRequest: React.FC = () => {
   const [claims, setClaims] = useState<FrameClaim[]>([]);
   const [showRules, setShowRules] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showGuestLogin, setShowGuestLogin] = useState(false);
 
   const chargerLevel = user?.level?.charger_level ?? 0;
   const config = getLevelConfig(chargerLevel);
@@ -132,6 +134,10 @@ const FramesRequest: React.FC = () => {
   };
 
   const handleClaimStart = (frame: FrameItem) => {
+    if (!user) {
+      setShowGuestLogin(true);
+      return;
+    }
     setSelectedFrame(frame);
     setClaimType("self");
     setFriendUuid("");
@@ -377,6 +383,8 @@ const FramesRequest: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <GuestLoginPrompt open={showGuestLogin} onClose={() => setShowGuestLogin(false)} />
     </MobileLayout>
   );
 };

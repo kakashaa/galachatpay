@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { toast } from "sonner";
 import SvgaPlayer from "@/components/SvgaPlayer";
+import GuestLoginPrompt from "@/components/GuestLoginPrompt";
 
 interface EntryGift {
   id: string;
@@ -71,6 +72,7 @@ const EntryRequest: React.FC = () => {
   const [customGifts, setCustomGifts] = useState<CustomGift[]>([]);
   const [selectedCustomGift, setSelectedCustomGift] = useState<CustomGift | null>(null);
   const [showCustomVideo, setShowCustomVideo] = useState(false);
+  const [showGuestLogin, setShowGuestLogin] = useState(false);
 
   const chargerLevel = user?.level?.charger_level ?? 0;
   const config = getLevelConfig(chargerLevel);
@@ -175,6 +177,10 @@ const EntryRequest: React.FC = () => {
   };
 
   const handleClaimStart = (gift: EntryGift) => {
+    if (!user) {
+      setShowGuestLogin(true);
+      return;
+    }
     setSelectedGift(gift);
     setClaimType("self");
     setFriendUuid("");
@@ -611,6 +617,8 @@ const EntryRequest: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <GuestLoginPrompt open={showGuestLogin} onClose={() => setShowGuestLogin(false)} />
     </MobileLayout>
   );
 };
