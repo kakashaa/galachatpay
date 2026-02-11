@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Copy, Zap, Diamond, Gift } from "lucide-react";
+import { Copy, Zap, Diamond, Gift, Coins, DollarSign } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
@@ -129,6 +129,25 @@ const UserProfileCard: React.FC = () => {
             <div className={`inline-flex items-center px-3 py-1 rounded-lg text-[11px] font-bold ${badgeStyle}`}>
               {typeLabel}
             </div>
+          </div>
+        </div>
+
+        {/* Wallet Section */}
+        <div className="relative z-10 flex gap-3 mb-4" dir="rtl">
+          <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(234,179,8,0.15), rgba(234,179,8,0.05))", border: "1px solid rgba(234,179,8,0.2)" }}>
+            <Coins className="w-5 h-5 mx-auto mb-1 text-yellow-400" />
+            <p className="text-[10px] text-muted-foreground">كوينز</p>
+            <p className="text-sm font-black text-foreground">{user.my_store?.coins?.toLocaleString() ?? 0}</p>
+          </div>
+          <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(168,85,247,0.05))", border: "1px solid rgba(168,85,247,0.2)" }}>
+            <Diamond className="w-5 h-5 mx-auto mb-1 text-purple-400" />
+            <p className="text-[10px] text-muted-foreground">دايموند</p>
+            <p className="text-sm font-black text-foreground">{user.my_store?.diamonds?.toLocaleString() ?? 0}</p>
+          </div>
+          <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))", border: "1px solid rgba(34,197,94,0.2)" }}>
+            <DollarSign className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
+            <p className="text-[10px] text-muted-foreground">الرصيد</p>
+            <p className="text-sm font-black text-foreground">${user.my_store?.usd?.toLocaleString() ?? 0}</p>
           </div>
         </div>
 
