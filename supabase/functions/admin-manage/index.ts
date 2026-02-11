@@ -150,6 +150,42 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Frames management
+      case "list_frames": {
+        const { data: frames, error } = await supabase
+          .from("frames")
+          .select("*")
+          .order("display_order", { ascending: true });
+        if (error) throw error;
+        result = frames;
+        break;
+      }
+      case "add_frame": {
+        const { error } = await supabase.from("frames").insert(data);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "update_frame": {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from("frames")
+          .update(updateData)
+          .eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "delete_frame": {
+        const { error } = await supabase
+          .from("frames")
+          .delete()
+          .eq("id", data.id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       // Ban reports management
       case "list_ban_reports": {
         const { data: reports, error } = await supabase

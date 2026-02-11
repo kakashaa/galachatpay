@@ -21,7 +21,7 @@ const menuItems: MenuItem[] = [
   { icon: Gift, label: "هدية مخصصة", route: "/gift", bg: "rgba(236,72,153,0.12)", iconColor: "text-pink-400" },
   { icon: Sparkles, label: "دخولية", route: "/entry-request", bg: "rgba(6,182,212,0.12)", iconColor: "text-cyan-400" },
   { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400" },
-  { icon: Frame, label: "إطار", route: "/gift", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400" },
+  { icon: Frame, label: "إطار", route: "/frames", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400" },
   { icon: ShieldCheck, label: "توثيق BD", route: "/bd-request", bg: "rgba(239,68,68,0.12)", iconColor: "text-red-400" },
 ];
 

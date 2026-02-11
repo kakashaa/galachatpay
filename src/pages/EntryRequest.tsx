@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { toast } from "sonner";
+import SvgaPlayer from "@/components/SvgaPlayer";
 
 interface EntryGift {
   id: string;
@@ -197,6 +198,8 @@ const EntryRequest: React.FC = () => {
     return lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov");
   };
 
+  const isSvga = (url: string) => url.toLowerCase().endsWith(".svga");
+
   return (
     <MobileLayout showHeader headerTitle="الدخوليات" onBack={() => navigate("/dashboard")}>
       <div className="px-3 py-4 space-y-4">
@@ -258,6 +261,10 @@ const EntryRequest: React.FC = () => {
                         playsInline
                         className="w-full h-full object-cover"
                       />
+                    ) : isSvga(gift.video_url) ? (
+                      <SvgaPlayer src={gift.video_url} width={120} height={200} className="w-full h-full" />
+                    ) : gift.video_url.toLowerCase().endsWith(".webp") ? (
+                      <img src={gift.video_url} alt={gift.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10">
                         <Play className="w-8 h-8 text-primary/50" />
@@ -320,6 +327,8 @@ const EntryRequest: React.FC = () => {
                     playsInline
                     className="w-full h-full object-contain"
                   />
+                ) : isSvga(selectedGift.video_url) ? (
+                  <SvgaPlayer src={selectedGift.video_url} width={300} height={500} className="w-full h-full" />
                 ) : selectedGift.video_url.toLowerCase().endsWith(".webp") ? (
                   <img
                     src={selectedGift.video_url}
