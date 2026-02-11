@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Globe, CheckCircle, AlertCircle, ChevronLeft, Copy, ChevronDown, ChevronUp,
+  Globe, CheckCircle, AlertCircle, ChevronLeft, Copy, ChevronDown, ChevronUp, QrCode,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface BankAccount {
   name: string;
@@ -18,38 +19,41 @@ interface BankAccount {
   email?: string;
   phoneNumber?: string;
   additionalInfo?: Record<string, string>;
+  qrImage?: string;
 }
 
 const banksByCountry: Record<string, { name: string; flag: string; banks: BankAccount[] }> = {
   US: {
     name: "أمريكا", flag: "🇺🇸",
     banks: [
-      { name: "CashApp", nameArabic: "كاش آب", tag: "$Galalive313", accountHolder: "Dobeee Soneee" },
-      { name: "CashApp", nameArabic: "كاش آب (حساب 2)", tag: "$cashalk1", accountHolder: "Gala live chat" },
-      { name: "Zelle", nameArabic: "زيل", email: "ghalibali32@gmail.com", accountHolder: "ASSAF GHALIB" },
-      { name: "Zelle", nameArabic: "زيل (حساب 2)", accountHolder: "Hamza Ghalib" },
-      { name: "Apple Pay", nameArabic: "آبل باي", phoneNumber: "7146844346" },
+      { name: "CashApp", nameArabic: "كاش آب", tag: "$Galalive313", accountHolder: "Dobeee Soneee", qrImage: "/banks/cashapp-galalive313.jpeg" },
+      { name: "CashApp", nameArabic: "كاش آب (حساب 2)", tag: "$cashalk1", accountHolder: "Gala live chat", qrImage: "/banks/cashapp-cashalk1.jpeg" },
+      { name: "Zelle", nameArabic: "زيل", email: "ghalibali32@gmail.com", accountHolder: "ASSAF GHALIB", qrImage: "/banks/zelle-assaf.jpeg" },
+      { name: "Zelle", nameArabic: "زيل (حساب 2)", accountHolder: "Hamza Ghalib", qrImage: "/banks/zelle-hamza.jpeg" },
+      { name: "Chime", nameArabic: "تشايم", qrImage: "/banks/chime-qr.png" },
+      { name: "Apple Pay", nameArabic: "آبل باي", phoneNumber: "7146844346", qrImage: "/banks/applepay-qr.jpeg" },
     ],
   },
   YE: {
     name: "اليمن", flag: "🇾🇪",
     banks: [
-      { name: "Kuraimi SAR", nameArabic: "الكريمي - ريال سعودي", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183733892" },
-      { name: "Kuraimi USD", nameArabic: "الكريمي - دولار", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183929703" },
-      { name: "Kuraimi YER", nameArabic: "الكريمي - ريال يمني", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183742708" },
+      { name: "Kuraimi SAR", nameArabic: "الكريمي - ريال سعودي", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183733892", qrImage: "/banks/kuraimi-sar.jpeg" },
+      { name: "Kuraimi USD", nameArabic: "الكريمي - دولار", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183929703", qrImage: "/banks/kuraimi-usd.jpeg" },
+      { name: "Kuraimi YER", nameArabic: "الكريمي - ريال يمني", accountHolder: "حمزه علي حسين غالب", accountNumber: "3183742708", qrImage: "/banks/kuraimi-yer.jpeg" },
       { name: "Jaib", nameArabic: "جيب", phoneNumber: "776168713", accountHolder: "حمزه علي حسين غالب", additionalInfo: { "الرقم البديل": "1542377" } },
     ],
   },
   SA: {
     name: "السعودية", flag: "🇸🇦",
     banks: [
-      { name: "Al Rajhi Bank", nameArabic: "بنك الراجحي", accountHolder: "ASSAF ALI GHALIB", accountNumber: "618000010006080901670", iban: "SA67 8000 0618 6080 1090 1670", additionalInfo: { "كود السويفت": "RJHISARI" } },
+      { name: "Al Rajhi Bank", nameArabic: "بنك الراجحي", accountHolder: "ASSAF ALI GHALIB", accountNumber: "618000010006080901670", iban: "SA67 8000 0618 6080 1090 1670", additionalInfo: { "كود السويفت": "RJHISARI" }, qrImage: "/banks/rajhi-qr.png" },
     ],
   },
 };
 
 const BankCard: React.FC<{ bank: BankAccount }> = ({ bank }) => {
   const [expanded, setExpanded] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const { toast } = useToast();
 
   const copyText = (text: string, label: string) => {
@@ -69,38 +73,62 @@ const BankCard: React.FC<{ bank: BankAccount }> = ({ bank }) => {
   }
 
   return (
-    <div className="glass-card overflow-hidden css-fade-up">
-      <button onClick={() => setExpanded(!expanded)} className="w-full p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-primary" />
+    <>
+      <div className="glass-card overflow-hidden css-fade-up">
+        <button onClick={() => setExpanded(!expanded)} className="w-full p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Globe className="w-5 h-5 text-primary" />
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-foreground">{bank.nameArabic}</p>
+              <p className="text-[10px] text-muted-foreground">{bank.name}</p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-bold text-foreground">{bank.nameArabic}</p>
-            <p className="text-[10px] text-muted-foreground">{bank.name}</p>
+          <div className="flex items-center gap-2">
+            {bank.qrImage && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowQR(true); }}
+                className="p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+              >
+                <QrCode className="w-4 h-4 text-primary" />
+              </button>
+            )}
+            {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </div>
-        </div>
-        {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-      </button>
+        </button>
 
-      {expanded && (
-        <div className="px-4 pb-4 space-y-2 css-expand">
-          <div className="border-t border-border/20 pt-3 space-y-2">
-            {details.map((d, i) => (
-              <div key={i} className="flex justify-between items-center bg-muted/20 rounded-lg p-2.5">
-                <span className="text-[11px] text-muted-foreground">{d.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-foreground" dir="ltr">{d.value}</span>
-                  <button onClick={() => copyText(d.value, d.label)} className="p-1 rounded-lg hover:bg-muted/30">
-                    <Copy className="w-3.5 h-3.5 text-primary" />
-                  </button>
+        {expanded && (
+          <div className="px-4 pb-4 space-y-2 css-expand">
+            <div className="border-t border-border/20 pt-3 space-y-2">
+              {details.map((d, i) => (
+                <div key={i} className="flex justify-between items-center bg-muted/20 rounded-lg p-2.5">
+                  <span className="text-[11px] text-muted-foreground">{d.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-foreground" dir="ltr">{d.value}</span>
+                    <button onClick={() => copyText(d.value, d.label)} className="p-1 rounded-lg hover:bg-muted/30">
+                      <Copy className="w-3.5 h-3.5 text-primary" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {bank.qrImage && (
+        <Dialog open={showQR} onOpenChange={setShowQR}>
+          <DialogContent className="max-w-[340px] p-4 rounded-2xl">
+            <div className="text-center space-y-3">
+              <p className="font-bold text-foreground">{bank.nameArabic}</p>
+              <img src={bank.qrImage} alt={`QR - ${bank.name}`} className="w-full rounded-xl" />
+              {bank.accountHolder && <p className="text-xs text-muted-foreground">{bank.accountHolder}</p>}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
-    </div>
+    </>
   );
 };
 
