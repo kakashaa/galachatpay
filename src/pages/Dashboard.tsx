@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Bell } from "lucide-react";
+import { LogOut, Bell, LogIn } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { VideoStoryCircle } from "@/components/VideoStoryCircle";
 import UserProfileCard from "@/components/UserProfileCard";
+import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
 import BottomNav from "@/components/BottomNav";
 
@@ -29,14 +30,8 @@ const Dashboard: React.FC = () => {
   }, [user?.uuid]);
 
   useEffect(() => {
-    if (!isAuthenticated) navigate("/");
-  }, [isAuthenticated, navigate]);
-
-  useEffect(() => {
     fetchNotifCount();
   }, [fetchNotifCount]);
-
-  if (!user) return null;
 
   return (
     <div className="mobile-container text-foreground min-h-screen pb-24 overflow-x-hidden relative">
@@ -48,26 +43,39 @@ const Dashboard: React.FC = () => {
 
       {/* Header */}
       <header className="relative z-10 flex justify-between items-center px-4 pt-6 pb-2">
-        <button
-          onClick={() => { logout(); navigate("/"); }}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
-        >
-          <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
-        </button>
+        {isAuthenticated ? (
+          <button
+            onClick={() => { logout(); navigate("/"); }}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate("/")}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-primary/15 border border-primary/30 active:bg-primary/25 transition-colors"
+          >
+            <LogIn className="w-3.5 h-3.5 text-primary" />
+          </button>
+        )}
 
         <h1 className="text-base font-black gradient-text">غلا شات</h1>
 
-        <button
-          onClick={() => navigate("/notifications")}
-          className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
-        >
-          <Bell className="w-3.5 h-3.5 text-muted-foreground" />
-          {notifCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[9px] font-black text-destructive-foreground flex items-center justify-center">
-              {notifCount > 99 ? "99+" : notifCount}
-            </span>
-          )}
-        </button>
+        {isAuthenticated ? (
+          <button
+            onClick={() => navigate("/notifications")}
+            className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+          >
+            <Bell className="w-3.5 h-3.5 text-muted-foreground" />
+            {notifCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[9px] font-black text-destructive-foreground flex items-center justify-center">
+                {notifCount > 99 ? "99+" : notifCount}
+              </span>
+            )}
+          </button>
+        ) : (
+          <div className="w-8" />
+        )}
       </header>
 
       {/* Main */}
@@ -75,7 +83,7 @@ const Dashboard: React.FC = () => {
         <MarqueeBanner />
         <VideoStoryCircle />
         <div className="mt-3" />
-        <UserProfileCard />
+        {isAuthenticated ? <UserProfileCard /> : <GuestProfileCard />}
 
         {/* Services Title */}
         <div className="flex items-center gap-2 mb-3 pr-1">
