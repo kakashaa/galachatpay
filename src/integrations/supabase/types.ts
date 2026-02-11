@@ -142,6 +142,80 @@ export type Database = {
         }
         Relationships: []
       }
+      frame_claims: {
+        Row: {
+          charger_level_at_claim: number
+          claim_month: string
+          claim_type: string
+          created_at: string
+          frame_id: string
+          friend_uuid: string | null
+          id: string
+          user_uuid: string
+        }
+        Insert: {
+          charger_level_at_claim?: number
+          claim_month: string
+          claim_type: string
+          created_at?: string
+          frame_id: string
+          friend_uuid?: string | null
+          id?: string
+          user_uuid: string
+        }
+        Update: {
+          charger_level_at_claim?: number
+          claim_month?: string
+          claim_type?: string
+          created_at?: string
+          frame_id?: string
+          friend_uuid?: string | null
+          id?: string
+          user_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "frame_claims_frame_id_fkey"
+            columns: ["frame_id"]
+            isOneToOne: false
+            referencedRelation: "frames"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      frames: {
+        Row: {
+          created_at: string
+          display_order: number
+          file_url: string
+          id: string
+          is_active: boolean
+          star_level: number
+          thumbnail_url: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          file_url: string
+          id?: string
+          is_active?: boolean
+          star_level?: number
+          thumbnail_url?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          file_url?: string
+          id?: string
+          is_active?: boolean
+          star_level?: number
+          thumbnail_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           admin_unblocked_at: string | null
