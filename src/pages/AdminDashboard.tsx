@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts";
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications";
 
 interface VideoTutorial {
   id: string;
@@ -163,6 +163,11 @@ const AdminDashboardPage: React.FC = () => {
   // Star gifts state
   const [starGifts, setStarGifts] = useState<StarGiftLog[]>([]);
 
+  // Notifications state
+  const [notificationTitle, setNotificationTitle] = useState("");
+  const [notificationBody, setNotificationBody] = useState("");
+  const [sendingNotification, setSendingNotification] = useState(false);
+
   const adminPassword = sessionStorage.getItem("admin_token");
 
   useEffect(() => {
@@ -307,6 +312,28 @@ const AdminDashboardPage: React.FC = () => {
     finally { setSalaryActionLoading(false); }
   };
 
+  // Broadcast notification action
+  const sendBroadcastNotification = async () => {
+    if (!notificationTitle.trim() || !notificationBody.trim()) {
+      toast.error("يرجى ملء العنوان والمحتوى");
+      return;
+    }
+    setSendingNotification(true);
+    try {
+      await supabase.from("notifications").insert({
+        title: notificationTitle,
+        body: notificationBody,
+        target: "all"
+      });
+      toast.success("تم إرسال الإشعار لجميع المستخدمين");
+      setNotificationTitle("");
+      setNotificationBody("");
+    } catch {
+      toast.error("فشل إرسال الإشعار");
+    } finally {
+      setSendingNotification(false);
+    }
+  };
   const updateBanReport = async (id: string, updates: Partial<BanReport>) => {
     try { await adminCall("update_ban_report", { id, ...updates }); toast.success("تم التحديث"); loadData(); }
     catch { toast.error("فشل التحديث"); }
@@ -396,6 +423,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "gifts", label: "إهداءات", icon: <Gift className="w-4 h-4" />, count: starGifts.length },
     { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-4 h-4" />, count: banReports.filter(r => !r.is_verified).length },
     { key: "blocks", label: "محظورين", icon: <Ban className="w-4 h-4" />, count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
+    { key: "notifications", label: "إشعارات", icon: <Sparkles className="w-4 h-4" /> },
   ];
 
   // Reusable item card for entries/frames with edit
@@ -863,6 +891,47 @@ const AdminDashboardPage: React.FC = () => {
                 {starGifts.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground"><Gift className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد عمليات إهداء</p></div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Notifications Tab */}
+            {activeTab === "notifications" && (
+              <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                <div className="bg-card border rounded-xl p-4 space-y-3">
+                  <h3 className="font-bold text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />إرسال إشعار عام لجميع المستخدمين</h3>
+                  <Input 
+                    placeholder="عنوان الإشعار *" 
+                    value={notificationTitle} 
+                    onChange={(e) => setNotificationTitle(e.target.value)}
+                    maxLength={100}
+                  />
+                  <Textarea 
+                    placeholder="محتوى الإشعار * (مثل: إعلان أو تحديث عن الصيانة)" 
+                    value={notificationBody} 
+                    onChange={(e) => setNotificationBody(e.target.value)}
+                    className="min-h-[100px]"
+                    maxLength={500}
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    {notificationTitle.length}/100 أحرف | {notificationBody.length}/500 أحرف
+                  </div>
+                  <Button 
+                    onClick={sendBroadcastNotification} 
+                    disabled={sendingNotification}
+                    className="w-full"
+                  >
+                    {sendingNotification ? (
+                      <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإرسال...</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4 ml-2" />إرسال الإشعار</>
+                    )}
+                  </Button>
+                </div>
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
+                  <p className="text-xs text-blue-600 leading-relaxed">
+                    💡 الإشعارات العامة سيتم إرسالها لجميع المستخدمين المتصلين وسيراها عند فتح صفحة الإشعارات أو عند وصول إشعار جديد.
+                  </p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
