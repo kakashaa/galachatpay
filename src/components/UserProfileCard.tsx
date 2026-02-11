@@ -43,6 +43,7 @@ const getCurrentMonth = () => {
 const UserProfileCard: React.FC = () => {
   const { user } = useAuth();
   const [showStarWallet, setShowStarWallet] = useState(false);
+  const [starWalletView, setStarWalletView] = useState<"main" | "cashout">("main");
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalStars, setTotalStars] = useState(0);
 
@@ -110,12 +111,20 @@ const UserProfileCard: React.FC = () => {
           {/* Actions */}
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setShowStarWallet(true)}
+              onClick={() => { setStarWalletView("main"); setShowStarWallet(true); }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold active:scale-95 transition-transform"
               style={{ background: "rgba(234,179,8,0.2)", border: "1px solid rgba(234,179,8,0.3)" }}
             >
               <Gift className="w-3 h-3 text-yellow-400" />
               <span className="text-yellow-300">إهداء</span>
+            </button>
+            <button
+              onClick={() => { setStarWalletView("cashout"); setShowStarWallet(true); }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-bold active:scale-95 transition-transform"
+              style={{ background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.25)" }}
+            >
+              <DollarSign className="w-3 h-3 text-emerald-400" />
+              <span className="text-emerald-300">كاش</span>
             </button>
             <button
               onClick={() => setShowTutorial(true)}
@@ -218,7 +227,7 @@ const UserProfileCard: React.FC = () => {
         </div>
       </div>
 
-      <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} />
+      <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} initialView={starWalletView} />
       <StarSystemTutorial open={showTutorial} onClose={() => setShowTutorial(false)} itemType="entry" />
     </div>
   );

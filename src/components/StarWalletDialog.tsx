@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Star, HelpCircle, Gift } from "lucide-react";
+import { Star, HelpCircle, Gift, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,8 @@ interface UserStarBalance {
   total_stars: number;
   last_level: number;
 }
+
+const STAR_TO_USD = 5; // each star = $5, so 10 stars = $50
 
 const getMonthlyStars = (chargerLevel: number) => {
   if (chargerLevel >= 100) return 8;
@@ -37,14 +39,16 @@ const getCurrentMonth = () => {
 interface Props {
   open: boolean;
   onClose: () => void;
+  initialView?: "main" | "cashout";
 }
 
-const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
+const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main" }) => {
   const { user } = useAuth();
   const [starBalance, setStarBalance] = useState<UserStarBalance | null>(null);
-  const [showGiftView, setShowGiftView] = useState(false);
+  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout">("main");
   const [friendUuid, setFriendUuid] = useState("");
   const [giftAmount, setGiftAmount] = useState(1);
+  const [cashoutStars, setCashoutStars] = useState(10);
   const [submitting, setSubmitting] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -54,8 +58,11 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
   const totalStars = starBalance?.total_stars ?? 0;
 
   useEffect(() => {
-    if (open && user?.uuid) fetchStarBalance();
-  }, [open, user?.uuid]);
+    if (open) {
+      setCurrentView(initialView);
+      if (user?.uuid) fetchStarBalance();
+    }
+  }, [open, user?.uuid, initialView]);
 
   const fetchStarBalance = async () => {
     if (!user?.uuid) return;
@@ -143,7 +150,6 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
         if (insertError) throw insertError;
       }
 
-      // Log the gift
       await supabase.from("star_gift_logs").insert({
         sender_uuid: user.uuid,
         sender_name: user.name,
@@ -151,7 +157,6 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
         amount: giftAmount,
       } as any);
 
-      // Create notification for recipient
       await supabase.from("notifications").insert({
         user_uuid: friendUuid.trim(),
         title: "نجوم مهداة 🎁",
@@ -160,12 +165,62 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
       });
 
       toast.success(`تم إهداء ${giftAmount} نجمة لصديقك بنجاح! ⭐`);
-      setShowGiftView(false);
+      setCurrentView("main");
       setFriendUuid("");
       setGiftAmount(1);
       fetchStarBalance();
     } catch (err: any) {
       toast.error(err?.message || "فشل الإهداء");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCashout = async () => {
+    if (!user?.uuid || !starBalance) return;
+    if (cashoutStars < 1 || cashoutStars > totalStars) { toast.error("عدد النجوم غير صحيح"); return; }
+
+    setSubmitting(true);
+    try {
+      const usdAmount = cashoutStars * STAR_TO_USD;
+      const newTotal = totalStars - cashoutStars;
+
+      // Deduct stars
+      const { error: deductError } = await supabase
+        .from("user_star_balance")
+        .update({ total_stars: newTotal, carryover_stars: Math.max(0, newTotal) })
+        .eq("id", starBalance.id);
+      if (deductError) throw deductError;
+
+      // Create salary request for cash withdrawal
+      const { error: requestError } = await supabase
+        .from("salary_requests")
+        .insert({
+          user_uuid: user.uuid,
+          user_name: user.name,
+          amount_usd: usdAmount,
+          payment_method: "star_cashout",
+          payment_details: `تحويل ${cashoutStars} نجمة إلى $${usdAmount}`,
+          recipient_name: user.name,
+          recipient_country: "غير محدد",
+          request_type: "star_cashout",
+        });
+      if (requestError) throw requestError;
+
+      // Log it
+      await supabase.from("star_gift_logs").insert({
+        sender_uuid: user.uuid,
+        sender_name: user.name,
+        recipient_uuid: "CASHOUT",
+        amount: cashoutStars,
+      } as any);
+
+      toast.success(`تم تقديم طلب تحويل ${cashoutStars} نجمة إلى $${usdAmount} بنجاح! 💰`);
+      setCurrentView("main");
+      setCashoutStars(10);
+      fetchStarBalance();
+    } catch (err: any) {
+      toast.error(err?.message || "فشل التحويل");
     } finally {
       setSubmitting(false);
     }
@@ -181,23 +236,21 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setShowGiftView(false); } }}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setCurrentView("main"); } }}>
         <DialogContent className="max-w-sm rounded-2xl [&>button]:hidden">
           <DialogTitle className="text-center font-bold text-base flex items-center justify-center gap-2">
             <Star className="w-5 h-5 text-accent fill-accent" />
             محفظة النجوم
           </DialogTitle>
 
-          {!showGiftView ? (
+          {currentView === "main" && (
             <div className="space-y-4 pt-2" dir="rtl">
-              {/* Big Balance */}
               <div className="text-center py-4">
                 <p className="text-4xl font-black text-accent">{totalStars}</p>
                 <p className="text-xs text-muted-foreground mt-1">نجمة متاحة</p>
                 {renderStars(totalStars)}
               </div>
 
-              {/* Stats */}
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-xl p-2.5 text-center bg-muted/30 border border-border/20">
                   <p className="text-[9px] text-muted-foreground">الشهرية</p>
@@ -213,23 +266,35 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* Cash value info */}
+              <div className="rounded-xl p-3 text-center" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                <p className="text-[10px] text-muted-foreground">قيمة نجومك النقدية</p>
+                <p className="text-xl font-black text-emerald-400">${totalStars * STAR_TO_USD}</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">كل نجمة = ${STAR_TO_USD}</p>
+              </div>
+
               <div className="flex gap-2">
                 {totalStars > 0 && (
-                  <Button
-                    onClick={() => setShowGiftView(true)}
-                    className="flex-1 bg-accent/15 border border-accent/20 text-accent hover:bg-accent/25"
-                    variant="outline"
-                  >
-                    <Gift className="w-4 h-4 ml-1" />
-                    إهداء نجوم
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => setCurrentView("gift")}
+                      className="flex-1 bg-accent/15 border border-accent/20 text-accent hover:bg-accent/25"
+                      variant="outline"
+                    >
+                      <Gift className="w-4 h-4 ml-1" />
+                      إهداء
+                    </Button>
+                    <Button
+                      onClick={() => setCurrentView("cashout")}
+                      className="flex-1 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25"
+                      variant="outline"
+                    >
+                      <DollarSign className="w-4 h-4 ml-1" />
+                      تحويل لكاش
+                    </Button>
+                  </>
                 )}
-                <Button
-                  onClick={() => setShowTutorial(true)}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button onClick={() => setShowTutorial(true)} variant="outline" className="flex-1">
                   <HelpCircle className="w-4 h-4 ml-1" />
                   الشروط
                 </Button>
@@ -237,8 +302,9 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
 
               <button onClick={onClose} className="w-full text-center text-sm text-muted-foreground py-1">إغلاق</button>
             </div>
-          ) : (
-            /* Gift View */
+          )}
+
+          {currentView === "gift" && (
             <div className="space-y-4 pt-2" dir="rtl">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">UUID الصديق</label>
@@ -251,38 +317,76 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
                   dir="ltr"
                 />
               </div>
-
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">عدد النجوم</label>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setGiftAmount(Math.max(1, giftAmount - 1))}
-                    className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold"
-                  >-</button>
+                  <button onClick={() => setGiftAmount(Math.max(1, giftAmount - 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">-</button>
                   <div className="flex-1 text-center">
                     <span className="text-2xl font-black text-accent">{giftAmount}</span>
                     <span className="text-xs text-muted-foreground mr-1">⭐</span>
                   </div>
-                  <button
-                    onClick={() => setGiftAmount(Math.min(totalStars, giftAmount + 1))}
-                    className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold"
-                  >+</button>
+                  <button onClick={() => setGiftAmount(Math.min(totalStars, giftAmount + 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">+</button>
                 </div>
               </div>
-
               <div className="bg-accent/10 rounded-xl p-3 text-xs text-muted-foreground">
                 <p className="font-bold text-accent mb-1">سيتم خصم {giftAmount} نجمة</p>
                 <p>الرصيد بعد الإهداء: {totalStars - giftAmount} نجمة</p>
               </div>
-
-              <Button
-                onClick={handleGiftStars}
-                disabled={submitting || giftAmount < 1 || giftAmount > totalStars}
-                className="w-full gold-gradient text-primary-foreground font-bold h-11"
-              >
+              <Button onClick={handleGiftStars} disabled={submitting || giftAmount < 1 || giftAmount > totalStars} className="w-full gold-gradient text-primary-foreground font-bold h-11">
                 {submitting ? "جاري الإرسال..." : `إهداء ${giftAmount} نجمة`}
               </Button>
-              <button onClick={() => setShowGiftView(false)} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
+              <button onClick={() => setCurrentView("main")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
+            </div>
+          )}
+
+          {currentView === "cashout" && (
+            <div className="space-y-4 pt-2" dir="rtl">
+              <div className="text-center py-2">
+                <DollarSign className="w-10 h-10 mx-auto text-emerald-400 mb-1" />
+                <p className="text-sm font-bold text-foreground">تحويل النجوم إلى كاش</p>
+                <p className="text-[10px] text-muted-foreground">كل نجمة = ${STAR_TO_USD} دولار</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">عدد النجوم للتحويل</label>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setCashoutStars(Math.max(1, cashoutStars - 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">-</button>
+                  <div className="flex-1 text-center">
+                    <span className="text-2xl font-black text-emerald-400">{cashoutStars}</span>
+                    <span className="text-xs text-muted-foreground mr-1">⭐</span>
+                  </div>
+                  <button onClick={() => setCashoutStars(Math.min(totalStars, cashoutStars + 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">+</button>
+                </div>
+              </div>
+
+              <div className="rounded-xl p-3" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-muted-foreground">النجوم</span>
+                  <span className="font-black text-foreground">{cashoutStars} ⭐</span>
+                </div>
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-muted-foreground">المبلغ</span>
+                  <span className="font-black text-emerald-400">${cashoutStars * STAR_TO_USD}</span>
+                </div>
+                <div className="border-t border-border/20 pt-2 flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">الرصيد بعد التحويل</span>
+                  <span className="font-black text-foreground">{totalStars - cashoutStars} ⭐</span>
+                </div>
+              </div>
+
+              <div className="bg-yellow-500/10 rounded-xl p-2.5 text-[10px] text-muted-foreground">
+                <p className="font-bold text-yellow-400 mb-0.5">⚠️ ملاحظة</p>
+                <p>سيتم إنشاء طلب سحب وسيراجعه الأدمن. المبلغ يُحول لحسابك بعد الموافقة.</p>
+              </div>
+
+              <Button
+                onClick={handleCashout}
+                disabled={submitting || cashoutStars < 1 || cashoutStars > totalStars}
+                className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {submitting ? "جاري الإرسال..." : `تحويل ${cashoutStars} نجمة إلى $${cashoutStars * STAR_TO_USD}`}
+              </Button>
+              <button onClick={() => setCurrentView("main")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
             </div>
           )}
         </DialogContent>
