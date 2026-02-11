@@ -42,6 +42,7 @@ export const useStarBalance = (userUuid: string | undefined, chargerLevel: numbe
     if (!userUuid) return;
     setLoading(true);
     try {
+      // First check if balance exists for current month
       const { data, error } = await supabase
         .from("user_star_balance")
         .select("*")
@@ -51,41 +52,55 @@ export const useStarBalance = (userUuid: string | undefined, chargerLevel: numbe
 
       if (error && error.code !== "PGRST116") throw error;
 
-      if (!data) {
-        // Get last recorded level (single source of truth)
+      if (data) {
+        // Balance exists — just use it
+        setStarBalance(data as UserStarBalance);
+        localStorage.setItem(STAR_LAST_LEVEL_KEY, chargerLevel.toString());
+      } else {
+        // Check for carryover from previous month
+        const { data: prevData } = await supabase
+          .from("user_star_balance")
+          .select("total_stars, carryover_stars")
+          .eq("user_uuid", userUuid)
+          .neq("current_month", currentMonth)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const carryover = prevData ? (prevData as any).total_stars ?? 0 : 0;
+
+        // Calculate level bonus
         const lastLevel = localStorage.getItem(STAR_LAST_LEVEL_KEY)
           ? parseInt(localStorage.getItem(STAR_LAST_LEVEL_KEY)!)
           : chargerLevel;
-
         const levelDiff = chargerLevel - lastLevel;
         const levelBonus = levelDiff >= 5 ? Math.floor(levelDiff / 5) : 0;
-        const newTotal = monthlyStars + levelBonus;
+        const newTotal = monthlyStars + levelBonus + carryover;
 
-        const { data: insertedData, error: insertError } = await supabase
+        // Use upsert to prevent race condition duplicates
+        const { data: upsertedData, error: upsertError } = await supabase
           .from("user_star_balance")
-          .insert({
-            user_uuid: userUuid,
-            current_month: currentMonth,
-            monthly_stars: monthlyStars,
-            carryover_stars: 0,
-            total_stars: newTotal,
-            last_level: chargerLevel,
-          })
+          .upsert(
+            {
+              user_uuid: userUuid,
+              current_month: currentMonth,
+              monthly_stars: monthlyStars,
+              carryover_stars: carryover,
+              total_stars: newTotal,
+              last_level: chargerLevel,
+            },
+            { onConflict: "user_uuid,current_month", ignoreDuplicates: false }
+          )
           .select()
           .single();
 
-        if (insertError) throw insertError;
+        if (upsertError) throw upsertError;
 
-        // Update single source of truth
         localStorage.setItem(STAR_LAST_LEVEL_KEY, chargerLevel.toString());
 
-        if (insertedData) {
-          setStarBalance(insertedData as UserStarBalance);
+        if (upsertedData) {
+          setStarBalance(upsertedData as UserStarBalance);
         }
-      } else {
-        setStarBalance(data as UserStarBalance);
-        // Keep localStorage in sync
-        localStorage.setItem(STAR_LAST_LEVEL_KEY, chargerLevel.toString());
       }
     } catch (err) {
       console.error("Error fetching star balance:", err);
