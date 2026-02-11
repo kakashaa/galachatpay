@@ -7,85 +7,83 @@ import {
 } from "lucide-react";
 
 interface MenuItem {
-  icon: React.ReactNode;
+  icon: React.ElementType;
   label: string;
   route: string;
-  iconColor: string;
-  bgColor: string;
-  borderHighlight?: boolean;
+  gradient: string;
+  shadowColor: string;
 }
 
 const menuItems: MenuItem[] = [
   {
-    icon: <Wallet className="w-6 h-6" />,
+    icon: Wallet,
     label: "سحب راتب",
     route: "/salary",
-    iconColor: "text-emerald-400",
-    bgColor: "bg-emerald-500/10",
+    gradient: "from-emerald-500 to-emerald-700",
+    shadowColor: "shadow-emerald-500/20",
   },
   {
-    icon: <Headset className="w-6 h-6" />,
+    icon: Headset,
     label: "الدعم السريع",
     route: "/support",
-    iconColor: "text-blue-400",
-    bgColor: "bg-blue-500/10",
+    gradient: "from-blue-500 to-blue-700",
+    shadowColor: "shadow-blue-500/20",
   },
   {
-    icon: <Fingerprint className="w-6 h-6" />,
+    icon: Fingerprint,
     label: "تغيير الآيدي",
     route: "/change-id",
-    iconColor: "text-purple-400",
-    bgColor: "bg-purple-500/10",
+    gradient: "from-purple-500 to-purple-700",
+    shadowColor: "shadow-purple-500/20",
   },
   {
-    icon: <Crown className="w-6 h-6" />,
+    icon: Crown,
     label: "طلب VIP",
     route: "/request-vip",
-    iconColor: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-    borderHighlight: true,
+    gradient: "from-yellow-400 to-amber-600",
+    shadowColor: "shadow-yellow-500/30",
   },
   {
-    icon: <Gift className="w-6 h-6" />,
+    icon: Gift,
     label: "هدية مخصصة",
     route: "/gift",
-    iconColor: "text-pink-400",
-    bgColor: "bg-pink-500/10",
+    gradient: "from-pink-500 to-rose-600",
+    shadowColor: "shadow-pink-500/20",
   },
   {
-    icon: <Sparkles className="w-6 h-6" />,
+    icon: Sparkles,
     label: "دخولية",
     route: "/gift",
-    iconColor: "text-cyan-400",
-    bgColor: "bg-cyan-500/10",
+    gradient: "from-cyan-400 to-teal-600",
+    shadowColor: "shadow-cyan-500/20",
   },
   {
-    icon: <PlayCircle className="w-6 h-6" />,
+    icon: PlayCircle,
     label: "صورة متحركة",
     route: "/gift",
-    iconColor: "text-orange-400",
-    bgColor: "bg-orange-500/10",
+    gradient: "from-orange-400 to-orange-600",
+    shadowColor: "shadow-orange-500/20",
   },
   {
-    icon: <Frame className="w-6 h-6" />,
+    icon: Frame,
     label: "إطار",
     route: "/gift",
-    iconColor: "text-indigo-400",
-    bgColor: "bg-indigo-500/10",
+    gradient: "from-indigo-400 to-indigo-600",
+    shadowColor: "shadow-indigo-500/20",
   },
   {
-    icon: <ShieldCheck className="w-6 h-6" />,
+    icon: ShieldCheck,
     label: "توثيق BD",
     route: "/bd-request",
-    iconColor: "text-red-400",
-    bgColor: "bg-red-500/10",
+    gradient: "from-red-500 to-red-700",
+    shadowColor: "shadow-red-500/20",
   },
   {
-    icon: <FileText className="w-6 h-6" />,
+    icon: FileText,
     label: "طلباتي",
     route: "/my-requests",
-    iconColor: "text-teal-400",
-    bgColor: "bg-teal-500/10",
+    gradient: "from-teal-400 to-teal-600",
+    shadowColor: "shadow-teal-500/20",
   },
 ];
 
@@ -93,13 +91,13 @@ const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.05, delayChildren: 0.2 },
+    transition: { staggerChildren: 0.04, delayChildren: 0.15 },
   },
 };
 
-const item = {
-  hidden: { opacity: 0, y: 15 },
-  show: { opacity: 1, y: 0 },
+const itemVariant = {
+  hidden: { opacity: 0, scale: 0.8, y: 20 },
+  show: { opacity: 1, scale: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 20 } },
 };
 
 const MenuGrid: React.FC = () => {
@@ -110,27 +108,30 @@ const MenuGrid: React.FC = () => {
       variants={container}
       initial="hidden"
       animate="show"
-      className="grid grid-cols-3 gap-3 mb-12"
+      className="grid grid-cols-2 gap-3 mb-28"
     >
-      {menuItems.map((menuItem, index) => (
-        <motion.button
-          key={index}
-          variants={item}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate(menuItem.route)}
-          className={`glass-card rounded-2xl p-4 flex flex-col items-center justify-center gap-3 active:scale-95 transition-transform ${
-            menuItem.borderHighlight ? "border-yellow-500/20" : ""
-          }`}
-        >
-          <div className={`w-12 h-12 rounded-xl icon-glass flex items-center justify-center relative overflow-hidden ${
-            menuItem.borderHighlight ? "border border-yellow-500/30" : ""
-          }`}>
-            <div className={`absolute inset-0 ${menuItem.bgColor}`} />
-            <span className={`${menuItem.iconColor} z-10`}>{menuItem.icon}</span>
-          </div>
-          <span className="text-[11px] font-medium text-gray-200">{menuItem.label}</span>
-        </motion.button>
-      ))}
+      {menuItems.map((menuItem, index) => {
+        const Icon = menuItem.icon;
+        return (
+          <motion.button
+            key={index}
+            variants={itemVariant}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate(menuItem.route)}
+            className={`relative overflow-hidden rounded-2xl p-4 flex items-center gap-3 text-right transition-all ${menuItem.shadowColor} shadow-lg`}
+            style={{
+              background: "rgba(255, 255, 255, 0.04)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+            }}
+          >
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${menuItem.gradient} flex items-center justify-center flex-shrink-0`}>
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-[13px] font-bold text-foreground leading-tight">{menuItem.label}</span>
+          </motion.button>
+        );
+      })}
     </motion.div>
   );
 };

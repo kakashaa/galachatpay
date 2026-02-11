@@ -1,21 +1,19 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { User, MessageCircle, Mic, Compass, Home } from "lucide-react";
+import { motion } from "framer-motion";
+import { Home, FileText, Headset, User } from "lucide-react";
 
 interface NavItem {
-  icon: React.ReactNode;
-  activeIcon?: React.ReactNode;
+  icon: React.ElementType;
   label: string;
   path: string;
-  isCenter?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { icon: <User className="w-6 h-6" />, label: "أنا", path: "/dashboard" },
-  { icon: <MessageCircle className="w-6 h-6" />, label: "الرسائل", path: "#" },
-  { icon: <Mic className="w-7 h-7" />, label: "", path: "#", isCenter: true },
-  { icon: <Compass className="w-6 h-6" />, label: "استكشف", path: "#" },
-  { icon: <Home className="w-6 h-6" />, label: "الرئيسية", path: "#" },
+  { icon: User, label: "حسابي", path: "/dashboard" },
+  { icon: Headset, label: "الدعم", path: "/support" },
+  { icon: FileText, label: "طلباتي", path: "/my-requests" },
+  { icon: Home, label: "الرئيسية", path: "/dashboard" },
 ];
 
 const BottomNav: React.FC = () => {
@@ -23,34 +21,63 @@ const BottomNav: React.FC = () => {
   const location = useLocation();
 
   return (
-    <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-white/10 px-6 pt-3 pb-8 flex justify-between items-center rounded-t-[32px] max-w-[430px] mx-auto">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[85%] max-w-[360px]">
+      <motion.nav
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 25, delay: 0.3 }}
+        className="relative flex items-center justify-around px-3 py-3 rounded-[28px] border border-white/10"
+        style={{
+          background: "rgba(15, 15, 25, 0.85)",
+          backdropFilter: "blur(24px)",
+          boxShadow: "0 8px 40px -8px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 -2px 20px -2px hsl(8 88% 62% / 0.15)",
+        }}
+      >
         {navItems.map((item, index) => {
-          if (item.isCenter) {
-            return (
-              <div key={index} className="relative -top-8">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-orange-400 flex items-center justify-center shadow-lg shadow-primary/40 border-[5px] border-background">
-                  <span className="text-white">{item.icon}</span>
-                </div>
-              </div>
-            );
-          }
+          const Icon = item.icon;
 
-          const isActive = location.pathname === item.path;
+          // Make "الرئيسية" always active on dashboard, "حسابي" needs different check
+          const isReallyActive = item.label === "الرئيسية" 
+            ? location.pathname === "/dashboard"
+            : location.pathname === item.path;
+
           return (
-            <button
+            <motion.button
               key={index}
-              onClick={() => item.path !== "#" && navigate(item.path)}
-              className={`flex flex-col items-center gap-1 ${isActive ? "text-primary" : "text-gray-400"}`}
+              whileTap={{ scale: 0.85 }}
+              onClick={() => navigate(item.path)}
+              className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-2xl transition-colors duration-200"
             >
-              {item.icon}
-              <span className="text-[10px] font-bold">{item.label}</span>
-            </button>
+              {isReallyActive && (
+                <motion.div
+                  layoutId="dock-active"
+                  className="absolute inset-0 rounded-2xl"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(8 88% 62% / 0.2), hsl(174 50% 55% / 0.1))",
+                    border: "1px solid hsl(8 88% 62% / 0.3)",
+                  }}
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              <Icon
+                className={`w-5 h-5 relative z-10 transition-colors duration-200 ${
+                  isReallyActive ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
+              <span
+                className={`text-[10px] font-bold relative z-10 transition-colors duration-200 ${
+                  isReallyActive ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                {item.label}
+              </span>
+            </motion.button>
           );
         })}
-      </nav>
-      <div className="fixed bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/20 rounded-full z-[60]" />
-    </>
+      </motion.nav>
+      {/* Bottom indicator */}
+      <div className="mx-auto mt-2 w-28 h-1 rounded-full bg-white/10" />
+    </div>
   );
 };
 
