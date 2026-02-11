@@ -116,6 +116,23 @@ const UserProfileCard: React.FC = () => {
               <span className="text-[9px] font-mono">ID: {user.uuid}</span>
               <Copy className="w-2.5 h-2.5" />
             </button>
+            
+            {/* Wallet Row */}
+            <div className="flex gap-2 mb-1.5 text-[9px]">
+              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+                <span className="text-yellow-400 font-black">{user.my_store.coins}</span>
+                <span className="text-muted-foreground">💰</span>
+              </div>
+              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20">
+                <span className="text-purple-400 font-black">{user.my_store.diamonds}</span>
+                <span className="text-muted-foreground">💎</span>
+              </div>
+              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20">
+                <span className="text-green-400 font-black">${user.my_store.usd}</span>
+                <span className="text-muted-foreground">💵</span>
+              </div>
+            </div>
+            
             {/* Mini Levels Strip */}
             <div className="flex gap-2 items-end">
               {[
