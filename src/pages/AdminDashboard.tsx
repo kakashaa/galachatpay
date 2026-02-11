@@ -231,12 +231,12 @@ const AdminDashboardPage: React.FC = () => {
 
   // Entry gift actions
   const addEntryGift = async () => {
-    if (!newEntry.title || !entryFile) { toast.error("العنوان والملف مطلوبان"); return; }
+    if (!entryFile) { toast.error("الملف مطلوب"); return; }
     if (entryFile.size > 100 * 1024 * 1024) { toast.error("حجم الملف يجب أن لا يتجاوز 100MB"); return; }
     try {
       setEntryUploading(true);
       const url = await uploadFile(entryFile);
-      await adminCall("add_entry_gift", { title: newEntry.title, video_url: url, thumbnail_url: newEntry.thumbnail_url || null, gift_type: newEntry.gift_type, star_level: newEntry.star_level, display_order: entryGifts.length });
+      await adminCall("add_entry_gift", { title: newEntry.title || entryFile.name.replace(/\.[^.]+$/, ""), video_url: url, thumbnail_url: newEntry.thumbnail_url || null, gift_type: newEntry.gift_type, star_level: newEntry.star_level, display_order: entryGifts.length });
       toast.success("تمت إضافة الدخولية");
       setNewEntry({ title: "", gift_type: "both", star_level: 1, thumbnail_url: "" }); setEntryFile(null); setShowAddEntry(false);
       loadData();
@@ -262,12 +262,12 @@ const AdminDashboardPage: React.FC = () => {
 
   // Frame actions
   const addFrame = async () => {
-    if (!newFrame.title || !frameFile) { toast.error("العنوان والملف مطلوبان"); return; }
+    if (!frameFile) { toast.error("الملف مطلوب"); return; }
     if (frameFile.size > 100 * 1024 * 1024) { toast.error("حجم الملف يجب أن لا يتجاوز 100MB"); return; }
     try {
       setFrameUploading(true);
       const url = await uploadFile(frameFile);
-      await adminCall("add_frame", { title: newFrame.title, file_url: url, thumbnail_url: newFrame.thumbnail_url || null, star_level: newFrame.star_level, display_order: frameItems.length });
+      await adminCall("add_frame", { title: newFrame.title || frameFile.name.replace(/\.[^.]+$/, ""), file_url: url, thumbnail_url: newFrame.thumbnail_url || null, star_level: newFrame.star_level, display_order: frameItems.length });
       toast.success("تمت إضافة الإطار");
       setNewFrame({ title: "", star_level: 1, thumbnail_url: "" }); setFrameFile(null); setShowAddFrame(false);
       loadData();
@@ -592,7 +592,7 @@ const AdminDashboardPage: React.FC = () => {
                 </Button>
                 {showAddEntry && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-card border rounded-xl p-4 space-y-3">
-                    <Input placeholder="اسم الدخولية *" value={newEntry.title} onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })} />
+                    <Input placeholder="اسم الدخولية (اختياري)" value={newEntry.title} onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })} />
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">ملف الدخولية * (MP4, WebP, SVGA - حد 100MB)</label>
                       <input type="file" accept="video/mp4,.webp,.svga,video/webm" onChange={(e) => setEntryFile(e.target.files?.[0] || null)}
@@ -639,7 +639,7 @@ const AdminDashboardPage: React.FC = () => {
                 </Button>
                 {showAddFrame && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-card border rounded-xl p-4 space-y-3">
-                    <Input placeholder="اسم الإطار *" value={newFrame.title} onChange={(e) => setNewFrame({ ...newFrame, title: e.target.value })} />
+                    <Input placeholder="اسم الإطار (اختياري)" value={newFrame.title} onChange={(e) => setNewFrame({ ...newFrame, title: e.target.value })} />
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">ملف الإطار * (SVGA, WebP - حد 100MB)</label>
                       <input type="file" accept=".svga,.webp,image/webp" onChange={(e) => setFrameFile(e.target.files?.[0] || null)}
