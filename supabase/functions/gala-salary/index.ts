@@ -7,11 +7,11 @@ serve(async (req) => {
   }
 
   try {
-    const { uuid, amount } = await req.json();
+    const { uuid } = await req.json();
 
-    if (!uuid || !amount) {
+    if (!uuid) {
       return new Response(
-        JSON.stringify({ success: false, error: "uuid and amount are required" }),
+        JSON.stringify({ success: false, error: "uuid is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -24,12 +24,12 @@ serve(async (req) => {
     const headers = await getGalaHeaders("POST", signPath);
 
     const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
-    console.log("gala-salary request:", { uuid, amount, url });
+    console.log("gala-salary request:", { uuid, url });
 
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ uuid, amount: Number(amount) }),
+      body: JSON.stringify({ uuid }),
     });
 
     const rawText = await response.text();
