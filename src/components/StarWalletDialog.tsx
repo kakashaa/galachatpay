@@ -19,7 +19,7 @@ interface Props {
 
 const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main" }) => {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "code_result">(initialView);
+  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "cashout_confirm" | "code_result">(initialView);
   const [friendUuid, setFriendUuid] = useState("");
   const [giftAmount, setGiftAmount] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -301,10 +301,47 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 <p>4. أكمل بيانات التحويل واستلم فلوسك</p>
               </div>
 
-              <Button onClick={handleCashout} disabled={submitting || totalStars < 10} className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white">
-                {submitting ? "جاري الإنشاء..." : "تحويل 10 نجوم إلى $50"}
+              <Button onClick={() => setCurrentView("cashout_confirm")} disabled={totalStars < 10} className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white">
+                تحويل 10 نجوم إلى $50
               </Button>
               <button onClick={() => setCurrentView("main")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
+            </div>
+          )}
+
+          {currentView === "cashout_confirm" && (
+            <div className="space-y-4 pt-2 animate-fade-in" dir="rtl">
+              <div className="text-center py-3">
+                <div className="w-14 h-14 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center mb-2">
+                  <span className="text-3xl">⚠️</span>
+                </div>
+                <p className="text-sm font-bold text-foreground">تأكيد التحويل</p>
+                <p className="text-[10px] text-muted-foreground mt-1">هل تريد تحويل نجومك إلى كاش؟</p>
+              </div>
+
+              <div className="rounded-xl p-3" style={{ background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.25)" }}>
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-muted-foreground">سيتم خصم</span>
+                  <span className="font-black text-foreground">10 ⭐</span>
+                </div>
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-muted-foreground">ستحصل على</span>
+                  <span className="font-black text-emerald-400">$50</span>
+                </div>
+                <div className="border-t border-border/20 pt-2 flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">الرصيد بعد التحويل</span>
+                  <span className="font-black text-foreground">{totalStars - 10} ⭐</span>
+                </div>
+              </div>
+
+              <div className="bg-destructive/10 rounded-xl p-2.5 text-[10px] text-center text-muted-foreground">
+                <p className="font-bold text-destructive mb-0.5">⚠️ تنبيه</p>
+                <p>هذا الإجراء لا يمكن التراجع عنه بعد التأكيد</p>
+              </div>
+
+              <Button onClick={handleCashout} disabled={submitting} className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white">
+                {submitting ? "جاري الإنشاء..." : "✅ نعم، حوّل النجوم إلى كاش"}
+              </Button>
+              <button onClick={() => setCurrentView("cashout")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
             </div>
           )}
 
