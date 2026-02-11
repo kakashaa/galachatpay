@@ -123,48 +123,64 @@ const EntryRequest: React.FC = () => {
     setShowClaimDialog(true);
   };
 
-  const handleSubmitClaim = async () => {
-    if (!user?.uuid || !selectedGift || !starBalance) return;
-    if (claimType === "friend" && !friendUuid.trim()) {
-      toast.error("أدخل UUID الصديق");
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // Insert claim record
-      const { error: claimError } = await supabase.from("entry_gift_claims").insert({
-        user_uuid: user.uuid,
-        gift_id: selectedGift.id,
-        claim_type: claimType,
-        friend_uuid: claimType === "friend" ? friendUuid.trim() : null,
-        gift_usage: giftUsage,
-        claim_month: currentMonth,
-        charger_level_at_claim: chargerLevel,
-      } as any);
-      if (claimError) throw claimError;
+   const handleSubmitClaim = async () => {
+     if (!user?.uuid || !selectedGift || !starBalance) return;
+     if (claimType === "friend" && !friendUuid.trim()) {
+       toast.error("أدخل UUID الصديق");
+       return;
+     }
+     setSubmitting(true);
+     try {
+       // Insert claim record locally
+       const { error: claimError } = await supabase.from("entry_gift_claims").insert({
+         user_uuid: user.uuid,
+         gift_id: selectedGift.id,
+         claim_type: claimType,
+         friend_uuid: claimType === "friend" ? friendUuid.trim() : null,
+         gift_usage: giftUsage,
+         claim_month: currentMonth,
+         charger_level_at_claim: chargerLevel,
+       } as any);
+       if (claimError) throw claimError;
 
-      // Deduct stars from balance
-      const newTotal = totalStars - selectedGift.star_level;
-      const carryover = Math.max(0, newTotal);
-      
-      const { error: updateError } = await supabase
-        .from("user_star_balance")
-        .update({
-          total_stars: newTotal,
-          carryover_stars: carryover,
-        })
-        .eq("id", starBalance.id);
-      if (updateError) throw updateError;
+       // Deduct stars from balance
+       const newTotal = totalStars - selectedGift.star_level;
+       const carryover = Math.max(0, newTotal);
+       
+       const { error: updateError } = await supabase
+         .from("user_star_balance")
+         .update({
+           total_stars: newTotal,
+           carryover_stars: carryover,
+         })
+         .eq("id", starBalance.id);
+       if (updateError) throw updateError;
 
-      toast.success(claimType === "self" ? "تم لبس الدخولية بنجاح!" : "تم إرسال الدخولية لصديقك!");
-      setShowClaimDialog(false);
-      fetchStarBalance();
-    } catch (err: any) {
-      toast.error(err?.message || "فشل الإرسال");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+       // Send request to admin API
+       const { error: apiError } = await supabase.functions.invoke("gala-actions?action=submit-request", {
+         body: {
+           user_uuid: user.uuid,
+           user_name: user.name,
+           request_type: "entry_effect",
+           details: { 
+             ware_id: selectedGift.id, 
+             description: selectedGift.title,
+             claim_type: claimType,
+             friend_uuid: claimType === "friend" ? friendUuid.trim() : undefined
+           },
+         },
+       });
+       if (apiError) throw apiError;
+
+       toast.success(claimType === "self" ? "تم لبس الدخولية بنجاح!" : "تم إرسال الدخولية لصديقك!");
+       setShowClaimDialog(false);
+       fetchStarBalance();
+     } catch (err: any) {
+       toast.error(err?.message || "فشل الإرسال");
+     } finally {
+       setSubmitting(false);
+     }
+   };
 
   const renderStars = (level: number) => (
     <div className="flex gap-0.5">
