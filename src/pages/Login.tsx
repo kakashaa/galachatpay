@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, HelpCircle, User, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import LoginInstructions from "@/components/LoginInstructions";
 
 const Mascot = () => (
   <div className="relative animate-bounce-slow flex items-center justify-center">
@@ -47,6 +48,7 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,12 +261,17 @@ const Login: React.FC = () => {
           transition={{ delay: 0.7, duration: 0.5 }}
           className="mt-12 text-center"
         >
-          <button className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium flex items-center justify-center gap-2 group mx-auto">
+          <button
+            onClick={() => setShowInstructions(true)}
+            className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium flex items-center justify-center gap-2 group mx-auto"
+          >
             <HelpCircle className="w-4 h-4" />
             <span className="border-b border-transparent group-hover:border-primary pb-0.5">تعليمات تسجيل الدخول</span>
           </button>
         </motion.div>
       </div>
+
+      <LoginInstructions open={showInstructions} onClose={() => setShowInstructions(false)} />
     </div>
   );
 };
