@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
+import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info, Calendar } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,29 @@ const userTypeLabels: Record<number, string> = {
   6: "مضيف ووكيل شحن",
 };
 
+const ID_CHANGE_KEY = "gala_id_changed";
+
+function getIdChangeInfo(uuid: string): { changed: boolean; newId: string | null; date: string | null } {
+  try {
+    const stored = localStorage.getItem(ID_CHANGE_KEY);
+    if (!stored) return { changed: false, newId: null, date: null };
+    const data = JSON.parse(stored);
+    if (data.uuid !== uuid) return { changed: false, newId: null, date: null };
+    const requestDate = new Date(data.date);
+    const now = new Date();
+    if (requestDate.getMonth() === now.getMonth() && requestDate.getFullYear() === now.getFullYear()) {
+      return { changed: true, newId: data.newId, date: data.date };
+    }
+    return { changed: false, newId: null, date: null };
+  } catch {
+    return { changed: false, newId: null, date: null };
+  }
+}
+
+function saveIdChange(uuid: string, newId: string) {
+  localStorage.setItem(ID_CHANGE_KEY, JSON.stringify({ uuid, newId, date: new Date().toISOString() }));
+}
+
 
 const ChangeId: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +52,13 @@ const ChangeId: React.FC = () => {
   const [newId, setNewId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [alreadyChanged, setAlreadyChanged] = useState<{ changed: boolean; newId: string | null; date: string | null }>({ changed: false, newId: null, date: null });
+
+  useEffect(() => {
+    if (user) {
+      setAlreadyChanged(getIdChangeInfo(user.uuid));
+    }
+  }, [user]);
 
   if (!user) {
     navigate("/");
@@ -47,6 +77,11 @@ const ChangeId: React.FC = () => {
   const handleSubmit = async () => {
     const trimmedId = newId.trim();
     if (!trimmedId || !currentRange) return;
+    if (alreadyChanged.changed) {
+      setStatus("error");
+      setErrorMsg("لقد غيّرت الـ ID هذا الشهر. يمكنك التغيير مرة أخرى الشهر القادم.");
+      return;
+    }
     if (maxLevel < 20) {
       setStatus("ineligible");
       return;
@@ -117,6 +152,8 @@ const ChangeId: React.FC = () => {
       }
 
       // Update UUID in session immediately since change is now instant
+      saveIdChange(user.uuid, trimmedId);
+      setAlreadyChanged({ changed: true, newId: trimmedId, date: new Date().toISOString() });
       setUser({ ...user, uuid: trimmedId });
       setStatus("success");
     } catch {
@@ -148,6 +185,23 @@ const ChangeId: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="تغيير الـ ID" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
+        {/* Monthly Limit Warning */}
+        {alreadyChanged.changed && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3"
+          >
+            <Calendar className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-foreground">تم تغيير الـ ID هذا الشهر</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                غيّرت الـ ID إلى <span className="font-bold" dir="ltr">{alreadyChanged.newId}</span> بتاريخ {new Date(alreadyChanged.date!).toLocaleDateString("ar-SA")}. يمكنك التغيير مرة أخرى الشهر القادم.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* User Info */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
@@ -218,7 +272,7 @@ const ChangeId: React.FC = () => {
           )}
           <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-xl mt-3">
             <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground">يُسمح بتغيير الـ ID مرة واحدة فقط لكل فئة مستوى.</p>
+            <p className="text-[11px] text-muted-foreground">يُسمح بتغيير الـ ID <strong>مرة واحدة فقط شهرياً</strong>.</p>
           </div>
         </motion.div>
 
@@ -232,7 +286,7 @@ const ChangeId: React.FC = () => {
             placeholder="اكتب الـ ID الذي تريده"
             dir="ltr"
             className="h-12 bg-muted/30 border-border/30 text-center text-base"
-            disabled={maxLevel < 20}
+            disabled={maxLevel < 20 || alreadyChanged.changed}
           />
           {status === "taken" && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
@@ -258,11 +312,16 @@ const ChangeId: React.FC = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <Button
             onClick={handleSubmit}
-            disabled={!newId.trim() || maxLevel < 20 || status === "loading"}
+            disabled={!newId.trim() || maxLevel < 20 || status === "loading" || alreadyChanged.changed}
             className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
           >
             {status === "loading" ? (
               <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : alreadyChanged.changed ? (
+              <>
+                <Calendar className="w-5 h-5 ml-2" />
+                تم استخدام طلبك هذا الشهر
+              </>
             ) : (
               <>
                 <Send className="w-5 h-5 ml-2" />
