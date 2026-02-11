@@ -37,8 +37,8 @@ const Dashboard: React.FC = () => {
     <div className="mobile-container text-foreground min-h-screen pb-24 overflow-x-hidden relative">
       {/* Calm background */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full blur-[120px]" />
+        <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/10 rounded-full" style={{ filter: "blur(80px)" }} />
+        <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full" style={{ filter: "blur(80px)" }} />
       </div>
 
       {/* Header */}
