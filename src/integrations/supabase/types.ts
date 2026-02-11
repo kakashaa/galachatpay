@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ban_reports: {
+        Row: {
+          admin_notes: string | null
+          ban_type: string
+          created_at: string
+          description: string
+          evidence_type: string
+          evidence_url: string
+          expires_at: string | null
+          id: string
+          is_verified: boolean
+          reported_user_id: string
+          reporter_gala_id: string
+          reward_amount: number | null
+          reward_paid: boolean
+        }
+        Insert: {
+          admin_notes?: string | null
+          ban_type: string
+          created_at?: string
+          description: string
+          evidence_type?: string
+          evidence_url: string
+          expires_at?: string | null
+          id?: string
+          is_verified?: boolean
+          reported_user_id: string
+          reporter_gala_id: string
+          reward_amount?: number | null
+          reward_paid?: boolean
+        }
+        Update: {
+          admin_notes?: string | null
+          ban_type?: string
+          created_at?: string
+          description?: string
+          evidence_type?: string
+          evidence_url?: string
+          expires_at?: string | null
+          id?: string
+          is_verified?: boolean
+          reported_user_id?: string
+          reporter_gala_id?: string
+          reward_amount?: number | null
+          reward_paid?: boolean
+        }
+        Relationships: []
+      }
       salary_requests: {
         Row: {
           admin_note: string | null

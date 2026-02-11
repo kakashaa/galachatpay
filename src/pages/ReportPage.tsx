@@ -1,206 +1,748 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShieldAlert, User, Crown, Send, CheckCircle, Upload, Image, X, AlertTriangle, Ban, MessageSquareWarning } from "lucide-react";
-import MobileLayout from "@/components/MobileLayout";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useSavedRequests } from "@/hooks/use-saved-requests";
+import { notifyNewBanReport } from "@/hooks/use-webhook-notification";
+import {
+  ShieldBan,
+  Search,
+  Megaphone,
+  MessageSquareWarning,
+  AlertTriangle,
+  Gift,
+  ArrowRight,
+  ArrowLeft,
+  Upload,
+  Video,
+  CheckCircle2,
+  Loader2,
+  Eye,
+  Clock,
+  FileText,
+  CheckCircle,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const reportTypes = [
-  { value: "abuse", label: "سلوك مسيء", icon: <MessageSquareWarning className="w-5 h-5" />, desc: "تحرش، إهانة، أو إساءة" },
-  { value: "violation", label: "مخالفة", icon: <AlertTriangle className="w-5 h-5" />, desc: "مخالفة سياسات التطبيق" },
-  { value: "ban", label: "طلب حظر", icon: <Ban className="w-5 h-5" />, desc: "طلب حظر حساب مستخدم" },
-  { value: "other", label: "أخرى", icon: <ShieldAlert className="w-5 h-5" />, desc: "نوع آخر من البلاغات" },
+type BanType = "promotion" | "insult" | "defamation";
+type ViewMode = "menu" | "report" | "search" | "track";
+
+interface BanReport {
+  id: string;
+  reported_user_id: string;
+  reporter_gala_id: string;
+  ban_type: BanType;
+  description: string;
+  evidence_url: string;
+  evidence_type: string;
+  created_at: string;
+  is_verified: boolean;
+  expires_at: string | null;
+  reward_amount: number | null;
+  reward_paid: boolean;
+  admin_notes: string | null;
+}
+
+const BAN_TYPES: {
+  value: BanType;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+  requiresVideo: boolean;
+  reward?: number;
+  duration?: string;
+}[] = [
+  {
+    value: "promotion",
+    label: "ترويج",
+    icon: <Megaphone className="w-6 h-6" />,
+    description: "الترويج لتطبيق آخر",
+    requiresVideo: true,
+    reward: 50000,
+    duration: "دائم",
+  },
+  {
+    value: "insult",
+    label: "شتم",
+    icon: <MessageSquareWarning className="w-6 h-6" />,
+    description: "شتم أو إساءة لفظية",
+    requiresVideo: false,
+    duration: "24 ساعة",
+  },
+  {
+    value: "defamation",
+    label: "قذف",
+    icon: <AlertTriangle className="w-6 h-6" />,
+    description: "قذف أو تشهير",
+    requiresVideo: false,
+    duration: "24 ساعة",
+  },
 ];
 
-const ReportPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [reportType, setReportType] = useState("");
-  const [targetId, setTargetId] = useState("");
-  const [description, setDescription] = useState("");
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+const MIN_DESCRIPTION_LENGTH = 20;
 
-  // Demo user data
-  const user = {
-    id: "123456789",
-    name: "محمد أحمد",
-    level: 35,
-    accountType: "مستخدم",
-    vipLevel: 3,
-  };
+const ReportPage = () => {
+  const navigate = useNavigate();
+  const { saveTrackingCode } = useSavedRequests();
+
+  const [viewMode, setViewMode] = useState<ViewMode>("menu");
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [requestId, setRequestId] = useState("");
+
+  const [reporterGalaId, setReporterGalaId] = useState("");
+
+  const [banType, setBanType] = useState<BanType | null>(null);
+  const [reportedUserId, setReportedUserId] = useState("");
+  const [description, setDescription] = useState("");
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidencePreview, setEvidencePreview] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<BanReport[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<BanReport | null>(null);
+
+  const [trackQuery, setTrackQuery] = useState("");
+  const [trackResults, setTrackResults] = useState<BanReport[]>([]);
+  const [isTracking, setIsTracking] = useState(false);
+
+  const [resolvedEvidenceUrl, setResolvedEvidenceUrl] = useState("");
+  const [isResolvingEvidence] = useState(false);
+  const [evidenceLoadError, setEvidenceLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedReport?.evidence_url) {
+      setResolvedEvidenceUrl(selectedReport.evidence_url);
+    }
+  }, [selectedReport]);
+
+  const selectedBanType = BAN_TYPES.find((t) => t.value === banType);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setAttachment(file);
+    if (!file) return;
+
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+
+    if (selectedBanType?.requiresVideo && !isVideo) {
+      toast.error("يجب رفع فيديو لهذا النوع من البلاغات");
+      return;
+    }
+
+    if (!isVideo && !isImage) {
+      toast.error("يجب رفع صورة أو فيديو");
+      return;
+    }
+
+    const maxSize = 100 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error("حجم الملف يجب أن لا يتجاوز 100MB");
+      return;
+    }
+
+    setEvidenceFile(file);
+    setEvidencePreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = () => {
-    if (!reportType || !targetId.trim() || !description.trim()) return;
-    setSubmitted(true);
+  const canProceedToConfirmation = () => {
+    return evidenceFile && description.trim().length >= MIN_DESCRIPTION_LENGTH;
   };
 
-  if (submitted) {
+  const handleSubmit = async () => {
+    if (!banType || !reportedUserId || !evidenceFile || !reporterGalaId) {
+      toast.error("يرجى ملء جميع الحقول المطلوبة");
+      return;
+    }
+
+    if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
+      toast.error(`يجب أن يكون الوصف ${MIN_DESCRIPTION_LENGTH} حرف على الأقل`);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const fileExt = evidenceFile.name.split(".").pop();
+      const fileName = `ban-reports/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const isVideo = evidenceFile.type.startsWith("video/");
+
+      const { error: uploadError } = await supabase.storage
+        .from("attachments")
+        .upload(fileName, evidenceFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("attachments")
+        .getPublicUrl(fileName);
+
+      const { data, error } = await supabase
+        .from("ban_reports")
+        .insert({
+          reporter_gala_id: reporterGalaId,
+          reported_user_id: reportedUserId,
+          ban_type: banType,
+          description,
+          evidence_url: urlData.publicUrl,
+          evidence_type: isVideo ? "video" : "image",
+          reward_amount: selectedBanType?.reward || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      try {
+        await notifyNewBanReport({
+          id: data.id,
+          reporter_gala_id: reporterGalaId,
+          reported_user_id: reportedUserId,
+          ban_type: banType,
+          created_at: new Date().toISOString(),
+        });
+      } catch (webhookError) {
+        console.error("Webhook notification failed:", webhookError);
+      }
+
+      saveTrackingCode(data.id, "ban_report", reporterGalaId);
+
+      setRequestId(data.id.substring(0, 8).toUpperCase());
+      setIsSuccess(true);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("حدث خطأ أثناء إرسال البلاغ");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast.error("يرجى إدخال الآيدي للبحث");
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchResults([]);
+    setSelectedReport(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("ban_reports")
+        .select("*")
+        .eq("reported_user_id", searchQuery.trim())
+        .eq("is_verified", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setSearchResults((data || []) as unknown as BanReport[]);
+      if (!data?.length) {
+        toast.info("لا توجد بلاغات على هذا الآيدي");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("حدث خطأ أثناء البحث");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleTrackReports = async () => {
+    if (!trackQuery.trim()) {
+      toast.error("يرجى إدخال الآيدي للتتبع");
+      return;
+    }
+
+    setIsTracking(true);
+    setTrackResults([]);
+
+    try {
+      const { data, error } = await supabase
+        .from("ban_reports")
+        .select("*")
+        .eq("reporter_gala_id", trackQuery.trim())
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setTrackResults((data || []) as unknown as BanReport[]);
+      if (!data?.length) {
+        toast.info("لا توجد بلاغات مقدمة من هذا الآيدي");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("حدث خطأ أثناء البحث");
+    } finally {
+      setIsTracking(false);
+    }
+  };
+
+  const resetForm = () => {
+    setCurrentStep(1);
+    setBanType(null);
+    setReportedUserId("");
+    setDescription("");
+    setEvidenceFile(null);
+    setEvidencePreview("");
+    setIsSuccess(false);
+    setRequestId("");
+    setReporterGalaId("");
+  };
+
+  const getBanTypeLabel = (type: BanType) => {
+    return BAN_TYPES.find((t) => t.value === type)?.label || type;
+  };
+
+  const getStatusBadge = (report: BanReport) => {
+    if (report.is_verified) {
+      return (
+        <span className="flex items-center gap-1 bg-success/20 text-success px-2 py-1 rounded-full text-xs font-bold">
+          <CheckCircle className="w-3 h-3" />
+          تم التحقق
+        </span>
+      );
+    }
     return (
-      <MobileLayout showHeader headerTitle="بلاغ / حظر" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center px-6 py-20">
+      <span className="flex items-center gap-1 bg-warning/20 text-warning px-2 py-1 rounded-full text-xs font-bold">
+        <Clock className="w-3 h-3" />
+        قيد المراجعة
+      </span>
+    );
+  };
+
+  // Success view
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="flex-1 flex items-center justify-center p-6">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", duration: 0.6 }}
-            className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-6"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center space-y-6 max-w-sm"
           >
-            <CheckCircle className="w-10 h-10 text-success" />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال البلاغ بنجاح</h2>
-            <p className="text-sm text-muted-foreground">سيتم مراجعة طلبك والتعامل معه وفق سياسة التطبيق</p>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
-            <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">
-              العودة للرئيسية
-            </Button>
+            <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-10 h-10 text-success" />
+            </div>
+            <h1 className="text-2xl font-bold">تم إرسال البلاغ بنجاح!</h1>
+            <p className="text-muted-foreground">رقم البلاغ: #{requestId}</p>
+            <div className="bg-muted/50 border border-border rounded-xl p-4 text-sm text-muted-foreground">
+              <p>يمكنك تتبع حالة البلاغ من خلال "تتبع بلاغاتي" باستخدام آيدي غلا لايف الخاص بك</p>
+            </div>
+            {selectedBanType?.reward && (
+              <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
+                <div className="flex items-center justify-center gap-2 text-warning">
+                  <Gift className="w-5 h-5" />
+                  <span className="font-bold">مكافأة محتملة: {selectedBanType.reward.toLocaleString()} كوينز</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  سيتم مراجعة البلاغ وإضافة المكافأة في حال التحقق
+                </p>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => { resetForm(); setViewMode("menu"); }}>
+                العودة للقائمة
+              </Button>
+              <Button className="flex-1" onClick={resetForm}>
+                بلاغ جديد
+              </Button>
+            </div>
           </motion.div>
         </div>
-      </MobileLayout>
+      </div>
     );
   }
 
   return (
-    <MobileLayout showHeader headerTitle="بلاغ / حظر" onBack={() => navigate("/dashboard")}>
-      <div className="px-5 py-4 space-y-5">
-        {/* User Info */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <User className="w-4 h-4 text-primary" />
-            معلومات الحساب
-          </h3>
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">ID</span>
-              <span className="font-bold text-foreground">{user.id}</span>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button
+            className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
+            onClick={() => {
+              if (viewMode !== "menu") {
+                if (currentStep > 1 && viewMode === "report") {
+                  setCurrentStep(currentStep - 1);
+                } else {
+                  setViewMode("menu");
+                  resetForm();
+                }
+              } else {
+                navigate("/dashboard");
+              }
+            }}
+          >
+            <ArrowRight className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <ShieldBan className="w-5 h-5 text-destructive" />
             </div>
-            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">المستوى</span>
-              <span className="font-bold text-foreground">{user.level}</span>
-            </div>
-            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">النوع</span>
-              <span className="font-bold text-foreground">{user.accountType}</span>
-            </div>
-            <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">VIP</span>
-              <span className="font-bold text-primary flex items-center gap-1">
-                <Crown className="w-3 h-3" /> {user.vipLevel}
-              </span>
+            <div>
+              <h1 className="font-bold">البلاغات والبند</h1>
+              <p className="text-xs text-muted-foreground">
+                {viewMode === "menu" ? "بلّغ أو ابحث عن سبب البند" :
+                 viewMode === "report" ? "تقديم بلاغ جديد" :
+                 viewMode === "track" ? "تتبع بلاغاتي" :
+                 "البحث عن سبب البند"}
+              </p>
             </div>
           </div>
-        </motion.div>
+        </div>
+      </header>
 
-        {/* Report Type */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-primary" />
-            نوع البلاغ
-          </h3>
-          <RadioGroup value={reportType} onValueChange={setReportType} className="space-y-2">
-            {reportTypes.map((type) => (
-              <Label
-                key={type.value}
-                htmlFor={`report-${type.value}`}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  reportType === type.value
-                    ? "border-primary bg-primary/10"
-                    : "border-border/30 bg-muted/20 hover:bg-muted/40"
-                }`}
-              >
-                <RadioGroupItem value={type.value} id={`report-${type.value}`} />
-                <div className={`p-2 rounded-lg ${reportType === type.value ? "bg-primary/20 text-primary" : "bg-muted/30 text-muted-foreground"}`}>
-                  {type.icon}
+      <div className="flex-1 p-4">
+        <AnimatePresence mode="wait">
+          {/* Menu View */}
+          {viewMode === "menu" && (
+            <motion.div key="menu" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4">
+              <button onClick={() => setViewMode("report")} className="w-full bg-gradient-to-r from-destructive/10 to-orange-600/10 border border-destructive/20 rounded-2xl p-6 text-right">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
+                    <ShieldBan className="w-7 h-7 text-destructive" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-lg font-bold">تقديم بلاغ</p>
+                    <p className="text-sm text-muted-foreground">بلّغ عن مخالفة واحصل على مكافأة</p>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{type.label}</p>
-                  <p className="text-[11px] text-muted-foreground">{type.desc}</p>
-                </div>
-              </Label>
-            ))}
-          </RadioGroup>
-        </motion.div>
-
-        {/* Target Account ID */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground">ID الحساب المُبلَّغ عنه</h3>
-          <Input
-            type="text"
-            value={targetId}
-            onChange={(e) => setTargetId(e.target.value)}
-            placeholder="أدخل ID الحساب"
-            dir="ltr"
-            className="h-12 bg-muted/30 border-border/30 text-center text-base"
-          />
-        </motion.div>
-
-        {/* Description */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground">وصف المشكلة</h3>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-            placeholder="اكتب وصفًا مختصرًا للمشكلة..."
-            className="bg-muted/30 border-border/30 min-h-[100px] text-sm resize-none"
-            dir="rtl"
-          />
-          <p className="text-[11px] text-muted-foreground text-left">{description.length}/500</p>
-        </motion.div>
-
-        {/* Attachment */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="glass-card p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Image className="w-4 h-4 text-primary" />
-            مرفق (اختياري)
-          </h3>
-          <p className="text-[11px] text-muted-foreground">يمكنك رفع صورة أو مقطع قصير لدعم البلاغ</p>
-
-          {!attachment ? (
-            <label className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-border/40 rounded-xl cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all">
-              <Upload className="w-8 h-8 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">اضغط لرفع ملف</span>
-              <input
-                type="file"
-                accept="image/*,video/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-          ) : (
-            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl">
-              <div className="flex items-center gap-2 min-w-0">
-                <Image className="w-4 h-4 text-primary shrink-0" />
-                <span className="text-xs text-foreground truncate">{attachment.name}</span>
-              </div>
-              <button onClick={() => setAttachment(null)} className="p-1 hover:bg-destructive/10 rounded-lg transition-colors">
-                <X className="w-4 h-4 text-destructive" />
               </button>
-            </div>
-          )}
-        </motion.div>
 
-        {/* Submit */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-          <Button
-            onClick={handleSubmit}
-            disabled={!reportType || !targetId.trim() || !description.trim()}
-            className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40"
-          >
-            <Send className="w-5 h-5 ml-2" />
-            إرسال البلاغ
-          </Button>
-        </motion.div>
+              <div className="bg-gradient-to-r from-warning/20 to-amber-600/20 border border-warning/30 rounded-2xl p-4">
+                <div className="flex items-center gap-3">
+                  <Gift className="w-8 h-8 text-warning shrink-0" />
+                  <div>
+                    <p className="font-bold text-warning">مكافأة 50,000 كوينز!</p>
+                    <p className="text-sm text-muted-foreground">بلّغ عن ترويج لتطبيق آخر بالفيديو واحصل على المكافأة</p>
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={() => setViewMode("track")} className="w-full bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/20 rounded-2xl p-6 text-right">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
+                    <FileText className="w-7 h-7 text-purple-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-lg font-bold">تتبع بلاغاتي</p>
+                    <p className="text-sm text-muted-foreground">تابع حالة البلاغات التي قدمتها</p>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </button>
+
+              <button onClick={() => setViewMode("search")} className="w-full bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-2xl p-6 text-right">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <Search className="w-7 h-7 text-blue-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-lg font-bold">البحث عن سبب البند</p>
+                    <p className="text-sm text-muted-foreground">ابحث عن آيدي لمعرفة سبب بنده</p>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </button>
+            </motion.div>
+          )}
+
+          {/* Report View */}
+          {viewMode === "report" && (
+            <motion.div key="report" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+              <div className="flex items-center justify-center gap-2 mb-6">
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <div key={step} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                    currentStep > step ? "bg-success text-success-foreground" :
+                    currentStep === step ? "bg-gradient-to-r from-destructive to-orange-500 text-white" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {currentStep > step ? <CheckCircle2 className="w-4 h-4" /> : step}
+                  </div>
+                ))}
+              </div>
+
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-center">آيدي غلا لايف الخاص بك</h2>
+                  <Input type="text" inputMode="numeric" placeholder="أدخل آيدي غلا لايف الخاص بك" value={reporterGalaId} onChange={(e) => setReporterGalaId(e.target.value)} className="text-center text-lg h-14" />
+                  <Button className="w-full h-12 bg-gradient-to-r from-destructive to-orange-600" disabled={!reporterGalaId.trim()} onClick={() => setCurrentStep(2)}>
+                    التالي <ArrowLeft className="w-4 h-4 mr-2" />
+                  </Button>
+                </div>
+              )}
+
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-center">اختر نوع المخالفة</h2>
+                  <div className="space-y-3">
+                    {BAN_TYPES.map((type) => (
+                      <button key={type.value} onClick={() => { setBanType(type.value); setCurrentStep(3); }} className={`w-full p-4 rounded-xl border-2 transition-all ${banType === type.value ? "border-destructive bg-destructive/10" : "border-border bg-card hover:border-destructive/50"}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-destructive/20 flex items-center justify-center text-destructive">{type.icon}</div>
+                          <div className="flex-1 text-right">
+                            <p className="font-bold">{type.label}</p>
+                            <p className="text-sm text-muted-foreground">{type.description}</p>
+                          </div>
+                          {type.reward && (
+                            <div className="bg-warning/20 text-warning px-2 py-1 rounded-lg text-xs font-bold">{type.reward.toLocaleString()} كوينز</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 3 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-center">آيدي المُبلَّغ عنه</h2>
+                  <Input type="text" inputMode="numeric" placeholder="أدخل آيدي المستخدم المخالف" value={reportedUserId} onChange={(e) => setReportedUserId(e.target.value)} className="text-center text-lg h-14" />
+                  <Button className="w-full h-12 bg-gradient-to-r from-destructive to-orange-600" disabled={!reportedUserId.trim()} onClick={() => setCurrentStep(4)}>
+                    التالي <ArrowLeft className="w-4 h-4 mr-2" />
+                  </Button>
+                </div>
+              )}
+
+              {currentStep === 4 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-center">شرح المخالفة والإثبات</h2>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">وصف المخالفة <span className="text-destructive">*</span></label>
+                    <Textarea placeholder={`اشرح المخالفة بالتفصيل (${MIN_DESCRIPTION_LENGTH} حرف على الأقل)`} value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[120px]" />
+                    <div className="flex justify-between text-xs">
+                      <span className={description.length < MIN_DESCRIPTION_LENGTH ? "text-destructive" : "text-success"}>
+                        {description.length} / {MIN_DESCRIPTION_LENGTH} حرف (الحد الأدنى)
+                      </span>
+                      {description.length < MIN_DESCRIPTION_LENGTH && (
+                        <span className="text-destructive">متبقي {MIN_DESCRIPTION_LENGTH - description.length} حرف</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium">رفع {selectedBanType?.requiresVideo ? "فيديو" : "صورة أو فيديو"} الإثبات <span className="text-destructive">*</span></label>
+                    {selectedBanType?.requiresVideo && (
+                      <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm text-warning">
+                        <Video className="w-4 h-4 inline ml-2" />يجب رفع فيديو للحصول على المكافأة
+                      </div>
+                    )}
+                    {evidencePreview ? (
+                      <div className="relative">
+                        {evidenceFile?.type.startsWith("video/") ? (
+                          <video src={evidencePreview} controls className="w-full rounded-xl" />
+                        ) : (
+                          <img src={evidencePreview} alt="Evidence" className="w-full rounded-xl" />
+                        )}
+                        <Button variant="destructive" size="sm" className="absolute top-2 left-2" onClick={() => { setEvidenceFile(null); setEvidencePreview(""); }}>حذف</Button>
+                      </div>
+                    ) : (
+                      <label className="block border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-destructive/50 transition-colors">
+                        <input type="file" accept={selectedBanType?.requiresVideo ? "video/*" : "image/*,video/*"} onChange={handleFileChange} className="hidden" />
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                          {selectedBanType?.requiresVideo ? <Video className="w-10 h-10" /> : <Upload className="w-10 h-10" />}
+                          <span>اضغط لرفع {selectedBanType?.requiresVideo ? "الفيديو" : "الملف"}</span>
+                        </div>
+                      </label>
+                    )}
+                  </div>
+
+                  <Button className="w-full h-12 bg-gradient-to-r from-destructive to-orange-600" disabled={!canProceedToConfirmation()} onClick={() => setCurrentStep(5)}>
+                    التالي <ArrowLeft className="w-4 h-4 mr-2" />
+                  </Button>
+                  {!canProceedToConfirmation() && (
+                    <p className="text-xs text-center text-muted-foreground">يجب رفع الإثبات وكتابة وصف ({MIN_DESCRIPTION_LENGTH} حرف على الأقل) للمتابعة</p>
+                  )}
+                </div>
+              )}
+
+              {currentStep === 5 && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-center">تأكيد البلاغ</h2>
+                  <div className="bg-card rounded-xl p-4 space-y-3 border">
+                    <div className="flex justify-between"><span className="text-muted-foreground">آيدي المُبلِّغ:</span><span className="font-bold">{reporterGalaId}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">نوع المخالفة:</span><span className="font-bold">{selectedBanType?.label}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">الآيدي المُبلَّغ عنه:</span><span className="font-bold">{reportedUserId}</span></div>
+                    <div><span className="text-muted-foreground">الوصف:</span><p className="text-sm mt-1">{description}</p></div>
+                    {selectedBanType?.reward && (
+                      <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-center">
+                        <Gift className="w-5 h-5 text-warning inline ml-2" />
+                        <span className="text-warning font-bold">مكافأة محتملة: {selectedBanType.reward.toLocaleString()} كوينز</span>
+                      </div>
+                    )}
+                  </div>
+                  <Button className="w-full h-12 bg-gradient-to-r from-destructive to-orange-600" disabled={isSubmitting} onClick={handleSubmit}>
+                    {isSubmitting ? (<><Loader2 className="w-4 h-4 animate-spin ml-2" />جاري الإرسال...</>) : "إرسال البلاغ"}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Track View */}
+          {viewMode === "track" && (
+            <motion.div key="track" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+              <h2 className="text-lg font-bold text-center">تتبع بلاغاتي</h2>
+              <div className="flex gap-2">
+                <Input type="text" inputMode="numeric" placeholder="أدخل آيدي غلا لايف الخاص بك" value={trackQuery} onChange={(e) => setTrackQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleTrackReports()} className="flex-1" />
+                <Button onClick={handleTrackReports} disabled={isTracking} className="bg-gradient-to-r from-purple-600 to-pink-600">
+                  {isTracking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
+              {trackResults.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-bold text-sm text-muted-foreground">بلاغاتك ({trackResults.length})</h3>
+                  {trackResults.map((report) => (
+                    <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">{getBanTypeLabel(report.ban_type)}</span>
+                          {getStatusBadge(report)}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-SA")}</span>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <div className="flex justify-between"><span className="text-muted-foreground">المُبلَّغ عنه:</span><span className="font-bold">{report.reported_user_id}</span></div>
+                      </div>
+                      {report.description && <p className="text-sm text-muted-foreground line-clamp-2">{report.description}</p>}
+                      {report.is_verified && report.reward_amount && (
+                        <div className={`text-sm rounded-lg p-2 ${report.reward_paid ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                          <Gift className="w-4 h-4 inline ml-1" />
+                          {report.reward_paid ? `تم صرف المكافأة: ${report.reward_amount.toLocaleString()} كوينز` : `مكافأة مستحقة: ${report.reward_amount.toLocaleString()} كوينز`}
+                        </div>
+                      )}
+                      {report.admin_notes && (
+                        <div className="bg-muted/50 rounded-lg p-2 text-sm"><span className="text-muted-foreground">ملاحظات الإدارة: </span>{report.admin_notes}</div>
+                      )}
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedReport(report)}>
+                        <Eye className="w-4 h-4 ml-2" />عرض الإثبات
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Search View */}
+          {viewMode === "search" && (
+            <motion.div key="search" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+              <h2 className="text-lg font-bold text-center">البحث عن سبب البند</h2>
+              <div className="flex gap-2">
+                <Input type="text" inputMode="numeric" placeholder="أدخل الآيدي للبحث" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()} className="flex-1" />
+                <Button onClick={handleSearch} disabled={isSearching} className="bg-gradient-to-r from-blue-600 to-cyan-600">
+                  {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
+              </div>
+              {searchResults.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-bold text-sm text-muted-foreground">نتائج البحث ({searchResults.length})</h3>
+                  {searchResults.map((report) => (
+                    <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">{getBanTypeLabel(report.ban_type)}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${report.expires_at ? "bg-warning/20 text-warning" : "bg-purple-500/20 text-purple-500"}`}>
+                            {report.expires_at ? "⏰ مؤقت" : "🔒 دائم"}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${report.is_verified ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"}`}>
+                            {report.is_verified ? "✓ مؤكد" : "⏳ قيد المراجعة"}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-SA")}</span>
+                      </div>
+                      {report.expires_at && (
+                        <div className="text-xs text-warning bg-warning/10 px-3 py-1.5 rounded-lg">
+                          ⏰ ينتهي: {new Date(report.expires_at).toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" })}
+                        </div>
+                      )}
+                      {report.description && <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">📝 {report.description}</p>}
+                      <div className="relative rounded-lg overflow-hidden border border-border cursor-pointer group" onClick={() => setSelectedReport(report)}>
+                        {report.evidence_type === "video" ? (
+                          <div className="relative bg-muted/50 p-6 flex flex-col items-center justify-center gap-2">
+                            <Video className="w-10 h-10 text-destructive" />
+                            <span className="text-sm text-muted-foreground">🎬 فيديو - اضغط للمشاهدة</span>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <img src={report.evidence_url} alt="دليل البلاغ" className="w-full h-40 object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Eye className="w-8 h-8 text-white" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedReport(report)}>
+                        <Eye className="w-4 h-4 ml-2" />عرض الإثبات بالكامل
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Evidence Modal */}
+        {selectedReport && (
+          <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" onClick={() => setSelectedReport(null)}>
+            <button onClick={() => setSelectedReport(null)} className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors z-10">
+              <span className="text-white text-2xl font-light">×</span>
+            </button>
+            <div className="max-w-3xl w-full bg-card rounded-2xl overflow-hidden max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
+                    <ShieldBan className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold">إثبات البند</h3>
+                    <p className="text-xs text-muted-foreground">الآيدي: {selectedReport.reported_user_id}</p>
+                  </div>
+                </div>
+                <span className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">{getBanTypeLabel(selectedReport.ban_type)}</span>
+              </div>
+              <div className="flex-1 overflow-auto p-4">
+                <div className="rounded-lg overflow-hidden border border-border bg-black">
+                  {isResolvingEvidence ? (
+                    <div className="p-10 flex items-center justify-center text-muted-foreground gap-2"><Loader2 className="w-5 h-5 animate-spin" />جاري تحميل الدليل...</div>
+                  ) : !resolvedEvidenceUrl ? (
+                    <div className="p-10 text-center text-muted-foreground">لا يوجد دليل لهذا البلاغ.</div>
+                  ) : selectedReport.evidence_type === "video" ? (
+                    <video key={resolvedEvidenceUrl} src={resolvedEvidenceUrl} controls autoPlay playsInline preload="auto" className="w-full max-h-[60vh] object-contain" onError={() => setEvidenceLoadError("تعذر تحميل الفيديو داخل التطبيق.")} />
+                  ) : (
+                    <img key={resolvedEvidenceUrl} src={resolvedEvidenceUrl} alt="دليل البلاغ" className="w-full max-h-[60vh] object-contain" loading="eager" onError={() => setEvidenceLoadError("تعذر تحميل الصورة داخل التطبيق.")} />
+                  )}
+                </div>
+                {evidenceLoadError && <div className="mt-3 text-sm text-muted-foreground bg-muted/40 border border-border rounded-lg p-3">{evidenceLoadError}</div>}
+                <div className="mt-4 space-y-2 bg-muted/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">نوع البند:</span><span className="font-bold text-destructive">{getBanTypeLabel(selectedReport.ban_type)}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">مدة البند:</span><span className="font-bold">{selectedReport.expires_at ? "مؤقت" : "دائم 🔒"}</span></div>
+                  {selectedReport.expires_at && (
+                    <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">ينتهي في:</span><span className="font-bold text-warning">{new Date(selectedReport.expires_at).toLocaleString("ar-SA")}</span></div>
+                  )}
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">تاريخ البلاغ:</span><span>{new Date(selectedReport.created_at).toLocaleString("ar-SA")}</span></div>
+                  {selectedReport.description && (
+                    <div className="pt-2 border-t border-border"><span className="text-muted-foreground text-sm">السبب:</span><p className="mt-1 text-sm">{selectedReport.description}</p></div>
+                  )}
+                </div>
+              </div>
+              <div className="p-4 border-t border-border">
+                <Button variant="outline" className="w-full" onClick={() => setSelectedReport(null)}>إغلاق</Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </MobileLayout>
+    </div>
   );
 };
 
