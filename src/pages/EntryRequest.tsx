@@ -237,6 +237,12 @@ const EntryRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="الدخوليات" onBack={() => navigate("/dashboard")}>
       <div className="px-3 py-4 space-y-4">
+        {/* Title Section */}
+        <div className="text-center css-fade-up space-y-1">
+          <h2 className="text-lg font-black gradient-text">غلا شات</h2>
+          <p className="text-[11px] text-muted-foreground">لا تخليها بخاطرك .. البسها 🎁</p>
+        </div>
+
         {/* User Status Bar */}
         <div className="glass-card p-3 css-fade-up">
           <div className="flex items-center justify-between">
