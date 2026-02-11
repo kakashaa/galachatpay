@@ -1,8 +1,9 @@
-import React from "react";
-import { Copy, Zap, Diamond, Gift, Coins, DollarSign } from "lucide-react";
+import React, { useState } from "react";
+import { Copy, Zap, Diamond, Gift, Coins, DollarSign, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
+import StarWalletDialog from "@/components/StarWalletDialog";
 
 const getUserTypeLabel = (type: number): string => {
   switch (type) {
@@ -22,6 +23,8 @@ const getUserTypeBadgeStyle = (type: number) => {
 
 const UserProfileCard: React.FC = () => {
   const { user } = useAuth();
+  const [showStarWallet, setShowStarWallet] = useState(false);
+
   if (!user) return null;
 
   const typeLabel = getUserTypeLabel(user.type_user);
@@ -67,7 +70,7 @@ const UserProfileCard: React.FC = () => {
           </div>
         </div>
 
-        {/* Wallet Row */}
+        {/* Wallet Row - includes star wallet mini */}
         <div className="relative z-10 flex gap-1.5 mb-2.5" dir="rtl">
           {[
             { icon: Coins, label: "كوينز", value: user.my_store?.coins ?? 0, color: "rgba(234,179,8,0.12)", border: "rgba(234,179,8,0.15)", iconColor: "text-yellow-400" },
@@ -80,6 +83,16 @@ const UserProfileCard: React.FC = () => {
               <p className="text-[11px] font-black text-foreground">{typeof w.value === 'number' ? w.value.toLocaleString() : w.value}</p>
             </div>
           ))}
+          {/* Star Wallet Mini */}
+          <button
+            onClick={() => setShowStarWallet(true)}
+            className="flex-1 rounded-lg py-1.5 px-1 text-center active:scale-95 transition-transform"
+            style={{ background: "rgba(45,212,191,0.12)", border: "1px solid rgba(45,212,191,0.15)" }}
+          >
+            <Star className="w-3.5 h-3.5 mx-auto mb-0.5 text-accent fill-accent" />
+            <p className="text-[8px] text-muted-foreground">النجوم</p>
+            <p className="text-[11px] font-black text-accent">⭐</p>
+          </button>
         </div>
 
         {/* Levels Row */}
@@ -110,6 +123,8 @@ const UserProfileCard: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} />
     </div>
   );
 };
