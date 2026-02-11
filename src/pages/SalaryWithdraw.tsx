@@ -34,8 +34,9 @@ const SalaryWithdraw: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // API confirmed amount
+  // API confirmed data
   const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
+  const [confirmedDate, setConfirmedDate] = useState<string | null>(null);
 
   // Details form
   const [fullName, setFullName] = useState("");
@@ -77,13 +78,15 @@ const SalaryWithdraw: React.FC = () => {
       }
 
       if (!data?.success) {
-        setError(data?.error || "فشل التحقق من التحويل. تأكد من إتمام العملية.");
+        // No transfer found — tell user to go transfer first
+        setError("لم يتم العثور على تحويل. رجاءً أولاً قم بتحويل المبلغ الذي تريد استلامه إلى آيدي 10000 في تطبيق غلا لايف، ثم ارجع وحاول مرة أخرى.");
         setLoading(false);
         return;
       }
 
-      // API returns the confirmed amount
-      setConfirmedAmount(data.amount ?? withdrawAmount);
+      // API returns the confirmed amount and date
+      setConfirmedAmount(data.amount ?? data.data?.amount ?? withdrawAmount);
+      setConfirmedDate(data.date ?? data.data?.date ?? new Date().toISOString().split("T")[0]);
       setStep("details");
     } catch {
       setError("حدث خطأ غير متوقع.");
@@ -273,6 +276,14 @@ const SalaryWithdraw: React.FC = () => {
                 <span className="text-xs text-muted-foreground">المبلغ المؤكد</span>
                 <span className="text-lg font-bold text-primary">{(confirmedAmount ?? 0).toLocaleString()}</span>
               </div>
+              <div className="flex justify-between items-center bg-primary/5 rounded-xl p-3">
+                <span className="text-xs text-muted-foreground">تاريخ التحويل</span>
+                <span className="text-sm font-bold text-foreground">{confirmedDate || "اليوم"}</span>
+              </div>
+              <div className="flex items-start gap-2 p-2 bg-muted/20 rounded-lg">
+                <Info className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-[10px] text-muted-foreground">المبلغ والتاريخ مؤكدان من النظام ولا يمكن تعديلهما</p>
+              </div>
             </motion.div>
 
             {/* Full Name */}
@@ -384,6 +395,10 @@ const SalaryWithdraw: React.FC = () => {
                 <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
                   <span className="text-muted-foreground">المبلغ المؤكد</span>
                   <span className="font-bold text-primary">{(confirmedAmount ?? 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
+                  <span className="text-muted-foreground">تاريخ التحويل</span>
+                  <span className="font-bold text-foreground">{confirmedDate || "اليوم"}</span>
                 </div>
                 <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
                   <span className="text-muted-foreground">الاسم الرباعي</span>
