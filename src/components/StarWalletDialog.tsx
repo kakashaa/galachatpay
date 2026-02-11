@@ -45,12 +45,13 @@ interface Props {
 const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main" }) => {
   const { user } = useAuth();
   const [starBalance, setStarBalance] = useState<UserStarBalance | null>(null);
-  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout">("main");
+  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "code_result">("main");
   const [friendUuid, setFriendUuid] = useState("");
   const [giftAmount, setGiftAmount] = useState(1);
-  const [cashoutStars, setCashoutStars] = useState(10);
   const [submitting, setSubmitting] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [generatedAmount, setGeneratedAmount] = useState(0);
 
   const chargerLevel = user?.level?.charger_level ?? 0;
   const currentMonth = getCurrentMonth();
@@ -176,14 +177,23 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
     }
   };
 
+  const generateCode = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "STAR-";
+    for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  };
+
   const handleCashout = async () => {
     if (!user?.uuid || !starBalance) return;
-    if (cashoutStars < 1 || cashoutStars > totalStars) { toast.error("عدد النجوم غير صحيح"); return; }
+    if (totalStars < 10) { toast.error("يجب أن يكون لديك 10 نجوم على الأقل للتحويل"); return; }
 
     setSubmitting(true);
     try {
-      const usdAmount = cashoutStars * STAR_TO_USD;
-      const newTotal = totalStars - cashoutStars;
+      const starsToConvert = 10;
+      const usdAmount = starsToConvert * STAR_TO_USD;
+      const newTotal = totalStars - starsToConvert;
+      const code = generateCode();
 
       // Deduct stars
       const { error: deductError } = await supabase
@@ -192,32 +202,29 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
         .eq("id", starBalance.id);
       if (deductError) throw deductError;
 
-      // Create salary request for cash withdrawal
-      const { error: requestError } = await supabase
-        .from("salary_requests")
+      // Create cashout code
+      const { error: codeError } = await supabase
+        .from("star_cashout_codes")
         .insert({
+          code,
           user_uuid: user.uuid,
           user_name: user.name,
-          amount_usd: usdAmount,
-          payment_method: "star_cashout",
-          payment_details: `تحويل ${cashoutStars} نجمة إلى $${usdAmount}`,
-          recipient_name: user.name,
-          recipient_country: "غير محدد",
-          request_type: "star_cashout",
+          stars_amount: starsToConvert,
+          usd_amount: usdAmount,
         });
-      if (requestError) throw requestError;
+      if (codeError) throw codeError;
 
       // Log it
       await supabase.from("star_gift_logs").insert({
         sender_uuid: user.uuid,
         sender_name: user.name,
         recipient_uuid: "CASHOUT",
-        amount: cashoutStars,
+        amount: starsToConvert,
       } as any);
 
-      toast.success(`تم تقديم طلب تحويل ${cashoutStars} نجمة إلى $${usdAmount} بنجاح! 💰`);
-      setCurrentView("main");
-      setCashoutStars(10);
+      setGeneratedCode(code);
+      setGeneratedAmount(usdAmount);
+      setCurrentView("code_result");
       fetchStarBalance();
     } catch (err: any) {
       toast.error(err?.message || "فشل التحويل");
@@ -341,52 +348,85 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
 
           {currentView === "cashout" && (
             <div className="space-y-4 pt-2" dir="rtl">
-              <div className="text-center py-2">
+              <div className="text-center py-3">
                 <DollarSign className="w-10 h-10 mx-auto text-emerald-400 mb-1" />
                 <p className="text-sm font-bold text-foreground">تحويل النجوم إلى كاش</p>
-                <p className="text-[10px] text-muted-foreground">كل نجمة = ${STAR_TO_USD} دولار</p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">عدد النجوم للتحويل</label>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setCashoutStars(Math.max(1, cashoutStars - 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">-</button>
-                  <div className="flex-1 text-center">
-                    <span className="text-2xl font-black text-emerald-400">{cashoutStars}</span>
-                    <span className="text-xs text-muted-foreground mr-1">⭐</span>
-                  </div>
-                  <button onClick={() => setCashoutStars(Math.min(totalStars, cashoutStars + 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">+</button>
-                </div>
+                <p className="text-[10px] text-muted-foreground">10 نجوم = $50 دولار</p>
               </div>
 
               <div className="rounded-xl p-3" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
                 <div className="flex justify-between items-center text-sm mb-2">
-                  <span className="text-muted-foreground">النجوم</span>
-                  <span className="font-black text-foreground">{cashoutStars} ⭐</span>
+                  <span className="text-muted-foreground">نجومك الحالية</span>
+                  <span className="font-black text-foreground">{totalStars} ⭐</span>
                 </div>
                 <div className="flex justify-between items-center text-sm mb-2">
-                  <span className="text-muted-foreground">المبلغ</span>
-                  <span className="font-black text-emerald-400">${cashoutStars * STAR_TO_USD}</span>
+                  <span className="text-muted-foreground">سيتم خصم</span>
+                  <span className="font-black text-foreground">10 ⭐</span>
                 </div>
                 <div className="border-t border-border/20 pt-2 flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">الرصيد بعد التحويل</span>
-                  <span className="font-black text-foreground">{totalStars - cashoutStars} ⭐</span>
+                  <span className="text-muted-foreground">ستحصل على</span>
+                  <span className="font-black text-emerald-400">$50</span>
                 </div>
               </div>
 
+              {totalStars < 10 && (
+                <div className="bg-destructive/10 rounded-xl p-2.5 text-[10px] text-destructive text-center">
+                  <p className="font-bold">❌ لا يمكنك التحويل</p>
+                  <p>تحتاج 10 نجوم على الأقل. لديك {totalStars} فقط.</p>
+                </div>
+              )}
+
               <div className="bg-yellow-500/10 rounded-xl p-2.5 text-[10px] text-muted-foreground">
-                <p className="font-bold text-yellow-400 mb-0.5">⚠️ ملاحظة</p>
-                <p>سيتم إنشاء طلب سحب وسيراجعه الأدمن. المبلغ يُحول لحسابك بعد الموافقة.</p>
+                <p className="font-bold text-yellow-400 mb-0.5">📋 كيف يعمل؟</p>
+                <p>1. اضغط "تحويل" وسيتم إنشاء كود خاص</p>
+                <p>2. انسخ الكود واذهب لصفحة سحب الراتب</p>
+                <p>3. اختر "سحب عبر كود النجوم" وأدخل الكود</p>
+                <p>4. أكمل بيانات التحويل واستلم فلوسك</p>
               </div>
 
               <Button
                 onClick={handleCashout}
-                disabled={submitting || cashoutStars < 1 || cashoutStars > totalStars}
+                disabled={submitting || totalStars < 10}
                 className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {submitting ? "جاري الإرسال..." : `تحويل ${cashoutStars} نجمة إلى $${cashoutStars * STAR_TO_USD}`}
+                {submitting ? "جاري الإنشاء..." : "تحويل 10 نجوم إلى $50"}
               </Button>
               <button onClick={() => setCurrentView("main")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
+            </div>
+          )}
+
+          {currentView === "code_result" && (
+            <div className="space-y-4 pt-2" dir="rtl">
+              <div className="text-center py-3">
+                <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-2">
+                  <DollarSign className="w-8 h-8 text-emerald-400" />
+                </div>
+                <p className="text-sm font-bold text-foreground">تم إنشاء الكود بنجاح! 🎉</p>
+                <p className="text-[10px] text-muted-foreground">قيمة الكود: ${generatedAmount}</p>
+              </div>
+
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(34,197,94,0.1)", border: "2px dashed rgba(34,197,94,0.4)" }}>
+                <p className="text-[10px] text-muted-foreground mb-1">كود السحب</p>
+                <p className="text-xl font-black text-emerald-400 font-mono tracking-wider">{generatedCode}</p>
+              </div>
+
+              <Button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedCode);
+                  toast.success("تم نسخ الكود!");
+                }}
+                variant="outline"
+                className="w-full border-emerald-500/30 text-emerald-400"
+              >
+                📋 نسخ الكود
+              </Button>
+
+              <div className="bg-yellow-500/10 rounded-xl p-2.5 text-[10px] text-muted-foreground">
+                <p className="font-bold text-yellow-400 mb-0.5">📌 الخطوة التالية</p>
+                <p>اذهب إلى صفحة "سحب الراتب" واختر "سحب عبر كود النجوم" وأدخل الكود لإكمال عملية السحب.</p>
+              </div>
+
+              <button onClick={() => { setCurrentView("main"); onClose(); }} className="w-full text-center text-sm text-muted-foreground py-1">إغلاق</button>
             </div>
           )}
         </DialogContent>
