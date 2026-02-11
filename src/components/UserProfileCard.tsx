@@ -28,9 +28,9 @@ const UserProfileCard: React.FC = () => {
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
   const avatarSrc = user.profile?.gender === 2 ? avatarFemale : avatarMale;
 
-  const chargerPct = Math.min((user.level.charger_level / 50) * 100, 100);
-  const receiverPct = Math.min((user.level.receiver_level / 50) * 100, 100);
-  const senderPct = Math.min((user.level.sender_level / 50) * 100, 100);
+  const chargerPct = Math.min((user.level.charger_level / 100) * 100, 100);
+  const receiverPct = Math.min((user.level.receiver_level / 100) * 100, 100);
+  const senderPct = Math.min((user.level.sender_level / 100) * 100, 100);
 
   const copyId = () => navigator.clipboard.writeText(user.uuid);
 
@@ -95,11 +95,16 @@ const UserProfileCard: React.FC = () => {
               </div>
               <span className="text-[8px] text-muted-foreground">{l.label}</span>
               <span className="text-[10px] font-black text-foreground">Lv.{l.level}</span>
-              <div className="w-full bg-white/10 h-0.5 rounded-full overflow-hidden">
+              <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden relative">
                 <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${Math.max(l.pct, 5)}%`, background: `linear-gradient(90deg, ${l.from}, ${l.to})` }}
-                />
+                  className="h-full rounded-full transition-all duration-1000 relative overflow-hidden"
+                  style={{ width: `${Math.max(l.pct, 3)}%`, background: `linear-gradient(90deg, ${l.from}, ${l.to})` }}
+                >
+                  <div className="absolute inset-0 animate-water-wave opacity-40" style={{
+                    background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)`,
+                    backgroundSize: '200% 100%',
+                  }} />
+                </div>
               </div>
             </div>
           ))}
