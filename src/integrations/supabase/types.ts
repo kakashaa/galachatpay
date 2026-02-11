@@ -288,6 +288,74 @@ export type Database = {
         }
         Relationships: []
       }
+      item_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          parent_id: string | null
+          user_image: string | null
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          parent_id?: string | null
+          user_image?: string | null
+          user_name: string
+          user_uuid: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          parent_id?: string | null
+          user_image?: string | null
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "item_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_likes: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          user_uuid: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          user_uuid: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           admin_unblocked_at: string | null

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Play, X, Star, Send, User as UserIcon, HelpCircle, Lock } from "lucide-react";
+import ItemComments from "@/components/ItemComments";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -453,6 +454,12 @@ const EntryRequest: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {selectedGift && (
+              <div className="bg-background rounded-b-2xl">
+                <ItemComments itemType="entry_gift" itemId={selectedGift.id} />
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -618,6 +625,12 @@ const EntryRequest: React.FC = () => {
                   <span className="text-white/60 text-xs">{selectedCustomGift.user_name}</span>
                 </div>
                 <p className="text-white/40 text-[10px] mt-1">هدية مخصصة - للمشاهدة فقط</p>
+              </div>
+            )}
+
+            {selectedCustomGift && (
+              <div className="bg-background rounded-b-2xl">
+                <ItemComments itemType="custom_gift" itemId={selectedCustomGift.id} />
               </div>
             )}
           </div>

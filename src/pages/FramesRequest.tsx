@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Star, Send, User as UserIcon, HelpCircle, Lock, Frame } from "lucide-react";
+import ItemComments from "@/components/ItemComments";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -300,6 +301,9 @@ const FramesRequest: React.FC = () => {
                   )}
                 </div>
               </div>
+            )}
+            {selectedFrame && (
+              <ItemComments itemType="frame" itemId={selectedFrame.id} />
             )}
           </div>
         </DialogContent>
