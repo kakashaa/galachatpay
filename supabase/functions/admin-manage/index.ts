@@ -87,6 +87,33 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Login blocks management
+      case "list_blocked_accounts": {
+        const { data: blocks, error } = await supabase
+          .from("login_attempts")
+          .select("*")
+          .or("is_permanently_blocked.eq.true,blocked_until.not.is.null")
+          .order("updated_at", { ascending: false });
+        if (error) throw error;
+        result = blocks;
+        break;
+      }
+      case "unblock_account": {
+        const { error } = await supabase
+          .from("login_attempts")
+          .update({
+            is_permanently_blocked: false,
+            blocked_until: null,
+            failed_attempts: 0,
+            block_count: 0,
+            admin_unblocked_at: new Date().toISOString(),
+          })
+          .eq("target_uuid", data.target_uuid);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       // Ban reports management
       case "list_ban_reports": {
         const { data: reports, error } = await supabase

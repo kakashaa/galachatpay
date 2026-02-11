@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, HelpCircle, User, Lock, Shield } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, HelpCircle, User, Lock, Shield, Fingerprint, Timer, Ban } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import LoginInstructions from "@/components/LoginInstructions";
@@ -10,18 +10,14 @@ const Mascot = () => (
   <div className="relative animate-bounce-slow flex items-center justify-center">
     <div className="absolute inset-0 bg-primary/30 blur-3xl rounded-full scale-75" />
     <div className="relative w-32 h-32 bg-primary rounded-full flex items-center justify-center shadow-2xl">
-      {/* Ears */}
       <div className="absolute -top-2 w-1 h-6 bg-primary rounded-full origin-bottom rotate-[15deg]" />
       <div className="absolute -top-2 w-1 h-6 bg-primary rounded-full origin-bottom -rotate-[15deg]" />
-      {/* Eyes */}
       <div className="flex gap-4">
         <div className="w-3 h-3 bg-black rounded-full" />
         <div className="w-3 h-3 bg-black rounded-full" />
       </div>
-      {/* Side bumps */}
       <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-6 bg-primary rounded-l-full" />
       <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-6 bg-primary rounded-r-full" />
-      {/* Feet */}
       <div className="absolute -bottom-1 left-1/3 w-3 h-3 bg-primary/80 rounded-b-md" />
       <div className="absolute -bottom-1 right-1/3 w-3 h-3 bg-primary/80 rounded-b-md" />
     </div>
@@ -47,12 +43,82 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [loading, setLoading] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [blockInfo, setBlockInfo] = useState<{ blocked: boolean; permanent: boolean; blockedUntil?: string; blockCount?: number } | null>(null);
+
+  // Quick login state
+  const [savedUser, setSavedUser] = useState<{ uuid: string; name: string } | null>(null);
+  const [showQuickLogin, setShowQuickLogin] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+  useEffect(() => {
+    // Check for saved quick login
+    const saved = localStorage.getItem("gala_quick_login");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSavedUser(parsed);
+        setShowQuickLogin(true);
+      } catch { /* ignore */ }
+    }
+
+    // Check biometric availability
+    if (window.PublicKeyCredential) {
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.()
+        .then(available => setBiometricAvailable(available))
+        .catch(() => setBiometricAvailable(false));
+    }
+  }, []);
+
+  const handleQuickLogin = async () => {
+    if (!savedUser) return;
+    
+    // If biometric available, try to verify
+    if (biometricAvailable) {
+      try {
+        // Use a simple credential check as biometric gate
+        const credential = await navigator.credentials.get({
+          publicKey: {
+            challenge: crypto.getRandomValues(new Uint8Array(32)),
+            timeout: 60000,
+            userVerification: "required",
+            rpId: window.location.hostname,
+            allowCredentials: [],
+          }
+        }).catch(() => null);
+
+        // If biometric was cancelled, fall back to password
+        if (!credential) {
+          setUserId(savedUser.uuid);
+          setShowQuickLogin(false);
+          return;
+        }
+      } catch {
+        // Biometric not set up, fall back
+        setUserId(savedUser.uuid);
+        setShowQuickLogin(false);
+        return;
+      }
+    }
+
+    // No biometric or not available — just prefill UUID
+    setUserId(savedUser.uuid);
+    setShowQuickLogin(false);
+  };
+
+  const clearQuickLogin = () => {
+    localStorage.removeItem("gala_quick_login");
+    setSavedUser(null);
+    setShowQuickLogin(false);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setWarning("");
+    setBlockInfo(null);
 
     if (!userId.trim() && !password.trim()) {
       setError("يرجى إدخال الآيدي والرمز");
@@ -80,10 +146,31 @@ const Login: React.FC = () => {
         data = result.data;
         fnError = result.error;
       } catch (invokeErr: any) {
-        // supabase.functions.invoke can throw on non-2xx
         setError("بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز.");
         setLoading(false);
         return;
+      }
+
+      // Handle block response
+      if (data?.blocked) {
+        setBlockInfo({
+          blocked: true,
+          permanent: data.permanent,
+          blockedUntil: data.blocked_until,
+          blockCount: data.block_count,
+        });
+        setError(data.error || "تم حظر الحساب");
+        setLoading(false);
+        return;
+      }
+
+      // Handle warning about remaining attempts
+      if (data?.warning) {
+        setWarning(data.warning);
+      }
+
+      if (data?.remaining_attempts !== undefined && data?.remaining_attempts <= 2) {
+        setWarning(data.warning || `⚠️ تبقى لك ${data.remaining_attempts} محاولة فقط!`);
       }
 
       if (fnError || !data?.success) {
@@ -112,7 +199,8 @@ const Login: React.FC = () => {
             sender_num: apiUser.level?.sender_num || 0,
             charger_num: apiUser.level?.charger_num || 0,
           };
-      setUser({
+
+      const userObj = {
         id: apiUser.id,
         uuid: apiUser.uuid,
         name: apiUser.name,
@@ -137,7 +225,15 @@ const Login: React.FC = () => {
           name: apiUser.country?.name || "",
           flag: apiUser.country?.flag || "",
         },
-      });
+      };
+
+      setUser(userObj);
+
+      // Save quick login info
+      localStorage.setItem("gala_quick_login", JSON.stringify({
+        uuid: apiUser.uuid,
+        name: apiUser.name,
+      }));
 
       navigate("/dashboard");
     } catch {
@@ -176,6 +272,77 @@ const Login: React.FC = () => {
             سجّل دخولك الآن وابدأ تجربة جديدة كلياً! كن مدير نفسك، أنشئ طلبك خلال ثواني، وتابع كل شيء بسهولة وبدون انتظار أو زيارة خدمة العملاء.
           </p>
         </motion.div>
+
+        {/* Quick Login */}
+        <AnimatePresence>
+          {showQuickLogin && savedUser && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="w-full mb-4"
+            >
+              <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <button onClick={clearQuickLogin} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
+                    حذف
+                  </button>
+                  <div className="flex items-center gap-2 text-right">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{savedUser.name}</p>
+                      <p className="text-xs text-muted-foreground" dir="ltr">ID: {savedUser.uuid}</p>
+                    </div>
+                    <Fingerprint className="w-5 h-5 text-primary" />
+                  </div>
+                </div>
+                <button
+                  onClick={handleQuickLogin}
+                  className="w-full h-12 rounded-xl bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                >
+                  <Fingerprint className="w-4 h-4" />
+                  {biometricAvailable ? "دخول سريع بالبصمة" : "دخول سريع"}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Block Warning Banner */}
+        <AnimatePresence>
+          {blockInfo && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full mb-4"
+            >
+              <div className={`rounded-2xl p-4 border space-y-2 ${
+                blockInfo.permanent
+                  ? "bg-destructive/10 border-destructive/30"
+                  : "bg-warning/10 border-warning/30"
+              }`}>
+                <div className="flex items-center gap-2 justify-end">
+                  <div className="text-right">
+                    <p className={`text-sm font-bold ${blockInfo.permanent ? "text-destructive" : "text-warning"}`}>
+                      {blockInfo.permanent ? "🚫 حظر نهائي" : "⏳ حظر مؤقت"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {blockInfo.permanent
+                        ? "تواصل مع الإدارة لفك الحظر"
+                        : `التحذير رقم ${blockInfo.blockCount}`
+                      }
+                    </p>
+                  </div>
+                  {blockInfo.permanent ? (
+                    <Ban className="w-6 h-6 text-destructive" />
+                  ) : (
+                    <Timer className="w-6 h-6 text-warning" />
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Form */}
         <motion.form
@@ -227,6 +394,21 @@ const Login: React.FC = () => {
             </button>
           </div>
 
+          {/* Warning */}
+          <AnimatePresence>
+            {warning && !error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-2xl"
+              >
+                <AlertCircle className="w-4 h-4 text-warning flex-shrink-0" />
+                <p className="text-sm text-warning font-medium">{warning}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Error */}
           {error && (
             <motion.div
@@ -242,7 +424,7 @@ const Login: React.FC = () => {
           {/* Login Button */}
           <motion.button
             type="submit"
-            disabled={loading}
+            disabled={loading || (blockInfo?.blocked && blockInfo?.permanent)}
             whileTap={{ scale: 0.98 }}
             className="w-full h-14 rounded-2xl gold-gradient text-white font-bold text-xl shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-[0.98] transition-all duration-200 mt-2 disabled:opacity-60"
           >

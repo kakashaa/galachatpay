@@ -8,11 +8,11 @@ import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, ArrowUp, ArrowDown, GripVertical,
   FileText, ShieldBan, DollarSign, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Clock,
+  CheckCircle, XCircle, Clock, Ban, Unlock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Tab = "videos" | "salary" | "reports";
+type Tab = "videos" | "salary" | "reports" | "blocks";
 
 interface VideoTutorial {
   id: string;
@@ -55,6 +55,17 @@ interface BanReport {
   created_at: string;
 }
 
+interface BlockedAccount {
+  id: string;
+  target_uuid: string;
+  failed_attempts: number;
+  block_count: number;
+  blocked_until: string | null;
+  is_permanently_blocked: boolean;
+  admin_unblocked_at: string | null;
+  updated_at: string;
+}
+
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("videos");
@@ -73,6 +84,9 @@ const AdminDashboardPage: React.FC = () => {
   // Ban reports state
   const [banReports, setBanReports] = useState<BanReport[]>([]);
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
+
+  // Blocked accounts state
+  const [blockedAccounts, setBlockedAccounts] = useState<BlockedAccount[]>([]);
 
   const adminPassword = sessionStorage.getItem("admin_token");
 
@@ -105,6 +119,9 @@ const AdminDashboardPage: React.FC = () => {
           break;
         case "reports":
           setBanReports(await adminCall("list_ban_reports"));
+          break;
+        case "blocks":
+          setBlockedAccounts(await adminCall("list_blocked_accounts"));
           break;
       }
     } catch (err) {
@@ -186,10 +203,20 @@ const AdminDashboardPage: React.FC = () => {
     } catch { toast.error("فشل التحديث"); }
   };
 
+  // Unblock account
+  const unblockAccount = async (targetUuid: string) => {
+    try {
+      await adminCall("unblock_account", { target_uuid: targetUuid });
+      toast.success("تم فك الحظر عن الحساب");
+      loadData();
+    } catch { toast.error("فشل فك الحظر"); }
+  };
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: "videos", label: "الفيديوهات", icon: <Video className="w-4 h-4" /> },
     { key: "salary", label: "الرواتب", icon: <DollarSign className="w-4 h-4" />, count: salaryRequests.filter(r => r.status === "pending").length },
     { key: "reports", label: "البلاغات", icon: <ShieldBan className="w-4 h-4" />, count: banReports.filter(r => !r.is_verified).length },
+    { key: "blocks", label: "المحظورين", icon: <Ban className="w-4 h-4" />, count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
   ];
 
   return (
@@ -431,6 +458,67 @@ const AdminDashboardPage: React.FC = () => {
                   <div className="text-center py-10 text-muted-foreground">
                     <ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" />
                     <p>لا توجد بلاغات</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Blocked Accounts Tab */}
+            {activeTab === "blocks" && (
+              <motion.div key="blocks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {blockedAccounts.map((acc) => {
+                  const isActive = acc.is_permanently_blocked || (acc.blocked_until && new Date(acc.blocked_until) > new Date());
+                  return (
+                    <div key={acc.id} className={`bg-card border rounded-xl p-4 space-y-3 ${!isActive ? "opacity-50" : ""}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {acc.is_permanently_blocked ? (
+                            <span className="bg-destructive/20 text-destructive px-2 py-1 rounded-full text-xs font-bold">حظر دائم</span>
+                          ) : isActive ? (
+                            <span className="bg-warning/20 text-warning px-2 py-1 rounded-full text-xs font-bold">حظر مؤقت</span>
+                          ) : (
+                            <span className="bg-muted/50 text-muted-foreground px-2 py-1 rounded-full text-xs font-bold">منتهي</span>
+                          )}
+                          <span className="text-xs text-muted-foreground">تحذير {acc.block_count}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-mono font-bold" dir="ltr">{acc.target_uuid}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(acc.updated_at).toLocaleDateString("ar-SA")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {acc.blocked_until && !acc.is_permanently_blocked && (
+                        <p className="text-xs text-muted-foreground">
+                          ينتهي الحظر: {new Date(acc.blocked_until).toLocaleString("ar-SA")}
+                        </p>
+                      )}
+
+                      {acc.admin_unblocked_at && (
+                        <p className="text-xs text-success">
+                          تم فك الحظر بواسطة الأدمن: {new Date(acc.admin_unblocked_at).toLocaleString("ar-SA")}
+                        </p>
+                      )}
+
+                      {isActive && (
+                        <Button
+                          size="sm"
+                          className="w-full bg-success hover:bg-success/90"
+                          onClick={() => unblockAccount(acc.target_uuid)}
+                        >
+                          <Unlock className="w-4 h-4 ml-1" />
+                          فك الحظر
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {blockedAccounts.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Ban className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد حسابات محظورة</p>
                   </div>
                 )}
               </motion.div>
