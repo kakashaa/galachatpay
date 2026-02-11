@@ -16,6 +16,7 @@ serve(async (req) => {
       );
     }
 
+    const AGENCY_ID = 10000;
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
     if (!BASE_URL) throw new Error("GALA_API_BASE_URL is not configured");
 
@@ -24,12 +25,12 @@ serve(async (req) => {
     const headers = await getGalaHeaders("POST", signPath);
 
     const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
-    console.log("gala-salary request:", { uuid, amount, url });
+    console.log("gala-salary request:", { uuid, amount, charger_type: "app", agency_id: AGENCY_ID, url });
 
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ uuid, amount }),
+      body: JSON.stringify({ uuid, amount, charger_type: "app", agency_id: AGENCY_ID }),
     });
 
     const rawText = await response.text();
