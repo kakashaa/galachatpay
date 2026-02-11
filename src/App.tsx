@@ -4,29 +4,38 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { lazy, Suspense } from "react";
 import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import ChangeId from "./pages/ChangeId";
-import RequestVip from "./pages/RequestVip";
-import QuickSupport from "./pages/QuickSupport";
-import PlaceholderPage from "./pages/PlaceholderPage";
-import GiftRequest from "./pages/GiftRequest";
-import AnimatedPhotoRequest from "./pages/AnimatedPhotoRequest";
-import EntryRequest from "./pages/EntryRequest";
-import ReportPage from "./pages/ReportPage";
-import SalaryWithdraw from "./pages/SalaryWithdraw";
-import BDRequest from "./pages/BDRequest";
-import BDDashboard from "./pages/BDDashboard";
-import MyRequests from "./pages/MyRequests";
-import InstantIntro from "./pages/InstantIntro";
-import InstantBanks from "./pages/InstantBanks";
-import InstantRequest from "./pages/InstantRequest";
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboardPage from "./pages/AdminDashboard";
-import NotFound from "./pages/NotFound";
-import Notifications from "./pages/Notifications";
+
+// Lazy load all pages except Login (entry point)
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ChangeId = lazy(() => import("./pages/ChangeId"));
+const RequestVip = lazy(() => import("./pages/RequestVip"));
+const QuickSupport = lazy(() => import("./pages/QuickSupport"));
+const PlaceholderPage = lazy(() => import("./pages/PlaceholderPage"));
+const GiftRequest = lazy(() => import("./pages/GiftRequest"));
+const AnimatedPhotoRequest = lazy(() => import("./pages/AnimatedPhotoRequest"));
+const EntryRequest = lazy(() => import("./pages/EntryRequest"));
+const ReportPage = lazy(() => import("./pages/ReportPage"));
+const SalaryWithdraw = lazy(() => import("./pages/SalaryWithdraw"));
+const BDRequest = lazy(() => import("./pages/BDRequest"));
+const BDDashboard = lazy(() => import("./pages/BDDashboard"));
+const MyRequests = lazy(() => import("./pages/MyRequests"));
+const InstantIntro = lazy(() => import("./pages/InstantIntro"));
+const InstantBanks = lazy(() => import("./pages/InstantBanks"));
+const InstantRequest = lazy(() => import("./pages/InstantRequest"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
+const AdminDashboardPage = lazy(() => import("./pages/AdminDashboard"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 
 const queryClient = new QueryClient();
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -35,28 +44,30 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/change-id" element={<ChangeId />} />
-            <Route path="/request-vip" element={<RequestVip />} />
-            <Route path="/support" element={<QuickSupport />} />
-            <Route path="/salary" element={<SalaryWithdraw />} />
-            <Route path="/report" element={<ReportPage />} />
-            <Route path="/gift" element={<GiftRequest />} />
-            <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
-            <Route path="/entry-request" element={<EntryRequest />} />
-            <Route path="/bd-request" element={<BDRequest />} />
-            <Route path="/bd-dashboard" element={<BDDashboard />} />
-            <Route path="/my-requests" element={<MyRequests />} />
-            <Route path="/instant" element={<InstantIntro />} />
-            <Route path="/instant/banks" element={<InstantBanks />} />
-            <Route path="/instant/request" element={<InstantRequest />} />
-            <Route path="/admin" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/change-id" element={<ChangeId />} />
+              <Route path="/request-vip" element={<RequestVip />} />
+              <Route path="/support" element={<QuickSupport />} />
+              <Route path="/salary" element={<SalaryWithdraw />} />
+              <Route path="/report" element={<ReportPage />} />
+              <Route path="/gift" element={<GiftRequest />} />
+              <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
+              <Route path="/entry-request" element={<EntryRequest />} />
+              <Route path="/bd-request" element={<BDRequest />} />
+              <Route path="/bd-dashboard" element={<BDDashboard />} />
+              <Route path="/my-requests" element={<MyRequests />} />
+              <Route path="/instant" element={<InstantIntro />} />
+              <Route path="/instant/banks" element={<InstantBanks />} />
+              <Route path="/instant/request" element={<InstantRequest />} />
+              <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
