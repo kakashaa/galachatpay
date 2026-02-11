@@ -8,11 +8,11 @@ import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, ArrowUp, ArrowDown, GripVertical,
   FileText, ShieldBan, DollarSign, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Clock, Ban, Unlock, Upload,
+  CheckCircle, XCircle, Clock, Ban, Unlock, Upload, Star, Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Tab = "videos" | "salary" | "reports" | "blocks";
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries";
 
 interface VideoTutorial {
   id: string;
@@ -65,6 +65,16 @@ interface BlockedAccount {
   admin_unblocked_at: string | null;
   updated_at: string;
 }
+interface EntryGift {
+  id: string;
+  title: string;
+  video_url: string;
+  thumbnail_url: string | null;
+  gift_type: string;
+  star_level: number;
+  is_active: boolean;
+  display_order: number;
+}
 
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -89,6 +99,13 @@ const AdminDashboardPage: React.FC = () => {
 
   // Blocked accounts state
   const [blockedAccounts, setBlockedAccounts] = useState<BlockedAccount[]>([]);
+
+  // Entry gifts state
+  const [entryGifts, setEntryGifts] = useState<EntryGift[]>([]);
+  const [showAddEntry, setShowAddEntry] = useState(false);
+  const [newEntry, setNewEntry] = useState({ title: "", gift_type: "both", star_level: 1, thumbnail_url: "" });
+  const [entryFile, setEntryFile] = useState<File | null>(null);
+  const [entryUploading, setEntryUploading] = useState(false);
 
   const adminPassword = sessionStorage.getItem("admin_token");
 
@@ -124,6 +141,9 @@ const AdminDashboardPage: React.FC = () => {
           break;
         case "blocks":
           setBlockedAccounts(await adminCall("list_blocked_accounts"));
+          break;
+        case "entries":
+          setEntryGifts(await adminCall("list_entry_gifts"));
           break;
       }
     } catch (err) {
@@ -237,8 +257,65 @@ const AdminDashboardPage: React.FC = () => {
     } catch { toast.error("فشل فك الحظر"); }
   };
 
+  // Entry gift actions
+  const addEntryGift = async () => {
+    if (!newEntry.title || !entryFile) {
+      toast.error("العنوان والملف مطلوبان");
+      return;
+    }
+    if (entryFile.size > 100 * 1024 * 1024) {
+      toast.error("حجم الملف يجب أن لا يتجاوز 100MB");
+      return;
+    }
+    try {
+      setEntryUploading(true);
+      const formData = new FormData();
+      formData.append("password", adminPassword!);
+      formData.append("file", entryFile);
+      const { data: uploadResult, error: uploadError } = await supabase.functions.invoke("admin-upload-video", {
+        body: formData,
+      });
+      if (uploadError || !uploadResult?.url) throw new Error(uploadResult?.error || "فشل الرفع");
+
+      await adminCall("add_entry_gift", {
+        title: newEntry.title,
+        video_url: uploadResult.url,
+        thumbnail_url: newEntry.thumbnail_url || null,
+        gift_type: newEntry.gift_type,
+        star_level: newEntry.star_level,
+        display_order: entryGifts.length,
+      });
+      toast.success("تمت إضافة الدخولية");
+      setNewEntry({ title: "", gift_type: "both", star_level: 1, thumbnail_url: "" });
+      setEntryFile(null);
+      setShowAddEntry(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err?.message || "فشل الإضافة");
+    } finally {
+      setEntryUploading(false);
+    }
+  };
+
+  const deleteEntryGift = async (id: string) => {
+    try {
+      await adminCall("delete_entry_gift", { id });
+      toast.success("تم الحذف");
+      loadData();
+    } catch { toast.error("فشل الحذف"); }
+  };
+
+  const toggleEntryActive = async (gift: EntryGift) => {
+    try {
+      await adminCall("update_entry_gift", { id: gift.id, is_active: !gift.is_active });
+      toast.success(gift.is_active ? "تم الإخفاء" : "تم التفعيل");
+      loadData();
+    } catch { toast.error("فشل التحديث"); }
+  };
+
   const tabs: { key: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
     { key: "videos", label: "الفيديوهات", icon: <Video className="w-4 h-4" /> },
+    { key: "entries", label: "الدخوليات", icon: <Sparkles className="w-4 h-4" /> },
     { key: "salary", label: "الرواتب", icon: <DollarSign className="w-4 h-4" />, count: salaryRequests.filter(r => r.status === "pending").length },
     { key: "reports", label: "البلاغات", icon: <ShieldBan className="w-4 h-4" />, count: banReports.filter(r => !r.is_verified).length },
     { key: "blocks", label: "المحظورين", icon: <Ban className="w-4 h-4" />, count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
@@ -555,6 +632,99 @@ const AdminDashboardPage: React.FC = () => {
                   <div className="text-center py-10 text-muted-foreground">
                     <Ban className="w-10 h-10 mx-auto mb-2 opacity-50" />
                     <p>لا توجد حسابات محظورة</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Entries Tab */}
+            {activeTab === "entries" && (
+              <motion.div key="entries" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                <Button onClick={() => setShowAddEntry(!showAddEntry)} className="w-full" variant={showAddEntry ? "outline" : "default"}>
+                  {showAddEntry ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة دخولية</>}
+                </Button>
+
+                {showAddEntry && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-card border rounded-xl p-4 space-y-3">
+                    <Input placeholder="اسم الدخولية *" value={newEntry.title} onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })} />
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">ملف الدخولية * (MP4, WebP, SVGA - حد 100MB)</label>
+                      <input
+                        type="file"
+                        accept="video/mp4,.webp,.svga,video/webm"
+                        onChange={(e) => setEntryFile(e.target.files?.[0] || null)}
+                        className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
+                      />
+                      {entryFile && <p className="text-[10px] text-muted-foreground">{entryFile.name} ({(entryFile.size / 1024 / 1024).toFixed(1)}MB)</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">نوع الدخولية</label>
+                      <select
+                        value={newEntry.gift_type}
+                        onChange={(e) => setNewEntry({ ...newEntry, gift_type: e.target.value })}
+                        className="w-full bg-muted/20 border border-border/30 rounded-lg p-2 text-sm"
+                      >
+                        <option value="both">ملف شخصي + روم</option>
+                        <option value="profile">ملف شخصي فقط</option>
+                        <option value="room">روم فقط</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">مستوى النجوم</label>
+                      <div className="flex gap-2">
+                        {[1, 2, 3].map((lvl) => (
+                          <button
+                            key={lvl}
+                            onClick={() => setNewEntry({ ...newEntry, star_level: lvl })}
+                            className={`flex-1 py-2 rounded-lg border text-sm font-bold flex items-center justify-center gap-1 ${
+                              newEntry.star_level === lvl ? "border-primary bg-primary/10 text-primary" : "border-border/30 text-muted-foreground"
+                            }`}
+                          >
+                            {Array.from({ length: lvl }).map((_, i) => (
+                              <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                            ))}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <Input placeholder="رابط الصورة المصغرة (اختياري)" value={newEntry.thumbnail_url} onChange={(e) => setNewEntry({ ...newEntry, thumbnail_url: e.target.value })} dir="ltr" />
+                    <Button onClick={addEntryGift} disabled={entryUploading} className="w-full">
+                      {entryUploading ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الرفع...</> : <><Save className="w-4 h-4 ml-2" />حفظ</>}
+                    </Button>
+                  </motion.div>
+                )}
+
+                {entryGifts.map((gift) => (
+                  <div key={gift.id} className={`bg-card border rounded-xl p-4 space-y-2 ${!gift.is_active ? "opacity-50" : ""}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm">{gift.title}</h3>
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: gift.star_level }).map((_, i) => (
+                            <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          {gift.gift_type === "both" ? "الكل" : gift.gift_type === "profile" ? "ملف" : "روم"}
+                        </span>
+                        <button onClick={() => toggleEntryActive(gift)} className="p-1.5 rounded-lg hover:bg-muted">
+                          {gift.is_active ? <Eye className="w-4 h-4 text-success" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                        </button>
+                        <button onClick={() => deleteEntryGift(gift.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground font-mono truncate" dir="ltr">{gift.video_url}</p>
+                  </div>
+                ))}
+
+                {entryGifts.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد دخوليات</p>
                   </div>
                 )}
               </motion.div>

@@ -114,6 +114,42 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Entry gifts management
+      case "list_entry_gifts": {
+        const { data: entryGifts, error } = await supabase
+          .from("entry_gifts")
+          .select("*")
+          .order("display_order", { ascending: true });
+        if (error) throw error;
+        result = entryGifts;
+        break;
+      }
+      case "add_entry_gift": {
+        const { error } = await supabase.from("entry_gifts").insert(data);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "update_entry_gift": {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from("entry_gifts")
+          .update(updateData)
+          .eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "delete_entry_gift": {
+        const { error } = await supabase
+          .from("entry_gifts")
+          .delete()
+          .eq("id", data.id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       // Ban reports management
       case "list_ban_reports": {
         const { data: reports, error } = await supabase
