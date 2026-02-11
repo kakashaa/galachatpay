@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Star, Gift, DollarSign } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
-import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStarBalance } from "@/hooks/use-star-balance";
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 
-const STAR_TO_USD = 5; // each star = $5, so 10 stars = $50
+const STAR_TO_USD = 5;
 
 interface Props {
   open: boolean;
@@ -20,7 +19,7 @@ interface Props {
 
 const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main" }) => {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "code_result">("main");
+  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "code_result">(initialView);
   const [friendUuid, setFriendUuid] = useState("");
   const [giftAmount, setGiftAmount] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -34,12 +33,17 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
   
   const totalStars = starBalance?.total_stars ?? 0;
 
+  // Stable ref for fetch to avoid re-trigger loops
+  const stableFetch = useCallback(() => {
+    if (user?.uuid) fetchStarBalance();
+  }, [user?.uuid, fetchStarBalance]);
+
   useEffect(() => {
     if (open) {
       setCurrentView(initialView);
-      if (user?.uuid) fetchStarBalance();
+      stableFetch();
     }
-  }, [open, user?.uuid, initialView, fetchStarBalance]);
+  }, [open, initialView, stableFetch]);
 
   const handleGiftStars = async () => {
     if (!user?.uuid || !starBalance) return;
@@ -127,14 +131,12 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
       const newTotal = totalStars - starsToConvert;
       const code = generateCode();
 
-      // Deduct stars
       const { error: deductError } = await supabase
         .from("user_star_balance")
         .update({ total_stars: newTotal, carryover_stars: Math.max(0, newTotal) })
         .eq("id", starBalance.id);
       if (deductError) throw deductError;
 
-      // Create cashout code
       const { error: codeError } = await supabase
         .from("star_cashout_codes")
         .insert({
@@ -146,7 +148,6 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
         });
       if (codeError) throw codeError;
 
-      // Log it
       await supabase.from("star_gift_logs").insert({
         sender_uuid: user.uuid,
         sender_name: user.name,
@@ -183,37 +184,14 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
           </DialogTitle>
 
           {currentView === "main" && (
-            <motion.div 
-              className="space-y-4 pt-2" 
-              dir="rtl"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Stars Display */}
-              <motion.div 
-                className="text-center py-4"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.3 }}
-              >
-                <motion.p 
-                  className="text-4xl font-black text-accent"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatType: "loop" }}
-                >
-                  {totalStars}
-                </motion.p>
+            <div className="space-y-4 pt-2 animate-fade-in" dir="rtl">
+              <div className="text-center py-4">
+                <p className="text-4xl font-black text-accent">{totalStars}</p>
                 <p className="text-xs text-muted-foreground mt-1">نجمة متاحة</p>
                 {renderStars(totalStars)}
-              </motion.div>
+              </div>
 
-              <motion.div 
-                className="grid grid-cols-3 gap-2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-              >
+              <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-xl p-2.5 text-center bg-muted/30 border border-border/20">
                   <p className="text-[9px] text-muted-foreground">الشهرية</p>
                   <p className="text-sm font-black text-foreground">{monthlyStars}</p>
@@ -226,99 +204,42 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                   <p className="text-[9px] text-muted-foreground">لفل الشحن</p>
                   <p className="text-sm font-black text-primary">{chargerLevel}</p>
                 </div>
-              </motion.div>
+              </div>
 
-              {/* Cash value info */}
-              <motion.div 
-                className="rounded-xl p-3 text-center" 
-                style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3, duration: 0.3 }}
-              >
+              <div className="rounded-xl p-3 text-center" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
                 <p className="text-[10px] text-muted-foreground">قيمة نجومك النقدية</p>
-                <motion.p 
-                  className="text-xl font-black text-emerald-400"
-                  animate={{ scale: [1, 1.03, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop" }}
-                >
-                  ${totalStars * STAR_TO_USD}
-                </motion.p>
+                <p className="text-xl font-black text-emerald-400">${totalStars * STAR_TO_USD}</p>
                 <p className="text-[9px] text-muted-foreground mt-0.5">كل نجمة = ${STAR_TO_USD}</p>
-              </motion.div>
+              </div>
 
-              <motion.div 
-                className="flex gap-2"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.3 }}
-              >
+              <div className="flex gap-2">
                 {totalStars > 0 && (
                   <>
-                    <motion.div 
-                      className="flex-1"
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Button
-                        onClick={() => setCurrentView("gift")}
-                        className="flex-1 bg-accent/15 border border-accent/20 text-accent hover:bg-accent/25"
-                        variant="outline"
-                      >
-                        <Gift className="w-4 h-4 ml-1" />
-                        إهداء
-                      </Button>
-                    </motion.div>
-                    <motion.div 
-                      className="flex-1"
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Button
-                        onClick={() => setCurrentView("cashout")}
-                        className="flex-1 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25"
-                        variant="outline"
-                      >
-                        <DollarSign className="w-4 h-4 ml-1" />
-                        تحويل لكاش
-                      </Button>
-                    </motion.div>
+                    <Button onClick={() => setCurrentView("gift")} className="flex-1 bg-accent/15 border border-accent/20 text-accent hover:bg-accent/25" variant="outline">
+                      <Gift className="w-4 h-4 ml-1" />
+                      إهداء
+                    </Button>
+                    <Button onClick={() => setCurrentView("cashout")} className="flex-1 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25" variant="outline">
+                      <DollarSign className="w-4 h-4 ml-1" />
+                      تحويل لكاش
+                    </Button>
                   </>
                 )}
-                <motion.div 
-                  className="flex-1"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <Button onClick={() => setShowTutorial(true)} variant="outline" className="flex-1">
-                    <PulsingHelpIcon size={16} />
-                    <span className="mr-1">الشروط</span>
-                  </Button>
-                </motion.div>
-              </motion.div>
+                <Button onClick={() => setShowTutorial(true)} variant="outline" className="flex-1">
+                  <PulsingHelpIcon size={16} />
+                  <span className="mr-1">الشروط</span>
+                </Button>
+              </div>
 
               <button onClick={onClose} className="w-full text-center text-sm text-muted-foreground py-1">إغلاق</button>
-            </motion.div>
+            </div>
           )}
 
-           {currentView === "gift" && (
-            <motion.div 
-              className="space-y-4 pt-2" 
-              dir="rtl"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
+          {currentView === "gift" && (
+            <div className="space-y-4 pt-2 animate-fade-in" dir="rtl">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">UUID الصديق</label>
-                <input
-                  type="text"
-                  value={friendUuid}
-                  onChange={(e) => setFriendUuid(e.target.value)}
-                  placeholder="أدخل UUID صديقك في غلا لايف"
-                  className="w-full bg-muted/30 border border-border/30 rounded-xl px-3 py-2.5 text-sm"
-                  dir="ltr"
-                />
+                <input type="text" value={friendUuid} onChange={(e) => setFriendUuid(e.target.value)} placeholder="أدخل UUID صديقك في غلا لايف" className="w-full bg-muted/30 border border-border/30 rounded-xl px-3 py-2.5 text-sm" dir="ltr" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">عدد النجوم</label>
@@ -339,17 +260,11 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 {submitting ? "جاري الإرسال..." : `إهداء ${giftAmount} نجمة`}
               </Button>
               <button onClick={() => setCurrentView("main")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
-            </motion.div>
+            </div>
           )}
 
-           {currentView === "cashout" && (
-            <motion.div 
-              className="space-y-4 pt-2" 
-              dir="rtl"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
+          {currentView === "cashout" && (
+            <div className="space-y-4 pt-2 animate-fade-in" dir="rtl">
               <div className="text-center py-3">
                 <DollarSign className="w-10 h-10 mx-auto text-emerald-400 mb-1" />
                 <p className="text-sm font-bold text-foreground">تحويل النجوم إلى كاش</p>
@@ -386,87 +301,46 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 <p>4. أكمل بيانات التحويل واستلم فلوسك</p>
               </div>
 
-              <Button
-                onClick={handleCashout}
-                disabled={submitting || totalStars < 10}
-                className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
+              <Button onClick={handleCashout} disabled={submitting || totalStars < 10} className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white">
                 {submitting ? "جاري الإنشاء..." : "تحويل 10 نجوم إلى $50"}
               </Button>
               <button onClick={() => setCurrentView("main")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
-            </motion.div>
+            </div>
           )}
 
-           {currentView === "code_result" && (
-            <motion.div 
-              className="space-y-4 pt-2" 
-              dir="rtl"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.div 
-                className="text-center py-3"
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.3 }}
-              >
-                <motion.div 
-                  className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-2"
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatType: "loop" }}
-                >
+          {currentView === "code_result" && (
+            <div className="space-y-4 pt-2 animate-fade-in" dir="rtl">
+              <div className="text-center py-3">
+                <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-2">
                   <DollarSign className="w-8 h-8 text-emerald-400" />
-                </motion.div>
+                </div>
                 <p className="text-sm font-bold text-foreground">تم إنشاء الكود بنجاح! 🎉</p>
                 <p className="text-[10px] text-muted-foreground">قيمة الكود: ${generatedAmount}</p>
-              </motion.div>
+              </div>
 
-              <motion.div 
-                className="rounded-xl p-4 text-center" 
-                style={{ background: "rgba(34,197,94,0.1)", border: "2px dashed rgba(34,197,94,0.4)" }}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-              >
+              <div className="rounded-xl p-4 text-center" style={{ background: "rgba(34,197,94,0.1)", border: "2px dashed rgba(34,197,94,0.4)" }}>
                 <p className="text-[10px] text-muted-foreground mb-1">كود السحب</p>
-                <motion.p 
-                  className="text-xl font-black text-emerald-400 font-mono tracking-wider"
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop" }}
-                >
-                  {generatedCode}
-                </motion.p>
-              </motion.div>
+                <p className="text-xl font-black text-emerald-400 font-mono tracking-wider">{generatedCode}</p>
+              </div>
 
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
+              <Button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedCode);
+                  toast.success("تم نسخ الكود!");
+                }}
+                variant="outline"
+                className="w-full border-emerald-500/30 text-emerald-400"
               >
-                <Button
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedCode);
-                    toast.success("تم نسخ الكود!");
-                  }}
-                  variant="outline"
-                  className="w-full border-emerald-500/30 text-emerald-400"
-                >
-                  📋 نسخ الكود
-                </Button>
-              </motion.div>
+                📋 نسخ الكود
+              </Button>
 
-              <motion.div 
-                className="bg-yellow-500/10 rounded-xl p-2.5 text-[10px] text-muted-foreground"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.3 }}
-              >
+              <div className="bg-yellow-500/10 rounded-xl p-2.5 text-[10px] text-muted-foreground">
                 <p className="font-bold text-yellow-400 mb-0.5">📌 الخطوة التالية</p>
                 <p>اذهب إلى صفحة "سحب الراتب" واختر "سحب عبر كود النجوم" وأدخل الكود لإكمال عملية السحب.</p>
-              </motion.div>
+              </div>
 
               <button onClick={() => { setCurrentView("main"); onClose(); }} className="w-full text-center text-sm text-muted-foreground py-1">إغلاق</button>
-            </motion.div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
