@@ -8,7 +8,7 @@ import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, ArrowUp, ArrowDown, GripVertical,
   FileText, ShieldBan, DollarSign, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Clock, Ban, Unlock,
+  CheckCircle, XCircle, Clock, Ban, Unlock, Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -74,7 +74,9 @@ const AdminDashboardPage: React.FC = () => {
   // Videos state
   const [videos, setVideos] = useState<VideoTutorial[]>([]);
   const [editingVideo, setEditingVideo] = useState<string | null>(null);
-  const [newVideo, setNewVideo] = useState({ title: "", video_url: "", description: "", thumbnail_url: "" });
+  const [newVideo, setNewVideo] = useState({ title: "", description: "", thumbnail_url: "" });
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(false);
   const [showAddVideo, setShowAddVideo] = useState(false);
 
   // Salary state
@@ -139,23 +141,46 @@ const AdminDashboardPage: React.FC = () => {
 
   // Video actions
   const addVideo = async () => {
-    if (!newVideo.title || !newVideo.video_url) {
-      toast.error("العنوان ورابط الفيديو مطلوبان");
+    if (!newVideo.title || !videoFile) {
+      toast.error("العنوان وملف الفيديو مطلوبان");
+      return;
+    }
+    if (videoFile.size > 100 * 1024 * 1024) {
+      toast.error("حجم الفيديو يجب أن لا يتجاوز 100MB");
       return;
     }
     try {
+      setUploadProgress(true);
+      // Upload video file
+      const formData = new FormData();
+      formData.append("password", adminPassword!);
+      formData.append("file", videoFile);
+      
+      const { data: uploadResult, error: uploadError } = await supabase.functions.invoke("admin-upload-video", {
+        body: formData,
+      });
+      
+      if (uploadError || !uploadResult?.url) {
+        throw new Error(uploadResult?.error || "فشل رفع الفيديو");
+      }
+
       await adminCall("add_video", {
         title: newVideo.title,
-        video_url: newVideo.video_url,
+        video_url: uploadResult.url,
         description: newVideo.description || null,
         thumbnail_url: newVideo.thumbnail_url || null,
         display_order: videos.length,
       });
       toast.success("تمت إضافة الفيديو");
-      setNewVideo({ title: "", video_url: "", description: "", thumbnail_url: "" });
+      setNewVideo({ title: "", description: "", thumbnail_url: "" });
+      setVideoFile(null);
       setShowAddVideo(false);
       loadData();
-    } catch { toast.error("فشل إضافة الفيديو"); }
+    } catch (err: any) {
+      toast.error(err?.message || "فشل إضافة الفيديو");
+    } finally {
+      setUploadProgress(false);
+    }
   };
 
   const updateVideo = async (video: VideoTutorial) => {
@@ -278,10 +303,21 @@ const AdminDashboardPage: React.FC = () => {
                 {showAddVideo && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-card border rounded-xl p-4 space-y-3">
                     <Input placeholder="عنوان الفيديو *" value={newVideo.title} onChange={(e) => setNewVideo({ ...newVideo, title: e.target.value })} />
-                    <Input placeholder="رابط الفيديو *" value={newVideo.video_url} onChange={(e) => setNewVideo({ ...newVideo, video_url: e.target.value })} dir="ltr" />
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">ملف الفيديو * (حد أقصى 100MB)</label>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                        className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
+                      />
+                      {videoFile && <p className="text-[10px] text-muted-foreground">{videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(1)}MB)</p>}
+                    </div>
                     <Input placeholder="وصف (اختياري)" value={newVideo.description} onChange={(e) => setNewVideo({ ...newVideo, description: e.target.value })} />
                     <Input placeholder="رابط الصورة المصغرة (اختياري)" value={newVideo.thumbnail_url} onChange={(e) => setNewVideo({ ...newVideo, thumbnail_url: e.target.value })} dir="ltr" />
-                    <Button onClick={addVideo} className="w-full"><Save className="w-4 h-4 ml-2" />حفظ</Button>
+                    <Button onClick={addVideo} disabled={uploadProgress} className="w-full">
+                      {uploadProgress ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الرفع...</> : <><Save className="w-4 h-4 ml-2" />حفظ</>}
+                    </Button>
                   </motion.div>
                 )}
 

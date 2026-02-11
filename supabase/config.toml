@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.gala-transactions]
 verify_jwt = false
+
+[functions.admin-manage]
+verify_jwt = false
+
+[functions.admin-upload-video]
+verify_jwt = false

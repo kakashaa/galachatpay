@@ -41,6 +41,7 @@ export const VideoStoryCircle = () => {
   };
 
   const openVideo = (video: VideoTutorial) => {
+    if (!video.video_url) return; // Don't open empty videos
     setSelectedVideo(video);
     setIsOpen(true);
   };

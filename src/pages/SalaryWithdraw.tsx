@@ -105,7 +105,7 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const isNameValid = fullName.trim().split(/\s+/).length >= 4;
+  const isNameValid = fullName.trim().length >= 2;
 
   const isAccountValid = (): boolean => {
     if (!selectedMethod) return false;
@@ -338,17 +338,17 @@ const SalaryWithdraw: React.FC = () => {
             {/* Full Name */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card p-4 space-y-3">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-primary" /> الاسم الرباعي
+                <UserCheck className="w-4 h-4 text-primary" /> اسم المستلم
               </h3>
               <Input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="الاسم الأول - الأب - الجد - العائلة"
+                placeholder="أدخل اسم المستلم"
                 className="text-right bg-muted/20 border-border/30"
                 dir="rtl"
               />
               {fullName && !isNameValid && (
-                <p className="text-[11px] text-destructive">يرجى إدخال الاسم الرباعي كاملاً (4 كلمات على الأقل)</p>
+                <p className="text-[11px] text-destructive">يرجى إدخال اسم المستلم</p>
               )}
             </motion.div>
 
