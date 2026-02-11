@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, HelpCircle } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import avatarMale from "@/assets/avatar-male.png";
@@ -86,24 +87,39 @@ const UserProfileCard: React.FC = () => {
   ];
 
   return (
-    <div className="mb-3">
-      <div
+    <motion.div
+      className="mb-3"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      <motion.div
         className="rounded-2xl p-3 relative overflow-hidden"
         style={{
           background: "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
           border: "1px solid rgba(255,255,255,0.08)",
         }}
+        whileHover={{ scale: 1.01, boxShadow: "0 8px 30px rgba(0,0,0,0.2)" }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
         {/* Top: Avatar + Info + Mini Levels */}
         <div className="relative z-10 flex items-center gap-2.5 mb-2" dir="rtl">
-          <div className="relative flex-shrink-0">
+          <motion.div
+            className="relative flex-shrink-0"
+            whileHover={{ rotate: [0, -5, 5, 0] }}
+            transition={{ duration: 0.5 }}
+          >
             <div className="w-11 h-11 rounded-xl overflow-hidden p-[1.5px] bg-gradient-to-br from-primary via-accent to-primary">
               <div className="w-full h-full rounded-[9px] overflow-hidden bg-background">
                 <img src={avatarSrc} alt={user.name} className="w-full h-full object-cover" loading="lazy" />
               </div>
             </div>
-            <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background" />
-          </div>
+            <motion.div
+              className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background"
+              animate={{ scale: [1, 1.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </motion.div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
@@ -119,18 +135,23 @@ const UserProfileCard: React.FC = () => {
             
             {/* Wallet Row */}
             <div className="flex gap-2 mb-1.5 text-[9px]">
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                <span className="text-yellow-400 font-black">{user.my_store.coins}</span>
-                <span className="text-muted-foreground">💰</span>
-              </div>
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20">
-                <span className="text-purple-400 font-black">{user.my_store.diamonds}</span>
-                <span className="text-muted-foreground">💎</span>
-              </div>
-              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/20">
-                <span className="text-green-400 font-black">${user.my_store.usd}</span>
-                <span className="text-muted-foreground">💵</span>
-              </div>
+              {[
+                { value: user.my_store.coins, emoji: "💰", color: "yellow", delay: 0.1 },
+                { value: user.my_store.diamonds, emoji: "💎", color: "purple", delay: 0.2 },
+                { value: `$${user.my_store.usd}`, emoji: "💵", color: "green", delay: 0.3 },
+              ].map((w, i) => (
+                <motion.div
+                  key={i}
+                  className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-${w.color}-500/10 border border-${w.color}-500/20`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: w.delay, duration: 0.3 }}
+                  whileHover={{ scale: 1.1, y: -2 }}
+                >
+                  <span className={`text-${w.color}-400 font-black`}>{w.value}</span>
+                  <span className="text-muted-foreground">{w.emoji}</span>
+                </motion.div>
+              ))}
             </div>
             
             {/* Mini Levels Strip */}
@@ -225,11 +246,11 @@ const UserProfileCard: React.FC = () => {
             ))}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} initialView={starWalletView} />
       <StarSystemTutorial open={showTutorial} onClose={() => setShowTutorial(false)} itemType="entry" />
-    </div>
+    </motion.div>
   );
 };
 
