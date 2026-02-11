@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   User, Zap, CheckCircle, AlertCircle,
-  Globe, CreditCard, UserCheck, Send, Wallet,
+  Globe, CreditCard, UserCheck, Send, Wallet, Upload, X,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
@@ -27,11 +30,18 @@ const InstantRequest: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   // Supporter info
   const [supporterName, setSupporterName] = useState("");
   const [supporterAccountId, setSupporterAccountId] = useState("");
   const [supporterAmountUsd, setSupporterAmountUsd] = useState("");
+
+  // Receipt upload
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Transfer verification
   const [transferAmount, setTransferAmount] = useState("");
@@ -59,8 +69,48 @@ const InstantRequest: React.FC = () => {
     return accountInfo.trim().length >= 4;
   };
 
-  const canProceedSupporter = supporterName.trim() && supporterAccountId.trim() && supporterAmountUsd && Number(supporterAmountUsd) > 0;
+  const canProceedSupporter = supporterName.trim() && supporterAccountId.trim() && supporterAmountUsd && Number(supporterAmountUsd) > 0 && receiptFile;
   const canSubmitDetails = isNameValid && selectedCountryId && selectedMethodId && isAccountValid();
+
+  const handleReceiptSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReceiptFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setReceiptPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const uploadReceipt = async (): Promise<string | null> => {
+    if (!receiptFile) return null;
+    setUploadingReceipt(true);
+    try {
+      const ext = receiptFile.name.split(".").pop();
+      const path = `receipts/${user.uuid}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("attachments").upload(path, receiptFile);
+      if (upErr) return null;
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch {
+      return null;
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
+  const handleExitAttempt = () => {
+    if (step !== "supporter" || supporterName || supporterAccountId || supporterAmountUsd || receiptFile) {
+      setShowExitDialog(true);
+    } else {
+      navigate("/instant/banks");
+    }
+  };
 
   const handleVerifyTransfer = async () => {
     if (!transferAmount || Number(transferAmount) <= 0) {
@@ -99,6 +149,7 @@ const InstantRequest: React.FC = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const receiptUrl = await uploadReceipt();
       const { error: insertError } = await supabase.from("salary_requests").insert({
         user_uuid: user.uuid,
         user_name: user.name,
@@ -111,6 +162,7 @@ const InstantRequest: React.FC = () => {
         payment_method: selectedMethod?.label || "",
         payment_details: accountInfo,
         status: "pending",
+        transfer_image_url: receiptUrl,
       });
       if (insertError) {
         setError("حدث خطأ في حفظ الطلب.");
@@ -150,7 +202,7 @@ const InstantRequest: React.FC = () => {
   const stepIndex = { supporter: 0, verify: 1, details: 2, confirm: 3 };
 
   return (
-    <MobileLayout showHeader headerTitle="طلب سحب فوري ⚡" onBack={() => navigate("/instant/banks")}>
+    <MobileLayout showHeader headerTitle="طلب سحب فوري ⚡" onBack={handleExitAttempt}>
       <div className="px-5 py-4 space-y-5">
         {/* Progress */}
         <div className="flex gap-1.5">
@@ -186,6 +238,25 @@ const InstantRequest: React.FC = () => {
                     <span className="text-[10px] text-muted-foreground">الكوينزات المطلوبة:</span>
                     <span className="text-xs font-bold text-primary">{coinsAmount.toLocaleString()}</span>
                   </div>
+                )}
+              </div>
+
+              {/* Receipt Upload */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-foreground">إيصال التحويل للبنك</label>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleReceiptSelect} className="hidden" />
+                {receiptPreview ? (
+                  <div className="relative">
+                    <img src={receiptPreview} alt="إيصال" className="w-full max-h-48 object-contain rounded-xl border border-border/30" />
+                    <button onClick={removeReceipt} className="absolute top-2 left-2 w-7 h-7 rounded-full bg-destructive/80 flex items-center justify-center">
+                      <X className="w-4 h-4 text-destructive-foreground" />
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed border-border/40 rounded-xl bg-muted/10 hover:bg-muted/20 transition-colors">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">اضغط لرفع صورة الإيصال</span>
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -341,6 +412,22 @@ const InstantRequest: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent className="max-w-[90%] rounded-2xl bg-background border-border/30">
+          <DialogHeader>
+            <DialogTitle className="text-center text-foreground">هل متأكد من الخروج؟</DialogTitle>
+            <DialogDescription className="text-center text-muted-foreground text-sm">
+              سيتم فقدان جميع البيانات التي أدخلتها في طلب السحب الحالي
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 mt-2">
+            <Button variant="outline" onClick={() => setShowExitDialog(false)} className="flex-1 h-11 border-border/30 font-bold">لا، متابعة</Button>
+            <Button onClick={() => { setShowExitDialog(false); navigate("/instant/banks"); }} className="flex-1 h-11 bg-destructive text-destructive-foreground font-bold">نعم، خروج</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MobileLayout>
   );
 };
