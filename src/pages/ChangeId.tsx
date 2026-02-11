@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info, Calendar } from "lucide-react";
+import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { GalaUser } from "@/contexts/AuthContext";
+
 import { supabase } from "@/integrations/supabase/client";
 import IdFormatCarousel from "@/components/IdFormatCarousel";
 import { levelFormats } from "@/data/idFormats";
@@ -23,26 +23,44 @@ const userTypeLabels: Record<number, string> = {
 };
 
 const ID_CHANGE_KEY = "gala_id_changed";
+const LEVEL_MILESTONES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
-function getIdChangeInfo(uuid: string): { changed: boolean; newId: string | null; date: string | null } {
+function getCurrentMilestone(level: number): number {
+  // Find the highest milestone the user has reached
+  for (let i = LEVEL_MILESTONES.length - 1; i >= 0; i--) {
+    if (level >= LEVEL_MILESTONES[i]) return LEVEL_MILESTONES[i];
+  }
+  return 0;
+}
+
+function getNextMilestone(level: number): number | null {
+  const current = getCurrentMilestone(level);
+  const idx = LEVEL_MILESTONES.indexOf(current);
+  if (idx < 0 || idx >= LEVEL_MILESTONES.length - 1) return null;
+  return LEVEL_MILESTONES[idx + 1];
+}
+
+function getIdChangeInfo(uuid: string, currentLevel: number): { changed: boolean; lastLevel: number | null; newId: string | null; date: string | null } {
   try {
     const stored = localStorage.getItem(ID_CHANGE_KEY);
-    if (!stored) return { changed: false, newId: null, date: null };
+    if (!stored) return { changed: false, lastLevel: null, newId: null, date: null };
     const data = JSON.parse(stored);
-    if (data.uuid !== uuid) return { changed: false, newId: null, date: null };
-    const requestDate = new Date(data.date);
-    const now = new Date();
-    if (requestDate.getMonth() === now.getMonth() && requestDate.getFullYear() === now.getFullYear()) {
-      return { changed: true, newId: data.newId, date: data.date };
+    if (data.uuid !== uuid) return { changed: false, lastLevel: null, newId: null, date: null };
+    const lastMilestone = data.levelMilestone || 0;
+    const currentMilestone = getCurrentMilestone(currentLevel);
+    // User can change again only if they reached a NEW milestone
+    if (currentMilestone > lastMilestone) {
+      return { changed: false, lastLevel: lastMilestone, newId: data.newId, date: data.date };
     }
-    return { changed: false, newId: null, date: null };
+    return { changed: true, lastLevel: lastMilestone, newId: data.newId, date: data.date };
   } catch {
-    return { changed: false, newId: null, date: null };
+    return { changed: false, lastLevel: null, newId: null, date: null };
   }
 }
 
-function saveIdChange(uuid: string, newId: string) {
-  localStorage.setItem(ID_CHANGE_KEY, JSON.stringify({ uuid, newId, date: new Date().toISOString() }));
+function saveIdChange(uuid: string, newId: string, level: number) {
+  const milestone = getCurrentMilestone(level);
+  localStorage.setItem(ID_CHANGE_KEY, JSON.stringify({ uuid, newId, levelMilestone: milestone, date: new Date().toISOString() }));
 }
 
 
@@ -52,11 +70,12 @@ const ChangeId: React.FC = () => {
   const [newId, setNewId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [alreadyChanged, setAlreadyChanged] = useState<{ changed: boolean; newId: string | null; date: string | null }>({ changed: false, newId: null, date: null });
+  const [alreadyChanged, setAlreadyChanged] = useState<{ changed: boolean; lastLevel: number | null; newId: string | null; date: string | null }>({ changed: false, lastLevel: null, newId: null, date: null });
 
   useEffect(() => {
     if (user) {
-      setAlreadyChanged(getIdChangeInfo(user.uuid));
+      const maxLvl = Math.max(user.level.receiver_level, user.level.sender_level);
+      setAlreadyChanged(getIdChangeInfo(user.uuid, maxLvl));
     }
   }, [user]);
 
@@ -78,8 +97,9 @@ const ChangeId: React.FC = () => {
     const trimmedId = newId.trim();
     if (!trimmedId || !currentRange) return;
     if (alreadyChanged.changed) {
+      const next = getNextMilestone(maxLevel);
       setStatus("error");
-      setErrorMsg("لقد غيّرت الـ ID هذا الشهر. يمكنك التغيير مرة أخرى الشهر القادم.");
+      setErrorMsg(next ? `لم تصل للفل المطلوب. يجب أن تصل للفل ${next} لتغيير الـ ID مرة أخرى.` : "وصلت لأعلى مستوى. لا يمكن التغيير مجدداً.");
       return;
     }
     if (maxLevel < 20) {
@@ -152,8 +172,8 @@ const ChangeId: React.FC = () => {
       }
 
       // Update UUID in session immediately since change is now instant
-      saveIdChange(user.uuid, trimmedId);
-      setAlreadyChanged({ changed: true, newId: trimmedId, date: new Date().toISOString() });
+      saveIdChange(user.uuid, trimmedId, maxLevel);
+      setAlreadyChanged({ changed: true, lastLevel: getCurrentMilestone(maxLevel), newId: trimmedId, date: new Date().toISOString() });
       setUser({ ...user, uuid: trimmedId });
       setStatus("success");
     } catch {
@@ -192,11 +212,12 @@ const ChangeId: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3"
           >
-            <Calendar className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-bold text-foreground">تم تغيير الـ ID هذا الشهر</p>
+              <p className="text-sm font-bold text-foreground">لم تصل للفل المطلوب</p>
               <p className="text-xs text-muted-foreground mt-1">
-                غيّرت الـ ID إلى <span className="font-bold" dir="ltr">{alreadyChanged.newId}</span> بتاريخ {new Date(alreadyChanged.date!).toLocaleDateString("ar-SA")}. يمكنك التغيير مرة أخرى الشهر القادم.
+                آخر تغيير كان عند اللفل <span className="font-bold">{alreadyChanged.lastLevel}</span> إلى <span className="font-bold" dir="ltr">{alreadyChanged.newId}</span>.
+                {getNextMilestone(maxLevel) ? ` يجب أن تصل للفل ${getNextMilestone(maxLevel)} لتغيير الـ ID مرة أخرى.` : " وصلت لأعلى مستوى."}
               </p>
             </div>
           </motion.div>
@@ -272,7 +293,7 @@ const ChangeId: React.FC = () => {
           )}
           <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/10 rounded-xl mt-3">
             <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground">يُسمح بتغيير الـ ID <strong>مرة واحدة فقط شهرياً</strong>.</p>
+            <p className="text-[11px] text-muted-foreground">يُسمح بتغيير الـ ID <strong>مرة واحدة لكل لفل</strong> (كل 10 مستويات).</p>
           </div>
         </motion.div>
 
@@ -319,8 +340,8 @@ const ChangeId: React.FC = () => {
               <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
             ) : alreadyChanged.changed ? (
               <>
-                <Calendar className="w-5 h-5 ml-2" />
-                تم استخدام طلبك هذا الشهر
+                <AlertCircle className="w-5 h-5 ml-2" />
+                لم تصل للفل المطلوب
               </>
             ) : (
               <>
