@@ -52,8 +52,16 @@ const Login: React.FC = () => {
     e.preventDefault();
     setError("");
 
-    if (!userId.trim() || !password.trim()) {
-      setError("يرجى إدخال معرف الحساب والرمز");
+    if (!userId.trim() && !password.trim()) {
+      setError("يرجى إدخال الآيدي والرمز");
+      return;
+    }
+    if (!userId.trim()) {
+      setError("يرجى إدخال آيدي الحساب");
+      return;
+    }
+    if (!password.trim()) {
+      setError("يرجى إدخال رمز الحساب");
       return;
     }
 
@@ -77,10 +85,15 @@ const Login: React.FC = () => {
       }
 
       if (fnError || !data?.success) {
-        const errorText = data?.error || "فشل تسجيل الدخول. تأكد من البيانات.";
-        const msg = errorText === "Invalid credentials"
-          ? "بيانات الدخول غير صحيحة. تأكد من الآيدي والرمز."
-          : errorText;
+        const errorText = data?.error || "";
+        let msg: string;
+        if (errorText.toLowerCase().includes("user not found") || errorText.toLowerCase().includes("uuid")) {
+          msg = "الآيدي غير صحيح. تأكد من رقم الآيدي وحاول مرة أخرى.";
+        } else if (errorText.toLowerCase().includes("password") || errorText.toLowerCase().includes("invalid credentials")) {
+          msg = "الرمز غير صحيح. تأكد من رمز الحساب وحاول مرة أخرى.";
+        } else {
+          msg = "الآيدي أو الرمز غير صحيح. تأكد من البيانات وحاول مرة أخرى.";
+        }
         setError(msg);
         setLoading(false);
         return;
@@ -192,9 +205,14 @@ const Login: React.FC = () => {
             </div>
             <input
               type={showPassword ? "text" : "password"}
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="رمز حسابك"
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^0-9]/g, "");
+                setPassword(val);
+              }}
+              placeholder="رمز حسابك (أرقام فقط)"
               dir="ltr"
               className="w-full h-14 pr-12 pl-12 rounded-2xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-300 outline-none backdrop-blur-md text-right"
             />
