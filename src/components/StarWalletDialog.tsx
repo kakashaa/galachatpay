@@ -2,39 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Star, HelpCircle, Gift, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStarBalance } from "@/hooks/use-star-balance";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 
-interface UserStarBalance {
-  id: string;
-  user_uuid: string;
-  current_month: string;
-  monthly_stars: number;
-  carryover_stars: number;
-  total_stars: number;
-  last_level: number;
-}
-
 const STAR_TO_USD = 5; // each star = $5, so 10 stars = $50
-
-const getMonthlyStars = (chargerLevel: number) => {
-  if (chargerLevel >= 100) return 8;
-  if (chargerLevel >= 90) return 7;
-  if (chargerLevel >= 80) return 6;
-  if (chargerLevel >= 70) return 5;
-  if (chargerLevel >= 60) return 4;
-  if (chargerLevel >= 50) return 3;
-  if (chargerLevel >= 40) return 2;
-  if (chargerLevel >= 30) return 1;
-  return 0;
-};
-
-const getCurrentMonth = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-};
 
 interface Props {
   open: boolean;
@@ -44,7 +18,6 @@ interface Props {
 
 const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main" }) => {
   const { user } = useAuth();
-  const [starBalance, setStarBalance] = useState<UserStarBalance | null>(null);
   const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "code_result">("main");
   const [friendUuid, setFriendUuid] = useState("");
   const [giftAmount, setGiftAmount] = useState(1);
@@ -54,8 +27,9 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
   const [generatedAmount, setGeneratedAmount] = useState(0);
 
   const chargerLevel = user?.level?.charger_level ?? 0;
-  const currentMonth = getCurrentMonth();
-  const monthlyStars = getMonthlyStars(chargerLevel);
+  const { starBalance, fetchStarBalance, currentMonth, monthlyStars } = 
+    useStarBalance(user?.uuid, chargerLevel);
+  
   const totalStars = starBalance?.total_stars ?? 0;
 
   useEffect(() => {
@@ -63,51 +37,7 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
       setCurrentView(initialView);
       if (user?.uuid) fetchStarBalance();
     }
-  }, [open, user?.uuid, initialView]);
-
-  const fetchStarBalance = async () => {
-    if (!user?.uuid) return;
-    try {
-      const { data, error } = await supabase
-        .from("user_star_balance")
-        .select("*")
-        .eq("user_uuid", user.uuid)
-        .eq("current_month", currentMonth)
-        .single();
-
-      if (error && error.code !== "PGRST116") throw error;
-
-      if (!data) {
-        const lastLevel = localStorage.getItem(`star_last_level_${user.uuid}`)
-          ? parseInt(localStorage.getItem(`star_last_level_${user.uuid}`)!)
-          : chargerLevel;
-        const levelDiff = chargerLevel - lastLevel;
-        const levelBonus = levelDiff >= 5 ? Math.floor(levelDiff / 5) : 0;
-        const newTotal = monthlyStars + levelBonus;
-
-        const { error: insertError } = await supabase
-          .from("user_star_balance")
-          .insert({
-            user_uuid: user.uuid,
-            current_month: currentMonth,
-            monthly_stars: monthlyStars,
-            carryover_stars: 0,
-            total_stars: newTotal,
-            last_level: chargerLevel,
-          });
-        if (insertError) throw insertError;
-        localStorage.setItem(`star_last_level_${user.uuid}`, chargerLevel.toString());
-        setStarBalance({
-          id: "", user_uuid: user.uuid, current_month: currentMonth,
-          monthly_stars: monthlyStars, carryover_stars: 0, total_stars: newTotal, last_level: chargerLevel,
-        });
-      } else {
-        setStarBalance(data as UserStarBalance);
-      }
-    } catch (err) {
-      console.error("Error fetching star balance:", err);
-    }
-  };
+  }, [open, user?.uuid, initialView, fetchStarBalance]);
 
   const handleGiftStars = async () => {
     if (!user?.uuid || !starBalance) return;
@@ -129,7 +59,7 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
         .select("*")
         .eq("user_uuid", friendUuid.trim())
         .eq("current_month", currentMonth)
-        .single();
+        .maybeSingle();
       if (recipientFetchError && recipientFetchError.code !== "PGRST116") throw recipientFetchError;
 
       if (recipientData) {
