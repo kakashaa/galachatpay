@@ -62,6 +62,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          target: string
+          title: string
+          user_uuid: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          target?: string
+          title: string
+          user_uuid?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          target?: string
+          title?: string
+          user_uuid?: string | null
+        }
+        Relationships: []
+      }
       salary_requests: {
         Row: {
           admin_note: string | null

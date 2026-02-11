@@ -18,10 +18,10 @@ const Dashboard: React.FC = () => {
     if (!user?.uuid) return;
     try {
       const { count } = await supabase
-        .from("salary_requests")
+        .from("notifications")
         .select("*", { count: "exact", head: true })
-        .eq("user_uuid", user.uuid)
-        .in("status", ["approved", "rejected"]);
+        .eq("is_read", false)
+        .or(`target.eq.all,user_uuid.eq.${user.uuid}`);
       setNotifCount(count ?? 0);
     } catch {
       // silent
@@ -58,12 +58,12 @@ const Dashboard: React.FC = () => {
         <h1 className="text-base font-black gradient-text">غلا شات</h1>
 
         <button
-          onClick={() => { setNotifCount(0); navigate("/my-requests"); }}
+          onClick={() => navigate("/notifications")}
           className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
         >
           <Bell className="w-3.5 h-3.5 text-muted-foreground" />
           {notifCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[9px] font-black text-white flex items-center justify-center animate-scale-in">
+            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[9px] font-black text-destructive-foreground flex items-center justify-center">
               {notifCount > 99 ? "99+" : notifCount}
             </span>
           )}
