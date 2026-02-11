@@ -4,7 +4,7 @@ import { PlayCircle, User, Shield, Send, CheckCircle, Star, Upload, Image } from
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,7 +22,7 @@ const getDurationConfig = (user: { level: { charger_level: number; sender_level:
 const AnimatedPhotoRequest: React.FC = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
-  const [description, setDescription] = useState("");
+  
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [gifFile, setGifFile] = useState<File | null>(null);
@@ -83,7 +83,6 @@ const AnimatedPhotoRequest: React.FC = () => {
         user_uuid: authUser.uuid,
         user_name: authUser.name,
         gif_url: gifUrl,
-        description: description.trim() || null,
         duration_label: durationConfig.label,
         max_level: maxLevel,
       } as any);
@@ -102,7 +101,7 @@ const AnimatedPhotoRequest: React.FC = () => {
           user_uuid: authUser.uuid,
           user_name: authUser.name,
           request_type: "animated_photo",
-          details: { description: description.trim(), gif_url: gifUrl },
+          details: { gif_url: gifUrl },
         },
       });
 
@@ -292,23 +291,8 @@ const AnimatedPhotoRequest: React.FC = () => {
           )}
         </div>
 
-        {/* وصف اختياري */}
-        <div className="glass-card p-4 space-y-3 css-fade-up-d4">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Shield className="w-4 h-4 text-orange-400" />
-            وصف (اختياري)
-          </h3>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value.slice(0, 500))}
-            placeholder="أضف ملاحظة أو وصف إن أردت..."
-            className="bg-muted/30 border-border/30 min-h-[80px] text-sm resize-none"
-            dir="rtl"
-          />
-          <p className="text-[11px] text-muted-foreground text-left">{description.length}/500</p>
-        </div>
 
-        <div className="css-fade-up-d5">
+        <div className="css-fade-up-d4">
           <Button
             onClick={handleSubmit}
             disabled={!gifFile || !durationConfig?.eligible || submitting}
