@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
-  Sparkles, PlayCircle, Frame, ShieldCheck, FileText,
+  Sparkles, PlayCircle, Frame, ShieldCheck,
 } from "lucide-react";
 
 interface MenuItem {
@@ -23,7 +23,6 @@ const menuItems: MenuItem[] = [
   { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400" },
   { icon: Frame, label: "إطار", route: "/gift", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400" },
   { icon: ShieldCheck, label: "توثيق BD", route: "/bd-request", bg: "rgba(239,68,68,0.12)", iconColor: "text-red-400" },
-  { icon: FileText, label: "طلباتي", route: "/my-requests", bg: "rgba(20,184,166,0.12)", iconColor: "text-teal-400" },
 ];
 
 const MenuGrid: React.FC = () => {
