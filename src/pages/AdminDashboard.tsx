@@ -14,7 +14,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | null;
+import { Camera } from "lucide-react";
+
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | null;
 
 interface VideoTutorial {
   id: string;
@@ -111,6 +113,18 @@ interface StarGiftLog {
   created_at: string;
 }
 
+interface AnimatedPhotoRequest {
+  id: string;
+  user_name: string;
+  user_uuid: string;
+  gif_url: string;
+  description: string | null;
+  duration_label: string;
+  max_level: number;
+  status: string;
+  created_at: string;
+}
+
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>(null);
@@ -180,6 +194,13 @@ const AdminDashboardPage: React.FC = () => {
    const [allEntryClaims, setAllEntryClaims] = useState<ClaimRecord[]>([]);
    const [allFrameClaims, setAllFrameClaims] = useState<ClaimRecord[]>([]);
    const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
+
+  // Animated photos state
+  const [animatedPhotos, setAnimatedPhotos] = useState<AnimatedPhotoRequest[]>([]);
+  const [animatedPhotoAction, setAnimatedPhotoAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
+  const [animatedRejectReason, setAnimatedRejectReason] = useState("");
+  const [animatedActionLoading, setAnimatedActionLoading] = useState(false);
+  const [expandedAnimated, setExpandedAnimated] = useState<string | null>(null);
 
   const adminPassword = sessionStorage.getItem("admin_token");
 
@@ -261,6 +282,10 @@ const AdminDashboardPage: React.FC = () => {
           setAllSalaryRequests(sal || []);
           setAllEntryClaims(ec || []);
           setAllFrameClaims(fc || []);
+          break;
+        }
+        case "animated_photos": {
+          setAnimatedPhotos(await adminCall("list_animated_photos") || []);
           break;
         }
       }
@@ -470,6 +495,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400", count: banReports.filter(r => !r.is_verified).length },
     { key: "blocks", label: "محظورين", icon: <Ban className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
     { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
+    { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
   ];
 
   // Reusable item card for entries/frames with edit
@@ -1313,7 +1339,7 @@ const AdminDashboardPage: React.FC = () => {
                   </div>
                 )}
               </motion.div>
-            )}
+             )}
 
 
             {activeTab === "notifications" && (

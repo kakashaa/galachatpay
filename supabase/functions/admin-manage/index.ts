@@ -271,6 +271,27 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Animated photo requests management
+      case "list_animated_photos": {
+        const { data: photos, error } = await supabase
+          .from("animated_photo_requests")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        result = photos;
+        break;
+      }
+      case "update_animated_photo": {
+        const { id, ...updateData } = data;
+        const { error } = await supabase
+          .from("animated_photo_requests")
+          .update(updateData)
+          .eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),
