@@ -50,6 +50,7 @@ const UserProfileCard: React.FC = () => {
 
   useEffect(() => {
     if (!user?.uuid) return;
+    let cancelled = false;
     const fetchStars = async () => {
       const currentMonth = getCurrentMonth();
       const { data } = await supabase
@@ -57,15 +58,26 @@ const UserProfileCard: React.FC = () => {
         .select("total_stars")
         .eq("user_uuid", user.uuid)
         .eq("current_month", currentMonth)
-        .single();
+        .maybeSingle();
+      if (cancelled) return;
       if (data) setTotalStars((data as any).total_stars ?? 0);
       else {
         const monthly = getMonthlyStars(user.level?.charger_level ?? 0);
         setTotalStars(monthly);
       }
+      
     };
     fetchStars();
+    return () => { cancelled = true; };
   }, [user?.uuid]);
+
+  const handleOpenWallet = (view: "main" | "cashout") => {
+    setStarWalletView(view);
+    // Use requestAnimationFrame to ensure state is set before dialog opens
+    requestAnimationFrame(() => {
+      setShowStarWallet(true);
+    });
+  };
 
   if (!user) return null;
 
@@ -184,7 +196,7 @@ const UserProfileCard: React.FC = () => {
 
             <div className="flex items-center gap-1">
               <button
-                onClick={() => { setStarWalletView("main"); setShowStarWallet(true); }}
+                onClick={() => handleOpenWallet("main")}
                 className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[8px] font-bold active:scale-95 transition-transform"
                 style={{ background: "rgba(234,179,8,0.2)", border: "1px solid rgba(234,179,8,0.3)" }}
               >
@@ -192,7 +204,7 @@ const UserProfileCard: React.FC = () => {
                 <span className="text-yellow-300">إهداء</span>
               </button>
               <button
-                onClick={() => { setStarWalletView("cashout"); setShowStarWallet(true); }}
+                onClick={() => handleOpenWallet("cashout")}
                 className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[8px] font-bold active:scale-95 transition-transform"
                 style={{ background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.25)" }}
               >
