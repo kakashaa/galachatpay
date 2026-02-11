@@ -28,7 +28,7 @@ const banksByCountry: Record<string, { name: string; flag: string; banks: BankAc
     banks: [
       { name: "CashApp", nameArabic: "كاش آب", tag: "$Galalive313", accountHolder: "Dobeee Soneee", qrImage: "/banks/cashapp-galalive313.jpeg" },
       { name: "CashApp", nameArabic: "كاش آب (حساب 2)", tag: "$cashalk1", accountHolder: "Gala live chat", qrImage: "/banks/cashapp-cashalk1.jpeg" },
-      { name: "Zelle", nameArabic: "زيل", email: "ghalibali32@gmail.com", accountHolder: "ASSAF GHALIB", qrImage: "/banks/zelle-assaf.jpeg" },
+      { name: "Zelle", nameArabic: "زيل", phoneNumber: "7146844346", qrImage: "/banks/zelle-assaf.jpeg" },
       { name: "Zelle", nameArabic: "زيل (حساب 2)", accountHolder: "Hamza Ghalib", qrImage: "/banks/zelle-hamza.jpeg" },
       { name: "Chime", nameArabic: "تشايم", qrImage: "/banks/chime-qr.png" },
       { name: "Apple Pay", nameArabic: "آبل باي", phoneNumber: "7146844346", qrImage: "/banks/applepay-qr.jpeg" },
