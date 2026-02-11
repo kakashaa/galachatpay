@@ -62,6 +62,86 @@ export type Database = {
         }
         Relationships: []
       }
+      entry_gift_claims: {
+        Row: {
+          charger_level_at_claim: number
+          claim_month: string
+          claim_type: string
+          created_at: string
+          friend_uuid: string | null
+          gift_id: string
+          gift_usage: string
+          id: string
+          user_uuid: string
+        }
+        Insert: {
+          charger_level_at_claim?: number
+          claim_month: string
+          claim_type: string
+          created_at?: string
+          friend_uuid?: string | null
+          gift_id: string
+          gift_usage: string
+          id?: string
+          user_uuid: string
+        }
+        Update: {
+          charger_level_at_claim?: number
+          claim_month?: string
+          claim_type?: string
+          created_at?: string
+          friend_uuid?: string | null
+          gift_id?: string
+          gift_usage?: string
+          id?: string
+          user_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entry_gift_claims_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "entry_gifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entry_gifts: {
+        Row: {
+          created_at: string
+          display_order: number
+          gift_type: string
+          id: string
+          is_active: boolean
+          star_level: number
+          thumbnail_url: string | null
+          title: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          gift_type?: string
+          id?: string
+          is_active?: boolean
+          star_level?: number
+          thumbnail_url?: string | null
+          title: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          gift_type?: string
+          id?: string
+          is_active?: boolean
+          star_level?: number
+          thumbnail_url?: string | null
+          title?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
       login_attempts: {
         Row: {
           admin_unblocked_at: string | null
