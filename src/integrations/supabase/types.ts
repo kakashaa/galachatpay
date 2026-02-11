@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      salary_requests: {
+        Row: {
+          admin_note: string | null
+          amount_coins: number | null
+          amount_usd: number
+          created_at: string
+          id: string
+          payment_details: string
+          payment_method: string
+          recipient_country: string
+          recipient_name: string
+          request_type: string
+          status: string
+          transfer_image_url: string | null
+          updated_at: string
+          user_name: string
+          user_phone: string | null
+          user_uuid: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount_coins?: number | null
+          amount_usd: number
+          created_at?: string
+          id?: string
+          payment_details: string
+          payment_method: string
+          recipient_country: string
+          recipient_name: string
+          request_type: string
+          status?: string
+          transfer_image_url?: string | null
+          updated_at?: string
+          user_name: string
+          user_phone?: string | null
+          user_uuid: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount_coins?: number | null
+          amount_usd?: number
+          created_at?: string
+          id?: string
+          payment_details?: string
+          payment_method?: string
+          recipient_country?: string
+          recipient_name?: string
+          request_type?: string
+          status?: string
+          transfer_image_url?: string | null
+          updated_at?: string
+          user_name?: string
+          user_phone?: string | null
+          user_uuid?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

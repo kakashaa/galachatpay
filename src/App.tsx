@@ -15,6 +15,7 @@ import ReportPage from "./pages/ReportPage";
 import SalaryWithdraw from "./pages/SalaryWithdraw";
 import BDRequest from "./pages/BDRequest";
 import BDDashboard from "./pages/BDDashboard";
+import MyRequests from "./pages/MyRequests";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/gift" element={<GiftRequest />} />
             <Route path="/bd-request" element={<BDRequest />} />
             <Route path="/bd-dashboard" element={<BDDashboard />} />
+            <Route path="/my-requests" element={<MyRequests />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
