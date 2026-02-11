@@ -45,8 +45,8 @@ serve(async (req) => {
 
     if (!response.ok || !data.success) {
       return new Response(
-        JSON.stringify({ success: false, error: data.message || "Login failed" }),
-        { status: response.status === 200 ? 401 : response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: data.message || data.error || "Login failed", api_status: response.status }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
