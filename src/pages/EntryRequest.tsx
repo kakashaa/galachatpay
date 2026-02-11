@@ -316,7 +316,7 @@ const EntryRequest: React.FC = () => {
                     src={selectedGift.video_url}
                     autoPlay
                     loop
-                    muted
+                    muted={false}
                     playsInline
                     className="w-full h-full object-contain"
                   />
