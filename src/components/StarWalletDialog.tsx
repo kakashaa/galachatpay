@@ -143,6 +143,14 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose }) => {
         if (insertError) throw insertError;
       }
 
+      // Create notification for recipient
+      await supabase.from("notifications").insert({
+        user_uuid: friendUuid.trim(),
+        title: "نجوم مهداة 🎁",
+        body: `تم إهداؤك ${giftAmount} نجمة من ${user.name}`,
+        target: "individual",
+      });
+
       toast.success(`تم إهداء ${giftAmount} نجمة لصديقك بنجاح! ⭐`);
       setShowGiftView(false);
       setFriendUuid("");
