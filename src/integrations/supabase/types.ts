@@ -62,6 +62,54 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_gifts: {
+        Row: {
+          admin_note: string | null
+          charger_level_at_upload: number
+          created_at: string
+          id: string
+          max_duration_allowed: number
+          status: string
+          thumbnail_url: string | null
+          title: string
+          user_gala_id: string | null
+          user_name: string
+          user_uuid: string
+          video_duration: number
+          video_url: string
+        }
+        Insert: {
+          admin_note?: string | null
+          charger_level_at_upload?: number
+          created_at?: string
+          id?: string
+          max_duration_allowed?: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          user_gala_id?: string | null
+          user_name: string
+          user_uuid: string
+          video_duration?: number
+          video_url: string
+        }
+        Update: {
+          admin_note?: string | null
+          charger_level_at_upload?: number
+          created_at?: string
+          id?: string
+          max_duration_allowed?: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          user_gala_id?: string | null
+          user_name?: string
+          user_uuid?: string
+          video_duration?: number
+          video_url?: string
+        }
+        Relationships: []
+      }
       entry_gift_claims: {
         Row: {
           charger_level_at_claim: number
