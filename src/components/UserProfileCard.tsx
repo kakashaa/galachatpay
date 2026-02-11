@@ -240,7 +240,7 @@ const UserProfileCard: React.FC = () => {
                 className={`flex-1 rounded py-0.5 px-0.5 text-center ${totalStars >= r.stars ? 'opacity-100' : 'opacity-40'}`}
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                <p className="text-[7px] text-muted-foreground">{r.stars}⭐</p>
+                <p className="text-[7px] text-foreground font-bold">{r.stars}⭐</p>
                 <p className="text-[9px] font-black text-foreground font-mono">{r.format}</p>
               </div>
             ))}
