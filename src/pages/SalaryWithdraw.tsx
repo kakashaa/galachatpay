@@ -33,6 +33,7 @@ const SalaryWithdraw: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
 
   // API confirmed data
   const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
@@ -64,11 +65,15 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const handleConfirmTransfer = async () => {
+    if (!transferAmount || Number(transferAmount) <= 0) {
+      setError("يرجى إدخال المبلغ الذي حوّلته");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       const { data, error: fnError } = await supabase.functions.invoke("gala-salary", {
-        body: { uuid: user.uuid },
+        body: { uuid: user.uuid, amount: Number(transferAmount) },
       });
 
       console.log("gala-salary response:", data);
@@ -247,17 +252,33 @@ const SalaryWithdraw: React.FC = () => {
                   <span className="text-lg font-bold text-foreground" dir="ltr">{agencyId}</span>
                 </div>
               </div>
+
+              {/* Amount Input */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-foreground">المبلغ الذي حوّلته</label>
+                <Input
+                  type="number"
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
+                  placeholder="أدخل المبلغ"
+                  className="bg-muted/20 border-border/30 text-right"
+                  dir="rtl"
+                  min="1"
+                />
+              </div>
+
               <div className="flex items-start gap-2 p-3 bg-accent/50 border border-accent/30 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <div className="text-[11px] text-muted-foreground space-y-1">
-                  <p>قم بتحويل المبلغ الذي تريد استلامه إلى حساب الوكالة رقم <span className="font-bold text-foreground" dir="ltr">{agencyId}</span> في تطبيق غلا لايف</p>
-                  <p>بعد إتمام التحويل، اضغط "تأكيد التحويل" وسيتم جلب المبلغ والتاريخ تلقائياً</p>
+                  <p>١. حوّل المبلغ إلى حساب الوكالة رقم <span className="font-bold text-foreground" dir="ltr">{agencyId}</span> في تطبيق غلا لايف</p>
+                  <p>٢. أدخل المبلغ الذي حوّلته في الحقل أعلاه</p>
+                  <p>٣. اضغط "تأكيد التحويل" للتحقق</p>
                 </div>
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-3">
               <Button variant="outline" onClick={() => { setStep("select"); setError(""); }} className="flex-1 h-12 border-border/30">رجوع</Button>
-              <Button onClick={handleConfirmTransfer} disabled={loading} className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
+              <Button onClick={handleConfirmTransfer} disabled={loading || !transferAmount} className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
                 {loading ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : "تأكيد التحويل"}
               </Button>
             </motion.div>
