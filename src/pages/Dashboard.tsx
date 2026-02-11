@@ -6,6 +6,7 @@ import UserProfileCard from "@/components/UserProfileCard";
 import LevelBars from "@/components/LevelBars";
 import MenuGrid from "@/components/MenuGrid";
 import BottomNav from "@/components/BottomNav";
+import { VideoStoryCircle } from "@/components/VideoStoryCircle";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="relative z-10 px-6">
+        <VideoStoryCircle />
         <UserProfileCard />
         <LevelBars />
 
