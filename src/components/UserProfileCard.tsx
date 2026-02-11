@@ -17,45 +17,8 @@ const getUserTypeLabel = (type: number): string => {
 };
 
 const getUserTypeBadgeStyle = (type: number) => {
-  if (type >= 2) {
-    return "gold-leaf-badge text-black";
-  }
+  if (type >= 2) return "gold-leaf-badge text-black";
   return "bg-white/10 border border-white/20 text-foreground";
-};
-
-interface LevelItemProps {
-  icon: React.ReactNode;
-  label: string;
-  level: number;
-  gradientFrom: string;
-  gradientTo: string;
-  percentage: number;
-}
-
-const LevelItem: React.FC<LevelItemProps> = ({ icon, label, level, gradientFrom, gradientTo, percentage }) => {
-  const clampedPercent = Math.min(Math.max(percentage, 5), 100);
-
-  return (
-    <div className="flex flex-col items-center gap-2 flex-1">
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center"
-        style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
-      >
-        {icon}
-      </div>
-      <span className="text-[11px] font-bold text-muted-foreground">{label}</span>
-      <span className="text-sm font-black text-foreground">Lv.{level}</span>
-      <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${clampedPercent}%` }}
-          transition={{ duration: 1, delay: 0.5 }}
-          className="h-full rounded-full"
-          style={{ background: `linear-gradient(90deg, ${gradientFrom}, ${gradientTo})` }}
-        />
-      </div>
-    </div>
-  );
 };
 
 const UserProfileCard: React.FC = () => {
@@ -64,122 +27,92 @@ const UserProfileCard: React.FC = () => {
 
   const typeLabel = getUserTypeLabel(user.type_user);
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
-  
-  // gender: 1 = male, 2 = female (based on API)
   const avatarSrc = user.profile?.gender === 2 ? avatarFemale : avatarMale;
 
   const chargerPct = Math.min((user.level.charger_level / 50) * 100, 100);
   const receiverPct = Math.min((user.level.receiver_level / 50) * 100, 100);
   const senderPct = Math.min((user.level.sender_level / 50) * 100, 100);
 
-  const copyId = () => {
-    navigator.clipboard.writeText(user.uuid);
-  };
+  const copyId = () => navigator.clipboard.writeText(user.uuid);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="mb-8"
+      transition={{ duration: 0.4 }}
+      className="mb-4"
     >
-      {/* Main Card */}
       <div
-        className="rounded-3xl p-5 relative overflow-hidden"
+        className="rounded-2xl p-4 relative overflow-hidden"
         style={{
-          background: "linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02))",
+          background: "linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
           backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          boxShadow: "0 8px 32px -8px rgba(0,0,0,0.4)",
+          border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        {/* Decorative glow */}
-        <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-accent/10 blur-3xl" />
-
-        {/* Top Row: Avatar + Info */}
-        <div className="relative z-10 flex items-center gap-4 mb-5" dir="rtl">
-          {/* Avatar */}
+        {/* Top: Avatar + Info */}
+        <div className="relative z-10 flex items-center gap-3 mb-3" dir="rtl">
           <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden p-[2px] bg-gradient-to-br from-primary via-accent to-primary">
-              <div className="w-full h-full rounded-[14px] overflow-hidden bg-background">
-                <img
-                  src={avatarSrc}
-                  alt={user.name}
-                  className="w-full h-full object-cover"
+            <div className="w-14 h-14 rounded-xl overflow-hidden p-[1.5px] bg-gradient-to-br from-primary via-accent to-primary">
+              <div className="w-full h-full rounded-[10px] overflow-hidden bg-background">
+                <img src={avatarSrc} alt={user.name} className="w-full h-full object-cover" />
+              </div>
+            </div>
+            <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-background" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-black text-foreground truncate">{user.name}</h2>
+            <button onClick={copyId} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+              <span className="text-[10px] font-mono">ID: {user.uuid}</span>
+              <Copy className="w-2.5 h-2.5" />
+            </button>
+          </div>
+
+          <div className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${badgeStyle}`}>
+            {typeLabel}
+          </div>
+        </div>
+
+        {/* Wallet Row */}
+        <div className="relative z-10 flex gap-2 mb-3" dir="rtl">
+          {[
+            { icon: Coins, label: "كوينز", value: user.my_store?.coins ?? 0, color: "rgba(234,179,8,0.15)", border: "rgba(234,179,8,0.2)", iconColor: "text-yellow-400" },
+            { icon: Diamond, label: "دايموند", value: user.my_store?.diamonds ?? 0, color: "rgba(168,85,247,0.15)", border: "rgba(168,85,247,0.2)", iconColor: "text-purple-400" },
+            { icon: DollarSign, label: "الرصيد", value: `$${user.my_store?.usd ?? 0}`, color: "rgba(34,197,94,0.15)", border: "rgba(34,197,94,0.2)", iconColor: "text-emerald-400" },
+          ].map((w, i) => (
+            <div key={i} className="flex-1 rounded-xl py-2 px-1 text-center" style={{ background: w.color, border: `1px solid ${w.border}` }}>
+              <w.icon className={`w-4 h-4 mx-auto mb-0.5 ${w.iconColor}`} />
+              <p className="text-[9px] text-muted-foreground">{w.label}</p>
+              <p className="text-xs font-black text-foreground">{typeof w.value === 'number' ? w.value.toLocaleString() : w.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Levels Row - compact */}
+        <div className="relative z-10 flex gap-3" dir="rtl">
+          {[
+            { icon: Zap, label: "الشحن", level: user.level.charger_level, pct: chargerPct, from: "#22c55e", to: "#16a34a" },
+            { icon: Diamond, label: "الاستقبال", level: user.level.receiver_level, pct: receiverPct, from: "#ec4899", to: "#db2777" },
+            { icon: Gift, label: "الإرسال", level: user.level.sender_level, pct: senderPct, from: "#eab308", to: "#ca8a04" },
+          ].map((l, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${l.from}, ${l.to})` }}>
+                <l.icon className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-[9px] text-muted-foreground">{l.label}</span>
+              <span className="text-xs font-black text-foreground">Lv.{l.level}</span>
+              <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(l.pct, 5)}%` }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="h-full rounded-full"
+                  style={{ background: `linear-gradient(90deg, ${l.from}, ${l.to})` }}
                 />
               </div>
             </div>
-            {/* Online dot */}
-            <div className="absolute -bottom-1 -left-1 w-5 h-5 rounded-full bg-emerald-500 border-[3px] border-background" />
-          </div>
-
-          {/* Name + ID + Badge */}
-          <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-black text-foreground truncate mb-1">
-              {user.name}
-            </h2>
-            <button
-              onClick={copyId}
-              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors mb-2"
-            >
-              <span className="text-xs font-mono tracking-wider">ID: {user.uuid}</span>
-              <Copy className="w-3 h-3" />
-            </button>
-            <div className={`inline-flex items-center px-3 py-1 rounded-lg text-[11px] font-bold ${badgeStyle}`}>
-              {typeLabel}
-            </div>
-          </div>
-        </div>
-
-        {/* Wallet Section */}
-        <div className="relative z-10 flex gap-3 mb-4" dir="rtl">
-          <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(234,179,8,0.15), rgba(234,179,8,0.05))", border: "1px solid rgba(234,179,8,0.2)" }}>
-            <Coins className="w-5 h-5 mx-auto mb-1 text-yellow-400" />
-            <p className="text-[10px] text-muted-foreground">كوينز</p>
-            <p className="text-sm font-black text-foreground">{user.my_store?.coins?.toLocaleString() ?? 0}</p>
-          </div>
-          <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.15), rgba(168,85,247,0.05))", border: "1px solid rgba(168,85,247,0.2)" }}>
-            <Diamond className="w-5 h-5 mx-auto mb-1 text-purple-400" />
-            <p className="text-[10px] text-muted-foreground">دايموند</p>
-            <p className="text-sm font-black text-foreground">{user.my_store?.diamonds?.toLocaleString() ?? 0}</p>
-          </div>
-          <div className="flex-1 rounded-xl p-3 text-center" style={{ background: "linear-gradient(135deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))", border: "1px solid rgba(34,197,94,0.2)" }}>
-            <DollarSign className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
-            <p className="text-[10px] text-muted-foreground">الرصيد</p>
-            <p className="text-sm font-black text-foreground">${user.my_store?.usd?.toLocaleString() ?? 0}</p>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="h-px bg-white/10 mb-4" />
-
-        {/* Levels Row */}
-        <div className="relative z-10 flex gap-4 px-2" dir="rtl">
-          <LevelItem
-            icon={<Zap className="w-5 h-5 text-white" />}
-            label="الشحن"
-            level={user.level.charger_level}
-            gradientFrom="#22c55e"
-            gradientTo="#16a34a"
-            percentage={chargerPct}
-          />
-          <LevelItem
-            icon={<Diamond className="w-5 h-5 text-white" />}
-            label="الاستقبال"
-            level={user.level.receiver_level}
-            gradientFrom="#ec4899"
-            gradientTo="#db2777"
-            percentage={receiverPct}
-          />
-          <LevelItem
-            icon={<Gift className="w-5 h-5 text-white" />}
-            label="الإرسال"
-            level={user.level.sender_level}
-            gradientFrom="#eab308"
-            gradientTo="#ca8a04"
-            percentage={senderPct}
-          />
+          ))}
         </div>
       </div>
     </motion.div>
