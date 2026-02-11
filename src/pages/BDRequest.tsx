@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, User, Crown, Send, CheckCircle, Upload, Image, X, FileText, Loader2, Clock } from "lucide-react";
+import { Briefcase, User, Crown, Send, CheckCircle, Upload, Image, X, FileText, Clock } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type BDStatus = "loading" | "none" | "pending" | "approved" | "rejected";
+type BDStatus = "none" | "pending" | "approved" | "rejected";
 
 const BDRequest: React.FC = () => {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ const BDRequest: React.FC = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [bdStatus, setBdStatus] = useState<BDStatus>("loading");
+  const [bdStatus, setBdStatus] = useState<BDStatus>("none");
 
   useEffect(() => {
     if (!authUser) return;
@@ -32,27 +32,48 @@ const BDRequest: React.FC = () => {
 
   const checkExistingRequest = async () => {
     try {
-      const { data } = await supabase.functions.invoke(
-        "gala-actions?action=list-requests&request_type=bd_verify&user_uuid=" + authUser!.uuid,
-        { method: "GET" }
-      );
+      // First, try to fetch from the external API with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
       
-      if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-        const latest = data.data[0];
-        if (latest.status === "approved" || latest.status === 1) {
-          setBdStatus("approved");
-        } else if (latest.status === "pending" || latest.status === 0) {
-          setBdStatus("pending");
-        } else if (latest.status === "rejected" || latest.status === 2) {
-          setBdStatus("rejected");
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=list-requests&request_type=bd_verify&user_uuid=${authUser!.uuid}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+            const latest = data.data[0];
+            if (latest.status === "approved" || latest.status === 1) {
+              setBdStatus("approved");
+            } else if (latest.status === "pending" || latest.status === 0) {
+              setBdStatus("pending");
+            } else if (latest.status === "rejected" || latest.status === 2) {
+              setBdStatus("rejected");
+            } else {
+              setBdStatus("none");
+            }
+          } else {
+            setBdStatus("none");
+          }
         } else {
           setBdStatus("none");
         }
-      } else {
+      } catch (apiErr) {
+        console.error("API check error, defaulting to none:", apiErr);
         setBdStatus("none");
       }
-    } catch {
-      // If check fails, allow form submission
+    } catch (err) {
+      console.error("checkExistingRequest error:", err);
       setBdStatus("none");
     }
   };
@@ -100,18 +121,6 @@ const BDRequest: React.FC = () => {
   };
 
   const isFormValid = experience.trim() && hostsCount && agentsCount && previousBD && (previousBD === "no" || attachment);
-
-  // Loading state
-  if (bdStatus === "loading") {
-    return (
-      <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center py-32">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
-          <p className="text-sm text-muted-foreground">جاري التحقق...</p>
-        </div>
-      </MobileLayout>
-    );
-  }
 
   // Approved → redirect to BD Dashboard
   if (bdStatus === "approved") {
