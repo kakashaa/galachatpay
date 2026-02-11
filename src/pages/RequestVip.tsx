@@ -79,11 +79,14 @@ const RequestVip: React.FC = () => {
   }
 
   const isAgent = user.type_user >= 3;
-  const canRequest = isAgent || !alreadyRequested.requested;
+  
 
   const handleRequest = async () => {
     if (selectedVip === null) return;
-    if (!canRequest) {
+    // Re-check localStorage to prevent any race condition
+    const freshCheck = getVipRequestInfo(user.uuid);
+    if (!isAgent && freshCheck.requested) {
+      setAlreadyRequested(freshCheck);
       setError("لقد استخدمت طلبك المجاني هذا الشهر. يمكنك الطلب مرة أخرى الشهر القادم.");
       return;
     }
