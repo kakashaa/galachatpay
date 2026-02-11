@@ -89,12 +89,21 @@ const UserProfileCard: React.FC = () => {
     <div className="mb-3">
       {/* ⭐ Star Banner - Above Profile */}
       <div
-        className="rounded-2xl mb-2 p-2.5 relative overflow-hidden"
+        className="rounded-2xl mb-2 p-2.5 relative overflow-hidden group"
         style={{
           background: "linear-gradient(135deg, rgba(234,179,8,0.15), rgba(45,212,191,0.1), rgba(168,85,247,0.08))",
           border: "1px solid rgba(234,179,8,0.2)",
         }}
       >
+        {/* Shimmer effect */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{
+            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
+            backgroundSize: "200% 100%",
+            animation: "shimmer 2s infinite",
+            pointerEvents: "none"
+          }}
+        />
         <div className="flex items-center justify-between gap-2" dir="rtl">
           {/* Star count */}
           <div className="flex items-center gap-2">
