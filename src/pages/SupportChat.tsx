@@ -264,10 +264,19 @@ const SupportChat: React.FC = () => {
       setMessages(stored);
       scrollToBottom();
     } else {
-      addBotMessage(
-        `أهلاً ${userName}! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`,
-        MAIN_MENU
-      );
+      // Check VIP status
+      const isVip = user?.vip && Object.keys(user.vip).length > 0;
+      let welcomeMessage = "";
+
+      if (isGuest) {
+        welcomeMessage = `أهلاً بك! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
+      } else if (isVip) {
+        welcomeMessage = `مرحباً بك يا عضو VIP! 👑✨\n${userName}, شكراً على ولائك!\n\nأنا هنا لأخدمك بأفضل طريقة. كيف أقدر أساعدك؟`;
+      } else {
+        welcomeMessage = `أهلاً ${userName}! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
+      }
+
+      addBotMessage(welcomeMessage, MAIN_MENU);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
