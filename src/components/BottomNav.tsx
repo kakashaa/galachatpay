@@ -13,7 +13,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: User, label: "حسابي", path: "/dashboard" },
-  { icon: Headset, label: "الدعم", path: "/support", requiresAuth: true },
+  { icon: Headset, label: "الدعم", path: "/support-chat" },
   { icon: FileText, label: "طلباتي", path: "/my-requests", requiresAuth: true },
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
 ];

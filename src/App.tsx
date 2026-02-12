@@ -13,6 +13,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const ChangeId = lazy(() => import("./pages/ChangeId"));
 const RequestVip = lazy(() => import("./pages/RequestVip"));
 const QuickSupport = lazy(() => import("./pages/QuickSupport"));
+const SupportChat = lazy(() => import("./pages/SupportChat"));
 const PlaceholderPage = lazy(() => import("./pages/PlaceholderPage"));
 const GiftRequest = lazy(() => import("./pages/GiftRequest"));
 const CustomGiftUpload = lazy(() => import("./pages/CustomGiftUpload"));
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/change-id" element={<ChangeId />} />
               <Route path="/request-vip" element={<RequestVip />} />
               <Route path="/support" element={<QuickSupport />} />
+              <Route path="/support-chat" element={<SupportChat />} />
               <Route path="/salary" element={<SalaryWithdraw />} />
               <Route path="/report" element={<ReportPage />} />
               <Route path="/gift" element={<GiftRequest />} />
