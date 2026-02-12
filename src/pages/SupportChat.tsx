@@ -6,7 +6,6 @@ import { levelFormats } from "@/data/idFormats";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import BottomNav from "@/components/BottomNav";
 
 /* ───────── types ───────── */
 interface QuickReply {
@@ -451,7 +450,7 @@ const SupportChat: React.FC = () => {
       </header>
 
       {/* messages area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 pb-36 space-y-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 pb-24 space-y-3">
         {messages.map((msg) => (
           <div key={msg.id}>
             {/* bubble */}
@@ -496,7 +495,7 @@ const SupportChat: React.FC = () => {
       </div>
 
       {/* input */}
-      <div className="fixed bottom-20 left-0 right-0 z-40 px-3 pb-2">
+      <div className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 pt-2 bg-background/80 backdrop-blur-xl border-t border-border/20">
         <div className="mobile-container mx-auto">
           <form
             onSubmit={(e) => {
@@ -523,8 +522,6 @@ const SupportChat: React.FC = () => {
           </form>
         </div>
       </div>
-
-      <BottomNav />
 
       {/* guest login dialog */}
       <Dialog open={showGuestDialog} onOpenChange={setShowGuestDialog}>
