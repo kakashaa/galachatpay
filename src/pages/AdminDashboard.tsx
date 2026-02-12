@@ -14,9 +14,23 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
-import { Camera } from "lucide-react";
+import { Camera, Briefcase } from "lucide-react";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | null;
+
+interface BDRequestItem {
+  id: string;
+  user_uuid: string;
+  user_name: string;
+  request_type: string;
+  status: number | string; // 0=pending, 1=approved, 2=rejected
+  details: {
+    description?: string;
+    document_url?: string;
+  };
+  created_at: string;
+  admin_note?: string;
+}
 
 interface VideoTutorial {
   id: string;
@@ -207,6 +221,13 @@ const AdminDashboardPage: React.FC = () => {
   const [adminStarAmount, setAdminStarAmount] = useState("");
   const [adminStarLoading, setAdminStarLoading] = useState(false);
 
+  // BD requests state
+  const [bdRequests, setBdRequests] = useState<BDRequestItem[]>([]);
+  const [expandedBD, setExpandedBD] = useState<string | null>(null);
+  const [bdAction, setBdAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
+  const [bdRejectReason, setBdRejectReason] = useState("");
+  const [bdActionLoading, setBdActionLoading] = useState(false);
+
   const adminPassword = sessionStorage.getItem("admin_token");
 
   useEffect(() => {
@@ -291,6 +312,28 @@ const AdminDashboardPage: React.FC = () => {
         }
         case "animated_photos": {
           setAnimatedPhotos(await adminCall("list_animated_photos") || []);
+          break;
+        }
+        case "bd_requests": {
+          try {
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 8000);
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=list-requests&request_type=bd_verify`,
+              {
+                method: "GET",
+                headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+                signal: controller.signal,
+              }
+            );
+            if (response.ok) {
+              const result = await response.json();
+              setBdRequests(result?.data && Array.isArray(result.data) ? result.data : []);
+            }
+          } catch (err) {
+            console.error("Failed to load BD requests:", err);
+            toast.error("فشل تحميل طلبات BD - قد يكون الخادم غير متاح");
+          }
           break;
         }
       }
@@ -431,6 +474,63 @@ const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  // BD request actions
+  const handleBDApprove = async (reqItem: BDRequestItem) => {
+    setBdActionLoading(true);
+    try {
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=update-request`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ request_id: reqItem.id, status: 1 }),
+        }
+      );
+      // Send notification
+      await supabase.from("notifications").insert({
+        user_uuid: reqItem.user_uuid,
+        title: "✅ تم قبول طلب BD",
+        body: "مبروك! تم قبول طلبك كمطور أعمال (BD). يمكنك الآن الوصول إلى لوحة BD.",
+        target: "personal",
+      });
+      toast.success("تم قبول طلب BD");
+      setBdAction(null);
+      loadData();
+    } catch { toast.error("فشل قبول الطلب"); }
+    finally { setBdActionLoading(false); }
+  };
+
+  const handleBDReject = async (reqItem: BDRequestItem) => {
+    if (!bdRejectReason.trim()) { toast.error("يرجى كتابة سبب الرفض"); return; }
+    setBdActionLoading(true);
+    try {
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=update-request`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ request_id: reqItem.id, status: 2, admin_note: bdRejectReason.trim() }),
+        }
+      );
+      await supabase.from("notifications").insert({
+        user_uuid: reqItem.user_uuid,
+        title: "❌ تم رفض طلب BD",
+        body: `تم رفض طلبك. السبب: ${bdRejectReason.trim()}\nيمكنك إعادة التقديم مع تعديل البيانات.`,
+        target: "personal",
+      });
+      toast.success("تم رفض الطلب");
+      setBdAction(null); setBdRejectReason("");
+      loadData();
+    } catch { toast.error("فشل رفض الطلب"); }
+    finally { setBdActionLoading(false); }
+  };
+
   const updateBanReport = async (id: string, updates: Partial<BanReport>) => {
     try { await adminCall("update_ban_report", { id, ...updates }); toast.success("تم التحديث"); loadData(); }
     catch { toast.error("فشل التحديث"); }
@@ -524,6 +624,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
+    { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
   ];
 
   // Reusable item card for entries/frames with edit
@@ -1445,6 +1546,105 @@ const AdminDashboardPage: React.FC = () => {
                     ⭐ سيتم إضافة النجوم مباشرة إلى رصيد المستخدم وتسجيل العملية في سجل الإهداءات.
                   </p>
                 </div>
+              </motion.div>
+            )}
+
+            {/* BD Requests Tab */}
+            {activeTab === "bd_requests" && (
+              <motion.div key="bd_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {bdRequests.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Briefcase className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد طلبات BD</p>
+                    <p className="text-xs mt-1">قد يكون الخادم الخارجي غير متاح حالياً</p>
+                  </div>
+                )}
+                {bdRequests.map((req) => {
+                  const statusNum = typeof req.status === "number" ? req.status : req.status === "pending" ? 0 : req.status === "approved" ? 1 : 2;
+                  const statusLabel = statusNum === 0 ? "معلق" : statusNum === 1 ? "مقبول" : "مرفوض";
+                  const statusColor = statusNum === 0 ? "bg-yellow-500/20 text-yellow-500" : statusNum === 1 ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive";
+
+                  return (
+                    <div key={req.id} className="bg-card border rounded-xl overflow-hidden">
+                      <button onClick={() => setExpandedBD(expandedBD === req.id ? null : req.id)} className="w-full p-4 flex items-center justify-between text-right">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusColor}`}>{statusLabel}</span>
+                          <div>
+                            <p className="font-bold text-sm">{req.user_name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{req.user_uuid}</p>
+                          </div>
+                        </div>
+                        {expandedBD === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+
+                      {expandedBD === req.id && (
+                        <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                          <div className="text-xs space-y-1.5">
+                            <p><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{req.user_uuid}</span></p>
+                            <p><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar")}</p>
+                            {req.details?.description && (
+                              <div className="p-2 bg-muted/30 rounded-lg mt-2">
+                                <p className="text-muted-foreground font-bold mb-1">التفاصيل:</p>
+                                <p className="text-foreground whitespace-pre-wrap">{req.details.description}</p>
+                              </div>
+                            )}
+                            {req.details?.document_url && (
+                              <a href={req.details.document_url} target="_blank" rel="noopener" className="text-primary underline text-xs inline-block mt-1">
+                                📎 عرض المستند المرفق
+                              </a>
+                            )}
+                            {req.admin_note && (
+                              <div className="p-2 bg-muted/30 rounded-lg">
+                                <p className="text-muted-foreground font-bold mb-1">ملاحظة الأدمن:</p>
+                                <p>{req.admin_note}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Actions for pending requests */}
+                          {statusNum === 0 && bdAction?.id !== req.id && (
+                            <div className="flex gap-2">
+                              <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => setBdAction({ id: req.id, type: "approve" })}>
+                                <CheckCircle className="w-4 h-4 ml-1" />قبول
+                              </Button>
+                              <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setBdAction({ id: req.id, type: "reject" }); setBdRejectReason(""); }}>
+                                <XCircle className="w-4 h-4 ml-1" />رفض
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Approve confirmation */}
+                          {bdAction?.id === req.id && bdAction.type === "approve" && (
+                            <div className="space-y-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl">
+                              <p className="text-xs font-bold text-green-500">هل أنت متأكد من قبول هذا الطلب؟</p>
+                              <p className="text-[11px] text-muted-foreground">سيتم منح المستخدم صلاحيات BD</p>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={bdActionLoading} onClick={() => handleBDApprove(req)}>
+                                  {bdActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4 ml-1" />تأكيد القبول</>}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setBdAction(null)}>إلغاء</Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reject with reason */}
+                          {bdAction?.id === req.id && bdAction.type === "reject" && (
+                            <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
+                              <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
+                              <Textarea value={bdRejectReason} onChange={(e) => setBdRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="destructive" className="flex-1" disabled={bdActionLoading} onClick={() => handleBDReject(req)}>
+                                  {bdActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />تأكيد الرفض</>}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setBdAction(null)}>إلغاء</Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </motion.div>
             )}
           </AnimatePresence>
