@@ -40,6 +40,43 @@ const getFormatsForLevel = (level: number): string => {
     .join("\n");
 };
 
+/* ───────── time-based greetings ───────── */
+const getTimeBasedGreeting = (
+  userName: string,
+  isVip: boolean,
+  isGuest: boolean
+): string => {
+  const hour = new Date().getHours();
+  let timeGreeting = "";
+  let emoji = "";
+
+  if (hour >= 5 && hour < 12) {
+    // صباح
+    timeGreeting = "صباح الخير";
+    emoji = "🌅";
+  } else if (hour >= 12 && hour < 17) {
+    // بعد الظهر
+    timeGreeting = "ظهرك بألف خير";
+    emoji = "☀️";
+  } else if (hour >= 17 && hour < 21) {
+    // مساء
+    timeGreeting = "مساء الخير";
+    emoji = "🌆";
+  } else {
+    // ليل
+    timeGreeting = "ليل الخير";
+    emoji = "🌙";
+  }
+
+  if (isGuest) {
+    return `${timeGreeting}! ${emoji}\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
+  } else if (isVip) {
+    return `${timeGreeting} يا عضو VIP! 👑✨\n${userName}، شكراً على ولائك!\n\nأنا هنا لأخدمك بأفضل طريقة. كيف أقدر أساعدك؟`;
+  } else {
+    return `${timeGreeting} ${userName}! ${emoji}\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
+  }
+};
+
 /* ───────── FAQ database ───────── */
 interface FAQ {
   question: string;
@@ -266,16 +303,7 @@ const SupportChat: React.FC = () => {
     } else {
       // Check VIP status
       const isVip = user?.vip && Object.keys(user.vip).length > 0;
-      let welcomeMessage = "";
-
-      if (isGuest) {
-        welcomeMessage = `أهلاً بك! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
-      } else if (isVip) {
-        welcomeMessage = `مرحباً بك يا عضو VIP! 👑✨\n${userName}, شكراً على ولائك!\n\nأنا هنا لأخدمك بأفضل طريقة. كيف أقدر أساعدك؟`;
-      } else {
-        welcomeMessage = `أهلاً ${userName}! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
-      }
-
+      const welcomeMessage = getTimeBasedGreeting(userName, isVip, isGuest);
       addBotMessage(welcomeMessage, MAIN_MENU);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
