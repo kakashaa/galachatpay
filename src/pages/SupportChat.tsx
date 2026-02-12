@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Send, Bot, AlertCircle } from "lucide-react";
+import { ArrowRight, Send, Bot, AlertCircle, Edit2, Frame, LogIn, Image, Crown, Wallet, Gift, HelpCircle, Shield, MessageCircle, CheckCircle, BookOpen } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { levelFormats } from "@/data/idFormats";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 interface QuickReply {
   label: string;
   value: string;
+  icon?: React.ElementType;
 }
 
 interface ChatMessage {
@@ -133,21 +134,21 @@ const searchFAQ = (query: string): FAQ | null => {
 };
 
 const MAIN_MENU: QuickReply[] = [
-  { label: "تغيير الآيدي", value: "change_id" },
-  { label: "طلب إطار", value: "frame" },
-  { label: "طلب دخولية", value: "entry" },
-  { label: "صورة متحركة", value: "animated" },
-  { label: "طلب VIP", value: "vip" },
-  { label: "سحب الراتب", value: "salary" },
-  { label: "هدية مخصصة", value: "gift" },
-  { label: "مشكلة تقنية", value: "tech_issue" },
-  { label: "تكلم مع إداري", value: "admin_talk" },
+  { label: "تغيير الآيدي", value: "change_id", icon: Edit2 },
+  { label: "طلب إطار", value: "frame", icon: Frame },
+  { label: "طلب دخولية", value: "entry", icon: LogIn },
+  { label: "صورة متحركة", value: "animated", icon: Image },
+  { label: "طلب VIP", value: "vip", icon: Crown },
+  { label: "سحب الراتب", value: "salary", icon: Wallet },
+  { label: "هدية مخصصة", value: "gift", icon: Gift },
+  { label: "مشكلة تقنية", value: "tech_issue", icon: AlertCircle },
+  { label: "تكلم مع إداري", value: "admin_talk", icon: Shield },
 ];
 
 const TECH_ISSUES: QuickReply[] = [
-  { label: "مشكلة بالصوت", value: "issue_audio" },
-  { label: "مشكلة بالشحن", value: "issue_charge" },
-  { label: "مشكلة بالدخول", value: "issue_login" },
+  { label: "مشكلة بالصوت", value: "issue_audio", icon: AlertCircle },
+  { label: "مشكلة بالشحن", value: "issue_charge", icon: AlertCircle },
+  { label: "مشكلة بالدخول", value: "issue_login", icon: AlertCircle },
   { label: "حسابي محظور", value: "issue_banned" },
   { label: "مشكلة ثانية", value: "issue_other" },
 ];
@@ -620,16 +621,20 @@ const SupportChat: React.FC = () => {
             </div>
             {/* quick replies */}
             {msg.quickReplies && msg.quickReplies.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2 justify-end">
-                {msg.quickReplies.map((qr) => (
-                  <button
-                    key={qr.value}
-                    onClick={() => handleQuickReply(qr.value)}
-                    className="px-3 py-1.5 rounded-full text-[11px] font-bold border border-primary/30 bg-primary/10 text-primary active:scale-95 transition-transform"
-                  >
-                    {qr.label}
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-2 mt-3 justify-end">
+                {msg.quickReplies.map((qr) => {
+                  const IconComponent = qr.icon;
+                  return (
+                    <button
+                      key={qr.value}
+                      onClick={() => handleQuickReply(qr.value)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold border border-primary/40 bg-gradient-to-r from-primary/15 to-accent/15 text-primary hover:border-primary/60 hover:bg-primary/25 active:scale-95 transition-all duration-200"
+                    >
+                      {IconComponent && <IconComponent className="w-4 h-4" />}
+                      <span>{qr.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
