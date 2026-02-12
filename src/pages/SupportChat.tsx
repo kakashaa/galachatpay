@@ -496,32 +496,30 @@ const SupportChat: React.FC = () => {
       </div>
 
       {/* input */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 pt-2 bg-background/80 backdrop-blur-xl border-t border-border/20">
-        <div className="mobile-container mx-auto">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              sendMessage(input);
-            }}
-            className="flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-border/40 rounded-2xl px-3 py-2"
+      <div className="sticky bottom-0 z-40 px-3 pb-3 pt-2 bg-background/80 backdrop-blur-xl border-t border-border/20">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendMessage(input);
+          }}
+          className="flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-border/40 rounded-2xl px-3 py-2"
+        >
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={waitingFor === "room_id" ? "اكتب آيدي الغرفة..." : waitingFor?.startsWith("tech_desc") ? "اوصف المشكلة..." : "اكتب رسالتك..."}
+            className="flex-1 bg-transparent text-foreground text-sm placeholder:text-muted-foreground outline-none"
+            dir="rtl"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="w-9 h-9 rounded-full bg-primary flex items-center justify-center disabled:opacity-40 transition-opacity active:scale-90"
           >
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={waitingFor === "room_id" ? "اكتب آيدي الغرفة..." : waitingFor?.startsWith("tech_desc") ? "اوصف المشكلة..." : "اكتب رسالتك..."}
-              className="flex-1 bg-transparent text-foreground text-sm placeholder:text-muted-foreground outline-none"
-              dir="rtl"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim()}
-              className="w-9 h-9 rounded-full bg-primary flex items-center justify-center disabled:opacity-40 transition-opacity active:scale-90"
-            >
-              <Send className="w-4 h-4 text-primary-foreground rotate-180" />
-            </button>
-          </form>
-        </div>
+            <Send className="w-4 h-4 text-primary-foreground rotate-180" />
+          </button>
+        </form>
       </div>
 
       {/* guest login dialog */}
