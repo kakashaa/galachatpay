@@ -22,6 +22,11 @@ interface ChatMessage {
   timestamp: number;
 }
 
+interface FeedbackData {
+  rating: number;
+  comment: string;
+}
+
 /* ───────── helpers ───────── */
 const uid = () => crypto.randomUUID();
 
@@ -207,6 +212,9 @@ const SupportChat: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
   const [showGuestDialog, setShowGuestDialog] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackData>({ rating: 0, comment: "" });
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -606,6 +614,27 @@ const SupportChat: React.FC = () => {
     handleTopic(value);
   };
 
+  /* ── submit feedback ── */
+  const submitFeedback = async () => {
+    if (feedback.rating === 0) return;
+    setSubmittingFeedback(true);
+    try {
+      await supabase.from("support_chat_feedback").insert({
+        user_uuid: userUuid || "guest",
+        rating: feedback.rating,
+        comment: feedback.comment || "",
+      });
+      addBotMessage("شكراً على تقييمك! 😊 رأيك يساعدنا نحسّن الخدمة", MAIN_MENU);
+      setShowFeedbackForm(false);
+      setFeedback({ rating: 0, comment: "" });
+    } catch (err) {
+      console.error("Feedback error:", err);
+      addBotMessage("حصل خطأ بحفظ التقييم. جاري المحاولة مرة ثانية...", MAIN_MENU);
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
   /* ── clear chat ── */
   const clearChat = () => {
     setMessages([]);
@@ -687,6 +716,65 @@ const SupportChat: React.FC = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "150ms" }} />
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "300ms" }} />
             </div>
+          </div>
+        )}
+
+        {/* Feedback Form */}
+        {showFeedbackForm && (
+          <div className="max-w-xs mx-auto bg-card border border-border/50 rounded-2xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-foreground">كيف كانت الخدمة؟ 😊</p>
+            
+            {/* Star Rating */}
+            <div className="flex gap-2 justify-center">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setFeedback({ ...feedback, rating: star })}
+                  className="transition-transform active:scale-90"
+                >
+                  <svg
+                    className={`w-7 h-7 ${
+                      star <= feedback.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"
+                    }`}
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+
+            {/* Comment Input */}
+            <textarea
+              value={feedback.comment}
+              onChange={(e) => setFeedback({ ...feedback, comment: e.target.value })}
+              placeholder="اترك ملاحظة (اختيارية)"
+              maxLength={200}
+              className="w-full text-xs px-3 py-2 rounded-lg border border-border/40 bg-background text-foreground placeholder:text-muted-foreground resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              rows={2}
+              dir="rtl"
+            />
+
+            {/* Submit Button */}
+            <button
+              onClick={submitFeedback}
+              disabled={feedback.rating === 0 || submittingFeedback}
+              className="w-full py-2 px-3 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-opacity active:scale-95"
+            >
+              {submittingFeedback ? "جاري الحفظ..." : "إرسال التقييم"}
+            </button>
+          </div>
+        )}
+
+        {/* Show Feedback Button */}
+        {messages.length > 0 && !showFeedbackForm && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => setShowFeedbackForm(true)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
+            >
+              📝 قيّم الخدمة
+            </button>
           </div>
         )}
       </div>
