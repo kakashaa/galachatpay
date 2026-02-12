@@ -429,13 +429,14 @@ const SupportChat: React.FC = () => {
     <div className="mobile-container bg-background min-h-screen flex flex-col" dir="rtl">
       {/* header */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/90 backdrop-blur-xl border-b border-border/30">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors"
+        >
+          <ArrowRight className="w-5 h-5 text-primary" />
+          <span className="text-sm font-semibold text-primary">رجوع</span>
+        </button>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10"
-          >
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          </button>
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
             <Bot className="w-4 h-4 text-primary" />
           </div>
