@@ -581,6 +581,33 @@ export type Database = {
         }
         Relationships: []
       }
+      support_chat_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string
+          rating: number
+          updated_at: string | null
+          user_uuid: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating: number
+          updated_at?: string | null
+          user_uuid: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating?: number
+          updated_at?: string | null
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       user_star_balance: {
         Row: {
           carryover_stars: number
