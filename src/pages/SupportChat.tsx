@@ -157,18 +157,30 @@ const FAQ_LIST: FAQ[] = [
   },
 ];
 
+/* ───────── normalize Arabic text ───────── */
+const normalizeArabic = (text: string): string => {
+  return text
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ه/g, "ة")
+    .replace(/ى/g, "ي")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
 const searchFAQ = (query: string): FAQ | null => {
-  const lower = query.toLowerCase();
+  const normalized = normalizeArabic(query);
   let bestMatch: FAQ | null = null;
   let bestScore = 0;
   for (const faq of FAQ_LIST) {
     let score = 0;
     for (const kw of faq.keywords) {
-      if (lower.includes(kw.toLowerCase())) score += 2;
+      if (normalized.includes(normalizeArabic(kw))) score += 2;
     }
     const qWords = faq.question.split(/\s+/);
     for (const w of qWords) {
-      if (w.length > 2 && lower.includes(w)) score += 1;
+      if (w.length > 2 && normalized.includes(normalizeArabic(w))) score += 1;
     }
     if (score > bestScore) { bestScore = score; bestMatch = faq; }
   }
@@ -195,31 +207,28 @@ const TECH_ISSUES: QuickReply[] = [
   { label: "مشكلة ثانية", value: "issue_other" },
 ];
 
-/* ───────── keyword map (enhanced) ───────── */
-const removeTashkeel = (str: string) =>
-  str.replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, "");
-
-const KEYWORD_MAP: { keywords: string[]; topic: string }[] = [
-  { keywords: ["آيدي", "ايدي", "id", "رقم", "غير", "تغيير", "معرف"], topic: "change_id" },
-  { keywords: ["إطار", "اطار", "برواز", "frame", "فريم"], topic: "frame" },
-  { keywords: ["دخول", "دخوليه", "دخولية", "انيميشن", "entry"], topic: "entry" },
-  { keywords: ["صور", "صوره", "متحرك", "gif", "بروفايل", "صورة متحركة"], topic: "animated" },
-  { keywords: ["vip", "في اي بي", "فياب", "فيب", "تاج", "مميز"], topic: "vip" },
-  { keywords: ["راتب", "سحب", "فلوس", "كوين", "رصيد", "مال", "حول", "تحويل", "salary"], topic: "salary" },
-  { keywords: ["هدي", "هديه", "هدية", "gift", "تصميم"], topic: "gift" },
-  { keywords: ["شحن", "اشحن", "كيف اشحن", "بطاقه", "بطاقة"], topic: "recharge" },
-  { keywords: ["حظر", "محظور", "بان", "ban"], topic: "banned" },
-  { keywords: ["مشكل", "مساعد", "خرب", "ما يشتغل", "باق", "صوت", "بث", "خطأ", "error", "bug"], topic: "tech_issue" },
-  { keywords: ["إداري", "اداري", "مسؤول", "مدير", "تكلم", "بشري", "admin"], topic: "admin_talk" },
-  { keywords: ["قائمة", "رجوع", "menu", "القائمه", "رئيسية"], topic: "main_menu" },
-  { keywords: ["مرحبا", "هلا", "السلام", "هاي", "hi", "hello", "اهلا"], topic: "greeting" },
-  { keywords: ["شكر", "مشكور", "ثانكس", "thanks", "يعطيك العافيه", "thank"], topic: "thanks" },
+/* ───────── intent detection (enhanced) ───────── */
+const INTENT_MAP: { keys: string[]; intent: string }[] = [
+  { keys: ["سلام", "اسلام", "عليكم", "مرحبا", "هلا", "هاي", "اهلا", "مساء", "صباح", "هلو", "hello", "hi", "hey"], intent: "greeting" },
+  { keys: ["ايدي", "ايد", "رقم", "غير", "تغيير", "id", "change"], intent: "change_id" },
+  { keys: ["اطار", "فريم", "frame", "برواز"], intent: "frame" },
+  { keys: ["دخول", "دخولية", "انيميشن", "entry", "دخوليات"], intent: "entry" },
+  { keys: ["صور", "صورة", "متحرك", "gif", "بروفايل", "افتار", "avatar"], intent: "animated" },
+  { keys: ["vip", "في اي بي", "فياب", "تاج", "فيب"], intent: "vip" },
+  { keys: ["راتب", "سحب", "فلوس", "كوين", "رصيد", "مال", "حول", "تحويل", "salary", "كاش", "نقود"], intent: "salary" },
+  { keys: ["هدي", "هدية", "gift", "تصميم", "هدايا"], intent: "gift" },
+  { keys: ["مشكل", "مساعد", "خرب", "يشتغل", "صوت", "بث", "لاق", "معلق", "باق", "bug"], intent: "tech_issue" },
+  { keys: ["اداري", "مسوول", "مدير", "ادمن", "admin", "تكلم مع"], intent: "admin_talk" },
+  { keys: ["شحن", "اشحن", "بطاقة", "charge", "كيف اشحن"], intent: "recharge" },
+  { keys: ["حظر", "محظور", "بان", "ban", "محضور"], intent: "banned" },
+  { keys: ["شكر", "مشكور", "ثانكس", "thanks", "يعطيك العافية", "تسلم"], intent: "thanks" },
+  { keys: ["قائمة", "رجوع", "menu", "رجع", "البداية"], intent: "main_menu" },
 ];
 
-const findTopic = (text: string): string | null => {
-  const lower = removeTashkeel(text.toLowerCase());
-  for (const entry of KEYWORD_MAP) {
-    if (entry.keywords.some((k) => lower.includes(removeTashkeel(k.toLowerCase())))) return entry.topic;
+const findIntent = (text: string): string | null => {
+  const normalized = normalizeArabic(text);
+  for (const { keys, intent } of INTENT_MAP) {
+    if (keys.some((k) => normalized.includes(normalizeArabic(k)))) return intent;
   }
   return null;
 };
@@ -615,7 +624,7 @@ const SupportChat: React.FC = () => {
       }
 
       // keyword matching
-      const topic = findTopic(text);
+      const topic = findIntent(text);
       if (topic) {
         handleTopic(topic);
       } else {
