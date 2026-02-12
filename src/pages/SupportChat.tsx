@@ -243,58 +243,75 @@ const SupportChat: React.FC = () => {
           break;
         }
         case "salary": {
-          const coins = user?.my_store?.coins ?? 0;
-          addBotMessage(
-            `رصيدك الحالي: ${coins.toLocaleString()} كوينز 💰\n\n` +
-              `طرق السحب:\n` +
-              `• سحب شهري: آخر يوم بالشهر\n` +
-              `• سحب فوري: متاح دائماً (بيع الكوينز لداعم)\n` +
-              `• سحب بكود النجوم: أدخل كود لسحب رصيدك`,
-            [
-              { label: "اسحب راتبك ←", value: "nav:/salary" },
-              { label: "القائمة الرئيسية", value: "main_menu" },
-            ]
-          );
-          break;
-        }
+           const coins = user?.my_store?.coins ?? 0;
+           const usd = user?.my_store?.usd ?? 0;
+           addBotMessage(
+             `💰 **رصيدك الحالي:**\n` +
+               `${coins.toLocaleString()} كوينز | ${usd.toLocaleString()} دولار\n\n` +
+               `**طرق السحب:**\n` +
+               `🗓️ سحب شهري: آخر يوم بالشهر\n` +
+               `⚡ سحب فوري: متاح دائماً\n` +
+               `⭐ سحب النجوم: بكود خاص\n\n` +
+               `اختر طريقة السحب اللي تناسبك 👇`,
+             [
+               { label: "اسحب راتبك ←", value: "nav:/salary" },
+               { label: "القائمة الرئيسية", value: "main_menu" },
+             ]
+           );
+           break;
+         }
         case "gift":
-          addBotMessage(
-            `اطلب تصميم هدية خاصة فيك! 🎁\n\n` +
-              `أنواع الهدايا:\n` +
-              `• هدية مخصصة (تصميم جديد)\n` +
-              `• هدية دخولية\n` +
-              `• إطار مخصص`,
-            [
-              { label: "اطلب هدية ←", value: "nav:/gift" },
-              { label: "القائمة الرئيسية", value: "main_menu" },
-            ]
-          );
-          break;
+           addBotMessage(
+             `🎁 **اطلب تصميم هدية خاصة فيك!**\n\n` +
+               `**أنواع الهدايا:**\n` +
+               `🎬 هدية فيديو مخصصة (تصميم جديد)\n` +
+               `✨ هدية دخولية (تظهر فوق رأسك)\n` +
+               `🖼️ إطار مخصص (يزين بروفايلك)\n\n` +
+               `الهدايا تميزك عن الكل وتخليك لا تُنسى 💎`,
+             [
+               { label: "اطلب هدية ←", value: "nav:/gift" },
+               { label: "القائمة الرئيسية", value: "main_menu" },
+             ]
+           );
+           break;
         case "tech_issue":
-          addBotMessage("وش نوع المشكلة؟ 🔧", TECH_ISSUES);
-          break;
-        case "issue_audio":
-        case "issue_charge":
-        case "issue_login":
-        case "issue_banned":
-        case "issue_other": {
-          const labels: Record<string, string> = {
-            issue_audio: "مشكلة بالصوت",
-            issue_charge: "مشكلة بالشحن",
-            issue_login: "مشكلة بالدخول",
-            issue_banned: "حساب محظور",
-            issue_other: "مشكلة أخرى",
-          };
-          setWaitingFor(`tech_desc:${labels[topic] ?? topic}`);
-          addBotMessage(`اكتب وصف المشكلة بالتفصيل وبنرسلها للدعم الفني 📝`);
-          break;
-        }
+           addBotMessage(
+             `🔧 **وش نوع المشكلة اللي عندك؟**\n\n` +
+               `اختر من القائمة وبنساعدك بسرعة! 👇`,
+             TECH_ISSUES
+           );
+           break;
+         case "issue_audio":
+         case "issue_charge":
+         case "issue_login":
+         case "issue_banned":
+         case "issue_other": {
+           const labels: Record<string, string> = {
+             issue_audio: "مشكلة بالصوت 🔊",
+             issue_charge: "مشكلة بالشحن ⚡",
+             issue_login: "مشكلة بالدخول 🔐",
+             issue_banned: "حساب محظور 🚫",
+             issue_other: "مشكلة أخرى 📋",
+           };
+           const issueLabel = labels[topic] ?? topic;
+           setWaitingFor(`tech_desc:${issueLabel}`);
+           addBotMessage(
+             `🆘 **${issueLabel}**\n\n` +
+               `وصّف المشكلة بالتفصيل وبنرسلها للدعم الفني فوري. ` +
+               `كلما كانت التفاصيل أدق، كلما كنا أسرع بالحل 📝`,
+             [{ label: "← رجوع للخيارات", value: "tech_issue" }]
+           );
+           break;
+         }
         case "admin_talk":
-          setWaitingFor("room_id");
-          addBotMessage(
-            `تبي تتكلم مع إداري مباشرة؟ 🎙️\nاكتب آيدي الغرفة اللي تبي الإداري يدخلها وبنرسل لهم إشعار فوري.`
-          );
-          break;
+           setWaitingFor("room_id");
+           addBotMessage(
+             `🎙️ **تبي تتكلم مع إداري مباشرة؟**\n\n` +
+               `اكتب رقم الغرفة اللي تبي الإداري يدخلها وبنرسل لهم إشعار فوري.` +
+               `\n\nالإداري بيدخل غرفتك قريباً جداً ⏱️`,
+             [{ label: "← رجوع للخيارات", value: "main_menu" }]
+           );
+           break;
         case "main_menu":
           addBotMessage("كيف أقدر أساعدك؟ 😊", MAIN_MENU);
           break;
