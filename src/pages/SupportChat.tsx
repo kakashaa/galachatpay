@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Send, Bot, AlertCircle, Edit2, Frame, LogIn, Image, Crown, Wallet, Gift, HelpCircle, Shield, MessageCircle, CheckCircle, BookOpen } from "lucide-react";
+import { ArrowRight, Send, Bot, AlertCircle, Edit2, Frame, LogIn, Image, Crown, Wallet, Gift, Shield, BookOpen } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { levelFormats } from "@/data/idFormats";
 import { supabase } from "@/integrations/supabase/client";
@@ -153,23 +153,31 @@ const TECH_ISSUES: QuickReply[] = [
   { label: "مشكلة ثانية", value: "issue_other" },
 ];
 
-/* ───────── keyword map ───────── */
+/* ───────── keyword map (enhanced) ───────── */
+const removeTashkeel = (str: string) =>
+  str.replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, "");
+
 const KEYWORD_MAP: { keywords: string[]; topic: string }[] = [
-  { keywords: ["آيدي", "ايدي", "id", "رقم", "تغيير"], topic: "change_id" },
-  { keywords: ["إطار", "اطار", "فريم", "frame"], topic: "frame" },
-  { keywords: ["دخولية", "دخول", "entry", "انيميشن"], topic: "entry" },
-  { keywords: ["صورة", "متحركة", "gif", "بروفايل"], topic: "animated" },
-  { keywords: ["vip", "في اي بي", "فيب", "مميز"], topic: "vip" },
-  { keywords: ["راتب", "سحب", "كوين", "فلوس", "رصيد", "salary"], topic: "salary" },
-  { keywords: ["هدية", "تصميم", "gift", "مخصص"], topic: "gift" },
-  { keywords: ["مشكلة", "خطأ", "error", "bug", "صوت", "شحن", "محظور"], topic: "tech_issue" },
-  { keywords: ["إداري", "اداري", "admin", "غرفة"], topic: "admin_talk" },
+  { keywords: ["آيدي", "ايدي", "id", "رقم", "غير", "تغيير", "معرف"], topic: "change_id" },
+  { keywords: ["إطار", "اطار", "برواز", "frame", "فريم"], topic: "frame" },
+  { keywords: ["دخول", "دخوليه", "دخولية", "انيميشن", "entry"], topic: "entry" },
+  { keywords: ["صور", "صوره", "متحرك", "gif", "بروفايل", "صورة متحركة"], topic: "animated" },
+  { keywords: ["vip", "في اي بي", "فياب", "فيب", "تاج", "مميز"], topic: "vip" },
+  { keywords: ["راتب", "سحب", "فلوس", "كوين", "رصيد", "مال", "حول", "تحويل", "salary"], topic: "salary" },
+  { keywords: ["هدي", "هديه", "هدية", "gift", "تصميم"], topic: "gift" },
+  { keywords: ["شحن", "اشحن", "كيف اشحن", "بطاقه", "بطاقة"], topic: "recharge" },
+  { keywords: ["حظر", "محظور", "بان", "ban"], topic: "banned" },
+  { keywords: ["مشكل", "مساعد", "خرب", "ما يشتغل", "باق", "صوت", "بث", "خطأ", "error", "bug"], topic: "tech_issue" },
+  { keywords: ["إداري", "اداري", "مسؤول", "مدير", "تكلم", "بشري", "admin"], topic: "admin_talk" },
+  { keywords: ["قائمة", "رجوع", "menu", "القائمه", "رئيسية"], topic: "main_menu" },
+  { keywords: ["مرحبا", "هلا", "السلام", "هاي", "hi", "hello", "اهلا"], topic: "greeting" },
+  { keywords: ["شكر", "مشكور", "ثانكس", "thanks", "يعطيك العافيه", "thank"], topic: "thanks" },
 ];
 
 const findTopic = (text: string): string | null => {
-  const lower = text.toLowerCase();
+  const lower = removeTashkeel(text.toLowerCase());
   for (const entry of KEYWORD_MAP) {
-    if (entry.keywords.some((k) => lower.includes(k))) return entry.topic;
+    if (entry.keywords.some((k) => lower.includes(removeTashkeel(k.toLowerCase())))) return entry.topic;
   }
   return null;
 };
@@ -419,12 +427,43 @@ const SupportChat: React.FC = () => {
           );
           break;
         }
+        case "recharge":
+          addBotMessage(
+            `تقدر تشحن حسابك من داخل التطبيق 💳\nاضغط على أيقونة الشحن واختر الباقة المناسبة.\nأو شاهد الفيديو التعليمي لمعرفة الخطوات:`,
+            [
+              { label: "القائمة الرئيسية", value: "main_menu" },
+            ]
+          );
+          break;
+        case "banned":
+          addBotMessage(
+            `إذا حسابك محظور، تقدر تتواصل مع الإدارة مباشرة 🚫\nاكتب تفاصيل المشكلة وبنساعدك.`,
+            [
+              { label: "تكلم مع إداري", value: "admin_talk", icon: Shield },
+              { label: "القائمة الرئيسية", value: "main_menu" },
+            ]
+          );
+          break;
+        case "greeting": {
+          const name = user?.name || "زائر";
+          addBotMessage(
+            `أهلاً وسهلاً ${name}! 👋😊\nأنا مساعدك الذكي في غلا شات. كيف أقدر أخدمك اليوم؟`,
+            MAIN_MENU
+          );
+          break;
+        }
+        case "thanks":
+          addBotMessage(
+            `العفو! 😊 إذا تحتاج أي شي ثاني أنا هنا دائماً`,
+            MAIN_MENU
+          );
+          break;
         case "main_menu":
           addBotMessage("كيف أقدر أساعدك؟ 😊", MAIN_MENU);
           break;
         default:
           addBotMessage(
-            "ما فهمت سؤالك 😅 جرب تختار من الخيارات:",
+            "ما قدرت أفهم سؤالك بالضبط 🤔\nجرب توضح أكثر أو اختر من الخيارات:",
             MAIN_MENU
           );
       }
@@ -536,9 +575,9 @@ const SupportChat: React.FC = () => {
         handleTopic(topic);
       } else {
         addBotMessage(
-          "ما فهمت سؤالك 😅 جرب تختار من الخيارات أو اكتب سؤالك بطريقة ثانية:",
+          "ما قدرت أفهم سؤالك بالضبط 🤔\nجرب توضح أكثر أو اختر من الخيارات:",
           [
-            { label: "📖 الأسئلة الشائعة", value: "show_faq" },
+            { label: "📖 الأسئلة الشائعة", value: "show_faq", icon: BookOpen },
             ...MAIN_MENU,
           ]
         );
