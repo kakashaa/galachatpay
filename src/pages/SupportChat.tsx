@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Send, Bot, User } from "lucide-react";
+import { ArrowRight, Send, Bot, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { levelFormats } from "@/data/idFormats";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/BottomNav";
 
 /* ───────── types ───────── */
@@ -98,12 +100,21 @@ const SupportChat: React.FC = () => {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
+  const [showGuestDialog, setShowGuestDialog] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const isGuest = !user;
   const chargerLevel = user?.level?.charger_level ?? 0;
   const userName = user?.name ?? "زائر";
   const userUuid = user?.uuid ?? "";
+
+  /* show guest dialog on mount */
+  useEffect(() => {
+    if (isGuest) {
+      setShowGuestDialog(true);
+    }
+  }, [isGuest]);
 
   /* scroll to bottom */
   const scrollToBottom = useCallback(() => {
@@ -514,6 +525,36 @@ const SupportChat: React.FC = () => {
       </div>
 
       <BottomNav />
+
+      {/* guest login dialog */}
+      <Dialog open={showGuestDialog} onOpenChange={setShowGuestDialog}>
+        <DialogContent className="max-w-xs rounded-2xl text-center">
+          <DialogTitle className="text-base font-bold">سجّل دخولك أولاً</DialogTitle>
+          <div className="space-y-4 py-2">
+            <div className="w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-7 h-7 text-primary" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              لتتمكن من استخدام كل الخدمات يجب عليك تسجيل الدخول بحسابك في غلا شات
+            </p>
+            <Button
+              onClick={() => {
+                setShowGuestDialog(false);
+                navigate("/");
+              }}
+              className="w-full gold-gradient text-primary-foreground font-bold h-11"
+            >
+              تسجيل الدخول
+            </Button>
+            <button
+              onClick={() => setShowGuestDialog(false)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              متابعة التصفح
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
