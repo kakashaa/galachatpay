@@ -34,6 +34,104 @@ const getFormatsForLevel = (level: number): string => {
     .join("\n");
 };
 
+/* ───────── FAQ database ───────── */
+interface FAQ {
+  question: string;
+  answer: string;
+  keywords: string[];
+  topic?: string;
+}
+
+const FAQ_LIST: FAQ[] = [
+  {
+    question: "كيف أغير آيديي؟",
+    answer: "تقدر تغير آيديك من صفحة تغيير الآيدي. لازم تكون لفل 20 على الأقل، والتغيير متاح مرة وحدة كل 10 مستويات.",
+    keywords: ["آيدي", "ايدي", "id", "تغيير", "رقم", "معرف"],
+    topic: "change_id",
+  },
+  {
+    question: "كيف أطلب إطار؟",
+    answer: "الإطارات تتطلب لفل 30 على الأقل. لفل 30+ (30 يوم)، لفل 40+ (60 يوم)، لفل 50+ (دائم).",
+    keywords: ["إطار", "اطار", "فريم", "frame"],
+    topic: "frame",
+  },
+  {
+    question: "كيف أسحب راتبي؟",
+    answer: "عندك 3 طرق: السحب الشهري (آخر يوم بالشهر)، السحب الفوري (متاح دائماً)، أو سحب بكود النجوم.",
+    keywords: ["راتب", "سحب", "كوين", "فلوس", "رصيد", "تحويل", "بنك"],
+    topic: "salary",
+  },
+  {
+    question: "متى يفتح السحب الشهري؟",
+    answer: "السحب الشهري يفتح فقط في اليوم الأخير من الشهر الميلادي (30 أو 31). استخدم السحب الفوري إذا تبي تسحب قبل.",
+    keywords: ["شهري", "موعد", "يفتح", "متى"],
+  },
+  {
+    question: "كيف أطلب هدية مخصصة؟",
+    answer: "الهدايا المخصصة متاحة من لفل 40+. ارفع فيديو الهدية (المدة حسب لفلك: 40=11ث، 50=13ث، 60=15ث، 70=18ث، 80+=20ث).",
+    keywords: ["هدية", "مخصص", "تصميم", "فيديو", "gift"],
+    topic: "gift",
+  },
+  {
+    question: "كيف أطلب دخولية؟",
+    answer: "الدخولية تتطلب لفل 40 على الأقل. تظهر كأنيميشن لما تدخل أي غرفة.",
+    keywords: ["دخولية", "دخول", "entry", "انيميشن"],
+    topic: "entry",
+  },
+  {
+    question: "كيف أطلب صورة متحركة؟",
+    answer: "ارفع ملف GIF (حتى 10 ميجابايت). المدة حسب لفلك: 30+ (30 يوم)، 40+ (60 يوم)، 50+ (دائمة). الطلب متاح مرة وحدة فقط.",
+    keywords: ["صورة", "متحركة", "gif", "animated"],
+    topic: "animated",
+  },
+  {
+    question: "وش هي النجوم وكيف أستخدمها؟",
+    answer: "النجوم عملة الموقع للإطارات والدخوليات. تُمنح شهرياً حسب لفل الشحن. تقدر تهديها أو تحولها لكاش (10 نجوم = 50 دولار).",
+    keywords: ["نجوم", "نجمة", "star", "عملة"],
+  },
+  {
+    question: "كيف أطلب VIP؟",
+    answer: "VIP يعطيك إطار مميز وأولوية بالدعم. الطلب متاح مرة شهرياً لمدة 7 أيام.",
+    keywords: ["vip", "في اي بي", "فيب", "مميز"],
+    topic: "vip",
+  },
+  {
+    question: "حسابي محظور، وش أسوي؟",
+    answer: "تواصل مع الدعم الفني عبر 'مشكلة تقنية' > 'حسابي محظور' واكتب تفاصيل المشكلة.",
+    keywords: ["محظور", "حظر", "banned", "موقوف"],
+    topic: "tech_issue",
+  },
+  {
+    question: "كيف أتكلم مع إداري؟",
+    answer: "اختر 'تكلم مع إداري' واكتب رقم الغرفة. بيوصلهم إشعار فوري.",
+    keywords: ["إداري", "اداري", "admin", "غرفة"],
+    topic: "admin_talk",
+  },
+  {
+    question: "كيف أشوف طلباتي السابقة؟",
+    answer: "روح لصفحة 'طلباتي' من القائمة الرئيسية. فيها كل سجلاتك مقسمة حسب النوع.",
+    keywords: ["طلبات", "سابقة", "سجل", "تاريخ", "متابعة"],
+  },
+];
+
+const searchFAQ = (query: string): FAQ | null => {
+  const lower = query.toLowerCase();
+  let bestMatch: FAQ | null = null;
+  let bestScore = 0;
+  for (const faq of FAQ_LIST) {
+    let score = 0;
+    for (const kw of faq.keywords) {
+      if (lower.includes(kw.toLowerCase())) score += 2;
+    }
+    const qWords = faq.question.split(/\s+/);
+    for (const w of qWords) {
+      if (w.length > 2 && lower.includes(w)) score += 1;
+    }
+    if (score > bestScore) { bestScore = score; bestMatch = faq; }
+  }
+  return bestScore >= 2 ? bestMatch : null;
+};
+
 const MAIN_MENU: QuickReply[] = [
   { label: "تغيير الآيدي", value: "change_id" },
   { label: "طلب إطار", value: "frame" },
@@ -312,6 +410,14 @@ const SupportChat: React.FC = () => {
              [{ label: "← رجوع للخيارات", value: "main_menu" }]
            );
            break;
+        case "show_faq": {
+          const faqText = FAQ_LIST.map((f, i) => `${i + 1}. ${f.question}`).join("\n");
+          addBotMessage(
+            `📖 **الأسئلة الشائعة:**\n\n${faqText}\n\n✍️ اكتب سؤالك أو رقم السؤال وبجاوبك فوراً!`,
+            [{ label: "القائمة الرئيسية", value: "main_menu" }]
+          );
+          break;
+        }
         case "main_menu":
           addBotMessage("كيف أقدر أساعدك؟ 😊", MAIN_MENU);
           break;
@@ -397,14 +503,43 @@ const SupportChat: React.FC = () => {
         return;
       }
 
+      // FAQ number lookup (e.g. user types "3")
+      const faqNum = parseInt(text.trim());
+      if (!isNaN(faqNum) && faqNum >= 1 && faqNum <= FAQ_LIST.length) {
+        const faq = FAQ_LIST[faqNum - 1];
+        const replies: QuickReply[] = [];
+        if (faq.topic) replies.push({ label: "تفاصيل أكثر ←", value: faq.topic });
+        replies.push({ label: "📖 الأسئلة الشائعة", value: "show_faq" }, { label: "القائمة الرئيسية", value: "main_menu" });
+        addBotMessage(`📖 **${faq.question}**\n\n${faq.answer}`, replies);
+        return;
+      }
+
+      // FAQ search first
+      const faqMatch = searchFAQ(text);
+      if (faqMatch) {
+        const replies: QuickReply[] = [];
+        if (faqMatch.topic) {
+          replies.push({ label: "تفاصيل أكثر ←", value: faqMatch.topic });
+        }
+        replies.push({ label: "القائمة الرئيسية", value: "main_menu" });
+        addBotMessage(
+          `📖 **${faqMatch.question}**\n\n${faqMatch.answer}`,
+          replies
+        );
+        return;
+      }
+
       // keyword matching
       const topic = findTopic(text);
       if (topic) {
         handleTopic(topic);
       } else {
         addBotMessage(
-          "ما فهمت سؤالك 😅 جرب تختار من الخيارات:",
-          MAIN_MENU
+          "ما فهمت سؤالك 😅 جرب تختار من الخيارات أو اكتب سؤالك بطريقة ثانية:",
+          [
+            { label: "📖 الأسئلة الشائعة", value: "show_faq" },
+            ...MAIN_MENU,
+          ]
         );
       }
     },
