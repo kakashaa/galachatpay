@@ -822,7 +822,7 @@ const SupportChat: React.FC = () => {
                       onClick={() => handleQuickReply(qr.value)}
                       className="flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold border border-primary/40 bg-gradient-to-r from-primary/15 to-accent/15 text-primary hover:border-primary/60 hover:bg-primary/25 active:scale-95 transition-all duration-200"
                     >
-                      {IconComponent && <IconComponent className="w-4 h-4" />}
+                      {typeof IconComponent === "function" && <IconComponent className="w-4 h-4" />}
                       <span>{qr.label}</span>
                     </button>
                   );
