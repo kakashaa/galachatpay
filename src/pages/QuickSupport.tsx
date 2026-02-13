@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Send, CheckCircle2, Clock, ArrowRight, Zap } from "lucide-react";
+import { Send, CheckCircle2, Clock, ArrowRight, Zap, ShieldX } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+
+const isEligibleForQuickSupport = (user: any): boolean => {
+  if (!user) return false;
+  // Agents (type_user >= 3)
+  if (user.type_user >= 3) return true;
+  // VIP 5 or VIP 6
+  const vipLevel = user.vip?.vip_level || user.vip?.level || 0;
+  if (vipLevel >= 5) return true;
+  return false;
+};
 
 const COOLDOWN_KEY = "quick_support_cooldown";
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -67,6 +77,56 @@ const QuickSupport: React.FC = () => {
   };
 
   const isCoolingDown = cooldownRemaining > 0;
+
+  // Access control: only VIP 5, VIP 6, or Agents (type_user >= 3)
+  if (!isEligibleForQuickSupport(authUser)) {
+    return (
+      <div className="mobile-container bg-background min-h-screen flex flex-col" dir="rtl">
+        <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30"
+          >
+            <ArrowRight className="w-5 h-5 text-primary" />
+            <span className="text-sm font-semibold text-primary">رجوع</span>
+          </motion.button>
+          <h1 className="text-sm font-bold text-foreground">دعم سريع</h1>
+          <div className="w-16" />
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="text-center space-y-4"
+          >
+            <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))", border: "1px solid rgba(239,68,68,0.25)" }}>
+              <ShieldX className="w-10 h-10 text-destructive" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">ميزة حصرية ⚡</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">
+              الدعم السريع متاح فقط لأصحاب
+              <br />
+              <span className="text-yellow-400 font-bold">VIP 5</span> و <span className="text-yellow-400 font-bold">VIP 6</span> و <span className="text-primary font-bold">الوكلاء</span>
+            </p>
+            <div className="glass-card p-3 space-y-1.5 text-[11px] text-muted-foreground">
+              <p>🌟 ارفع مستوى VIP الخاص بك للحصول على دعم فوري</p>
+              <p>⚡ سوبر أدمن يدخل غرفتك خلال دقائق</p>
+            </div>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm"
+            >
+              العودة للرئيسية
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mobile-container bg-background min-h-screen flex flex-col overflow-hidden" dir="rtl">
