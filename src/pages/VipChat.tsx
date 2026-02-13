@@ -160,7 +160,7 @@ const VipChat: React.FC = () => {
 
   const formatTime = (d: string) => {
     const date = new Date(d);
-    return date.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
   };
 
   if (!user) return null;

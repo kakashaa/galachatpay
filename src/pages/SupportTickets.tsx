@@ -119,7 +119,7 @@ const SupportTickets: React.FC = () => {
 
   const formatDate = (d: string) => {
     const date = new Date(d);
-    return date.toLocaleDateString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleDateString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   };
 
   if (!user) { navigate("/"); return null; }

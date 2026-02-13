@@ -1040,7 +1040,7 @@ const AdminDashboardPage: React.FC = () => {
                           <div><span className="text-muted-foreground">المستلم:</span> {req.recipient_name}</div>
                           <div><span className="text-muted-foreground">البلد:</span> {req.recipient_country}</div>
                           <div className="col-span-2"><span className="text-muted-foreground">التفاصيل:</span> {req.payment_details}</div>
-                          <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar")}</div>
+                          <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</div>
                         </div>
                         {req.status === "pending" && salaryAction?.id !== req.id && (
                           <div className="flex gap-2">
@@ -1110,7 +1110,7 @@ const AdminDashboardPage: React.FC = () => {
                         <div className="text-xs space-y-1">
                           <p><span className="text-muted-foreground">المُبلّغ:</span> {report.reporter_gala_id}</p>
                           <p><span className="text-muted-foreground">الوصف:</span> {report.description}</p>
-                          <p><span className="text-muted-foreground">التاريخ:</span> {new Date(report.created_at).toLocaleDateString("ar")}</p>
+                          <p><span className="text-muted-foreground">التاريخ:</span> {new Date(report.created_at).toLocaleDateString("ar-EG")}</p>
                         </div>
                         {report.evidence_url && (
                           <a href={report.evidence_url} target="_blank" rel="noopener" className="text-xs text-primary underline">عرض الدليل</a>
@@ -1139,7 +1139,7 @@ const AdminDashboardPage: React.FC = () => {
                       <div>
                         <p className="font-bold text-sm font-mono">{acc.target_uuid}</p>
                         <p className="text-xs text-muted-foreground">
-                          {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `محظور حتى ${new Date(acc.blocked_until).toLocaleDateString("ar")}` : "غير محظور"}
+                          {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `محظور حتى ${new Date(acc.blocked_until).toLocaleDateString("ar-EG")}` : "غير محظور"}
                         </p>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${acc.is_permanently_blocked ? "bg-destructive/20 text-destructive" : "bg-yellow-500/20 text-yellow-500"}`}>
@@ -1262,7 +1262,7 @@ const AdminDashboardPage: React.FC = () => {
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
                           <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar-EG")}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-1 text-[11px]">
                         <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{claim.user_uuid}</span></div>
@@ -1288,7 +1288,7 @@ const AdminDashboardPage: React.FC = () => {
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
                           <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar-EG")}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-1 text-[11px]">
                         <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{claim.user_uuid}</span></div>
@@ -1312,7 +1312,7 @@ const AdminDashboardPage: React.FC = () => {
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/20 text-accent">{gift.amount} ⭐</span>
                         <span className="text-xs font-bold">{gift.sender_name}</span>
                       </div>
-                      <span className="text-[10px] text-muted-foreground">{new Date(gift.created_at).toLocaleDateString("ar")}</span>
+                      <span className="text-[10px] text-muted-foreground">{new Date(gift.created_at).toLocaleDateString("ar-EG")}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1 text-[11px]">
                       <div><span className="text-muted-foreground">المرسل:</span> <span className="font-mono">{gift.sender_uuid}</span></div>
@@ -1393,7 +1393,7 @@ const AdminDashboardPage: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar")}</span>
+                                  <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
                                   {expandedRequest === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                 </div>
                               </button>
@@ -1494,7 +1494,7 @@ const AdminDashboardPage: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar")}</span>
+                                  <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
                                   {expandedRequest === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                 </div>
                               </button>
@@ -1583,7 +1583,7 @@ const AdminDashboardPage: React.FC = () => {
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
                             <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
+                          <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar-EG")}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-1 text-[11px]">
                           <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{claim.user_uuid}</span></div>
@@ -1617,7 +1617,7 @@ const AdminDashboardPage: React.FC = () => {
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
                               <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
                             </div>
-                            <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar")}</span>
+                            <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar-EG")}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-1 text-[11px]">
                             <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{claim.user_uuid}</span></div>
@@ -1783,7 +1783,7 @@ const AdminDashboardPage: React.FC = () => {
                             <p className="text-xs text-muted-foreground font-mono">{photo.user_uuid}</p>
                           </div>
                         </div>
-                        <span className="text-[10px] text-muted-foreground">{new Date(photo.created_at).toLocaleDateString("ar")}</span>
+                        <span className="text-[10px] text-muted-foreground">{new Date(photo.created_at).toLocaleDateString("ar-EG")}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div><span className="text-muted-foreground">المدة:</span> {photo.duration_label}</div>
@@ -1888,7 +1888,7 @@ const AdminDashboardPage: React.FC = () => {
                         <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
                           <div className="text-xs space-y-1.5">
                             <p><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{req.user_uuid}</span></p>
-                            <p><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar")}</p>
+                            <p><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</p>
                             {req.details?.description && (
                               <div className="p-2 bg-muted/30 rounded-lg mt-2">
                                 <p className="text-muted-foreground font-bold mb-1">التفاصيل:</p>
@@ -1979,7 +1979,7 @@ const AdminDashboardPage: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <h4 className="font-bold text-sm">{item.title || item.user_name || "بدون عنوان"}</h4>
                             <span className="text-[10px] text-muted-foreground">
-                              {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString("ar-SA") : ""}
+                              {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString("ar-EG") : ""}
                             </span>
                           </div>
                           <div className="flex gap-2">
@@ -2036,7 +2036,7 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
                     <p className="text-[11px] text-muted-foreground">{ticket.user_name} • {ticket.user_uuid}</p>
                     <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{ticket.description}</p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(ticket.created_at).toLocaleString("ar-SA")}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(ticket.created_at).toLocaleString("ar-EG")}</p>
                     {ticket.admin_reply && <p className="text-xs text-primary bg-primary/5 rounded-lg p-2">الرد: {ticket.admin_reply}</p>}
                     {ticket.status === "open" && (
                       <div className="flex gap-2">
@@ -2078,7 +2078,7 @@ const AdminDashboardPage: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">VIP {chat.vip_level} • غرفة: {chat.room_id || "—"}</p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(chat.created_at).toLocaleString("ar-SA")}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(chat.created_at).toLocaleString("ar-EG")}</p>
                     {chat.status !== "closed" && (
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" className="flex-1" onClick={async () => {
@@ -2158,7 +2158,7 @@ const AdminDashboardPage: React.FC = () => {
                             <span className="text-xs font-bold text-foreground">{label}</span>
                           </div>
                           <span className="text-[10px] text-muted-foreground">
-                            {new Date(log.created_at).toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" })}
+                            {new Date(log.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
                           </span>
                         </div>
                         {detailStr && (

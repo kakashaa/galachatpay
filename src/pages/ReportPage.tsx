@@ -607,7 +607,7 @@ const ReportPage = () => {
                           <span className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">{getBanTypeLabel(report.ban_type)}</span>
                           {getStatusBadge(report)}
                         </div>
-                        <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-SA")}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-EG")}</span>
                       </div>
                       <div className="text-sm space-y-1">
                         <div className="flex justify-between"><span className="text-muted-foreground">المُبلَّغ عنه:</span><span className="font-bold">{report.reported_user_id}</span></div>
@@ -657,11 +657,11 @@ const ReportPage = () => {
                             {report.is_verified ? "✓ مؤكد" : "⏳ قيد المراجعة"}
                           </span>
                         </div>
-                        <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-SA")}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-EG")}</span>
                       </div>
                       {report.expires_at && (
                         <div className="text-xs text-warning bg-warning/10 px-3 py-1.5 rounded-lg">
-                          ⏰ ينتهي: {new Date(report.expires_at).toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" })}
+                          ⏰ ينتهي: {new Date(report.expires_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
                         </div>
                       )}
                       {report.description && <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">📝 {report.description}</p>}
@@ -727,9 +727,9 @@ const ReportPage = () => {
                   <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">نوع البند:</span><span className="font-bold text-destructive">{getBanTypeLabel(selectedReport.ban_type)}</span></div>
                   <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">مدة البند:</span><span className="font-bold">{selectedReport.expires_at ? "مؤقت" : "دائم 🔒"}</span></div>
                   {selectedReport.expires_at && (
-                    <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">ينتهي في:</span><span className="font-bold text-warning">{new Date(selectedReport.expires_at).toLocaleString("ar-SA")}</span></div>
+                    <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">ينتهي في:</span><span className="font-bold text-warning">{new Date(selectedReport.expires_at).toLocaleString("ar-EG")}</span></div>
                   )}
-                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">تاريخ البلاغ:</span><span>{new Date(selectedReport.created_at).toLocaleString("ar-SA")}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">تاريخ البلاغ:</span><span>{new Date(selectedReport.created_at).toLocaleString("ar-EG")}</span></div>
                   {selectedReport.description && (
                     <div className="pt-2 border-t border-border"><span className="text-muted-foreground text-sm">السبب:</span><p className="mt-1 text-sm">{selectedReport.description}</p></div>
                   )}

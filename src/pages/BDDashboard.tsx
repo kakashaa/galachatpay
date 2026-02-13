@@ -160,7 +160,7 @@ const BDDashboard: React.FC = () => {
                       <div className="text-left">
                         {item.performance !== undefined && <p className="text-[10px] text-primary">{item.performance}</p>}
                         {item.reward !== undefined && <p className="text-[10px] text-amber-400">${item.reward}</p>}
-                        {item.created_at && <p className="text-[9px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString("ar")}</p>}
+                        {item.created_at && <p className="text-[9px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString("ar-EG")}</p>}
                       </div>
                     </div>
                   ))}

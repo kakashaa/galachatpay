@@ -23,6 +23,14 @@ const getMonthlyStars = (chargerLevel: number) => {
   return 0;
 };
 
+// النجوم تُمنح بعد انتهاء الشهر — يعني نجوم شهر يناير تُضاف في فبراير
+// current_month يخزّن الشهر اللي تم احتساب النجوم عنه (الشهر الماضي)
+const getPreviousMonth = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
 const getCurrentMonth = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -36,13 +44,14 @@ export const useStarBalance = (userUuid: string | undefined, chargerLevel: numbe
   const [loading, setLoading] = useState(false);
 
   const currentMonth = getCurrentMonth();
+  const rewardMonth = getPreviousMonth(); // الشهر اللي نكافئ عليه
   const monthlyStars = getMonthlyStars(chargerLevel);
 
   const fetchStarBalance = useCallback(async () => {
     if (!userUuid) return;
     setLoading(true);
     try {
-      // First check if balance exists for current month
+      // نتحقق إذا عنده سجل للشهر الحالي (يعني استلم مكافأة الشهر الماضي)
       const { data, error } = await supabase
         .from("user_star_balance")
         .select("*")
@@ -53,11 +62,15 @@ export const useStarBalance = (userUuid: string | undefined, chargerLevel: numbe
       if (error && error.code !== "PGRST116") throw error;
 
       if (data) {
-        // Balance exists — just use it
+        // السجل موجود — نستخدمه مباشرة
         setStarBalance(data as UserStarBalance);
         localStorage.setItem(STAR_LAST_LEVEL_KEY, chargerLevel.toString());
       } else {
-        // Check for carryover from previous month
+        // نتحقق إذا الشهر الماضي خلص فعلاً (اليوم >= يوم 1 من الشهر الحالي = الشهر الماضي انتهى)
+        // هذا يعني النجوم تُمنح تلقائياً أول ما يفتح المستخدم في الشهر الجديد
+        // والنجوم هي مكافأة الشهر الماضي (اللي انتهى)
+
+        // Check for carryover from previous record
         const { data: prevData } = await supabase
           .from("user_star_balance")
           .select("total_stars, carryover_stars")

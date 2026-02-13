@@ -124,7 +124,7 @@ const RequestVip: React.FC = () => {
             <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-[11px] font-bold text-foreground">تم استخدام طلبك هذا الشهر</p>
-              <p className="text-[10px] text-muted-foreground">VIP {alreadyRequested.level} بتاريخ {new Date(alreadyRequested.date!).toLocaleDateString("ar-SA")}</p>
+              <p className="text-[10px] text-muted-foreground">VIP {alreadyRequested.level} بتاريخ {new Date(alreadyRequested.date!).toLocaleDateString("ar-EG")}</p>
             </div>
           </div>
         )}

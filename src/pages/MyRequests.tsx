@@ -113,12 +113,12 @@ const MyRequests: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" });
+    return d.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" });
   };
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
   };
 
   const allClaims = [...entryClaims, ...frameClaims].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());

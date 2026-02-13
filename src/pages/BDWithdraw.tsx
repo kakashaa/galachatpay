@@ -101,7 +101,7 @@ const BDWithdraw: React.FC = () => {
                 <div key={idx} className="flex items-center justify-between p-3 bg-muted/10 rounded-lg border border-border/20">
                   <div>
                     <p className="text-xs font-bold text-foreground">${(w.amount || 0).toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground">{w.created_at ? new Date(w.created_at).toLocaleDateString("ar") : "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">{w.created_at ? new Date(w.created_at).toLocaleDateString("ar-EG") : "—"}</p>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                     w.status === "completed" ? "bg-green-500/20 text-green-400" :
