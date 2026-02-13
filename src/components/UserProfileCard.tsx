@@ -8,6 +8,7 @@ import avatarFemale from "@/assets/avatar-female.png";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const getUserTypeLabel = (type: number): string => {
   switch (type) {
@@ -129,22 +130,56 @@ const UserProfileCard: React.FC = () => {
               {user.vip && Object.keys(user.vip).length > 0 && (() => {
                 const vipLevel = (user.vip as any).vip_level || (user.vip as any).level || Object.values(user.vip)[0];
                 if (!vipLevel || vipLevel === 0) return null;
+                const vipPerks: Record<number, string[]> = {
+                  1: ["شارة VIP بجانب الاسم"],
+                  2: ["شارة VIP", "إطار مميز"],
+                  3: ["شارة VIP", "إطار مميز", "دخول غرف خاصة"],
+                  4: ["شارة VIP", "إطار مميز", "دخول غرف خاصة", "هدايا حصرية"],
+                  5: ["شارة VIP", "إطار مميز", "دخول غرف خاصة", "هدايا حصرية", "دعم سريع ⚡"],
+                  6: ["شارة VIP", "إطار مميز", "دخول غرف خاصة", "هدايا حصرية", "دعم سريع ⚡", "مزايا خاصة 👑"],
+                };
+                const perks = vipPerks[vipLevel] || vipPerks[1] || [];
                 return (
-                  <div
-                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95"
-                    style={{
-                      background: "linear-gradient(135deg, rgba(234,179,8,0.25), rgba(245,158,11,0.15))",
-                      border: "1px solid rgba(234,179,8,0.4)",
-                      boxShadow: "0 0 8px rgba(234,179,8,0.15)",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(234,179,8,0.5), 0 0 40px rgba(234,179,8,0.2)"}
-                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 0 8px rgba(234,179,8,0.15)"}
-                    onPointerDown={(e) => e.currentTarget.style.boxShadow = "0 0 30px rgba(234,179,8,0.7), 0 0 60px rgba(234,179,8,0.3)"}
-                    onPointerUp={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(234,179,8,0.5), 0 0 40px rgba(234,179,8,0.2)"}
-                  >
-                    <Crown className="w-2.5 h-2.5 text-yellow-400" />
-                    <span className="text-yellow-300">VIP {vipLevel}</span>
-                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <div
+                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95"
+                        style={{
+                          background: "linear-gradient(135deg, rgba(234,179,8,0.25), rgba(245,158,11,0.15))",
+                          border: "1px solid rgba(234,179,8,0.4)",
+                          boxShadow: "0 0 8px rgba(234,179,8,0.15)",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(234,179,8,0.5), 0 0 40px rgba(234,179,8,0.2)"}
+                        onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 0 8px rgba(234,179,8,0.15)"}
+                        onPointerDown={(e) => e.currentTarget.style.boxShadow = "0 0 30px rgba(234,179,8,0.7), 0 0 60px rgba(234,179,8,0.3)"}
+                        onPointerUp={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(234,179,8,0.5), 0 0 40px rgba(234,179,8,0.2)"}
+                      >
+                        <Crown className="w-2.5 h-2.5 text-yellow-400" />
+                        <span className="text-yellow-300">VIP {vipLevel}</span>
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="bottom"
+                      align="start"
+                      className="w-48 p-3 rounded-xl border border-yellow-500/30 bg-card/95 backdrop-blur-xl"
+                      style={{ boxShadow: "0 0 20px rgba(234,179,8,0.15)" }}
+                    >
+                      <div className="space-y-2" dir="rtl">
+                        <div className="flex items-center gap-1.5">
+                          <Crown className="w-4 h-4 text-yellow-400" />
+                          <span className="text-xs font-black text-foreground">VIP {vipLevel}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-bold">المزايا:</p>
+                        <ul className="space-y-1">
+                          {perks.map((perk, i) => (
+                            <li key={i} className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <span className="text-yellow-400">✦</span> {perk}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 );
               })()}
               <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${badgeStyle}`}>
