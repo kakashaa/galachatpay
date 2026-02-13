@@ -109,10 +109,10 @@ const findIntent = (text: string): string | null => {
   }
   return null;
 };
-
 const STORAGE_KEY = "gala_support_chat";
-const loadMessages = (): ChatMessage[] => { try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; } };
-const saveMessages = (msgs: ChatMessage[]) => { localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs)); };
+const getStorageKey = (uuid: string) => `${STORAGE_KEY}_${uuid || "guest"}`;
+const loadMessages = (uuid: string): ChatMessage[] => { try { const raw = localStorage.getItem(getStorageKey(uuid)); return raw ? JSON.parse(raw) : []; } catch { return []; } };
+const saveMessages = (msgs: ChatMessage[], uuid: string) => { localStorage.setItem(getStorageKey(uuid), JSON.stringify(msgs)); };
 
 /* ───────── component ───────── */
 const SupportChatEmbed: React.FC = () => {
@@ -146,15 +146,15 @@ const SupportChatEmbed: React.FC = () => {
       setIsTyping(false);
       setMessages((prev) => {
         const next = [...prev, { id: uid(), role: "bot" as const, text, quickReplies, timestamp: Date.now() }];
-        saveMessages(next);
+        saveMessages(next, userUuid);
         return next;
       });
       scrollToBottom();
     }, 500);
-  }, [scrollToBottom]);
+  }, [scrollToBottom, userUuid]);
 
   useEffect(() => {
-    const stored = loadMessages();
+    const stored = loadMessages(userUuid);
     if (stored.length > 0) { setMessages(stored); scrollToBottom(); }
     else {
       const isVip = user?.vip && Object.keys(user.vip).length > 0;
@@ -217,7 +217,7 @@ const SupportChatEmbed: React.FC = () => {
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim()) return;
     const userMsg: ChatMessage = { id: uid(), role: "user", text: text.trim(), timestamp: Date.now() };
-    setMessages((prev) => { const next = [...prev, userMsg]; saveMessages(next); return next; });
+    setMessages((prev) => { const next = [...prev, userMsg]; saveMessages(next, userUuid); return next; });
     setInput("");
     scrollToBottom();
 
@@ -270,7 +270,7 @@ const SupportChatEmbed: React.FC = () => {
     if (value.startsWith("nav:")) { navigate(value.replace("nav:", "")); return; }
     const label = MAIN_MENU.find((q) => q.value === value)?.label ?? TECH_ISSUES.find((q) => q.value === value)?.label ?? value;
     const userMsg: ChatMessage = { id: uid(), role: "user", text: label, timestamp: Date.now() };
-    setMessages((prev) => { const next = [...prev, userMsg]; saveMessages(next); return next; });
+    setMessages((prev) => { const next = [...prev, userMsg]; saveMessages(next, userUuid); return next; });
     scrollToBottom();
     handleTopic(value);
   };
@@ -288,7 +288,7 @@ const SupportChatEmbed: React.FC = () => {
   };
 
   const clearChat = () => {
-    setMessages([]); saveMessages([]); setWaitingFor(null);
+    setMessages([]); saveMessages([], userUuid); setWaitingFor(null);
     addBotMessage(`أهلاً ${userName}! 👋\nكيف أقدر أساعدك؟`, MAIN_MENU);
   };
 
