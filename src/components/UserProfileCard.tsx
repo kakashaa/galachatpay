@@ -131,12 +131,16 @@ const UserProfileCard: React.FC = () => {
                 if (!vipLevel || vipLevel === 0) return null;
                 return (
                   <div
-                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black"
+                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black cursor-pointer transition-all duration-300 hover:scale-110 active:scale-95"
                     style={{
                       background: "linear-gradient(135deg, rgba(234,179,8,0.25), rgba(245,158,11,0.15))",
                       border: "1px solid rgba(234,179,8,0.4)",
                       boxShadow: "0 0 8px rgba(234,179,8,0.15)",
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(234,179,8,0.5), 0 0 40px rgba(234,179,8,0.2)"}
+                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 0 8px rgba(234,179,8,0.15)"}
+                    onPointerDown={(e) => e.currentTarget.style.boxShadow = "0 0 30px rgba(234,179,8,0.7), 0 0 60px rgba(234,179,8,0.3)"}
+                    onPointerUp={(e) => e.currentTarget.style.boxShadow = "0 0 20px rgba(234,179,8,0.5), 0 0 40px rgba(234,179,8,0.2)"}
                   >
                     <Crown className="w-2.5 h-2.5 text-yellow-400" />
                     <span className="text-yellow-300">VIP {vipLevel}</span>
