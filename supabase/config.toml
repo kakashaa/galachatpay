@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.gala-actions]
 verify_jwt = false
+
+[functions.bd-referral]
+verify_jwt = false

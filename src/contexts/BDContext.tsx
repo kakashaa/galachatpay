@@ -1,0 +1,151 @@
+import React, { createContext, useContext, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+export interface BDUser {
+  uuid: string;
+  name: string;
+  total_earnings: number;
+  available_balance: number;
+  supporters_count: number;
+  hosts_count: number;
+  agencies_count: number;
+  supporters_charges: number;
+  supporters_commission: number;
+  hosts_salary_closed: number;
+  hosts_bonus: number;
+  agencies_hosts_closed: number;
+  agencies_bonus: number;
+  supporters: any[];
+  hosts: any[];
+  agencies: any[];
+  withdrawals: any[];
+}
+
+interface BDContextType {
+  bdUser: BDUser | null;
+  loading: boolean;
+  error: string;
+  login: (uuid: string) => Promise<boolean>;
+  register: (uuid: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  refreshDashboard: () => Promise<void>;
+  addMember: (memberUuid: string, memberType: string) => Promise<{ success: boolean; error?: string; name?: string }>;
+  withdraw: () => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+}
+
+const BDContext = createContext<BDContextType | undefined>(undefined);
+
+async function callApi(action: string, params: Record<string, string> = {}) {
+  const { data, error } = await supabase.functions.invoke("bd-referral", {
+    body: { action, ...params },
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [bdUser, setBdUser] = useState<BDUser | null>(() => {
+    const stored = localStorage.getItem("bd_user");
+    return stored ? JSON.parse(stored) : null;
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const saveBdUser = (user: BDUser | null) => {
+    setBdUser(user);
+    if (user) localStorage.setItem("bd_user", JSON.stringify(user));
+    else localStorage.removeItem("bd_user");
+  };
+
+  const login = useCallback(async (uuid: string): Promise<boolean> => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await callApi("dashboard", { uuid });
+      if (!data?.success) {
+        setError(data?.error || "الحساب غير موجود");
+        setLoading(false);
+        return false;
+      }
+      saveBdUser({ uuid, ...data.data });
+      setLoading(false);
+      return true;
+    } catch (e: any) {
+      setError(e.message || "خطأ في الاتصال");
+      setLoading(false);
+      return false;
+    }
+  }, []);
+
+  const register = useCallback(async (uuid: string, name: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await callApi("register_bidi", { uuid, name });
+      setLoading(false);
+      if (!data?.success) return { success: false, error: data?.error || "فشل التسجيل" };
+      return { success: true };
+    } catch (e: any) {
+      setLoading(false);
+      return { success: false, error: e.message };
+    }
+  }, []);
+
+  const refreshDashboard = useCallback(async () => {
+    if (!bdUser?.uuid) return;
+    setLoading(true);
+    try {
+      const data = await callApi("dashboard", { uuid: bdUser.uuid });
+      if (data?.success) saveBdUser({ uuid: bdUser.uuid, ...data.data });
+    } catch {}
+    setLoading(false);
+  }, [bdUser?.uuid]);
+
+  const addMember = useCallback(async (memberUuid: string, memberType: string) => {
+    if (!bdUser?.uuid) return { success: false, error: "غير مسجل" };
+    setLoading(true);
+    try {
+      const data = await callApi("add_member", {
+        bidi_uuid: bdUser.uuid,
+        member_uuid: memberUuid,
+        member_type: memberType,
+      });
+      setLoading(false);
+      if (!data?.success) return { success: false, error: data?.error || "فشل الإضافة" };
+      return { success: true, name: data?.name };
+    } catch (e: any) {
+      setLoading(false);
+      return { success: false, error: e.message };
+    }
+  }, [bdUser?.uuid]);
+
+  const withdraw = useCallback(async () => {
+    if (!bdUser?.uuid) return { success: false, error: "غير مسجل" };
+    setLoading(true);
+    try {
+      const data = await callApi("withdraw", { uuid: bdUser.uuid });
+      setLoading(false);
+      if (!data?.success) return { success: false, error: data?.error || "فشل السحب" };
+      return { success: true };
+    } catch (e: any) {
+      setLoading(false);
+      return { success: false, error: e.message };
+    }
+  }, [bdUser?.uuid]);
+
+  const logout = useCallback(() => {
+    saveBdUser(null);
+  }, []);
+
+  return (
+    <BDContext.Provider value={{ bdUser, loading, error, login, register, refreshDashboard, addMember, withdraw, logout }}>
+      {children}
+    </BDContext.Provider>
+  );
+};
+
+export const useBD = () => {
+  const ctx = useContext(BDContext);
+  if (!ctx) throw new Error("useBD must be inside BDProvider");
+  return ctx;
+};
