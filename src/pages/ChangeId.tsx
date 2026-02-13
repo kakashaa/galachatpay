@@ -17,6 +17,24 @@ const userTypeLabels: Record<number, string> = {
 
 const LEVEL_MILESTONES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
+const API_ERROR_MAP: Array<[RegExp, string]> = [
+  [/taken|already.?in.?use|used/i, "🚫 هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر."],
+  [/uuid.?is.?invalid|invalid.?uuid/i, "⚠️ الـ ID المطلوب غير صالح. تأكد أنه يتوافق مع الصيغ المتاحة لمستواك."],
+  [/type.?is.?invalid/i, "❌ نوع الطلب غير صحيح. حاول مرة أخرى."],
+  [/too.?short|too.?long|length/i, "📏 طول الـ ID غير مناسب. راجع الصيغ المتاحة."],
+  [/not.?allowed|forbidden|permission/i, "🔒 لا تملك صلاحية لهذا التغيير."],
+  [/rate.?limit|too.?many/i, "⏳ طلبات كثيرة. انتظر قليلاً وحاول مرة أخرى."],
+  [/server|internal/i, "🔧 خطأ في السيرفر. حاول مرة أخرى لاحقاً."],
+];
+
+function translateApiError(msg: string): string {
+  if (!msg) return "❌ فشل الطلب. حاول مرة أخرى بعد قليل.";
+  for (const [pattern, arabic] of API_ERROR_MAP) {
+    if (pattern.test(msg)) return arabic;
+  }
+  return `❌ ${msg}`;
+}
+
 function getCurrentMilestone(level: number): number {
   for (let i = LEVEL_MILESTONES.length - 1; i >= 0; i--) {
     if (level >= LEVEL_MILESTONES[i]) return LEVEL_MILESTONES[i];
@@ -133,24 +151,14 @@ const ChangeId: React.FC = () => {
        const { data, error } = await supabase.functions.invoke("gala-request", { body: { uuid: user.uuid, type: "uuid", value: trimmedId } });
        if (error) {
          const apiMsg = data?.error || "";
-         if (apiMsg.toLowerCase().includes("taken") || apiMsg.toLowerCase().includes("used")) {
-           setStatus("taken");
-           setErrorMsg("🚫 هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر.");
-         } else { 
-           setStatus("error"); 
-           setErrorMsg(`❌ ${apiMsg || "فشل طلب التغيير. تأكد من صحة البيانات وحاول مرة أخرى."}`); 
-         }
+         setStatus(apiMsg.toLowerCase().includes("taken") || apiMsg.toLowerCase().includes("used") ? "taken" : "error");
+         setErrorMsg(translateApiError(apiMsg));
          return;
        }
        if (!data?.success) {
          const msg = data?.error || "";
-         if (msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used")) {
-           setStatus("taken");
-           setErrorMsg("🚫 هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر.");
-         } else { 
-           setStatus("error"); 
-           setErrorMsg(`❌ ${msg || "فشل الطلب. حاول مرة أخرى بعد قليل."}`); 
-         }
+         setStatus(msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used") ? "taken" : "error");
+         setErrorMsg(translateApiError(msg));
          return;
        }
 
