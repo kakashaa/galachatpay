@@ -4,6 +4,7 @@ import { Send, CheckCircle2, Clock, ArrowRight, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 const COOLDOWN_KEY = "quick_support_cooldown";
 const COOLDOWN_MS = 5 * 60 * 1000;
@@ -47,16 +48,14 @@ const QuickSupport: React.FC = () => {
     if (!roomCode.trim() || cooldownRemaining > 0) return;
     setSubmitting(true);
     try {
-      const res = await fetch("https://18.219.229.240/website/support.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke("quick-support", {
+        body: {
           room_code: roomCode.trim(),
           ...(authUser?.name && { user_name: authUser.name }),
-        }),
+        },
       });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "فشل إرسال الطلب");
+      if (error) throw error;
+      if (data && !data.ok) throw new Error(data.error || "فشل إرسال الطلب");
       localStorage.setItem(COOLDOWN_KEY, String(Date.now() + COOLDOWN_MS));
       setSubmitted(true);
       toast.success("تم إرسال طلبك بنجاح!");
