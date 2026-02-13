@@ -46,19 +46,23 @@ const RequestVip: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     const checkDb = async () => {
-      setChecking(true);
-      const currentMonth = getCurrentMonth();
-      const { data } = await supabase
-        .from("vip_requests")
-        .select("vip_level, created_at")
-        .eq("user_uuid", user.uuid)
-        .eq("request_month", currentMonth)
-        .maybeSingle();
-      if (data) {
-        setAlreadyRequested({ requested: true, level: (data as any).vip_level, date: (data as any).created_at });
-      }
-      setChecking(false);
-    };
+       setChecking(true);
+       const currentMonth = getCurrentMonth();
+       const isAgent = user.type_user >= 3;
+       const limit = isAgent ? 5 : 1;
+       
+       const { data: requests } = await supabase
+         .from("vip_requests")
+         .select("vip_level, created_at")
+         .eq("user_uuid", user.uuid)
+         .eq("request_month", currentMonth);
+       
+       if (requests && requests.length > 0) {
+         const firstRequest = requests[0] as any;
+         setAlreadyRequested({ requested: requests.length >= limit, level: firstRequest.vip_level, date: firstRequest.created_at });
+       }
+       setChecking(false);
+     };
     checkDb();
   }, [user]);
 
@@ -74,8 +78,8 @@ const RequestVip: React.FC = () => {
     }
     setLoading(true); setError("");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("gala-request", {
-        body: { uuid: user.uuid, type: "vip", value: selectedVip, user_name: user.name },
+       const { data, error: fnError } = await supabase.functions.invoke("gala-request", {
+        body: { uuid: user.uuid, type: "vip", value: selectedVip, user_name: user.name, type_user: user.type_user },
       });
       if (fnError) { setError("حدث خطأ. حاول مرة أخرى."); setLoading(false); return; }
       if (!data?.success) { setError(data?.error || "فشل الطلب."); setLoading(false); return; }

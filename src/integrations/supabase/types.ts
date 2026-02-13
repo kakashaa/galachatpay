@@ -847,6 +847,7 @@ export type Database = {
           created_at: string
           id: string
           request_month: string
+          type_user: number | null
           user_name: string
           user_uuid: string
           vip_level: number
@@ -855,6 +856,7 @@ export type Database = {
           created_at?: string
           id?: string
           request_month: string
+          type_user?: number | null
           user_name?: string
           user_uuid: string
           vip_level: number
@@ -863,6 +865,7 @@ export type Database = {
           created_at?: string
           id?: string
           request_month?: string
+          type_user?: number | null
           user_name?: string
           user_uuid?: string
           vip_level?: number
