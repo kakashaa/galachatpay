@@ -18,6 +18,8 @@ import { Camera, Briefcase, MessageSquare, Headset } from "lucide-react";
 import AdminNotificationListener from "@/components/AdminNotificationListener";
 import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime";
 import { useAnimatedPhotosRealtime } from "@/hooks/use-animated-photos-realtime";
+import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime";
+import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | null;
 
@@ -284,6 +286,22 @@ const AdminDashboardPage: React.FC = () => {
   useAnimatedPhotosRealtime((updatedRequest) => {
     setAnimatedPhotos((prev) =>
       prev.map((photo) => (photo.id === updatedRequest.id ? { ...photo, ...updatedRequest } : photo))
+    );
+    loadStats();
+  });
+
+  // Realtime subscription for support tickets
+  useSupportTicketsRealtime((updatedTicket) => {
+    setSupportTickets((prev) =>
+      prev.map((ticket) => (ticket.id === updatedTicket.id ? { ...ticket, ...updatedTicket } : ticket))
+    );
+    loadStats();
+  });
+
+  // Realtime subscription for support chat sessions
+  useSupportChatSessionsRealtime((updatedSession) => {
+    setSupportChats((prev) =>
+      prev.map((chat) => (chat.id === updatedSession.id ? { ...chat, ...updatedSession } : chat))
     );
     loadStats();
   });
