@@ -91,12 +91,13 @@ const BDRequest: React.FC = () => {
       let documentUrl = "";
       if (attachment) {
         const fileName = `bd/${authUser.uuid}_${Date.now()}_${attachment.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("attachments")
-          .upload(fileName, attachment);
-        if (uploadError) throw uploadError;
-        const { data: publicUrlData } = supabase.storage.from("attachments").getPublicUrl(fileName);
-        documentUrl = publicUrlData.publicUrl;
+        const { secureUpload } = await import("@/utils/secureUpload");
+        documentUrl = await secureUpload({
+          file: attachment,
+          bucket: "attachments",
+          path: fileName,
+          userUuid: authUser.uuid,
+        });
       }
 
       const { error } = await supabase.functions.invoke("gala-actions?action=submit-request", {

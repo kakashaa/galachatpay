@@ -229,7 +229,7 @@ const AdminDashboardPage: React.FC = () => {
   const [bdRejectReason, setBdRejectReason] = useState("");
   const [bdActionLoading, setBdActionLoading] = useState(false);
 
-  const adminPassword = sessionStorage.getItem("admin_token");
+  const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
   const adminRole = sessionStorage.getItem("admin_role") as "super_admin" | "admin" | null;
   const isSuperAdmin = adminRole === "super_admin";
@@ -249,7 +249,7 @@ const AdminDashboardPage: React.FC = () => {
   const [chatReplyInput, setChatReplyInput] = useState("");
 
   useEffect(() => {
-    if (!adminPassword) {
+    if (!adminSessionToken) {
       navigate("/admin");
       return;
     }
@@ -278,7 +278,7 @@ const AdminDashboardPage: React.FC = () => {
 
   const adminCall = async (action: string, data: any = {}) => {
     const { data: result, error } = await supabase.functions.invoke("admin-manage", {
-      body: { username: adminUsername, password: adminPassword, action, data },
+      body: { username: adminUsername, session_token: adminSessionToken, action, data },
     });
     if (error) throw error;
     if (result?.error) throw new Error(result.error);
@@ -287,7 +287,8 @@ const AdminDashboardPage: React.FC = () => {
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();
-    formData.append("password", adminPassword!);
+    formData.append("session_token", adminSessionToken!);
+    formData.append("username", adminUsername!);
     formData.append("file", file);
     const { data: uploadResult, error: uploadError } = await supabase.functions.invoke("admin-upload-video", {
       body: formData,
@@ -392,7 +393,7 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("admin_token");
+    sessionStorage.removeItem("admin_session_token");
     sessionStorage.removeItem("admin_username");
     sessionStorage.removeItem("admin_role");
     navigate("/admin");
