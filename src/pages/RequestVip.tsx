@@ -41,7 +41,7 @@ const RequestVip: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState("");
-  const [alreadyRequested, setAlreadyRequested] = useState<{ requested: boolean; level: number | null; date: string | null }>({ requested: false, level: null, date: null });
+  const [alreadyRequested, setAlreadyRequested] = useState<{ requested: boolean; level: number | null; date: string | null; usedCount: number }>({ requested: false, level: null, date: null, usedCount: 0 });
 
   useEffect(() => {
     if (!user) return;
@@ -57,9 +57,12 @@ const RequestVip: React.FC = () => {
          .eq("user_uuid", user.uuid)
          .eq("request_month", currentMonth);
        
-       if (requests && requests.length > 0) {
+       const count = requests?.length || 0;
+       if (requests && count > 0) {
          const firstRequest = requests[0] as any;
-         setAlreadyRequested({ requested: requests.length >= limit, level: firstRequest.vip_level, date: firstRequest.created_at });
+         setAlreadyRequested({ requested: count >= limit, level: firstRequest.vip_level, date: firstRequest.created_at, usedCount: count });
+       } else {
+         setAlreadyRequested({ requested: false, level: null, date: null, usedCount: 0 });
        }
        setChecking(false);
      };
@@ -84,7 +87,9 @@ const RequestVip: React.FC = () => {
       if (fnError) { setError("حدث خطأ. حاول مرة أخرى."); setLoading(false); return; }
       if (!data?.success) { setError(data?.error || "فشل الطلب."); setLoading(false); return; }
       if (!isAgent) {
-        setAlreadyRequested({ requested: true, level: selectedVip, date: new Date().toISOString() });
+        setAlreadyRequested({ requested: true, level: selectedVip, date: new Date().toISOString(), usedCount: alreadyRequested.usedCount + 1 });
+      } else {
+        setAlreadyRequested(prev => ({ ...prev, usedCount: prev.usedCount + 1, requested: prev.usedCount + 1 >= 5 }));
       }
       setSubmitted(true);
     } catch { setError("حدث خطأ غير متوقع."); } finally { setLoading(false); }
@@ -104,7 +109,9 @@ const RequestVip: React.FC = () => {
               <div className="flex items-center gap-1 mt-0.5">
                 <Calendar className="w-3 h-3 text-primary" />
                 <p className="text-[10px] text-primary">
-                  {isAgent ? "يمكنك رفع طلب VIP لـ 5 أشخاص شهرياً" : "مرة واحدة فقط شهرياً (10 أيام)"}
+                  {isAgent 
+                    ? `متبقي لك ${5 - alreadyRequested.usedCount} من 5 طلبات هذا الشهر` 
+                    : "مرة واحدة فقط شهرياً (10 أيام)"}
                 </p>
               </div>
             </div>

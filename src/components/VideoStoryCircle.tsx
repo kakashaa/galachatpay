@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Play, X, Volume2, VolumeX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -11,6 +11,45 @@ interface VideoTutorial {
   video_url: string;
   thumbnail_url: string | null;
 }
+
+// Component to extract a frame from a video as thumbnail
+const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
+  const [thumb, setThumb] = useState<string | null>(null);
+  const attempted = useRef(false);
+
+  useEffect(() => {
+    if (!src || attempted.current) return;
+    attempted.current = true;
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.preload = 'metadata';
+    video.src = src;
+    video.currentTime = 1; // grab frame at 1 second
+    video.addEventListener('seeked', () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 96;
+        canvas.height = video.videoHeight || 96;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          setThumb(canvas.toDataURL('image/jpeg', 0.7));
+        }
+      } catch { /* CORS or other error, fallback to icon */ }
+    }, { once: true });
+    video.addEventListener('error', () => {}, { once: true });
+  }, [src]);
+
+  if (thumb) {
+    return <img src={thumb} alt={alt} className="w-full h-full object-cover rounded-full" />;
+  }
+  return (
+    <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
+      <Play className="w-4 h-4 text-primary" />
+    </div>
+  );
+};
 
 export const VideoStoryCircle = () => {
   const [videos, setVideos] = useState<VideoTutorial[]>([]);
@@ -76,6 +115,8 @@ export const VideoStoryCircle = () => {
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
                     {video.thumbnail_url ? (
                       <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover rounded-full" />
+                    ) : video.video_url ? (
+                      <VideoThumbnail src={video.video_url} alt={video.title} />
                     ) : (
                       <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
                         <Play className="w-4 h-4 text-primary" />
