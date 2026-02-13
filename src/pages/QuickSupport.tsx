@@ -106,8 +106,10 @@ const QuickSupport: React.FC = () => {
             <Headset className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">طلب دعم سريع</p>
-            <p className="text-[11px] text-muted-foreground">أدخل رقم الغرفة وسيتواصل معك المسؤول</p>
+            <p className="text-sm font-bold text-foreground">طلب سوبر أدمن للغرفة</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              اكتب رقم غرفتك وسوبر أدمن بيدخل الغرفة ويتواصل معك مباشرة
+            </p>
           </div>
         </div>
 
@@ -130,6 +132,9 @@ const QuickSupport: React.FC = () => {
             <label className="text-sm font-bold text-foreground">
               رقم الغرفة <span className="text-destructive">*</span>
             </label>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              اكتب رقم أو كود غرفتك عشان السوبر أدمن يدخلها ويتكلم معك
+            </p>
             <input
               type="text"
               value={roomCode}
