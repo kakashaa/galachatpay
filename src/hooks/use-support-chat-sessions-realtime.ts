@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { Tables } from '@/integrations/supabase/types';
 
 export function useSupportChatSessionsRealtime(
@@ -17,6 +18,10 @@ export function useSupportChatSessionsRealtime(
         },
         (payload) => {
           const updatedSession = payload.new as Tables<'support_chat_sessions'>;
+          toast.success(`✅ تم تحديث جلسة الشات من ${updatedSession.user_name}`, {
+            description: `الحالة: ${updatedSession.status}`,
+            duration: 4000,
+          });
           onUpdate(updatedSession);
         }
       )
@@ -29,6 +34,10 @@ export function useSupportChatSessionsRealtime(
         },
         (payload) => {
           const newSession = payload.new as Tables<'support_chat_sessions'>;
+          toast.info(`🆕 طلب شات دعم جديد من ${newSession.user_name}`, {
+            description: `مستوى VIP: ${newSession.vip_level}`,
+            duration: 4000,
+          });
           onUpdate(newSession);
         }
       )

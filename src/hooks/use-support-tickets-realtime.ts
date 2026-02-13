@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { Tables } from '@/integrations/supabase/types';
 
 export function useSupportTicketsRealtime(
@@ -17,6 +18,10 @@ export function useSupportTicketsRealtime(
         },
         (payload) => {
           const updatedTicket = payload.new as Tables<'support_tickets'>;
+          toast.success(`✅ تم تحديث التكت من ${updatedTicket.user_name}`, {
+            description: `الحالة: ${updatedTicket.status}`,
+            duration: 4000,
+          });
           onUpdate(updatedTicket);
         }
       )
@@ -29,6 +34,10 @@ export function useSupportTicketsRealtime(
         },
         (payload) => {
           const newTicket = payload.new as Tables<'support_tickets'>;
+          toast.info(`🆕 تكت دعم جديد من ${newTicket.user_name}`, {
+            description: `الموضوع: ${newTicket.subject}`,
+            duration: 4000,
+          });
           onUpdate(newTicket);
         }
       )

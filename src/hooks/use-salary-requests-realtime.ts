@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { Tables } from '@/integrations/supabase/types';
 
 export function useSalaryRequestsRealtime(
@@ -18,6 +19,10 @@ export function useSalaryRequestsRealtime(
         },
         (payload) => {
           const updatedRequest = payload.new as Tables<'salary_requests'>;
+          toast.success(`✅ تم تحديث طلب الراتب من ${updatedRequest.user_name}`, {
+            description: `الحالة: ${updatedRequest.status}`,
+            duration: 4000,
+          });
           onUpdate(updatedRequest);
         }
       )
@@ -30,6 +35,10 @@ export function useSalaryRequestsRealtime(
         },
         (payload) => {
           const newRequest = payload.new as Tables<'salary_requests'>;
+          toast.info(`🆕 طلب راتب جديد من ${newRequest.user_name}`, {
+            description: `المبلغ: ${newRequest.amount_usd} USD`,
+            duration: 4000,
+          });
           onUpdate(newRequest);
         }
       )
