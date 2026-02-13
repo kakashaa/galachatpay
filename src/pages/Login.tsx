@@ -197,6 +197,16 @@ const Login: React.FC = () => {
         name: apiUser.name,
       }));
 
+      // Clean up old support chat messages from other accounts
+      const keysToDelete: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("gala_support_chat_") && !key.endsWith(apiUser.uuid)) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach(key => localStorage.removeItem(key));
+
       navigate("/dashboard", { replace: true });
     } catch {
       setError("حدث خطأ غير متوقع. حاول مرة أخرى.");
