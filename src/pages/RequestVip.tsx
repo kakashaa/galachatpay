@@ -15,12 +15,12 @@ interface VipTier {
 }
 
 const vipTiers: VipTier[] = [
-  { level: 1, label: "VIP 1", days: 7, available: true, requiresCheck: false, color: "from-amber-600/20 to-amber-800/5" },
-  { level: 2, label: "VIP 2", days: 7, available: true, requiresCheck: false, color: "from-amber-500/20 to-orange-700/5" },
-  { level: 3, label: "VIP 3", days: 7, available: true, requiresCheck: false, color: "from-yellow-500/20 to-amber-700/5" },
-  { level: 4, label: "VIP 4", days: 7, available: false, requiresCheck: true, color: "from-yellow-400/20 to-yellow-700/5" },
-  { level: 5, label: "VIP 5", days: 7, available: false, requiresCheck: true, color: "from-yellow-300/20 to-yellow-600/5" },
-  { level: 6, label: "VIP 6", days: 7, available: false, requiresCheck: true, color: "from-yellow-200/20 to-yellow-500/5" },
+  { level: 1, label: "VIP 1", days: 10, available: true, requiresCheck: false, color: "from-amber-600/20 to-amber-800/5" },
+  { level: 2, label: "VIP 2", days: 10, available: true, requiresCheck: false, color: "from-amber-500/20 to-orange-700/5" },
+  { level: 3, label: "VIP 3", days: 10, available: true, requiresCheck: false, color: "from-yellow-500/20 to-amber-700/5" },
+  { level: 4, label: "VIP 4", days: 10, available: false, requiresCheck: true, color: "from-yellow-400/20 to-yellow-700/5" },
+  { level: 5, label: "VIP 5", days: 10, available: false, requiresCheck: true, color: "from-yellow-300/20 to-yellow-600/5" },
+  { level: 6, label: "VIP 6", days: 10, available: false, requiresCheck: true, color: "from-yellow-200/20 to-yellow-500/5" },
 ];
 
 const userTypeLabels: Record<number, string> = {
@@ -28,28 +28,10 @@ const userTypeLabels: Record<number, string> = {
   3: "وكيل مضيفين", 4: "وكيل شحن", 5: "وكيل شحن ومضيفين", 6: "مضيف ووكيل شحن",
 };
 
-const VIP_REQUEST_KEY = "gala_vip_requested";
-
-function getVipRequestInfo(uuid: string) {
-  try {
-    const stored = localStorage.getItem(VIP_REQUEST_KEY);
-    if (!stored) return { requested: false, level: null as number | null, date: null as string | null };
-    const data = JSON.parse(stored);
-    if (data.uuid !== uuid) return { requested: false, level: null, date: null };
-    const requestDate = new Date(data.date);
-    const now = new Date();
-    if (requestDate.getMonth() === now.getMonth() && requestDate.getFullYear() === now.getFullYear()) {
-      return { requested: true, level: data.level as number, date: data.date as string };
-    }
-    return { requested: false, level: null, date: null };
-  } catch {
-    return { requested: false, level: null, date: null };
-  }
-}
-
-function saveVipRequest(uuid: string, level: number) {
-  localStorage.setItem(VIP_REQUEST_KEY, JSON.stringify({ uuid, level, date: new Date().toISOString() }));
-}
+const getCurrentMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
 
 const RequestVip: React.FC = () => {
   const navigate = useNavigate();
@@ -57,11 +39,27 @@ const RequestVip: React.FC = () => {
   const [selectedVip, setSelectedVip] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState("");
-  const [alreadyRequested, setAlreadyRequested] = useState({ requested: false, level: null as number | null, date: null as string | null });
+  const [alreadyRequested, setAlreadyRequested] = useState<{ requested: boolean; level: number | null; date: string | null }>({ requested: false, level: null, date: null });
 
   useEffect(() => {
-    if (user) setAlreadyRequested(getVipRequestInfo(user.uuid));
+    if (!user) return;
+    const checkDb = async () => {
+      setChecking(true);
+      const currentMonth = getCurrentMonth();
+      const { data } = await supabase
+        .from("vip_requests")
+        .select("vip_level, created_at")
+        .eq("user_uuid", user.uuid)
+        .eq("request_month", currentMonth)
+        .maybeSingle();
+      if (data) {
+        setAlreadyRequested({ requested: true, level: (data as any).vip_level, date: (data as any).created_at });
+      }
+      setChecking(false);
+    };
+    checkDb();
   }, [user]);
 
   if (!user) { navigate("/"); return null; }
@@ -70,21 +68,18 @@ const RequestVip: React.FC = () => {
 
   const handleRequest = async () => {
     if (selectedVip === null) return;
-    const freshCheck = getVipRequestInfo(user.uuid);
-    if (!isAgent && freshCheck.requested) {
-      setAlreadyRequested(freshCheck);
+    if (!isAgent && alreadyRequested.requested) {
       setError("لقد استخدمت طلبك هذا الشهر.");
       return;
     }
     setLoading(true); setError("");
     try {
       const { data, error: fnError } = await supabase.functions.invoke("gala-request", {
-        body: { uuid: user.uuid, type: "vip", value: selectedVip },
+        body: { uuid: user.uuid, type: "vip", value: selectedVip, user_name: user.name },
       });
       if (fnError) { setError("حدث خطأ. حاول مرة أخرى."); setLoading(false); return; }
       if (!data?.success) { setError(data?.error || "فشل الطلب."); setLoading(false); return; }
       if (!isAgent) {
-        saveVipRequest(user.uuid, selectedVip);
         setAlreadyRequested({ requested: true, level: selectedVip, date: new Date().toISOString() });
       }
       setSubmitted(true);
@@ -94,7 +89,7 @@ const RequestVip: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="طلب VIP" onBack={() => navigate("/dashboard")}>
       <div className="px-4 py-3 space-y-3">
-        {/* Account type + monthly limit in one compact card */}
+        {/* Account type + monthly limit */}
         <div className="glass-card p-3" dir="rtl">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-full gold-gradient flex items-center justify-center flex-shrink-0">
@@ -105,7 +100,7 @@ const RequestVip: React.FC = () => {
               <div className="flex items-center gap-1 mt-0.5">
                 <Calendar className="w-3 h-3 text-primary" />
                 <p className="text-[10px] text-primary">
-                  {isAgent ? "يمكنك رفع طلب VIP لـ 5 أشخاص شهرياً" : "مرة واحدة فقط شهرياً (7 أيام)"}
+                  {isAgent ? "يمكنك رفع طلب VIP لـ 5 أشخاص شهرياً" : "مرة واحدة فقط شهرياً (10 أيام)"}
                 </p>
               </div>
             </div>
@@ -123,67 +118,75 @@ const RequestVip: React.FC = () => {
           </div>
         )}
 
-        {/* VIP Grid - 2 columns for compact look */}
-        <div>
-          <h3 className="text-xs font-bold text-foreground mb-2" dir="rtl">اختر نوع الـ VIP</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {vipTiers.map((tier) => {
-              const isLocked = !tier.available && !isAgent;
-              const isDisabled = isLocked || (!isAgent && alreadyRequested.requested);
-              const isSelected = selectedVip === tier.level;
-
-              return (
-                <button
-                  key={tier.level}
-                  onClick={() => { if (!isDisabled) { setSelectedVip(tier.level); setSubmitted(false); setError(""); } }}
-                  className={`glass-card p-3 flex flex-col items-center gap-1.5 text-center transition-all bg-gradient-to-br ${tier.color} active:scale-95
-                    ${isSelected ? "ring-2 ring-primary border-primary/40" : ""}
-                    ${isDisabled ? "opacity-40" : ""}`}
-                >
-                  <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
-                    {isLocked ? <Lock className="w-4 h-4 text-primary-foreground/60" /> : <Crown className="w-5 h-5 text-primary-foreground" />}
-                  </div>
-                  <p className="text-xs font-bold text-foreground">{tier.label}</p>
-                  <span className="text-[9px] text-muted-foreground">
-                    {tier.available || isAgent ? `مجاني • ${tier.days} أيام` : "يتطلب شروط"}
-                  </span>
-                  {isSelected && <Check className="w-4 h-4 text-primary" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="flex items-center gap-1.5 p-2 bg-destructive/10 border border-destructive/15 rounded-lg">
-            <AlertCircle className="w-3 h-3 text-destructive flex-shrink-0" />
-            <p className="text-[10px] text-destructive">{error}</p>
-          </div>
-        )}
-
-        {/* Submit / Success */}
-        {submitted ? (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
-            <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
-            <p className="text-xs font-bold text-foreground">تم تفعيل VIP {selectedVip} بنجاح! 🎉</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">المدة: 7 أيام</p>
+        {checking ? (
+          <div className="flex justify-center py-8">
+            <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
           </div>
         ) : (
-          <button
-            onClick={handleRequest}
-            disabled={selectedVip === null || loading || (!isAgent && alreadyRequested.requested)}
-            className="w-full h-10 gold-gradient rounded-xl text-primary-foreground font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-transform"
-          >
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-            ) : (
-              <>
-                <Crown className="w-4 h-4" />
-                {!isAgent && alreadyRequested.requested ? "تم استخدام طلبك" : "تقديم الطلب"}
-              </>
+          <>
+            {/* VIP Grid */}
+            <div>
+              <h3 className="text-xs font-bold text-foreground mb-2" dir="rtl">اختر نوع الـ VIP</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {vipTiers.map((tier) => {
+                  const isLocked = !tier.available && !isAgent;
+                  const isDisabled = isLocked || (!isAgent && alreadyRequested.requested);
+                  const isSelected = selectedVip === tier.level;
+
+                  return (
+                    <button
+                      key={tier.level}
+                      onClick={() => { if (!isDisabled) { setSelectedVip(tier.level); setSubmitted(false); setError(""); } }}
+                      className={`glass-card p-3 flex flex-col items-center gap-1.5 text-center transition-all bg-gradient-to-br ${tier.color} active:scale-95
+                        ${isSelected ? "ring-2 ring-primary border-primary/40" : ""}
+                        ${isDisabled ? "opacity-40" : ""}`}
+                    >
+                      <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
+                        {isLocked ? <Lock className="w-4 h-4 text-primary-foreground/60" /> : <Crown className="w-5 h-5 text-primary-foreground" />}
+                      </div>
+                      <p className="text-xs font-bold text-foreground">{tier.label}</p>
+                      <span className="text-[9px] text-muted-foreground">
+                        {tier.available || isAgent ? `مجاني • ${tier.days} أيام` : "يتطلب شروط"}
+                      </span>
+                      {isSelected && <Check className="w-4 h-4 text-primary" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-1.5 p-2 bg-destructive/10 border border-destructive/15 rounded-lg">
+                <AlertCircle className="w-3 h-3 text-destructive flex-shrink-0" />
+                <p className="text-[10px] text-destructive">{error}</p>
+              </div>
             )}
-          </button>
+
+            {/* Submit / Success */}
+            {submitted ? (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
+                <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
+                <p className="text-xs font-bold text-foreground">تم تفعيل VIP {selectedVip} بنجاح! 🎉</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">المدة: 10 أيام</p>
+              </div>
+            ) : (
+              <button
+                onClick={handleRequest}
+                disabled={selectedVip === null || loading || (!isAgent && alreadyRequested.requested)}
+                className="w-full h-10 gold-gradient rounded-xl text-primary-foreground font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-transform"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Crown className="w-4 h-4" />
+                    {!isAgent && alreadyRequested.requested ? "تم استخدام طلبك" : "تقديم الطلب"}
+                  </>
+                )}
+              </button>
+            )}
+          </>
         )}
       </div>
     </MobileLayout>

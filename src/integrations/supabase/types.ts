@@ -842,6 +842,33 @@ export type Database = {
         }
         Relationships: []
       }
+      vip_requests: {
+        Row: {
+          created_at: string
+          id: string
+          request_month: string
+          user_name: string
+          user_uuid: string
+          vip_level: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          request_month: string
+          user_name?: string
+          user_uuid: string
+          vip_level: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          request_month?: string
+          user_name?: string
+          user_uuid?: string
+          vip_level?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
