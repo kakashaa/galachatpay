@@ -162,17 +162,25 @@ const ChangeId: React.FC = () => {
          return;
        }
 
-       // Save to database
-       const milestone = getCurrentMilestone(maxLevel);
-       await supabase.from("id_changes").insert({
-         user_uuid: user.uuid,
-         new_id: trimmedId,
-         level_milestone: milestone,
-       });
+        // Save to database
+        const milestone = getCurrentMilestone(maxLevel);
+        await supabase.from("id_changes").insert({
+          user_uuid: user.uuid,
+          new_id: trimmedId,
+          level_milestone: milestone,
+        });
 
-       setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
-       setUser({ ...user, uuid: trimmedId });
-       setStatus("success");
+        // Send notification
+        await supabase.from("notifications").insert({
+          user_uuid: user.uuid,
+          title: "تم تغيير الـ ID بنجاح ✅",
+          body: `تم تغيير معرّفك من ${user.uuid} إلى ${trimmedId}. هذا التغيير نهائي حتى تصل للفل التالي.`,
+          target: "user",
+        });
+
+        setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
+        setUser({ ...user, uuid: trimmedId });
+        setStatus("success");
      } catch { 
        setStatus("error"); 
        setErrorMsg("⚠️ حدث خطأ في الاتصال. تأكد من الاتصال بالإنترنت وحاول مرة أخرى."); 
