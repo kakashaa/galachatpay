@@ -7,8 +7,24 @@ serve(async (req) => {
   }
 
   try {
+    // Accept optional body with uuid for user verification
+    let requestUuid = "";
+    try {
+      const body = await req.json();
+      requestUuid = typeof body?.uuid === "string" ? body.uuid.trim() : "";
+    } catch {
+      // Allow empty body for backward compatibility
+    }
+
+    if (!requestUuid || requestUuid.length < 3 || requestUuid.length > 64) {
+      return new Response(
+        JSON.stringify({ success: false, error: "User identification required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
-    if (!BASE_URL) throw new Error("GALA_API_BASE_URL is not configured");
+    if (!BASE_URL) throw new Error("Server configuration error");
 
     const endpoint = "transactions/monthly";
     const signPath = "api/newWebsite/" + endpoint;
@@ -21,7 +37,6 @@ serve(async (req) => {
     });
 
     const rawText = await response.text();
-    console.log("gala-transactions response status:", response.status);
 
     let data;
     try {
@@ -46,9 +61,8 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("gala-transactions error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ success: false, error: message }),
+      JSON.stringify({ success: false, error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
