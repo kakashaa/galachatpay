@@ -26,10 +26,28 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { username, password, action, data } = await req.json();
+    const { username, password, action, data, session_token } = await req.json();
 
-    // Support legacy password-only auth (fallback)
-    const auth = authenticateAdmin(username || "", password || "");
+    // For actions after login, validate session token instead of password
+    let auth: { role: "super_admin" | "admin" } | null = null;
+    
+    if (session_token && action !== "auth_check") {
+      // Validate existing session token
+      try {
+        const decoded = JSON.parse(atob(session_token));
+        if (decoded.username && ADMIN_ACCOUNTS[decoded.username]) {
+          auth = { role: ADMIN_ACCOUNTS[decoded.username].role };
+        }
+      } catch (e) {
+        console.error("Invalid session token:", e);
+      }
+    }
+
+    // Fall back to password authentication for login
+    if (!auth) {
+      auth = authenticateAdmin(username || "", password || "");
+    }
+    
     if (!auth) {
       return new Response(
         JSON.stringify({ error: "بيانات الدخول غير صحيحة" }),
@@ -59,9 +77,12 @@ Deno.serve(async (req) => {
     };
 
     switch (action) {
-      // Auth check - returns role info
+      // Auth check - returns role info and a session token
       case "auth_check": {
-        result = { role: auth.role, username };
+        // Generate a session token (in production, use signed JWTs)
+        const sessionToken = btoa(JSON.stringify({ username, role: auth.role, iat: Date.now() }));
+        result = { role: auth.role, username, session_token: sessionToken };
+        await logAudit({ action: "login", success: true });
         break;
       }
 
