@@ -145,6 +145,7 @@ serve(async (req) => {
     const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(requestBody) });
 
     const rawText = await response.text();
+    console.log(`[gala-request] type=${type} value=${value} status=${response.status} response=${rawText.substring(0, 500)}`);
 
     let data;
     try { data = JSON.parse(rawText); } catch {
@@ -155,8 +156,10 @@ serve(async (req) => {
     }
 
     if (!response.ok || !data.success) {
+      const errMsg = data.message || data.error || "Request failed";
+      console.log(`[gala-request] FAILED: ${errMsg}`);
       return new Response(
-        JSON.stringify({ success: false, error: data.message || data.error || "Request failed" }),
+        JSON.stringify({ success: false, error: errMsg }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
