@@ -27,10 +27,11 @@ const AdminLogin: React.FC = () => {
         setLoading(false);
         return;
       }
-      // Store credentials and role in session
+      // Store only username and role - never store passwords
       sessionStorage.setItem("admin_username", username.trim());
-      sessionStorage.setItem("admin_token", password);
       sessionStorage.setItem("admin_role", data.data.role);
+      // Generate a session token from the function response
+      sessionStorage.setItem("admin_session_token", data.data.session_token || Date.now().toString());
       navigate("/admin/dashboard", { replace: true });
     } catch {
       setError("حدث خطأ. حاول مرة أخرى.");
