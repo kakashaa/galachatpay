@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles } from "lucide-react";
+import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, Crown } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -119,8 +119,25 @@ const UserProfileCard: React.FC = () => {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
               <h2 className="text-sm font-black text-foreground truncate">{user.name}</h2>
+              {user.vip && Object.keys(user.vip).length > 0 && (() => {
+                const vipLevel = (user.vip as any).vip_level || (user.vip as any).level || Object.values(user.vip)[0];
+                if (!vipLevel || vipLevel === 0) return null;
+                return (
+                  <div
+                    className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[8px] font-black"
+                    style={{
+                      background: "linear-gradient(135deg, rgba(234,179,8,0.25), rgba(245,158,11,0.15))",
+                      border: "1px solid rgba(234,179,8,0.4)",
+                      boxShadow: "0 0 8px rgba(234,179,8,0.15)",
+                    }}
+                  >
+                    <Crown className="w-2.5 h-2.5 text-yellow-400" />
+                    <span className="text-yellow-300">VIP {vipLevel}</span>
+                  </div>
+                );
+              })()}
               <div className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${badgeStyle}`}>
                 {typeLabel}
               </div>
