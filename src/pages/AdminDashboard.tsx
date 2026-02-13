@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
 import { Camera, Briefcase, MessageSquare, Headset } from "lucide-react";
+import AdminNotificationListener from "@/components/AdminNotificationListener";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | null;
 
@@ -1926,6 +1927,9 @@ const AdminDashboardPage: React.FC = () => {
         )}
         </div>
       )}
+      
+      {/* Admin notifications listener */}
+      <AdminNotificationListener />
     </div>
   );
 };
