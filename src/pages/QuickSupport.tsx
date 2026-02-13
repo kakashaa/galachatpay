@@ -69,17 +69,51 @@ const QuickSupport: React.FC = () => {
   const isCoolingDown = cooldownRemaining > 0;
 
   return (
-    <div className="mobile-container bg-background min-h-screen flex flex-col" dir="rtl">
+    <div className="mobile-container bg-background min-h-screen flex flex-col overflow-hidden" dir="rtl">
+      {/* Animated gradient background */}
+      <div className="fixed inset-0 -z-10">
+        <motion.div
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(circle at 20% 50%, hsl(8 88% 62% / 0.1) 0%, transparent 50%)"
+          }}
+          animate={{
+            backgroundPosition: ["0% 0%", "100% 100%"],
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.div
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(circle at 80% 50%, hsl(174 50% 55% / 0.1) 0%, transparent 50%)"
+          }}
+          animate={{
+            backgroundPosition: ["100% 100%", "0% 0%"],
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/90 backdrop-blur-xl border-b border-border/30">
-        <button
+      <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
+        <motion.button
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors"
         >
           <ArrowRight className="w-5 h-5 text-primary" />
           <span className="text-sm font-semibold text-primary">رجوع</span>
-        </button>
-        <h1 className="text-sm font-bold text-foreground">دعم سريع</h1>
+        </motion.button>
+        <motion.h1 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-sm font-bold text-foreground"
+        >
+          دعم سريع
+        </motion.h1>
         <div className="w-16" />
       </header>
 
@@ -204,10 +238,15 @@ const QuickSupport: React.FC = () => {
                 className="space-y-4"
               >
                 <div className="glass-card p-4 space-y-3">
-                  <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <motion.label 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.55 }}
+                    className="text-sm font-bold text-foreground flex items-center gap-2"
+                  >
                     🏠 كود الغرفة
-                  </label>
-                  <input
+                  </motion.label>
+                  <motion.input
                     type="text"
                     value={roomCode}
                     onChange={(e) => setRoomCode(e.target.value)}
@@ -215,6 +254,9 @@ const QuickSupport: React.FC = () => {
                     required
                     autoFocus
                     maxLength={20}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.6, type: "spring", stiffness: 200 }}
                     className="w-full h-14 px-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/30 outline-none transition-all text-base text-center tracking-wider font-bold"
                     dir="ltr"
                   />
@@ -224,6 +266,10 @@ const QuickSupport: React.FC = () => {
                   type="submit"
                   disabled={!roomCode.trim() || submitting || isCoolingDown}
                   whileTap={{ scale: 0.96 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7, type: "spring", stiffness: 200 }}
+                  whileHover={{ scale: isCoolingDown || !roomCode.trim() ? 1 : 1.02 }}
                   className="w-full h-13 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity text-base py-3.5"
                 >
                   {submitting ? (
