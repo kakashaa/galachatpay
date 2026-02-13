@@ -19,7 +19,7 @@ const LEVEL_MILESTONES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
 const API_ERROR_MAP: Array<[RegExp, string]> = [
   [/taken|already.?in.?use|used/i, "🚫 هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر."],
-  [/uuid.?is.?invalid|invalid.?uuid/i, "⚠️ الـ ID المطلوب غير صالح. تأكد أنه يتوافق مع الصيغ المتاحة لمستواك."],
+  [/uuid.?is.?invalid|invalid.?uuid|selected.?uuid/i, "🚫 سيرفر Gala رفض هذا الـ ID. الرقم قد يكون محجوز أو غير متاح. جرّب رقم مختلف تماماً."],
   [/type.?is.?invalid/i, "❌ نوع الطلب غير صحيح. حاول مرة أخرى."],
   [/too.?short|too.?long|length/i, "📏 طول الـ ID غير مناسب. راجع الصيغ المتاحة."],
   [/not.?allowed|forbidden|permission/i, "🔒 لا تملك صلاحية لهذا التغيير."],
