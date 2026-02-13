@@ -1,15 +1,13 @@
 /**
- * Format a date string to Arabic Gregorian format (not Hijri)
- * Uses ar-EG locale which defaults to Gregorian calendar
+ * Format a date string to Arabic Gregorian format using UTC timezone
  */
 export const formatDateAr = (dateStr: string | Date): string => {
   try {
     const date = typeof dateStr === "string" ? new Date(dateStr) : dateStr;
-    return date.toLocaleDateString("ar-EG", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    return `${year}/${month}/${day}`;
   } catch {
     return "—";
   }
