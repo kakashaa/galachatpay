@@ -103,7 +103,9 @@ export type Database = {
           admin_note: string | null
           charger_level_at_upload: number
           created_at: string
+          deleted_at: string | null
           id: string
+          is_deleted: boolean
           max_duration_allowed: number
           status: string
           thumbnail_url: string | null
@@ -118,7 +120,9 @@ export type Database = {
           admin_note?: string | null
           charger_level_at_upload?: number
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_deleted?: boolean
           max_duration_allowed?: number
           status?: string
           thumbnail_url?: string | null
@@ -133,7 +137,9 @@ export type Database = {
           admin_note?: string | null
           charger_level_at_upload?: number
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_deleted?: boolean
           max_duration_allowed?: number
           status?: string
           thumbnail_url?: string | null
@@ -193,10 +199,12 @@ export type Database = {
       entry_gifts: {
         Row: {
           created_at: string
+          deleted_at: string | null
           display_order: number
           gift_type: string
           id: string
           is_active: boolean
+          is_deleted: boolean
           star_level: number
           thumbnail_url: string | null
           title: string
@@ -204,10 +212,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           display_order?: number
           gift_type?: string
           id?: string
           is_active?: boolean
+          is_deleted?: boolean
           star_level?: number
           thumbnail_url?: string | null
           title: string
@@ -215,10 +225,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           display_order?: number
           gift_type?: string
           id?: string
           is_active?: boolean
+          is_deleted?: boolean
           star_level?: number
           thumbnail_url?: string | null
           title?: string
@@ -270,30 +282,36 @@ export type Database = {
       frames: {
         Row: {
           created_at: string
+          deleted_at: string | null
           display_order: number
           file_url: string
           id: string
           is_active: boolean
+          is_deleted: boolean
           star_level: number
           thumbnail_url: string | null
           title: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           display_order?: number
           file_url: string
           id?: string
           is_active?: boolean
+          is_deleted?: boolean
           star_level?: number
           thumbnail_url?: string | null
           title: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           display_order?: number
           file_url?: string
           id?: string
           is_active?: boolean
+          is_deleted?: boolean
           star_level?: number
           thumbnail_url?: string | null
           title?: string
@@ -647,30 +665,36 @@ export type Database = {
       video_tutorials: {
         Row: {
           created_at: string
+          deleted_at: string | null
           description: string | null
           display_order: number
           id: string
           is_active: boolean
+          is_deleted: boolean
           thumbnail_url: string | null
           title: string
           video_url: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
+          is_deleted?: boolean
           thumbnail_url?: string | null
           title: string
           video_url: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
+          is_deleted?: boolean
           thumbnail_url?: string | null
           title?: string
           video_url?: string
