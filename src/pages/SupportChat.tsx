@@ -311,6 +311,7 @@ const SupportChat: React.FC = () => {
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackData>({ rating: 0, comment: "" });
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -325,6 +326,41 @@ const SupportChat: React.FC = () => {
       setShowGuestDialog(true);
     }
   }, [isGuest]);
+
+  /* warn before browser back/refresh */
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (messages.length > 1) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [messages]);
+
+  /* auto-clear on unmount */
+  useEffect(() => {
+    return () => {
+      setMessages([]);
+      setWaitingFor(null);
+    };
+  }, []);
+
+  /* handle back with confirmation */
+  const handleBack = () => {
+    if (messages.length > 1) {
+      setShowLeaveDialog(true);
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  const confirmLeave = () => {
+    setMessages([]);
+    setWaitingFor(null);
+    setShowLeaveDialog(false);
+    navigate("/dashboard");
+  };
 
   /* scroll to bottom */
   const scrollToBottom = useCallback(() => {
@@ -770,7 +806,7 @@ const SupportChat: React.FC = () => {
       {/* header */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/90 backdrop-blur-xl border-b border-border/30">
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={handleBack}
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors"
         >
           <ArrowRight className="w-5 h-5 text-primary" />
@@ -924,6 +960,34 @@ const SupportChat: React.FC = () => {
           </button>
         </form>
       </div>
+
+      {/* leave confirmation dialog */}
+      <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <DialogContent className="max-w-xs rounded-2xl text-center">
+          <DialogTitle className="text-base font-bold">تأكيد الخروج</DialogTitle>
+          <div className="space-y-4 py-2">
+            <div className="w-14 h-14 rounded-full bg-destructive/15 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-7 h-7 text-destructive" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              إذا طلعت من المحادثة بينحذف كل شي كتبته! 🗑️
+            </p>
+            <Button
+              onClick={confirmLeave}
+              variant="destructive"
+              className="w-full font-bold h-11"
+            >
+              طلع وامسح المحادثة
+            </Button>
+            <button
+              onClick={() => setShowLeaveDialog(false)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              رجوع للمحادثة
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* guest login dialog */}
       <Dialog open={showGuestDialog} onOpenChange={setShowGuestDialog}>
