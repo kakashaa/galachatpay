@@ -99,47 +99,76 @@ const ChangeId: React.FC = () => {
   const handleSubmit = async () => {
     const trimmedId = newId.trim();
     if (!trimmedId || !currentRange) return;
-    if (alreadyChanged.changed) {
-      const next = getNextMilestone(maxLevel);
-      setStatus("error");
-      setErrorMsg(next ? `يجب أن تصل للفل ${next} لتغيير الـ ID مرة أخرى.` : "وصلت لأعلى مستوى.");
-      return;
-    }
-    if (maxLevel < 20) { setStatus("ineligible"); return; }
-    if (!/^\d+$/.test(trimmedId)) { setStatus("error"); setErrorMsg("الـ ID يجب أن يحتوي على أرقام فقط."); return; }
-    if (!uniqueAllowedDigits.includes(trimmedId.length)) { setStatus("error"); setErrorMsg(`الأطوال المتاحة: ${uniqueAllowedDigits.join("، ")}`); return; }
+     if (alreadyChanged.changed) {
+       const next = getNextMilestone(maxLevel);
+       setStatus("error");
+       setErrorMsg(next ? `⏸️ تغيير الـ ID متاح مرة واحدة فقط لكل 10 مستويات. الفل الحالي: ${maxLevel} • الفل المطلوب: ${next}` : "✅ وصلت لأعلى مستوى، لا يمكن تغيير الـ ID.");
+       return;
+     }
+     if (maxLevel < 20) { 
+       setStatus("ineligible"); 
+       setErrorMsg("📊 يمكنك تغيير الـ ID من الفل 20 فما فوق. الفل الحالي: " + maxLevel);
+       return; 
+     }
+     if (!/^\d+$/.test(trimmedId)) { 
+       setStatus("error"); 
+       setErrorMsg("🔢 الـ ID يجب أن يحتوي على أرقام فقط (0-9)، بدون أحرف أو رموز."); 
+       return; 
+     }
+     if (!uniqueAllowedDigits.includes(trimmedId.length)) { 
+       setStatus("error"); 
+       setErrorMsg(`📏 طول الـ ID غير صحيح. الأطوال المتاحة لمستواك: ${uniqueAllowedDigits.join(" أو ")}`); 
+       return; 
+     }
 
-    const allAllowedPatterns = availableRanges.flatMap((r) => r.groups).filter((g) => g.digits === trimmedId.length).flatMap((g) => g.patterns);
-    if (!validateIdAgainstPatterns(trimmedId, allAllowedPatterns)) { setStatus("error"); setErrorMsg("الـ ID لا يطابق أي صيغة متاحة لمستواك."); return; }
+     const allAllowedPatterns = availableRanges.flatMap((r) => r.groups).filter((g) => g.digits === trimmedId.length).flatMap((g) => g.patterns);
+     if (!validateIdAgainstPatterns(trimmedId, allAllowedPatterns)) { 
+       setStatus("error"); 
+       setErrorMsg("⚠️ الـ ID لا يطابق الأنماط المتاحة. تحقق من الصيغ أعلاه واختر رقماً يطابق أحدها."); 
+       return; 
+     }
 
-    setStatus("loading"); setErrorMsg("");
-    try {
-      const { data, error } = await supabase.functions.invoke("gala-request", { body: { uuid: user.uuid, type: "change_id", value: trimmedId } });
-      if (error) {
-        const apiMsg = data?.error || "";
-        if (apiMsg.toLowerCase().includes("taken") || apiMsg.toLowerCase().includes("used")) setStatus("taken");
-        else { setStatus("error"); setErrorMsg(apiMsg || "حدث خطأ. حاول مرة أخرى."); }
-        return;
-      }
-      if (!data?.success) {
-        const msg = data?.error || "";
-        if (msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used")) setStatus("taken");
-        else { setStatus("error"); setErrorMsg(msg || "فشل الطلب."); }
-        return;
-      }
+     setStatus("loading"); setErrorMsg("");
+     try {
+       const { data, error } = await supabase.functions.invoke("gala-request", { body: { uuid: user.uuid, type: "change_id", value: trimmedId } });
+       if (error) {
+         const apiMsg = data?.error || "";
+         if (apiMsg.toLowerCase().includes("taken") || apiMsg.toLowerCase().includes("used")) {
+           setStatus("taken");
+           setErrorMsg("🚫 هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر.");
+         } else { 
+           setStatus("error"); 
+           setErrorMsg(`❌ ${apiMsg || "فشل طلب التغيير. تأكد من صحة البيانات وحاول مرة أخرى."}`); 
+         }
+         return;
+       }
+       if (!data?.success) {
+         const msg = data?.error || "";
+         if (msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used")) {
+           setStatus("taken");
+           setErrorMsg("🚫 هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر.");
+         } else { 
+           setStatus("error"); 
+           setErrorMsg(`❌ ${msg || "فشل الطلب. حاول مرة أخرى بعد قليل."}`); 
+         }
+         return;
+       }
 
-      // Save to database
-      const milestone = getCurrentMilestone(maxLevel);
-      await supabase.from("id_changes").insert({
-        user_uuid: user.uuid,
-        new_id: trimmedId,
-        level_milestone: milestone,
-      });
+       // Save to database
+       const milestone = getCurrentMilestone(maxLevel);
+       await supabase.from("id_changes").insert({
+         user_uuid: user.uuid,
+         new_id: trimmedId,
+         level_milestone: milestone,
+       });
 
-      setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
-      setUser({ ...user, uuid: trimmedId });
-      setStatus("success");
-    } catch { setStatus("error"); setErrorMsg("حدث خطأ غير متوقع."); }
+       setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
+       setUser({ ...user, uuid: trimmedId });
+       setStatus("success");
+     } catch { 
+       setStatus("error"); 
+       setErrorMsg("⚠️ حدث خطأ في الاتصال. تأكد من الاتصال بالإنترنت وحاول مرة أخرى."); 
+     }
   };
 
   if (status === "success") {
