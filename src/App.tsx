@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { BDProvider } from "@/contexts/BDContext";
 import { lazy, Suspense } from "react";
 
 const Login = lazy(() => import("./pages/Login"));
@@ -25,7 +26,10 @@ const FramesRequest = lazy(() => import("./pages/FramesRequest"));
 const ReportPage = lazy(() => import("./pages/ReportPage"));
 const SalaryWithdraw = lazy(() => import("./pages/SalaryWithdraw"));
 const BDRequest = lazy(() => import("./pages/BDRequest"));
+const BDLoginPage = lazy(() => import("./pages/BDLogin"));
 const BDDashboard = lazy(() => import("./pages/BDDashboard"));
+const BDAddMember = lazy(() => import("./pages/BDAddMember"));
+const BDWithdraw = lazy(() => import("./pages/BDWithdraw"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
 const InstantIntro = lazy(() => import("./pages/InstantIntro"));
 const InstantBanks = lazy(() => import("./pages/InstantBanks"));
@@ -49,44 +53,49 @@ const PageLoader = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Login />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/change-id" element={<ChangeId />} />
-              <Route path="/request-vip" element={<RequestVip />} />
-              <Route path="/support" element={<SupportHub />} />
-              <Route path="/support/vip-chat" element={<VipChat />} />
-              <Route path="/support/tickets" element={<SupportTickets />} />
-              <Route path="/support-chat" element={<SupportChat />} />
-              <Route path="/salary" element={<SalaryWithdraw />} />
-              <Route path="/report" element={<ReportPage />} />
-              <Route path="/gift" element={<GiftRequest />} />
-              <Route path="/custom-gift" element={<CustomGiftUpload />} />
-              <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
-              <Route path="/entry-request" element={<EntryRequest />} />
-              <Route path="/frames" element={<FramesRequest />} />
-              <Route path="/bd-request" element={<BDRequest />} />
-              <Route path="/bd-dashboard" element={<BDDashboard />} />
-              <Route path="/my-requests" element={<MyRequests />} />
-              <Route path="/instant" element={<InstantIntro />} />
-              <Route path="/instant/banks" element={<InstantBanks />} />
-              <Route path="/instant/request" element={<InstantRequest />} />
-              <Route path="/admin" element={<AdminLogin />} />
-              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/policy" element={<PolicyPage />} />
-              <Route path="/quick-support" element={<QuickSupport />} />
-              <Route path="/support-main" element={<SupportMain />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
+      <BDProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Login />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/change-id" element={<ChangeId />} />
+                <Route path="/request-vip" element={<RequestVip />} />
+                <Route path="/support" element={<SupportHub />} />
+                <Route path="/support/vip-chat" element={<VipChat />} />
+                <Route path="/support/tickets" element={<SupportTickets />} />
+                <Route path="/support-chat" element={<SupportChat />} />
+                <Route path="/salary" element={<SalaryWithdraw />} />
+                <Route path="/report" element={<ReportPage />} />
+                <Route path="/gift" element={<GiftRequest />} />
+                <Route path="/custom-gift" element={<CustomGiftUpload />} />
+                <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
+                <Route path="/entry-request" element={<EntryRequest />} />
+                <Route path="/frames" element={<FramesRequest />} />
+                <Route path="/bd-request" element={<BDRequest />} />
+                <Route path="/bd" element={<BDLoginPage />} />
+                <Route path="/bd/dashboard" element={<BDDashboard />} />
+                <Route path="/bd/add-member" element={<BDAddMember />} />
+                <Route path="/bd/withdraw" element={<BDWithdraw />} />
+                <Route path="/my-requests" element={<MyRequests />} />
+                <Route path="/instant" element={<InstantIntro />} />
+                <Route path="/instant/banks" element={<InstantBanks />} />
+                <Route path="/instant/request" element={<InstantRequest />} />
+                <Route path="/admin" element={<AdminLogin />} />
+                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/policy" element={<PolicyPage />} />
+                <Route path="/quick-support" element={<QuickSupport />} />
+                <Route path="/support-main" element={<SupportMain />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </BDProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

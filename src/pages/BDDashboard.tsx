@@ -1,197 +1,187 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, User, Crown, DollarSign, TrendingUp, Building2, CheckCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Users, Mic, Building2, DollarSign, Plus, RefreshCw, Loader2, LogOut, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useBD } from "@/contexts/BDContext";
 
-interface ChargeRecord {
-  id: number;
-  charger_id: number;
-  charger_type: string;
-  user_id: number;
-  amount: number;
-  amount_type?: number;
-  agency_id?: number;
-  created_at: string;
-}
 
-interface CoinLogRecord {
-  id: number;
-  paid_usd?: number;
-  obtained_coins?: number;
-  user_id: number;
-  method?: string;
-  status?: number;
-  created_at: string;
-  transaction?: string;
-}
 
 const BDDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [month, setMonth] = useState("");
-  const [charges, setCharges] = useState<ChargeRecord[]>([]);
-  const [coinLogs, setCoinLogs] = useState<CoinLogRecord[]>([]);
-
-  const fetchData = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke("gala-transactions", { body: { uuid: user?.uuid } });
-      if (fnError || !data?.success) {
-        setError(data?.error || "فشل في تحميل البيانات");
-        setLoading(false);
-        return;
-      }
-      setMonth(data.month || "");
-      setCharges(data.charges || []);
-      setCoinLogs(data.coin_logs || []);
-    } catch {
-      setError("حدث خطأ غير متوقع");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { bdUser, loading, refreshDashboard, logout } = useBD();
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) { navigate("/"); return; }
-    fetchData();
+    if (!bdUser) { navigate("/bd"); return; }
+    refreshDashboard();
   }, []);
 
-  const totalChargesAmount = charges.reduce((sum, c) => sum + (c.amount || 0), 0);
-  const totalCoinLogsUsd = coinLogs.reduce((sum, c) => sum + (c.paid_usd || 0), 0);
+  if (!bdUser) return null;
 
-  if (!user) return null;
+  const handleLogout = () => { logout(); navigate("/bd"); };
 
-  if (loading) {
-    return (
-      <MobileLayout showHeader headerTitle="التقارير الشهرية" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center py-32">
-          <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
-          <p className="text-sm text-muted-foreground">جاري تحميل البيانات...</p>
-        </div>
-      </MobileLayout>
-    );
-  }
+  const toggleCard = (card: string) => {
+    setExpandedCard(expandedCard === card ? null : card);
+  };
+
+  const cards = [
+    {
+      key: "supporters",
+      title: "الداعمين",
+      icon: Users,
+      color: "text-blue-400",
+      bgColor: "bg-blue-500/10",
+      count: bdUser.supporters_count || 0,
+      stats: [
+        { label: "شحنات الشهر", value: (bdUser.supporters_charges || 0).toLocaleString() },
+        { label: "عمولة 2%", value: `$${(bdUser.supporters_commission || 0).toFixed(2)}` },
+      ],
+      items: bdUser.supporters || [],
+      memberType: "supporter",
+    },
+    {
+      key: "hosts",
+      title: "المضيفين",
+      icon: Mic,
+      color: "text-pink-400",
+      bgColor: "bg-pink-500/10",
+      count: bdUser.hosts_count || 0,
+      stats: [
+        { label: "سكروا الراتب", value: bdUser.hosts_salary_closed || 0 },
+        { label: "مكافأة", value: `${((bdUser.hosts_salary_closed || 0) * 5000).toLocaleString()} كوينز` },
+      ],
+      items: bdUser.hosts || [],
+      memberType: "host",
+    },
+    {
+      key: "agencies",
+      title: "الوكالات",
+      icon: Building2,
+      color: "text-amber-400",
+      bgColor: "bg-amber-500/10",
+      count: bdUser.agencies_count || 0,
+      stats: [
+        { label: "مضيفين سكروا", value: bdUser.agencies_hosts_closed || 0 },
+        { label: "مكافأة", value: `$${(bdUser.agencies_bonus || 0).toFixed(2)}` },
+      ],
+      items: bdUser.agencies || [],
+      memberType: "agency",
+    },
+  ];
 
   return (
-    <MobileLayout showHeader headerTitle="التقارير الشهرية" onBack={() => navigate("/dashboard")}>
-      <div className="px-5 py-4 space-y-5">
-        <div className="glass-card p-4 css-fade-up">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full gold-gradient flex items-center justify-center">
-                <Briefcase className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">{user.name}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  تقرير شهر: <span className="font-bold text-primary">{month || "—"}</span>
-                </p>
-              </div>
+    <MobileLayout showHeader headerTitle="لوحة البيدي" onBack={() => navigate("/bd")}>
+      <div className="px-4 py-4 space-y-4" dir="rtl">
+        {/* Header card */}
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-sm font-bold text-foreground">{bdUser.name}</p>
+              <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bdUser.uuid}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={fetchData} className="text-primary">
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+            <div className="flex gap-1.5">
+              <Button variant="ghost" size="icon" onClick={refreshDashboard} disabled={loading} className="h-8 w-8">
+                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="h-8 w-8 text-destructive">
+                <LogOut className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-primary/10 rounded-xl p-3 text-center">
+              <DollarSign className="w-4 h-4 text-primary mx-auto mb-1" />
+              <p className="text-base font-bold text-amber-400">${(bdUser.total_earnings || 0).toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground">إجمالي الأرباح</p>
+            </div>
+            <div className="bg-primary/10 rounded-xl p-3 text-center">
+              <Wallet className="w-4 h-4 text-primary mx-auto mb-1" />
+              <p className="text-base font-bold text-green-400">${(bdUser.available_balance || 0).toFixed(2)}</p>
+              <p className="text-[9px] text-muted-foreground">الرصيد المتاح</p>
+            </div>
           </div>
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
-            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-            <p className="text-sm text-destructive">{error}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3 css-fade-up-d1">
-          <div className="glass-card p-3 text-center">
-            <DollarSign className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-lg font-bold text-foreground">{charges.length}</p>
-            <p className="text-[10px] text-muted-foreground">عدد عمليات الشحن</p>
-          </div>
-          <div className="glass-card p-3 text-center">
-            <TrendingUp className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-lg font-bold text-foreground">{totalChargesAmount.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground">إجمالي مبالغ الشحن</p>
-          </div>
-          <div className="glass-card p-3 text-center">
-            <Building2 className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-lg font-bold text-foreground">{coinLogs.length}</p>
-            <p className="text-[10px] text-muted-foreground">عدد سجلات العملات</p>
-          </div>
-          <div className="glass-card p-3 text-center">
-            <Crown className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-lg font-bold text-primary">${totalCoinLogsUsd.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground">إجمالي USD</p>
-          </div>
-        </div>
-
-        <div className="glass-card p-4 space-y-3 css-fade-up-d2">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-primary" /> عمليات الشحن ({charges.length})
-          </h3>
-          {charges.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">لا توجد عمليات شحن لهذا الشهر</p>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {charges.slice(0, 20).map((charge) => (
-                <div key={charge.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">مستخدم #{charge.user_id}</p>
-                      <p className="text-[10px] text-muted-foreground">{charge.charger_type} • {new Date(charge.created_at).toLocaleDateString("ar")}</p>
-                    </div>
+        {/* Category cards */}
+        {cards.map((card) => {
+          const Icon = card.icon;
+          const isExpanded = expandedCard === card.key;
+          return (
+            <div key={card.key} className="glass-card overflow-hidden">
+              <button
+                onClick={() => toggleCard(card.key)}
+                className="w-full p-4 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full ${card.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${card.color}`} />
                   </div>
-                  <div className="text-left">
-                    <p className="text-xs font-bold text-primary">{charge.amount.toLocaleString()}</p>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-foreground">{card.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{card.count} عضو</p>
                   </div>
                 </div>
-              ))}
-              {charges.length > 20 && (
-                <p className="text-[10px] text-muted-foreground text-center">و {charges.length - 20} عملية أخرى...</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="glass-card p-4 space-y-3 css-fade-up-d3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Crown className="w-4 h-4 text-primary" /> سجلات العملات ({coinLogs.length})
-          </h3>
-          {coinLogs.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">لا توجد سجلات لهذا الشهر</p>
-          ) : (
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {coinLogs.slice(0, 20).map((log) => (
-                <div key={log.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/20">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <CheckCircle className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{log.method || "—"}</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(log.created_at).toLocaleDateString("ar")}</p>
-                    </div>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-bold text-foreground">{(log.obtained_coins || 0).toLocaleString()} عملة</p>
-                    <p className="text-[10px] text-primary">${(log.paid_usd || 0).toFixed(2)}</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/bd/add-member?type=${card.memberType}`);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 text-primary" />
+                  </Button>
+                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                 </div>
-              ))}
-              {coinLogs.length > 20 && (
-                <p className="text-[10px] text-muted-foreground text-center">و {coinLogs.length - 20} سجل آخر...</p>
+              </button>
+
+              {/* Stats */}
+              <div className="px-4 pb-3 flex gap-3">
+                {card.stats.map((s, i) => (
+                  <div key={i} className="flex-1 bg-muted/20 rounded-lg p-2 text-center">
+                    <p className="text-xs font-bold text-foreground">{s.value}</p>
+                    <p className="text-[9px] text-muted-foreground">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Expanded member list */}
+              {isExpanded && card.items.length > 0 && (
+                <div className="px-4 pb-4 space-y-2 max-h-60 overflow-y-auto">
+                  {card.items.map((item: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-2.5 bg-muted/10 rounded-lg border border-border/20">
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{item.name || "—"}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{item.uuid || item.member_uuid || "—"}</p>
+                      </div>
+                      <div className="text-left">
+                        {item.performance !== undefined && <p className="text-[10px] text-primary">{item.performance}</p>}
+                        {item.reward !== undefined && <p className="text-[10px] text-amber-400">${item.reward}</p>}
+                        {item.created_at && <p className="text-[9px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString("ar")}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {isExpanded && card.items.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center pb-4">لا يوجد أعضاء بعد</p>
               )}
             </div>
-          )}
-        </div>
+          );
+        })}
+
+        {/* Withdraw button */}
+        <Button
+          onClick={() => navigate("/bd/withdraw")}
+          className="w-full gap-2 h-12 text-sm font-bold"
+          variant="default"
+        >
+          <Wallet className="w-5 h-5" />
+          صفحة السحب
+        </Button>
       </div>
     </MobileLayout>
   );
