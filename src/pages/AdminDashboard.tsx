@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Camera, Briefcase, MessageSquare, Headset } from "lucide-react";
 import AdminNotificationListener from "@/components/AdminNotificationListener";
+import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime";
+import { useAnimatedPhotosRealtime } from "@/hooks/use-animated-photos-realtime";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | null;
 
@@ -263,6 +265,25 @@ const AdminDashboardPage: React.FC = () => {
     const interval = setInterval(() => loadStats(), 30000);
     return () => clearInterval(interval);
   }, [activeTab, adminSessionToken]);
+
+  // Realtime subscription for salary requests
+  useSalaryRequestsRealtime((updatedRequest) => {
+    setAllSalaryRequests((prev) =>
+      prev.map((req) => (req.id === updatedRequest.id ? { ...req, ...updatedRequest } : req))
+    );
+    setSalaryRequests((prev) =>
+      prev.map((req) => (req.id === updatedRequest.id ? { ...req, ...updatedRequest } : req))
+    );
+    loadStats();
+  });
+
+  // Realtime subscription for animated photos
+  useAnimatedPhotosRealtime((updatedRequest) => {
+    setAnimatedPhotos((prev) =>
+      prev.map((photo) => (photo.id === updatedRequest.id ? { ...photo, ...updatedRequest } : photo))
+    );
+    loadStats();
+  });
 
   const loadStats = async () => {
     try {
