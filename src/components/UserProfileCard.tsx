@@ -7,6 +7,7 @@ import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
+import { useVipChime } from "@/hooks/use-vip-chime";
 
 const getUserTypeLabel = (type: number): string => {
   switch (type) {
@@ -47,6 +48,10 @@ const UserProfileCard: React.FC = () => {
   const [starWalletView, setStarWalletView] = useState<"main" | "cashout">("main");
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalStars, setTotalStars] = useState(0);
+
+  const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
+    ((user.vip as any).vip_level || (user.vip as any).level || 0) > 0);
+  useVipChime(hasVip);
 
   useEffect(() => {
     if (!user?.uuid) return;
