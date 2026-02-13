@@ -249,15 +249,13 @@ const searchFAQ = (query: string): FAQ | null => {
 };
 
 const MAIN_MENU: QuickReply[] = [
-  { label: "تغيير الآيدي", value: "change_id", icon: Edit2 },
-  { label: "طلب إطار", value: "frame", icon: Frame },
-  { label: "طلب دخولية", value: "entry", icon: LogIn },
-  { label: "صورة متحركة", value: "animated", icon: Image },
-  { label: "طلب VIP", value: "vip", icon: Crown },
-  { label: "سحب الراتب", value: "salary", icon: Wallet },
-  { label: "هدية مخصصة", value: "gift", icon: Gift },
+  { label: "كم راتبي حسب لفلي؟", value: "salary_table", icon: Wallet },
+  { label: "وش جدول رواتب المضيفين؟", value: "policy_salaries", icon: BookOpen },
+  { label: "وش سياسة وكالات الشحن؟", value: "policy_charge", icon: Wallet },
+  { label: "كيف أفتح وكالة؟", value: "policy_agency", icon: Crown },
+  { label: "وش مكافآت الغرفة؟", value: "policy_room", icon: Gift },
+  { label: "كيف أسحب راتبي؟", value: "salary", icon: Wallet },
   { label: "مشكلة تقنية", value: "tech_issue", icon: AlertCircle },
-  { label: "سياسة التطبيق", value: "policy", icon: BookOpen },
   { label: "تكلم مع إداري", value: "admin_talk", icon: Shield },
 ];
 
@@ -567,6 +565,96 @@ const SupportChat: React.FC = () => {
               `لتفاصيل الجداول والقواعد الكاملة 👇`,
             [
               { label: "شوف كل السياسات ←", value: "nav:/policy" },
+              { label: "القائمة الرئيسية", value: "main_menu" },
+            ]
+          );
+          break;
+        case "salary_table": {
+          addBotMessage(
+            `💰 **سعر الصرف:**\n` +
+              `$1 = 7,500 كونز (مستخدم عادي)\n` +
+              `$1 = 8,500 كونز (وكيل شحن)\n\n` +
+              `**طرق السحب:**\n` +
+              `🗓️ شهري: آخر يوم بالشهر فقط (طلب واحد)\n` +
+              `⚡ فوري: متاح دائماً عبر حسابات الدفع\n` +
+              `⭐ نجوم: 10 نجوم = $50\n\n` +
+              `📅 رفع الراتب: من 1 إلى 5 من الشهر\n` +
+              `⚠️ خصم 20% عند عدم إكمال الأيام/الساعات`,
+            [
+              { label: "اسحب راتبك ←", value: "nav:/salary" },
+              { label: "شوف جدول الرواتب", value: "policy_salaries" },
+              { label: "القائمة الرئيسية", value: "main_menu" },
+            ]
+          );
+          break;
+        }
+        case "policy_salaries":
+          addBotMessage(
+            `📊 **جدول رواتب المضيفين:**\n\n` +
+              `💎 250K ألماس = $22 مضيف / $4 وكالة\n` +
+              `💎 500K = $43 / $8\n` +
+              `💎 1M = $87 / $16\n` +
+              `💎 2M = $170 / $32\n` +
+              `💎 5M = $405 / $80\n` +
+              `💎 10M = $805 / $160\n` +
+              `💎 25M = $1,950 / $400\n` +
+              `💎 50M = $3,900 / $750\n` +
+              `💎 100M = $7,700 / $1,250\n` +
+              `💎 200M = $15,450 / $2,600\n\n` +
+              `📌 الشروط: 22 يوم عمل / 2 ساعة يومياً كحد أدنى`,
+            [
+              { label: "شوف السياسة كاملة ←", value: "nav:/policy" },
+              { label: "القائمة الرئيسية", value: "main_menu" },
+            ]
+          );
+          break;
+        case "policy_charge":
+          addBotMessage(
+            `⚡ **سياسة وكالات الشحن:**\n\n` +
+              `$1,000 = 8.5M كونز + بونص $100\n` +
+              `$3,000 = 25.5M + بونص $360\n` +
+              `$5,000 = 42.5M + بونص $750\n` +
+              `$10,000 = 85M + بونص $1,800\n\n` +
+              `⚠️ ممنوع بيع أسعار صرف منخفضة/مرتفعة جداً\n` +
+              `⚠️ ممنوع خداع المستخدمين وإلا إنهاء التعاون`,
+            [
+              { label: "شوف السياسة كاملة ←", value: "nav:/policy" },
+              { label: "القائمة الرئيسية", value: "main_menu" },
+            ]
+          );
+          break;
+        case "policy_agency":
+          addBotMessage(
+            `🏢 **كيف تفتح وكالة؟**\n\n` +
+              `📋 الشروط:\n` +
+              `• أحضر 3 داعمين + 10 مستخدمين\n` +
+              `• يمكن فتحها بأقل إذا ضمنت التارجت\n` +
+              `• تعبئة: اسم الوكالة / الهاتف / ID الوكيل / الاسم\n\n` +
+              `⚠️ تقييم بعد شهر: إذا لم تحقق $500 يحق للإدارة سحبها\n\n` +
+              `🎁 مكافآت أول شهر:\n` +
+              `• VIP4 للوكيل والداعمين (أسبوع)\n` +
+              `• VIP3 لـ5 مشرفين\n` +
+              `• VIP2 لـ10 مستخدمين`,
+            [
+              { label: "شوف السياسة كاملة ←", value: "nav:/policy" },
+              { label: "القائمة الرئيسية", value: "main_menu" },
+            ]
+          );
+          break;
+        case "policy_room":
+          addBotMessage(
+            `🏆 **مكافآت الغرفة الأسبوعية:**\n\n` +
+              `LV1: هدف 500K = مكافأة 20K\n` +
+              `LV2: هدف 1M = مكافأة 40K\n` +
+              `LV3: هدف 3M = مكافأة 90K\n` +
+              `LV4: هدف 5M = مكافأة 145K\n` +
+              `LV5: هدف 7M = مكافأة 200K\n` +
+              `LV6: هدف 10M = مكافأة 290K\n` +
+              `LV7: هدف 16M = مكافأة 450K\n` +
+              `LV8: هدف 25M = مكافأة 750K\n\n` +
+              `📌 المكافأة تُحسب أسبوعياً لصاحب الغرفة`,
+            [
+              { label: "شوف السياسة كاملة ←", value: "nav:/policy" },
               { label: "القائمة الرئيسية", value: "main_menu" },
             ]
           );
