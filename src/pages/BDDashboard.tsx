@@ -41,7 +41,7 @@ const BDDashboard: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("gala-transactions");
+      const { data, error: fnError } = await supabase.functions.invoke("gala-transactions", { body: { uuid: user?.uuid } });
       if (fnError || !data?.success) {
         setError(data?.error || "فشل في تحميل البيانات");
         setLoading(false);
