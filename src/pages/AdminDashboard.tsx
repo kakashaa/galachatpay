@@ -257,18 +257,36 @@ const AdminDashboardPage: React.FC = () => {
     if (!activeTab) loadStats();
   }, [activeTab]);
 
+  // Auto-refresh stats every 30 seconds on home page
+  useEffect(() => {
+    if (activeTab || !adminSessionToken) return;
+    const interval = setInterval(() => loadStats(), 30000);
+    return () => clearInterval(interval);
+  }, [activeTab, adminSessionToken]);
+
   const loadStats = async () => {
     try {
-      const [salary, reports] = await Promise.all([
+      const [salary, reports, animated, customG, tickets] = await Promise.all([
         supabase.from("salary_requests").select("status"),
-        supabase.from("ban_reports").select("is_verified")
+        supabase.from("ban_reports").select("is_verified"),
+        supabase.from("animated_photo_requests").select("status"),
+        supabase.from("custom_gifts").select("status").eq("is_deleted", false),
+        supabase.from("support_tickets").select("status"),
       ]);
       
       const pending = (salary.data?.filter(r => r.status === "pending").length || 0) + 
-                      (reports.data?.filter(r => !r.is_verified).length || 0);
+                      (reports.data?.filter(r => !r.is_verified).length || 0) +
+                      (animated.data?.filter(r => r.status === "pending").length || 0) +
+                      (customG.data?.filter(r => r.status === "pending").length || 0) +
+                      (tickets.data?.filter(r => r.status === "open").length || 0);
       const approved = (salary.data?.filter(r => r.status === "approved").length || 0) +
-                       (reports.data?.filter(r => r.is_verified).length || 0);
-      const rejected = salary.data?.filter(r => r.status === "rejected").length || 0;
+                       (reports.data?.filter(r => r.is_verified).length || 0) +
+                       (animated.data?.filter(r => r.status === "approved").length || 0) +
+                       (customG.data?.filter(r => r.status === "approved").length || 0) +
+                       (tickets.data?.filter(r => r.status === "replied" || r.status === "closed").length || 0);
+      const rejected = (salary.data?.filter(r => r.status === "rejected").length || 0) +
+                       (animated.data?.filter(r => r.status === "rejected").length || 0) +
+                       (customG.data?.filter(r => r.status === "rejected").length || 0);
       
       setStats({ pending, approved, rejected });
     } catch (err) {
@@ -450,7 +468,10 @@ const AdminDashboardPage: React.FC = () => {
       
       toast.success("تم قبول الطلب ورفع الإيصال");
       setSalaryAction(null); setApproveReceiptFile(null);
-      loadData();
+      // Optimistic update: remove from pending lists
+      setSalaryRequests(prev => prev.map(r => r.id === id ? { ...r, status: "approved", transfer_image_url: receiptUrl } : r));
+      setAllSalaryRequests(prev => prev.map(r => r.id === id ? { ...r, status: "approved", transfer_image_url: receiptUrl } : r));
+      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
     } catch { toast.error("فشل التحديث"); }
     finally { setSalaryActionLoading(false); }
   };
@@ -474,7 +495,10 @@ const AdminDashboardPage: React.FC = () => {
       
       toast.success("تم رفض الطلب");
       setSalaryAction(null); setRejectReason("");
-      loadData();
+      // Optimistic update
+      setSalaryRequests(prev => prev.map(r => r.id === id ? { ...r, status: "rejected", admin_note: rejectReason.trim() } : r));
+      setAllSalaryRequests(prev => prev.map(r => r.id === id ? { ...r, status: "rejected", admin_note: rejectReason.trim() } : r));
+      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
     } catch { toast.error("فشل التحديث"); }
     finally { setSalaryActionLoading(false); }
   };
@@ -547,7 +571,9 @@ const AdminDashboardPage: React.FC = () => {
       });
       toast.success("تم قبول طلب BD");
       setBdAction(null);
-      loadData();
+      // Optimistic update
+      setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
+      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
     } catch { toast.error("فشل قبول الطلب"); }
     finally { setBdActionLoading(false); }
   };
@@ -575,7 +601,9 @@ const AdminDashboardPage: React.FC = () => {
       });
       toast.success("تم رفض الطلب");
       setBdAction(null); setBdRejectReason("");
-      loadData();
+      // Optimistic update
+      setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
+      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
     } catch { toast.error("فشل رفض الطلب"); }
     finally { setBdActionLoading(false); }
   };
@@ -783,40 +811,46 @@ const AdminDashboardPage: React.FC = () => {
       {/* Home Grid */}
       {!activeTab && (
         <div className="max-w-2xl mx-auto p-4 space-y-6">
-          {/* Statistics Cards */}
+          {/* Statistics Cards - Clickable */}
           <div className="grid grid-cols-3 gap-3" dir="rtl">
-            <motion.div
+            <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm"
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setAllRequestsFilter("pending"); setActiveTab("all_requests"); }}
+              className="p-4 rounded-2xl border border-orange-500/30 bg-card/50 backdrop-blur-sm hover:border-orange-500/60 transition-all cursor-pointer"
             >
               <div className="text-center">
                 <div className="text-sm text-muted-foreground mb-1">معلقة</div>
                 <div className="text-3xl font-bold text-orange-500">{stats.pending}</div>
               </div>
-            </motion.div>
-            <motion.div
+            </motion.button>
+            <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-4 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm"
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setAllRequestsFilter("approved"); setActiveTab("all_requests"); }}
+              className="p-4 rounded-2xl border border-green-500/30 bg-card/50 backdrop-blur-sm hover:border-green-500/60 transition-all cursor-pointer"
             >
               <div className="text-center">
                 <div className="text-sm text-muted-foreground mb-1">مقبولة</div>
                 <div className="text-3xl font-bold text-green-500">{stats.approved}</div>
               </div>
-            </motion.div>
-            <motion.div
+            </motion.button>
+            <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="p-4 rounded-2xl border border-border/40 bg-card/50 backdrop-blur-sm"
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { setAllRequestsFilter("rejected"); setActiveTab("all_requests"); }}
+              className="p-4 rounded-2xl border border-red-500/30 bg-card/50 backdrop-blur-sm hover:border-red-500/60 transition-all cursor-pointer"
             >
               <div className="text-center">
                 <div className="text-sm text-muted-foreground mb-1">مرفوضة</div>
                 <div className="text-3xl font-bold text-red-500">{stats.rejected}</div>
               </div>
-            </motion.div>
+            </motion.button>
           </div>
 
           {/* Grid */}
@@ -1607,6 +1641,73 @@ const AdminDashboardPage: React.FC = () => {
                     ⭐ سيتم إضافة النجوم مباشرة إلى رصيد المستخدم وتسجيل العملية في سجل الإهداءات.
                   </p>
                 </div>
+              </motion.div>
+            )}
+
+            {/* Animated Photos Tab */}
+            {activeTab === "animated_photos" && (
+              <motion.div key="animated_photos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {animatedPhotos.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Camera className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد طلبات صور متحركة</p>
+                  </div>
+                )}
+                {animatedPhotos.map((photo) => (
+                  <div key={photo.id} className="bg-card border rounded-xl overflow-hidden">
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                            photo.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
+                            photo.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
+                          }`}>
+                            {photo.status === "pending" ? "معلق" : photo.status === "approved" ? "مقبول" : "مرفوض"}
+                          </span>
+                          <div>
+                            <p className="font-bold text-sm">{photo.user_name}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{photo.user_uuid}</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{new Date(photo.created_at).toLocaleDateString("ar")}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div><span className="text-muted-foreground">المدة:</span> {photo.duration_label}</div>
+                        <div><span className="text-muted-foreground">أعلى مستوى:</span> {photo.max_level}</div>
+                        {photo.description && <div className="col-span-2"><span className="text-muted-foreground">الوصف:</span> {photo.description}</div>}
+                      </div>
+                      {photo.gif_url && (
+                        <a href={photo.gif_url} target="_blank" rel="noopener" className="text-xs text-primary underline">🖼️ عرض الصورة</a>
+                      )}
+                      {photo.status === "pending" && (
+                        <div className="flex gap-2">
+                          <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={async () => {
+                            try {
+                              await adminCall("update_animated_photo", { id: photo.id, status: "approved" });
+                              await supabase.from("notifications").insert({ user_uuid: photo.user_uuid, title: "✅ تم قبول صورتك المتحركة", body: "تم قبول طلب الصورة المتحركة بنجاح!", target: "personal" });
+                              toast.success("تم القبول");
+                              setAnimatedPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: "approved" } : p));
+                              setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
+                            } catch { toast.error("فشل القبول"); }
+                          }}>
+                            <CheckCircle className="w-4 h-4 ml-1" />قبول
+                          </Button>
+                          <Button size="sm" variant="destructive" className="flex-1" onClick={async () => {
+                            try {
+                              await adminCall("update_animated_photo", { id: photo.id, status: "rejected" });
+                              await supabase.from("notifications").insert({ user_uuid: photo.user_uuid, title: "❌ تم رفض صورتك المتحركة", body: "للأسف تم رفض طلب الصورة المتحركة.", target: "personal" });
+                              toast.success("تم الرفض");
+                              setAnimatedPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: "rejected" } : p));
+                              setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
+                            } catch { toast.error("فشل الرفض"); }
+                          }}>
+                            <XCircle className="w-4 h-4 ml-1" />رفض
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </motion.div>
             )}
 
