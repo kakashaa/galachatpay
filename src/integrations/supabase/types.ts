@@ -125,6 +125,42 @@ export type Database = {
         }
         Relationships: []
       }
+      bd_requests_cache: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          request_type: string
+          status: number
+          updated_at: string
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          details?: Json | null
+          id: string
+          request_type?: string
+          status?: number
+          updated_at?: string
+          user_name?: string
+          user_uuid: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          request_type?: string
+          status?: number
+          updated_at?: string
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       custom_gifts: {
         Row: {
           admin_note: string | null

@@ -20,6 +20,7 @@ import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime"
 import { useAnimatedPhotosRealtime } from "@/hooks/use-animated-photos-realtime";
 import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime";
 import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
+import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | null;
 
@@ -305,6 +306,23 @@ const AdminDashboardPage: React.FC = () => {
     );
     loadStats();
   });
+
+  // Realtime subscription for BD requests (cached from external API)
+  useBdRequestsRealtime(
+    (updatedRecord) => {
+      setBdRequests((prev) =>
+        prev.map((r) => (String(r.id) === updatedRecord.id ? { ...r, status: updatedRecord.status, admin_note: updatedRecord.admin_note } : r))
+      );
+      loadStats();
+    },
+    (newRecord) => {
+      setBdRequests((prev) => {
+        if (prev.some((r) => String(r.id) === newRecord.id)) return prev;
+        return [{ id: newRecord.id, user_uuid: newRecord.user_uuid, user_name: newRecord.user_name, request_type: newRecord.request_type, status: newRecord.status, details: newRecord.details || {}, created_at: newRecord.created_at, admin_note: newRecord.admin_note || undefined } as BDRequestItem, ...prev];
+      });
+      loadStats();
+    }
+  );
 
   const loadStats = async () => {
     try {
@@ -616,6 +634,8 @@ const AdminDashboardPage: React.FC = () => {
       // Optimistic update
       setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
       setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
+      // Sync cache table for realtime
+      await supabase.from("bd_requests_cache").upsert({ id: String(reqItem.id), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, status: 1, details: reqItem.details || {}, updated_at: new Date().toISOString() }, { onConflict: "id" });
     } catch { toast.error("فشل قبول الطلب"); }
     finally { setBdActionLoading(false); }
   };
@@ -646,6 +666,8 @@ const AdminDashboardPage: React.FC = () => {
       // Optimistic update
       setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
       setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
+      // Sync cache table for realtime
+      await supabase.from("bd_requests_cache").upsert({ id: String(reqItem.id), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, status: 2, admin_note: bdRejectReason.trim(), details: reqItem.details || {}, updated_at: new Date().toISOString() }, { onConflict: "id" });
     } catch { toast.error("فشل رفض الطلب"); }
     finally { setBdActionLoading(false); }
   };
