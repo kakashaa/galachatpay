@@ -68,15 +68,14 @@ const AnimatedPhotoRequest: React.FC = () => {
     if (!gifFile || !durationConfig?.eligible || !authUser) return;
     setSubmitting(true);
     try {
-      // Upload GIF to storage
+      // Upload GIF via secure proxy
       const fileName = `animated-photos/${authUser.uuid}-${Date.now()}.gif`;
-      const { error: uploadError } = await supabase.storage
-        .from("attachments")
-        .upload(fileName, gifFile, { contentType: "image/gif", upsert: false });
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(fileName);
-      const gifUrl = urlData.publicUrl;
+      const gifUrl = await (await import("@/utils/secureUpload")).secureUpload({
+        file: gifFile,
+        bucket: "attachments",
+        path: fileName,
+        userUuid: authUser.uuid,
+      });
 
       // Save to DB (unique constraint enforces one per user)
       const { error: dbError } = await supabase.from("animated_photo_requests").insert({

@@ -119,29 +119,28 @@ const CustomGiftUpload: React.FC = () => {
 
     setUploading(true);
     try {
-      // Upload video
-      const videoFormData = new FormData();
-      videoFormData.append("file", videoFile);
+      // Upload video via secure proxy
+      const { secureUpload } = await import("@/utils/secureUpload");
       const ext = videoFile.name.split(".").pop();
       const videoPath = `custom-gifts/${user.uuid}_${Date.now()}.${ext}`;
-      const { error: videoUploadErr } = await supabase.storage
-        .from("videos")
-        .upload(videoPath, videoFile, { upsert: true });
-      if (videoUploadErr) throw videoUploadErr;
-      const { data: videoUrlData } = supabase.storage.from("videos").getPublicUrl(videoPath);
-      const videoUrl = videoUrlData.publicUrl;
+      const videoUrl = await secureUpload({
+        file: videoFile,
+        bucket: "videos",
+        path: videoPath,
+        userUuid: user.uuid,
+      });
 
       // Upload thumbnail if provided
       let thumbnailUrl: string | null = null;
       if (thumbnailFile) {
         const thumbExt = thumbnailFile.name.split(".").pop();
         const thumbPath = `custom-gifts/thumb_${user.uuid}_${Date.now()}.${thumbExt}`;
-        const { error: thumbErr } = await supabase.storage
-          .from("attachments")
-          .upload(thumbPath, thumbnailFile, { upsert: true });
-        if (thumbErr) throw thumbErr;
-        const { data: thumbUrlData } = supabase.storage.from("attachments").getPublicUrl(thumbPath);
-        thumbnailUrl = thumbUrlData.publicUrl;
+        thumbnailUrl = await secureUpload({
+          file: thumbnailFile,
+          bucket: "attachments",
+          path: thumbPath,
+          userUuid: user.uuid,
+        });
       }
 
       // Insert record

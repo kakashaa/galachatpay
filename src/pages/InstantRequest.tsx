@@ -94,10 +94,13 @@ const InstantRequest: React.FC = () => {
     try {
       const ext = receiptFile.name.split(".").pop();
       const path = `receipts/${user.uuid}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("attachments").upload(path, receiptFile);
-      if (upErr) return null;
-      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
-      return urlData.publicUrl;
+      const { secureUpload } = await import("@/utils/secureUpload");
+      return await secureUpload({
+        file: receiptFile,
+        bucket: "attachments",
+        path,
+        userUuid: user.uuid,
+      });
     } catch {
       return null;
     } finally {

@@ -9,6 +9,20 @@ const corsHeaders = {
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_EXTENSIONS = new Set(["mp4", "webm", "mov", "avi"]);
 
+const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: string }> = {
+  naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "super_admin" },
+  blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
+};
+
+function validateSessionToken(token: string): boolean {
+  try {
+    const decoded = JSON.parse(atob(token));
+    return !!(decoded.username && ADMIN_ACCOUNTS[decoded.username]);
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -16,13 +30,13 @@ Deno.serve(async (req) => {
 
   try {
     const formData = await req.formData();
-    const password = formData.get("password") as string;
+    const sessionToken = formData.get("session_token") as string;
     const file = formData.get("file") as File;
 
-    const adminPassword = Deno.env.get("ADMIN_PASSWORD");
-    if (!password || password !== adminPassword) {
+    // Validate session token
+    if (!sessionToken || !validateSessionToken(sessionToken)) {
       return new Response(
-        JSON.stringify({ error: "كلمة المرور غير صحيحة" }),
+        JSON.stringify({ error: "غير مصرح" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
