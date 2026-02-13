@@ -653,6 +653,120 @@ export type Database = {
         }
         Relationships: []
       }
+      support_chat_messages: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_name: string
+          sender_type: string
+          sender_uuid: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_name: string
+          sender_type?: string
+          sender_uuid: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_name?: string
+          sender_type?: string
+          sender_uuid?: string
+        }
+        Relationships: []
+      }
+      support_chat_sessions: {
+        Row: {
+          admin_username: string | null
+          created_at: string
+          id: string
+          room_id: string | null
+          status: string
+          updated_at: string
+          user_name: string
+          user_uuid: string
+          vip_level: number
+        }
+        Insert: {
+          admin_username?: string | null
+          created_at?: string
+          id?: string
+          room_id?: string | null
+          status?: string
+          updated_at?: string
+          user_name: string
+          user_uuid: string
+          vip_level?: number
+        }
+        Update: {
+          admin_username?: string | null
+          created_at?: string
+          id?: string
+          room_id?: string | null
+          status?: string
+          updated_at?: string
+          user_name?: string
+          user_uuid?: string
+          vip_level?: number
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          admin_reply: string | null
+          admin_username: string | null
+          created_at: string
+          description: string
+          id: string
+          priority: string
+          replied_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          admin_reply?: string | null
+          admin_username?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string
+          replied_at?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_name: string
+          user_uuid: string
+        }
+        Update: {
+          admin_reply?: string | null
+          admin_username?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string
+          replied_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       user_star_balance: {
         Row: {
           carryover_stars: number

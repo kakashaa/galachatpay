@@ -14,9 +14,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
-import { Camera, Briefcase } from "lucide-react";
+import { Camera, Briefcase, MessageSquare, Headset } from "lucide-react";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | null;
 
 interface BDRequestItem {
   id: string;
@@ -239,6 +239,14 @@ const AdminDashboardPage: React.FC = () => {
   // Audit log state
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
+  // Support state
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  const [supportChats, setSupportChats] = useState<any[]>([]);
+  const [ticketReply, setTicketReply] = useState<{ id: string; text: string } | null>(null);
+  const [ticketReplyLoading, setTicketReplyLoading] = useState(false);
+  const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
+  const [chatReplyInput, setChatReplyInput] = useState("");
+
   useEffect(() => {
     if (!adminPassword) {
       navigate("/admin");
@@ -355,6 +363,22 @@ const AdminDashboardPage: React.FC = () => {
           if (adminRole === "super_admin") {
             setAuditLogs(await adminCall("list_audit_log") || []);
           }
+          break;
+        }
+        case "support_tickets": {
+          const { data } = await supabase
+            .from("support_tickets")
+            .select("*")
+            .order("created_at", { ascending: false });
+          setSupportTickets(data || []);
+          break;
+        }
+        case "support_chats": {
+          const { data } = await supabase
+            .from("support_chat_sessions")
+            .select("*")
+            .order("created_at", { ascending: false });
+          setSupportChats(data || []);
           break;
         }
       }
@@ -648,6 +672,8 @@ const AdminDashboardPage: React.FC = () => {
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
+    { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
+    { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
     ...(adminRole === "super_admin" ? [
       { key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
       { key: "audit_log" as const, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
@@ -1741,6 +1767,91 @@ const AdminDashboardPage: React.FC = () => {
                           </div>
                         </div>
                       ))
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Support Tickets Tab */}
+            {activeTab === "support_tickets" && (
+              <motion.div key="support_tickets" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {supportTickets.length === 0 ? (
+                  <p className="text-center py-10 text-muted-foreground">لا توجد تكتات</p>
+                ) : supportTickets.map((ticket: any) => (
+                  <div key={ticket.id} className="bg-card border rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">{ticket.subject}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${ticket.status === "open" ? "bg-amber-500/10 text-amber-400" : ticket.status === "replied" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                        {ticket.status === "open" ? "مفتوح" : ticket.status === "replied" ? "تم الرد" : "مغلق"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{ticket.user_name} • {ticket.user_uuid}</p>
+                    <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{ticket.description}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(ticket.created_at).toLocaleString("ar-SA")}</p>
+                    {ticket.admin_reply && <p className="text-xs text-primary bg-primary/5 rounded-lg p-2">الرد: {ticket.admin_reply}</p>}
+                    {ticket.status === "open" && (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="اكتب الرد..."
+                          value={chatReplyInput && expandedTicket === ticket.id ? chatReplyInput : ""}
+                          onChange={(e) => { setChatReplyInput(e.target.value); setExpandedTicket(ticket.id); }}
+                          className="flex-1 h-9 text-xs"
+                        />
+                        <Button size="sm" disabled={!chatReplyInput.trim() || expandedTicket !== ticket.id || ticketReplyLoading}
+                          onClick={async () => {
+                            setTicketReplyLoading(true);
+                            try {
+                              await adminCall("reply_ticket", { id: ticket.id, reply: chatReplyInput.trim() });
+                              toast.success("تم الرد");
+                              setChatReplyInput(""); setExpandedTicket(null);
+                              loadData();
+                            } catch { toast.error("فشل الرد"); }
+                            setTicketReplyLoading(false);
+                          }}>رد</Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Support Chats Tab */}
+            {activeTab === "support_chats" && (
+              <motion.div key="support_chats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {supportChats.length === 0 ? (
+                  <p className="text-center py-10 text-muted-foreground">لا توجد محادثات VIP</p>
+                ) : supportChats.map((chat: any) => (
+                  <div key={chat.id} className="bg-card border rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">{chat.user_name}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${chat.status === "waiting" ? "bg-amber-500/10 text-amber-400" : chat.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                        {chat.status === "waiting" ? "بانتظار" : chat.status === "active" ? "نشط" : "مغلق"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">VIP {chat.vip_level} • غرفة: {chat.room_id || "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(chat.created_at).toLocaleString("ar-SA")}</p>
+                    {chat.status !== "closed" && (
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={async () => {
+                          try {
+                            await adminCall("update_chat_session", { id: chat.id, status: "active", admin_username: adminUsername });
+                            toast.success("تم قبول المحادثة");
+                            loadData();
+                          } catch { toast.error("فشل"); }
+                        }}>
+                          <CheckCircle className="w-3 h-3 ml-1" />قبول
+                        </Button>
+                        <Button size="sm" variant="destructive" className="flex-1" onClick={async () => {
+                          try {
+                            await adminCall("update_chat_session", { id: chat.id, status: "closed" });
+                            toast.success("تم إغلاق المحادثة");
+                            loadData();
+                          } catch { toast.error("فشل"); }
+                        }}>
+                          <XCircle className="w-3 h-3 ml-1" />إغلاق
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}

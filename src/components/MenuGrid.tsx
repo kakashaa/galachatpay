@@ -18,7 +18,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { icon: Wallet, label: "سحب راتب", route: "/salary", bg: "rgba(34,197,94,0.12)", iconColor: "text-emerald-400" },
-  { icon: Headset, label: "الدعم السريع", route: "/support", bg: "rgba(59,130,246,0.12)", iconColor: "text-blue-400" },
+  { icon: Headset, label: "الدعم", route: "/support", bg: "rgba(59,130,246,0.12)", iconColor: "text-blue-400" },
   { icon: Fingerprint, label: "تغيير الآيدي", route: "/change-id", bg: "rgba(168,85,247,0.12)", iconColor: "text-purple-400" },
   { icon: Crown, label: "طلب VIP", route: "/request-vip", bg: "rgba(234,179,8,0.12)", iconColor: "text-yellow-400" },
   { icon: Gift, label: "هدية مخصصة", route: "/custom-gift", bg: "rgba(236,72,153,0.12)", iconColor: "text-pink-400" },
