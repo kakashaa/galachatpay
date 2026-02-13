@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, FileText, Headset, User } from "lucide-react";
+import { Home, FileText, MessageSquare, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 
@@ -13,7 +13,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: User, label: "حسابي", path: "/dashboard" },
-  { icon: Headset, label: "الدعم", path: "/support-chat" },
+  { icon: MessageSquare, label: "الدعم", path: "/support/tickets", requiresAuth: true },
   { icon: FileText, label: "طلباتي", path: "/my-requests", requiresAuth: true },
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
 ];
