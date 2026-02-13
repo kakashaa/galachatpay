@@ -9,14 +9,14 @@ import {
   Loader2, Eye, EyeOff, Upload,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift,
-  ArrowRight, Bell,
+  ArrowRight, Bell, ScrollText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
 import { Camera, Briefcase } from "lucide-react";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | null;
 
 interface BDRequestItem {
   id: string;
@@ -236,6 +236,9 @@ const AdminDashboardPage: React.FC = () => {
   // Trash state
   const [trashData, setTrashData] = useState<{ videos: any[]; entries: any[]; frames: any[]; customs: any[] }>({ videos: [], entries: [], frames: [], customs: [] });
 
+  // Audit log state
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+
   useEffect(() => {
     if (!adminPassword) {
       navigate("/admin");
@@ -345,6 +348,12 @@ const AdminDashboardPage: React.FC = () => {
         case "trash": {
           if (adminRole === "super_admin") {
             setTrashData(await adminCall("list_trash") || { videos: [], entries: [], frames: [], customs: [] });
+          }
+          break;
+        }
+        case "audit_log": {
+          if (adminRole === "super_admin") {
+            setAuditLogs(await adminCall("list_audit_log") || []);
           }
           break;
         }
@@ -639,7 +648,10 @@ const AdminDashboardPage: React.FC = () => {
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
-    ...(adminRole === "super_admin" ? [{ key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length }] : []),
+    ...(adminRole === "super_admin" ? [
+      { key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
+      { key: "audit_log" as const, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
+    ] : []),
   ];
 
   // Reusable item card for entries/frames with edit
@@ -1732,6 +1744,71 @@ const AdminDashboardPage: React.FC = () => {
                     )}
                   </div>
                 ))}
+              </motion.div>
+            )}
+
+            {/* Audit Log Tab - Super Admin Only */}
+            {activeTab === "audit_log" && adminRole === "super_admin" && (
+              <motion.div key="audit_log" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-violet-400 leading-relaxed">
+                    📋 سجل جميع عمليات الأدمن (آخر 300 عملية). يتم تسجيل كل إجراء تلقائياً.
+                  </p>
+                </div>
+                {auditLogs.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <ScrollText className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد سجلات</p>
+                  </div>
+                ) : (
+                  auditLogs.map((log: any) => {
+                    const actionLabels: Record<string, string> = {
+                      add_video: "إضافة فيديو",
+                      update_video: "تعديل فيديو",
+                      delete_video: "حذف فيديو",
+                      add_entry_gift: "إضافة دخولية",
+                      update_entry_gift: "تعديل دخولية",
+                      delete_entry_gift: "حذف دخولية",
+                      add_frame: "إضافة إطار",
+                      update_frame: "تعديل إطار",
+                      delete_frame: "حذف إطار",
+                      update_salary_request: "تحديث طلب راتب",
+                      update_ban_report: "تحديث بلاغ",
+                      unblock_account: "فك حظر",
+                      admin_send_stars: "منح نجوم",
+                      update_animated_photo: "تحديث صورة متحركة",
+                      update_custom_gift: "تعديل هدية مخصصة",
+                      delete_custom_gift: "حذف هدية مخصصة",
+                      restore_item: "استعادة عنصر",
+                      permanent_delete: "حذف نهائي",
+                    };
+                    const label = actionLabels[log.action] || log.action;
+                    const details = log.details || {};
+                    const detailStr = Object.entries(details)
+                      .filter(([k]) => k !== "password" && k !== "username")
+                      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
+                      .join(" | ");
+
+                    return (
+                      <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${log.admin_role === "super_admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                              {log.admin_username}
+                            </span>
+                            <span className="text-xs font-bold text-foreground">{label}</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(log.created_at).toLocaleString("ar-SA", { dateStyle: "short", timeStyle: "short" })}
+                          </span>
+                        </div>
+                        {detailStr && (
+                          <p className="text-[11px] text-muted-foreground font-mono truncate" dir="ltr">{detailStr}</p>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </motion.div>
             )}
           </AnimatePresence>

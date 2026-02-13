@@ -44,10 +44,37 @@ Deno.serve(async (req) => {
 
     let result;
 
+    // Audit log helper
+    const logAudit = async (details: Record<string, unknown> = {}) => {
+      try {
+        await supabase.from("admin_audit_log").insert({
+          admin_username: username || "",
+          admin_role: auth.role,
+          action,
+          details,
+        });
+      } catch (e) {
+        console.error("Audit log failed:", e);
+      }
+    };
+
     switch (action) {
       // Auth check - returns role info
       case "auth_check": {
         result = { role: auth.role, username };
+        break;
+      }
+
+      // Audit log (super_admin only)
+      case "list_audit_log": {
+        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        const { data: logs, error } = await supabase
+          .from("admin_audit_log")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(300);
+        if (error) throw error;
+        result = logs;
         break;
       }
 
@@ -430,6 +457,11 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: "إجراء غير معروف" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+    }
+
+    // Auto-log all mutation actions (skip list/read actions)
+    if (!action.startsWith("list_") && action !== "auth_check") {
+      await logAudit(data || {});
     }
 
     return new Response(JSON.stringify({ data: result }), {
