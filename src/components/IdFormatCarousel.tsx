@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Crown, Lock, Sparkles, ArrowLeft } from "lucide-react";
 import { LevelFormats } from "@/data/idFormats";
+import { levelFormats } from "@/data/idFormats";
 
 interface IdFormatCarouselProps {
   availableLevels: LevelFormats[];
@@ -17,46 +18,11 @@ function patternToExample(p: string): string {
     .split("")
     .map((c) => {
       if (c === "X") return 0;
-      if (c === "P") return 5; // special letter in ABCDEP
+      if (c === "P") return 5;
       if (!map[c]) map[c] = next++;
       return map[c];
     })
     .join("");
-}
-
-/** Colour the example digits so repeated ones share a colour */
-function colourDigits(example: string, pattern: string) {
-  const palette = [
-    "text-amber-400",
-    "text-sky-400",
-    "text-emerald-400",
-    "text-rose-400",
-    "text-violet-400",
-    "text-orange-400",
-    "text-teal-400",
-  ];
-  const letterColor: Record<string, string> = {};
-  let colorIdx = 0;
-
-  return example.split("").map((digit, i) => {
-    const letter = pattern[i];
-    if (letter === "X") {
-      return (
-        <span key={i} className="text-muted-foreground/60">
-          {digit}
-        </span>
-      );
-    }
-    if (!letterColor[letter]) {
-      letterColor[letter] = palette[colorIdx % palette.length];
-      colorIdx++;
-    }
-    return (
-      <span key={i} className={`${letterColor[letter]} font-bold`}>
-        {digit}
-      </span>
-    );
-  });
 }
 
 const PatternRow: React.FC<{ pattern: string; index: number }> = ({ pattern, index }) => {
@@ -64,33 +30,25 @@ const PatternRow: React.FC<{ pattern: string; index: number }> = ({ pattern, ind
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.02 }}
-      className="flex items-center justify-between bg-muted/15 rounded-lg px-2.5 py-1.5 gap-3"
+      className="flex items-center justify-between bg-muted/15 rounded-lg px-2.5 py-1.5 gap-2"
       dir="ltr"
     >
-      {/* Pattern */}
-      <span className="text-[11px] font-mono tracking-widest text-muted-foreground min-w-[60px]">
+      <span className="text-[11px] font-mono tracking-widest text-muted-foreground min-w-[55px]">
         {pattern}
       </span>
-      {/* Arrow */}
-      <ArrowLeft className="w-3 h-3 text-muted-foreground/40 shrink-0" />
-      {/* Coloured example */}
-      <span className="text-sm font-mono tracking-[0.2em] min-w-[60px] text-right">
-        {colourDigits(example, pattern)}
+      <ArrowLeft className="w-3 h-3 text-muted-foreground/30 shrink-0" />
+      <span className="text-[11px] font-mono text-foreground/70 min-w-[55px] text-right">
+        مثال: {example}
       </span>
     </motion.div>
   );
 };
 
-const DigitSection: React.FC<{ digits: number; patterns: string[]; groupIdx: number }> = ({
-  digits,
-  patterns,
-  groupIdx,
-}) => (
+const DigitSection: React.FC<{ digits: number; patterns: string[] }> = ({ digits, patterns }) => (
   <div className="space-y-1.5">
-    {/* Digit count header */}
     <div className="flex items-center gap-2 mb-2" dir="rtl">
       <div className="h-6 w-6 rounded-md gold-gradient flex items-center justify-center">
         <span className="text-primary-foreground font-bold text-[10px]">{digits}</span>
@@ -98,7 +56,6 @@ const DigitSection: React.FC<{ digits: number; patterns: string[]; groupIdx: num
       <span className="text-xs font-bold text-foreground">{digits} أرقام</span>
       <span className="text-[10px] text-muted-foreground mr-auto">({patterns.length} صيغة)</span>
     </div>
-    {/* Patterns grid — 2 columns for compact view */}
     <div className="grid grid-cols-2 gap-1.5">
       {patterns.map((p, idx) => (
         <PatternRow key={p} pattern={p} index={idx} />
@@ -112,22 +69,29 @@ const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({
   currentLevelIndex,
   maxLevel,
 }) => {
-  const [activeIndex, setActiveIndex] = useState(currentLevelIndex);
-  const activeLevel = availableLevels[activeIndex];
+  // Show ALL levels (including locked ones) so user can preview
+  const allLevels = levelFormats;
+  const activeCurrentIndex = allLevels.findIndex(
+    (l) => maxLevel >= l.minLevel && maxLevel <= l.maxLevel
+  );
+  const [activeIndex, setActiveIndex] = useState(Math.max(0, activeCurrentIndex));
+  const activeLevel = allLevels[activeIndex];
 
   if (!activeLevel) return null;
 
   const isCurrentLevel = maxLevel >= activeLevel.minLevel && maxLevel <= activeLevel.maxLevel;
+  const isLocked = maxLevel < activeLevel.minLevel;
   const canGoLeft = activeIndex > 0;
-  const canGoRight = activeIndex < availableLevels.length - 1;
+  const canGoRight = activeIndex < allLevels.length - 1;
 
   return (
     <div className="space-y-3">
       {/* Level navigation pills */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" dir="rtl">
-        {availableLevels.map((level, idx) => {
+        {allLevels.map((level, idx) => {
           const isCurrent = maxLevel >= level.minLevel && maxLevel <= level.maxLevel;
           const isActive = idx === activeIndex;
+          const isUnlocked = maxLevel >= level.minLevel;
 
           return (
             <button
@@ -138,12 +102,14 @@ const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({
                   ? "gold-gradient text-primary-foreground border-primary/30 shadow-md"
                   : isCurrent
                   ? "bg-primary/15 text-primary border-primary/25"
-                  : "bg-muted/20 text-muted-foreground border-border/20"
+                  : isUnlocked
+                  ? "bg-muted/20 text-muted-foreground border-border/20"
+                  : "bg-muted/10 text-muted-foreground/50 border-border/10"
               }`}
             >
               {isCurrent ? (
                 <Crown className="w-3 h-3" />
-              ) : idx <= currentLevelIndex ? (
+              ) : isUnlocked ? (
                 <Sparkles className="w-3 h-3" />
               ) : (
                 <Lock className="w-3 h-3" />
@@ -173,6 +139,11 @@ const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({
                   أنت هنا
                 </span>
               )}
+              {isLocked && (
+                <span className="text-[9px] font-bold text-muted-foreground bg-muted/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5" /> مقفل
+                </span>
+              )}
             </div>
             <span className="text-[10px] text-muted-foreground">
               {activeLevel.groups.reduce((s, g) => s + g.patterns.length, 0)} صيغة
@@ -186,13 +157,8 @@ const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({
           </div>
 
           {/* Digit groups */}
-          {activeLevel.groups.map((group, gIdx) => (
-            <DigitSection
-              key={group.digits}
-              digits={group.digits}
-              patterns={group.patterns}
-              groupIdx={gIdx}
-            />
+          {activeLevel.groups.map((group) => (
+            <DigitSection key={group.digits} digits={group.digits} patterns={group.patterns} />
           ))}
 
           {/* Prev / Next arrows */}
@@ -205,7 +171,7 @@ const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({
               <ChevronLeft className="w-4 h-4 text-foreground" />
             </button>
             <div className="flex gap-1">
-              {availableLevels.map((_, idx) => (
+              {allLevels.map((_, idx) => (
                 <div
                   key={idx}
                   className={`w-1.5 h-1.5 rounded-full transition-colors ${
