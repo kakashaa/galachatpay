@@ -6,18 +6,33 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Admin accounts with roles
+const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "super_admin" | "admin" }> = {
+  naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "super_admin" },
+  blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
+};
+
+function authenticateAdmin(username: string, password: string): { role: "super_admin" | "admin" } | null {
+  const account = ADMIN_ACCOUNTS[username];
+  if (!account) return null;
+  const expectedPassword = Deno.env.get(account.envKey);
+  if (!expectedPassword || password !== expectedPassword) return null;
+  return { role: account.role };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { password, action, data } = await req.json();
+    const { username, password, action, data } = await req.json();
 
-    const adminPassword = Deno.env.get("ADMIN_PASSWORD");
-    if (!password || password !== adminPassword) {
+    // Support legacy password-only auth (fallback)
+    const auth = authenticateAdmin(username || "", password || "");
+    if (!auth) {
       return new Response(
-        JSON.stringify({ error: "كلمة المرور غير صحيحة" }),
+        JSON.stringify({ error: "بيانات الدخول غير صحيحة" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -30,11 +45,18 @@ Deno.serve(async (req) => {
     let result;
 
     switch (action) {
+      // Auth check - returns role info
+      case "auth_check": {
+        result = { role: auth.role, username };
+        break;
+      }
+
       // Video tutorials CRUD
       case "list_videos": {
         const { data: videos, error } = await supabase
           .from("video_tutorials")
           .select("*")
+          .eq("is_deleted", false)
           .order("display_order", { ascending: true });
         if (error) throw error;
         result = videos;
@@ -57,9 +79,10 @@ Deno.serve(async (req) => {
         break;
       }
       case "delete_video": {
+        // Soft delete
         const { error } = await supabase
           .from("video_tutorials")
-          .delete()
+          .update({ is_deleted: true, deleted_at: new Date().toISOString() })
           .eq("id", data.id);
         if (error) throw error;
         result = { success: true };
@@ -119,6 +142,7 @@ Deno.serve(async (req) => {
         const { data: entryGifts, error } = await supabase
           .from("entry_gifts")
           .select("*")
+          .eq("is_deleted", false)
           .order("display_order", { ascending: true });
         if (error) throw error;
         result = entryGifts;
@@ -141,9 +165,10 @@ Deno.serve(async (req) => {
         break;
       }
       case "delete_entry_gift": {
+        // Soft delete
         const { error } = await supabase
           .from("entry_gifts")
-          .delete()
+          .update({ is_deleted: true, deleted_at: new Date().toISOString() })
           .eq("id", data.id);
         if (error) throw error;
         result = { success: true };
@@ -155,6 +180,7 @@ Deno.serve(async (req) => {
         const { data: frames, error } = await supabase
           .from("frames")
           .select("*")
+          .eq("is_deleted", false)
           .order("display_order", { ascending: true });
         if (error) throw error;
         result = frames;
@@ -177,9 +203,10 @@ Deno.serve(async (req) => {
         break;
       }
       case "delete_frame": {
+        // Soft delete
         const { error } = await supabase
           .from("frames")
-          .delete()
+          .update({ is_deleted: true, deleted_at: new Date().toISOString() })
           .eq("id", data.id);
         if (error) throw error;
         result = { success: true };
@@ -212,6 +239,7 @@ Deno.serve(async (req) => {
         const { data: customGifts, error } = await supabase
           .from("custom_gifts")
           .select("*")
+          .eq("is_deleted", false)
           .order("created_at", { ascending: false });
         if (error) throw error;
         result = customGifts;
@@ -228,9 +256,10 @@ Deno.serve(async (req) => {
         break;
       }
       case "delete_custom_gift": {
+        // Soft delete
         const { error } = await supabase
           .from("custom_gifts")
-          .delete()
+          .update({ is_deleted: true, deleted_at: new Date().toISOString() })
           .eq("id", data.id);
         if (error) throw error;
         result = { success: true };
@@ -299,7 +328,6 @@ Deno.serve(async (req) => {
         
         const currentMonth = new Date().toISOString().slice(0, 7);
         
-        // Check if user has a star balance record
         const { data: existing } = await supabase
           .from("user_star_balance")
           .select("*")
@@ -329,7 +357,6 @@ Deno.serve(async (req) => {
           if (error) throw error;
         }
         
-        // Log the gift
         await supabase.from("star_gift_logs").insert({
           sender_uuid: "admin",
           sender_name: "الإدارة",
@@ -337,7 +364,6 @@ Deno.serve(async (req) => {
           amount,
         });
         
-        // Notify the user
         await supabase.from("notifications").insert({
           user_uuid: target_uuid,
           title: "⭐ تم منحك نجوم",
@@ -345,6 +371,56 @@ Deno.serve(async (req) => {
           target: "personal",
         });
         
+        result = { success: true };
+        break;
+      }
+
+      // ========== TRASH MANAGEMENT (super_admin only) ==========
+      case "list_trash": {
+        if (auth.role !== "super_admin") throw new Error("غير مصرح لك بالوصول للمحذوفات");
+        
+        const [videos, entries, frames, customs] = await Promise.all([
+          supabase.from("video_tutorials").select("*").eq("is_deleted", true).order("deleted_at", { ascending: false }),
+          supabase.from("entry_gifts").select("*").eq("is_deleted", true).order("deleted_at", { ascending: false }),
+          supabase.from("frames").select("*").eq("is_deleted", true).order("deleted_at", { ascending: false }),
+          supabase.from("custom_gifts").select("*").eq("is_deleted", true).order("deleted_at", { ascending: false }),
+        ]);
+        
+        result = {
+          videos: videos.data || [],
+          entries: entries.data || [],
+          frames: frames.data || [],
+          customs: customs.data || [],
+        };
+        break;
+      }
+      
+      case "restore_item": {
+        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        const { table, id } = data;
+        const allowedTables = ["video_tutorials", "entry_gifts", "frames", "custom_gifts"];
+        if (!allowedTables.includes(table)) throw new Error("جدول غير مسموح");
+        
+        const { error } = await supabase
+          .from(table)
+          .update({ is_deleted: false, deleted_at: null })
+          .eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      
+      case "permanent_delete": {
+        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        const { table: delTable, id: delId } = data;
+        const allowedDelTables = ["video_tutorials", "entry_gifts", "frames", "custom_gifts"];
+        if (!allowedDelTables.includes(delTable)) throw new Error("جدول غير مسموح");
+        
+        const { error } = await supabase
+          .from(delTable)
+          .delete()
+          .eq("id", delId);
+        if (error) throw error;
         result = { success: true };
         break;
       }
