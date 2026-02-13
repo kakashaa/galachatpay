@@ -1,24 +1,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Headset, Send, CheckCircle2, Clock } from "lucide-react";
-import MobileLayout from "@/components/MobileLayout";
+import { Send, CheckCircle2, Clock, ArrowRight, Zap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 
 const COOLDOWN_KEY = "quick_support_cooldown";
-const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const COOLDOWN_MS = 5 * 60 * 1000;
 
 const QuickSupport: React.FC = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
   const [roomCode, setRoomCode] = useState("");
-  const [userName, setUserName] = useState(authUser?.name || "");
-  const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
-  // Check cooldown on mount and tick
   const checkCooldown = useCallback(() => {
     const savedTime = localStorage.getItem(COOLDOWN_KEY);
     if (savedTime) {
@@ -55,14 +52,11 @@ const QuickSupport: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           room_code: roomCode.trim(),
-          ...(userName.trim() && { user_name: userName.trim() }),
-          ...(message.trim() && { message: message.trim() }),
+          ...(authUser?.name && { user_name: authUser.name }),
         }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "فشل إرسال الطلب");
-
-      // Set cooldown
       localStorage.setItem(COOLDOWN_KEY, String(Date.now() + COOLDOWN_MS));
       setSubmitted(true);
       toast.success("تم إرسال طلبك بنجاح!");
@@ -73,124 +67,181 @@ const QuickSupport: React.FC = () => {
     }
   };
 
-  if (submitted) {
-    return (
-      <MobileLayout showHeader headerTitle="دعم سريع" onBack={() => navigate(-1)}>
-        <div className="flex flex-col items-center justify-center px-6 py-20">
-          <div className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6 animate-in zoom-in duration-300">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400" />
-          </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلبك!</h2>
-          <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            سيتواصل معك المسؤول قريباً
-          </p>
-          <button
-            onClick={() => navigate(-1)}
-            className="mt-8 w-full h-12 rounded-xl border border-primary/30 text-primary font-bold bg-primary/5 hover:bg-primary/10 transition-colors active:scale-95"
-          >
-            رجوع
-          </button>
-        </div>
-      </MobileLayout>
-    );
-  }
-
   const isCoolingDown = cooldownRemaining > 0;
 
   return (
-    <MobileLayout showHeader headerTitle="دعم سريع" onBack={() => navigate(-1)}>
-      <div className="px-5 py-6 space-y-6">
-        {/* Header */}
-        <div className="glass-card p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Headset className="w-6 h-6 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">طلب سوبر أدمن للغرفة</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              اكتب رقم غرفتك وسوبر أدمن بيدخل الغرفة ويتواصل معك مباشرة
-            </p>
-          </div>
-        </div>
+    <div className="mobile-container bg-background min-h-screen flex flex-col" dir="rtl">
+      {/* Header */}
+      <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/90 backdrop-blur-xl border-b border-border/30">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors"
+        >
+          <ArrowRight className="w-5 h-5 text-primary" />
+          <span className="text-sm font-semibold text-primary">رجوع</span>
+        </button>
+        <h1 className="text-sm font-bold text-foreground">دعم سريع</h1>
+        <div className="w-16" />
+      </header>
 
-        {/* Cooldown warning */}
-        {isCoolingDown && (
-          <div className="glass-card p-3 flex items-center gap-3 border-amber-500/30 border">
-            <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
-            <div>
-              <p className="text-xs font-bold text-foreground">انتظر قبل إرسال طلب جديد</p>
-              <p className="text-[11px] text-muted-foreground">
-                متبقي: <span className="text-amber-400 font-bold">{formatCooldown(cooldownRemaining)}</span>
-              </p>
-            </div>
-          </div>
-        )}
+      <div className="flex-1 flex flex-col px-5 py-6">
+        <AnimatePresence mode="wait">
+          {submitted ? (
+            /* ─── Success State ─── */
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="flex-1 flex flex-col items-center justify-center"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.1 }}
+                className="w-24 h-24 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6"
+              >
+                <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+              </motion.div>
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="text-lg font-bold text-foreground mb-2"
+              >
+                تم إرسال طلبك! ✅
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+                className="text-sm text-muted-foreground text-center leading-relaxed"
+              >
+                سوبر أدمن بيدخل غرفتك خلال دقائق
+              </motion.p>
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                onClick={() => navigate(-1)}
+                className="mt-8 w-full h-12 rounded-xl border border-primary/30 text-primary font-bold bg-primary/5 hover:bg-primary/10 transition-colors active:scale-95"
+              >
+                رجوع
+              </motion.button>
+            </motion.div>
+          ) : (
+            /* ─── Main Form ─── */
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="space-y-5"
+            >
+              {/* Animated Hero */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                className="text-center py-4"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.1 }}
+                  className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/30 flex items-center justify-center mb-4"
+                >
+                  <motion.div
+                    animate={{ rotate: [0, -10, 10, -5, 0] }}
+                    transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
+                  >
+                    <Zap className="w-9 h-9 text-primary" />
+                  </motion.div>
+                </motion.div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">
-              رقم الغرفة <span className="text-destructive">*</span>
-            </label>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              اكتب رقم أو كود غرفتك عشان السوبر أدمن يدخلها ويتكلم معك
-            </p>
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value)}
-              placeholder="مثال: 12345"
-              required
-              maxLength={20}
-              className="w-full h-12 px-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-              dir="ltr"
-            />
-          </div>
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-base font-bold text-foreground leading-relaxed"
+                >
+                  عشان وقتك مهم عندنا ⚡
+                </motion.p>
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 }}
+                  className="text-[13px] text-muted-foreground leading-relaxed mt-2 max-w-[280px] mx-auto"
+                >
+                  اعطينا كود الغرفة اللي أنت متواجد فيها
+                  <br />
+                  وسوبر أدمن <span className="text-primary font-bold">بيجيك خلال دقائق</span>
+                </motion.p>
+              </motion.div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">اسمك</label>
-            <input
-              type="text"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder="اختياري"
-              maxLength={50}
-              className="w-full h-12 px-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-            />
-          </div>
+              {/* Cooldown */}
+              {isCoolingDown && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="glass-card p-3 flex items-center gap-3 border-amber-500/30 border"
+                >
+                  <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold text-foreground">انتظر قبل إرسال طلب جديد</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      متبقي: <span className="text-amber-400 font-bold">{formatCooldown(cooldownRemaining)}</span>
+                    </p>
+                  </div>
+                </motion.div>
+              )}
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-bold text-foreground">رسالتك</label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="اختياري — اكتب رسالتك هنا..."
-              rows={3}
-              maxLength={300}
-              className="w-full p-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none text-sm leading-relaxed"
-            />
-            <p className="text-[11px] text-muted-foreground text-left" dir="ltr">
-              {message.length}/300
-            </p>
-          </div>
+              {/* Room Code Input */}
+              <motion.form
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45 }}
+                onSubmit={handleSubmit}
+                className="space-y-4"
+              >
+                <div className="glass-card p-4 space-y-3">
+                  <label className="text-sm font-bold text-foreground flex items-center gap-2">
+                    🏠 كود الغرفة
+                  </label>
+                  <input
+                    type="text"
+                    value={roomCode}
+                    onChange={(e) => setRoomCode(e.target.value)}
+                    placeholder="اكتب رقم أو كود الغرفة..."
+                    required
+                    autoFocus
+                    maxLength={20}
+                    className="w-full h-14 px-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/30 outline-none transition-all text-base text-center tracking-wider font-bold"
+                    dir="ltr"
+                  />
+                </div>
 
-          <button
-            type="submit"
-            disabled={!roomCode.trim() || submitting || isCoolingDown}
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity active:scale-95"
-          >
-            {submitting ? (
-              <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-            ) : (
-              <>
-                <Send className="w-5 h-5" />
-                إرسال
-              </>
-            )}
-          </button>
-        </form>
+                <motion.button
+                  type="submit"
+                  disabled={!roomCode.trim() || submitting || isCoolingDown}
+                  whileTap={{ scale: 0.96 }}
+                  className="w-full h-13 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity text-base py-3.5"
+                >
+                  {submitting ? (
+                    <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      أرسل الطلب
+                    </>
+                  )}
+                </motion.button>
+              </motion.form>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </MobileLayout>
+    </div>
   );
 };
 
