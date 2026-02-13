@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { useSuccessChime } from "@/hooks/use-success-chime";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -22,6 +23,7 @@ const COOLDOWN_MS = 5 * 60 * 1000;
 const QuickSupport: React.FC = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
+  const playSuccessChime = useSuccessChime();
   const [roomCode, setRoomCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -67,6 +69,7 @@ const QuickSupport: React.FC = () => {
       if (error) throw error;
       if (data && !data.ok) throw new Error(data.error || "فشل إرسال الطلب");
       localStorage.setItem(COOLDOWN_KEY, String(Date.now() + COOLDOWN_MS));
+      playSuccessChime();
       setSubmitted(true);
       toast.success("تم إرسال طلبك بنجاح!");
     } catch (err: any) {
