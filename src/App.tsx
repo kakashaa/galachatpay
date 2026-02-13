@@ -35,6 +35,7 @@ const AdminDashboardPage = lazy(() => import("./pages/AdminDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const PolicyPage = lazy(() => import("./pages/PolicyPage"));
+const QuickSupport = lazy(() => import("./pages/QuickSupport"));
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/policy" element={<PolicyPage />} />
+              <Route path="/quick-support" element={<QuickSupport />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
