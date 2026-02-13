@@ -8,7 +8,7 @@ serve(async (req) => {
   }
 
   try {
-    const { uuid, type, value, user_name } = await req.json();
+    const { uuid, type, value, user_name, type_user } = await req.json();
 
     if (!uuid || !type) {
       return new Response(
@@ -27,16 +27,22 @@ serve(async (req) => {
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
       // Check if user already requested VIP this month
-      const { data: existing } = await sb
+      const isAgent = type_user >= 3;
+      const limit = isAgent ? 5 : 1; // Agents: 5 requests/month, Regular users: 1 request/month
+      
+      const { data: requests } = await sb
         .from("vip_requests")
-        .select("id")
+        .select("id", { count: "exact" })
         .eq("user_uuid", uuid)
-        .eq("request_month", currentMonth)
-        .maybeSingle();
+        .eq("request_month", currentMonth);
 
-      if (existing) {
+      const requestCount = requests?.length || 0;
+      if (requestCount >= limit) {
+        const limitText = isAgent 
+          ? "لقد استخدمت حد الـ 5 طلبات لهذا الشهر." 
+          : "لقد استخدمت طلبك هذا الشهر. الطلب متاح مرة واحدة شهرياً.";
         return new Response(
-          JSON.stringify({ success: false, error: "لقد استخدمت طلبك هذا الشهر. الطلب متاح مرة واحدة شهرياً." }),
+          JSON.stringify({ success: false, error: limitText }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -78,6 +84,7 @@ serve(async (req) => {
         user_name: user_name || "",
         vip_level: value,
         request_month: currentMonth,
+        type_user: type_user || 0,
       });
 
       return new Response(JSON.stringify(data), {
