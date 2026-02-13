@@ -348,6 +348,136 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ========== SUPPORT TICKETS MANAGEMENT ==========
+      case "list_support_tickets": {
+        const { data: tickets, error } = await supabase
+          .from("support_tickets")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        result = tickets;
+        break;
+      }
+      case "reply_ticket": {
+        const { ticket_id, admin_reply } = data;
+        if (!ticket_id || !admin_reply) throw new Error("معرف التكت والرد مطلوبان");
+        
+        const { error } = await supabase
+          .from("support_tickets")
+          .update({
+            admin_reply,
+            status: "replied",
+            admin_username: username,
+            replied_at: new Date().toISOString(),
+          })
+          .eq("id", ticket_id);
+        if (error) throw error;
+        
+        // Get ticket to get user_uuid and notify them
+        const { data: ticket } = await supabase
+          .from("support_tickets")
+          .select("user_uuid, subject")
+          .eq("id", ticket_id)
+          .single();
+        
+        if (ticket?.user_uuid) {
+          await supabase.from("notifications").insert({
+            user_uuid: ticket.user_uuid,
+            title: "✅ تم الرد على تكتك",
+            body: `تم الرد على تكتك: ${ticket.subject}`,
+            target: "personal",
+          });
+        }
+        
+        result = { success: true };
+        break;
+      }
+      case "close_ticket": {
+        const { ticket_id } = data;
+        if (!ticket_id) throw new Error("معرف التكت مطلوب");
+        
+        const { error } = await supabase
+          .from("support_tickets")
+          .update({ status: "closed" })
+          .eq("id", ticket_id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      // ========== SUPPORT CHAT MANAGEMENT ==========
+      case "list_vip_chat_sessions": {
+        const { data: sessions, error } = await supabase
+          .from("support_chat_sessions")
+          .select("*")
+          .eq("status", "waiting")
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        result = sessions;
+        break;
+      }
+      case "accept_vip_chat": {
+        const { session_id } = data;
+        if (!session_id) throw new Error("معرف الجلسة مطلوب");
+        
+        const { error } = await supabase
+          .from("support_chat_sessions")
+          .update({
+            status: "active",
+            admin_username: username,
+          })
+          .eq("id", session_id);
+        if (error) throw error;
+        
+        // Notify user that admin accepted
+        const { data: session } = await supabase
+          .from("support_chat_sessions")
+          .select("user_uuid, user_name")
+          .eq("id", session_id)
+          .single();
+        
+        if (session?.user_uuid) {
+          await supabase.from("notifications").insert({
+            user_uuid: session.user_uuid,
+            title: "👨‍💼 تم قبول طلبك",
+            body: `تم قبول طلب الدعم السريع، ${username} سيساعدك الآن.`,
+            target: "personal",
+          });
+        }
+        
+        result = { success: true };
+        break;
+      }
+      case "close_vip_chat": {
+        const { session_id } = data;
+        if (!session_id) throw new Error("معرف الجلسة مطلوب");
+        
+        const { error } = await supabase
+          .from("support_chat_sessions")
+          .update({ status: "closed" })
+          .eq("id", session_id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "send_chat_message": {
+        const { session_id, message } = data;
+        if (!session_id || !message) throw new Error("معرف الجلسة والرسالة مطلوبان");
+        
+        const { error } = await supabase
+          .from("support_chat_messages")
+          .insert({
+            chat_id: session_id,
+            sender_uuid: "admin",
+            sender_name: username,
+            sender_type: "admin",
+            message,
+          });
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       // Admin send stars
       case "admin_send_stars": {
         const { target_uuid, amount } = data;
