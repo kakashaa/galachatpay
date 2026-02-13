@@ -25,6 +25,25 @@ const SupportHub: React.FC = () => {
 
         {/* VIP Quick Support */}
         <button
+          onClick={() => navigate("/quick-support")}
+          className="w-full glass-card p-4 relative overflow-hidden group transition-all active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-4" dir="rtl">
+            <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <Headset className="w-7 h-7 text-primary" />
+            </div>
+            <div className="flex-1 text-right">
+              <h3 className="text-sm font-bold text-foreground">دعم سريع</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                أدخل رقم الغرفة وسيتواصل معك المسؤول فوراً
+              </p>
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
+        </button>
+
+        {/* VIP Chat */}
+        <button
           onClick={() => hasVipAccess ? navigate("/support/vip-chat") : undefined}
           disabled={!hasVipAccess}
           className="w-full glass-card p-4 relative overflow-hidden group transition-all active:scale-[0.98] disabled:opacity-60"
@@ -40,7 +59,7 @@ const SupportHub: React.FC = () => {
             </div>
             <div className="flex-1 text-right">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-foreground">الدعم السريع</h3>
+                <h3 className="text-sm font-bold text-foreground">شات VIP</h3>
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-bold">VIP</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
