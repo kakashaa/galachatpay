@@ -1,32 +1,36 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Lock, ArrowRight, Loader2, AlertCircle } from "lucide-react";
+import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password.trim()) {
-      setError("يرجى إدخال كلمة المرور");
+    if (!username.trim() || !password.trim()) {
+      setError("يرجى إدخال اسم المستخدم وكلمة المرور");
       return;
     }
     setLoading(true);
     setError("");
     try {
       const { data, error: fnError } = await supabase.functions.invoke("admin-manage", {
-        body: { password, action: "list_videos", data: {} },
+        body: { username: username.trim(), password, action: "auth_check", data: {} },
       });
       if (fnError || !data?.data) {
-        setError("كلمة المرور غير صحيحة");
+        setError("بيانات الدخول غير صحيحة");
         setLoading(false);
         return;
       }
+      // Store credentials and role in session
+      sessionStorage.setItem("admin_username", username.trim());
       sessionStorage.setItem("admin_token", password);
+      sessionStorage.setItem("admin_role", data.data.role);
       navigate("/admin/dashboard", { replace: true });
     } catch {
       setError("حدث خطأ. حاول مرة أخرى.");
@@ -48,6 +52,23 @@ const AdminLogin: React.FC = () => {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4 css-fade-up-d2">
+          {/* Username */}
+          <div className="relative">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <User className="w-5 h-5" />
+            </div>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="اسم المستخدم"
+              dir="ltr"
+              autoComplete="username"
+              className="w-full h-14 pr-12 pl-4 rounded-2xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none backdrop-blur-md text-right"
+            />
+          </div>
+
+          {/* Password */}
           <div className="relative">
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
               <Lock className="w-5 h-5" />
@@ -56,8 +77,9 @@ const AdminLogin: React.FC = () => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="كلمة مرور المسؤول"
+              placeholder="كلمة المرور"
               dir="ltr"
+              autoComplete="current-password"
               className="w-full h-14 pr-12 pl-4 rounded-2xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none backdrop-blur-md text-right"
             />
           </div>

@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Camera, Briefcase } from "lucide-react";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | null;
 
 interface BDRequestItem {
   id: string;
@@ -229,6 +229,12 @@ const AdminDashboardPage: React.FC = () => {
   const [bdActionLoading, setBdActionLoading] = useState(false);
 
   const adminPassword = sessionStorage.getItem("admin_token");
+  const adminUsername = sessionStorage.getItem("admin_username");
+  const adminRole = sessionStorage.getItem("admin_role") as "super_admin" | "admin" | null;
+  const isSuperAdmin = adminRole === "super_admin";
+
+  // Trash state
+  const [trashData, setTrashData] = useState<{ videos: any[]; entries: any[]; frames: any[]; customs: any[] }>({ videos: [], entries: [], frames: [], customs: [] });
 
   useEffect(() => {
     if (!adminPassword) {
@@ -260,7 +266,7 @@ const AdminDashboardPage: React.FC = () => {
 
   const adminCall = async (action: string, data: any = {}) => {
     const { data: result, error } = await supabase.functions.invoke("admin-manage", {
-      body: { password: adminPassword, action, data },
+      body: { username: adminUsername, password: adminPassword, action, data },
     });
     if (error) throw error;
     if (result?.error) throw new Error(result.error);
@@ -336,6 +342,12 @@ const AdminDashboardPage: React.FC = () => {
           }
           break;
         }
+        case "trash": {
+          if (adminRole === "super_admin") {
+            setTrashData(await adminCall("list_trash") || { videos: [], entries: [], frames: [], customs: [] });
+          }
+          break;
+        }
       }
     } catch (err) {
       console.error(err);
@@ -347,6 +359,8 @@ const AdminDashboardPage: React.FC = () => {
 
   const handleLogout = () => {
     sessionStorage.removeItem("admin_token");
+    sessionStorage.removeItem("admin_username");
+    sessionStorage.removeItem("admin_role");
     navigate("/admin");
   };
 
@@ -625,6 +639,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
+    ...(adminRole === "super_admin" ? [{ key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length }] : []),
   ];
 
   // Reusable item card for entries/frames with edit
@@ -713,9 +728,15 @@ const AdminDashboardPage: React.FC = () => {
               {activeTab ? tabs.find(t => t.key === activeTab)?.label : "لوحة التحكم"}
             </h1>
           </div>
-          <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-muted transition-colors">
-            <LogOut className="w-5 h-5 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground font-mono">{adminUsername}</span>
+            {adminRole === "super_admin" && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">رئيسي</span>
+            )}
+            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-muted transition-colors">
+              <LogOut className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1645,6 +1666,72 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
                   );
                 })}
+              </motion.div>
+            )}
+
+            {/* Trash Tab - Super Admin Only */}
+            {activeTab === "trash" && adminRole === "super_admin" && (
+              <motion.div key="trash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                {/* Trash sections */}
+                {[
+                  { key: "videos", label: "فيديوهات محذوفة", items: trashData.videos, table: "video_tutorials" },
+                  { key: "entries", label: "دخوليات محذوفة", items: trashData.entries, table: "entry_gifts" },
+                  { key: "frames", label: "إطارات محذوفة", items: trashData.frames, table: "frames" },
+                  { key: "customs", label: "هدايا مخصصة محذوفة", items: trashData.customs, table: "custom_gifts" },
+                ].map((section) => (
+                  <div key={section.key} className="space-y-3">
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Trash2 className="w-4 h-4 text-muted-foreground" />
+                      {section.label}
+                      <span className="text-xs text-muted-foreground">({section.items.length})</span>
+                    </h3>
+                    {section.items.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-4">لا توجد عناصر محذوفة</p>
+                    ) : (
+                      section.items.map((item: any) => (
+                        <div key={item.id} className="bg-card border border-border/40 rounded-xl p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-sm">{item.title || item.user_name || "بدون عنوان"}</h4>
+                            <span className="text-[10px] text-muted-foreground">
+                              {item.deleted_at ? new Date(item.deleted_at).toLocaleDateString("ar-SA") : ""}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 text-green-500 border-green-500/30 hover:bg-green-500/10"
+                              onClick={async () => {
+                                try {
+                                  await adminCall("restore_item", { table: section.table, id: item.id });
+                                  toast.success("تم استعادة العنصر");
+                                  loadData();
+                                } catch { toast.error("فشل الاستعادة"); }
+                              }}
+                            >
+                              <CheckCircle className="w-4 h-4 ml-1" />استعادة
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="flex-1"
+                              onClick={async () => {
+                                if (!confirm("هل أنت متأكد من الحذف النهائي؟ لا يمكن التراجع!")) return;
+                                try {
+                                  await adminCall("permanent_delete", { table: section.table, id: item.id });
+                                  toast.success("تم الحذف نهائياً");
+                                  loadData();
+                                } catch { toast.error("فشل الحذف"); }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 ml-1" />حذف نهائي
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ))}
               </motion.div>
             )}
           </AnimatePresence>
