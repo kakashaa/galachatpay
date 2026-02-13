@@ -59,7 +59,7 @@ const SupportTickets: React.FC = () => {
         table: "support_tickets",
       }, (payload) => {
         const updated = payload.new as any;
-        if (updated.user_uuid === user.uuid) {
+        if (updated.user_uuid === user.id.toString()) {
           setTickets((prev) =>
             prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
           );
@@ -80,7 +80,7 @@ const SupportTickets: React.FC = () => {
     const { data } = await supabase
       .from("support_tickets")
       .select("*")
-      .eq("user_uuid", user.uuid)
+      .eq("user_uuid", user.id.toString())
       .order("created_at", { ascending: false });
 
     if (data) {
@@ -99,7 +99,7 @@ const SupportTickets: React.FC = () => {
     setSubmitting(true);
     try {
       const { error } = await supabase.from("support_tickets").insert({
-        user_uuid: user.uuid,
+        user_uuid: user.id.toString(),
         user_name: user.name,
         subject,
         description: description.trim(),
