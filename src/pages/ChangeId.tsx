@@ -114,7 +114,7 @@ const ChangeId: React.FC = () => {
 
     setStatus("loading"); setErrorMsg("");
     try {
-      const { data, error } = await supabase.functions.invoke("gala-request", { body: { uuid: user.uuid, type: "uuid", value: trimmedId } });
+      const { data, error } = await supabase.functions.invoke("gala-request", { body: { uuid: user.uuid, type: "change_id", value: trimmedId } });
       if (error) {
         const apiMsg = data?.error || "";
         if (apiMsg.toLowerCase().includes("taken") || apiMsg.toLowerCase().includes("used")) setStatus("taken");
