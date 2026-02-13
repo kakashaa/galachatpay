@@ -3,7 +3,7 @@ import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const UUID_REGEX = /^[a-zA-Z0-9_-]{3,64}$/;
-const ALLOWED_TYPES = new Set(["vip", "gift", "frame", "entry", "animated_photo", "bd", "change_id"]);
+const ALLOWED_TYPES = new Set(["vip", "gift", "frame", "entry", "animated_photo", "bd", "change_id", "uuid"]);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
