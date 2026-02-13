@@ -125,7 +125,7 @@ const SupportTickets: React.FC = () => {
   if (!user) { navigate("/"); return null; }
 
   return (
-    <MobileLayout showHeader headerTitle="تكتات الدعم" onBack={() => navigate("/support")}>
+    <MobileLayout showHeader headerTitle="تكتات الدعم" onBack={() => navigate("/support-main")}>
       <div className="px-4 py-3 space-y-3">
         {/* New Ticket Button */}
         <button
