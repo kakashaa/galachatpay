@@ -41,21 +41,13 @@ serve(async (req) => {
 
     const sanitizedUuid = (uuid as string).trim();
 
-    // For VIP requests, enforce limits in database
+    // For VIP requests, enforce once-per-month limit in database
     if (type === "vip" && value) {
       const vipLevel = Number(value);
-      if (isNaN(vipLevel) || vipLevel < 1 || vipLevel > 6) {
+      if (isNaN(vipLevel) || vipLevel < 1 || vipLevel > 10) {
         return new Response(
           JSON.stringify({ success: false, error: "Invalid VIP level" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // VIP 6: blocked for everyone
-      if (vipLevel === 6) {
-        return new Response(
-          JSON.stringify({ success: false, error: "VIP 6 غير متاح للطلب المباشر. يرجى التواصل مع الإدارة." }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -67,41 +59,23 @@ serve(async (req) => {
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
       const isAgent = typeof type_user === "number" && type_user >= 3;
-
-      // Get all requests this month for this user
+      const limit = isAgent ? 5 : 1;
+      
       const { data: requests } = await sb
         .from("vip_requests")
-        .select("id, vip_level")
+        .select("id", { count: "exact" })
         .eq("user_uuid", sanitizedUuid)
         .eq("request_month", currentMonth);
 
-      const reqs = requests || [];
-
-      // VIP 4-5: agents only, max 5 combined requests per month
-      if (vipLevel >= 4 && vipLevel <= 5) {
-        if (!isAgent) {
-          return new Response(
-            JSON.stringify({ success: false, error: "VIP 4-5 متاح للوكلاء فقط." }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        const highTierCount = reqs.filter((r: any) => r.vip_level === 4 || r.vip_level === 5).length;
-        if (highTierCount >= 5) {
-          return new Response(
-            JSON.stringify({ success: false, error: "وصلت الحد الأقصى لطلبات VIP 4-5 (5 طلبات شهرياً)." }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-
-      // VIP 1-3: regular users get 1/month, agents unlimited
-      if (vipLevel >= 1 && vipLevel <= 3 && !isAgent) {
-        if (reqs.length >= 1) {
-          return new Response(
-            JSON.stringify({ success: false, error: "لقد استخدمت طلبك هذا الشهر. الطلب متاح مرة واحدة شهرياً." }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+      const requestCount = requests?.length || 0;
+      if (requestCount >= limit) {
+        const limitText = isAgent 
+          ? "لقد استخدمت حد الـ 5 طلبات لهذا الشهر." 
+          : "لقد استخدمت طلبك هذا الشهر. الطلب متاح مرة واحدة شهرياً.";
+        return new Response(
+          JSON.stringify({ success: false, error: limitText }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
