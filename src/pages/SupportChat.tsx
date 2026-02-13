@@ -286,6 +286,7 @@ const INTENT_MAP: { keys: string[]; intent: string }[] = [
   { keys: ["شكر", "مشكور", "ثانكس", "thanks", "يعطيك العافية", "تسلم"], intent: "thanks" },
   { keys: ["قائمة", "رجوع", "menu", "رجع", "البداية"], intent: "main_menu" },
   { keys: ["سياسة", "سياسات", "قوانين", "شروط", "قواعد", "وكالة", "وكيل", "تارجت", "جدول", "policy", "مكافأة غرفة", "بونص"], intent: "policy" },
+  { keys: ["دعم سريع", "اتحدث", "اتكلم", "تحدث", "كلم", "ابي احد", "ابي شخص", "بشر", "موظف", "لايف", "live", "chat support", "quick support", "تواصل مع", "ابغا اتكلم", "ابي اكلم"], intent: "live_support" },
 ];
 
 const findIntent = (text: string): string | null => {
@@ -296,21 +297,7 @@ const findIntent = (text: string): string | null => {
   return null;
 };
 
-/* ───────── storage ───────── */
-const STORAGE_KEY = "gala_support_chat";
-
-const loadMessages = (): ChatMessage[] => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveMessages = (msgs: ChatMessage[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
-};
+/* ───────── storage removed: chat always starts fresh ───────── */
 
 /* ───────── component ───────── */
 const SupportChat: React.FC = () => {
@@ -352,32 +339,21 @@ const SupportChat: React.FC = () => {
       setIsTyping(true);
       setTimeout(() => {
         setIsTyping(false);
-        setMessages((prev) => {
-          const next = [
+        setMessages((prev) => [
             ...prev,
             { id: uid(), role: "bot" as const, text, quickReplies, timestamp: Date.now() },
-          ];
-          saveMessages(next);
-          return next;
-        });
+          ]);
         scrollToBottom();
       }, 500);
     },
     [scrollToBottom]
   );
 
-  /* welcome message */
+  /* welcome message — always start fresh */
   useEffect(() => {
-    const stored = loadMessages();
-    if (stored.length > 0) {
-      setMessages(stored);
-      scrollToBottom();
-    } else {
-      // Check VIP status
-      const isVip = user?.vip && Object.keys(user.vip).length > 0;
-      const welcomeMessage = getTimeBasedGreeting(userName, isVip, isGuest);
-      addBotMessage(welcomeMessage, MAIN_MENU);
-    }
+    const isVip = user?.vip && Object.keys(user.vip).length > 0;
+    const welcomeMessage = getTimeBasedGreeting(userName, isVip, isGuest);
+    addBotMessage(welcomeMessage, MAIN_MENU);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -593,6 +569,34 @@ const SupportChat: React.FC = () => {
         case "main_menu":
           addBotMessage("كيف أقدر أساعدك؟ 😊", MAIN_MENU);
           break;
+        case "live_support": {
+          const isEligible = (user?.type_user ?? 0) >= 3 || 
+            (Number(user?.vip?.vip_level ?? user?.vip?.level ?? 0) >= 5);
+          if (isEligible) {
+            addBotMessage(
+              `✅ أنت مؤهل للدعم السريع! ⚡\nبنحولك على صفحة الدعم السريع عشان سوبر أدمن يجيك خلال دقائق 👇`,
+              [
+                { label: "افتح الدعم السريع ←", value: "nav:/quick-support" },
+                { label: "القائمة الرئيسية", value: "main_menu" },
+              ]
+            );
+          } else {
+            addBotMessage(
+              `⚠️ عذراً، الدعم السريع المباشر متاح فقط لـ:\n` +
+                `• أصحاب VIP 5 و VIP 6 👑\n` +
+                `• الوكلاء 🛡️\n\n` +
+                `لكن تقدر تتواصل معنا عبر:\n` +
+                `• التذاكر: نرد عليك بأسرع وقت\n` +
+                `• تكلم مع إداري: يدخل غرفتك مباشرة`,
+              [
+                { label: "أرسل تذكرة ←", value: "nav:/support-tickets" },
+                { label: "تكلم مع إداري", value: "admin_talk", icon: Shield },
+                { label: "القائمة الرئيسية", value: "main_menu" },
+              ]
+            );
+          }
+          break;
+        }
         default:
           addBotMessage(
             "ما قدرت أفهم سؤالك بالضبط 🤔\nجرب توضح أكثر أو اختر من الخيارات:",
@@ -613,11 +617,7 @@ const SupportChat: React.FC = () => {
         text: text.trim(),
         timestamp: Date.now(),
       };
-      setMessages((prev) => {
-        const next = [...prev, userMsg];
-        saveMessages(next);
-        return next;
-      });
+      setMessages((prev) => [...prev, userMsg]);
       setInput("");
       scrollToBottom();
 
@@ -729,11 +729,7 @@ const SupportChat: React.FC = () => {
       ?? TECH_ISSUES.find((q) => q.value === value)?.label
       ?? value;
     const userMsg: ChatMessage = { id: uid(), role: "user", text: label, timestamp: Date.now() };
-    setMessages((prev) => {
-      const next = [...prev, userMsg];
-      saveMessages(next);
-      return next;
-    });
+    setMessages((prev) => [...prev, userMsg]);
     scrollToBottom();
     handleTopic(value);
   };
@@ -762,7 +758,6 @@ const SupportChat: React.FC = () => {
   /* ── clear chat ── */
   const clearChat = () => {
     setMessages([]);
-    saveMessages([]);
     setWaitingFor(null);
     addBotMessage(
       `أهلاً ${userName}! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`,
