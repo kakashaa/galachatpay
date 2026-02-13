@@ -84,6 +84,7 @@ const AnimatedPhotoRequest: React.FC = () => {
         gif_url: gifUrl,
         duration_label: durationConfig.label,
         max_level: maxLevel,
+        status: "approved",
       } as any);
       if (dbError) {
         if (dbError.message?.includes("duplicate") || dbError.code === "23505") {
@@ -148,8 +149,11 @@ const AnimatedPhotoRequest: React.FC = () => {
             <CheckCircle className="w-10 h-10 text-orange-400" />
           </div>
           <div className="text-center css-fade-up-d3">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلبك بنجاح</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-lg font-bold text-foreground mb-2">تم رفع الطلب بنجاح ✅</h2>
+            <p className="text-sm text-muted-foreground mb-1">
+              سوف يتم تغيير الصورة خلال دقائق
+            </p>
+            <p className="text-xs text-muted-foreground/70">
               مدة الصورة المتحركة: <span className="font-bold text-primary">{durationConfig?.label}</span>
             </p>
           </div>
