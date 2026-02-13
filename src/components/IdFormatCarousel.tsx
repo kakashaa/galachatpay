@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Hash, Crown, Lock, Sparkles } from "lucide-react";
-import { LevelFormats, FormatGroup } from "@/data/idFormats";
+import { ChevronLeft, ChevronRight, Crown, Lock, Sparkles, ArrowLeft } from "lucide-react";
+import { LevelFormats } from "@/data/idFormats";
 
 interface IdFormatCarouselProps {
   availableLevels: LevelFormats[];
@@ -9,61 +9,109 @@ interface IdFormatCarouselProps {
   maxLevel: number;
 }
 
-const patternColors = [
-  "from-primary/20 to-primary/5",
-  "from-amber-500/20 to-amber-500/5",
-  "from-emerald-500/20 to-emerald-500/5",
-  "from-sky-500/20 to-sky-500/5",
-  "from-violet-500/20 to-violet-500/5",
-];
-
-const PatternChip: React.FC<{ pattern: string; index: number; digitGroup: number }> = ({ pattern, index, digitGroup }) => {
-  // Generate a sample number from the pattern
-  const generateExample = (p: string): string => {
-    const map: Record<string, number> = {};
-    let nextDigit = 1;
-    return p.split("").map((c) => {
-      if (c === "X") return Math.floor(Math.random() * 10);
-      if (!map[c]) map[c] = nextDigit++;
+/** Deterministic example from a pattern */
+function patternToExample(p: string): string {
+  const map: Record<string, number> = {};
+  let next = 1;
+  return p
+    .split("")
+    .map((c) => {
+      if (c === "X") return 0;
+      if (c === "P") return 5; // special letter in ABCDEP
+      if (!map[c]) map[c] = next++;
       return map[c];
-    }).join("");
-  };
+    })
+    .join("");
+}
 
-  const example = React.useMemo(() => generateExample(pattern), [pattern]);
+/** Colour the example digits so repeated ones share a colour */
+function colourDigits(example: string, pattern: string) {
+  const palette = [
+    "text-amber-400",
+    "text-sky-400",
+    "text-emerald-400",
+    "text-rose-400",
+    "text-violet-400",
+    "text-orange-400",
+    "text-teal-400",
+  ];
+  const letterColor: Record<string, string> = {};
+  let colorIdx = 0;
+
+  return example.split("").map((digit, i) => {
+    const letter = pattern[i];
+    if (letter === "X") {
+      return (
+        <span key={i} className="text-muted-foreground/60">
+          {digit}
+        </span>
+      );
+    }
+    if (!letterColor[letter]) {
+      letterColor[letter] = palette[colorIdx % palette.length];
+      colorIdx++;
+    }
+    return (
+      <span key={i} className={`${letterColor[letter]} font-bold`}>
+        {digit}
+      </span>
+    );
+  });
+}
+
+const PatternRow: React.FC<{ pattern: string; index: number }> = ({ pattern, index }) => {
+  const example = React.useMemo(() => patternToExample(pattern), [pattern]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.03, type: "spring", stiffness: 300, damping: 20 }}
-      className="flex flex-col items-center gap-1"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.02 }}
+      className="flex items-center justify-between bg-muted/15 rounded-lg px-2.5 py-1.5 gap-3"
+      dir="ltr"
     >
-      <div className={`px-3 py-2 rounded-xl bg-gradient-to-br ${patternColors[digitGroup % patternColors.length]} border border-border/20 backdrop-blur-sm`}>
-        <p className="text-[11px] font-mono font-bold text-foreground tracking-wider" dir="ltr">{pattern}</p>
-      </div>
-      <p className="text-[9px] font-mono text-muted-foreground" dir="ltr">{example}</p>
+      {/* Pattern */}
+      <span className="text-[11px] font-mono tracking-widest text-muted-foreground min-w-[60px]">
+        {pattern}
+      </span>
+      {/* Arrow */}
+      <ArrowLeft className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+      {/* Coloured example */}
+      <span className="text-sm font-mono tracking-[0.2em] min-w-[60px] text-right">
+        {colourDigits(example, pattern)}
+      </span>
     </motion.div>
   );
 };
 
-const DigitGroupSection: React.FC<{ group: FormatGroup; groupIndex: number }> = ({ group, groupIndex }) => (
-  <div className="space-y-2.5">
-    <div className="flex items-center gap-2">
-      <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${patternColors[groupIndex % patternColors.length]} flex items-center justify-center`}>
-        <Hash className="w-3.5 h-3.5 text-foreground" />
+const DigitSection: React.FC<{ digits: number; patterns: string[]; groupIdx: number }> = ({
+  digits,
+  patterns,
+  groupIdx,
+}) => (
+  <div className="space-y-1.5">
+    {/* Digit count header */}
+    <div className="flex items-center gap-2 mb-2" dir="rtl">
+      <div className="h-6 w-6 rounded-md gold-gradient flex items-center justify-center">
+        <span className="text-primary-foreground font-bold text-[10px]">{digits}</span>
       </div>
-      <span className="text-xs font-bold text-foreground">{group.digits} أرقام</span>
-      <span className="text-[10px] text-muted-foreground">({group.patterns.length} صيغة)</span>
+      <span className="text-xs font-bold text-foreground">{digits} أرقام</span>
+      <span className="text-[10px] text-muted-foreground mr-auto">({patterns.length} صيغة)</span>
     </div>
-    <div className="flex flex-wrap gap-2 pr-2">
-      {group.patterns.map((pattern, idx) => (
-        <PatternChip key={pattern} pattern={pattern} index={idx} digitGroup={groupIndex} />
+    {/* Patterns grid — 2 columns for compact view */}
+    <div className="grid grid-cols-2 gap-1.5">
+      {patterns.map((p, idx) => (
+        <PatternRow key={p} pattern={p} index={idx} />
       ))}
     </div>
   </div>
 );
 
-const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({ availableLevels, currentLevelIndex, maxLevel }) => {
+const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({
+  availableLevels,
+  currentLevelIndex,
+  maxLevel,
+}) => {
   const [activeIndex, setActiveIndex] = useState(currentLevelIndex);
   const activeLevel = availableLevels[activeIndex];
 
@@ -74,120 +122,105 @@ const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({ availableLevels, cu
   const canGoRight = activeIndex < availableLevels.length - 1;
 
   return (
-    <div className="space-y-4">
-      {/* Level Selector - Train Track */}
-      <div className="relative">
-        {/* Track line */}
-        <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-border/30 -translate-y-1/2 rounded-full" />
-        <div
-          className="absolute top-1/2 left-4 h-0.5 bg-primary/50 -translate-y-1/2 rounded-full transition-all duration-500"
-          style={{ width: `${((activeIndex + 1) / availableLevels.length) * (100 - 8)}%` }}
-        />
+    <div className="space-y-3">
+      {/* Level navigation pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide" dir="rtl">
+        {availableLevels.map((level, idx) => {
+          const isCurrent = maxLevel >= level.minLevel && maxLevel <= level.maxLevel;
+          const isActive = idx === activeIndex;
 
-        {/* Level stops */}
-        <div className="relative flex justify-between px-2">
-          {availableLevels.map((level, idx) => {
-            const isCurrent = maxLevel >= level.minLevel && maxLevel <= level.maxLevel;
-            const isActive = idx === activeIndex;
-            const isPassed = idx <= activeIndex;
-
-            return (
-              <button
-                key={level.label}
-                onClick={() => setActiveIndex(idx)}
-                className="flex flex-col items-center gap-1.5 relative z-10"
-              >
-                <motion.div
-                  animate={{
-                    scale: isActive ? 1.3 : 1,
-                    boxShadow: isActive ? "0 0 12px hsl(var(--primary) / 0.4)" : "none",
-                  }}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-                    isActive
-                      ? "gold-gradient"
-                      : isPassed
-                      ? "bg-primary/30 border-2 border-primary/50"
-                      : "bg-muted/40 border-2 border-border/30"
-                  }`}
-                >
-                  {isCurrent ? (
-                    <Crown className="w-3.5 h-3.5 text-primary-foreground" />
-                  ) : isPassed ? (
-                    <Sparkles className="w-3 h-3 text-primary" />
-                  ) : (
-                    <Lock className="w-3 h-3 text-muted-foreground" />
-                  )}
-                </motion.div>
-                <span className={`text-[9px] font-bold leading-none ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                  {level.minLevel}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+          return (
+            <button
+              key={level.label}
+              onClick={() => setActiveIndex(idx)}
+              className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all border ${
+                isActive
+                  ? "gold-gradient text-primary-foreground border-primary/30 shadow-md"
+                  : isCurrent
+                  ? "bg-primary/15 text-primary border-primary/25"
+                  : "bg-muted/20 text-muted-foreground border-border/20"
+              }`}
+            >
+              {isCurrent ? (
+                <Crown className="w-3 h-3" />
+              ) : idx <= currentLevelIndex ? (
+                <Sparkles className="w-3 h-3" />
+              ) : (
+                <Lock className="w-3 h-3" />
+              )}
+              {level.minLevel}-{level.maxLevel}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Active Level Content */}
+      {/* Content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeLevel.label}
-          initial={{ opacity: 0, x: 30 }}
+          initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -30 }}
-          transition={{ duration: 0.25 }}
-          className="glass-card p-4 space-y-4"
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-4"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between">
+          {/* Summary bar */}
+          <div className="flex items-center justify-between px-1" dir="rtl">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">{activeLevel.minLevel}</span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">{activeLevel.label}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {activeLevel.groups.reduce((sum, g) => sum + g.patterns.length, 0)} صيغة متاحة
-                </p>
-              </div>
+              <span className="text-xs font-bold text-foreground">{activeLevel.label}</span>
+              {isCurrentLevel && (
+                <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  أنت هنا
+                </span>
+              )}
             </div>
-            {isCurrentLevel && (
-              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                مستواك الحالي
-              </span>
-            )}
+            <span className="text-[10px] text-muted-foreground">
+              {activeLevel.groups.reduce((s, g) => s + g.patterns.length, 0)} صيغة
+            </span>
           </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
+          {/* Legend */}
+          <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/10 rounded-lg text-[9px] text-muted-foreground" dir="rtl">
+            <span>🔤 <strong>حروف متشابهة</strong> = أرقام متشابهة</span>
+            <span>✖️ <strong>X</strong> = أي رقم</span>
+          </div>
+
+          {/* Digit groups */}
+          {activeLevel.groups.map((group, gIdx) => (
+            <DigitSection
+              key={group.digits}
+              digits={group.digits}
+              patterns={group.patterns}
+              groupIdx={gIdx}
+            />
+          ))}
+
+          {/* Prev / Next arrows */}
+          <div className="flex items-center justify-between pt-1">
             <button
-              onClick={() => canGoLeft && setActiveIndex(activeIndex - 1)}
-              disabled={!canGoLeft}
-              className="w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center disabled:opacity-30 transition-opacity"
+              onClick={() => canGoRight && setActiveIndex(activeIndex + 1)}
+              disabled={!canGoRight}
+              className="w-7 h-7 rounded-full bg-muted/25 flex items-center justify-center disabled:opacity-20"
             >
-              <ChevronRight className="w-4 h-4 text-foreground" />
+              <ChevronLeft className="w-4 h-4 text-foreground" />
             </button>
             <div className="flex gap-1">
               {availableLevels.map((_, idx) => (
                 <div
                   key={idx}
-                  className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === activeIndex ? "bg-primary" : "bg-border/40"}`}
+                  className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                    idx === activeIndex ? "bg-primary" : "bg-border/30"
+                  }`}
                 />
               ))}
             </div>
             <button
-              onClick={() => canGoRight && setActiveIndex(activeIndex + 1)}
-              disabled={!canGoRight}
-              className="w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center disabled:opacity-30 transition-opacity"
+              onClick={() => canGoLeft && setActiveIndex(activeIndex - 1)}
+              disabled={!canGoLeft}
+              className="w-7 h-7 rounded-full bg-muted/25 flex items-center justify-center disabled:opacity-20"
             >
-              <ChevronLeft className="w-4 h-4 text-foreground" />
+              <ChevronRight className="w-4 h-4 text-foreground" />
             </button>
-          </div>
-
-          {/* Format Groups */}
-          <div className="space-y-4">
-            {activeLevel.groups.map((group, gIdx) => (
-              <DigitGroupSection key={group.digits} group={group} groupIndex={gIdx} />
-            ))}
           </div>
         </motion.div>
       </AnimatePresence>
