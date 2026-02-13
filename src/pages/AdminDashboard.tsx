@@ -162,6 +162,7 @@ const AdminDashboardPage: React.FC = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [approveReceiptFile, setApproveReceiptFile] = useState<File | null>(null);
   const [salaryActionLoading, setSalaryActionLoading] = useState(false);
+  const [salaryFilter, setSalaryFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   // Ban reports state
   const [banReports, setBanReports] = useState<BanReport[]>([]);
@@ -218,6 +219,7 @@ const AdminDashboardPage: React.FC = () => {
   const [animatedRejectReason, setAnimatedRejectReason] = useState("");
   const [animatedActionLoading, setAnimatedActionLoading] = useState(false);
   const [expandedAnimated, setExpandedAnimated] = useState<string | null>(null);
+  const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   // Admin stars state
   const [adminStarUuid, setAdminStarUuid] = useState("");
@@ -230,6 +232,7 @@ const AdminDashboardPage: React.FC = () => {
   const [bdAction, setBdAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
   const [bdRejectReason, setBdRejectReason] = useState("");
   const [bdActionLoading, setBdActionLoading] = useState(false);
+  const [bdFilter, setBdFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
@@ -951,7 +954,31 @@ const AdminDashboardPage: React.FC = () => {
             {/* Salary Tab */}
             {activeTab === "salary" && (
               <motion.div key="salary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-                {salaryRequests.map((req) => (
+                {/* Filter Buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { key: "all" as const, label: "الكل", count: salaryRequests.length, color: "bg-muted/30" },
+                    { key: "pending" as const, label: "معلقة", count: salaryRequests.filter(r => r.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
+                    { key: "approved" as const, label: "مقبولة", count: salaryRequests.filter(r => r.status === "approved").length, color: "bg-green-500/10 border-green-500/30" },
+                    { key: "rejected" as const, label: "مرفوضة", count: salaryRequests.filter(r => r.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setSalaryFilter(f.key)}
+                      className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
+                        salaryFilter === f.key
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : f.color + " border"
+                      }`}
+                    >
+                      {f.label}
+                      <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
+                    </button>
+                  ))}
+                </div>
+                {salaryRequests
+                  .filter(req => salaryFilter === "all" || req.status === salaryFilter)
+                  .map((req) => (
                   <div key={req.id} className="bg-card border rounded-xl overflow-hidden">
                     <button onClick={() => setExpandedSalary(expandedSalary === req.id ? null : req.id)} className="w-full p-4 flex items-center justify-between text-right">
                       <div className="flex items-center gap-3">
@@ -1668,13 +1695,39 @@ const AdminDashboardPage: React.FC = () => {
             {/* Animated Photos Tab */}
             {activeTab === "animated_photos" && (
               <motion.div key="animated_photos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-                {animatedPhotos.length === 0 && (
+                {/* Filter Buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { key: "all" as const, label: "الكل", count: animatedPhotos.length, color: "bg-muted/30" },
+                    { key: "pending" as const, label: "معلقة", count: animatedPhotos.filter(p => p.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
+                    { key: "approved" as const, label: "مقبولة", count: animatedPhotos.filter(p => p.status === "approved").length, color: "bg-green-500/10 border-green-500/30" },
+                    { key: "rejected" as const, label: "مرفوضة", count: animatedPhotos.filter(p => p.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setAnimatedPhotoFilter(f.key)}
+                      className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
+                        animatedPhotoFilter === f.key
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : f.color + " border"
+                      }`}
+                    >
+                      {f.label}
+                      <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
+                    </button>
+                  ))}
+                </div>
+                {animatedPhotos
+                  .filter(photo => animatedPhotoFilter === "all" || photo.status === animatedPhotoFilter)
+                  .length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
                     <Camera className="w-10 h-10 mx-auto mb-2 opacity-50" />
                     <p>لا توجد طلبات صور متحركة</p>
                   </div>
                 )}
-                {animatedPhotos.map((photo) => (
+                {animatedPhotos
+                  .filter(photo => animatedPhotoFilter === "all" || photo.status === animatedPhotoFilter)
+                  .map((photo) => (
                   <div key={photo.id} className="bg-card border rounded-xl overflow-hidden">
                     <div className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
@@ -1735,6 +1788,28 @@ const AdminDashboardPage: React.FC = () => {
             {/* BD Requests Tab */}
             {activeTab === "bd_requests" && (
               <motion.div key="bd_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {/* Filter Buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { key: "all" as const, label: "الكل", count: bdRequests.length, color: "bg-muted/30" },
+                    { key: "pending" as const, label: "معلقة", count: bdRequests.filter(r => (typeof r.status === "number" ? r.status === 0 : r.status === "pending")).length, color: "bg-yellow-500/10 border-yellow-500/30" },
+                    { key: "approved" as const, label: "مقبولة", count: bdRequests.filter(r => (typeof r.status === "number" ? r.status === 1 : r.status === "approved")).length, color: "bg-green-500/10 border-green-500/30" },
+                    { key: "rejected" as const, label: "مرفوضة", count: bdRequests.filter(r => (typeof r.status === "number" ? r.status === 2 : r.status === "rejected")).length, color: "bg-red-500/10 border-red-500/30" },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      onClick={() => setBdFilter(f.key)}
+                      className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
+                        bdFilter === f.key
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : f.color + " border"
+                      }`}
+                    >
+                      {f.label}
+                      <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
+                    </button>
+                  ))}
+                </div>
                 {bdRequests.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
                     <Briefcase className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -1742,7 +1817,16 @@ const AdminDashboardPage: React.FC = () => {
                     <p className="text-xs mt-1">قد يكون الخادم الخارجي غير متاح حالياً</p>
                   </div>
                 )}
-                {bdRequests.map((req) => {
+                {bdRequests
+                  .filter(req => {
+                    const statusNum = typeof req.status === "number" ? req.status : req.status === "pending" ? 0 : req.status === "approved" ? 1 : 2;
+                    if (bdFilter === "all") return true;
+                    if (bdFilter === "pending") return statusNum === 0;
+                    if (bdFilter === "approved") return statusNum === 1;
+                    if (bdFilter === "rejected") return statusNum === 2;
+                    return true;
+                  })
+                  .map((req) => {
                   const statusNum = typeof req.status === "number" ? req.status : req.status === "pending" ? 0 : req.status === "approved" ? 1 : 2;
                   const statusLabel = statusNum === 0 ? "معلق" : statusNum === 1 ? "مقبول" : "مرفوض";
                   const statusColor = statusNum === 0 ? "bg-yellow-500/20 text-yellow-500" : statusNum === 1 ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive";
