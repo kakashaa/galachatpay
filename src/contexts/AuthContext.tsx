@@ -2,6 +2,16 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+const TYPE_USER_LABELS: Record<number, string> = {
+  0: "مستخدم عادي",
+  1: "مستخدم عادي",
+  2: "مضيف",
+  3: "وكيل مضيفين",
+  4: "وكيل شحن",
+  5: "وكيل شحن ووكيل مضيفين",
+  6: "مضيف ووكيل شحن",
+};
+
 export interface GalaUser {
   id: number;
   uuid: string;
@@ -83,12 +93,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sender_num: apiUser.level?.sender_num || 0,
             charger_num: apiUser.level?.charger_num || 0,
           };
-      setUser({
+      const newTypeUser = apiUser.type_user ?? user.type_user;
+      const oldTypeUser = user.type_user;
+
+      const updatedUser = {
         id: apiUser.id,
         uuid: apiUser.uuid,
         name: apiUser.name,
         phone: apiUser.phone || user.phone,
-        type_user: apiUser.type_user ?? user.type_user,
+        type_user: newTypeUser,
         profile: {
           image: apiUser.profile?.image || user.profile.image,
           gender: apiUser.profile?.gender || apiUser.gender || user.profile.gender,
@@ -108,7 +121,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: apiUser.country?.name || user.country.name,
           flag: apiUser.country?.flag || user.country.flag,
         },
-      });
+      };
+
+      setUser(updatedUser);
+
+      // Detect account type change and log it
+      if (newTypeUser !== oldTypeUser) {
+        const oldLabel = TYPE_USER_LABELS[oldTypeUser] || `نوع ${oldTypeUser}`;
+        const newLabel = TYPE_USER_LABELS[newTypeUser] || `نوع ${newTypeUser}`;
+        toast.info(`🔄 تم تحديث نوع حسابك من "${oldLabel}" إلى "${newLabel}"`, { duration: 6000 });
+
+        // Log change to database
+        supabase.from("account_type_changes").insert({
+          user_uuid: user.uuid,
+          user_name: apiUser.name || user.name,
+          old_type: oldTypeUser,
+          new_type: newTypeUser,
+        }).then(() => {});
+      }
     } catch {
       // silent
     }
