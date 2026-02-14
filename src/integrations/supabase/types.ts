@@ -14,33 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      account_type_changes: {
-        Row: {
-          created_at: string
-          id: string
-          new_type: number
-          old_type: number
-          user_name: string
-          user_uuid: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          new_type: number
-          old_type: number
-          user_name?: string
-          user_uuid: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          new_type?: number
-          old_type?: number
-          user_name?: string
-          user_uuid?: string
-        }
-        Relationships: []
-      }
       admin_audit_log: {
         Row: {
           action: string

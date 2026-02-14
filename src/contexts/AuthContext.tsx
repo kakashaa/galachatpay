@@ -83,15 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sender_num: apiUser.level?.sender_num || 0,
             charger_num: apiUser.level?.charger_num || 0,
           };
-      const newTypeUser = apiUser.type_user ?? user.type_user;
-      const oldTypeUser = user.type_user;
-
       setUser({
         id: apiUser.id,
         uuid: apiUser.uuid,
         name: apiUser.name,
         phone: apiUser.phone || user.phone,
-        type_user: newTypeUser,
+        type_user: apiUser.type_user ?? user.type_user,
         profile: {
           image: apiUser.profile?.image || user.profile.image,
           gender: apiUser.profile?.gender || apiUser.gender || user.profile.gender,
@@ -112,25 +109,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           flag: apiUser.country?.flag || user.country.flag,
         },
       });
-
-      // Detect account type change and notify user
-      if (newTypeUser !== oldTypeUser && oldTypeUser !== undefined) {
-        const typeLabels: Record<number, string> = {
-          0: "مستخدم عادي", 1: "مستخدم عادي", 2: "مضيف",
-          3: "وكيل مضيفين", 4: "وكيل شحن", 5: "وكيل شحن ومضيفين", 6: "مضيف ووكيل شحن",
-        };
-        const oldLabel = typeLabels[oldTypeUser] || `نوع ${oldTypeUser}`;
-        const newLabel = typeLabels[newTypeUser] || `نوع ${newTypeUser}`;
-        toast.success(`تم تحديث رتبتك من "${oldLabel}" إلى "${newLabel}" 🎉`, { duration: 8000 });
-
-        // Log change to database
-        supabase.from("account_type_changes").insert({
-          user_uuid: user.uuid,
-          user_name: user.name,
-          old_type: oldTypeUser,
-          new_type: newTypeUser,
-        }).then(() => {});
-      }
     } catch {
       // silent
     }
