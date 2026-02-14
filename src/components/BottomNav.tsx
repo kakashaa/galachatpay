@@ -33,7 +33,7 @@ const BottomNav: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[85%] max-w-[360px]">
+      <div className="fixed left-1/2 -translate-x-1/2 z-50 w-[85%] max-w-[360px]" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}>
         <nav
           className="relative flex items-center justify-around px-3 py-3 rounded-[28px] border border-white/10 css-slide-up"
           style={{
