@@ -1,0 +1,1 @@
+ALTER TABLE public.ticket_replies ADD COLUMN attachment_url text DEFAULT NULL;
