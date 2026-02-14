@@ -41,6 +41,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const PolicyPage = lazy(() => import("./pages/PolicyPage"));
 const QuickSupport = lazy(() => import("./pages/QuickSupport"));
 const SupportMain = lazy(() => import("./pages/SupportMain"));
+const InstallApp = lazy(() => import("./pages/InstallApp"));
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ const App = () => (
                 <Route path="/policy" element={<PolicyPage />} />
                 <Route path="/quick-support" element={<QuickSupport />} />
                 <Route path="/support-main" element={<SupportMain />} />
+                <Route path="/install" element={<InstallApp />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
