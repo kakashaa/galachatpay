@@ -222,7 +222,7 @@ const AdminDashboardPage: React.FC = () => {
   const [animatedRejectReason, setAnimatedRejectReason] = useState("");
   const [animatedActionLoading, setAnimatedActionLoading] = useState(false);
   const [expandedAnimated, setExpandedAnimated] = useState<string | null>(null);
-  const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "auto_approved" | "pending" | "rejected">("all");
 
   // Admin stars state
   const [adminStarUuid, setAdminStarUuid] = useState("");
@@ -1739,13 +1739,13 @@ const AdminDashboardPage: React.FC = () => {
                 <div className="flex gap-2 flex-wrap">
                   {[
                     { key: "all" as const, label: "الكل", count: animatedPhotos.length, color: "bg-muted/30" },
+                    { key: "auto_approved" as const, label: "✅ تلقائي", count: animatedPhotos.filter(p => p.status === "approved").length, color: "bg-emerald-500/10 border-emerald-500/30" },
                     { key: "pending" as const, label: "معلقة", count: animatedPhotos.filter(p => p.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
-                    { key: "approved" as const, label: "مقبولة", count: animatedPhotos.filter(p => p.status === "approved").length, color: "bg-green-500/10 border-green-500/30" },
                     { key: "rejected" as const, label: "مرفوضة", count: animatedPhotos.filter(p => p.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
                   ].map(f => (
                     <button
                       key={f.key}
-                      onClick={() => setAnimatedPhotoFilter(f.key)}
+                      onClick={() => setAnimatedPhotoFilter(f.key as any)}
                       className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
                         animatedPhotoFilter === f.key
                           ? "bg-primary text-primary-foreground border-primary"
@@ -1758,7 +1758,7 @@ const AdminDashboardPage: React.FC = () => {
                   ))}
                 </div>
                 {animatedPhotos
-                  .filter(photo => animatedPhotoFilter === "all" || photo.status === animatedPhotoFilter)
+                  .filter(photo => animatedPhotoFilter === "all" || (animatedPhotoFilter === "auto_approved" ? photo.status === "approved" : photo.status === animatedPhotoFilter))
                   .length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
                     <Camera className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -1766,7 +1766,7 @@ const AdminDashboardPage: React.FC = () => {
                   </div>
                 )}
                 {animatedPhotos
-                  .filter(photo => animatedPhotoFilter === "all" || photo.status === animatedPhotoFilter)
+                  .filter(photo => animatedPhotoFilter === "all" || (animatedPhotoFilter === "auto_approved" ? photo.status === "approved" : photo.status === animatedPhotoFilter))
                   .map((photo) => (
                   <div key={photo.id} className="bg-card border rounded-xl overflow-hidden">
                     <div className="p-4 space-y-3">
@@ -1774,9 +1774,9 @@ const AdminDashboardPage: React.FC = () => {
                         <div className="flex items-center gap-3">
                           <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                             photo.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
-                            photo.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
+                            photo.status === "approved" ? "bg-emerald-500/20 text-emerald-500" : "bg-destructive/20 text-destructive"
                           }`}>
-                            {photo.status === "pending" ? "معلق" : photo.status === "approved" ? "مقبول" : "مرفوض"}
+                            {photo.status === "pending" ? "معلق" : photo.status === "approved" ? "✅ موافق تلقائياً" : "مرفوض"}
                           </span>
                           <div>
                             <p className="font-bold text-sm">{photo.user_name}</p>
