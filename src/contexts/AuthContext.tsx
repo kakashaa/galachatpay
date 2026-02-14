@@ -63,18 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = useCallback(async () => {
     if (!user?.uuid) return;
+    const storedKey = localStorage.getItem("gala_session_key");
+    if (!storedKey) return;
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=get-user&uuid=${user.uuid}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-        }
-      );
-      if (!response.ok) return;
-      const data = await response.json();
+      const pw = atob(storedKey);
+      const result = await supabase.functions.invoke("gala-login", {
+        body: { uuid: user.uuid, password: pw },
+      });
+      const data = result.data;
       if (!data?.success || !data?.data) return;
       const apiUser = data.data;
       const levelData = typeof apiUser.level === "number"
