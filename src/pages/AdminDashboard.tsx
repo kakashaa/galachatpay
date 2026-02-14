@@ -2007,8 +2007,8 @@ const AdminDashboardPage: React.FC = () => {
                     <p className="text-[11px] text-muted-foreground">{ticket.user_name} • {ticket.user_uuid}</p>
                     <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{ticket.description}</p>
                     <p className="text-[10px] text-muted-foreground">{new Date(ticket.created_at).toLocaleString("ar-EG")}</p>
-                    {ticket.admin_reply && <p className="text-xs text-primary bg-primary/5 rounded-lg p-2">الرد: {ticket.admin_reply}</p>}
-                    {ticket.status === "open" && (
+                    {ticket.admin_reply && <p className="text-xs text-primary bg-primary/5 rounded-lg p-2">آخر رد: {ticket.admin_reply}</p>}
+                    {ticket.status !== "closed" && (
                       <div className="flex gap-2">
                         <Input
                           placeholder="اكتب الرد..."
@@ -2020,7 +2020,7 @@ const AdminDashboardPage: React.FC = () => {
                           onClick={async () => {
                             setTicketReplyLoading(true);
                             try {
-                              await adminCall("reply_ticket", { id: ticket.id, reply: chatReplyInput.trim() });
+                              await adminCall("reply_ticket", { ticket_id: ticket.id, admin_reply: chatReplyInput.trim() });
                               toast.success("تم الرد");
                               setChatReplyInput(""); setExpandedTicket(null);
                               loadData();

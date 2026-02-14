@@ -393,6 +393,14 @@ Deno.serve(async (req) => {
           })
           .eq("id", ticket_id);
         if (error) throw error;
+
+        // Also insert into ticket_replies for conversation thread
+        await supabase.from("ticket_replies").insert({
+          ticket_id,
+          sender_type: "admin",
+          sender_name: username,
+          message: admin_reply,
+        });
         
         // Get ticket to get user_uuid and notify them
         const { data: ticket } = await supabase

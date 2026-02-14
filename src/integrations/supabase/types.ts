@@ -803,6 +803,44 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_replies: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_name: string
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_name?: string
+          sender_type?: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_name?: string
+          sender_type?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_replies_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_star_balance: {
         Row: {
           carryover_stars: number
