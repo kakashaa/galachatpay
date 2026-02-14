@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface GalaUser {
   id: number;
@@ -126,6 +127,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user?.uuid, refreshUser]);
 
+  // Password verification - check every 30 seconds if password changed
+  const verifyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const verifyPassword = useCallback(async () => {
+    if (!user?.uuid) return;
+    const storedKey = localStorage.getItem("gala_session_key");
+    if (!storedKey) return;
+    
+    try {
+      const pw = atob(storedKey);
+      const result = await supabase.functions.invoke("gala-login", {
+        body: { uuid: user.uuid, password: pw },
+      });
+      const data = result.data;
+      
+      // If login fails (wrong password) and NOT blocked, force logout
+      if (data && !data.success && !data.blocked) {
+        console.log("Password changed, forcing logout");
+        localStorage.removeItem("gala_session_key");
+        logout();
+      }
+    } catch {
+      // Network error - don't logout on connectivity issues
+    }
+  }, [user?.uuid]);
+
+  useEffect(() => {
+    if (user?.uuid) {
+      verifyTimerRef.current = setInterval(verifyPassword, 30 * 1000);
+      // Also verify on visibility change (when user comes back to app)
+      const handleVisibility = () => {
+        if (document.visibilityState === "visible") {
+          verifyPassword();
+        }
+      };
+      document.addEventListener("visibilitychange", handleVisibility);
+      return () => {
+        if (verifyTimerRef.current) clearInterval(verifyTimerRef.current);
+        document.removeEventListener("visibilitychange", handleVisibility);
+      };
+    }
+    return () => {
+      if (verifyTimerRef.current) clearInterval(verifyTimerRef.current);
+    };
+  }, [user?.uuid, verifyPassword]);
+
   const logout = () => {
     // Save current account to saved accounts list before clearing
     if (user) {
@@ -145,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setUser(null);
     localStorage.removeItem("gala_user");
+    localStorage.removeItem("gala_session_key");
   };
 
   return (

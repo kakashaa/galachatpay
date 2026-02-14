@@ -177,6 +177,9 @@ const Login: React.FC = () => {
         },
       };
 
+      // Store password for session verification
+      localStorage.setItem("gala_session_key", btoa(password.trim()));
+
       setUser(userObj);
 
       // Update saved accounts with latest info
