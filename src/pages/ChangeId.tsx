@@ -109,6 +109,57 @@ const ChangeId: React.FC = () => {
   if (!user) { navigate("/"); return null; }
 
   const maxLevel = Math.max(user.level.receiver_level, user.level.sender_level);
+
+  // Not eligible (level < 20)
+  if (maxLevel < 20 && !loadingCheck) {
+    return (
+      <MobileLayout showHeader headerTitle="تغيير الـ ID" onBack={() => navigate("/dashboard")}>
+        <div className="px-5 py-6 space-y-5">
+          <ServicePreviousRequests userUuid={user.uuid} serviceType="change_id" />
+          <div className="glass-card p-5 text-center space-y-4 css-fade-up">
+            <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8 text-yellow-500" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">تغيير الـ ID غير متاح</h2>
+            <p className="text-sm text-muted-foreground">
+              مستواك الحالي: <span className="font-bold text-primary">{maxLevel}</span>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              يجب أن يكون مستواك <span className="font-bold text-primary">20</span> على الأقل (المستقبل أو المرسل)
+            </p>
+          </div>
+
+          <div className="glass-card p-4 space-y-3 css-fade-up-d1">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <IdCard className="w-4 h-4 text-primary" />
+              شروط تغيير الـ ID
+            </h3>
+            <div className="space-y-2 text-xs" dir="rtl">
+              {LEVEL_MILESTONES.filter(m => m >= 20).slice(0, 5).map((milestone) => (
+                <div key={milestone} className="flex items-center justify-between bg-muted/30 rounded-lg p-2.5">
+                  <span className="text-muted-foreground">لفل {milestone}</span>
+                  <span className="text-foreground">تغيير واحد</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-card p-4 space-y-2 css-fade-up-d2">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Info className="w-4 h-4 text-primary" />
+              ملاحظات مهمة
+            </h3>
+            <ul className="space-y-1.5 text-xs text-muted-foreground" dir="rtl">
+              <li>• تغيير الـ ID مرة واحدة لكل 10 مستويات</li>
+              <li>• الـ ID يجب أن يحتوي على أرقام فقط</li>
+              <li>• طول الأرقام يعتمد على مستواك</li>
+              <li>• التغيير نهائي حتى تصل للمستوى التالي</li>
+            </ul>
+          </div>
+        </div>
+      </MobileLayout>
+    );
+  }
   const currentRange = levelFormats.find((r) => maxLevel >= r.minLevel && maxLevel <= r.maxLevel);
   const availableRanges = levelFormats.filter((r) => maxLevel >= r.minLevel);
   const currentLevelIndex = availableRanges.findIndex((r) => r === currentRange);
@@ -248,7 +299,7 @@ const ChangeId: React.FC = () => {
                 <span className="font-bold text-foreground" dir={item.dir}>{item.v}</span>
               </div>
             ))}
-          </div>
+        </div>
           {maxLevel < 20 && (
             <div className="flex items-center gap-1.5 p-2 bg-destructive/10 border border-destructive/15 rounded-lg">
               <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
