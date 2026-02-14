@@ -6,6 +6,7 @@ interface RequestItem {
   id: string;
   label: string;
   detail?: string;
+  refId?: string;
   status?: "pending" | "approved" | "rejected" | "completed" | "done";
   date: string;
 }
@@ -76,7 +77,7 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
         case "salary": {
           const { data } = await supabase
             .from("salary_requests")
-            .select("id, request_type, amount_usd, status, created_at")
+            .select("id, request_type, amount_usd, status, created_at, transaction_id")
             .eq("user_uuid", userUuid)
             .order("created_at", { ascending: false })
             .limit(20);
@@ -84,6 +85,7 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
             id: r.id,
             label: r.request_type === "monthly" ? "سحب شهري" : r.request_type === "instant" ? "سحب فوري" : "كود نجوم",
             detail: `$${r.amount_usd}`,
+            refId: r.transaction_id ? String(r.transaction_id) : r.id?.slice(0, 8)?.toUpperCase(),
             status: r.status as any,
             date: r.created_at,
           }));
@@ -229,6 +231,9 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
                       <span className="text-[9px] text-muted-foreground">{formatDate(req.date)}</span>
                       {req.detail && (
                         <span className="text-[9px] text-muted-foreground">• {req.detail}</span>
+                      )}
+                      {req.refId && (
+                        <span className="text-[9px] font-mono text-primary/70">#{req.refId}</span>
                       )}
                     </div>
                   </div>
