@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Bell, LogIn } from "lucide-react";
+import { LogOut, Bell, LogIn, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import MarqueeBanner from "@/components/MarqueeBanner";
@@ -9,11 +9,21 @@ import UserProfileCard from "@/components/UserProfileCard";
 import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
 import BottomNav from "@/components/BottomNav";
+import { toast } from "sonner";
+
+const PULL_THRESHOLD = 80;
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, refreshUser } = useAuth();
   const [notifCount, setNotifCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const startYRef = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifCount = useCallback(async () => {
     if (!user?.uuid) return;
@@ -33,8 +43,72 @@ const Dashboard: React.FC = () => {
     fetchNotifCount();
   }, [fetchNotifCount]);
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshing || !isAuthenticated) return;
+    setRefreshing(true);
+    try {
+      await refreshUser();
+      await fetchNotifCount();
+      toast.success("تم تحديث البيانات");
+    } catch {
+      toast.error("فشل التحديث");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing, isAuthenticated, refreshUser, fetchNotifCount]);
+
+  // Touch handlers for pull-to-refresh
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) return;
+    startYRef.current = e.touches[0].clientY;
+    setIsPulling(true);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPulling) return;
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) {
+      setPullDistance(0);
+      return;
+    }
+    const deltaY = e.touches[0].clientY - startYRef.current;
+    if (deltaY > 0) {
+      setPullDistance(Math.min(deltaY * 0.5, 120));
+    }
+  }, [isPulling]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (pullDistance >= PULL_THRESHOLD) {
+      handleRefresh();
+    }
+    setPullDistance(0);
+    setIsPulling(false);
+  }, [pullDistance, handleRefresh]);
+
+  const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
+
   return (
-    <div className="mobile-container text-foreground min-h-screen pb-24 overflow-x-hidden relative">
+    <div
+      ref={scrollContainerRef}
+      className="mobile-container text-foreground min-h-screen pb-24 overflow-x-hidden overflow-y-auto relative"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 0 || refreshing) && (
+        <div
+          className="flex items-center justify-center transition-all duration-200"
+          style={{ height: refreshing ? 48 : pullDistance > 0 ? pullDistance : 0 }}
+        >
+          <RefreshCw
+            className={`w-5 h-5 text-primary transition-transform ${refreshing ? "animate-spin" : ""}`}
+            style={{ transform: `rotate(${pullProgress * 360}deg)`, opacity: pullProgress }}
+          />
+        </div>
+      )}
+
       {/* Calm background */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/10 rounded-full" style={{ filter: "blur(80px)" }} />
