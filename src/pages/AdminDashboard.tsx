@@ -1793,32 +1793,6 @@ const AdminDashboardPage: React.FC = () => {
                       {photo.gif_url && (
                         <a href={photo.gif_url} target="_blank" rel="noopener" className="text-xs text-primary underline">🖼️ عرض الصورة</a>
                       )}
-                      {photo.status === "pending" && (
-                        <div className="flex gap-2">
-                          <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={async () => {
-                            try {
-                              await adminCall("update_animated_photo", { id: photo.id, status: "approved" });
-                              await supabase.from("notifications").insert({ user_uuid: photo.user_uuid, title: "✅ تم قبول صورتك المتحركة", body: "تم قبول طلب الصورة المتحركة بنجاح!", target: "personal" });
-                              toast.success("تم القبول");
-                              setAnimatedPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: "approved" } : p));
-                              setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
-                            } catch { toast.error("فشل القبول"); }
-                          }}>
-                            <CheckCircle className="w-4 h-4 ml-1" />قبول
-                          </Button>
-                          <Button size="sm" variant="destructive" className="flex-1" onClick={async () => {
-                            try {
-                              await adminCall("update_animated_photo", { id: photo.id, status: "rejected" });
-                              await supabase.from("notifications").insert({ user_uuid: photo.user_uuid, title: "❌ تم رفض صورتك المتحركة", body: "للأسف تم رفض طلب الصورة المتحركة.", target: "personal" });
-                              toast.success("تم الرفض");
-                              setAnimatedPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: "rejected" } : p));
-                              setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
-                            } catch { toast.error("فشل الرفض"); }
-                          }}>
-                            <XCircle className="w-4 h-4 ml-1" />رفض
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
