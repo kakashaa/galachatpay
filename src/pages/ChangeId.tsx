@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import IdFormatCarousel from "@/components/IdFormatCarousel";
 import { levelFormats } from "@/data/idFormats";
 import { validateIdAgainstPatterns } from "@/utils/idPatternValidator";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 const userTypeLabels: Record<number, string> = {
   0: "مستخدم عادي", 1: "مستخدم عادي", 2: "مضيف",
@@ -205,6 +206,9 @@ const ChangeId: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="تغيير الـ ID" onBack={() => navigate("/dashboard")}>
       <div className="px-4 py-3 space-y-3">
+        {/* طلباتي السابقة */}
+        <ServicePreviousRequests userUuid={user.uuid} serviceType="change_id" />
+
         {/* Warning if already changed */}
         {alreadyChanged.changed && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">

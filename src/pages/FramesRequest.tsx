@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import SvgaPlayer from "@/components/SvgaPlayer";
 import GuestLoginPrompt from "@/components/GuestLoginPrompt";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 interface FrameItem {
   id: string;
@@ -148,6 +149,9 @@ const FramesRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="الإطارات" onBack={() => navigate("/dashboard")}>
       <div className="px-3 py-4 space-y-4">
+        {/* طلباتي السابقة */}
+        {user?.uuid && <ServicePreviousRequests userUuid={user.uuid} serviceType="frame" />}
+
         {/* Star Wallet */}
         <div className="glass-card p-3 css-fade-up overflow-hidden relative" dir="rtl">
           <div className="absolute top-0 left-0 w-20 h-20 bg-accent/10 rounded-full blur-[40px] -translate-x-1/2 -translate-y-1/2" />

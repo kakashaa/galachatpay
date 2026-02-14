@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 const userTypeLabels: Record<number, string> = {
   0: "مستخدم عادي", 1: "مستخدم عادي", 2: "مضيف",
@@ -267,6 +268,9 @@ const SalaryWithdraw: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
+        {/* طلباتي السابقة */}
+        <ServicePreviousRequests userUuid={user.uuid} serviceType="salary" />
+
         {/* User Info */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">

@@ -4,6 +4,7 @@ import { Crown, Check, Lock, Users, Calendar, AlertCircle } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 interface VipTier {
   level: number;
@@ -98,6 +99,8 @@ const RequestVip: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="طلب VIP" onBack={() => navigate("/dashboard")}>
       <div className="px-4 py-3 space-y-3">
+        {/* طلباتي السابقة */}
+        <ServicePreviousRequests userUuid={user.uuid} serviceType="vip" />
         {/* Account type + monthly limit */}
         <div className="glass-card p-3" dir="rtl">
           <div className="flex items-center gap-2.5">
