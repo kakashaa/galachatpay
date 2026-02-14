@@ -552,6 +552,8 @@ export type Database = {
           recipient_name: string
           request_type: string
           status: string
+          transaction_date: string | null
+          transaction_id: string | null
           transfer_image_url: string | null
           updated_at: string
           user_name: string
@@ -570,6 +572,8 @@ export type Database = {
           recipient_name: string
           request_type: string
           status?: string
+          transaction_date?: string | null
+          transaction_id?: string | null
           transfer_image_url?: string | null
           updated_at?: string
           user_name: string
@@ -588,6 +592,8 @@ export type Database = {
           recipient_name?: string
           request_type?: string
           status?: string
+          transaction_date?: string | null
+          transaction_id?: string | null
           transfer_image_url?: string | null
           updated_at?: string
           user_name?: string

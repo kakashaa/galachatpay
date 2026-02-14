@@ -48,6 +48,7 @@ const SalaryWithdraw: React.FC = () => {
   // API confirmed data
   const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
   const [confirmedDate, setConfirmedDate] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
 
   // Details form
   const [fullName, setFullName] = useState("");
@@ -158,18 +159,23 @@ const SalaryWithdraw: React.FC = () => {
       }
 
       if (!data?.success) {
-        setError("لم يتم العثور على تحويل. رجاءً أولاً قم بتحويل المبلغ الذي تريد استلامه إلى آيدي 10000 في تطبيق غلا لايف، ثم ارجع وحاول مرة أخرى.");
+        if (data?.duplicate) {
+          setError("⚠️ تم رفع هذا الراتب مسبقاً برقم مرجعي مسجل. لا يمكن استخدام نفس التحويل مرتين.");
+        } else {
+          setError(data?.error || "لم يتم العثور على تحويل. رجاءً أولاً قم بتحويل المبلغ الذي تريد استلامه إلى آيدي 10000 في تطبيق غلا لايف، ثم ارجع وحاول مرة أخرى.");
+        }
         setLoading(false);
         return;
       }
 
-      // Extract amount and date from API response (check nested data too)
-      const responseData = data.data || data;
-      const amount = responseData.amount ?? responseData.coins ?? responseData.total ?? 0;
-      const date = responseData.date ?? responseData.created_at ?? responseData.timestamp ?? new Date().toISOString().split("T")[0];
+      // Extract amount, date, and transaction_id from API response
+      const amount = data.confirmed_amount ?? data.data?.amount ?? 0;
+      const date = data.transaction_date ?? data.data?.created_at ?? new Date().toISOString().split("T")[0];
+      const txId = data.transaction_id ?? null;
       
       setConfirmedAmount(amount);
       setConfirmedDate(typeof date === 'string' ? date.split("T")[0] : date);
+      setTransactionId(txId);
       setStep("details");
     } catch {
       setError("حدث خطأ غير متوقع.");
@@ -211,10 +217,17 @@ const SalaryWithdraw: React.FC = () => {
         payment_method: selectedMethod?.label || "",
         payment_details: withdrawType === "star_code" ? `كود نجوم: ${starCode}` : accountInfo,
         status: "pending",
-      }).select("id").single();
+        transaction_id: transactionId,
+        transaction_date: confirmedDate,
+      } as any).select("id").single();
       if (insertError) {
-        console.error("Insert error:", insertError);
-        setError("حدث خطأ في حفظ الطلب. حاول مرة أخرى.");
+        // Check for unique constraint violation (duplicate transaction_id)
+        if (insertError.code === "23505" && insertError.message?.includes("transaction_id")) {
+          setError("⚠️ تم رفع هذا الراتب مسبقاً. لا يمكن استخدام نفس رقم التحويل مرتين.");
+        } else {
+          console.error("Insert error:", insertError);
+          setError("حدث خطأ في حفظ الطلب. حاول مرة أخرى.");
+        }
         setLoading(false);
         return;
       }
