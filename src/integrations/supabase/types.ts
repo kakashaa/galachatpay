@@ -805,6 +805,7 @@ export type Database = {
       }
       ticket_replies: {
         Row: {
+          attachment_url: string | null
           created_at: string
           id: string
           is_read: boolean
@@ -814,6 +815,7 @@ export type Database = {
           ticket_id: string
         }
         Insert: {
+          attachment_url?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
@@ -823,6 +825,7 @@ export type Database = {
           ticket_id: string
         }
         Update: {
+          attachment_url?: string | null
           created_at?: string
           id?: string
           is_read?: boolean

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, MessageSquare, Clock, CheckCircle, XCircle, Send, ChevronLeft } from "lucide-react";
+import { Plus, MessageSquare, Clock, CheckCircle, XCircle, Send, ChevronLeft, Paperclip, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { secureUpload } from "@/utils/secureUpload";
 import { toast } from "sonner";
 
 interface Ticket {
@@ -25,6 +26,7 @@ interface TicketReply {
   message: string;
   is_read: boolean;
   created_at: string;
+  attachment_url?: string | null;
 }
 
 const TICKET_SUBJECTS = [
@@ -52,7 +54,11 @@ const SupportTicketsEmbed: React.FC = () => {
   const [replies, setReplies] = useState<TicketReply[]>([]);
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -117,16 +123,54 @@ const SupportTicketsEmbed: React.FC = () => {
     setSubmitting(false);
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("الحد الأقصى 10 ميغابايت"); return; }
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!["jpg","jpeg","png","gif","webp","pdf","mp4"].includes(ext)) { toast.error("نوع الملف غير مدعوم"); return; }
+    setAttachmentFile(file);
+    if (file.type.startsWith("image/")) {
+      setAttachmentPreview(URL.createObjectURL(file));
+    } else {
+      setAttachmentPreview(null);
+    }
+  };
+
+  const clearAttachment = () => {
+    setAttachmentFile(null);
+    setAttachmentPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSendReply = async () => {
-    if (!user || !selectedTicket || !replyText.trim()) return;
+    if (!user || !selectedTicket || (!replyText.trim() && !attachmentFile)) return;
     setSendingReply(true);
     try {
-      await supabase.from("ticket_replies").insert({ ticket_id: selectedTicket.id, sender_type: "user", sender_name: user.name, message: replyText.trim() });
+      let attachUrl: string | null = null;
+      if (attachmentFile) {
+        setUploadingAttachment(true);
+        const ts = Date.now();
+        const ext = attachmentFile.name.split(".").pop()?.toLowerCase() || "jpg";
+        const path = `tickets/${user.id}/${selectedTicket.id}/${ts}.${ext}`;
+        attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.id.toString() });
+        setUploadingAttachment(false);
+      }
+      await supabase.from("ticket_replies").insert({
+        ticket_id: selectedTicket.id,
+        sender_type: "user",
+        sender_name: user.name,
+        message: replyText.trim() || (attachmentFile ? "مرفق" : ""),
+        attachment_url: attachUrl,
+      } as any);
       await supabase.from("support_tickets").update({ status: "open", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
       setReplyText("");
-    } catch { toast.error("فشل إرسال الرد"); }
+      clearAttachment();
+    } catch { toast.error("فشل إرسال الرد"); setUploadingAttachment(false); }
     setSendingReply(false);
   };
+
+  const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -156,6 +200,17 @@ const SupportTicketsEmbed: React.FC = () => {
             <div key={reply.id} className={`flex ${reply.sender_type === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[80%] rounded-2xl p-3 ${reply.sender_type === "user" ? "bg-primary/10 border border-primary/20 rounded-tr-md" : "bg-emerald-500/10 border border-emerald-500/20 rounded-tl-md"}`}>
                 {reply.sender_type === "admin" && <p className="text-[10px] font-bold text-emerald-400 mb-1">فريق الدعم</p>}
+                {reply.attachment_url && (
+                  isImageUrl(reply.attachment_url) ? (
+                    <a href={reply.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
+                      <img src={reply.attachment_url} alt="مرفق" className="max-w-full rounded-lg max-h-48 object-cover" />
+                    </a>
+                  ) : (
+                    <a href={reply.attachment_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 mb-2 text-xs text-primary underline">
+                      <Paperclip className="w-3 h-3" /> عرض المرفق
+                    </a>
+                  )
+                )}
                 <p className="text-xs text-foreground whitespace-pre-line">{reply.message}</p>
                 <p className="text-[9px] text-muted-foreground mt-1">{formatDate(reply.created_at)}</p>
               </div>
@@ -182,11 +237,31 @@ const SupportTicketsEmbed: React.FC = () => {
         </div>
 
         {selectedTicket.status !== "closed" ? (
-          <div className="px-4 py-3 border-t border-border/10 bg-card/50">
+          <div className="px-4 py-2 border-t border-border/10 bg-card/50 space-y-2">
+            {/* Attachment preview */}
+            {attachmentFile && (
+              <div className="flex items-center gap-2 bg-muted/20 rounded-lg p-2">
+                {attachmentPreview ? (
+                  <img src={attachmentPreview} alt="مرفق" className="w-12 h-12 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Paperclip className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <span className="text-xs text-foreground flex-1 truncate">{attachmentFile.name}</span>
+                <button onClick={clearAttachment} className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
+                  <X className="w-3 h-3 text-destructive" />
+                </button>
+              </div>
+            )}
             <div className="flex gap-2">
+              <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*,.pdf,.mp4" className="hidden" />
+              <button onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-xl bg-muted/20 border border-border/30 flex items-center justify-center active:scale-95 transition-transform" title="إرفاق ملف">
+                <Paperclip className="w-4 h-4 text-muted-foreground" />
+              </button>
               <input value={replyText} onChange={(e) => setReplyText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendReply(); } }} placeholder="اكتب ردك..." className="flex-1 h-10 px-3 bg-muted/20 rounded-xl text-foreground placeholder:text-muted-foreground border border-border/30 focus:border-primary outline-none text-sm" />
-              <button onClick={handleSendReply} disabled={!replyText.trim() || sendingReply} className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform">
-                {sendingReply ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" />}
+              <button onClick={handleSendReply} disabled={(!replyText.trim() && !attachmentFile) || sendingReply || uploadingAttachment} className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform">
+                {(sendingReply || uploadingAttachment) ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" />}
               </button>
             </div>
           </div>
