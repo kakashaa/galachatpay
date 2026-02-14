@@ -1,22 +1,23 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { UserPlus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { UserPlus, Loader2, AlertCircle, CheckCircle, Users, Mic, Building2 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBD } from "@/contexts/BDContext";
 
-const TYPE_LABELS: Record<string, string> = {
-  supporter: "داعم",
-  host: "مضيف",
-  agency: "وكالة",
-};
+const TYPE_CONFIG = {
+  supporter: { label: "داعم", icon: Users, color: "text-blue-400", bg: "bg-blue-500/10" },
+  host: { label: "مضيف", icon: Mic, color: "text-pink-400", bg: "bg-pink-500/10" },
+  agency: { label: "وكالة", icon: Building2, color: "text-amber-400", bg: "bg-amber-500/10" },
+} as const;
 
 const BDAddMember: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const memberType = searchParams.get("type") || "supporter";
+  const memberType = (searchParams.get("type") || "supporter") as keyof typeof TYPE_CONFIG;
   const { addMember, loading, refreshDashboard } = useBD();
+  const config = TYPE_CONFIG[memberType] || TYPE_CONFIG.supporter;
 
   const [uuid, setUuid] = useState("");
   const [error, setError] = useState("");
@@ -28,7 +29,7 @@ const BDAddMember: React.FC = () => {
     setSuccess("");
     const res = await addMember(uuid.trim(), memberType);
     if (res.success) {
-      setSuccess(`تم إضافة ${res.name || "العضو"} بنجاح كـ${TYPE_LABELS[memberType]}`);
+      setSuccess(`تم إضافة ${res.name || "العضو"} بنجاح كـ${config.label}`);
       setUuid("");
       refreshDashboard();
     } else {
@@ -36,16 +37,18 @@ const BDAddMember: React.FC = () => {
     }
   };
 
+  const Icon = config.icon;
+
   return (
-    <MobileLayout showHeader headerTitle={`إضافة ${TYPE_LABELS[memberType]}`} onBack={() => navigate("/bd/dashboard")}>
+    <MobileLayout showHeader headerTitle={`إضافة ${config.label}`} onBack={() => navigate("/bd/dashboard")}>
       <div className="px-5 py-6 space-y-5" dir="rtl">
         <div className="glass-card p-5 space-y-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-              <UserPlus className="w-6 h-6 text-primary" />
+            <div className={`w-12 h-12 rounded-full ${config.bg} flex items-center justify-center`}>
+              <Icon className={`w-6 h-6 ${config.color}`} />
             </div>
             <div>
-              <p className="text-sm font-bold text-foreground">إضافة {TYPE_LABELS[memberType]} جديد</p>
+              <p className="text-sm font-bold text-foreground">إضافة {config.label} جديد</p>
               <p className="text-[10px] text-muted-foreground">أدخل UUID الشخص لتسجيله تحت حسابك</p>
             </div>
           </div>
@@ -60,7 +63,7 @@ const BDAddMember: React.FC = () => {
 
           {/* Type selector */}
           <div className="flex gap-2">
-            {Object.entries(TYPE_LABELS).map(([key, label]) => (
+            {(Object.entries(TYPE_CONFIG) as [string, typeof config][]).map(([key, cfg]) => (
               <button
                 key={key}
                 onClick={() => navigate(`/bd/add-member?type=${key}`, { replace: true })}
@@ -70,7 +73,7 @@ const BDAddMember: React.FC = () => {
                     : "bg-muted/20 text-muted-foreground"
                 }`}
               >
-                {label}
+                {cfg.label}
               </button>
             ))}
           </div>
