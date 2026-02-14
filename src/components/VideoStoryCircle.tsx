@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, X, Volume2, VolumeX } from 'lucide-react';
+import { Play, X, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import TikTokInteraction from '@/components/TikTokInteraction';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface VideoTutorial {
   id: string;
@@ -25,7 +25,7 @@ const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
     video.muted = true;
     video.preload = 'metadata';
     video.src = src;
-    video.currentTime = 1; // grab frame at 1 second
+    video.currentTime = 1;
     video.addEventListener('seeked', () => {
       try {
         const canvas = document.createElement('canvas');
@@ -36,7 +36,7 @@ const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           setThumb(canvas.toDataURL('image/jpeg', 0.7));
         }
-      } catch { /* CORS or other error, fallback to icon */ }
+      } catch { /* CORS or other error */ }
     }, { once: true });
     video.addEventListener('error', () => {}, { once: true });
   }, [src]);
@@ -53,10 +53,11 @@ const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
 
 export const VideoStoryCircle = () => {
   const [videos, setVideos] = useState<VideoTutorial[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<VideoTutorial | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     fetchVideos();
@@ -79,16 +80,31 @@ export const VideoStoryCircle = () => {
     }
   };
 
-  const openVideo = (video: VideoTutorial) => {
-    if (!video.video_url) return; // Don't open empty videos
-    setSelectedVideo(video);
+  const openVideo = (index: number) => {
+    const video = videos[index] || demoVideos[index];
+    if (!video?.video_url) return;
+    setCurrentIndex(index);
     setIsOpen(true);
   };
 
   const closeVideo = () => {
     setIsOpen(false);
-    setSelectedVideo(null);
   };
+
+  const goNext = () => {
+    const list = videos.length > 0 ? videos : demoVideos;
+    if (currentIndex < list.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  const goPrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
+  };
+
+  const currentVideo = (videos.length > 0 ? videos : [])[currentIndex];
 
   // Demo videos when DB is empty
   const demoVideos: VideoTutorial[] = [
@@ -109,7 +125,7 @@ export const VideoStoryCircle = () => {
       <div className="flex gap-3 overflow-x-auto pb-1.5 px-1 scrollbar-hide z-10" dir="rtl">
         {displayVideos.map((video, index) => (
           <div key={video.id} className="flex flex-col items-center gap-1 flex-shrink-0">
-            <button onClick={() => openVideo(video)} className="relative group">
+            <button onClick={() => openVideo(index)} className="relative group">
               <div className="w-12 h-12 rounded-full p-[2px] bg-gradient-to-tr from-primary via-accent to-primary">
                 <div className="w-full h-full rounded-full bg-background p-[1.5px]">
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
@@ -136,35 +152,87 @@ export const VideoStoryCircle = () => {
         ))}
       </div>
 
-      {/* Full Screen Video Dialog */}
-      <Dialog open={isOpen} onOpenChange={closeVideo}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden flex flex-col [&>button]:hidden">
-          <VisuallyHidden>
-            <DialogTitle>{selectedVideo?.title || 'فيديو تعليمي'}</DialogTitle>
-          </VisuallyHidden>
-          <div className="relative w-full h-full flex flex-col">
-            <button onClick={closeVideo} className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-            <button onClick={() => setIsMuted(!isMuted)} className="absolute top-4 left-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors">
-              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-            </button>
-            {selectedVideo && (
-              <div className="flex-1 flex items-center justify-center bg-black min-h-0">
-                <video key={selectedVideo.id} src={selectedVideo.video_url} autoPlay loop muted={isMuted} playsInline controls className="w-full h-full object-contain" />
+      {/* Fullscreen TikTok-style Video Viewer */}
+      <AnimatePresence>
+        {isOpen && currentVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[9999] bg-black flex flex-col"
+          >
+            {/* Top bar */}
+            <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-[env(safe-area-inset-top,12px)] pb-2">
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                className="w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
+              >
+                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+
+              {/* Progress dots */}
+              <div className="flex gap-1">
+                {(videos.length > 0 ? videos : []).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-[3px] rounded-full transition-all ${
+                      i === currentIndex ? 'w-5 bg-white' : 'w-2 bg-white/30'
+                    }`}
+                  />
+                ))}
               </div>
-            )}
-            {selectedVideo && (
-              <div className="bg-gradient-to-t from-black/90 to-transparent p-4 pt-8">
-                <h3 className="text-white text-lg font-bold mb-1">{selectedVideo.title}</h3>
-                {selectedVideo.description && (
-                  <p className="text-white/80 text-sm">{selectedVideo.description}</p>
-                )}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+
+              <button
+                onClick={closeVideo}
+                className="w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Video area */}
+            <div className="flex-1 relative flex items-center justify-center">
+              <video
+                ref={videoRef}
+                key={currentVideo.id}
+                src={currentVideo.video_url}
+                autoPlay
+                loop
+                muted={isMuted}
+                playsInline
+                className="w-full h-full object-contain"
+              />
+
+              {/* Tap zones for prev/next */}
+              <button
+                onClick={goPrev}
+                className="absolute left-0 top-0 bottom-0 w-1/4 z-30"
+                aria-label="السابق"
+              />
+              <button
+                onClick={goNext}
+                className="absolute right-0 top-0 bottom-0 w-1/4 z-30"
+                aria-label="التالي"
+              />
+
+              {/* TikTok interaction buttons (likes/comments) */}
+              <TikTokInteraction
+                itemType="video_tutorial"
+                itemId={currentVideo.id}
+              />
+            </div>
+
+            {/* Bottom info */}
+            <div className="absolute bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pb-[env(safe-area-inset-bottom,16px)] pt-12" dir="rtl">
+              <h3 className="text-white text-base font-bold mb-1">{currentVideo.title}</h3>
+              {currentVideo.description && (
+                <p className="text-white/70 text-xs mb-2">{currentVideo.description}</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
