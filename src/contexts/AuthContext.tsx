@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 
 export interface GalaUser {
   id: number;
@@ -38,6 +38,7 @@ interface AuthContextType {
   user: GalaUser | null;
   setUser: (user: GalaUser | null) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -48,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const stored = localStorage.getItem("gala_user");
     return stored ? JSON.parse(stored) : null;
   });
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -57,13 +59,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  const refreshUser = useCallback(async () => {
+    if (!user?.uuid) return;
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=get-user&uuid=${user.uuid}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+        }
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data?.success || !data?.data) return;
+      const apiUser = data.data;
+      const levelData = typeof apiUser.level === "number"
+        ? { receiver_level: apiUser.level, sender_level: 0, charger_level: 0, receiver_num: 0, sender_num: 0, charger_num: 0 }
+        : {
+            receiver_level: apiUser.level?.receiver_level || 0,
+            sender_level: apiUser.level?.sender_level || 0,
+            charger_level: apiUser.level?.charger_level || 0,
+            receiver_num: apiUser.level?.receiver_num || 0,
+            sender_num: apiUser.level?.sender_num || 0,
+            charger_num: apiUser.level?.charger_num || 0,
+          };
+      setUser({
+        id: apiUser.id,
+        uuid: apiUser.uuid,
+        name: apiUser.name,
+        phone: apiUser.phone || user.phone,
+        type_user: apiUser.type_user ?? user.type_user,
+        profile: {
+          image: apiUser.profile?.image || user.profile.image,
+          gender: apiUser.profile?.gender || apiUser.gender || user.profile.gender,
+          birthday: apiUser.profile?.birthday || user.profile.birthday,
+          age: apiUser.profile?.age || user.profile.age,
+          country: apiUser.country?.name || user.profile.country,
+        },
+        level: levelData,
+        my_store: {
+          coins: apiUser.my_store?.coins ?? user.my_store.coins,
+          diamonds: apiUser.my_store?.diamonds ?? user.my_store.diamonds,
+          usd: apiUser.my_store?.usd ?? user.my_store.usd,
+        },
+        vip: apiUser.vip || user.vip,
+        country: {
+          id: apiUser.country?.id ?? user.country.id,
+          name: apiUser.country?.name || user.country.name,
+          flag: apiUser.country?.flag || user.country.flag,
+        },
+      });
+    } catch {
+      // silent
+    }
+  }, [user?.uuid]);
+
+  // Auto-refresh every 3 minutes
+  useEffect(() => {
+    if (user?.uuid) {
+      refreshTimerRef.current = setInterval(refreshUser, 3 * 60 * 1000);
+    }
+    return () => {
+      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+    };
+  }, [user?.uuid, refreshUser]);
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("gala_user");
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, setUser, logout, refreshUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

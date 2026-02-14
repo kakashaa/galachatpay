@@ -32,7 +32,6 @@ const BDRequest: React.FC = () => {
 
   const checkExistingRequest = async () => {
     try {
-      // First, try to fetch from the external API with a timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
@@ -52,13 +51,21 @@ const BDRequest: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-            const latest = data.data[0];
-            if (latest.status === "approved" || latest.status === 1) {
-              setBdStatus("approved");
-            } else if (latest.status === "pending" || latest.status === 0) {
-              setBdStatus("pending");
-            } else if (latest.status === "rejected" || latest.status === 2) {
-              setBdStatus("rejected");
+            // Filter to only requests belonging to this user
+            const userRequests = data.data.filter(
+              (r: any) => String(r.user_uuid) === String(authUser!.uuid)
+            );
+            if (userRequests.length > 0) {
+              const latest = userRequests[0];
+              if (latest.status === "approved" || latest.status === 1) {
+                setBdStatus("approved");
+              } else if (latest.status === "pending" || latest.status === 0) {
+                setBdStatus("pending");
+              } else if (latest.status === "rejected" || latest.status === 2) {
+                setBdStatus("rejected");
+              } else {
+                setBdStatus("none");
+              }
             } else {
               setBdStatus("none");
             }
