@@ -127,6 +127,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user?.uuid, refreshUser]);
 
   const logout = () => {
+    // Save current account to saved accounts list before clearing
+    if (user) {
+      try {
+        const savedRaw = localStorage.getItem("gala_saved_accounts");
+        const saved: Array<{ uuid: string; name: string; image: string }> = savedRaw ? JSON.parse(savedRaw) : [];
+        const exists = saved.findIndex(a => a.uuid === user.uuid);
+        const entry = { uuid: user.uuid, name: user.name, image: user.profile?.image || "" };
+        if (exists >= 0) {
+          saved[exists] = entry;
+        } else {
+          saved.unshift(entry);
+        }
+        // Keep max 5 accounts
+        localStorage.setItem("gala_saved_accounts", JSON.stringify(saved.slice(0, 5)));
+      } catch { /* ignore */ }
+    }
     setUser(null);
     localStorage.removeItem("gala_user");
   };

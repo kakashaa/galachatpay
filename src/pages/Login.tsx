@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Fingerprint, Timer, Ban } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Fingerprint, Timer, Ban, Trash2, ChevronRight } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import LoginInstructions from "@/components/LoginInstructions";
 
+interface SavedAccount {
+  uuid: string;
+  name: string;
+  image: string;
+}
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { user, setUser, isAuthenticated } = useAuth();
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,65 +25,45 @@ const Login: React.FC = () => {
   const [blockInfo, setBlockInfo] = useState<{ blocked: boolean; permanent: boolean; blockedUntil?: string; blockCount?: number } | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Quick login state
-  const [savedUser, setSavedUser] = useState<{ uuid: string; name: string } | null>(null);
-  const [showQuickLogin, setShowQuickLogin] = useState(false);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  // Saved accounts
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
+  const [quickLoginLoading, setQuickLoginLoading] = useState<string | null>(null);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     setMounted(true);
-
-    const saved = localStorage.getItem("gala_quick_login");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setSavedUser(parsed);
-        setShowQuickLogin(true);
-      } catch { /* ignore */ }
-    }
-
-    if (window.PublicKeyCredential) {
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable?.()
-        .then(available => setBiometricAvailable(available))
-        .catch(() => setBiometricAvailable(false));
-    }
+    try {
+      const raw = localStorage.getItem("gala_saved_accounts");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setSavedAccounts(parsed);
+      }
+    } catch { /* ignore */ }
   }, []);
 
-  const handleQuickLogin = async () => {
-    if (!savedUser) return;
-    
-    if (biometricAvailable) {
-      try {
-        const credential = await navigator.credentials.get({
-          publicKey: {
-            challenge: crypto.getRandomValues(new Uint8Array(32)),
-            timeout: 60000,
-            userVerification: "required",
-            rpId: window.location.hostname,
-            allowCredentials: [],
-          }
-        }).catch(() => null);
-
-        if (!credential) {
-          setUserId(savedUser.uuid);
-          setShowQuickLogin(false);
-          return;
-        }
-      } catch {
-        setUserId(savedUser.uuid);
-        setShowQuickLogin(false);
-        return;
-      }
-    }
-
-    setUserId(savedUser.uuid);
-    setShowQuickLogin(false);
+  const removeSavedAccount = (uuid: string) => {
+    const updated = savedAccounts.filter(a => a.uuid !== uuid);
+    setSavedAccounts(updated);
+    localStorage.setItem("gala_saved_accounts", JSON.stringify(updated));
   };
 
-  const clearQuickLogin = () => {
-    localStorage.removeItem("gala_quick_login");
-    setSavedUser(null);
-    setShowQuickLogin(false);
+  const handleQuickAccountLogin = (account: SavedAccount) => {
+    setUserId(account.uuid);
+    setPassword("");
+    setError("");
+    setWarning("");
+    setBlockInfo(null);
+    // Focus on password field
+    setTimeout(() => {
+      const pwInput = document.querySelector('input[type="password"], input[inputmode="numeric"]') as HTMLInputElement;
+      pwInput?.focus();
+    }, 100);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -161,7 +147,7 @@ const Login: React.FC = () => {
             charger_level: apiUser.level?.charger_level || 0,
             receiver_num: apiUser.level?.receiver_num || 0,
             sender_num: apiUser.level?.sender_num || 0,
-            charger_num: apiUser.level?.charger_num || 0,
+            charger_num: apiUser.level?.charger_level || 0,
           };
 
       const userObj = {
@@ -192,10 +178,20 @@ const Login: React.FC = () => {
       };
 
       setUser(userObj);
-      localStorage.setItem("gala_quick_login", JSON.stringify({
-        uuid: apiUser.uuid,
-        name: apiUser.name,
-      }));
+
+      // Update saved accounts with latest info
+      try {
+        const savedRaw = localStorage.getItem("gala_saved_accounts");
+        const saved: SavedAccount[] = savedRaw ? JSON.parse(savedRaw) : [];
+        const idx = saved.findIndex(a => a.uuid === apiUser.uuid);
+        const entry = { uuid: apiUser.uuid, name: apiUser.name, image: apiUser.profile?.image || "" };
+        if (idx >= 0) {
+          saved[idx] = entry;
+        } else {
+          saved.unshift(entry);
+        }
+        localStorage.setItem("gala_saved_accounts", JSON.stringify(saved.slice(0, 5)));
+      } catch { /* ignore */ }
 
       // Clean up old support chat messages from other accounts
       const keysToDelete: string[] = [];
@@ -242,29 +238,47 @@ const Login: React.FC = () => {
           </p>
         </div>
 
-        {/* Quick Login */}
-        {showQuickLogin && savedUser && (
-          <div className={`w-full mb-4 transition-all duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}>
-            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <button onClick={clearQuickLogin} className="text-xs text-muted-foreground hover:text-destructive transition-colors">
-                  حذف
-                </button>
-                <div className="flex items-center gap-2 text-right">
-                  <div>
-                    <p className="text-sm font-bold text-foreground">{savedUser.name}</p>
-                    <p className="text-xs text-muted-foreground" dir="ltr">ID: {savedUser.uuid}</p>
-                  </div>
-                  <Fingerprint className="w-5 h-5 text-primary" />
+        {/* Saved Accounts */}
+        {savedAccounts.length > 0 && (
+          <div className={`w-full mb-5 transition-all duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}>
+            <p className="text-xs text-muted-foreground text-right mb-2 pr-1">حسابات محفوظة</p>
+            <div className="space-y-2">
+              {savedAccounts.map((account) => (
+                <div
+                  key={account.uuid}
+                  className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3 group"
+                >
+                  <button
+                    onClick={() => removeSavedAccount(account.uuid)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all shrink-0"
+                    title="حذف الحساب المحفوظ"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleQuickAccountLogin(account)}
+                    className="flex-1 flex items-center gap-3 text-right min-w-0"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{account.name}</p>
+                      <p className="text-xs text-muted-foreground" dir="ltr">ID: {account.uuid}</p>
+                    </div>
+                    {account.image ? (
+                      <img
+                        src={account.image}
+                        alt={account.name}
+                        className="w-10 h-10 rounded-full object-cover border-2 border-primary/30 shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-primary/20 border-2 border-primary/30 flex items-center justify-center shrink-0">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                    )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 rtl:rotate-180" />
+                  </button>
                 </div>
-              </div>
-              <button
-                onClick={handleQuickLogin}
-                className="w-full h-12 rounded-xl bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary font-bold text-sm flex items-center justify-center gap-2 transition-all"
-              >
-                <Fingerprint className="w-4 h-4" />
-                {biometricAvailable ? "دخول سريع بالبصمة" : "دخول سريع"}
-              </button>
+              ))}
             </div>
           </div>
         )}
