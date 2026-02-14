@@ -125,6 +125,61 @@ const AnimatedPhotoRequest: React.FC = () => {
     );
   }
 
+  // Not eligible (level < 30)
+  if (!durationConfig?.eligible) {
+    return (
+      <MobileLayout showHeader headerTitle="صورة متحركة" onBack={() => navigate("/dashboard")}>
+        <div className="px-5 py-6 space-y-5">
+          {authUser?.uuid && <ServicePreviousRequests userUuid={authUser.uuid} serviceType="animated_photo" />}
+          <div className="glass-card p-5 text-center space-y-4 css-fade-up">
+            <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto">
+              <Shield className="w-8 h-8 text-yellow-500" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">الصورة المتحركة غير متاحة</h2>
+            <p className="text-sm text-muted-foreground">
+              أعلى لفل لديك: <span className="font-bold text-primary">{maxLevel}</span>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              يجب أن يكون لديك لفل <span className="font-bold text-primary">30</span> على الأقل (شحن أو كاريزما أو دعم)
+            </p>
+          </div>
+
+          <div className="glass-card p-4 space-y-3 css-fade-up-d1">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-400" />
+              شروط الصورة المتحركة
+            </h3>
+            <div className="space-y-2 text-xs" dir="rtl">
+              {[
+                { level: "30+", duration: "30 يوم" },
+                { level: "40+", duration: "60 يوم" },
+                { level: "50+", duration: "مؤبدة (دائمة)" },
+              ].map((rule) => (
+                <div key={rule.level} className="flex items-center justify-between bg-muted/30 rounded-lg p-2.5">
+                  <span className="text-muted-foreground">لفل {rule.level}</span>
+                  <span className="text-foreground">{rule.duration}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="glass-card p-4 space-y-2 css-fade-up-d2">
+            <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <PlayCircle className="w-4 h-4 text-orange-400" />
+              ملاحظات مهمة
+            </h3>
+            <ul className="space-y-1.5 text-xs text-muted-foreground" dir="rtl">
+              <li>• يجب أن تكون الصورة بصيغة GIF</li>
+              <li>• الحد الأقصى للحجم 10 ميغابايت</li>
+              <li>• مسموح بطلب واحد فقط</li>
+              <li>• أعلى لفل بين (الشحن، الكاريزما، الدعم) يحدد المدة</li>
+            </ul>
+          </div>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   if (alreadyRequested) {
     return (
       <MobileLayout showHeader headerTitle="صورة متحركة" onBack={() => navigate("/dashboard")}>
@@ -222,13 +277,7 @@ const AnimatedPhotoRequest: React.FC = () => {
                 </span>
               </div>
             ))}
-          </div>
-
-          {!durationConfig?.eligible && (
-            <p className="text-xs text-destructive text-center mt-2">
-              ⚠️ يجب أن يكون لديك لفل 30 على الأقل (شحن أو كاريزما أو دعم)
-            </p>
-          )}
+        </div>
         </div>
 
         {/* معلومات الحساب */}
