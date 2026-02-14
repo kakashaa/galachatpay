@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Fingerprint, Timer, Ban, Trash2, ChevronRight } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
@@ -38,6 +39,14 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     setMounted(true);
+    // Check if user was force-logged out
+    const reason = localStorage.getItem("gala_force_logout_reason");
+    if (reason === "password_changed") {
+      localStorage.removeItem("gala_force_logout_reason");
+      toast.error("تم تسجيل خروجك تلقائياً لأن الرمز السري تم تغييره من جهاز آخر. يرجى تسجيل الدخول بالرمز الجديد.", {
+        duration: 8000,
+      });
+    }
     try {
       const raw = localStorage.getItem("gala_saved_accounts");
       if (raw) {

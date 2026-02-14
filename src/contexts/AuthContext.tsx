@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface GalaUser {
   id: number;
@@ -146,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data && !data.success && !data.blocked) {
         console.log("Password changed, forcing logout");
         localStorage.removeItem("gala_session_key");
+        localStorage.setItem("gala_force_logout_reason", "password_changed");
         logout();
       }
     } catch {
