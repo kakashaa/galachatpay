@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 const GiftRequest: React.FC = () => {
   const navigate = useNavigate();
@@ -78,6 +79,9 @@ const GiftRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="طلب هدية" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
+        {/* طلباتي السابقة */}
+        {authUser?.uuid && <ServicePreviousRequests userUuid={authUser.uuid} serviceType="gift" />}
+
         <div className="glass-card p-4 space-y-3 css-fade-up">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <User className="w-4 h-4 text-primary" />

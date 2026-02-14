@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 // Duration limits per charger level
 const getDurationLimit = (level: number): number => {
@@ -299,6 +300,9 @@ const CustomGiftUpload: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="هدية مخصصة" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-4">
+        {/* طلباتي السابقة */}
+        {user?.uuid && <ServicePreviousRequests userUuid={user.uuid} serviceType="custom_gift" />}
+
         {/* Info bar */}
         <div className="glass-card p-3 css-fade-up">
           <div className="flex items-center justify-between">

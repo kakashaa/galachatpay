@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import SvgaPlayer from "@/components/SvgaPlayer";
 import GuestLoginPrompt from "@/components/GuestLoginPrompt";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 interface EntryGift {
   id: string;
@@ -200,6 +201,9 @@ const EntryRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="الدخوليات" onBack={() => navigate("/dashboard")}>
       <div className="px-3 py-4 space-y-4">
+        {/* طلباتي السابقة */}
+        {user?.uuid && <ServicePreviousRequests userUuid={user.uuid} serviceType="entry_gift" />}
+
         {/* Title Section */}
         <div className="text-center css-fade-up space-y-1">
           <h2 className="text-lg font-black gradient-text">غلا شات</h2>

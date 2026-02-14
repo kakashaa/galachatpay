@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 const getDurationConfig = (user: { level: { charger_level: number; sender_level: number; receiver_level: number } } | null) => {
   if (!user) return null;
@@ -170,6 +171,9 @@ const AnimatedPhotoRequest: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="صورة متحركة" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
+        {/* طلباتي السابقة */}
+        {authUser?.uuid && <ServicePreviousRequests userUuid={authUser.uuid} serviceType="animated_photo" />}
+
         <div className="flex flex-col items-center gap-2 py-4 css-fade-up">
           <div className="w-16 h-16 rounded-2xl bg-orange-500/15 flex items-center justify-center">
             <PlayCircle className="w-8 h-8 text-orange-400" />
