@@ -218,10 +218,6 @@ const AdminDashboardPage: React.FC = () => {
 
   // Animated photos state
   const [animatedPhotos, setAnimatedPhotos] = useState<AnimatedPhotoRequest[]>([]);
-  const [animatedPhotoAction, setAnimatedPhotoAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
-  const [animatedRejectReason, setAnimatedRejectReason] = useState("");
-  const [animatedActionLoading, setAnimatedActionLoading] = useState(false);
-  const [expandedAnimated, setExpandedAnimated] = useState<string | null>(null);
   const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "auto_approved" | "pending" | "rejected">("all");
 
   // Admin stars state
