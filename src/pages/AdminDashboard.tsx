@@ -9,7 +9,7 @@ import {
   Loader2, Eye, EyeOff, Upload,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift,
-  ArrowRight, Bell, ScrollText,
+  ArrowRight, Bell, ScrollText, Hash,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +22,7 @@ import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime"
 import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
 import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | null;
 
 interface BDRequestItem {
   id: string;
@@ -255,6 +255,9 @@ const AdminDashboardPage: React.FC = () => {
   // Quick support state
   const [quickSupportRequests, setQuickSupportRequests] = useState<any[]>([]);
 
+  // ID changes state
+  const [idChanges, setIdChanges] = useState<any[]>([]);
+
   useEffect(() => {
     if (!adminSessionToken) {
       navigate("/admin");
@@ -471,6 +474,14 @@ const AdminDashboardPage: React.FC = () => {
             .select("*")
             .order("created_at", { ascending: false });
           setQuickSupportRequests(data || []);
+          break;
+        }
+        case "id_changes": {
+          const { data } = await supabase
+            .from("id_changes")
+            .select("*")
+            .order("created_at", { ascending: false });
+          setIdChanges(data || []);
           break;
         }
       }
@@ -781,6 +792,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
     { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
     { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
+    { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: idChanges.length },
     ...(adminRole === "super_admin" ? [
       { key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
       { key: "audit_log" as const, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
@@ -2135,6 +2147,37 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
                   );
                 })}
+              </motion.div>
+            )}
+
+            {/* ID Changes Tab */}
+            {activeTab === "id_changes" && (
+              <motion.div key="id_changes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {idChanges.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Hash className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد طلبات تغيير آيدي</p>
+                  </div>
+                ) : (
+                  idChanges.map((change: any) => (
+                    <div key={change.id} className="bg-card border border-border/40 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-foreground" dir="ltr">{change.new_id}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(change.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>UUID: <span className="font-mono text-foreground/70" dir="ltr">{change.user_uuid}</span></span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-bold">
+                          المستوى {change.level_milestone}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </motion.div>
             )}
 
