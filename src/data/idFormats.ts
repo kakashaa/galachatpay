@@ -10,6 +10,24 @@ export interface LevelFormats {
   groups: FormatGroup[];
 }
 
+/** Gift patterns – available from level 70+ for gifting IDs to other users */
+export interface GiftLevelFormats {
+  minLevel: number;
+  label: string;
+  groups: FormatGroup[];
+}
+
+export const giftLevelFormats: GiftLevelFormats[] = [
+  {
+    minLevel: 70, label: "إهداء ID (لفل 70+)",
+    groups: [
+      { digits: 5, patterns: ["ABCDD", "ABCBA", "ADDDA"] },
+      { digits: 6, patterns: ["ABBBBC", "AAAABC", "ABCCCC", "ABACCC", "AAABBC"] },
+      { digits: 7, patterns: ["ABCDDDD", "ABAAAAD", "BBAACCD", "ABDDDDD"] },
+    ],
+  },
+];
+
 export const levelFormats: LevelFormats[] = [
   {
     minLevel: 20, maxLevel: 29, label: "Level 20-29",
