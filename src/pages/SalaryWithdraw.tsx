@@ -20,8 +20,8 @@ import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod 
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 const userTypeLabels: Record<number, string> = {
-  0: "مستخدم عادي", 1: "مستخدم عادي", 2: "مضيف",
-  3: "وكيل مضيفين", 4: "وكيل شحن", 5: "وكيل شحن ومضيفين", 6: "مضيف ووكيل شحن",
+  0: "مستخدم عادي", 1: "مضيف", 2: "وكيل مضيفين",
+  3: "وكيل شحن", 4: "وكيل شحن ومضيفين", 5: "وكيل شحن ومضيف", 6: "الكل",
 };
 
 type Step = "select" | "transfer" | "details" | "confirm";
