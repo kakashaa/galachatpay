@@ -32,7 +32,18 @@ const BDRequest: React.FC = () => {
 
   const checkExistingRequest = async () => {
     try {
-      // First check local bd_commission_settings for approved status
+      // First check via bd-manage edge function (handles ID migration automatically)
+      try {
+        const { data: bdResult } = await supabase.functions.invoke("bd-manage", {
+          body: { action: "get_bd_info", bd_uuid: authUser!.uuid },
+        });
+        if (bdResult?.success) {
+          setBdStatus("approved");
+          return;
+        }
+      } catch {}
+
+      // Fallback: check local bd_commission_settings
       const { data: bdSettings } = await supabase
         .from("bd_commission_settings")
         .select("is_approved")
