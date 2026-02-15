@@ -214,6 +214,11 @@ const AdminDashboardPage: React.FC = () => {
    const [allSalaryRequests, setAllSalaryRequests] = useState<SalaryRequest[]>([]);
    const [allEntryClaims, setAllEntryClaims] = useState<ClaimRecord[]>([]);
    const [allFrameClaims, setAllFrameClaims] = useState<ClaimRecord[]>([]);
+   const [allAnimatedPhotos, setAllAnimatedPhotos] = useState<AnimatedPhotoRequest[]>([]);
+   const [allCustomGifts, setAllCustomGifts] = useState<any[]>([]);
+   const [allBdRequests, setAllBdRequests] = useState<BDRequestItem[]>([]);
+   const [allQuickSupport, setAllQuickSupport] = useState<any[]>([]);
+   const [allVipRequests, setAllVipRequests] = useState<any[]>([]);
    const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
 
   // Animated photos state
@@ -404,14 +409,39 @@ const AdminDashboardPage: React.FC = () => {
           break;
         }
         case "all_requests": {
-          const [sal, ec, fc] = await Promise.all([
+          const [sal, ec, fc, anim, customG, qs, vip] = await Promise.all([
             adminCall("list_salary_requests"),
             adminCall("list_entry_claims"),
             adminCall("list_frame_claims"),
+            adminCall("list_animated_photos"),
+            adminCall("list_custom_gifts"),
+            supabase.from("quick_support_requests").select("*").order("created_at", { ascending: false }).then(r => r.data),
+            supabase.from("vip_requests").select("*").order("created_at", { ascending: false }).then(r => r.data),
           ]);
           setAllSalaryRequests(sal || []);
           setAllEntryClaims(ec || []);
           setAllFrameClaims(fc || []);
+          setAllAnimatedPhotos(anim || []);
+          setAllCustomGifts(customG || []);
+          setAllQuickSupport(qs || []);
+          setAllVipRequests(vip || []);
+          // Also try BD requests
+          try {
+            const controller = new AbortController();
+            setTimeout(() => controller.abort(), 5000);
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=list-requests&request_type=bd_verify`,
+              {
+                method: "GET",
+                headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+                signal: controller.signal,
+              }
+            );
+            if (response.ok) {
+              const result = await response.json();
+              setAllBdRequests(result?.data && Array.isArray(result.data) ? result.data : []);
+            }
+          } catch { setAllBdRequests([]); }
           break;
         }
         case "animated_photos": {
@@ -1634,8 +1664,212 @@ const AdminDashboardPage: React.FC = () => {
                   );
                 })()}
 
+                {/* Animated Photos Section */}
+                {(() => {
+                  const filtered = allAnimatedPhotos.filter(p => allRequestsFilter === "all" || p.status === allRequestsFilter);
+                  const searched = filtered.filter(p =>
+                    allRequestsSearch === "" ||
+                    p.user_name.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    p.user_uuid.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  return searched.length > 0 ? (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-orange-500" /> صور متحركة ({searched.length})
+                      </h3>
+                      {searched.map((photo) => (
+                        <div key={photo.id} className="bg-card border rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                photo.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
+                                photo.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
+                              }`}>
+                                {photo.status === "pending" ? "معلق" : photo.status === "approved" ? "مقبول" : "مرفوض"}
+                              </span>
+                              <span className="text-xs font-bold">{photo.user_name}</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{new Date(photo.created_at).toLocaleDateString("ar-EG")}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[11px]">
+                            <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{photo.user_uuid}</span></div>
+                            <div><span className="text-muted-foreground">المدة:</span> {photo.duration_label}</div>
+                            <div><span className="text-muted-foreground">أعلى لفل:</span> {photo.max_level}</div>
+                            {photo.description && <div className="col-span-2"><span className="text-muted-foreground">الوصف:</span> {photo.description}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* Custom Gifts Section */}
+                {(() => {
+                  const filtered = allCustomGifts.filter((g: any) => allRequestsFilter === "all" || g.status === allRequestsFilter);
+                  const searched = filtered.filter((g: any) =>
+                    allRequestsSearch === "" ||
+                    g.user_name?.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    g.user_uuid?.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  return searched.length > 0 ? (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-pink-500" /> هدايا مخصصة ({searched.length})
+                      </h3>
+                      {searched.map((gift: any) => (
+                        <div key={gift.id} className="bg-card border rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                gift.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
+                                gift.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
+                              }`}>
+                                {gift.status === "pending" ? "معلق" : gift.status === "approved" ? "مقبول" : "مرفوض"}
+                              </span>
+                              <span className="text-xs font-bold">{gift.user_name}</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{new Date(gift.created_at).toLocaleDateString("ar-EG")}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[11px]">
+                            <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{gift.user_uuid}</span></div>
+                            <div><span className="text-muted-foreground">العنوان:</span> {gift.title}</div>
+                            <div><span className="text-muted-foreground">المدة:</span> {gift.video_duration}ث</div>
+                            <div><span className="text-muted-foreground">لفل الشاحن:</span> {gift.charger_level_at_upload}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* BD Requests Section */}
+                {(() => {
+                  const filtered = allBdRequests.filter((r: any) => {
+                    const statusNum = typeof r.status === "number" ? r.status : r.status === "pending" ? 0 : r.status === "approved" ? 1 : 2;
+                    if (allRequestsFilter === "all") return true;
+                    if (allRequestsFilter === "pending") return statusNum === 0;
+                    if (allRequestsFilter === "approved") return statusNum === 1;
+                    if (allRequestsFilter === "rejected") return statusNum === 2;
+                    return true;
+                  });
+                  const searched = filtered.filter((r: any) =>
+                    allRequestsSearch === "" ||
+                    r.user_name?.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    r.user_uuid?.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  return searched.length > 0 ? (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-teal-500" /> طلبات BD ({searched.length})
+                      </h3>
+                      {searched.map((req: any) => {
+                        const statusNum = typeof req.status === "number" ? req.status : req.status === "pending" ? 0 : req.status === "approved" ? 1 : 2;
+                        return (
+                          <div key={req.id} className="bg-card border rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  statusNum === 0 ? "bg-yellow-500/20 text-yellow-500" :
+                                  statusNum === 1 ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
+                                }`}>
+                                  {statusNum === 0 ? "معلق" : statusNum === 1 ? "مقبول" : "مرفوض"}
+                                </span>
+                                <span className="text-xs font-bold">{req.user_name}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1 text-[11px]">
+                              <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{req.user_uuid}</span></div>
+                              <div><span className="text-muted-foreground">النوع:</span> {req.request_type}</div>
+                              {req.admin_note && <div className="col-span-2"><span className="text-muted-foreground">ملاحظة:</span> {req.admin_note}</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* Quick Support Section */}
+                {(() => {
+                  const filtered = allQuickSupport.filter((r: any) => {
+                    if (allRequestsFilter === "all") return true;
+                    if (allRequestsFilter === "approved") return r.status === "resolved";
+                    return r.status === allRequestsFilter;
+                  });
+                  const searched = filtered.filter((r: any) =>
+                    allRequestsSearch === "" ||
+                    r.user_name?.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    r.user_uuid?.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  return searched.length > 0 ? (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-yellow-500" /> دعم سريع ({searched.length})
+                      </h3>
+                      {searched.map((req: any) => (
+                        <div key={req.id} className="bg-card border rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                req.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
+                                req.status === "resolved" ? "bg-green-500/20 text-green-500" : "bg-muted text-muted-foreground"
+                              }`}>
+                                {req.status === "pending" ? "معلق" : req.status === "resolved" ? "تم" : req.status}
+                              </span>
+                              <span className="text-xs font-bold">{req.user_name}</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[11px]">
+                            <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{req.user_uuid}</span></div>
+                            <div><span className="text-muted-foreground">النوع:</span> {req.request_type}</div>
+                            {req.room_code && <div><span className="text-muted-foreground">كود الغرفة:</span> {req.room_code}</div>}
+                            {req.description && <div className="col-span-2"><span className="text-muted-foreground">الوصف:</span> {req.description}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* VIP Requests Section - auto-completed */}
+                {allRequestsFilter !== "pending" && allRequestsFilter !== "rejected" && (() => {
+                  const searched = allVipRequests.filter((r: any) =>
+                    allRequestsSearch === "" ||
+                    r.user_name?.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
+                    r.user_uuid?.toLowerCase().includes(allRequestsSearch.toLowerCase())
+                  );
+                  return searched.length > 0 ? (
+                    <div className="space-y-2">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Star className="w-4 h-4 text-amber-500" /> طلبات VIP ({searched.length})
+                      </h3>
+                      {searched.map((req: any) => (
+                        <div key={req.id} className="bg-card border rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
+                              <span className="text-xs font-bold">{req.user_name}</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[11px]">
+                            <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{req.user_uuid}</span></div>
+                            <div><span className="text-muted-foreground">مستوى VIP:</span> {req.vip_level}</div>
+                            <div><span className="text-muted-foreground">الشهر:</span> {req.request_month}</div>
+                            {req.recipient_uuid && <div><span className="text-muted-foreground">المستقبل:</span> <span className="font-mono text-[10px]">{req.recipient_uuid}</span></div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
                 {/* Empty State */}
-                {allSalaryRequests.length === 0 && allEntryClaims.length === 0 && allFrameClaims.length === 0 && (
+                {allSalaryRequests.length === 0 && allEntryClaims.length === 0 && allFrameClaims.length === 0 && 
+                 allAnimatedPhotos.length === 0 && allCustomGifts.length === 0 && allBdRequests.length === 0 && 
+                 allQuickSupport.length === 0 && allVipRequests.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
                     <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-50" />
                     <p>لا توجد طلبات</p>
