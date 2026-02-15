@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { Play, X, Volume2, VolumeX } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Play, X, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { motion, AnimatePresence } from 'framer-motion';
+import TikTokInteraction from '@/components/TikTokInteraction';
 
 interface VideoTutorial {
   id: string;
@@ -25,7 +25,7 @@ const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
     video.muted = true;
     video.preload = 'metadata';
     video.src = src;
-    video.currentTime = 1; // grab frame at 1 second
+    video.currentTime = 1;
     video.addEventListener('seeked', () => {
       try {
         const canvas = document.createElement('canvas');
@@ -36,7 +36,7 @@ const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           setThumb(canvas.toDataURL('image/jpeg', 0.7));
         }
-      } catch { /* CORS or other error, fallback to icon */ }
+      } catch { /* CORS fallback */ }
     }, { once: true });
     video.addEventListener('error', () => {}, { once: true });
   }, [src]);
@@ -51,11 +51,165 @@ const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
   );
 };
 
+// Full-screen TikTok-style video player
+const TikTokPlayer = ({
+  videos,
+  initialIndex,
+  onClose,
+}: {
+  videos: VideoTutorial[];
+  initialIndex: number;
+  onClose: () => void;
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isMuted, setIsMuted] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const touchStartY = useRef(0);
+  const touchStartX = useRef(0);
+
+  const currentVideo = videos[currentIndex];
+
+  const goNext = useCallback(() => {
+    if (currentIndex < videos.length - 1) setCurrentIndex(i => i + 1);
+  }, [currentIndex, videos.length]);
+
+  const goPrev = useCallback(() => {
+    if (currentIndex > 0) setCurrentIndex(i => i - 1);
+  }, [currentIndex]);
+
+  // Swipe handling
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const deltaY = touchStartY.current - e.changedTouches[0].clientY;
+    const deltaX = touchStartX.current - e.changedTouches[0].clientX;
+    // Only handle vertical swipes (ignore horizontal for comments interaction)
+    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 60) {
+      if (deltaY > 0) goNext(); // swipe up = next
+      else goPrev(); // swipe down = prev
+    }
+  };
+
+  // Tap left/right sides for nav
+  const handleTap = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    if (x < width * 0.25) goPrev();
+    else if (x > width * 0.75) goNext();
+  };
+
+  // Lock body scroll when open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black flex flex-col"
+    >
+      {/* Progress dots */}
+      <div className="absolute top-3 left-0 right-0 z-30 flex justify-center gap-1 px-4">
+        {videos.map((_, i) => (
+          <div
+            key={i}
+            className={`h-[3px] rounded-full flex-1 max-w-[40px] transition-colors ${
+              i === currentIndex ? 'bg-white' : 'bg-white/30'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-10 right-4 z-30 w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white active:bg-black/60 transition-colors"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      {/* Mute button */}
+      <button
+        onClick={() => setIsMuted(!isMuted)}
+        className="absolute top-10 left-4 z-30 w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white active:bg-black/60 transition-colors"
+      >
+        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+      </button>
+
+      {/* Video area */}
+      <div
+        className="flex-1 relative"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onClick={handleTap}
+      >
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentVideo.id}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <video
+              ref={videoRef}
+              src={currentVideo.video_url}
+              autoPlay
+              loop
+              muted={isMuted}
+              playsInline
+              className="w-full h-full object-contain"
+            />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* TikTok interaction buttons (likes/comments) */}
+        <TikTokInteraction
+          itemType="entry_gift"
+          itemId={currentVideo.id}
+        />
+
+        {/* Video info overlay at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pb-6" dir="rtl">
+          <h3 className="text-white text-base font-bold mb-1">{currentVideo.title}</h3>
+          {currentVideo.description && (
+            <p className="text-white/70 text-sm line-clamp-2">{currentVideo.description}</p>
+          )}
+        </div>
+
+        {/* Nav arrows for desktop */}
+        {currentIndex > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 bg-black/30 backdrop-blur-sm rounded-full items-center justify-center text-white hidden sm:flex"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        )}
+        {currentIndex < videos.length - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); goNext(); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 bg-black/30 backdrop-blur-sm rounded-full items-center justify-center text-white hidden sm:flex"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+    </motion.div>
+  );
+};
+
 export const VideoStoryCircle = () => {
   const [videos, setVideos] = useState<VideoTutorial[]>([]);
-  const [selectedVideo, setSelectedVideo] = useState<VideoTutorial | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [playerIndex, setPlayerIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,15 +233,10 @@ export const VideoStoryCircle = () => {
     }
   };
 
-  const openVideo = (video: VideoTutorial) => {
-    if (!video.video_url) return; // Don't open empty videos
-    setSelectedVideo(video);
-    setIsOpen(true);
-  };
-
-  const closeVideo = () => {
-    setIsOpen(false);
-    setSelectedVideo(null);
+  const openVideo = (index: number) => {
+    const video = displayVideos[index];
+    if (!video.video_url) return;
+    setPlayerIndex(index);
   };
 
   // Demo videos when DB is empty
@@ -109,7 +258,7 @@ export const VideoStoryCircle = () => {
       <div className="flex gap-3 overflow-x-auto pb-1.5 px-1 scrollbar-hide z-10" dir="rtl">
         {displayVideos.map((video, index) => (
           <div key={video.id} className="flex flex-col items-center gap-1 flex-shrink-0">
-            <button onClick={() => openVideo(video)} className="relative group">
+            <button onClick={() => openVideo(index)} className="relative group">
               <div className="w-12 h-12 rounded-full p-[2px] bg-gradient-to-tr from-primary via-accent to-primary">
                 <div className="w-full h-full rounded-full bg-background p-[1.5px]">
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
@@ -136,35 +285,16 @@ export const VideoStoryCircle = () => {
         ))}
       </div>
 
-      {/* Full Screen Video Dialog */}
-      <Dialog open={isOpen} onOpenChange={closeVideo}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden flex flex-col [&>button]:hidden">
-          <VisuallyHidden>
-            <DialogTitle>{selectedVideo?.title || 'فيديو تعليمي'}</DialogTitle>
-          </VisuallyHidden>
-          <div className="relative w-full h-full flex flex-col">
-            <button onClick={closeVideo} className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-            <button onClick={() => setIsMuted(!isMuted)} className="absolute top-4 left-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors">
-              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-            </button>
-            {selectedVideo && (
-              <div className="flex-1 flex items-center justify-center bg-black min-h-0">
-                <video key={selectedVideo.id} src={selectedVideo.video_url} autoPlay loop muted={isMuted} playsInline controls className="w-full h-full object-contain" />
-              </div>
-            )}
-            {selectedVideo && (
-              <div className="bg-gradient-to-t from-black/90 to-transparent p-4 pt-8">
-                <h3 className="text-white text-lg font-bold mb-1">{selectedVideo.title}</h3>
-                {selectedVideo.description && (
-                  <p className="text-white/80 text-sm">{selectedVideo.description}</p>
-                )}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Full Screen TikTok Player */}
+      <AnimatePresence>
+        {playerIndex !== null && (
+          <TikTokPlayer
+            videos={displayVideos.filter(v => !!v.video_url)}
+            initialIndex={Math.min(playerIndex, displayVideos.filter(v => !!v.video_url).length - 1)}
+            onClose={() => setPlayerIndex(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 };
