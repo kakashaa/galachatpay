@@ -104,7 +104,7 @@ serve(async (req) => {
       case "register_referral": {
         const { referral_code, member_uuid } = params;
         if (!referral_code || !member_uuid) throw new Error("referral_code and member_uuid required");
-        if (!/^\d{6,15}$/.test(member_uuid)) return json({ success: false, error: "الآيدي يجب أن يكون أرقام فقط بطول 6-15 رقم" });
+        if (!/^\d+$/.test(member_uuid)) return json({ success: false, error: "الآيدي يجب أن يكون أرقام فقط" });
 
         // Find BD by referral code
         const { data: bdSettings } = await supabase
