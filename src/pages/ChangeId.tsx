@@ -333,6 +333,12 @@ const ChangeId: React.FC = () => {
       });
       if (error || !data?.success) {
         const msg = data?.error || "";
+        // In gift mode, "uuid is invalid" means the RECIPIENT doesn't exist
+        if (/uuid.?is.?invalid|invalid.?uuid|selected.?uuid/i.test(msg)) {
+          setStatus("error");
+          setErrorMsg("🚫 آيدي المستلم غير موجود في نظام Gala. تأكد من صحة آيدي المستلم وحاول مرة أخرى.");
+          return;
+        }
         setStatus(msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used") ? "taken" : "error");
         setErrorMsg(translateApiError(msg));
         return;
