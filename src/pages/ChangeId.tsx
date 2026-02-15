@@ -337,16 +337,34 @@ const ChangeId: React.FC = () => {
         <div className="glass-card p-3 space-y-2" dir="rtl">
           <div className="flex items-center gap-2">
             <IdCard className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-bold text-foreground">الأطوال المتاحة لمستواك (لفل {maxLevel})</span>
+            <span className="text-xs font-bold text-foreground">الأطوال والصيغ المتاحة (لفل {maxLevel})</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {allowedLengths.map((len) => (
-              <div key={len} className="flex items-center gap-1.5 bg-muted/30 rounded-lg px-3 py-1.5">
-                <span className="text-xs font-bold text-primary">{len}</span>
-                <span className="text-[10px] text-muted-foreground">أرقام</span>
-                <span className="text-[9px] text-muted-foreground/70">(min {MIN_DISTINCT_DIGITS[len] || 2} مختلفة)</span>
-              </div>
-            ))}
+          <div className="space-y-2">
+            {allowedLengths.map((len) => {
+              const examples: Record<number, string[]> = {
+                3: ["123", "787", "919"],
+                4: ["1234", "7788", "9191"],
+                5: ["12345", "77788", "91234"],
+                6: ["123456", "777888", "912345"],
+                7: ["1234567", "7778881", "1112345"],
+              };
+              return (
+                <div key={len} className="bg-muted/30 rounded-lg p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-primary">{len}</span>
+                      <span className="text-[10px] text-muted-foreground">أرقام</span>
+                    </div>
+                    <span className="text-[9px] text-muted-foreground/70">({MIN_DISTINCT_DIGITS[len] || 2} أرقام مختلفة على الأقل)</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(examples[len] || []).map((ex) => (
+                      <span key={ex} className="text-[10px] font-mono bg-primary/10 text-primary rounded px-1.5 py-0.5" dir="ltr">{ex}</span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
