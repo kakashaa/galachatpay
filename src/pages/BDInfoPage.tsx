@@ -48,7 +48,7 @@ const BDInfoPage: React.FC = () => {
 
   const copyReferralLink = () => {
     if (!data?.settings?.referral_code) return;
-    const link = `${window.location.origin}/bd/join/${data.settings.referral_code}`;
+    const link = `https://galachatpay.lovable.app/bd/join/${data.settings.referral_code}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success("تم نسخ رابط الدعوة");
@@ -79,7 +79,8 @@ const BDInfoPage: React.FC = () => {
   const { settings, agencies, hosts, users, totals } = data;
   const totalEarned = Number(settings.total_earned || 0);
   const availableBalance = Number(settings.available_balance || 0);
-  const referralLink = `${window.location.origin}/bd/join/${settings.referral_code}`;
+  const publishedDomain = "https://galachatpay.lovable.app";
+  const referralLink = `${publishedDomain}/bd/join/${settings.referral_code}`;
 
   const tabs = [
     { key: "agencies" as const, label: "الوكلاء", icon: Building2, color: "text-amber-400", bgColor: "bg-amber-500/10", items: agencies, total: totals.agency, pct: settings.agency_commission_pct },
