@@ -32,6 +32,8 @@ const BDAddMember = lazy(() => import("./pages/BDAddMember"));
 const BDWithdraw = lazy(() => import("./pages/BDWithdraw"));
 const BDInfoPage = lazy(() => import("./pages/BDInfoPage"));
 const BDReferral = lazy(() => import("./pages/BDReferral"));
+const BDEvents = lazy(() => import("./pages/BDEvents"));
+const BDEventManage = lazy(() => import("./pages/BDEventManage"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
 const InstantIntro = lazy(() => import("./pages/InstantIntro"));
 const InstantBanks = lazy(() => import("./pages/InstantBanks"));
@@ -85,6 +87,8 @@ const App = () => (
                 <Route path="/bd/withdraw" element={<BDWithdraw />} />
                 <Route path="/bd/info" element={<BDInfoPage />} />
                 <Route path="/bd/join/:code" element={<BDReferral />} />
+                <Route path="/bd/events/:code" element={<BDEvents />} />
+                <Route path="/bd/manage-events" element={<BDEventManage />} />
                 <Route path="/my-requests" element={<MyRequests />} />
                 <Route path="/instant" element={<InstantIntro />} />
                 <Route path="/instant/banks" element={<InstantBanks />} />
