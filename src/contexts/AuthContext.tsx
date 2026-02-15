@@ -83,12 +83,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sender_num: apiUser.level?.sender_num || 0,
             charger_num: apiUser.level?.charger_num || 0,
           };
+      const rawType = apiUser.type_user !== undefined && apiUser.type_user !== null ? Number(apiUser.type_user) : user.type_user;
+      const hasAgency = !!(apiUser.agency && apiUser.agency.id);
+      const effectiveType = (rawType === 2 && hasAgency) ? 3 : rawType;
+
       setUser({
         id: apiUser.id,
         uuid: apiUser.uuid,
         name: apiUser.name,
         phone: apiUser.phone || user.phone,
-        type_user: apiUser.type_user !== undefined && apiUser.type_user !== null ? Number(apiUser.type_user) : user.type_user,
+        type_user: effectiveType,
         profile: {
           image: apiUser.profile?.image || user.profile.image,
           gender: apiUser.profile?.gender || apiUser.gender || user.profile.gender,
