@@ -32,9 +32,44 @@ const BDRequest: React.FC = () => {
 
   const checkExistingRequest = async () => {
     try {
+      // First check local bd_commission_settings for approved status
+      const { data: bdSettings } = await supabase
+        .from("bd_commission_settings")
+        .select("is_approved")
+        .eq("bd_uuid", authUser!.uuid)
+        .maybeSingle();
+      
+      if (bdSettings?.is_approved) {
+        setBdStatus("approved");
+        return;
+      }
+
+      // Also check local bd_requests_cache
+      const { data: cachedRequests } = await supabase
+        .from("bd_requests_cache")
+        .select("status")
+        .eq("user_uuid", authUser!.uuid)
+        .eq("request_type", "bd_verify")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (cachedRequests && cachedRequests.length > 0) {
+        const latest = cachedRequests[0];
+        if (latest.status === 1) {
+          setBdStatus("approved");
+          return;
+        } else if (latest.status === 2) {
+          setBdStatus("rejected");
+          return;
+        } else if (latest.status === 0) {
+          setBdStatus("pending");
+          return;
+        }
+      }
+
+      // Fallback: check external API
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
       try {
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=list-requests&request_type=bd_verify&user_uuid=${authUser!.uuid}`,
@@ -47,36 +82,22 @@ const BDRequest: React.FC = () => {
           }
         );
         clearTimeout(timeoutId);
-        
         if (response.ok) {
           const data = await response.json();
           if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
-            // Filter to only requests belonging to this user
             const userRequests = data.data.filter(
               (r: any) => String(r.user_uuid) === String(authUser!.uuid)
             );
             if (userRequests.length > 0) {
               const latest = userRequests[0];
-              if (latest.status === "approved" || latest.status === 1) {
-                setBdStatus("approved");
-              } else if (latest.status === "pending" || latest.status === 0) {
-                setBdStatus("pending");
-              } else if (latest.status === "rejected" || latest.status === 2) {
-                setBdStatus("rejected");
-              } else {
-                setBdStatus("none");
-              }
-            } else {
-              setBdStatus("none");
-            }
-          } else {
-            setBdStatus("none");
-          }
-        } else {
-          setBdStatus("none");
-        }
-      } catch (apiErr) {
-        console.error("API check error, defaulting to none:", apiErr);
+              if (latest.status === "approved" || latest.status === 1) setBdStatus("approved");
+              else if (latest.status === "pending" || latest.status === 0) setBdStatus("pending");
+              else if (latest.status === "rejected" || latest.status === 2) setBdStatus("rejected");
+              else setBdStatus("none");
+            } else setBdStatus("none");
+          } else setBdStatus("none");
+        } else setBdStatus("none");
+      } catch {
         setBdStatus("none");
       }
     } catch (err) {
