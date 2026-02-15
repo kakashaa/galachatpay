@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Send, CheckCircle2, Clock, ArrowRight, Zap, ShieldX,
+  Send, CheckCircle2, ArrowRight, Zap, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone, Upload, X
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,8 +59,6 @@ const serviceOptions: ServiceOption[] = [
   },
 ];
 
-const COOLDOWN_KEY = "quick_support_cooldown";
-const COOLDOWN_MS = 5 * 60 * 1000;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const QuickSupport: React.FC = () => {
@@ -75,35 +73,6 @@ const QuickSupport: React.FC = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [cooldownRemaining, setCooldownRemaining] = useState(0);
-
-  const checkCooldown = useCallback(() => {
-    const savedTime = localStorage.getItem(COOLDOWN_KEY);
-    if (savedTime) {
-      const remaining = Number(savedTime) - Date.now();
-      if (remaining > 0) {
-        setCooldownRemaining(remaining);
-        return true;
-      }
-      localStorage.removeItem(COOLDOWN_KEY);
-    }
-    setCooldownRemaining(0);
-    return false;
-  }, []);
-
-  useEffect(() => {
-    checkCooldown();
-    const interval = setInterval(checkCooldown, 1000);
-    return () => clearInterval(interval);
-  }, [checkCooldown]);
-
-  const formatCooldown = (ms: number) => {
-    const mins = Math.floor(ms / 60000);
-    const secs = Math.floor((ms % 60000) / 1000);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const isCoolingDown = cooldownRemaining > 0;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -154,7 +123,7 @@ const QuickSupport: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedType || isCoolingDown) return;
+    if (!selectedType) return;
 
     // Validate based on type
     if (selectedType === "admin_visit" && !roomCode.trim()) return;
@@ -202,7 +171,7 @@ const QuickSupport: React.FC = () => {
       const whatsappMsg = encodeURIComponent(buildWhatsAppMessage(selectedType, msgData));
       window.open(`https://api.whatsapp.com/send?phone=967733873785&text=${whatsappMsg}`, "_blank");
 
-      localStorage.setItem(COOLDOWN_KEY, String(Date.now() + COOLDOWN_MS));
+      // Cooldown disabled
       playSuccessChime();
       setSubmitted(true);
       toast.success("تم إرسال طلبك بنجاح!");
@@ -303,9 +272,6 @@ const QuickSupport: React.FC = () => {
             <ServiceSelector
               options={serviceOptions}
               onSelect={setSelectedType}
-              isCoolingDown={isCoolingDown}
-              cooldownRemaining={cooldownRemaining}
-              formatCooldown={formatCooldown}
             />
           ) : (
             <RequestForm
@@ -320,7 +286,7 @@ const QuickSupport: React.FC = () => {
               onFileChange={handleFileChange}
               onRemoveFile={() => setAttachment(null)}
               submitting={submitting}
-              isCoolingDown={isCoolingDown}
+              
               onSubmit={handleSubmit}
             />
           )}
@@ -368,15 +334,9 @@ function SuccessView({ navigate }: { navigate: (n: number) => void }) {
 function ServiceSelector({
   options,
   onSelect,
-  isCoolingDown,
-  cooldownRemaining,
-  formatCooldown,
 }: {
   options: ServiceOption[];
   onSelect: (t: RequestType) => void;
-  isCoolingDown: boolean;
-  cooldownRemaining: number;
-  formatCooldown: (ms: number) => string;
 }) {
   return (
     <motion.div
@@ -392,18 +352,6 @@ function ServiceSelector({
         <p className="text-xs text-muted-foreground mt-1">اختر نوع الطلب</p>
       </div>
 
-      {isCoolingDown && (
-        <div className="glass-card p-3 flex items-center gap-3 border-amber-500/30 border">
-          <Clock className="w-5 h-5 text-amber-400 flex-shrink-0" />
-          <div>
-            <p className="text-xs font-bold text-foreground">انتظر قبل إرسال طلب جديد</p>
-            <p className="text-[11px] text-muted-foreground">
-              متبقي: <span className="text-amber-400 font-bold">{formatCooldown(cooldownRemaining)}</span>
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 gap-3">
         {options.map((opt, i) => (
           <motion.button
@@ -411,9 +359,8 @@ function ServiceSelector({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.08 }}
-            disabled={isCoolingDown}
             onClick={() => onSelect(opt.type)}
-            className={`p-4 rounded-xl bg-gradient-to-br ${opt.color} border text-right space-y-2 active:scale-95 transition-transform disabled:opacity-40`}
+            className={`p-4 rounded-xl bg-gradient-to-br ${opt.color} border text-right space-y-2 active:scale-95 transition-transform`}
           >
             <div className="text-foreground">{opt.icon}</div>
             <p className="text-sm font-bold text-foreground">{opt.label}</p>
@@ -437,7 +384,7 @@ function RequestForm({
   onFileChange,
   onRemoveFile,
   submitting,
-  isCoolingDown,
+  
   onSubmit,
 }: {
   type: RequestType;
@@ -451,7 +398,7 @@ function RequestForm({
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFile: () => void;
   submitting: boolean;
-  isCoolingDown: boolean;
+  
   onSubmit: (e: React.FormEvent) => void;
 }) {
   const option = serviceOptions.find((o) => o.type === type)!;
@@ -576,7 +523,7 @@ function RequestForm({
       {/* Submit */}
       <motion.button
         type="submit"
-        disabled={!isValid() || submitting || isCoolingDown}
+        disabled={!isValid() || submitting}
         whileTap={{ scale: 0.96 }}
         className="w-full h-13 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity text-base py-3.5"
       >
