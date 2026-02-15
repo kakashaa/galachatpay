@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { levelFormats } from "@/data/idFormats";
+import { matchesPattern } from "@/utils/idPatternValidator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -222,6 +223,20 @@ const ChangeId: React.FC = () => {
        setStatus("error");
        setErrorMsg(`⚠️ الـ ID يجب أن يحتوي على ${minDistinct} أرقام مختلفة على الأقل. حالياً: ${distinctCount} رقم مختلف فقط.`);
        return;
+     }
+
+     // Validate against allowed patterns for user's level
+     const currentLevelFormat = levelFormats.find(lf => maxLevel >= lf.minLevel && maxLevel <= lf.maxLevel);
+     if (currentLevelFormat) {
+       const allPatterns = currentLevelFormat.groups
+         .filter(g => g.digits === trimmedId.length)
+         .flatMap(g => g.patterns);
+       const matchesAny = allPatterns.some(p => matchesPattern(trimmedId, p));
+       if (!matchesAny) {
+         setStatus("error");
+         setErrorMsg("🚫 الـ ID لا يطابق أي صيغة متاحة لمستواك. راجع الصيغ المعروضة واختر رقم يناسب إحداها.");
+         return;
+       }
      }
 
      setStatus("loading"); setErrorMsg("");
