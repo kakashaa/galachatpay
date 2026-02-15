@@ -151,8 +151,21 @@ const BDRequest: React.FC = () => {
 
   const isFormValid = experience.trim() && hostsCount && agentsCount && previousBD && (previousBD === "no" || attachment);
 
-  // Approved → redirect to BD Dashboard
+  // Approved → show congrats once, then always redirect
+  useEffect(() => {
+    if (bdStatus === "approved" && authUser) {
+      const seenKey = `bd_approved_seen_${authUser.uuid}`;
+      if (localStorage.getItem(seenKey)) {
+        navigate("/bd/info", { replace: true });
+      }
+    }
+  }, [bdStatus, authUser]);
+
   if (bdStatus === "approved") {
+    const seenKey = `bd_approved_seen_${authUser?.uuid}`;
+    const alreadySeen = localStorage.getItem(seenKey);
+    if (alreadySeen) return null; // will redirect via useEffect
+
     return (
       <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
@@ -161,7 +174,10 @@ const BDRequest: React.FC = () => {
           </div>
           <h2 className="text-lg font-bold text-foreground mb-2">تم قبول طلبك كـ BD</h2>
           <p className="text-sm text-muted-foreground mb-6 text-center">يمكنك الآن الوصول إلى لوحة تقارير BD الخاصة بك</p>
-          <Button onClick={() => navigate("/bd/info")} className="gold-gradient text-primary-foreground font-bold">
+          <Button onClick={() => {
+            localStorage.setItem(seenKey, "1");
+            navigate("/bd/info", { replace: true });
+          }} className="gold-gradient text-primary-foreground font-bold">
             <Briefcase className="w-5 h-5 ml-2" /> فتح لوحة BD
           </Button>
         </div>
