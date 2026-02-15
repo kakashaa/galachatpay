@@ -337,13 +337,15 @@ const AdminDashboardPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const [salary, reports, animated, customG, tickets, quickSupport] = await Promise.all([
+      const [salary, reports, animated, customG, tickets, quickSupport, bdCache, vipReqs] = await Promise.all([
         supabase.from("salary_requests").select("status"),
         supabase.from("ban_reports").select("is_verified"),
         supabase.from("animated_photo_requests").select("status"),
         supabase.from("custom_gifts").select("status").eq("is_deleted", false),
         supabase.from("support_tickets").select("status"),
         supabase.from("quick_support_requests").select("status"),
+        supabase.from("bd_requests_cache").select("status"),
+        supabase.from("vip_requests").select("id"),
       ]);
       
       // Also update quick support requests for badge count
@@ -354,15 +356,20 @@ const AdminDashboardPage: React.FC = () => {
                       (animated.data?.filter(r => r.status === "pending").length || 0) +
                       (customG.data?.filter(r => r.status === "pending").length || 0) +
                       (tickets.data?.filter(r => r.status === "open").length || 0) +
-                      (quickSupport.data?.filter((r: any) => r.status === "pending").length || 0);
+                      (quickSupport.data?.filter((r: any) => r.status === "pending").length || 0) +
+                      (bdCache.data?.filter((r: any) => r.status === 0).length || 0);
       const approved = (salary.data?.filter(r => r.status === "approved").length || 0) +
                        (reports.data?.filter(r => r.is_verified).length || 0) +
                        (animated.data?.filter(r => r.status === "approved").length || 0) +
                        (customG.data?.filter(r => r.status === "approved").length || 0) +
-                       (tickets.data?.filter(r => r.status === "replied" || r.status === "closed").length || 0);
+                       (tickets.data?.filter(r => r.status === "replied" || r.status === "closed").length || 0) +
+                       (quickSupport.data?.filter((r: any) => r.status === "resolved").length || 0) +
+                       (bdCache.data?.filter((r: any) => r.status === 1).length || 0) +
+                       (vipReqs.data?.length || 0);
       const rejected = (salary.data?.filter(r => r.status === "rejected").length || 0) +
                        (animated.data?.filter(r => r.status === "rejected").length || 0) +
-                       (customG.data?.filter(r => r.status === "rejected").length || 0);
+                       (customG.data?.filter(r => r.status === "rejected").length || 0) +
+                       (bdCache.data?.filter((r: any) => r.status === 2).length || 0);
       
       setStats({ pending, approved, rejected });
     } catch (err) {
