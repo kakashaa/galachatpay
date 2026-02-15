@@ -189,6 +189,16 @@ serve(async (req) => {
         recipient_uuid: sanitizedRecipient,
       });
 
+      // Send notification to gift recipient
+      if (sanitizedRecipient) {
+        await sb.from("notifications").insert({
+          user_uuid: sanitizedRecipient,
+          title: `🎁 هدية VIP ${vipLevel}`,
+          body: `قام المستخدم ${sanitizedUserName || sanitizedUuid} بإهدائك VIP ${vipLevel} لمدة 10 أيام!`,
+          target: "user",
+        });
+      }
+
       return new Response(JSON.stringify(data), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
