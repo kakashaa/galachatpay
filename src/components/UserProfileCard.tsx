@@ -12,17 +12,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 const getUserTypeLabel = (type: number): string => {
   switch (type) {
-    case 2: return "مضيف";
-    case 3: return "وكيل مضيفين";
-    case 4: return "وكيل شحن";
-    case 5: return "وكيل شحن ومضيفين";
-    case 6: return "مضيف ووكيل شحن";
+    case 0: return "مستخدم";
+    case 1: return "مضيف";
+    case 2: return "وكيل مضيفين";
+    case 3: return "وكيل شحن";
+    case 4: return "وكيل شحن ومضيفين";
+    case 5: return "وكيل شحن ومضيف";
+    case 6: return "الكل";
     default: return "مستخدم";
   }
 };
 
 const getUserTypeBadgeStyle = (type: number) => {
-  if (type >= 2) return "gold-leaf-badge text-black";
+  if (type >= 1) return "gold-leaf-badge text-black";
   return "bg-white/10 border border-white/20 text-foreground";
 };
 
