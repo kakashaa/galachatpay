@@ -22,7 +22,7 @@ const LEVEL_ALLOWED_LENGTHS: { min: number; max: number; lengths: number[] }[] =
 
 /** Minimum distinct digits required per ID length */
 const MIN_DISTINCT_DIGITS: Record<number, number> = {
-  3: 2, 4: 2, 5: 3, 6: 3, 7: 4,
+  3: 2, 4: 2, 5: 3, 6: 3, 7: 3,
 };
 
 function getAllowedLengths(level: number): number[] {
