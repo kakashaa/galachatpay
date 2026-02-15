@@ -162,12 +162,9 @@ serve(async (req) => {
             if (apiRes.ok) {
               const apiData = await apiRes.json();
               if (apiData?.data) {
-                // DEBUG: return all fields to discover creation date field
-                if (params._debug) {
-                  return json({ success: true, debug_fields: Object.keys(apiData.data), debug_data: apiData.data });
-                }
                 memberName = apiData.data.name || apiData.data.nickname || "";
                 typeUser = Number(apiData.data.type_user || 0);
+                // type_user: 0=user, 1=host, 2=agent_hosts, 3=agent_charge, 4=agent_both, 5=agent_charge_host, 6=all
                 if (typeUser >= 2) memberType = "agency";
                 else if (typeUser === 1) memberType = "host";
                 else memberType = "user";
@@ -280,52 +277,8 @@ serve(async (req) => {
         });
       }
 
-      // DEBUG: inspect getUserInfo response
-      case "debug_user_info": {
-        const { member_uuid } = params;
-        if (!member_uuid) throw new Error("member_uuid required");
-        
-        const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
-        const GALA_API_KEY = Deno.env.get("GALA_API_KEY");
-        const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
-
-        if (!GALA_API_BASE_URL || !GALA_API_KEY || !GALA_API_SECRET) {
-          return json({ success: false, error: "API env vars missing", has_base: !!GALA_API_BASE_URL, has_key: !!GALA_API_KEY, has_secret: !!GALA_API_SECRET });
-        }
-
-        const timestamp = Math.floor(Date.now() / 1000).toString();
-        const nonce = crypto.randomUUID();
-        const path = "getUserInfo";
-        const pathForSign = "api/newWebsite/getUserInfo";
-
-        const encoder = new TextEncoder();
-        const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-        const message = `GET${pathForSign}${timestamp}${nonce}`;
-        const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-        const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-
-        const url = GALA_API_BASE_URL.replace(/\/+$/, "") + "/" + path + "?uuid=" + member_uuid;
-        const apiRes = await fetch(url, {
-          method: "GET",
-          headers: {
-            "X-API-KEY": GALA_API_KEY,
-            "X-SIGNATURE": signature,
-            "X-TIMESTAMP": timestamp,
-            "X-NONCE": nonce,
-            Accept: "application/json",
-          },
-        });
-
-        const text = await apiRes.text();
-        try {
-          const parsed = JSON.parse(text);
-          return json({ success: true, status: apiRes.status, api_response: parsed });
-        } catch {
-          return json({ success: true, status: apiRes.status, raw_response: text });
-        }
-      }
-
       default:
+        return json({ success: false, error: "Unknown action" }, 400);
     }
   } catch (err) {
     return json({ success: false, error: err.message || "Unknown error" }, 500);

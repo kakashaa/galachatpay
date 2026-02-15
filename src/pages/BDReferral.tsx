@@ -71,13 +71,6 @@ const BDReferral: React.FC = () => {
       }
 
       // User verified successfully
-      const userData = loginData.data;
-
-      // DEBUG: Show all fields from login API
-      setError("");
-      setResult({ _debug: true, fields: Object.keys(userData || {}), data: userData });
-      setLoading(false);
-      return;
 
       // Step 2: Register with BD
       const { data, error: invokeErr } = await supabase.functions.invoke("bd-manage", {
@@ -114,25 +107,6 @@ const BDReferral: React.FC = () => {
   }
 
   if (result) {
-    // DEBUG mode: show all API fields
-    if (result._debug) {
-      return (
-        <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6" dir="rtl">
-          <div className="w-full max-w-sm space-y-4 text-center">
-            <h2 className="text-lg font-bold text-foreground">حقول API تسجيل الدخول</h2>
-            <div className="bg-card border border-border rounded-2xl p-4 text-right overflow-auto max-h-[70vh]">
-              <pre className="text-[10px] text-muted-foreground whitespace-pre-wrap break-all" dir="ltr">
-                {JSON.stringify(result.data, null, 2)}
-              </pre>
-            </div>
-            <Button onClick={() => { setResult(null); setStep("uuid"); setPassword(""); }} className="w-full">
-              رجوع
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6" dir="rtl">
         <div className="w-full max-w-sm space-y-6 text-center">
