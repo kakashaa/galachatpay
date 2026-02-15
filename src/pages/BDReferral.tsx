@@ -19,6 +19,14 @@ const BDReferral: React.FC = () => {
   const [deviceBlocked, setDeviceBlocked] = useState(false);
 
   useEffect(() => {
+    document.title = "بوابة BD - تسجيل الأعضاء";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute("content", "سجّل حسابك لدى مطور الأعمال عبر رابط الدعوة");
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute("content", "بوابة BD - تسجيل الأعضاء");
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute("content", "سجّل حسابك لدى مطور الأعمال عبر رابط الدعوة");
+
     const registered = localStorage.getItem(DEVICE_KEY);
     if (registered) setDeviceBlocked(true);
   }, []);
