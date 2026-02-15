@@ -1577,8 +1577,8 @@ const AdminDashboardPage: React.FC = () => {
                   );
                 })()}
 
-                {/* Entry Claims Section */}
-                {(() => {
+                {/* Entry Claims Section - hide when filtering pending/rejected since claims are auto-completed */}
+                {allRequestsFilter !== "pending" && allRequestsFilter !== "rejected" && (() => {
                   const filtered = allEntryClaims.filter(c =>
                     allRequestsSearch === "" ||
                     c.user_uuid.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
@@ -1611,8 +1611,8 @@ const AdminDashboardPage: React.FC = () => {
                   );
                 })()}
 
-                {/* Frame Claims Section */}
-                {(() => {
+                {/* Frame Claims Section - hide when filtering pending/rejected since claims are auto-completed */}
+                {allRequestsFilter !== "pending" && allRequestsFilter !== "rejected" && (() => {
                   const filtered = allFrameClaims.filter(c =>
                     allRequestsSearch === "" ||
                     c.user_uuid.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
