@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
 
-const _WHATSAPP_GROUP = "https://chat.whatsapp.com/CU5qWrhTab6BlFMecxWCRs";
+
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -96,30 +96,6 @@ const QuickSupport: React.FC = () => {
     return urlData.publicUrl;
   };
 
-  const buildWhatsAppMessage = (type: RequestType, data: Record<string, string>) => {
-    const userName = authUser?.name || "مستخدم";
-    const userUuid = authUser?.uuid || "-";
-    let msg = `⚡ *دعم سريع - VIP 6*\n👤 ${userName} (${userUuid})\n`;
-
-    switch (type) {
-      case "admin_visit":
-        msg += `📋 *النوع:* طلب إداري\n🏠 *رقم الغرفة:* ${data.roomCode}`;
-        break;
-      case "report":
-        msg += `📋 *النوع:* بلاغ\n📝 *التفاصيل:* ${data.description}`;
-        if (data.attachmentUrl) msg += `\n📎 *المرفق:* ${data.attachmentUrl}`;
-        break;
-      case "complaint":
-        msg += `📋 *النوع:* شكوى\n📝 *التفاصيل:* ${data.description}`;
-        if (data.attachmentUrl) msg += `\n📎 *المرفق:* ${data.attachmentUrl}`;
-        break;
-      case "direct_contact":
-        msg += `📋 *النوع:* تواصل مباشر\n📞 *رقم الهاتف:* ${data.phoneNumber}`;
-        if (data.description) msg += `\n📝 *ملاحظة:* ${data.description}`;
-        break;
-    }
-    return msg;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,27 +127,6 @@ const QuickSupport: React.FC = () => {
 
       if (dbError) throw dbError;
 
-      // Also send to external API for admin_visit
-      if (selectedType === "admin_visit") {
-        await supabase.functions.invoke("quick-support", {
-          body: {
-            room_code: roomCode.trim(),
-            ...(authUser?.name && { user_name: authUser.name }),
-          },
-        });
-      }
-
-      // Open WhatsApp with pre-filled message
-      const msgData: Record<string, string> = {
-        roomCode: roomCode.trim(),
-        description: description.trim(),
-        phoneNumber: phoneNumber.trim(),
-        attachmentUrl: attachmentUrl || "",
-      };
-      const whatsappMsg = encodeURIComponent(buildWhatsAppMessage(selectedType, msgData));
-      window.open(`https://api.whatsapp.com/send?phone=967733873785&text=${whatsappMsg}`, "_blank");
-
-      // Cooldown disabled
       playSuccessChime();
       setSubmitted(true);
       toast.success("تم إرسال طلبك بنجاح!");
@@ -318,8 +273,6 @@ function SuccessView({ navigate }: { navigate: (n: number) => void }) {
       <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلبك! ✅</h2>
       <p className="text-sm text-muted-foreground text-center leading-relaxed">
         سيتم التعامل مع طلبك في أقرب وقت
-        <br />
-        <span className="text-xs">أرسل الرسالة في قروب الواتساب لتسريع الاستجابة</span>
       </p>
       <button
         onClick={() => navigate(-1)}
