@@ -70,7 +70,10 @@ serve(async (req) => {
         .single();
 
       if (existing) {
-        if (existing.status !== cacheRecord.status) {
+        // Never overwrite locally-processed records (status 1=approved, 2=rejected)
+        // Only update if the record is still pending locally (status 0)
+        // and external API has a different status
+        if (existing.status === 0 && cacheRecord.status !== 0) {
           await supabase
             .from("bd_requests_cache")
             .update(cacheRecord)
