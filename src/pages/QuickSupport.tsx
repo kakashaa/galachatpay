@@ -200,7 +200,7 @@ const QuickSupport: React.FC = () => {
         attachmentUrl: attachmentUrl || "",
       };
       const whatsappMsg = encodeURIComponent(buildWhatsAppMessage(selectedType, msgData));
-      window.open(`https://api.whatsapp.com/send?text=${whatsappMsg}`, "_blank");
+      window.open(`https://api.whatsapp.com/send?phone=967712690248&text=${whatsappMsg}`, "_blank");
 
       localStorage.setItem(COOLDOWN_KEY, String(Date.now() + COOLDOWN_MS));
       playSuccessChime();
