@@ -14,7 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
 
-import { Camera, Briefcase, MessageSquare, Headset } from "lucide-react";
+import { Camera, Briefcase, MessageSquare, Headset, Zap } from "lucide-react";
 import AdminNotificationListener from "@/components/AdminNotificationListener";
 import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime";
 import { useAnimatedPhotosRealtime } from "@/hooks/use-animated-photos-realtime";
@@ -22,7 +22,7 @@ import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime"
 import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
 import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | null;
 
 interface BDRequestItem {
   id: string;
@@ -252,6 +252,9 @@ const AdminDashboardPage: React.FC = () => {
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
   const [chatReplyInput, setChatReplyInput] = useState("");
 
+  // Quick support state
+  const [quickSupportRequests, setQuickSupportRequests] = useState<any[]>([]);
+
   useEffect(() => {
     if (!adminSessionToken) {
       navigate("/admin");
@@ -322,19 +325,24 @@ const AdminDashboardPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const [salary, reports, animated, customG, tickets] = await Promise.all([
+      const [salary, reports, animated, customG, tickets, quickSupport] = await Promise.all([
         supabase.from("salary_requests").select("status"),
         supabase.from("ban_reports").select("is_verified"),
         supabase.from("animated_photo_requests").select("status"),
         supabase.from("custom_gifts").select("status").eq("is_deleted", false),
         supabase.from("support_tickets").select("status"),
+        supabase.from("quick_support_requests").select("status"),
       ]);
+      
+      // Also update quick support requests for badge count
+      setQuickSupportRequests(prev => prev.length ? prev : (quickSupport.data || []));
       
       const pending = (salary.data?.filter(r => r.status === "pending").length || 0) + 
                       (reports.data?.filter(r => !r.is_verified).length || 0) +
                       (animated.data?.filter(r => r.status === "pending").length || 0) +
                       (customG.data?.filter(r => r.status === "pending").length || 0) +
-                      (tickets.data?.filter(r => r.status === "open").length || 0);
+                      (tickets.data?.filter(r => r.status === "open").length || 0) +
+                      (quickSupport.data?.filter((r: any) => r.status === "pending").length || 0);
       const approved = (salary.data?.filter(r => r.status === "approved").length || 0) +
                        (reports.data?.filter(r => r.is_verified).length || 0) +
                        (animated.data?.filter(r => r.status === "approved").length || 0) +
@@ -455,6 +463,14 @@ const AdminDashboardPage: React.FC = () => {
             .select("*")
             .order("created_at", { ascending: false });
           setSupportChats(data || []);
+          break;
+        }
+        case "quick_support": {
+          const { data } = await supabase
+            .from("quick_support_requests")
+            .select("*")
+            .order("created_at", { ascending: false });
+          setQuickSupportRequests(data || []);
           break;
         }
       }
@@ -764,6 +780,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
     { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
     { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
+    { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
     ...(adminRole === "super_admin" ? [
       { key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
       { key: "audit_log" as const, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
@@ -2073,6 +2090,51 @@ const AdminDashboardPage: React.FC = () => {
                     )}
                   </div>
                 ))}
+              </motion.div>
+            )}
+
+            {/* Quick Support Tab */}
+            {activeTab === "quick_support" && (
+              <motion.div key="quick_support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {quickSupportRequests.length === 0 ? (
+                  <p className="text-center py-10 text-muted-foreground">لا توجد طلبات دعم سريع</p>
+                ) : quickSupportRequests.map((req: any) => {
+                  const typeLabels: Record<string, string> = {
+                    admin_visit: "🏠 طلب إداري",
+                    report: "⚠️ بلاغ",
+                    complaint: "📋 شكوى",
+                    direct_contact: "📞 تواصل مباشر",
+                  };
+                  return (
+                    <div key={req.id} className="bg-card border rounded-xl p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold">{typeLabels[req.request_type] || req.request_type}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${req.status === "pending" ? "bg-amber-500/10 text-amber-400" : req.status === "resolved" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                          {req.status === "pending" ? "معلق" : req.status === "resolved" ? "تم" : req.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">{req.user_name} • {req.user_uuid}</p>
+                      {req.room_code && <p className="text-xs text-foreground">🏠 الغرفة: <span className="font-bold font-mono" dir="ltr">{req.room_code}</span></p>}
+                      {req.description && <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{req.description}</p>}
+                      {req.phone_number && <p className="text-xs text-foreground">📞 <span className="font-mono" dir="ltr">{req.phone_number}</span></p>}
+                      {req.attachment_url && (
+                        <a href={req.attachment_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">📎 عرض المرفق</a>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString("ar-EG")}</p>
+                      {req.status === "pending" && (
+                        <Button size="sm" className="w-full" onClick={async () => {
+                          try {
+                            await supabase.from("quick_support_requests").update({ status: "resolved" } as any).eq("id", req.id);
+                            setQuickSupportRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "resolved" } : r));
+                            toast.success("تم تحديث الحالة");
+                          } catch { toast.error("فشل التحديث"); }
+                        }}>
+                          <CheckCircle className="w-3 h-3 ml-1" />تم المعالجة
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </motion.div>
             )}
 
