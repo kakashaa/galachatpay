@@ -281,7 +281,7 @@ serve(async (req) => {
         return json({ success: false, error: "Unknown action" }, 400);
     }
   } catch (err) {
-    return json({ success: false, error: err.message || "Unknown error" }, 500);
+    return json({ success: false, error: (err as Error).message || "Unknown error" }, 500);
   }
 });
 
