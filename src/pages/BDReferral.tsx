@@ -31,12 +31,10 @@ const BDReferral: React.FC = () => {
     if (registered) setDeviceBlocked(true);
   }, []);
 
-  const isValidUuid = (val: string) => /^\d{6,15}$/.test(val);
-
   const handleUuidSubmit = () => {
     const memberUuid = uuid.trim();
     if (!memberUuid) { setError("أدخل آيدي حسابك في غلا لايف"); return; }
-    if (!isValidUuid(memberUuid)) { setError("الآيدي يجب أن يكون أرقام فقط بطول 6-15 رقم"); return; }
+    if (!/^\d+$/.test(memberUuid)) { setError("الآيدي يجب أن يكون أرقام فقط"); return; }
     setError("");
     setStep("password");
   };
