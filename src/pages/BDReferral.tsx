@@ -166,12 +166,11 @@ const BDReferral: React.FC = () => {
                   </div>
                   <Input
                     value={uuid}
-                    onChange={(e) => setUuid(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                    onChange={(e) => setUuid(e.target.value.replace(/\D/g, ""))}
                     placeholder="أدخل آيدي حسابك (أرقام فقط)"
                     className="text-center font-mono text-sm pr-9"
                     dir="ltr"
                     inputMode="numeric"
-                    maxLength={15}
                   />
                 </div>
               </div>
