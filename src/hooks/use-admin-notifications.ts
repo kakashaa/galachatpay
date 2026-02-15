@@ -2,16 +2,6 @@ import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const sendTelegramAlert = async (message: string) => {
-  try {
-    await supabase.functions.invoke('telegram-notify', {
-      body: { message },
-    });
-  } catch (e) {
-    console.error('Failed to send Telegram alert:', e);
-  }
-};
-
 export function useAdminNotifications() {
   const activeChannelsRef = useRef<Record<string, any>>({});
 
@@ -71,7 +61,7 @@ export function useAdminNotifications() {
               onClick: () => window.location.href = '/admin?tab=support_tickets',
             },
           });
-          sendTelegramAlert(`🎫 <b>تكت دعم جديد</b>\nمن: ${ticket.user_name}\nالموضوع: ${ticket.subject}`);
+          
         }
       )
       .subscribe();
@@ -96,7 +86,7 @@ export function useAdminNotifications() {
                 onClick: () => window.location.href = '/admin?tab=support_chats',
               },
             });
-            sendTelegramAlert(`💬 <b>طلب شات VIP جديد</b>\nمن: ${session.user_name}\nالمستوى: VIP ${session.vip_level}`);
+            
           }
         }
       )
@@ -118,7 +108,7 @@ export function useAdminNotifications() {
               description: `${req.amount_usd}$ - ${req.payment_method}`,
               duration: 8000,
             });
-            sendTelegramAlert(`💰 <b>طلب سحب جديد</b>\nمن: ${req.user_name}\nالمبلغ: ${req.amount_usd}$\nالطريقة: ${req.payment_method}`);
+            
           }
         }
       )
@@ -140,7 +130,7 @@ export function useAdminNotifications() {
               description: req.duration_label,
               duration: 8000,
             });
-            sendTelegramAlert(`📸 <b>طلب صورة متحركة جديد</b>\nمن: ${req.user_name}\nالمدة: ${req.duration_label}`);
+            
           }
         }
       )
@@ -169,7 +159,7 @@ export function useAdminNotifications() {
               description: `من ${req.user_name}`,
               duration: 8000,
             });
-            sendTelegramAlert(`⚡ <b>دعم سريع - ${typeName}</b>\nمن: ${req.user_name}${req.description ? '\n' + req.description.substring(0, 100) : ''}`);
+            
           }
         }
       )
@@ -191,7 +181,7 @@ export function useAdminNotifications() {
               description: req.title,
               duration: 8000,
             });
-            sendTelegramAlert(`🎁 <b>هدية مخصصة جديدة</b>\nمن: ${req.user_name}\nالعنوان: ${req.title}`);
+            
           }
         }
       )
