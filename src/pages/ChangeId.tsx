@@ -22,11 +22,6 @@ const LEVEL_ALLOWED_LENGTHS: { min: number; max: number; lengths: number[] }[] =
   { min: 90, max: 100, lengths: [3, 4, 5, 6, 7] },
 ];
 
-/** Minimum distinct digits required per ID length */
-const MIN_DISTINCT_DIGITS: Record<number, number> = {
-  3: 2, 4: 2, 5: 3, 6: 3, 7: 3,
-};
-
 function getAllowedLengths(level: number): number[] {
   const lengths = new Set<number>();
   for (const range of LEVEL_ALLOWED_LENGTHS) {
@@ -37,9 +32,6 @@ function getAllowedLengths(level: number): number[] {
   return [...lengths].sort((a, b) => a - b);
 }
 
-function countDistinctDigits(id: string): number {
-  return new Set(id.split("")).size;
-}
 
 const userTypeLabels: Record<number, string> = {
   0: "مستخدم عادي", 1: "مضيف", 2: "وكيل مضيفين",
@@ -215,14 +207,6 @@ const ChangeId: React.FC = () => {
        setStatus("error"); 
        setErrorMsg(`📏 طول الـ ID غير صحيح. الأطوال المتاحة لمستواك: ${allowedLengths.join(" أو ")} أرقام`); 
        return; 
-     }
-
-     const minDistinct = MIN_DISTINCT_DIGITS[trimmedId.length] || 2;
-     const distinctCount = countDistinctDigits(trimmedId);
-     if (distinctCount < minDistinct) {
-       setStatus("error");
-       setErrorMsg(`⚠️ الـ ID يجب أن يحتوي على ${minDistinct} أرقام مختلفة على الأقل. حالياً: ${distinctCount} رقم مختلف فقط.`);
-       return;
      }
 
      // Validate against allowed patterns for user's level
