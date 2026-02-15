@@ -193,6 +193,49 @@ serve(async (req) => {
         return json({ success: true });
       }
 
+      // Public: get BD info by referral code (no sensitive data)
+      case "get_bd_public_info": {
+        const { referral_code } = params;
+        if (!referral_code) throw new Error("referral_code required");
+
+        const { data: bdSettings } = await supabase
+          .from("bd_commission_settings")
+          .select("bd_name, bd_uuid, referral_code")
+          .eq("referral_code", referral_code)
+          .eq("is_approved", true)
+          .single();
+
+        if (!bdSettings) return json({ success: false, error: "رمز الدعوة غير صالح" });
+
+        const { data: members } = await supabase
+          .from("bd_members")
+          .select("member_name, member_type, type_user, created_at")
+          .eq("bd_uuid", bdSettings.bd_uuid)
+          .order("created_at", { ascending: false });
+
+        const allMembers = members || [];
+        const agencies = allMembers.filter(m => m.member_type === "agency");
+        const hosts = allMembers.filter(m => m.member_type === "host");
+        const users = allMembers.filter(m => m.member_type === "user");
+
+        return json({
+          success: true,
+          data: {
+            bd_name: bdSettings.bd_name,
+            total_members: allMembers.length,
+            agencies_count: agencies.length,
+            hosts_count: hosts.length,
+            users_count: users.length,
+            members: allMembers.map(m => ({
+              name: m.member_name,
+              type: m.member_type,
+              type_user: m.type_user,
+              joined: m.created_at,
+            })),
+          },
+        });
+      }
+
       default:
         return json({ success: false, error: "Unknown action" }, 400);
     }
