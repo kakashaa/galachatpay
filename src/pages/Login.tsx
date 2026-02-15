@@ -159,12 +159,17 @@ const Login: React.FC = () => {
             charger_num: apiUser.level?.charger_level || 0,
           };
 
+      // Derive effective type_user: if API says type 2 (host) but user has agency, they're agent of hosts (3)
+      const rawType = Number(apiUser.type_user) || 0;
+      const hasAgency = !!(apiUser.agency && apiUser.agency.id);
+      const effectiveType = (rawType === 2 && hasAgency) ? 3 : rawType;
+
       const userObj = {
         id: apiUser.id,
         uuid: apiUser.uuid,
         name: apiUser.name,
         phone: apiUser.phone,
-        type_user: Number(apiUser.type_user) || 0,
+        type_user: effectiveType,
         profile: {
           image: apiUser.profile?.image || "",
           gender: apiUser.profile?.gender || apiUser.gender || 0,
