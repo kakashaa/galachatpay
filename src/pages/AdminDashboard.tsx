@@ -218,7 +218,7 @@ const AdminDashboardPage: React.FC = () => {
 
   // Animated photos state
   const [animatedPhotos, setAnimatedPhotos] = useState<AnimatedPhotoRequest[]>([]);
-  const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "auto_approved" | "pending" | "rejected">("pending");
+  const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "approved" | "pending" | "rejected">("pending");
 
   // Admin stars state
   const [adminStarUuid, setAdminStarUuid] = useState("");
@@ -1742,7 +1742,7 @@ const AdminDashboardPage: React.FC = () => {
                 <div className="flex gap-2 flex-wrap">
                   {[
                     { key: "all" as const, label: "الكل", count: animatedPhotos.length, color: "bg-muted/30" },
-                    { key: "auto_approved" as const, label: "✅ تلقائي", count: animatedPhotos.filter(p => p.status === "approved").length, color: "bg-emerald-500/10 border-emerald-500/30" },
+                    { key: "approved" as const, label: "✅ مقبولة", count: animatedPhotos.filter(p => p.status === "approved").length, color: "bg-emerald-500/10 border-emerald-500/30" },
                     { key: "pending" as const, label: "معلقة", count: animatedPhotos.filter(p => p.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
                     { key: "rejected" as const, label: "مرفوضة", count: animatedPhotos.filter(p => p.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
                   ].map(f => (
@@ -1761,7 +1761,7 @@ const AdminDashboardPage: React.FC = () => {
                   ))}
                 </div>
                 {animatedPhotos
-                  .filter(photo => animatedPhotoFilter === "all" || (animatedPhotoFilter === "auto_approved" ? photo.status === "approved" : photo.status === animatedPhotoFilter))
+                  .filter(photo => animatedPhotoFilter === "all" || photo.status === animatedPhotoFilter)
                   .length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
                     <Camera className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -1769,7 +1769,7 @@ const AdminDashboardPage: React.FC = () => {
                   </div>
                 )}
                 {animatedPhotos
-                  .filter(photo => animatedPhotoFilter === "all" || (animatedPhotoFilter === "auto_approved" ? photo.status === "approved" : photo.status === animatedPhotoFilter))
+                  .filter(photo => animatedPhotoFilter === "all" || photo.status === animatedPhotoFilter)
                   .map((photo) => (
                   <div key={photo.id} className="bg-card border rounded-xl overflow-hidden">
                     <div className="p-4 space-y-3">
