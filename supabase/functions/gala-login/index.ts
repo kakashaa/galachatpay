@@ -193,7 +193,7 @@ serve(async (req) => {
 
     if (data.data) {
       const d = data.data;
-      // Debug log removed - type resolution handled client-side
+      console.log("DEBUG user:", d.id, "type_user:", d.type_user, "agency:", JSON.stringify(d.agency));
       if (d.profile?.image) d.profile.image = fullUrl(d.profile.image);
       if (d.profile?.cover) d.profile.cover = fullUrl(d.profile.cover);
       if (d.level?.receiver_img) d.level.receiver_img = fullUrl(d.level.receiver_img);
