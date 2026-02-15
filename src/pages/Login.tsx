@@ -6,6 +6,7 @@ import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import LoginInstructions from "@/components/LoginInstructions";
+import { resolveUserType } from "@/utils/userTypeResolver";
 
 interface SavedAccount {
   uuid: string;
@@ -159,10 +160,7 @@ const Login: React.FC = () => {
             charger_num: apiUser.level?.charger_level || 0,
           };
 
-      // Derive effective type_user: if API says type 2 (host) but user has agency, they're agent of hosts (3)
-      const rawType = Number(apiUser.type_user) || 0;
-      const hasAgency = !!(apiUser.agency && apiUser.agency.id);
-      const effectiveType = (rawType === 2 && hasAgency) ? 3 : rawType;
+      const effectiveType = resolveUserType(apiUser.type_user, apiUser.agency);
 
       const userObj = {
         id: apiUser.id,
