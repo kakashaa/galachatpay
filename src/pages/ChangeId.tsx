@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
+import { levelFormats } from "@/data/idFormats";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -334,14 +335,45 @@ const ChangeId: React.FC = () => {
         </div>
 
         {/* ID requirements info */}
-        <div className="glass-card p-3 space-y-2" dir="rtl">
+        {/* ID formats per level */}
+        <div className="glass-card p-3 space-y-2.5" dir="rtl">
           <div className="flex items-center gap-2">
             <IdCard className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-bold text-foreground">شروط الـ ID</span>
+            <span className="text-xs font-bold text-foreground">الصيغ المتاحة حسب المستوى</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            يمكنكم طلب نوع الـ ID الذي تريدونه. يُشترط أن يكون الطلب بطول <span className="font-bold text-primary">7 أرقام</span> وأن يحتوي على <span className="font-bold text-primary">3 أرقام مختلفة</span> على الأقل.
+          <p className="text-[10px] text-muted-foreground">
+            يمكنكم طلب نوع الـ ID الذي تريدونه. يُشترط أن يحتوي على <span className="font-bold text-primary">3 أرقام مختلفة</span> على الأقل.
           </p>
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
+            {levelFormats.map((lf) => {
+              const isCurrentLevel = maxLevel >= lf.minLevel && maxLevel <= lf.maxLevel;
+              return (
+                <div
+                  key={lf.label}
+                  className={`rounded-lg p-2.5 space-y-1.5 border ${isCurrentLevel ? "bg-primary/10 border-primary/30" : "bg-muted/20 border-border/10"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[11px] font-bold ${isCurrentLevel ? "text-primary" : "text-foreground"}`}>
+                      {lf.label}
+                      {isCurrentLevel && <span className="text-[9px] mr-1 text-primary/70">(مستواك)</span>}
+                    </span>
+                  </div>
+                  {lf.groups.map((g) => (
+                    <div key={g.digits} className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground">{g.digits} أرقام:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {g.patterns.map((p) => (
+                          <span key={p} className="text-[9px] font-mono bg-muted/40 text-foreground/80 rounded px-1.5 py-0.5" dir="ltr">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Info tip */}
