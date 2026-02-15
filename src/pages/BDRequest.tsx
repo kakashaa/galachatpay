@@ -151,20 +151,25 @@ const BDRequest: React.FC = () => {
 
   const isFormValid = experience.trim() && hostsCount && agentsCount && previousBD && (previousBD === "no" || attachment);
 
-  // Approved → show congrats once, then always redirect
+  // Approved → show congrats once, then always redirect to /bd/info
+  const bdSeenKey = authUser ? `bd_approved_seen_${authUser.uuid}` : "";
+  const [showCongrats, setShowCongrats] = useState(false);
+
   useEffect(() => {
-    if (bdStatus === "approved" && authUser) {
-      const seenKey = `bd_approved_seen_${authUser.uuid}`;
-      if (localStorage.getItem(seenKey)) {
+    if (bdStatus === "approved" && authUser && bdSeenKey) {
+      if (localStorage.getItem(bdSeenKey)) {
+        // Already seen → go directly to BD info
         navigate("/bd/info", { replace: true });
+      } else {
+        // First time → show congrats and mark as seen
+        localStorage.setItem(bdSeenKey, "1");
+        setShowCongrats(true);
       }
     }
   }, [bdStatus, authUser]);
 
   if (bdStatus === "approved") {
-    const seenKey = `bd_approved_seen_${authUser?.uuid}`;
-    const alreadySeen = localStorage.getItem(seenKey);
-    if (alreadySeen) return null; // will redirect via useEffect
+    if (!showCongrats) return null; // waiting for useEffect redirect
 
     return (
       <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
@@ -172,12 +177,9 @@ const BDRequest: React.FC = () => {
           <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mb-6">
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">تم قبول طلبك كـ BD</h2>
+          <h2 className="text-lg font-bold text-foreground mb-2">تم قبول طلبك كـ BD 🎉</h2>
           <p className="text-sm text-muted-foreground mb-6 text-center">يمكنك الآن الوصول إلى لوحة تقارير BD الخاصة بك</p>
-          <Button onClick={() => {
-            localStorage.setItem(seenKey, "1");
-            navigate("/bd/info", { replace: true });
-          }} className="gold-gradient text-primary-foreground font-bold">
+          <Button onClick={() => navigate("/bd/info", { replace: true })} className="gold-gradient text-primary-foreground font-bold">
             <Briefcase className="w-5 h-5 ml-2" /> فتح لوحة BD
           </Button>
         </div>
