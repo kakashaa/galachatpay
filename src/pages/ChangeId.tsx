@@ -1,15 +1,43 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info, ChevronDown } from "lucide-react";
+import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import IdFormatCarousel from "@/components/IdFormatCarousel";
-import { levelFormats } from "@/data/idFormats";
-import { validateIdAgainstPatterns } from "@/utils/idPatternValidator";
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
+
+/** Allowed digit lengths per level range */
+const LEVEL_ALLOWED_LENGTHS: { min: number; max: number; lengths: number[] }[] = [
+  { min: 20, max: 29, lengths: [7] },
+  { min: 30, max: 39, lengths: [6, 7] },
+  { min: 40, max: 49, lengths: [5, 6, 7] },
+  { min: 50, max: 59, lengths: [5, 6, 7] },
+  { min: 60, max: 69, lengths: [5, 6, 7] },
+  { min: 70, max: 79, lengths: [4, 5, 6, 7] },
+  { min: 80, max: 89, lengths: [4, 5, 6, 7] },
+  { min: 90, max: 100, lengths: [3, 4, 5, 6, 7] },
+];
+
+/** Minimum distinct digits required per ID length */
+const MIN_DISTINCT_DIGITS: Record<number, number> = {
+  3: 2, 4: 2, 5: 3, 6: 3, 7: 4,
+};
+
+function getAllowedLengths(level: number): number[] {
+  const lengths = new Set<number>();
+  for (const range of LEVEL_ALLOWED_LENGTHS) {
+    if (level >= range.min) {
+      range.lengths.forEach((l) => lengths.add(l));
+    }
+  }
+  return [...lengths].sort((a, b) => a - b);
+}
+
+function countDistinctDigits(id: string): number {
+  return new Set(id.split("")).size;
+}
 
 const userTypeLabels: Record<number, string> = {
   0: "مستخدم عادي", 1: "مضيف", 2: "وكيل مضيفين",
@@ -56,7 +84,7 @@ const ChangeId: React.FC = () => {
   const [newId, setNewId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const [showFormats, setShowFormats] = useState(false);
+  
   const [alreadyChanged, setAlreadyChanged] = useState<{ changed: boolean; lastLevel: number | null; newId: string | null; date: string | null }>({ changed: false, lastLevel: null, newId: null, date: null });
   const [loadingCheck, setLoadingCheck] = useState(true);
 
@@ -160,15 +188,11 @@ const ChangeId: React.FC = () => {
       </MobileLayout>
     );
   }
-  const currentRange = levelFormats.find((r) => maxLevel >= r.minLevel && maxLevel <= r.maxLevel);
-  const availableRanges = levelFormats.filter((r) => maxLevel >= r.minLevel);
-  const currentLevelIndex = availableRanges.findIndex((r) => r === currentRange);
-  const allowedDigits = availableRanges.flatMap((r) => r.groups.map((g) => g.digits));
-  const uniqueAllowedDigits = [...new Set(allowedDigits)].sort((a, b) => a - b);
+  const allowedLengths = getAllowedLengths(maxLevel);
 
   const handleSubmit = async () => {
     const trimmedId = newId.trim();
-    if (!trimmedId || !currentRange) return;
+    if (!trimmedId) return;
      if (alreadyChanged.changed) {
        const next = getNextMilestone(maxLevel);
        setStatus("error");
@@ -185,17 +209,18 @@ const ChangeId: React.FC = () => {
        setErrorMsg("🔢 الـ ID يجب أن يحتوي على أرقام فقط (0-9)، بدون أحرف أو رموز."); 
        return; 
      }
-     if (!uniqueAllowedDigits.includes(trimmedId.length)) { 
+     if (!allowedLengths.includes(trimmedId.length)) { 
        setStatus("error"); 
-       setErrorMsg(`📏 طول الـ ID غير صحيح. الأطوال المتاحة لمستواك: ${uniqueAllowedDigits.join(" أو ")}`); 
+       setErrorMsg(`📏 طول الـ ID غير صحيح. الأطوال المتاحة لمستواك: ${allowedLengths.join(" أو ")} أرقام`); 
        return; 
      }
 
-     const allAllowedPatterns = availableRanges.flatMap((r) => r.groups).filter((g) => g.digits === trimmedId.length).flatMap((g) => g.patterns);
-     if (!validateIdAgainstPatterns(trimmedId, allAllowedPatterns)) { 
-       setStatus("error"); 
-       setErrorMsg("⚠️ الـ ID لا يطابق الأنماط المتاحة. تحقق من الصيغ أعلاه واختر رقماً يطابق أحدها."); 
-       return; 
+     const minDistinct = MIN_DISTINCT_DIGITS[trimmedId.length] || 2;
+     const distinctCount = countDistinctDigits(trimmedId);
+     if (distinctCount < minDistinct) {
+       setStatus("error");
+       setErrorMsg(`⚠️ الـ ID يجب أن يحتوي على ${minDistinct} أرقام مختلفة على الأقل. حالياً: ${distinctCount} رقم مختلف فقط.`);
+       return;
      }
 
      setStatus("loading"); setErrorMsg("");
@@ -308,28 +333,21 @@ const ChangeId: React.FC = () => {
           )}
         </div>
 
-        {/* Formats - Collapsible */}
-        <div className="glass-card overflow-hidden">
-          <button
-            onClick={() => setShowFormats(!showFormats)}
-            className="w-full p-3 flex items-center justify-between"
-            dir="rtl"
-          >
-            <div className="flex items-center gap-2">
-              <IdCard className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-bold text-foreground">الصيغ المتاحة ({currentRange?.label || "—"})</span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${showFormats ? "rotate-180" : ""}`} />
-          </button>
-          {showFormats && (
-            <div className="px-3 pb-3">
-              {availableRanges.length > 0 ? (
-                <IdFormatCarousel availableLevels={availableRanges} currentLevelIndex={Math.max(0, currentLevelIndex)} maxLevel={maxLevel} />
-              ) : (
-                <p className="text-[10px] text-muted-foreground text-center py-2">يجب أن يكون مستواك 20+</p>
-              )}
-            </div>
-          )}
+        {/* Allowed lengths info */}
+        <div className="glass-card p-3 space-y-2" dir="rtl">
+          <div className="flex items-center gap-2">
+            <IdCard className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-bold text-foreground">الأطوال المتاحة لمستواك (لفل {maxLevel})</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {allowedLengths.map((len) => (
+              <div key={len} className="flex items-center gap-1.5 bg-muted/30 rounded-lg px-3 py-1.5">
+                <span className="text-xs font-bold text-primary">{len}</span>
+                <span className="text-[10px] text-muted-foreground">أرقام</span>
+                <span className="text-[9px] text-muted-foreground/70">(min {MIN_DISTINCT_DIGITS[len] || 2} مختلفة)</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Info tip */}
