@@ -26,15 +26,55 @@ serve(async (req) => {
         const { bd_uuid } = params;
         if (!bd_uuid) throw new Error("bd_uuid required");
 
-        const [settingsRes, membersRes, logsRes] = await Promise.all([
-          supabase.from("bd_commission_settings").select("*").eq("bd_uuid", bd_uuid).single(),
-          supabase.from("bd_members").select("*").eq("bd_uuid", bd_uuid).order("created_at", { ascending: false }),
-          supabase.from("bd_commission_logs").select("*").eq("bd_uuid", bd_uuid).order("created_at", { ascending: false }).limit(100),
-        ]);
+        // First try direct lookup
+        let { data: settingsData } = await supabase.from("bd_commission_settings").select("*").eq("bd_uuid", bd_uuid).single();
 
-        if (!settingsRes.data) {
+        // If not found, check if user changed their ID and find old BD uuid
+        let resolvedUuid = bd_uuid;
+        if (!settingsData) {
+          // Look through id_changes chain to find the original BD uuid
+          let currentUuid = bd_uuid;
+          for (let i = 0; i < 10; i++) {
+            const { data: change } = await supabase
+              .from("id_changes")
+              .select("user_uuid")
+              .eq("new_id", currentUuid)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single();
+            if (!change) break;
+            const { data: found } = await supabase
+              .from("bd_commission_settings")
+              .select("*")
+              .eq("bd_uuid", change.user_uuid)
+              .single();
+            if (found) {
+              settingsData = found;
+              resolvedUuid = change.user_uuid;
+              // Migrate BD uuid to new one
+              await Promise.all([
+                supabase.from("bd_commission_settings").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
+                supabase.from("bd_members").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
+                supabase.from("bd_commission_logs").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
+                supabase.from("bd_events").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
+              ]);
+              // Update the settings data with new uuid
+              settingsData.bd_uuid = bd_uuid;
+              break;
+            }
+            currentUuid = change.user_uuid;
+          }
+        }
+
+        if (!settingsData) {
           return json({ success: false, error: "BD not found" });
         }
+
+        const lookupUuid = settingsData.bd_uuid;
+        const [membersRes, logsRes] = await Promise.all([
+          supabase.from("bd_members").select("*").eq("bd_uuid", lookupUuid).order("created_at", { ascending: false }),
+          supabase.from("bd_commission_logs").select("*").eq("bd_uuid", lookupUuid).order("created_at", { ascending: false }).limit(100),
+        ]);
 
         const members = membersRes.data || [];
         const logs = logsRes.data || [];
@@ -50,7 +90,7 @@ serve(async (req) => {
         return json({
           success: true,
           data: {
-            settings: settingsRes.data,
+            settings: settingsData,
             agencies,
             hosts,
             users,
