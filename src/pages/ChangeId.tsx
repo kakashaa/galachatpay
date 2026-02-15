@@ -344,36 +344,34 @@ const ChangeId: React.FC = () => {
           <p className="text-[10px] text-muted-foreground">
             يمكنكم طلب الآيدي الذي تريدونه حسب مستواكم
           </p>
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
-            {levelFormats.map((lf) => {
-              const isCurrentLevel = maxLevel >= lf.minLevel && maxLevel <= lf.maxLevel;
-              return (
-                <div
-                  key={lf.label}
-                  className={`rounded-lg p-2.5 space-y-1.5 border ${isCurrentLevel ? "bg-primary/10 border-primary/30" : "bg-muted/20 border-border/10"}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[11px] font-bold ${isCurrentLevel ? "text-primary" : "text-foreground"}`}>
-                      {lf.label}
-                      {isCurrentLevel && <span className="text-[9px] mr-1 text-primary/70">(مستواك)</span>}
-                    </span>
-                  </div>
-                  {lf.groups.map((g) => (
-                    <div key={g.digits} className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground">{g.digits} أرقام:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {g.patterns.map((p) => (
-                          <span key={p} className="text-[9px] font-mono bg-muted/40 text-foreground/80 rounded px-1.5 py-0.5" dir="ltr">
-                            {p}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+          {(() => {
+            const currentLevelFormat = levelFormats.find(lf => maxLevel >= lf.minLevel && maxLevel <= lf.maxLevel);
+            if (!currentLevelFormat) return (
+              <p className="text-[10px] text-muted-foreground">لا توجد صيغ متاحة لمستواك الحالي.</p>
+            );
+            return (
+              <div className="rounded-lg p-2.5 space-y-1.5 border bg-primary/10 border-primary/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-primary">
+                    {currentLevelFormat.label}
+                    <span className="text-[9px] mr-1 text-primary/70">(مستواك)</span>
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                {currentLevelFormat.groups.map((g) => (
+                  <div key={g.digits} className="space-y-1">
+                    <span className="text-[10px] text-muted-foreground">{g.digits} أرقام:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {g.patterns.map((p) => (
+                        <span key={p} className="text-[9px] font-mono bg-muted/40 text-foreground/80 rounded px-1.5 py-0.5" dir="ltr">
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Info tip */}
