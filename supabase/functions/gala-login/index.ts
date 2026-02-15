@@ -193,7 +193,9 @@ serve(async (req) => {
 
     if (data.data) {
       const d = data.data;
-      console.log("API type_user raw:", d.type_user, "type:", typeof d.type_user, "full keys:", Object.keys(d).filter(k => k.includes("type")));
+      console.log("FULL API RESPONSE KEYS:", JSON.stringify(Object.keys(d)));
+      console.log("type_user:", d.type_user, "| type:", d.type, "| user_type:", d.user_type, "| account_type:", d.account_type);
+      console.log("FULL DATA DUMP:", JSON.stringify(d).substring(0, 500));
       if (d.profile?.image) d.profile.image = fullUrl(d.profile.image);
       if (d.profile?.cover) d.profile.cover = fullUrl(d.profile.cover);
       if (d.level?.receiver_img) d.level.receiver_img = fullUrl(d.level.receiver_img);
