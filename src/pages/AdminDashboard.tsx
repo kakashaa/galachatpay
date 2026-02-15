@@ -436,23 +436,21 @@ const AdminDashboardPage: React.FC = () => {
           setAllCustomGifts(customG || []);
           setAllQuickSupport(qs || []);
           setAllVipRequests(vip || []);
-          // Also try BD requests
-          try {
-            const controller = new AbortController();
-            setTimeout(() => controller.abort(), 5000);
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=list-requests&request_type=bd_verify`,
-              {
-                method: "GET",
-                headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-                signal: controller.signal,
-              }
-            );
-            if (response.ok) {
-              const result = await response.json();
-              setAllBdRequests(result?.data && Array.isArray(result.data) ? result.data : []);
-            }
-          } catch { setAllBdRequests([]); }
+          // Load BD requests from cache
+          const { data: bdCacheData } = await supabase
+            .from("bd_requests_cache")
+            .select("*")
+            .order("created_at", { ascending: false });
+          setAllBdRequests((bdCacheData || []).map((r: any) => ({
+            id: r.id,
+            user_uuid: r.user_uuid,
+            user_name: r.user_name,
+            request_type: r.request_type,
+            status: r.status,
+            details: r.details || {},
+            created_at: r.created_at,
+            admin_note: r.admin_note,
+          })));
           break;
         }
         case "animated_photos": {
@@ -460,25 +458,24 @@ const AdminDashboardPage: React.FC = () => {
           break;
         }
         case "bd_requests": {
-          try {
-            const controller = new AbortController();
-            setTimeout(() => controller.abort(), 8000);
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=list-requests&request_type=bd_verify`,
-              {
-                method: "GET",
-                headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-                signal: controller.signal,
-              }
-            );
-            if (response.ok) {
-              const result = await response.json();
-              setBdRequests(result?.data && Array.isArray(result.data) ? result.data : []);
-            }
-          } catch (err) {
-            console.error("Failed to load BD requests:", err);
-            toast.error("فشل تحميل طلبات BD - قد يكون الخادم غير متاح");
+          const { data: bdCacheList, error: bdErr } = await supabase
+            .from("bd_requests_cache")
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (bdErr) {
+            console.error("Failed to load BD requests:", bdErr);
+            toast.error("فشل تحميل طلبات BD");
           }
+          setBdRequests((bdCacheList || []).map((r: any) => ({
+            id: r.id,
+            user_uuid: r.user_uuid,
+            user_name: r.user_name,
+            request_type: r.request_type,
+            status: r.status,
+            details: r.details || {},
+            created_at: r.created_at,
+            admin_note: r.admin_note,
+          })));
           break;
         }
         case "trash": {
@@ -707,6 +704,7 @@ const AdminDashboardPage: React.FC = () => {
       setBdAction(null);
       // Optimistic update
       setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
+      setAllBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
       setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
       // Sync cache table for realtime
       await supabase.from("bd_requests_cache").upsert({ id: String(reqItem.id), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, status: 1, details: reqItem.details || {}, updated_at: new Date().toISOString() }, { onConflict: "id" });
@@ -728,6 +726,7 @@ const AdminDashboardPage: React.FC = () => {
       setBdAction(null); setBdRejectReason("");
       // Optimistic update
       setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
+      setAllBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
       setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
       // Sync cache table for realtime
       await supabase.from("bd_requests_cache").upsert({ id: String(reqItem.id), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, status: 2, admin_note: bdRejectReason.trim(), details: reqItem.details || {}, updated_at: new Date().toISOString() }, { onConflict: "id" });
