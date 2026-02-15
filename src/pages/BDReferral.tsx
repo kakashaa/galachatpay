@@ -1,30 +1,34 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Briefcase, CheckCircle, Loader2, AlertCircle, User } from "lucide-react";
-import MobileLayout from "@/components/MobileLayout";
+import { useParams } from "react-router-dom";
+import { Briefcase, CheckCircle, Loader2, AlertCircle, User, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { userTypeLabels } from "@/utils/userTypeResolver";
+import galaLogo from "@/assets/gala-logo.png";
+
+const DEVICE_KEY = "bd_referral_device_registered";
 
 const BDReferral: React.FC = () => {
-  const navigate = useNavigate();
   const { code } = useParams<{ code: string }>();
-  const { user: authUser } = useAuth();
   const [uuid, setUuid] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
+  const [deviceBlocked, setDeviceBlocked] = useState(false);
 
+  // Check if this device already registered
   useEffect(() => {
-    if (authUser?.uuid) setUuid(authUser.uuid);
-  }, [authUser?.uuid]);
+    const registered = localStorage.getItem(DEVICE_KEY);
+    if (registered) {
+      setDeviceBlocked(true);
+    }
+  }, []);
 
   const handleJoin = async () => {
     const memberUuid = uuid.trim();
-    if (!memberUuid) { setError("أدخل الـ UUID الخاص بك"); return; }
+    if (!memberUuid) { setError("أدخل آيدي حسابك في غلا لايف"); return; }
     if (!code) { setError("رمز الدعوة غير صالح"); return; }
 
     setLoading(true);
@@ -35,6 +39,8 @@ const BDReferral: React.FC = () => {
       });
       if (invokeErr) throw invokeErr;
       if (data?.success) {
+        // Mark device as registered
+        localStorage.setItem(DEVICE_KEY, memberUuid);
         setResult(data.data);
         toast.success("تم التسجيل بنجاح!");
       } else {
@@ -47,15 +53,35 @@ const BDReferral: React.FC = () => {
     }
   };
 
+  // Device already registered
+  if (deviceBlocked) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6" dir="rtl">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <img src={galaLogo} alt="Gala" className="w-16 h-16 mx-auto rounded-2xl" />
+          <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-8 h-8 text-amber-400" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">تم التسجيل مسبقاً</h2>
+          <p className="text-sm text-muted-foreground">
+            تم تسجيل حساب من هذا الجهاز مسبقاً. لا يمكن التسجيل مرة أخرى.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Success screen
   if (result) {
     return (
-      <MobileLayout showHeader headerTitle="تسجيل ناجح" onBack={() => navigate("/")}>
-        <div className="flex flex-col items-center justify-center px-6 py-16 space-y-6" dir="rtl">
-          <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6" dir="rtl">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <img src={galaLogo} alt="Gala" className="w-16 h-16 mx-auto rounded-2xl" />
+          <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
             <CheckCircle className="w-10 h-10 text-green-500" />
           </div>
           <h2 className="text-lg font-bold text-foreground">تم تسجيلك بنجاح!</h2>
-          <div className="glass-card p-4 w-full max-w-sm space-y-3">
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-3 text-right">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">الاسم</span>
               <span className="font-bold text-foreground">{result.member_name || uuid}</span>
@@ -75,31 +101,34 @@ const BDReferral: React.FC = () => {
               <span className="font-bold text-foreground">{result.bd_name}</span>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center">تم تسجيل حسابك لدى مطور الأعمال بنجاح</p>
-          <Button onClick={() => navigate("/")} variant="outline">العودة للرئيسية</Button>
+          <p className="text-xs text-muted-foreground">تم تسجيل حسابك لدى مطور الأعمال بنجاح</p>
         </div>
-      </MobileLayout>
+      </div>
     );
   }
 
+  // Main form - no login required
   return (
-    <MobileLayout showHeader headerTitle="دعوة BD" onBack={() => navigate("/")}>
-      <div className="flex flex-col items-center px-6 py-12 space-y-6" dir="rtl">
-        <div className="w-20 h-20 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center">
-          <Briefcase className="w-10 h-10 text-primary" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6" dir="rtl">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="text-center space-y-3">
+          <img src={galaLogo} alt="Gala" className="w-16 h-16 mx-auto rounded-2xl" />
+          <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto">
+            <Briefcase className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">التسجيل عبر دعوة BD</h1>
+          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+            أدخل آيدي حسابك في غلا لايف للتسجيل لدى مطور الأعمال
+          </p>
         </div>
-        <h1 className="text-xl font-bold text-foreground text-center">التسجيل عبر رابط دعوة BD</h1>
-        <p className="text-xs text-muted-foreground text-center max-w-xs">
-          أدخل الـ UUID الخاص بحسابك في غلا لايف للتسجيل لدى مطور الأعمال
-        </p>
 
-        <div className="glass-card p-5 w-full max-w-sm space-y-4">
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground">UUID الحساب</label>
+            <label className="text-xs text-muted-foreground">آيدي الحساب (UUID)</label>
             <Input
               value={uuid}
               onChange={(e) => setUuid(e.target.value)}
-              placeholder="أدخل UUID حسابك"
+              placeholder="أدخل آيدي حسابك"
               className="text-center font-mono text-sm"
               dir="ltr"
             />
@@ -122,7 +151,7 @@ const BDReferral: React.FC = () => {
           رمز الدعوة: <span className="font-mono text-primary">{code}</span>
         </p>
       </div>
-    </MobileLayout>
+    </div>
   );
 };
 
