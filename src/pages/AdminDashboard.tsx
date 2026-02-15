@@ -634,17 +634,6 @@ const AdminDashboardPage: React.FC = () => {
   const handleBDApprove = async (reqItem: BDRequestItem) => {
     setBdActionLoading(true);
     try {
-      await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=update-request`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ request_id: reqItem.id, status: 1 }),
-        }
-      );
       // Send notification
       await supabase.from("notifications").insert({
         user_uuid: reqItem.user_uuid,
@@ -667,17 +656,6 @@ const AdminDashboardPage: React.FC = () => {
     if (!bdRejectReason.trim()) { toast.error("يرجى كتابة سبب الرفض"); return; }
     setBdActionLoading(true);
     try {
-      await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=update-request`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ request_id: reqItem.id, status: 2, admin_note: bdRejectReason.trim() }),
-        }
-      );
       await supabase.from("notifications").insert({
         user_uuid: reqItem.user_uuid,
         title: "❌ تم رفض طلب BD",
