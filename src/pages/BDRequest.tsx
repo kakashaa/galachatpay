@@ -28,6 +28,43 @@ const BDRequest: React.FC = () => {
   useEffect(() => {
     if (!authUser) return;
     checkExistingRequest();
+
+    // Realtime: watch for approval in bd_commission_settings
+    const channel = supabase
+      .channel('bd-approval-watch')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bd_commission_settings',
+          filter: `bd_uuid=eq.${authUser.uuid}`,
+        },
+        (payload: any) => {
+          if (payload.new?.is_approved) {
+            setBdStatus("approved");
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bd_requests_cache',
+          filter: `user_uuid=eq.${authUser.uuid}`,
+        },
+        (payload: any) => {
+          if (payload.new?.status === 1) {
+            setBdStatus("approved");
+          } else if (payload.new?.status === 2) {
+            setBdStatus("rejected");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [authUser]);
 
   const checkExistingRequest = async () => {
