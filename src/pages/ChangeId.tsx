@@ -82,23 +82,23 @@ const ChangeId: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState("");
   
   const [alreadyChanged, setAlreadyChanged] = useState<{ changed: boolean; lastLevel: number | null; newId: string | null; date: string | null }>({ changed: false, lastLevel: null, newId: null, date: null });
+  const [alreadyGifted, setAlreadyGifted] = useState(false);
   const [loadingCheck, setLoadingCheck] = useState(true);
 
   useEffect(() => {
     if (!user) return;
     const maxLvl = Math.max(user.level.receiver_level, user.level.sender_level);
     
-    // Check database for previous ID changes
     const checkDbHistory = async () => {
       setLoadingCheck(true);
       try {
-        // Search by current uuid OR by new_id (since uuid changes after ID change)
+        // Check self-change history
         const { data, error } = await supabase
           .from("id_changes")
           .select("*")
           .or(`user_uuid.eq.${user.uuid},new_id.eq.${user.uuid}`)
           .order("created_at", { ascending: false })
-          .limit(1);
+          .limit(10);
         
         if (error) {
           console.error("Error checking id_changes:", error);
@@ -107,19 +107,28 @@ const ChangeId: React.FC = () => {
         }
 
         if (data && data.length > 0) {
-          const lastChange = data[0];
-          const lastMilestone = lastChange.level_milestone;
-          const currentMilestone = getCurrentMilestone(maxLvl);
-          
-          if (currentMilestone > lastMilestone) {
-            // User has reached a new milestone, can change again
-            setAlreadyChanged({ changed: false, lastLevel: lastMilestone, newId: lastChange.new_id, date: lastChange.created_at });
+          // Check self-change (level_milestone > 0 means self-change)
+          const selfChanges = data.filter(d => d.level_milestone > 0);
+          if (selfChanges.length > 0) {
+            const lastChange = selfChanges[0];
+            const lastMilestone = lastChange.level_milestone;
+            const currentMilestone = getCurrentMilestone(maxLvl);
+            
+            if (currentMilestone > lastMilestone) {
+              setAlreadyChanged({ changed: false, lastLevel: lastMilestone, newId: lastChange.new_id, date: lastChange.created_at });
+            } else {
+              setAlreadyChanged({ changed: true, lastLevel: lastMilestone, newId: lastChange.new_id, date: lastChange.created_at });
+            }
           } else {
-            // Same milestone, can't change
-            setAlreadyChanged({ changed: true, lastLevel: lastMilestone, newId: lastChange.new_id, date: lastChange.created_at });
+            setAlreadyChanged({ changed: false, lastLevel: null, newId: null, date: null });
           }
+
+          // Check gift history (level_milestone = 0 means gift)
+          const giftChanges = data.filter(d => d.level_milestone === 0);
+          setAlreadyGifted(giftChanges.length > 0);
         } else {
           setAlreadyChanged({ changed: false, lastLevel: null, newId: null, date: null });
+          setAlreadyGifted(false);
         }
       } catch (err) {
         console.error("Error checking id change history:", err);
@@ -272,6 +281,12 @@ const ChangeId: React.FC = () => {
     const trimmedRecipient = recipientId.trim();
     if (!trimmedId || !trimmedRecipient) return;
 
+    if (alreadyGifted) {
+      setStatus("error");
+      setErrorMsg("🚫 لقد استخدمت فرصة الإهداء الخاصة بك. الإهداء متاح مرة واحدة فقط.");
+      return;
+    }
+
     if (!/^\d+$/.test(trimmedId)) {
       setStatus("error");
       setErrorMsg("🔢 الـ ID يجب أن يحتوي على أرقام فقط (0-9).");
@@ -320,14 +335,14 @@ const ChangeId: React.FC = () => {
         return;
       }
 
-      // Save gift record
+      // Save gift record with level_milestone = 0 to mark as gift
       await supabase.from("id_changes").insert({
         user_uuid: user.uuid,
         new_id: trimmedId,
-        level_milestone: getCurrentMilestone(maxLevel),
+        level_milestone: 0,
       });
 
-      // Notification
+      // Notification to sender
       await supabase.from("notifications").insert({
         user_uuid: user.uuid,
         title: "تم إهداء آيدي بنجاح 🎁",
@@ -335,6 +350,15 @@ const ChangeId: React.FC = () => {
         target: "user",
       });
 
+      // Notification to recipient
+      await supabase.from("notifications").insert({
+        user_uuid: trimmedRecipient,
+        title: "🎁 هدية آيدي جديد!",
+        body: `قام المستخدم ${user.uuid} بإهدائك الآيدي ${trimmedId}.`,
+        target: "user",
+      });
+
+      setAlreadyGifted(true);
       setStatus("success");
     } catch {
       setStatus("error");
@@ -393,7 +417,7 @@ const ChangeId: React.FC = () => {
           </div>
         )}
         {/* Warning if already changed */}
-        {alreadyChanged.changed && (
+        {alreadyChanged.changed && !isGiftMode && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
@@ -401,6 +425,18 @@ const ChangeId: React.FC = () => {
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 آخر تغيير عند اللفل {alreadyChanged.lastLevel} → <span dir="ltr">{alreadyChanged.newId}</span>.
                 {getNextMilestone(maxLevel) ? ` الهدف: لفل ${getNextMilestone(maxLevel)}` : " أعلى مستوى."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {alreadyGifted && isGiftMode && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-foreground">تم استخدام فرصة الإهداء</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                الإهداء متاح مرة واحدة فقط. لقد قمت بإهداء آيدي سابقاً.
               </p>
             </div>
           </div>
@@ -514,7 +550,7 @@ const ChangeId: React.FC = () => {
           <Info className="w-3 h-3 text-primary shrink-0 mt-0.5" />
           <p className="text-[10px] text-muted-foreground">
             {isGiftMode
-              ? "الإهداء يغيّر آيدي المستخدم المستلم. تأكد من صحة الـ ID المستلم."
+              ? "الإهداء متاح مرة واحدة فقط. لا توجد شروط على المستلم، فقط الـ ID يجب أن يطابق الصيغ المعروضة."
               : <>تغيير الـ ID <strong>مرة واحدة لكل 10 مستويات</strong>. السجل محفوظ في النظام.</>}
           </p>
         </div>
@@ -545,7 +581,7 @@ const ChangeId: React.FC = () => {
             placeholder={isGiftMode ? "اكتب الـ ID الذي تريد إهداءه" : "اكتب الـ ID الذي تريده"}
             dir="ltr"
             className="h-10 bg-muted/20 border-border/20 text-center text-sm"
-            disabled={(!isGiftMode && (maxLevel < 20 || alreadyChanged.changed)) || loadingCheck}
+            disabled={(!isGiftMode && (maxLevel < 20 || alreadyChanged.changed)) || (isGiftMode && alreadyGifted) || loadingCheck}
           />
           {status === "taken" && (
             <div className="flex items-center gap-1.5 p-2 bg-destructive/10 border border-destructive/15 rounded-lg">
@@ -569,7 +605,7 @@ const ChangeId: React.FC = () => {
             onClick={isGiftMode ? handleGiftSubmit : handleSubmit}
             disabled={
               !newId.trim() ||
-              (isGiftMode ? !recipientId.trim() : (maxLevel < 20 || alreadyChanged.changed)) ||
+              (isGiftMode ? (!recipientId.trim() || alreadyGifted) : (maxLevel < 20 || alreadyChanged.changed)) ||
               status === "loading" || loadingCheck
             }
             className="w-full gold-gradient text-primary-foreground font-bold h-10 text-sm disabled:opacity-40"
