@@ -140,7 +140,7 @@ const BDRequest: React.FC = () => {
           </div>
           <h2 className="text-lg font-bold text-foreground mb-2">تم قبول طلبك كـ BD</h2>
           <p className="text-sm text-muted-foreground mb-6 text-center">يمكنك الآن الوصول إلى لوحة تقارير BD الخاصة بك</p>
-          <Button onClick={() => navigate("/bd-dashboard")} className="gold-gradient text-primary-foreground font-bold">
+          <Button onClick={() => navigate("/bd/info")} className="gold-gradient text-primary-foreground font-bold">
             <Briefcase className="w-5 h-5 ml-2" /> فتح لوحة BD
           </Button>
         </div>

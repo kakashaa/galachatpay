@@ -22,7 +22,7 @@ import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime"
 import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
 import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "bd_management" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | null;
 
 interface BDRequestItem {
   id: string;
@@ -263,6 +263,10 @@ const AdminDashboardPage: React.FC = () => {
   // ID changes state
   const [idChanges, setIdChanges] = useState<any[]>([]);
 
+  // BD management state
+  const [bdManagementList, setBdManagementList] = useState<any[]>([]);
+  const [editingBdSettings, setEditingBdSettings] = useState<any>(null);
+  const [bdSettingsLoading, setBdSettingsLoading] = useState(false);
   useEffect(() => {
     if (!adminSessionToken) {
       navigate("/admin");
@@ -514,6 +518,15 @@ const AdminDashboardPage: React.FC = () => {
           setIdChanges(data || []);
           break;
         }
+        case "bd_management": {
+          try {
+            const { data: result, error } = await supabase.functions.invoke("bd-manage", {
+              body: { action: "list_all_bds" },
+            });
+            if (!error && result?.success) setBdManagementList(result.data || []);
+          } catch { setBdManagementList([]); }
+          break;
+        }
       }
     } catch (err) {
       console.error(err);
@@ -664,6 +677,18 @@ const AdminDashboardPage: React.FC = () => {
   const handleBDApprove = async (reqItem: BDRequestItem) => {
     setBdActionLoading(true);
     try {
+      // Create BD commission settings with referral code
+      const referralCode = `BD${reqItem.user_uuid.slice(-6).toUpperCase()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
+      await supabase.from("bd_commission_settings").upsert({
+        bd_uuid: reqItem.user_uuid,
+        bd_name: reqItem.user_name,
+        referral_code: referralCode,
+        is_approved: true,
+        agency_commission_pct: 5,
+        host_commission_pct: 3,
+        user_commission_pct: 2,
+      }, { onConflict: "bd_uuid" });
+
       // Send notification
       await supabase.from("notifications").insert({
         user_uuid: reqItem.user_uuid,
@@ -797,6 +822,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
+    { key: "bd_management", label: "تحكم BD", icon: <Briefcase className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400", count: bdManagementList.length },
     { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
     { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
     { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
@@ -2229,6 +2255,79 @@ const AdminDashboardPage: React.FC = () => {
                     )}
                   </div>
                 ))}
+              </motion.div>
+            )}
+
+            {/* BD Management Tab */}
+            {activeTab === "bd_management" && (
+              <motion.div key="bd_management" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {bdManagementList.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-8">لا يوجد حسابات BD مفعّلة</p>
+                ) : (
+                  bdManagementList.map((bd: any) => (
+                    <div key={bd.id} className="bg-card border rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{bd.bd_name}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bd.bd_uuid}</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-primary">${Number(bd.total_earned || 0).toFixed(2)}</p>
+                          <p className="text-[9px] text-muted-foreground">رصيد: ${Number(bd.available_balance || 0).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                        <div className="bg-muted/20 rounded-lg p-2">
+                          <p className="font-bold text-foreground">{bd.agency_count || 0}</p>
+                          <p className="text-muted-foreground">وكلاء</p>
+                        </div>
+                        <div className="bg-muted/20 rounded-lg p-2">
+                          <p className="font-bold text-foreground">{bd.host_count || 0}</p>
+                          <p className="text-muted-foreground">مضيفين</p>
+                        </div>
+                        <div className="bg-muted/20 rounded-lg p-2">
+                          <p className="font-bold text-foreground">{bd.user_count || 0}</p>
+                          <p className="text-muted-foreground">مستخدمين</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-muted-foreground font-bold">النسب المئوية:</p>
+                        {[
+                          { label: "وكلاء", field: "agency_commission_pct", val: bd.agency_commission_pct },
+                          { label: "مضيفين", field: "host_commission_pct", val: bd.host_commission_pct },
+                          { label: "مستخدمين", field: "user_commission_pct", val: bd.user_commission_pct },
+                        ].map((pct) => (
+                          <div key={pct.field} className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground w-16">{pct.label}:</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.5"
+                              defaultValue={pct.val}
+                              className="h-7 text-xs text-center w-20"
+                              onBlur={async (e) => {
+                                const newVal = parseFloat(e.target.value);
+                                if (isNaN(newVal)) return;
+                                try {
+                                  await supabase.functions.invoke("bd-manage", {
+                                    body: { action: "update_bd_settings", bd_uuid: bd.bd_uuid, [pct.field]: newVal },
+                                  });
+                                  toast.success("تم تحديث النسبة");
+                                  loadData();
+                                } catch { toast.error("فشل التحديث"); }
+                              }}
+                            />
+                            <span className="text-[10px] text-muted-foreground">%</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-[9px] text-muted-foreground">
+                        رمز الدعوة: <span className="font-mono text-primary">{bd.referral_code}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </motion.div>
             )}
 

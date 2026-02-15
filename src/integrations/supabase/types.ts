@@ -152,6 +152,129 @@ export type Database = {
         }
         Relationships: []
       }
+      bd_commission_logs: {
+        Row: {
+          amount: number
+          bd_uuid: string
+          commission_pct: number
+          created_at: string
+          id: string
+          member_type: string
+          member_uuid: string
+          month: string
+          source_amount: number
+        }
+        Insert: {
+          amount?: number
+          bd_uuid: string
+          commission_pct?: number
+          created_at?: string
+          id?: string
+          member_type: string
+          member_uuid: string
+          month: string
+          source_amount?: number
+        }
+        Update: {
+          amount?: number
+          bd_uuid?: string
+          commission_pct?: number
+          created_at?: string
+          id?: string
+          member_type?: string
+          member_uuid?: string
+          month?: string
+          source_amount?: number
+        }
+        Relationships: []
+      }
+      bd_commission_settings: {
+        Row: {
+          agency_commission_pct: number
+          available_balance: number
+          bd_name: string
+          bd_uuid: string
+          created_at: string
+          host_commission_pct: number
+          id: string
+          is_approved: boolean
+          referral_code: string
+          total_earned: number
+          updated_at: string
+          user_commission_pct: number
+        }
+        Insert: {
+          agency_commission_pct?: number
+          available_balance?: number
+          bd_name?: string
+          bd_uuid: string
+          created_at?: string
+          host_commission_pct?: number
+          id?: string
+          is_approved?: boolean
+          referral_code?: string
+          total_earned?: number
+          updated_at?: string
+          user_commission_pct?: number
+        }
+        Update: {
+          agency_commission_pct?: number
+          available_balance?: number
+          bd_name?: string
+          bd_uuid?: string
+          created_at?: string
+          host_commission_pct?: number
+          id?: string
+          is_approved?: boolean
+          referral_code?: string
+          total_earned?: number
+          updated_at?: string
+          user_commission_pct?: number
+        }
+        Relationships: []
+      }
+      bd_members: {
+        Row: {
+          bd_uuid: string
+          created_at: string
+          current_month_commission: number
+          id: string
+          member_name: string
+          member_type: string
+          member_uuid: string
+          monthly_charges: number
+          total_commission: number
+          type_user: number
+          updated_at: string
+        }
+        Insert: {
+          bd_uuid: string
+          created_at?: string
+          current_month_commission?: number
+          id?: string
+          member_name?: string
+          member_type?: string
+          member_uuid: string
+          monthly_charges?: number
+          total_commission?: number
+          type_user?: number
+          updated_at?: string
+        }
+        Update: {
+          bd_uuid?: string
+          created_at?: string
+          current_month_commission?: number
+          id?: string
+          member_name?: string
+          member_type?: string
+          member_uuid?: string
+          monthly_charges?: number
+          total_commission?: number
+          type_user?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bd_requests_cache: {
         Row: {
           admin_note: string | null
