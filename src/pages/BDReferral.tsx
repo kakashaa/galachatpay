@@ -211,7 +211,7 @@ const BDReferral: React.FC = () => {
                     type={showPassword ? "text" : "password"}
                     inputMode="numeric"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value.replace(/[^0-9]/g, ""))}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="رمز حسابك (أرقام فقط)"
                     className="text-center font-mono text-sm pr-9 pl-9"
                     dir="ltr"
