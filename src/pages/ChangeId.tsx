@@ -354,7 +354,7 @@ const ChangeId: React.FC = () => {
       await supabase.from("notifications").insert({
         user_uuid: trimmedRecipient,
         title: "🎁 هدية آيدي جديد!",
-        body: `قام المستخدم ${user.uuid} بإهدائك الآيدي ${trimmedId}.`,
+        body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${trimmedId}.`,
         target: "user",
       });
 
