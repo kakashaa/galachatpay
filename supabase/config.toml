@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.bd-referral]
 verify_jwt = false
+
+[functions.telegram-notify]
+verify_jwt = false
