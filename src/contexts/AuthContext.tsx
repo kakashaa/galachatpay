@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { resolveUserType } from "@/utils/userTypeResolver";
 
 export interface GalaUser {
   id: number;
@@ -83,9 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sender_num: apiUser.level?.sender_num || 0,
             charger_num: apiUser.level?.charger_num || 0,
           };
-      const rawType = apiUser.type_user !== undefined && apiUser.type_user !== null ? Number(apiUser.type_user) : user.type_user;
-      const hasAgency = !!(apiUser.agency && apiUser.agency.id);
-      const effectiveType = (rawType === 2 && hasAgency) ? 3 : rawType;
+      const effectiveType = resolveUserType(apiUser.type_user, apiUser.agency, user.type_user);
 
       setUser({
         id: apiUser.id,
