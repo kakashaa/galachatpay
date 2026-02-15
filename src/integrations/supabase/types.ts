@@ -233,6 +233,83 @@ export type Database = {
         }
         Relationships: []
       }
+      bd_event_registrations: {
+        Row: {
+          bd_uuid: string
+          created_at: string
+          event_id: string
+          id: string
+          user_name: string
+          user_type: number
+          user_uuid: string
+        }
+        Insert: {
+          bd_uuid: string
+          created_at?: string
+          event_id: string
+          id?: string
+          user_name?: string
+          user_type?: number
+          user_uuid: string
+        }
+        Update: {
+          bd_uuid?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          user_name?: string
+          user_type?: number
+          user_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bd_event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "bd_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bd_events: {
+        Row: {
+          bd_name: string
+          bd_uuid: string
+          created_at: string
+          description: string | null
+          event_date: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bd_name?: string
+          bd_uuid: string
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bd_name?: string
+          bd_uuid?: string
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bd_members: {
         Row: {
           bd_uuid: string

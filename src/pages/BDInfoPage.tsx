@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Mic, Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2 } from "lucide-react";
+import { Users, Mic, Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, CalendarDays } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +23,17 @@ const BDInfoPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"agencies" | "hosts" | "users">("agencies");
   const [copied, setCopied] = useState(false);
+  const [copiedEvents, setCopiedEvents] = useState(false);
+
+  const eventsLink = `https://galachatpay.lovable.app/bd/events/${data?.settings?.referral_code || ""}`;
+
+  const copyEventsLink = () => {
+    if (!data?.settings?.referral_code) return;
+    navigator.clipboard.writeText(eventsLink);
+    setCopiedEvents(true);
+    toast.success("تم نسخ رابط الأحداث");
+    setTimeout(() => setCopiedEvents(false), 2000);
+  };
 
   useEffect(() => {
     if (!authUser?.uuid) { navigate("/dashboard"); return; }
@@ -131,6 +142,31 @@ const BDInfoPage: React.FC = () => {
                 {copied ? "تم" : "نسخ"}
               </Button>
             </div>
+          </div>
+
+          {/* Events link */}
+          <div className="bg-muted/20 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5 text-primary" /> رابط الأحداث
+            </p>
+            <div className="flex gap-2">
+              <div className="flex-1 bg-background/50 rounded-lg px-3 py-2 text-[10px] text-muted-foreground font-mono truncate" dir="ltr">
+                {eventsLink}
+              </div>
+              <Button size="sm" variant="outline" onClick={copyEventsLink} className="h-8 gap-1 text-xs shrink-0">
+                {copiedEvents ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedEvents ? "تم" : "نسخ"}
+              </Button>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full gap-2 text-xs mt-2"
+              onClick={() => navigate("/bd/manage-events")}
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              إدارة الأحداث
+            </Button>
           </div>
         </div>
 
