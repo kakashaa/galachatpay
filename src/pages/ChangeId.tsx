@@ -82,7 +82,7 @@ const ChangeId: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState("");
   
   const [alreadyChanged, setAlreadyChanged] = useState<{ changed: boolean; lastLevel: number | null; newId: string | null; date: string | null }>({ changed: false, lastLevel: null, newId: null, date: null });
-  const [alreadyGifted, setAlreadyGifted] = useState(false);
+  const [giftCount, setGiftCount] = useState(0);
   const [loadingCheck, setLoadingCheck] = useState(true);
 
   useEffect(() => {
@@ -125,10 +125,10 @@ const ChangeId: React.FC = () => {
 
           // Check gift history (level_milestone = 0 means gift)
           const giftChanges = data.filter(d => d.level_milestone === 0);
-          setAlreadyGifted(giftChanges.length > 0);
+          setGiftCount(giftChanges.length);
         } else {
           setAlreadyChanged({ changed: false, lastLevel: null, newId: null, date: null });
-          setAlreadyGifted(false);
+          setGiftCount(0);
         }
       } catch (err) {
         console.error("Error checking id change history:", err);
@@ -143,6 +143,9 @@ const ChangeId: React.FC = () => {
 
   const maxLevel = Math.max(user.level.receiver_level, user.level.sender_level);
   const canGift = maxLevel >= 70;
+  const maxGifts = maxLevel >= 90 ? 3 : maxLevel >= 80 ? 2 : maxLevel >= 70 ? 1 : 0;
+  const giftsRemaining = maxGifts - giftCount;
+  const alreadyGifted = giftsRemaining <= 0;
 
   // Not eligible (level < 20)
   if (maxLevel < 20 && !loadingCheck) {
@@ -283,7 +286,7 @@ const ChangeId: React.FC = () => {
 
     if (alreadyGifted) {
       setStatus("error");
-      setErrorMsg("🚫 لقد استخدمت فرصة الإهداء الخاصة بك. الإهداء متاح مرة واحدة فقط.");
+      setErrorMsg(`🚫 لقد استخدمت جميع فرص الإهداء (${maxGifts} من ${maxGifts}). ${maxLevel < 90 ? `فرصة جديدة عند لفل ${maxLevel < 80 ? 80 : 90}.` : ""}`);
       return;
     }
 
@@ -358,7 +361,7 @@ const ChangeId: React.FC = () => {
         target: "user",
       });
 
-      setAlreadyGifted(true);
+      setGiftCount(prev => prev + 1);
       setStatus("success");
     } catch {
       setStatus("error");
@@ -434,9 +437,21 @@ const ChangeId: React.FC = () => {
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-bold text-foreground">تم استخدام فرصة الإهداء</p>
+              <p className="text-xs font-bold text-foreground">تم استخدام جميع فرص الإهداء ({giftCount}/{maxGifts})</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                الإهداء متاح مرة واحدة فقط. لقد قمت بإهداء آيدي سابقاً.
+                {maxLevel < 90 ? `فرصة جديدة عند لفل ${maxLevel < 80 ? 80 : 90}.` : "وصلت لأقصى عدد إهداءات."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!alreadyGifted && isGiftMode && canGift && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-2">
+            <Gift className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-bold text-foreground">فرص الإهداء المتبقية: {giftsRemaining} من {maxGifts}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                لفل 70 = مرة • لفل 80 = مرتين • لفل 90 = 3 مرات
               </p>
             </div>
           </div>
@@ -550,7 +565,7 @@ const ChangeId: React.FC = () => {
           <Info className="w-3 h-3 text-primary shrink-0 mt-0.5" />
           <p className="text-[10px] text-muted-foreground">
             {isGiftMode
-              ? "الإهداء متاح مرة واحدة فقط. لا توجد شروط على المستلم، فقط الـ ID يجب أن يطابق الصيغ المعروضة."
+              ? "الإهداء متاح مرة عند لفل 70، مرتين عند لفل 80، و3 مرات عند لفل 90. لا توجد شروط على المستلم."
               : <>تغيير الـ ID <strong>مرة واحدة لكل 10 مستويات</strong>. السجل محفوظ في النظام.</>}
           </p>
         </div>
