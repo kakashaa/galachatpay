@@ -27,7 +27,7 @@ export const levelFormats: LevelFormats[] = [
   {
     minLevel: 40, maxLevel: 49, label: "Level 40-49",
     groups: [
-      { digits: 5, patterns: ["ABCDD", "ABCBA", "AABBC"] },
+      { digits: 5, patterns: ["ABCDD", "ABCBA", "ACBBB"] },
       { digits: 6, patterns: ["ABBBBC", "ABABAB", "AAAABC", "AABCCC", "ABACCC", "AAABBC"] },
       { digits: 7, patterns: ["ABCDEFG", "ABCCCCC", "ABBABBA", "ABBBBBA", "AABBBAA", "AAAABBB", "ABCDDDD", "ABABABA", "AAAAABC", "ABCAAAA", "AABBCCD", "AAAABCD"] },
     ],
