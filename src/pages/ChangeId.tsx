@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info } from "lucide-react";
+import { IdCard, User, Send, CheckCircle, AlertCircle, XCircle, Info, Gift } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
-import { levelFormats } from "@/data/idFormats";
+import { levelFormats, giftLevelFormats } from "@/data/idFormats";
 import { matchesPattern } from "@/utils/idPatternValidator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,8 @@ const ChangeId: React.FC = () => {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const [newId, setNewId] = useState("");
+  const [isGiftMode, setIsGiftMode] = useState(false);
+  const [recipientId, setRecipientId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "taken" | "ineligible" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   
@@ -131,6 +133,7 @@ const ChangeId: React.FC = () => {
   if (!user) { navigate("/"); return null; }
 
   const maxLevel = Math.max(user.level.receiver_level, user.level.sender_level);
+  const canGift = maxLevel >= 70;
 
   // Not eligible (level < 20)
   if (maxLevel < 20 && !loadingCheck) {
@@ -264,15 +267,96 @@ const ChangeId: React.FC = () => {
      }
   };
 
+  const handleGiftSubmit = async () => {
+    const trimmedId = newId.trim();
+    const trimmedRecipient = recipientId.trim();
+    if (!trimmedId || !trimmedRecipient) return;
+
+    if (!/^\d+$/.test(trimmedId)) {
+      setStatus("error");
+      setErrorMsg("🔢 الـ ID يجب أن يحتوي على أرقام فقط (0-9).");
+      return;
+    }
+
+    if (!/^\d+$/.test(trimmedRecipient)) {
+      setStatus("error");
+      setErrorMsg("🔢 آيدي المستلم يجب أن يحتوي على أرقام فقط.");
+      return;
+    }
+
+    if (trimmedRecipient === user.uuid) {
+      setStatus("error");
+      setErrorMsg("🚫 لا يمكنك إهداء آيدي لنفسك.");
+      return;
+    }
+
+    // Validate against gift patterns
+    const giftPatterns = giftLevelFormats[0]?.groups
+      .filter(g => g.digits === trimmedId.length)
+      .flatMap(g => g.patterns) || [];
+
+    if (giftPatterns.length === 0) {
+      setStatus("error");
+      setErrorMsg(`📏 طول الـ ID غير صحيح. الأطوال المتاحة للإهداء: 5 أو 6 أو 7 أرقام`);
+      return;
+    }
+
+    const matchesAny = giftPatterns.some(p => matchesPattern(trimmedId, p));
+    if (!matchesAny) {
+      setStatus("error");
+      setErrorMsg("🚫 الـ ID لا يطابق أي صيغة إهداء متاحة. راجع الصيغ المعروضة.");
+      return;
+    }
+
+    setStatus("loading"); setErrorMsg("");
+    try {
+      const { data, error } = await supabase.functions.invoke("gala-request", {
+        body: { uuid: trimmedRecipient, type: "uuid", value: trimmedId }
+      });
+      if (error || !data?.success) {
+        const msg = data?.error || "";
+        setStatus(msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used") ? "taken" : "error");
+        setErrorMsg(translateApiError(msg));
+        return;
+      }
+
+      // Save gift record
+      await supabase.from("id_changes").insert({
+        user_uuid: user.uuid,
+        new_id: trimmedId,
+        level_milestone: getCurrentMilestone(maxLevel),
+      });
+
+      // Notification
+      await supabase.from("notifications").insert({
+        user_uuid: user.uuid,
+        title: "تم إهداء آيدي بنجاح 🎁",
+        body: `تم إهداء الآيدي ${trimmedId} للمستخدم ${trimmedRecipient}.`,
+        target: "user",
+      });
+
+      setStatus("success");
+    } catch {
+      setStatus("error");
+      setErrorMsg("⚠️ حدث خطأ في الاتصال. تأكد من الاتصال بالإنترنت وحاول مرة أخرى.");
+    }
+  };
+
   if (status === "success") {
     return (
-      <MobileLayout showHeader headerTitle="تغيير الـ ID" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={isGiftMode ? "إهداء ID" : "تغيير الـ ID"} onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-16">
           <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4 animate-scale-in">
             <CheckCircle className="w-8 h-8 text-emerald-400" />
           </div>
-          <h2 className="text-base font-bold text-foreground mb-1">تم تغيير الـ ID بنجاح! 🎉</h2>
-          <p className="text-xs text-muted-foreground">المعرف الجديد: <span className="font-bold text-primary" dir="ltr">{newId}</span></p>
+          <h2 className="text-base font-bold text-foreground mb-1">
+            {isGiftMode ? "تم إهداء الـ ID بنجاح! 🎁" : "تم تغيير الـ ID بنجاح! 🎉"}
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {isGiftMode
+              ? <>الآيدي <span className="font-bold text-primary" dir="ltr">{newId}</span> تم إهداءه للمستخدم <span className="font-bold text-primary" dir="ltr">{recipientId}</span></>
+              : <>المعرف الجديد: <span className="font-bold text-primary" dir="ltr">{newId}</span></>}
+          </p>
           <Button onClick={() => navigate("/dashboard")} className="mt-6 gold-gradient text-primary-foreground font-bold text-sm h-10">العودة للرئيسية</Button>
         </div>
       </MobileLayout>
@@ -280,11 +364,34 @@ const ChangeId: React.FC = () => {
   }
 
   return (
-    <MobileLayout showHeader headerTitle="تغيير الـ ID" onBack={() => navigate("/dashboard")}>
+    <MobileLayout showHeader headerTitle={isGiftMode ? "إهداء ID" : "تغيير الـ ID"} onBack={() => navigate("/dashboard")}>
       <div className="px-4 py-3 space-y-3">
         {/* طلباتي السابقة */}
         <ServicePreviousRequests userUuid={user.uuid} serviceType="change_id" />
 
+        {/* Mode toggle: Change / Gift */}
+        {canGift && (
+          <div className="flex gap-2 p-1 bg-muted/20 rounded-xl" dir="rtl">
+            <button
+              onClick={() => { setIsGiftMode(false); setStatus("idle"); setErrorMsg(""); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                !isGiftMode ? "gold-gradient text-primary-foreground shadow-md" : "text-muted-foreground"
+              }`}
+            >
+              <IdCard className="w-3.5 h-3.5" />
+              تغيير الـ ID
+            </button>
+            <button
+              onClick={() => { setIsGiftMode(true); setStatus("idle"); setErrorMsg(""); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+                isGiftMode ? "gold-gradient text-primary-foreground shadow-md" : "text-muted-foreground"
+              }`}
+            >
+              <Gift className="w-3.5 h-3.5" />
+              إهداء ID
+            </button>
+          </div>
+        )}
         {/* Warning if already changed */}
         {alreadyChanged.changed && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">
@@ -333,30 +440,59 @@ const ChangeId: React.FC = () => {
           )}
         </div>
 
-        {/* ID requirements info */}
         {/* ID formats per level */}
-        <div className="glass-card p-3 space-y-2.5" dir="rtl">
-          <div className="flex items-center gap-2">
-            <IdCard className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-bold text-foreground">الصيغ المتاحة حسب المستوى</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground">
-            يمكنكم طلب الآيدي الذي تريدونه حسب مستواكم
-          </p>
-          {(() => {
-            const currentLevelFormat = levelFormats.find(lf => maxLevel >= lf.minLevel && maxLevel <= lf.maxLevel);
-            if (!currentLevelFormat) return (
-              <p className="text-[10px] text-muted-foreground">لا توجد صيغ متاحة لمستواك الحالي.</p>
-            );
-            return (
-              <div className="rounded-lg p-2.5 space-y-1.5 border bg-primary/10 border-primary/30">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-primary">
-                    {currentLevelFormat.label}
-                    <span className="text-[9px] mr-1 text-primary/70">(مستواك)</span>
-                  </span>
+        {!isGiftMode ? (
+          <div className="glass-card p-3 space-y-2.5" dir="rtl">
+            <div className="flex items-center gap-2">
+              <IdCard className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-bold text-foreground">الصيغ المتاحة حسب المستوى</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              يمكنكم طلب الآيدي الذي تريدونه حسب مستواكم
+            </p>
+            {(() => {
+              const currentLevelFormat = levelFormats.find(lf => maxLevel >= lf.minLevel && maxLevel <= lf.maxLevel);
+              if (!currentLevelFormat) return (
+                <p className="text-[10px] text-muted-foreground">لا توجد صيغ متاحة لمستواك الحالي.</p>
+              );
+              return (
+                <div className="rounded-lg p-2.5 space-y-1.5 border bg-primary/10 border-primary/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-primary">
+                      {currentLevelFormat.label}
+                      <span className="text-[9px] mr-1 text-primary/70">(مستواك)</span>
+                    </span>
+                  </div>
+                  {currentLevelFormat.groups.map((g) => (
+                    <div key={g.digits} className="space-y-1">
+                      <span className="text-[10px] text-muted-foreground">{g.digits} أرقام:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {g.patterns.map((p) => (
+                          <span key={p} className="text-[9px] font-mono bg-muted/40 text-foreground/80 rounded px-1.5 py-0.5" dir="ltr">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                {currentLevelFormat.groups.map((g) => (
+              );
+            })()}
+          </div>
+        ) : (
+          /* Gift mode patterns */
+          <div className="glass-card p-3 space-y-2.5" dir="rtl">
+            <div className="flex items-center gap-2">
+              <Gift className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-bold text-foreground">صيغ الإهداء المتاحة</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              يمكنك إهداء آيدي لمستخدم آخر بالصيغ التالية (لفل 70+)
+            </p>
+            {giftLevelFormats.map((glf) => (
+              <div key={glf.minLevel} className="rounded-lg p-2.5 space-y-1.5 border bg-primary/10 border-primary/30">
+                <span className="text-[11px] font-bold text-primary">{glf.label}</span>
+                {glf.groups.map((g) => (
                   <div key={g.digits} className="space-y-1">
                     <span className="text-[10px] text-muted-foreground">{g.digits} أرقام:</span>
                     <div className="flex flex-wrap gap-1">
@@ -369,27 +505,47 @@ const ChangeId: React.FC = () => {
                   </div>
                 ))}
               </div>
-            );
-          })()}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Info tip */}
         <div className="flex items-start gap-1.5 px-1">
           <Info className="w-3 h-3 text-primary shrink-0 mt-0.5" />
-          <p className="text-[10px] text-muted-foreground">تغيير الـ ID <strong>مرة واحدة لكل 10 مستويات</strong>. السجل محفوظ في النظام.</p>
+          <p className="text-[10px] text-muted-foreground">
+            {isGiftMode
+              ? "الإهداء يغيّر آيدي المستخدم المستلم. تأكد من صحة الـ ID المستلم."
+              : <>تغيير الـ ID <strong>مرة واحدة لكل 10 مستويات</strong>. السجل محفوظ في النظام.</>}
+          </p>
         </div>
 
         {/* Input + Submit */}
         <div className="glass-card p-3 space-y-2.5">
-          <h3 className="text-xs font-bold text-foreground" dir="rtl">الـ ID الجديد</h3>
+          {isGiftMode && (
+            <>
+              <h3 className="text-xs font-bold text-foreground" dir="rtl">آيدي المستخدم المستلم</h3>
+              <Input
+                type="text"
+                value={recipientId}
+                onChange={(e) => { setRecipientId(e.target.value); setStatus("idle"); }}
+                placeholder="أدخل آيدي المستخدم الذي تريد إهداءه"
+                dir="ltr"
+                className="h-10 bg-muted/20 border-border/20 text-center text-sm"
+                disabled={status === "loading"}
+              />
+            </>
+          )}
+          <h3 className="text-xs font-bold text-foreground" dir="rtl">
+            {isGiftMode ? "الـ ID الهدية" : "الـ ID الجديد"}
+          </h3>
           <Input
             type="text"
             value={newId}
             onChange={(e) => { setNewId(e.target.value); setStatus("idle"); }}
-            placeholder="اكتب الـ ID الذي تريده"
+            placeholder={isGiftMode ? "اكتب الـ ID الذي تريد إهداءه" : "اكتب الـ ID الذي تريده"}
             dir="ltr"
             className="h-10 bg-muted/20 border-border/20 text-center text-sm"
-            disabled={maxLevel < 20 || alreadyChanged.changed || loadingCheck}
+            disabled={(!isGiftMode && (maxLevel < 20 || alreadyChanged.changed)) || loadingCheck}
           />
           {status === "taken" && (
             <div className="flex items-center gap-1.5 p-2 bg-destructive/10 border border-destructive/15 rounded-lg">
@@ -410,12 +566,18 @@ const ChangeId: React.FC = () => {
             </div>
           )}
           <Button
-            onClick={handleSubmit}
-            disabled={!newId.trim() || maxLevel < 20 || status === "loading" || alreadyChanged.changed || loadingCheck}
+            onClick={isGiftMode ? handleGiftSubmit : handleSubmit}
+            disabled={
+              !newId.trim() ||
+              (isGiftMode ? !recipientId.trim() : (maxLevel < 20 || alreadyChanged.changed)) ||
+              status === "loading" || loadingCheck
+            }
             className="w-full gold-gradient text-primary-foreground font-bold h-10 text-sm disabled:opacity-40"
           >
             {status === "loading" || loadingCheck ? (
               <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            ) : isGiftMode ? (
+              <><Gift className="w-4 h-4 ml-1.5" /> إهداء الـ ID</>
             ) : alreadyChanged.changed ? (
               <><AlertCircle className="w-4 h-4 ml-1.5" /> لم تصل للفل المطلوب</>
             ) : (
