@@ -165,7 +165,7 @@ const AdminDashboardPage: React.FC = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [approveReceiptFile, setApproveReceiptFile] = useState<File | null>(null);
   const [salaryActionLoading, setSalaryActionLoading] = useState(false);
-  const [salaryFilter, setSalaryFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [salaryFilter, setSalaryFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
 
   // Ban reports state
   const [banReports, setBanReports] = useState<BanReport[]>([]);
@@ -208,7 +208,7 @@ const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0 });
 
   // All requests state
-   const [allRequestsFilter, setAllRequestsFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+   const [allRequestsFilter, setAllRequestsFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
    const [allRequestsSearch, setAllRequestsSearch] = useState("");
    const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
    const [allSalaryRequests, setAllSalaryRequests] = useState<SalaryRequest[]>([]);
@@ -218,7 +218,7 @@ const AdminDashboardPage: React.FC = () => {
 
   // Animated photos state
   const [animatedPhotos, setAnimatedPhotos] = useState<AnimatedPhotoRequest[]>([]);
-  const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "auto_approved" | "pending" | "rejected">("all");
+  const [animatedPhotoFilter, setAnimatedPhotoFilter] = useState<"all" | "auto_approved" | "pending" | "rejected">("pending");
 
   // Admin stars state
   const [adminStarUuid, setAdminStarUuid] = useState("");
@@ -231,7 +231,7 @@ const AdminDashboardPage: React.FC = () => {
   const [bdAction, setBdAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
   const [bdRejectReason, setBdRejectReason] = useState("");
   const [bdActionLoading, setBdActionLoading] = useState(false);
-  const [bdFilter, setBdFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [bdFilter, setBdFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
