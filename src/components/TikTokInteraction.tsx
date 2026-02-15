@@ -19,7 +19,7 @@ interface Comment {
 }
 
 interface TikTokInteractionProps {
-  itemType: "entry_gift" | "frame" | "custom_gift" | "video_tutorial";
+  itemType: "entry_gift" | "frame" | "custom_gift";
   itemId: string;
 }
 
