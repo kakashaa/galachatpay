@@ -956,6 +956,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          recipient_uuid: string | null
           request_month: string
           type_user: number | null
           user_name: string
@@ -965,6 +966,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          recipient_uuid?: string | null
           request_month: string
           type_user?: number | null
           user_name?: string
@@ -974,6 +976,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          recipient_uuid?: string | null
           request_month?: string
           type_user?: number | null
           user_name?: string

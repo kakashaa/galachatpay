@@ -21,7 +21,7 @@ serve(async (req) => {
       );
     }
 
-    const { uuid, type, value, user_name, type_user } = body as Record<string, unknown>;
+    const { uuid, type, value, user_name, type_user, recipient_uuid } = body as Record<string, unknown>;
 
     // Validate uuid
     if (!uuid || typeof uuid !== "string" || !UUID_REGEX.test(uuid.trim())) {
@@ -41,10 +41,10 @@ serve(async (req) => {
 
     const sanitizedUuid = (uuid as string).trim();
 
-    // For VIP requests, enforce once-per-month limit in database
+    // For VIP requests, enforce limits in database
     if (type === "vip" && value) {
       const vipLevel = Number(value);
-      if (isNaN(vipLevel) || vipLevel < 1 || vipLevel > 10) {
+      if (isNaN(vipLevel) || vipLevel < 1 || vipLevel > 6) {
         return new Response(
           JSON.stringify({ success: false, error: "Invalid VIP level" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -58,26 +58,96 @@ serve(async (req) => {
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-      const isAgent = typeof type_user === "number" && type_user >= 3;
-      const limit = isAgent ? 5 : 1;
-      
-      const { data: requests } = await sb
-        .from("vip_requests")
-        .select("id", { count: "exact" })
-        .eq("user_uuid", sanitizedUuid)
-        .eq("request_month", currentMonth);
+      const userType = typeof type_user === "number" ? type_user : 0;
+      const isAgent = userType >= 2; // types 2-6 are agents
 
-      const requestCount = requests?.length || 0;
-      if (requestCount >= limit) {
-        const limitText = isAgent 
-          ? "لقد استخدمت حد الـ 5 طلبات لهذا الشهر." 
-          : "لقد استخدمت طلبك هذا الشهر. الطلب متاح مرة واحدة شهرياً.";
-        return new Response(
-          JSON.stringify({ success: false, error: limitText }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // Validate recipient_uuid if provided
+      let sanitizedRecipient: string | null = null;
+      if (recipient_uuid && typeof recipient_uuid === "string" && recipient_uuid.trim()) {
+        if (!UUID_REGEX.test(recipient_uuid.trim())) {
+          return new Response(
+            JSON.stringify({ success: false, error: "معرف المستلم غير صالح" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        sanitizedRecipient = recipient_uuid.trim();
       }
 
+      // Regular users (type 0, 1): only VIP 1-3, no gifting
+      if (!isAgent) {
+        if (vipLevel > 3) {
+          return new Response(
+            JSON.stringify({ success: false, error: "مستوى VIP 4-6 متاح فقط للوكلاء." }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (sanitizedRecipient) {
+          return new Response(
+            JSON.stringify({ success: false, error: "خاصية الإهداء متاحة فقط للوكلاء." }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Check 1 request per month
+        const { data: requests } = await sb
+          .from("vip_requests")
+          .select("id")
+          .eq("user_uuid", sanitizedUuid)
+          .eq("request_month", currentMonth);
+
+        if ((requests?.length || 0) >= 1) {
+          return new Response(
+            JSON.stringify({ success: false, error: "لقد استخدمت طلبك هذا الشهر. الطلب متاح مرة واحدة شهرياً." }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      // Agents (type 2-6)
+      if (isAgent) {
+        if (vipLevel === 6) {
+          return new Response(
+            JSON.stringify({ success: false, error: "VIP 6 غير متاح حالياً." }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // For VIP 4-5: combined 5/month limit
+        if (vipLevel >= 4) {
+          const { data: highVipRequests } = await sb
+            .from("vip_requests")
+            .select("id")
+            .eq("user_uuid", sanitizedUuid)
+            .eq("request_month", currentMonth)
+            .gte("vip_level", 4);
+
+          if ((highVipRequests?.length || 0) >= 5) {
+            return new Response(
+              JSON.stringify({ success: false, error: "لقد استخدمت حد الـ 5 طلبات لـ VIP 4-5 هذا الشهر." }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
+        // Gift validation: can't gift same ID more than once per month
+        if (sanitizedRecipient) {
+          const { data: giftedAlready } = await sb
+            .from("vip_requests")
+            .select("id")
+            .eq("user_uuid", sanitizedUuid)
+            .eq("recipient_uuid", sanitizedRecipient)
+            .eq("request_month", currentMonth);
+
+          if ((giftedAlready?.length || 0) >= 1) {
+            return new Response(
+              JSON.stringify({ success: false, error: "لقد أهديت هذا المستخدم بالفعل هذا الشهر. يمكنك إهداء كل مستخدم مرة واحدة فقط شهرياً." }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      }
+
+      // Call external API
       const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
       if (!BASE_URL) throw new Error("Server configuration error");
 
@@ -85,7 +155,9 @@ serve(async (req) => {
       const signPath = "api/newWebsite/" + endpoint;
       const headers = await getGalaHeaders("POST", signPath);
 
-      const requestBody = { uuid: sanitizedUuid, type, value: vipLevel };
+      // Send to API with the target uuid (recipient if gift, self otherwise)
+      const targetUuid = sanitizedRecipient || sanitizedUuid;
+      const requestBody = { uuid: targetUuid, type, value: vipLevel };
       const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
       const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(requestBody) });
 
@@ -106,13 +178,15 @@ serve(async (req) => {
         );
       }
 
+      // Record in database
       const sanitizedUserName = typeof user_name === "string" ? user_name.substring(0, 100) : "";
       await sb.from("vip_requests").insert({
         user_uuid: sanitizedUuid,
         user_name: sanitizedUserName,
         vip_level: vipLevel,
         request_month: currentMonth,
-        type_user: typeof type_user === "number" ? type_user : 0,
+        type_user: userType,
+        recipient_uuid: sanitizedRecipient,
       });
 
       return new Response(JSON.stringify(data), {
@@ -131,7 +205,6 @@ serve(async (req) => {
 
     const requestBody: Record<string, unknown> = { uuid: sanitizedUuid, type };
     if (value !== undefined && value !== null) {
-      // Sanitize value
       if (typeof value === "string" && value.length > 500) {
         return new Response(
           JSON.stringify({ success: false, error: "Value too long" }),
