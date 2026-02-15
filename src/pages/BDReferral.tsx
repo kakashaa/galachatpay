@@ -31,9 +31,12 @@ const BDReferral: React.FC = () => {
     if (registered) setDeviceBlocked(true);
   }, []);
 
+  const isValidUuid = (val: string) => /^\d{6,15}$/.test(val);
+
   const handleJoin = async () => {
     const memberUuid = uuid.trim();
     if (!memberUuid) { setError("أدخل آيدي حسابك في غلا لايف"); return; }
+    if (!isValidUuid(memberUuid)) { setError("الآيدي يجب أن يكون أرقام فقط بطول 6-15 رقم"); return; }
     if (!code) { setError("رمز الدعوة غير صالح"); return; }
 
     setLoading(true);
@@ -121,10 +124,12 @@ const BDReferral: React.FC = () => {
             <label className="text-xs text-muted-foreground">آيدي الحساب (UUID)</label>
             <Input
               value={uuid}
-              onChange={(e) => setUuid(e.target.value)}
-              placeholder="أدخل آيدي حسابك"
+              onChange={(e) => setUuid(e.target.value.replace(/\D/g, "").slice(0, 15))}
+              placeholder="أدخل آيدي حسابك (أرقام فقط)"
               className="text-center font-mono text-sm"
               dir="ltr"
+              inputMode="numeric"
+              maxLength={15}
             />
           </div>
 
