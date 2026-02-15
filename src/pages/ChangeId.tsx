@@ -342,7 +342,7 @@ const ChangeId: React.FC = () => {
             <span className="text-xs font-bold text-foreground">الصيغ المتاحة حسب المستوى</span>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            يمكنكم طلب نوع الـ ID الذي تريدونه. يُشترط أن يحتوي على <span className="font-bold text-primary">3 أرقام مختلفة</span> على الأقل.
+            يمكنكم طلب الآيدي الذي تريدونه حسب مستواكم
           </p>
           <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
             {levelFormats.map((lf) => {
