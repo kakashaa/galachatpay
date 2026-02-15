@@ -566,6 +566,45 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_support_requests: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          phone_number: string | null
+          request_type: string
+          room_code: string | null
+          status: string
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          phone_number?: string | null
+          request_type: string
+          room_code?: string | null
+          status?: string
+          user_name?: string
+          user_uuid: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          phone_number?: string | null
+          request_type?: string
+          room_code?: string | null
+          status?: string
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       salary_requests: {
         Row: {
           admin_note: string | null
