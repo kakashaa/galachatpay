@@ -359,13 +359,22 @@ const ChangeId: React.FC = () => {
         target: "user",
       });
 
-      // Notification to recipient
-      await supabase.from("notifications").insert({
-        user_uuid: trimmedRecipient,
-        title: "🎁 هدية آيدي جديد!",
-        body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${trimmedId}.`,
-        target: "user",
-      });
+      // Notification to recipient – send to BOTH old uuid and new uuid
+      // because after the ID change, the recipient will log in with the new uuid
+      await supabase.from("notifications").insert([
+        {
+          user_uuid: trimmedRecipient,
+          title: "🎁 هدية آيدي جديد!",
+          body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${trimmedId}.`,
+          target: "user",
+        },
+        {
+          user_uuid: trimmedId,
+          title: "🎁 هدية آيدي جديد!",
+          body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${trimmedId}.`,
+          target: "user",
+        },
+      ]);
 
       setGiftCount(prev => prev + 1);
       setStatus("success");
