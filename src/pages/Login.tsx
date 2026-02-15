@@ -164,7 +164,7 @@ const Login: React.FC = () => {
         uuid: apiUser.uuid,
         name: apiUser.name,
         phone: apiUser.phone,
-        type_user: apiUser.type_user,
+        type_user: Number(apiUser.type_user) || 0,
         profile: {
           image: apiUser.profile?.image || "",
           gender: apiUser.profile?.gender || apiUser.gender || 0,

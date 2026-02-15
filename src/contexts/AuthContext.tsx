@@ -88,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uuid: apiUser.uuid,
         name: apiUser.name,
         phone: apiUser.phone || user.phone,
-        type_user: apiUser.type_user ?? user.type_user,
+        type_user: apiUser.type_user !== undefined && apiUser.type_user !== null ? Number(apiUser.type_user) : user.type_user,
         profile: {
           image: apiUser.profile?.image || user.profile.image,
           gender: apiUser.profile?.gender || apiUser.gender || user.profile.gender,
