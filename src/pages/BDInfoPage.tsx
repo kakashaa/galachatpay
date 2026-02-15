@@ -132,6 +132,10 @@ const BDInfoPage: React.FC = () => {
                 {copied ? "تم" : "نسخ"}
               </Button>
             </div>
+            <Button size="sm" variant="default" onClick={() => window.open(referralLink, "_blank")} className="w-full gap-2 text-xs mt-1">
+              <Link2 className="w-3.5 h-3.5" />
+              فتح صفحة التسجيل
+            </Button>
           </div>
         </div>
 
