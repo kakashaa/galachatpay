@@ -193,6 +193,7 @@ serve(async (req) => {
 
     if (data.data) {
       const d = data.data;
+      console.log("API type_user raw:", d.type_user, "type:", typeof d.type_user, "full keys:", Object.keys(d).filter(k => k.includes("type")));
       if (d.profile?.image) d.profile.image = fullUrl(d.profile.image);
       if (d.profile?.cover) d.profile.cover = fullUrl(d.profile.cover);
       if (d.level?.receiver_img) d.level.receiver_img = fullUrl(d.level.receiver_img);
