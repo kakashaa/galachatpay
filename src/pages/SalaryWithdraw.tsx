@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -39,6 +39,7 @@ const SalaryWithdraw: React.FC = () => {
   const [transferAmount, setTransferAmount] = useState("");
   const [showMonthlyLocked, setShowMonthlyLocked] = useState(false);
   const [showInstantInstructions, setShowInstantInstructions] = useState(false);
+  const [monthlyWithdrawEnabled, setMonthlyWithdrawEnabled] = useState(false);
 
   // Star code redemption
   const [starCode, setStarCode] = useState("");
@@ -64,6 +65,21 @@ const SalaryWithdraw: React.FC = () => {
     return tomorrow.getDate() === 1;
   }, []);
 
+  // Check if monthly withdraw is enabled via app_settings
+  useEffect(() => {
+    const checkMonthlyEnabled = async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "bd_monthly_withdraw_enabled")
+        .maybeSingle();
+      if (data?.value === "true") {
+        setMonthlyWithdrawEnabled(true);
+      }
+    };
+    checkMonthlyEnabled();
+  }, []);
+
   if (!user) {
     navigate("/");
     return null;
@@ -79,7 +95,7 @@ const SalaryWithdraw: React.FC = () => {
   const selectedMethod: PaymentMethod | undefined = selectedCountry?.methods.find((m) => m.id === selectedMethodId);
 
   const handleWithdrawTypeChange = (value: string) => {
-    if (value === "monthly" && !isLastDayOfMonth) {
+    if (value === "monthly" && !isLastDayOfMonth && !monthlyWithdrawEnabled) {
       setShowMonthlyLocked(true);
       return;
     }
