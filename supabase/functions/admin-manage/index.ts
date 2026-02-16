@@ -611,6 +611,26 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "update_bd_cache": {
+        const { id: bdId, status: bdStatus, admin_note: bdNote, user_uuid: bdUserUuid, user_name: bdUserName, request_type: bdReqType, details: bdDetails } = data;
+        if (!bdId) throw new Error("معرف الطلب مطلوب");
+        const { error: bdErr } = await supabase
+          .from("bd_requests_cache")
+          .upsert({
+            id: String(bdId),
+            user_uuid: bdUserUuid || "",
+            user_name: bdUserName || "",
+            request_type: bdReqType || "bd_verify",
+            status: bdStatus,
+            admin_note: bdNote || null,
+            details: bdDetails || {},
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "id" });
+        if (bdErr) throw bdErr;
+        result = { success: true };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),
