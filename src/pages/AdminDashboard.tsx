@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
-  Loader2, Eye, EyeOff, Upload,
+  Loader2, Eye, EyeOff, Upload, Wallet,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift,
   ArrowRight, Bell, ScrollText, Hash,
@@ -22,7 +22,7 @@ import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime"
 import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
 import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "bd_management" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "bd_management" | "bd_withdrawals" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | null;
 
 interface BDRequestItem {
   id: string;
@@ -267,6 +267,11 @@ const AdminDashboardPage: React.FC = () => {
   const [bdManagementList, setBdManagementList] = useState<any[]>([]);
   const [editingBdSettings, setEditingBdSettings] = useState<any>(null);
   const [bdSettingsLoading, setBdSettingsLoading] = useState(false);
+
+  // BD withdrawals state
+  const [bdWithdrawals, setBdWithdrawals] = useState<any[]>([]);
+  const [bdWithdrawLoading, setBdWithdrawLoading] = useState(false);
+  const [bdWithdrawFilter, setBdWithdrawFilter] = useState<"all" | "pending" | "approved" | "info_submitted" | "completed" | "rejected">("pending");
   useEffect(() => {
     if (!adminSessionToken) {
       navigate("/admin");
@@ -529,6 +534,15 @@ const AdminDashboardPage: React.FC = () => {
             });
             if (!error && result?.success) setBdManagementList(result.data || []);
           } catch { setBdManagementList([]); }
+          break;
+        }
+        case "bd_withdrawals": {
+          try {
+            const { data: result, error } = await supabase.functions.invoke("bd-manage", {
+              body: { action: "list_bd_withdrawals" },
+            });
+            if (!error && result?.success) setBdWithdrawals(result.data || []);
+          } catch { setBdWithdrawals([]); }
           break;
         }
       }
@@ -829,6 +843,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
     { key: "bd_management", label: "تحكم BD", icon: <Briefcase className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400", count: bdManagementList.length },
+    { key: "bd_withdrawals", label: "سحب أرباح BD", icon: <Wallet className="w-7 h-7" />, color: "from-lime-500/20 to-lime-600/10 text-lime-400", count: bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length },
     { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
     { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
     { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
@@ -2421,6 +2436,171 @@ const AdminDashboardPage: React.FC = () => {
                     );
                   })
                 )}
+              </motion.div>
+            )}
+
+            {/* BD Withdrawals Tab */}
+            {activeTab === "bd_withdrawals" && (
+              <motion.div key="bd_withdrawals" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {/* Filters */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {([
+                    { key: "pending", label: "معلقة" },
+                    { key: "approved", label: "موافق عليها" },
+                    { key: "info_submitted", label: "بانتظار التحويل" },
+                    { key: "completed", label: "مكتملة" },
+                    { key: "rejected", label: "مرفوضة" },
+                    { key: "all", label: "الكل" },
+                  ] as const).map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setBdWithdrawFilter(f.key)}
+                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${bdWithdrawFilter === f.key ? "bg-primary text-primary-foreground" : "bg-muted/20 text-muted-foreground"}`}
+                    >
+                      {f.label} ({bdWithdrawals.filter((w: any) => f.key === "all" ? true : w.status === f.key).length})
+                    </button>
+                  ))}
+                </div>
+
+                {(() => {
+                  const filtered = bdWithdrawals.filter((w: any) => bdWithdrawFilter === "all" ? true : w.status === bdWithdrawFilter);
+                  if (filtered.length === 0) return <p className="text-center py-8 text-sm text-muted-foreground">لا توجد طلبات</p>;
+                  return filtered.map((w: any) => {
+                    const statusMap: Record<string, { label: string; cls: string }> = {
+                      pending: { label: "قيد المراجعة", cls: "bg-amber-500/10 text-amber-400" },
+                      approved: { label: "تمت الموافقة", cls: "bg-emerald-500/10 text-emerald-400" },
+                      info_submitted: { label: "بانتظار التحويل", cls: "bg-blue-500/10 text-blue-400" },
+                      completed: { label: "مكتمل", cls: "bg-green-500/10 text-green-400" },
+                      rejected: { label: "مرفوض", cls: "bg-destructive/10 text-destructive" },
+                    };
+                    const st = statusMap[w.status] || { label: w.status, cls: "bg-muted text-muted-foreground" };
+                    return (
+                      <div key={w.id} className="bg-card border rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{w.bd_name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{w.bd_uuid}</p>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${st.cls}`}>{st.label}</span>
+                        </div>
+                        <div className="bg-muted/20 rounded-lg p-2.5 text-center">
+                          <p className="text-lg font-bold text-primary">${Number(w.amount).toFixed(2)}</p>
+                          <p className="text-[9px] text-muted-foreground">{new Date(w.created_at).toLocaleString("ar-EG")}</p>
+                        </div>
+
+                        {/* Recipient info if submitted */}
+                        {w.recipient_name && (
+                          <div className="bg-muted/10 rounded-lg p-3 space-y-1 text-xs">
+                            <p className="font-bold text-foreground mb-2">معلومات المستلم:</p>
+                            <p>الاسم: <span className="font-bold">{w.recipient_name}</span></p>
+                            <p>الرقم: <span className="font-mono" dir="ltr">{w.recipient_phone}</span></p>
+                            <p>نوع الحوالة: <span className="font-bold">{w.transfer_type}</span></p>
+                            <p>الدولة: <span className="font-bold">{w.country}</span></p>
+                          </div>
+                        )}
+
+                        {/* Transfer info if completed */}
+                        {w.transfer_number && (
+                          <div className="bg-green-500/10 rounded-lg p-3 space-y-1 text-xs">
+                            <p>رقم الحوالة: <span className="font-mono font-bold" dir="ltr">{w.transfer_number}</span></p>
+                            {w.receipt_url && <a href={w.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">📎 عرض الإيصال</a>}
+                          </div>
+                        )}
+
+                        {w.admin_note && (
+                          <p className="text-xs text-destructive bg-destructive/10 rounded-lg p-2">ملاحظة: {w.admin_note}</p>
+                        )}
+
+                        {/* Actions */}
+                        {w.status === "pending" && (
+                          <div className="flex gap-2">
+                            <Button size="sm" className="flex-1 gap-1" onClick={async () => {
+                              setBdWithdrawLoading(true);
+                              try {
+                                const { error } = await supabase.functions.invoke("bd-manage", {
+                                  body: { action: "approve_withdrawal", withdrawal_id: w.id },
+                                });
+                                if (error) throw error;
+                                toast.success("تمت الموافقة");
+                                loadData();
+                              } catch { toast.error("فشل"); }
+                              setBdWithdrawLoading(false);
+                            }}>
+                              <CheckCircle className="w-3 h-3" /> موافقة
+                            </Button>
+                            <Button size="sm" variant="destructive" className="flex-1 gap-1" onClick={() => {
+                              const reason = prompt("سبب الرفض (اختياري):");
+                              (async () => {
+                                setBdWithdrawLoading(true);
+                                try {
+                                  const { error } = await supabase.functions.invoke("bd-manage", {
+                                    body: { action: "reject_withdrawal", withdrawal_id: w.id, admin_note: reason || "" },
+                                  });
+                                  if (error) throw error;
+                                  toast.success("تم الرفض");
+                                  loadData();
+                                } catch { toast.error("فشل"); }
+                                setBdWithdrawLoading(false);
+                              })();
+                            }}>
+                              <XCircle className="w-3 h-3" /> رفض
+                            </Button>
+                          </div>
+                        )}
+
+                        {w.status === "info_submitted" && (
+                          <Button size="sm" className="w-full gap-1" onClick={() => {
+                            const transferNum = prompt("أدخل رقم الحوالة:");
+                            if (!transferNum) return;
+                            (async () => {
+                              setBdWithdrawLoading(true);
+                              try {
+                                // Upload receipt if needed
+                                let receiptUrl = "";
+                                const fileInput = document.createElement("input");
+                                fileInput.type = "file";
+                                fileInput.accept = "image/*";
+                                fileInput.onchange = async () => {
+                                  const file = fileInput.files?.[0];
+                                  if (file) {
+                                    try {
+                                      receiptUrl = await uploadFile(file);
+                                    } catch { console.error("Receipt upload failed"); }
+                                  }
+                                  try {
+                                    const { error } = await supabase.functions.invoke("bd-manage", {
+                                      body: { action: "complete_transfer", withdrawal_id: w.id, transfer_number: transferNum, receipt_url: receiptUrl },
+                                    });
+                                    if (error) throw error;
+                                    toast.success("تم إتمام التحويل");
+                                    loadData();
+                                  } catch { toast.error("فشل"); }
+                                  setBdWithdrawLoading(false);
+                                };
+                                // Give option to skip receipt
+                                if (confirm("هل تريد رفع صورة الإيصال؟")) {
+                                  fileInput.click();
+                                } else {
+                                  try {
+                                    const { error } = await supabase.functions.invoke("bd-manage", {
+                                      body: { action: "complete_transfer", withdrawal_id: w.id, transfer_number: transferNum, receipt_url: "" },
+                                    });
+                                    if (error) throw error;
+                                    toast.success("تم إتمام التحويل");
+                                    loadData();
+                                  } catch { toast.error("فشل"); }
+                                  setBdWithdrawLoading(false);
+                                }
+                              } catch { setBdWithdrawLoading(false); }
+                            })();
+                          }}>
+                            <DollarSign className="w-3 h-3" /> تم التحويل
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </motion.div>
             )}
 

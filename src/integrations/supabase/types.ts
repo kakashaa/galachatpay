@@ -388,6 +388,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bd_withdrawals: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          approved_at: string | null
+          bd_name: string
+          bd_uuid: string
+          completed_at: string | null
+          country: string | null
+          created_at: string
+          id: string
+          receipt_url: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          rejected_at: string | null
+          status: string
+          transfer_number: string | null
+          transfer_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount?: number
+          approved_at?: string | null
+          bd_name?: string
+          bd_uuid: string
+          completed_at?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          receipt_url?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          rejected_at?: string | null
+          status?: string
+          transfer_number?: string | null
+          transfer_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          approved_at?: string | null
+          bd_name?: string
+          bd_uuid?: string
+          completed_at?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          receipt_url?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          rejected_at?: string | null
+          status?: string
+          transfer_number?: string | null
+          transfer_type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custom_gifts: {
         Row: {
           admin_note: string | null
