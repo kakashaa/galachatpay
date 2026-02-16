@@ -157,7 +157,7 @@ const Login: React.FC = () => {
             charger_level: apiUser.level?.charger_level || 0,
             receiver_num: apiUser.level?.receiver_num || 0,
             sender_num: apiUser.level?.sender_num || 0,
-            charger_num: apiUser.level?.charger_level || 0,
+            charger_num: apiUser.level?.charger_num || 0,
           };
 
       const effectiveType = resolveUserType(apiUser.type_user, apiUser.agency);

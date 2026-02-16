@@ -83,34 +83,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sender_num: apiUser.level?.sender_num || 0,
             charger_num: apiUser.level?.charger_num || 0,
           };
-      const effectiveType = resolveUserType(apiUser.type_user, apiUser.agency, user.type_user);
+      const effectiveType = resolveUserType(apiUser.type_user, apiUser.agency);
 
-      setUser({
+      // Use functional updater to avoid stale closure
+      setUser(prevUser => ({
         id: apiUser.id,
         uuid: apiUser.uuid,
         name: apiUser.name,
-        phone: apiUser.phone || user.phone,
+        phone: apiUser.phone || prevUser?.phone || "",
         type_user: effectiveType,
         profile: {
-          image: apiUser.profile?.image || user.profile.image,
-          gender: apiUser.profile?.gender || apiUser.gender || user.profile.gender,
-          birthday: apiUser.profile?.birthday || user.profile.birthday,
-          age: apiUser.profile?.age || user.profile.age,
-          country: apiUser.country?.name || user.profile.country,
+          image: apiUser.profile?.image || prevUser?.profile?.image || "",
+          gender: apiUser.profile?.gender || apiUser.gender || prevUser?.profile?.gender || 0,
+          birthday: apiUser.profile?.birthday || prevUser?.profile?.birthday || "",
+          age: apiUser.profile?.age || prevUser?.profile?.age || 0,
+          country: apiUser.country?.name || prevUser?.profile?.country || "",
         },
         level: levelData,
         my_store: {
-          coins: apiUser.my_store?.coins ?? user.my_store.coins,
-          diamonds: apiUser.my_store?.diamonds ?? user.my_store.diamonds,
-          usd: apiUser.my_store?.usd ?? user.my_store.usd,
+          coins: apiUser.my_store?.coins ?? prevUser?.my_store?.coins ?? 0,
+          diamonds: apiUser.my_store?.diamonds ?? prevUser?.my_store?.diamonds ?? 0,
+          usd: apiUser.my_store?.usd ?? prevUser?.my_store?.usd ?? 0,
         },
-        vip: apiUser.vip || user.vip,
+        vip: apiUser.vip || prevUser?.vip || {},
         country: {
-          id: apiUser.country?.id ?? user.country.id,
-          name: apiUser.country?.name || user.country.name,
-          flag: apiUser.country?.flag || user.country.flag,
+          id: apiUser.country?.id ?? prevUser?.country?.id ?? 0,
+          name: apiUser.country?.name || prevUser?.country?.name || "",
+          flag: apiUser.country?.flag || prevUser?.country?.flag || "",
         },
-      });
+      }));
     } catch {
       // silent
     }
