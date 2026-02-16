@@ -176,8 +176,13 @@ const BDInfoPage: React.FC = () => {
 
   // Find approved withdrawal needing recipient info
   const approvedWithdrawal = withdrawals.find((w: any) => w.status === "approved");
-  // Find completed withdrawal (latest)
-  const completedWithdrawal = withdrawals.find((w: any) => w.status === "completed" && w.transfer_number);
+  // Find pending withdrawal
+  const pendingWithdrawal = withdrawals.find((w: any) => w.status === "pending");
+  // Find info_submitted withdrawal
+  const infoSubmittedWithdrawal = withdrawals.find((w: any) => w.status === "info_submitted");
+  // Show completed only if no active withdrawal in progress
+  const hasActiveWithdrawal = approvedWithdrawal || pendingWithdrawal || infoSubmittedWithdrawal;
+  const completedWithdrawal = !hasActiveWithdrawal ? withdrawals.find((w: any) => w.status === "completed" && w.transfer_number) : null;
 
   const tabs = [
     { key: "agencies" as const, label: "الوكلاء", icon: Building2, color: "text-amber-400", bgColor: "bg-amber-500/10", items: agencies, total: totals.agency, pct: settings.agency_commission_pct },
