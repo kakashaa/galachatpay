@@ -38,13 +38,13 @@ const formatDate = (dateStr: string) => {
 };
 
 const serviceRoutes: Record<string, string> = {
-  salary: "/salary-withdraw",
-  animated_photo: "/animated-photo-request",
-  custom_gift: "/custom-gift-upload",
+  salary: "/salary",
+  animated_photo: "/animated-photo",
+  custom_gift: "/custom-gift",
   vip: "/request-vip",
-  frame: "/frames-request",
+  frame: "/frames",
   entry_gift: "/entry-request",
-  gift: "/gift-request",
+  gift: "/gift",
   change_id: "/change-id",
 };
 
