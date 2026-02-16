@@ -116,7 +116,10 @@ const BDInfoPage: React.FC = () => {
         body: {
           action: "submit_recipient_info",
           withdrawal_id: withdrawalId,
-          ...recipientInfo,
+          recipient_name: recipientInfo.name,
+          recipient_phone: recipientInfo.phone,
+          transfer_type: recipientInfo.transfer_type,
+          country: recipientInfo.country,
         },
       });
       if (error) throw error;
