@@ -365,21 +365,21 @@ const SalaryWithdraw: React.FC = () => {
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all relative ${
                     withdrawType === "monthly"
                       ? "border-primary bg-primary/10"
-                      : !isLastDayOfMonth
+                      : (!isLastDayOfMonth && !monthlyWithdrawEnabled)
                       ? "border-border/30 bg-muted/10 opacity-60"
                       : "border-border/30 bg-muted/20 hover:bg-muted/40"
                   }`}
                 >
                   <div className={`p-2 rounded-lg ${withdrawType === "monthly" ? "bg-primary/20 text-primary" : "bg-muted/30 text-muted-foreground"}`}>
-                    {!isLastDayOfMonth ? <Lock className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                    {(!isLastDayOfMonth && !monthlyWithdrawEnabled) ? <Lock className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                   </div>
                   <div className="text-right flex-1">
                     <p className="text-sm font-bold text-foreground">سحب شهري</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {!isLastDayOfMonth ? "🔒 متاح فقط آخر يوم بالشهر" : `الحد: ${monthlyLimit.toLocaleString()}`}
+                      {(!isLastDayOfMonth && !monthlyWithdrawEnabled) ? "🔒 متاح فقط آخر يوم بالشهر" : `الحد: ${monthlyLimit.toLocaleString()}`}
                     </p>
                   </div>
-                  {!isLastDayOfMonth && (
+                  {(!isLastDayOfMonth && !monthlyWithdrawEnabled) && (
                     <Lock className="w-4 h-4 text-muted-foreground/60 absolute top-2 left-2" />
                   )}
                 </button>
