@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 
 const UUID_REGEX = /^[a-zA-Z0-9_-]{3,64}$/;
 
@@ -120,30 +120,6 @@ serve(async (req) => {
         }
       } catch (dateErr) {
         console.error("Date check error:", dateErr);
-      }
-    }
-
-    // Check if this transaction_id was already used in a previous salary request
-    if (transactionId) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      const { data: existing } = await supabase
-        .from("salary_requests")
-        .select("id, transaction_id")
-        .eq("transaction_id", String(transactionId))
-        .limit(1);
-
-      if (existing && existing.length > 0) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: "تم رفع هذا الراتب مسبقاً برقم مرجعي مسجل. لا يمكن استخدام نفس التحويل مرتين.",
-            duplicate: true,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
       }
     }
 
