@@ -432,6 +432,9 @@ const BDInfoPage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground">{new Date(w.created_at).toLocaleDateString("ar-EG")}</p>
                     {w.admin_note && <p className="text-[10px] text-destructive">ملاحظة: {w.admin_note}</p>}
                     {w.transfer_number && <p className="text-[10px] text-foreground">رقم الحوالة: <span className="font-mono" dir="ltr">{w.transfer_number}</span></p>}
+                    {w.receipt_url && (
+                      <a href={w.receipt_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline flex items-center gap-1">📎 صورة الإيصال</a>
+                    )}
                   </div>
                 );
               })}
