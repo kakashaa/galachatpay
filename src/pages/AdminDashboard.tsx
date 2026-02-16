@@ -706,8 +706,8 @@ const AdminDashboardPage: React.FC = () => {
       setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
       setAllBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
       setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
-      // Sync cache table for realtime
-      await supabase.from("bd_requests_cache").upsert({ id: String(reqItem.id), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, status: 1, details: reqItem.details || {}, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      // Sync cache table via admin edge function (service role)
+      await adminCall("update_bd_cache", { id: reqItem.id, status: 1, user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, details: reqItem.details || {} });
     } catch { toast.error("فشل قبول الطلب"); }
     finally { setBdActionLoading(false); }
   };
@@ -728,8 +728,8 @@ const AdminDashboardPage: React.FC = () => {
       setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
       setAllBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
       setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
-      // Sync cache table for realtime
-      await supabase.from("bd_requests_cache").upsert({ id: String(reqItem.id), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, status: 2, admin_note: bdRejectReason.trim(), details: reqItem.details || {}, updated_at: new Date().toISOString() }, { onConflict: "id" });
+      // Sync cache table via admin edge function (service role)
+      await adminCall("update_bd_cache", { id: reqItem.id, status: 2, admin_note: bdRejectReason.trim(), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, details: reqItem.details || {} });
     } catch { toast.error("فشل رفض الطلب"); }
     finally { setBdActionLoading(false); }
   };
