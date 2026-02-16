@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, UserPlus, Building2, DollarSign, RefreshCw, Loader2, CheckCircle, Wallet, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ const BDInfoPage: React.FC = () => {
   const { user: authUser } = useAuth();
   const [data, setData] = useState<BDData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  
   const [earningsExpanded, setEarningsExpanded] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
@@ -73,14 +73,6 @@ const BDInfoPage: React.FC = () => {
     }
   };
 
-  const copyReferralLink = () => {
-    if (!data?.settings?.referral_code) return;
-    const link = `https://galachatpay.lovable.app/bd/join/${data.settings.referral_code}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    toast.success("تم نسخ رابط الدعوة");
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleWithdrawRequest = async () => {
     const amount = parseFloat(withdrawAmount);
@@ -173,8 +165,6 @@ const BDInfoPage: React.FC = () => {
   const { settings, agencies, supporters = [], totals, withdrawals = [] } = data;
   const totalEarned = Number(settings.total_earned || 0);
   const availableBalance = Number(settings.available_balance || 0);
-  const publishedDomain = "https://galachatpay.lovable.app";
-  const referralLink = `${publishedDomain}/bd/join/${settings.referral_code}`;
 
   // Find approved withdrawal needing recipient info
   const approvedWithdrawal = withdrawals.find((w: any) => w.status === "approved");
@@ -454,24 +444,15 @@ const BDInfoPage: React.FC = () => {
             </div>
           )}
 
-          {/* Referral link */}
+          {/* Add member button */}
           <div className="bg-muted/20 rounded-xl p-3 space-y-2">
             <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <Link2 className="w-3.5 h-3.5 text-primary" /> رابطك المخصص
+              <Users className="w-3.5 h-3.5 text-primary" /> إضافة أعضاء
             </p>
-            <p className="text-[10px] text-muted-foreground">شارك هذا الرابط لإضافة الأعضاء وعرض معلوماتك</p>
-            <div className="flex gap-2">
-              <div className="flex-1 bg-background/50 rounded-lg px-3 py-2 text-[10px] text-muted-foreground font-mono truncate" dir="ltr">
-                {referralLink}
-              </div>
-              <Button size="sm" variant="outline" onClick={copyReferralLink} className="h-8 gap-1 text-xs shrink-0">
-                {copied ? <CheckCircle className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? "تم" : "نسخ"}
-              </Button>
-            </div>
-            <Button size="sm" variant="default" onClick={() => window.open(referralLink, "_blank")} className="w-full gap-2 text-xs mt-1">
-              <Link2 className="w-3.5 h-3.5" />
-              فتح صفحة التسجيل
+            <p className="text-[10px] text-muted-foreground">أضف أعضاء جدد يدوياً عبر إدخال الآيدي الخاص بهم</p>
+            <Button size="sm" variant="default" onClick={() => navigate("/bd/add-member")} className="w-full gap-2 text-xs">
+              <UserPlus className="w-3.5 h-3.5" />
+              إضافة عضو جديد
             </Button>
           </div>
         </div>
