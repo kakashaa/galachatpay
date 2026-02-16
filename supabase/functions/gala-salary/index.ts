@@ -79,6 +79,23 @@ serve(async (req) => {
     const transactionDate = txData.created_at || txData.date || null;
     const txAmount = txData.amount || parsedAmount;
 
+    // Check if transaction is older than 24 hours
+    if (transactionDate) {
+      const txTime = new Date(transactionDate).getTime();
+      const now = Date.now();
+      const diffHours = (now - txTime) / (1000 * 60 * 60);
+      if (diffHours > 24) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "هذا التحويل قديم (أكثر من 24 ساعة). يرجى إجراء تحويل جديد.",
+            expired: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Check if this transaction_id was already used in a previous salary request
     if (transactionId) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
