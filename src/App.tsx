@@ -46,6 +46,7 @@ const PolicyPage = lazy(() => import("./pages/PolicyPage"));
 const QuickSupport = lazy(() => import("./pages/QuickSupport"));
 const SupportMain = lazy(() => import("./pages/SupportMain"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
+const HairsPage = lazy(() => import("./pages/HairsPage"));
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ const App = () => (
                 <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
                 <Route path="/entry-request" element={<EntryRequest />} />
                 <Route path="/frames" element={<FramesRequest />} />
+                <Route path="/hairs" element={<HairsPage />} />
                 <Route path="/bd-request" element={<BDRequest />} />
                 <Route path="/bd" element={<BDLoginPage />} />
                 <Route path="/bd/dashboard" element={<BDDashboard />} />
