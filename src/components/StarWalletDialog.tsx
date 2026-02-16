@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Star, Gift, DollarSign } from "lucide-react";
+import { Star, Gift, DollarSign, IdCard } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
+import StarIdPurchase from "@/components/StarIdPurchase";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStarBalance } from "@/hooks/use-star-balance";
@@ -19,7 +20,7 @@ interface Props {
 
 const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main" }) => {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "cashout_confirm" | "code_result">(initialView);
+  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "cashout_confirm" | "code_result" | "buy_id">(initialView);
   const [friendUuid, setFriendUuid] = useState("");
   const [giftAmount, setGiftAmount] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -221,10 +222,16 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                     </Button>
                     <Button onClick={() => setCurrentView("cashout")} className="flex-1 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25" variant="outline">
                       <DollarSign className="w-4 h-4 ml-1" />
-                      تحويل لكاش
+                      كاش
+                    </Button>
+                    <Button onClick={() => setCurrentView("buy_id")} className="flex-1 bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25" variant="outline">
+                      <IdCard className="w-4 h-4 ml-1" />
+                      شراء آيدي
                     </Button>
                   </>
                 )}
+              </div>
+              <div className="flex gap-2">
                 <Button onClick={() => setShowTutorial(true)} variant="outline" className="flex-1">
                   <PulsingHelpIcon size={16} />
                   <span className="mr-1">الشروط</span>
@@ -378,6 +385,15 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
 
               <button onClick={() => { setCurrentView("main"); onClose(); }} className="w-full text-center text-sm text-muted-foreground py-1">إغلاق</button>
             </div>
+          )}
+          {currentView === "buy_id" && (
+            <StarIdPurchase
+              totalStars={totalStars}
+              starBalance={starBalance}
+              fetchStarBalance={fetchStarBalance}
+              onBack={() => setCurrentView("main")}
+              onSuccess={() => { setCurrentView("main"); onClose(); }}
+            />
           )}
         </DialogContent>
       </Dialog>
