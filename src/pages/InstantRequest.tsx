@@ -298,8 +298,8 @@ const InstantRequest: React.FC = () => {
               </div>
               <div className="flex items-start gap-2 p-3 bg-accent/50 border border-accent/30 rounded-xl">
                 <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <div className="text-[11px] text-muted-foreground space-y-1">
-                  <p>١. حوّل الكوينزات إلى وكالة <span className="font-bold text-foreground" dir="ltr">10000</span> في غلا لايف</p>
+                <div className="text-[11px] text-orange-400 space-y-1">
+                  <p>١. حوّل الكوينزات إلى وكالة <span className="font-bold text-orange-300" dir="ltr">10000</span> في غلا لايف</p>
                   <p>٢. أدخل المبلغ بالدولار في الحقل أعلاه</p>
                   <p>٣. اضغط "تأكيد التحويل" للتحقق</p>
                 </div>
