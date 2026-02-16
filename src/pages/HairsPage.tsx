@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Sticker, Lock, Loader2, Check } from "lucide-react";
+import { Sticker, Lock, Loader2, Check, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import LazySvgaPlayer from "@/components/LazySvgaPlayer";
 import SvgaPlayer from "@/components/SvgaPlayer";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ function getNextTier(chargerLevel: number) {
 
 const HairsPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [hairs, setHairs] = useState<HairItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -180,6 +182,9 @@ const HairsPage: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            <button onClick={() => navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-muted/50 hover:bg-muted transition-colors">
+              <ArrowRight className="w-4 h-4 text-foreground" />
+            </button>
             <Sticker className="w-5 h-5 text-amber-400" />
             <h1 className="text-lg font-bold text-foreground">شعرات</h1>
           </div>
