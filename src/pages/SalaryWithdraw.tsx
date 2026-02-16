@@ -329,9 +329,9 @@ const SalaryWithdraw: React.FC = () => {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
-            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-            <p className="text-sm text-destructive">{error}</p>
+          <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive whitespace-pre-line">{error}</p>
           </div>
         )}
 
