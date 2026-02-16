@@ -149,6 +149,9 @@ const HairsPage: React.FC = () => {
       <MobileLayout>
         <div className="p-4 space-y-4">
           <div className="flex items-center gap-2 mb-4">
+            <button onClick={() => navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-muted/50 hover:bg-muted transition-colors">
+              <ArrowRight className="w-4 h-4 text-foreground" />
+            </button>
             <Sticker className="w-5 h-5 text-amber-400" />
             <h1 className="text-lg font-bold text-foreground">شعرات</h1>
           </div>
