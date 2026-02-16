@@ -48,6 +48,7 @@ const InstantRequest: React.FC = () => {
   const [transferAmount, setTransferAmount] = useState("");
   const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
   const [confirmedDate, setConfirmedDate] = useState<string | null>(null);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
 
   // Recipient details
   const [fullName, setFullName] = useState("");
@@ -139,9 +140,11 @@ const InstantRequest: React.FC = () => {
       }
       const responseData = data.data || data;
       const amount = responseData.amount ?? responseData.coins ?? 0;
-      const date = responseData.date ?? responseData.created_at ?? new Date().toISOString().split("T")[0];
+      const date = data.transaction_date ?? responseData.date ?? responseData.created_at ?? new Date().toISOString().split("T")[0];
+      const txId = data.transaction_id ?? responseData.transaction_id ?? null;
       setConfirmedAmount(amount);
       setConfirmedDate(typeof date === "string" ? date.split("T")[0] : date);
+      setTransactionId(txId);
       setStep("details");
     } catch {
       setError("حدث خطأ غير متوقع.");
@@ -167,10 +170,16 @@ const InstantRequest: React.FC = () => {
         payment_details: accountInfo,
         status: "pending",
         transfer_image_url: receiptUrl,
-      });
+        transaction_id: transactionId,
+        transaction_date: confirmedDate,
+      } as any);
       if (insertError) {
-        console.error("Insert error:", insertError);
-        setError("حدث خطأ في حفظ الطلب.");
+        if (insertError.code === "23505" && insertError.message?.includes("transaction_id")) {
+          setError("⚠️ تم رفع هذا الطلب مسبقاً. لا يمكن استخدام نفس التحويل مرتين.");
+        } else {
+          console.error("Insert error:", insertError);
+          setError("حدث خطأ في حفظ الطلب.");
+        }
         setLoading(false);
         return;
       }
