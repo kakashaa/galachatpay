@@ -1,0 +1,260 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { Loader2, Upload, Trash2, Eye, EyeOff, Save, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { Progress } from "@/components/ui/progress";
+
+interface HairItem {
+  id: string;
+  title: string;
+  file_url: string;
+  thumbnail_url: string | null;
+  display_order: number;
+  is_active: boolean;
+  is_deleted: boolean;
+  created_at: string;
+}
+
+interface AdminHairManagerProps {
+  adminSessionToken: string;
+  adminUsername: string;
+}
+
+const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, adminUsername }) => {
+  const [hairs, setHairs] = useState<HairItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadCurrent, setUploadCurrent] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+
+  const loadHairs = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("hairs")
+      .select("*")
+      .eq("is_deleted", false)
+      .order("display_order", { ascending: true });
+    if (!error) setHairs(data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadHairs(); }, [loadHairs]);
+
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const svgaFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith(".svga"));
+    if (svgaFiles.length === 0) {
+      toast.error("لا توجد ملفات SVGA");
+      return;
+    }
+
+    setUploading(true);
+    setUploadTotal(svgaFiles.length);
+    setUploadCurrent(0);
+    setUploadProgress(0);
+
+    const currentMaxOrder = hairs.length > 0 ? Math.max(...hairs.map(h => h.display_order)) : 0;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < svgaFiles.length; i++) {
+      const file = svgaFiles[i];
+      setUploadCurrent(i + 1);
+      setUploadProgress(Math.round(((i + 1) / svgaFiles.length) * 100));
+
+      try {
+        // Upload file via admin-upload-video edge function (supports svga)
+        const formData = new FormData();
+        formData.append("session_token", adminSessionToken);
+        formData.append("username", adminUsername);
+        formData.append("file", file);
+
+        const { data: uploadResult, error: uploadError } = await supabase.functions.invoke("admin-upload-video", {
+          body: formData,
+        });
+
+        if (uploadError || !uploadResult?.url) {
+          failCount++;
+          console.error(`Failed to upload ${file.name}:`, uploadError || uploadResult?.error);
+          continue;
+        }
+
+        // Insert record into hairs table
+        const title = file.name.replace(/\.svga$/i, "").replace(/[-_]/g, " ");
+        const { error: insertError } = await supabase.from("hairs").insert({
+          title,
+          file_url: uploadResult.url,
+          display_order: currentMaxOrder + i + 1,
+        });
+
+        if (insertError) {
+          failCount++;
+          console.error(`Failed to save ${file.name}:`, insertError);
+        } else {
+          successCount++;
+        }
+      } catch (err) {
+        failCount++;
+        console.error(`Error uploading ${file.name}:`, err);
+      }
+    }
+
+    setUploading(false);
+    setUploadProgress(0);
+    
+    if (successCount > 0) {
+      toast.success(`✅ تم رفع ${successCount} شعرة بنجاح`);
+    }
+    if (failCount > 0) {
+      toast.error(`❌ فشل رفع ${failCount} ملف`);
+    }
+
+    // Reset input
+    e.target.value = "";
+    loadHairs();
+  };
+
+  const toggleActive = async (hair: HairItem) => {
+    const { error } = await supabase
+      .from("hairs")
+      .update({ is_active: !hair.is_active })
+      .eq("id", hair.id);
+    if (!error) {
+      setHairs(prev => prev.map(h => h.id === hair.id ? { ...h, is_active: !h.is_active } : h));
+      toast.success(hair.is_active ? "تم إخفاء الشعرة" : "تم تفعيل الشعرة");
+    }
+  };
+
+  const deleteHair = async (id: string) => {
+    if (!confirm("هل تريد حذف هذه الشعرة؟")) return;
+    const { error } = await supabase
+      .from("hairs")
+      .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (!error) {
+      setHairs(prev => prev.filter(h => h.id !== id));
+      toast.success("تم حذف الشعرة");
+    }
+  };
+
+  const startEdit = (hair: HairItem) => {
+    setEditingId(hair.id);
+    setEditTitle(hair.title);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    const { error } = await supabase
+      .from("hairs")
+      .update({ title: editTitle })
+      .eq("id", editingId);
+    if (!error) {
+      setHairs(prev => prev.map(h => h.id === editingId ? { ...h, title: editTitle } : h));
+      setEditingId(null);
+      toast.success("تم تحديث الاسم");
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <motion.div key="hairs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+      {/* Upload Section */}
+      <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Upload className="w-5 h-5 text-primary" />
+          <h3 className="text-sm font-bold text-foreground">رفع شعرات SVGA</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">يمكنك اختيار أكثر من 100 ملف SVGA ورفعهم دفعة واحدة</p>
+        
+        <label className="block">
+          <input
+            type="file"
+            accept=".svga"
+            multiple
+            onChange={handleBulkUpload}
+            disabled={uploading}
+            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
+          />
+        </label>
+
+        {uploading && (
+          <div className="space-y-2">
+            <Progress value={uploadProgress} className="h-2" />
+            <p className="text-xs text-center text-muted-foreground">
+              جاري الرفع... {uploadCurrent} / {uploadTotal} ({uploadProgress}%)
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="bg-muted/20 rounded-xl p-3 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">إجمالي الشعرات</span>
+        <span className="text-sm font-bold text-foreground">{hairs.length}</span>
+      </div>
+
+      {/* Hair Items */}
+      {hairs.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">
+          <Upload className="w-10 h-10 mx-auto mb-2 opacity-50" />
+          <p>لا توجد شعرات بعد. ارفع ملفات SVGA للبدء</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {hairs.map((hair, index) => (
+            <div
+              key={hair.id}
+              className={`bg-card border border-border/40 rounded-xl p-3 flex items-center gap-3 ${!hair.is_active ? "opacity-50" : ""}`}
+            >
+              <span className="text-xs text-muted-foreground font-mono w-6 text-center">{index + 1}</span>
+              
+              <div className="flex-1 min-w-0">
+                {editingId === hair.id ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                    <Button size="sm" onClick={saveEdit} className="h-8 px-2">
+                      <Save className="w-3 h-3" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="h-8 px-2">
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium truncate cursor-pointer" onClick={() => startEdit(hair)}>
+                    {hair.title || "بدون اسم"}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button onClick={() => toggleActive(hair)} className="p-1.5 rounded-lg hover:bg-muted">
+                  {hair.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                <button onClick={() => deleteHair(hair.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+export default AdminHairManager;

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Scissors } from "lucide-react";
 import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, Upload, Wallet,
@@ -24,7 +25,9 @@ import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-session
 import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
 import { useBdWithdrawalsRealtime } from "@/hooks/use-bd-withdrawals-realtime";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "bd_management" | "bd_withdrawals" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | null;
+import AdminHairManager from "@/components/AdminHairManager";
+
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "bd_management" | "bd_withdrawals" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | null;
 
 interface BDRequestItem {
   id: string;
@@ -940,6 +943,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
     { key: "entries", label: "دخوليات", icon: <Sparkles className="w-7 h-7" />, color: "from-purple-500/20 to-purple-600/10 text-purple-400" },
     { key: "frames", label: "إطارات", icon: <Frame className="w-7 h-7" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400" },
+    { key: "hairs", label: "شعرات", icon: <Scissors className="w-7 h-7" />, color: "from-fuchsia-500/20 to-fuchsia-600/10 text-fuchsia-400" },
     { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400" },
     { key: "salary", label: "رواتب", icon: <DollarSign className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
     { key: "claims", label: "طلبات", icon: <ClipboardList className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: entryClaims.length + frameClaims.length },
@@ -2928,6 +2932,11 @@ const AdminDashboardPage: React.FC = () => {
                   ))
                 )}
               </motion.div>
+            )}
+
+            {/* Hairs Tab */}
+            {activeTab === "hairs" && (
+              <AdminHairManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} />
             )}
 
             {/* Audit Log Tab - Super Admin Only */}
