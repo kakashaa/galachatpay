@@ -19,6 +19,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
+const countryCodes = [
+  { code: "+967", flag: "🇾🇪", name: "اليمن" },
+  { code: "+966", flag: "🇸🇦", name: "السعودية" },
+  { code: "+20", flag: "🇪🇬", name: "مصر" },
+  { code: "+213", flag: "🇩🇿", name: "الجزائر" },
+  { code: "+216", flag: "🇹🇳", name: "تونس" },
+  { code: "+212", flag: "🇲🇦", name: "المغرب" },
+  { code: "+962", flag: "🇯🇴", name: "الأردن" },
+  { code: "+968", flag: "🇴🇲", name: "عُمان" },
+  { code: "+90", flag: "🇹🇷", name: "تركيا" },
+  { code: "+44", flag: "🇬🇧", name: "بريطانيا" },
+  { code: "+33", flag: "🇫🇷", name: "فرنسا" },
+  { code: "+1", flag: "🇺🇸", name: "أمريكا" },
+  { code: "+91", flag: "🇮🇳", name: "الهند" },
+  { code: "+92", flag: "🇵🇰", name: "باكستان" },
+  { code: "+880", flag: "🇧🇩", name: "بنغلاديش" },
+  { code: "+94", flag: "🇱🇰", name: "سريلانكا" },
+  { code: "+977", flag: "🇳🇵", name: "نيبال" },
+];
 const userTypeLabels: Record<number, string> = {
   0: "مستخدم عادي", 1: "مضيف", 2: "وكيل مضيفين",
   3: "وكيل شحن", 4: "وكيل شحن ومضيفين", 5: "وكيل شحن ومضيف", 6: "الكل",
@@ -56,6 +75,8 @@ const SalaryWithdraw: React.FC = () => {
   const [selectedCountryId, setSelectedCountryId] = useState("");
   const [selectedMethodId, setSelectedMethodId] = useState("");
   const [accountInfo, setAccountInfo] = useState("");
+  const [phoneCountryCode, setPhoneCountryCode] = useState("+967");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   // Check if today is the last day of the month
   const isLastDayOfMonth = useMemo(() => {
@@ -211,7 +232,12 @@ const SalaryWithdraw: React.FC = () => {
     return accountInfo.trim().length >= 4;
   };
 
-  const canSubmitDetails = isNameValid && selectedCountryId && selectedMethodId && isAccountValid();
+  const isPhoneValid = (): boolean => {
+    if (!selectedMethod?.requiresPhone) return true;
+    return phoneNumber.trim().length >= 6;
+  };
+
+  const canSubmitDetails = isNameValid && selectedCountryId && selectedMethodId && isAccountValid() && isPhoneValid();
 
   const handleProceedToConfirm = () => {
     if (!canSubmitDetails) return;
@@ -231,7 +257,11 @@ const SalaryWithdraw: React.FC = () => {
         recipient_name: fullName,
         recipient_country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
         payment_method: selectedMethod?.label || "",
-        payment_details: withdrawType === "star_code" ? `كود نجوم: ${starCode}` : accountInfo,
+        payment_details: withdrawType === "star_code" 
+          ? `كود نجوم: ${starCode}` 
+          : selectedMethod?.requiresPhone 
+            ? `${accountInfo} | جوال: ${phoneCountryCode}${phoneNumber}` 
+            : accountInfo,
         status: "pending",
         transaction_id: transactionId,
         transaction_date: confirmedDate,
@@ -564,6 +594,18 @@ const SalaryWithdraw: React.FC = () => {
                   setSelectedCountryId(v);
                   setSelectedMethodId("");
                   setAccountInfo("");
+                  setPhoneNumber("");
+                  // Auto-set country code based on selected country
+                  const matchedCode = countryCodes.find((cc) => {
+                    const countryMap: Record<string, string> = {
+                      ye: "+967", sa: "+966", eg: "+20", dz: "+213", tn: "+216",
+                      ma: "+212", jo: "+962", om: "+968", tr: "+90", gb: "+44",
+                      fr: "+33", us: "+1", "in": "+91", pk: "+92", bd: "+880",
+                      lk: "+94", np: "+977",
+                    };
+                    return cc.code === countryMap[v];
+                  });
+                  if (matchedCode) setPhoneCountryCode(matchedCode.code);
                 }}
               >
                 <SelectTrigger className="bg-muted/20 border-border/30 text-right">
@@ -593,6 +635,7 @@ const SalaryWithdraw: React.FC = () => {
                   onValueChange={(v) => {
                     setSelectedMethodId(v);
                     setAccountInfo("");
+                    setPhoneNumber("");
                   }}
                 >
                   <SelectTrigger className="bg-muted/20 border-border/30 text-right">
@@ -607,16 +650,53 @@ const SalaryWithdraw: React.FC = () => {
 
                 {/* Account / Wallet Input */}
                 {selectedMethod && (
-                  <div className="space-y-2">
-                    <Input
-                      value={accountInfo}
-                      onChange={(e) => setAccountInfo(e.target.value)}
-                      placeholder={selectedMethod.placeholder || "أدخل معلومات الحساب"}
-                      className="bg-muted/20 border-border/30"
-                      dir={selectedMethod.requiresWallet ? "ltr" : "rtl"}
-                    />
-                    {selectedMethod.requiresWallet && accountInfo && !isValidERC20Address(accountInfo) && (
-                      <p className="text-[11px] text-destructive">عنوان المحفظة غير صحيح. يجب أن يبدأ بـ 0x ويتكون من 42 حرف</p>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Input
+                        value={accountInfo}
+                        onChange={(e) => setAccountInfo(e.target.value)}
+                        placeholder={selectedMethod.placeholder || "أدخل معلومات الحساب"}
+                        className="bg-muted/20 border-border/30"
+                        dir={selectedMethod.requiresWallet ? "ltr" : "rtl"}
+                      />
+                      {selectedMethod.requiresWallet && accountInfo && !isValidERC20Address(accountInfo) && (
+                        <p className="text-[11px] text-destructive">عنوان المحفظة غير صحيح. يجب أن يبدأ بـ 0x ويتكون من 42 حرف</p>
+                      )}
+                    </div>
+
+                    {/* Phone Number with Country Code */}
+                    {selectedMethod.requiresPhone && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-foreground">رقم الجوال</label>
+                        <div className="flex gap-2" dir="ltr">
+                          <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
+                            <SelectTrigger className="bg-muted/20 border-border/30 w-[130px] shrink-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countryCodes.map((cc) => (
+                                <SelectItem key={cc.code} value={cc.code}>
+                                  <span className="flex items-center gap-1.5">
+                                    <span>{cc.flag}</span>
+                                    <span className="font-mono text-xs">{cc.code}</span>
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                            placeholder="رقم الجوال"
+                            className="bg-muted/20 border-border/30 flex-1"
+                            dir="ltr"
+                            type="tel"
+                          />
+                        </div>
+                        {phoneNumber && phoneNumber.trim().length < 6 && (
+                          <p className="text-[11px] text-destructive">يرجى إدخال رقم جوال صحيح</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -666,6 +746,12 @@ const SalaryWithdraw: React.FC = () => {
                   <span className="text-muted-foreground">معلومات الحساب</span>
                   <span className="font-bold text-foreground" dir="ltr">{accountInfo}</span>
                 </div>
+                {selectedMethod?.requiresPhone && phoneNumber && (
+                  <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
+                    <span className="text-muted-foreground">رقم الجوال</span>
+                    <span className="font-bold text-foreground" dir="ltr">{phoneCountryCode}{phoneNumber}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex gap-3">
