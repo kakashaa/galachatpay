@@ -41,7 +41,11 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchNotifCount();
-  }, [fetchNotifCount]);
+    // Refresh user data on dashboard mount
+    if (isAuthenticated) {
+      refreshUser();
+    }
+  }, [fetchNotifCount, isAuthenticated, refreshUser]);
 
   const handleRefresh = useCallback(async () => {
     if (refreshing || !isAuthenticated) return;
