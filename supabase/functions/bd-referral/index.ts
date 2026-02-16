@@ -190,13 +190,22 @@ serve(async (req) => {
       }
     }
 
+    console.log(`[bd-referral] Proxying action="${action}" params=`, JSON.stringify(params));
     const apiRes = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: formData.toString(),
     });
 
-    const data = await apiRes.json();
+    const rawText = await apiRes.text();
+    console.log(`[bd-referral] API response for action="${action}":`, rawText);
+    
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { success: false, error: "Invalid API response", raw: rawText };
+    }
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
