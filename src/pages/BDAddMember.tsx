@@ -47,7 +47,7 @@ const BDAddMember: React.FC = () => {
               <Icon className={`w-6 h-6 ${config.color}`} />
             </div>
             <div>
-              <p className="text-sm font-bold text-foreground">إضافة {config.label} جديد</p>
+              <p className="text-sm font-bold text-foreground">تسجيل عضو جديد</p>
               <p className="text-[10px] text-muted-foreground">أدخل UUID الشخص لتسجيله تحت حسابك</p>
             </div>
           </div>
