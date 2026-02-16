@@ -33,9 +33,9 @@ const BottomNav: React.FC = () => {
 
   return (
     <>
-      <div className="fixed left-1/2 -translate-x-1/2 z-50" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)" }}>
+      <div className="fixed left-1/2 -translate-x-1/2 z-50" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
         <nav
-          className="flex items-center gap-3 px-4 py-2.5 rounded-full border border-white/10 css-slide-up"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-white/10 css-slide-up"
           style={{
             background: "rgba(15, 15, 25, 0.88)",
             boxShadow: "0 8px 32px -6px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06) inset",
@@ -52,16 +52,25 @@ const BottomNav: React.FC = () => {
               <button
                 key={index}
                 onClick={() => handleNav(item)}
-                className={`relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all duration-300 active:scale-90 group ${
                   isReallyActive ? "bg-primary/15" : "hover:bg-white/5"
                 }`}
-                style={isReallyActive ? { boxShadow: "0 0 12px hsl(8 88% 62% / 0.3)" } : undefined}
+                style={isReallyActive ? { boxShadow: "0 0 14px hsl(8 88% 62% / 0.25)" } : undefined}
               >
-                <Icon
-                  className={`w-5 h-5 transition-colors duration-200 ${
+                <div className={`transition-transform duration-300 ${isReallyActive ? "animate-dock-bounce" : "group-hover:animate-dock-wiggle"}`}>
+                  <Icon
+                    className={`w-5 h-5 transition-colors duration-200 ${
+                      isReallyActive ? "text-primary" : "text-muted-foreground"
+                    }`}
+                  />
+                </div>
+                <span
+                  className={`text-[9px] font-bold transition-colors duration-200 ${
                     isReallyActive ? "text-primary" : "text-muted-foreground"
                   }`}
-                />
+                >
+                  {item.label}
+                </span>
               </button>
             );
           })}
