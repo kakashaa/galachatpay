@@ -249,10 +249,18 @@ const MyRequests: React.FC = () => {
                           </div>
                         )}
                         {req.transfer_image_url && req.status === "approved" && (
-                          <button onClick={() => setImagePreview(req.transfer_image_url)} className="w-full p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2 justify-center">
-                            <ImageIcon className="w-4 h-4 text-emerald-400" />
-                            <span className="text-xs font-bold text-emerald-400">عرض صورة الحوالة</span>
-                          </button>
+                          <div className="space-y-2">
+                            <p className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                              <ImageIcon className="w-3.5 h-3.5" /> صورة إيصال التحويل:
+                            </p>
+                            <img 
+                              src={req.transfer_image_url} 
+                              alt="إيصال التحويل" 
+                              className="w-full max-h-64 object-contain rounded-xl border border-emerald-500/20 cursor-pointer bg-black/20"
+                              onClick={() => setImagePreview(req.transfer_image_url)}
+                            />
+                            <p className="text-[9px] text-muted-foreground text-center">اضغط على الصورة لعرضها بالكامل</p>
+                          </div>
                         )}
                         {req.status === "rejected" && (
                           <Button onClick={() => navigate(req.request_type === "instant" ? "/instant-request" : "/salary")} className="w-full" size="sm">
