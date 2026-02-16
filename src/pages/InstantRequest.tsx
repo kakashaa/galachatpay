@@ -174,8 +174,12 @@ const InstantRequest: React.FC = () => {
         transaction_date: confirmedDate,
       } as any);
       if (insertError) {
-        console.error("Insert error:", insertError);
-        setError("حدث خطأ في حفظ الطلب.");
+        if (insertError.code === "23505") {
+          setError("⚠️ تم رفع هذا الطلب مسبقاً. لا يمكن استخدام نفس التحويل مرتين.");
+        } else {
+          console.error("Insert error:", insertError);
+          setError("حدث خطأ في حفظ الطلب.");
+        }
         setLoading(false);
         return;
       }
