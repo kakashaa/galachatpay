@@ -214,22 +214,20 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
               </div>
 
               <div className="flex gap-2">
-                {totalStars > 0 && (
-                  <>
-                    <Button onClick={() => setCurrentView("gift")} className="flex-1 bg-accent/15 border border-accent/20 text-accent hover:bg-accent/25" variant="outline">
-                      <Gift className="w-4 h-4 ml-1" />
-                      إهداء
-                    </Button>
-                    <Button onClick={() => setCurrentView("cashout")} className="flex-1 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25" variant="outline">
-                      <DollarSign className="w-4 h-4 ml-1" />
-                      كاش
-                    </Button>
-                    <Button onClick={() => setCurrentView("buy_id")} className="flex-1 bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25" variant="outline">
-                      <IdCard className="w-4 h-4 ml-1" />
-                      شراء آيدي
-                    </Button>
-                  </>
-                )}
+                <Button onClick={() => setCurrentView("gift")} disabled={totalStars < 1} className="flex-1 bg-accent/15 border border-accent/20 text-accent hover:bg-accent/25 disabled:opacity-40" variant="outline">
+                  <Gift className="w-4 h-4 ml-1" />
+                  إهداء نجوم
+                </Button>
+                <Button onClick={() => setCurrentView("cashout")} disabled={totalStars < 10} className="flex-1 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-40" variant="outline">
+                  <DollarSign className="w-4 h-4 ml-1" />
+                  كاش
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={() => setCurrentView("buy_id")} className="flex-1 bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25" variant="outline">
+                  <IdCard className="w-4 h-4 ml-1" />
+                  شراء آيدي
+                </Button>
               </div>
               <div className="flex gap-2">
                 <Button onClick={() => setShowTutorial(true)} variant="outline" className="flex-1">
