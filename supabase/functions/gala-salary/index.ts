@@ -85,10 +85,19 @@ serve(async (req) => {
       const now = Date.now();
       const diffHours = (now - txTime) / (1000 * 60 * 60);
       if (diffHours > 24) {
+        const diffDays = Math.floor(diffHours / 24);
+        const remainingHours = Math.floor(diffHours % 24);
+        const ageText = diffDays > 0
+          ? `${diffDays} يوم و ${remainingHours} ساعة`
+          : `${Math.floor(diffHours)} ساعة`;
+        const txDateFormatted = new Date(transactionDate).toLocaleString("ar-EG", {
+          year: "numeric", month: "short", day: "numeric",
+          hour: "2-digit", minute: "2-digit",
+        });
         return new Response(
           JSON.stringify({
             success: false,
-            error: "هذا التحويل قديم (أكثر من 24 ساعة). يرجى إجراء تحويل جديد.",
+            error: `هذا التحويل قديم ولا يمكن استخدامه.\n\n📅 تاريخ التحويل: ${txDateFormatted}\n⏳ عمر التحويل: ${ageText}\n⚠️ السبب: مضى أكثر من 24 ساعة على التحويل.\n\nيرجى إجراء تحويل جديد وإعادة المحاولة.`,
             expired: true,
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
