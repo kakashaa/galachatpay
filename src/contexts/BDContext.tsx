@@ -29,6 +29,7 @@ interface BDContextType {
   register: (uuid: string, name: string) => Promise<{ success: boolean; error?: string }>;
   refreshDashboard: () => Promise<void>;
   addMember: (memberUuid: string, memberType: string) => Promise<{ success: boolean; error?: string; name?: string }>;
+  sendInvitation: (memberUuid: string, memberType: string) => Promise<{ success: boolean; error?: string; name?: string }>;
   withdraw: () => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
@@ -133,12 +134,32 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, [bdUser?.uuid]);
 
+  const sendInvitation = useCallback(async (memberUuid: string, memberType: string) => {
+    if (!bdUser?.uuid) return { success: false, error: "غير مسجل" };
+    setLoading(true);
+    try {
+      const data = await callApi("send_invitation", {
+        bd_uuid: bdUser.uuid,
+        bd_name: bdUser.name,
+        bd_referral_code: "",
+        member_uuid: memberUuid,
+        member_type: memberType,
+      });
+      setLoading(false);
+      if (!data?.success) return { success: false, error: data?.error || "فشل إرسال الدعوة" };
+      return { success: true, name: data?.name };
+    } catch (e: any) {
+      setLoading(false);
+      return { success: false, error: e.message };
+    }
+  }, [bdUser?.uuid, bdUser?.name]);
+
   const logout = useCallback(() => {
     saveBdUser(null);
   }, []);
 
   return (
-    <BDContext.Provider value={{ bdUser, loading, error, login, register, refreshDashboard, addMember, withdraw, logout }}>
+    <BDContext.Provider value={{ bdUser, loading, error, login, register, refreshDashboard, addMember, sendInvitation, withdraw, logout }}>
       {children}
     </BDContext.Provider>
   );

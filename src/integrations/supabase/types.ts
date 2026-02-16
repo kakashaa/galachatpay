@@ -337,6 +337,45 @@ export type Database = {
         }
         Relationships: []
       }
+      bd_member_invitations: {
+        Row: {
+          bd_name: string
+          bd_referral_code: string
+          bd_uuid: string
+          created_at: string
+          id: string
+          member_name: string
+          member_type: string
+          member_uuid: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bd_name?: string
+          bd_referral_code?: string
+          bd_uuid: string
+          created_at?: string
+          id?: string
+          member_name?: string
+          member_type?: string
+          member_uuid: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bd_name?: string
+          bd_referral_code?: string
+          bd_uuid?: string
+          created_at?: string
+          id?: string
+          member_name?: string
+          member_type?: string
+          member_uuid?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bd_members: {
         Row: {
           bd_uuid: string
