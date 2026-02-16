@@ -171,6 +171,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
         });
 
         if (uploadError || !uploadResult?.url) {
+          console.error("Upload failed:", uploadError, uploadResult);
           failCount++;
           continue;
         }

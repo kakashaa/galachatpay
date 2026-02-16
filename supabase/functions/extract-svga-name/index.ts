@@ -101,9 +101,11 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("extract-svga-name error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : "";
+    console.error("extract-svga-name error:", errMsg, errStack);
     return new Response(
-      JSON.stringify({ name: "", error: "server_error" }),
+      JSON.stringify({ name: "", error: "server_error", details: errMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
