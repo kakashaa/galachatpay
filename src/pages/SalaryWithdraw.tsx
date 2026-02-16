@@ -221,7 +221,7 @@ const SalaryWithdraw: React.FC = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const { data: insertedRequest, error: insertError } = await supabase.from("salary_requests").insert({
+      const { error: insertError } = await supabase.from("salary_requests").insert({
         user_uuid: user.uuid,
         user_name: user.name,
         user_phone: user.phone,
@@ -235,7 +235,7 @@ const SalaryWithdraw: React.FC = () => {
         status: "pending",
         transaction_id: transactionId,
         transaction_date: confirmedDate,
-      } as any).select("id").single();
+      } as any);
       if (insertError) {
         // Check for unique constraint violation (duplicate transaction_id)
         if (insertError.code === "23505" && insertError.message?.includes("transaction_id")) {
@@ -252,11 +252,11 @@ const SalaryWithdraw: React.FC = () => {
       if (withdrawType === "star_code" && starCode) {
         await supabase
           .from("star_cashout_codes")
-          .update({ is_used: true, used_at: new Date().toISOString(), used_in_request_id: (insertedRequest as any)?.id })
+          .update({ is_used: true, used_at: new Date().toISOString() })
           .eq("code", starCode.trim().toUpperCase());
       }
 
-      const refId = ((insertedRequest as any)?.id as string)?.slice(0, 8)?.toUpperCase() || "";
+      const refId = `#${Date.now().toString(36).toUpperCase().slice(-8)}`;
       setRequestId(refId);
       setSubmitted(true);
     } catch {
