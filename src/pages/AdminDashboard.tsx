@@ -21,6 +21,7 @@ import { useAnimatedPhotosRealtime } from "@/hooks/use-animated-photos-realtime"
 import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime";
 import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
 import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
+import { useBdWithdrawalsRealtime } from "@/hooks/use-bd-withdrawals-realtime";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "bd_management" | "bd_withdrawals" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | null;
 
@@ -340,6 +341,21 @@ const AdminDashboardPage: React.FC = () => {
         return [{ id: newRecord.id, user_uuid: newRecord.user_uuid, user_name: newRecord.user_name, request_type: newRecord.request_type, status: newRecord.status, details: newRecord.details || {}, created_at: newRecord.created_at, admin_note: newRecord.admin_note || undefined } as BDRequestItem, ...prev];
       });
       loadStats();
+    }
+  );
+
+  // Realtime subscription for BD withdrawals
+  useBdWithdrawalsRealtime(
+    (updatedRecord: any) => {
+      setBdWithdrawals((prev: any[]) =>
+        prev.map((w) => (w.id === updatedRecord.id ? { ...w, ...updatedRecord } : w))
+      );
+    },
+    (newRecord: any) => {
+      setBdWithdrawals((prev: any[]) => {
+        if (prev.some((w) => w.id === newRecord.id)) return prev;
+        return [newRecord, ...prev];
+      });
     }
   );
 
