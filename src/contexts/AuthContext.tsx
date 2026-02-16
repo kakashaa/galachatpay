@@ -116,10 +116,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user?.uuid]);
 
-  // Auto-refresh every 3 minutes
+  // Auto-refresh every 3 minutes + on visibility change
   useEffect(() => {
     if (user?.uuid) {
       refreshTimerRef.current = setInterval(refreshUser, 3 * 60 * 1000);
+      const handleVisible = () => {
+        if (document.visibilityState === "visible") {
+          refreshUser();
+        }
+      };
+      document.addEventListener("visibilitychange", handleVisible);
+      return () => {
+        if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+        document.removeEventListener("visibilitychange", handleVisible);
+      };
     }
     return () => {
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
