@@ -46,13 +46,61 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
   useEffect(() => { loadHairs(); }, [loadHairs]);
 
+  // Extract clean Arabic title from filename
+  const extractTitle = (fileName: string): string => {
+    let name = fileName.replace(/\.svga$/i, "");
+    // Remove common prefixes/suffixes, numbers, and English text - keep Arabic
+    name = name.replace(/[-_]/g, " ").trim();
+    // Try to extract Arabic portion if mixed
+    const arabicMatch = name.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\s]+/g);
+    if (arabicMatch) {
+      const arabicName = arabicMatch.join(" ").trim();
+      if (arabicName.length > 0) return arabicName;
+    }
+    return name;
+  };
+
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const svgaFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith(".svga"));
-    if (svgaFiles.length === 0) {
+    const allSvga = Array.from(files).filter(f => f.name.toLowerCase().endsWith(".svga"));
+    if (allSvga.length === 0) {
       toast.error("لا توجد ملفات SVGA");
+      return;
+    }
+
+    // Filter out files containing "hawa" (case-insensitive)
+    const hawaSkipped = allSvga.filter(f => /hawa/i.test(f.name));
+    const afterHawaFilter = allSvga.filter(f => !/hawa/i.test(f.name));
+
+    // Filter out duplicates by comparing title with existing hairs
+    const existingTitles = new Set(hairs.map(h => h.title.trim().toLowerCase()));
+    const uploadSet = new Set<string>();
+    const svgaFiles: File[] = [];
+    let dupSkipped = 0;
+
+    for (const file of afterHawaFilter) {
+      const title = extractTitle(file.name).toLowerCase();
+      if (existingTitles.has(title) || uploadSet.has(title)) {
+        dupSkipped++;
+        continue;
+      }
+      uploadSet.add(title);
+      svgaFiles.push(file);
+    }
+
+    // Show skip summary
+    if (hawaSkipped.length > 0) {
+      toast.info(`⏭️ تم تخطي ${hawaSkipped.length} ملف يحتوي "hawa"`);
+    }
+    if (dupSkipped > 0) {
+      toast.info(`⏭️ تم تخطي ${dupSkipped} ملف مكرر`);
+    }
+
+    if (svgaFiles.length === 0) {
+      toast.warning("لا توجد ملفات جديدة للرفع بعد الفلترة");
+      e.target.value = "";
       return;
     }
 
@@ -71,7 +119,6 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
       setUploadProgress(Math.round(((i + 1) / svgaFiles.length) * 100));
 
       try {
-        // Upload file via admin-upload-video edge function (supports svga)
         const formData = new FormData();
         formData.append("session_token", adminSessionToken);
         formData.append("username", adminUsername);
@@ -83,12 +130,10 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
         if (uploadError || !uploadResult?.url) {
           failCount++;
-          console.error(`Failed to upload ${file.name}:`, uploadError || uploadResult?.error);
           continue;
         }
 
-        // Insert record into hairs table
-        const title = file.name.replace(/\.svga$/i, "").replace(/[-_]/g, " ");
+        const title = extractTitle(file.name);
         const { error: insertError } = await supabase.from("hairs").insert({
           title,
           file_url: uploadResult.url,
@@ -97,13 +142,11 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
         if (insertError) {
           failCount++;
-          console.error(`Failed to save ${file.name}:`, insertError);
         } else {
           successCount++;
         }
       } catch (err) {
         failCount++;
-        console.error(`Error uploading ${file.name}:`, err);
       }
     }
 
@@ -117,7 +160,6 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
       toast.error(`❌ فشل رفع ${failCount} ملف`);
     }
 
-    // Reset input
     e.target.value = "";
     loadHairs();
   };
