@@ -103,8 +103,7 @@ export default {
         },
         "dock-bounce": {
           "0%, 100%": { transform: "translateY(0) scale(1)" },
-          "40%": { transform: "translateY(-4px) scale(1.15)" },
-          "60%": { transform: "translateY(1px) scale(0.95)" },
+          "50%": { transform: "translateY(-2px) scale(1.08)" },
         },
         "dock-wiggle": {
           "0%, 100%": { transform: "rotate(0deg)" },
@@ -120,7 +119,7 @@ export default {
         "pulse-glow": "pulse-glow 4s ease-in-out infinite",
         "bounce-slow": "bounce-slow 3s ease-in-out infinite",
         "fade-in": "fade-in 0.4s ease-out forwards",
-        "dock-bounce": "dock-bounce 0.6s ease-in-out infinite",
+        "dock-bounce": "dock-bounce 1.5s ease-in-out infinite",
         "dock-wiggle": "dock-wiggle 0.4s ease-in-out",
       },
     },
