@@ -63,12 +63,34 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setError("");
     try {
       const data = await callApi("dashboard", { uuid });
-      if (!data?.success) {
+      if (!data?.success && !data?.ok) {
         setError(data?.error || "الحساب غير موجود");
         setLoading(false);
         return false;
       }
-      saveBdUser({ uuid, ...data.data });
+      // Map external API response (ok/bidi format) to our BDUser format
+      const apiData = data?.data || data;
+      const bidi = apiData?.bidi || {};
+      const mapped: BDUser = {
+        uuid,
+        name: bidi.name || apiData?.name || uuid,
+        total_earnings: bidi.total_earned || 0,
+        available_balance: bidi.balance_coins || 0,
+        supporters_count: apiData?.supporters?.count || 0,
+        hosts_count: apiData?.hosts?.count || 0,
+        agencies_count: apiData?.agencies?.count || 0,
+        supporters_charges: apiData?.supporters?.total_commission || 0,
+        supporters_commission: apiData?.supporters?.total_commission || 0,
+        hosts_salary_closed: apiData?.hosts?.closed_count || 0,
+        hosts_bonus: apiData?.hosts?.total_bonus || 0,
+        agencies_hosts_closed: 0,
+        agencies_bonus: apiData?.agencies?.total_bonus_coins || 0,
+        supporters: apiData?.supporters?.list || [],
+        hosts: apiData?.hosts?.list || [],
+        agencies: apiData?.agencies?.list || [],
+        withdrawals: apiData?.withdrawals || [],
+      };
+      saveBdUser(mapped);
       setLoading(false);
       return true;
     } catch (e: any) {
@@ -97,7 +119,29 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     setLoading(true);
     try {
       const data = await callApi("dashboard", { uuid: bdUser.uuid });
-      if (data?.success) saveBdUser({ uuid: bdUser.uuid, ...data.data });
+      if (data?.success || data?.ok) {
+        const apiData = data?.data || data;
+        const bidi = apiData?.bidi || {};
+        saveBdUser({
+          uuid: bdUser.uuid,
+          name: bidi.name || apiData?.name || bdUser.name,
+          total_earnings: bidi.total_earned || 0,
+          available_balance: bidi.balance_coins || 0,
+          supporters_count: apiData?.supporters?.count || 0,
+          hosts_count: apiData?.hosts?.count || 0,
+          agencies_count: apiData?.agencies?.count || 0,
+          supporters_charges: apiData?.supporters?.total_commission || 0,
+          supporters_commission: apiData?.supporters?.total_commission || 0,
+          hosts_salary_closed: apiData?.hosts?.closed_count || 0,
+          hosts_bonus: apiData?.hosts?.total_bonus || 0,
+          agencies_hosts_closed: 0,
+          agencies_bonus: apiData?.agencies?.total_bonus_coins || 0,
+          supporters: apiData?.supporters?.list || [],
+          hosts: apiData?.hosts?.list || [],
+          agencies: apiData?.agencies?.list || [],
+          withdrawals: apiData?.withdrawals || [],
+        });
+      }
     } catch {}
     setLoading(false);
   }, [bdUser?.uuid]);
