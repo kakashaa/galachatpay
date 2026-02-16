@@ -33,7 +33,8 @@ const BDInfoPage: React.FC = () => {
 
   // Recipient info state (for approved withdrawals)
   const [showRecipientForm, setShowRecipientForm] = useState(false);
-  const [recipientInfo, setRecipientInfo] = useState({ name: "", phone: "", transfer_type: "", country: "" });
+  const [paymentMethod, setPaymentMethod] = useState<"transfer" | "bank" | "">(""); 
+  const [recipientInfo, setRecipientInfo] = useState({ name: "", phone: "", transfer_type: "", country: "", bank_account: "", bank_name: "" });
   const [recipientLoading, setRecipientLoading] = useState(false);
 
   useEffect(() => {
@@ -106,7 +107,15 @@ const BDInfoPage: React.FC = () => {
   };
 
   const handleSubmitRecipientInfo = async (withdrawalId: string) => {
-    if (!recipientInfo.name || !recipientInfo.phone || !recipientInfo.transfer_type || !recipientInfo.country) {
+    if (!recipientInfo.name || !recipientInfo.country) {
+      toast.error("جميع الحقول مطلوبة");
+      return;
+    }
+    if (paymentMethod === "transfer" && (!recipientInfo.phone || !recipientInfo.transfer_type)) {
+      toast.error("جميع الحقول مطلوبة");
+      return;
+    }
+    if (paymentMethod === "bank" && (!recipientInfo.bank_account || !recipientInfo.bank_name)) {
       toast.error("جميع الحقول مطلوبة");
       return;
     }
@@ -117,8 +126,8 @@ const BDInfoPage: React.FC = () => {
           action: "submit_recipient_info",
           withdrawal_id: withdrawalId,
           recipient_name: recipientInfo.name,
-          recipient_phone: recipientInfo.phone,
-          transfer_type: recipientInfo.transfer_type,
+          recipient_phone: paymentMethod === "transfer" ? recipientInfo.phone : recipientInfo.bank_account,
+          transfer_type: paymentMethod === "transfer" ? recipientInfo.transfer_type : `بنك: ${recipientInfo.bank_name}`,
           country: recipientInfo.country,
         },
       });
@@ -126,7 +135,8 @@ const BDInfoPage: React.FC = () => {
       if (result?.success) {
         toast.success("تم إرسال معلومات المستلم بنجاح");
         setShowRecipientForm(false);
-        setRecipientInfo({ name: "", phone: "", transfer_type: "", country: "" });
+        setPaymentMethod("");
+        setRecipientInfo({ name: "", phone: "", transfer_type: "", country: "", bank_account: "", bank_name: "" });
         loadData();
       } else {
         toast.error(result?.error || "فشل الإرسال");
@@ -194,43 +204,102 @@ const BDInfoPage: React.FC = () => {
               </Button>
             ) : (
               <div className="space-y-3">
+                {/* Recipient name - always shown */}
                 <Input
                   placeholder="اسم المستلم"
                   value={recipientInfo.name}
                   onChange={(e) => setRecipientInfo({ ...recipientInfo, name: e.target.value })}
                   className="h-10 text-sm"
                 />
-                <Input
-                  placeholder="رقم المستلم"
-                  value={recipientInfo.phone}
-                  onChange={(e) => setRecipientInfo({ ...recipientInfo, phone: e.target.value })}
-                  className="h-10 text-sm"
-                  dir="ltr"
-                />
-                <Input
-                  placeholder="نوع الحوالة (مثال: ويسترن يونيون)"
-                  value={recipientInfo.transfer_type}
-                  onChange={(e) => setRecipientInfo({ ...recipientInfo, transfer_type: e.target.value })}
-                  className="h-10 text-sm"
-                />
-                <Input
-                  placeholder="الدولة"
-                  value={recipientInfo.country}
-                  onChange={(e) => setRecipientInfo({ ...recipientInfo, country: e.target.value })}
-                  className="h-10 text-sm"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1 gap-1"
-                    disabled={recipientLoading}
-                    onClick={() => handleSubmitRecipientInfo(approvedWithdrawal.id)}
-                  >
-                    {recipientLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    إرسال
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setShowRecipientForm(false)}>إلغاء</Button>
-                </div>
+
+                {/* Payment method selection */}
+                {!paymentMethod && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-foreground">اختر طريقة الاستلام:</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => setPaymentMethod("transfer")}>
+                        💸 حوالة
+                      </Button>
+                      <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => setPaymentMethod("bank")}>
+                        🏦 بنك
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Transfer fields */}
+                {paymentMethod === "transfer" && (
+                  <>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-foreground">💸 حوالة</span>
+                      <button className="text-[10px] text-muted-foreground underline" onClick={() => setPaymentMethod("")}>تغيير</button>
+                    </div>
+                    <Input
+                      placeholder="رقم جوال المستلم"
+                      value={recipientInfo.phone}
+                      onChange={(e) => setRecipientInfo({ ...recipientInfo, phone: e.target.value })}
+                      className="h-10 text-sm"
+                      dir="ltr"
+                    />
+                    <Input
+                      placeholder="نوع الحوالة (مثال: ويسترن يونيون)"
+                      value={recipientInfo.transfer_type}
+                      onChange={(e) => setRecipientInfo({ ...recipientInfo, transfer_type: e.target.value })}
+                      className="h-10 text-sm"
+                    />
+                    <Input
+                      placeholder="الدولة"
+                      value={recipientInfo.country}
+                      onChange={(e) => setRecipientInfo({ ...recipientInfo, country: e.target.value })}
+                      className="h-10 text-sm"
+                    />
+                  </>
+                )}
+
+                {/* Bank fields */}
+                {paymentMethod === "bank" && (
+                  <>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-foreground">🏦 بنك</span>
+                      <button className="text-[10px] text-muted-foreground underline" onClick={() => setPaymentMethod("")}>تغيير</button>
+                    </div>
+                    <Input
+                      placeholder="رقم الحساب البنكي / IBAN"
+                      value={recipientInfo.bank_account}
+                      onChange={(e) => setRecipientInfo({ ...recipientInfo, bank_account: e.target.value })}
+                      className="h-10 text-sm"
+                      dir="ltr"
+                    />
+                    <Input
+                      placeholder="اسم البنك"
+                      value={recipientInfo.bank_name}
+                      onChange={(e) => setRecipientInfo({ ...recipientInfo, bank_name: e.target.value })}
+                      className="h-10 text-sm"
+                    />
+                    <Input
+                      placeholder="الدولة"
+                      value={recipientInfo.country}
+                      onChange={(e) => setRecipientInfo({ ...recipientInfo, country: e.target.value })}
+                      className="h-10 text-sm"
+                    />
+                  </>
+                )}
+
+                {/* Submit / Cancel */}
+                {paymentMethod && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 gap-1"
+                      disabled={recipientLoading}
+                      onClick={() => handleSubmitRecipientInfo(approvedWithdrawal.id)}
+                    >
+                      {recipientLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                      إرسال
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowRecipientForm(false); setPaymentMethod(""); }}>إلغاء</Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
