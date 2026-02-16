@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Mic, Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,7 +169,7 @@ const BDInfoPage: React.FC = () => {
     );
   }
 
-  const { settings, agencies, hosts, users, totals, withdrawals = [] } = data;
+  const { settings, agencies, totals, withdrawals = [] } = data;
   const totalEarned = Number(settings.total_earned || 0);
   const availableBalance = Number(settings.available_balance || 0);
   const publishedDomain = "https://galachatpay.lovable.app";
@@ -187,8 +187,6 @@ const BDInfoPage: React.FC = () => {
 
   const tabs = [
     { key: "agencies" as const, label: "الوكلاء", icon: Building2, color: "text-amber-400", bgColor: "bg-amber-500/10", items: agencies, total: totals.agency, pct: settings.agency_commission_pct },
-    { key: "hosts" as const, label: "المضيفين", icon: Mic, color: "text-pink-400", bgColor: "bg-pink-500/10", items: hosts, total: totals.host, pct: settings.host_commission_pct },
-    { key: "users" as const, label: "المستخدمين", icon: Users, color: "text-blue-400", bgColor: "bg-blue-500/10", items: users, total: totals.user, pct: settings.user_commission_pct },
   ];
 
   return (
