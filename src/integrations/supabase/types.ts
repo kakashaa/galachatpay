@@ -707,6 +707,74 @@ export type Database = {
         }
         Relationships: []
       }
+      hair_selections: {
+        Row: {
+          created_at: string
+          hair_id: string
+          id: string
+          selection_week: string
+          user_uuid: string
+        }
+        Insert: {
+          created_at?: string
+          hair_id: string
+          id?: string
+          selection_week: string
+          user_uuid: string
+        }
+        Update: {
+          created_at?: string
+          hair_id?: string
+          id?: string
+          selection_week?: string
+          user_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hair_selections_hair_id_fkey"
+            columns: ["hair_id"]
+            isOneToOne: false
+            referencedRelation: "hairs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hairs: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          display_order: number
+          file_url: string
+          id: string
+          is_active: boolean
+          is_deleted: boolean
+          thumbnail_url: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          file_url: string
+          id?: string
+          is_active?: boolean
+          is_deleted?: boolean
+          thumbnail_url?: string | null
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          display_order?: number
+          file_url?: string
+          id?: string
+          is_active?: boolean
+          is_deleted?: boolean
+          thumbnail_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       id_changes: {
         Row: {
           created_at: string
