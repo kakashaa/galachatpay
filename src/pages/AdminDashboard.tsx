@@ -361,7 +361,7 @@ const AdminDashboardPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const [salary, reports, animated, customG, tickets, quickSupport, bdCache, vipReqs] = await Promise.all([
+      const [salary, reports, animated, customG, tickets, quickSupport, bdCache, vipReqs, bdWithdrawalsData] = await Promise.all([
         supabase.from("salary_requests").select("status"),
         supabase.from("ban_reports").select("is_verified"),
         supabase.from("animated_photo_requests").select("status"),
@@ -370,10 +370,16 @@ const AdminDashboardPage: React.FC = () => {
         supabase.from("quick_support_requests").select("status"),
         supabase.from("bd_requests_cache").select("status"),
         supabase.from("vip_requests").select("id"),
+        supabase.from("bd_withdrawals").select("id,status,bd_name,bd_uuid,amount,created_at,updated_at,recipient_name,recipient_phone,transfer_type,country,admin_note,transfer_number,receipt_url,approved_at,completed_at,rejected_at").order("created_at", { ascending: false }),
       ]);
       
       // Also update quick support requests for badge count
       setQuickSupportRequests(prev => prev.length ? prev : (quickSupport.data || []));
+      
+      // Update BD withdrawals state so badge count works immediately
+      if (bdWithdrawalsData.data && bdWithdrawalsData.data.length > 0) {
+        setBdWithdrawals(prev => prev.length > 0 ? prev : bdWithdrawalsData.data);
+      }
       
       const pending = (salary.data?.filter(r => r.status === "pending").length || 0) + 
                       (reports.data?.filter(r => !r.is_verified).length || 0) +
