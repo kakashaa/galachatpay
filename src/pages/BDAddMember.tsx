@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { UserPlus, Loader2, AlertCircle, CheckCircle, Users, Mic, Building2 } from "lucide-react";
+import { UserPlus, Loader2, AlertCircle, CheckCircle, Users, Building2 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { useBD } from "@/contexts/BDContext";
 
 const TYPE_CONFIG = {
   supporter: { label: "داعم", icon: Users, color: "text-blue-400", bg: "bg-blue-500/10" },
-  host: { label: "مضيف", icon: Mic, color: "text-pink-400", bg: "bg-pink-500/10" },
   agency: { label: "وكالة", icon: Building2, color: "text-amber-400", bg: "bg-amber-500/10" },
 } as const;
 
