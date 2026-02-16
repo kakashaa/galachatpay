@@ -276,7 +276,11 @@ const SalaryWithdraw: React.FC = () => {
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
             <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلب السحب بنجاح</h2>
-            <p className="text-sm text-muted-foreground">سيتم معالجة طلبك وإشعارك بالنتيجة</p>
+            <p className="text-sm text-muted-foreground">
+              {withdrawType === "instant"
+                ? "سوف يتم شحن كوينزات للدعم وسوف يتم تحويل المبلغ خلال دقائق ⚡"
+                : "سوف تستلم حوالتك خلال 32 ساعة 🕐"}
+            </p>
             {requestId && (
               <div className="mt-4 rounded-xl p-3 bg-muted/30 border border-border/20">
                 <p className="text-[10px] text-muted-foreground mb-1">رقم المرجع</p>
