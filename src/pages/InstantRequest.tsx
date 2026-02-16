@@ -133,7 +133,7 @@ const InstantRequest: React.FC = () => {
         return;
       }
       if (!data?.success) {
-        setError("لم يتم العثور على تحويل. حوّل المبلغ إلى آيدي 10000 في غلا لايف ثم حاول مرة أخرى.");
+        setError(data?.error || "لم يتم العثور على تحويل. حوّل المبلغ إلى آيدي 10000 في غلا لايف ثم حاول مرة أخرى.");
         setLoading(false);
         return;
       }
@@ -229,9 +229,9 @@ const InstantRequest: React.FC = () => {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
-            <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-            <p className="text-xs text-destructive">{error}</p>
+          <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive whitespace-pre-line">{error}</p>
           </div>
         )}
 
