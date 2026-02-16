@@ -5,12 +5,11 @@ import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { useBD } from "@/contexts/BDContext";
 
-
-
 const BDDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { bdUser, loading, refreshDashboard, logout } = useBD();
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [earningsExpanded, setEarningsExpanded] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     if (!bdUser) { navigate("/bd"); return; }
@@ -21,11 +20,11 @@ const BDDashboard: React.FC = () => {
 
   const handleLogout = () => { logout(); navigate("/bd"); };
 
-  const toggleCard = (card: string) => {
-    setExpandedCard(expandedCard === card ? null : card);
+  const toggleCategory = (key: string) => {
+    setExpandedCategory(expandedCategory === key ? null : key);
   };
 
-  const cards = [
+  const categories = [
     {
       key: "supporters",
       title: "الداعمين",
@@ -90,11 +89,16 @@ const BDDashboard: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-primary/10 rounded-xl p-3 text-center">
+            {/* Total Earnings - expandable */}
+            <button
+              onClick={() => setEarningsExpanded(!earningsExpanded)}
+              className="bg-primary/10 rounded-xl p-3 text-center transition-colors hover:bg-primary/15 relative"
+            >
               <DollarSign className="w-4 h-4 text-primary mx-auto mb-1" />
               <p className="text-base font-bold text-amber-400">${(bdUser.total_earnings || 0).toFixed(2)}</p>
-              <p className="text-[9px] text-muted-foreground">إجمالي الأرباح</p>
-            </div>
+              <p className="text-[9px] text-muted-foreground">أرباح الشهر الحالي</p>
+              <ChevronDown className={`w-3 h-3 text-muted-foreground mx-auto mt-1 transition-transform ${earningsExpanded ? "rotate-180" : ""}`} />
+            </button>
             <div className="bg-primary/10 rounded-xl p-3 text-center">
               <Wallet className="w-4 h-4 text-primary mx-auto mb-1" />
               <p className="text-base font-bold text-green-400">${(bdUser.available_balance || 0).toFixed(2)}</p>
@@ -103,75 +107,79 @@ const BDDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Category cards */}
-        {cards.map((card) => {
-          const Icon = card.icon;
-          const isExpanded = expandedCard === card.key;
-          return (
-            <div key={card.key} className="glass-card overflow-hidden">
-              <button
-                onClick={() => toggleCard(card.key)}
-                className="w-full p-4 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full ${card.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-5 h-5 ${card.color}`} />
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-foreground">{card.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{card.count} عضو</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/bd/add-member?type=${card.memberType}`);
-                    }}
+        {/* Earnings breakdown - categories inside earnings */}
+        {earningsExpanded && (
+          <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+            {categories.map((cat) => {
+              const Icon = cat.icon;
+              const isCatExpanded = expandedCategory === cat.key;
+              return (
+                <div key={cat.key} className="glass-card overflow-hidden">
+                  <button
+                    onClick={() => toggleCategory(cat.key)}
+                    className="w-full p-3 flex items-center justify-between"
                   >
-                    <Plus className="w-4 h-4 text-primary" />
-                  </Button>
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </div>
-              </button>
-
-              {/* Stats */}
-              <div className="px-4 pb-3 flex gap-3">
-                {card.stats.map((s, i) => (
-                  <div key={i} className="flex-1 bg-muted/20 rounded-lg p-2 text-center">
-                    <p className="text-xs font-bold text-foreground">{s.value}</p>
-                    <p className="text-[9px] text-muted-foreground">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Expanded member list */}
-              {isExpanded && card.items.length > 0 && (
-                <div className="px-4 pb-4 space-y-2 max-h-60 overflow-y-auto">
-                  {card.items.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-2.5 bg-muted/10 rounded-lg border border-border/20">
-                      <div>
-                        <p className="text-xs font-bold text-foreground">{item.name || "—"}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{item.uuid || item.member_uuid || "—"}</p>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-full ${cat.bgColor} flex items-center justify-center`}>
+                        <Icon className={`w-4 h-4 ${cat.color}`} />
                       </div>
-                      <div className="text-left">
-                        {item.performance !== undefined && <p className="text-[10px] text-primary">{item.performance}</p>}
-                        {item.reward !== undefined && <p className="text-[10px] text-amber-400">${item.reward}</p>}
-                        {item.created_at && <p className="text-[9px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString("ar-EG")}</p>}
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-foreground">{cat.title}</p>
+                        <p className="text-[10px] text-muted-foreground">{cat.count} عضو</p>
                       </div>
                     </div>
-                  ))}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/bd/add-member?type=${cat.memberType}`);
+                        }}
+                      >
+                        <Plus className="w-3.5 h-3.5 text-primary" />
+                      </Button>
+                      {isCatExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                  </button>
+
+                  {/* Stats */}
+                  <div className="px-3 pb-2.5 flex gap-2">
+                    {cat.stats.map((s, i) => (
+                      <div key={i} className="flex-1 bg-muted/20 rounded-lg p-2 text-center">
+                        <p className="text-xs font-bold text-foreground">{s.value}</p>
+                        <p className="text-[9px] text-muted-foreground">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Expanded member list */}
+                  {isCatExpanded && cat.items.length > 0 && (
+                    <div className="px-3 pb-3 space-y-2 max-h-60 overflow-y-auto">
+                      {cat.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex items-center justify-between p-2.5 bg-muted/10 rounded-lg border border-border/20">
+                          <div>
+                            <p className="text-xs font-bold text-foreground">{item.name || "—"}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{item.uuid || item.member_uuid || "—"}</p>
+                          </div>
+                          <div className="text-left">
+                            {item.performance !== undefined && <p className="text-[10px] text-primary">{item.performance}</p>}
+                            {item.reward !== undefined && <p className="text-[10px] text-amber-400">${item.reward}</p>}
+                            {item.created_at && <p className="text-[9px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString("ar-EG")}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {isCatExpanded && cat.items.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center pb-3">لا يوجد أعضاء بعد</p>
+                  )}
                 </div>
-              )}
-              {isExpanded && card.items.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center pb-4">لا يوجد أعضاء بعد</p>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        )}
 
         {/* Withdraw button */}
         <Button
