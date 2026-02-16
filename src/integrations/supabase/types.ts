@@ -70,34 +70,43 @@ export type Database = {
       }
       animated_photo_requests: {
         Row: {
+          admin_note: string | null
           created_at: string
           description: string | null
           duration_label: string
           gif_url: string
           id: string
+          is_final_rejection: boolean
           max_level: number
+          rejection_image_url: string | null
           status: string
           user_name: string
           user_uuid: string
         }
         Insert: {
+          admin_note?: string | null
           created_at?: string
           description?: string | null
           duration_label: string
           gif_url: string
           id?: string
+          is_final_rejection?: boolean
           max_level?: number
+          rejection_image_url?: string | null
           status?: string
           user_name: string
           user_uuid: string
         }
         Update: {
+          admin_note?: string | null
           created_at?: string
           description?: string | null
           duration_label?: string
           gif_url?: string
           id?: string
+          is_final_rejection?: boolean
           max_level?: number
+          rejection_image_url?: string | null
           status?: string
           user_name?: string
           user_uuid?: string
@@ -376,6 +385,8 @@ export type Database = {
           created_at: string
           details: Json | null
           id: string
+          is_final_rejection: boolean
+          rejection_image_url: string | null
           request_type: string
           status: number
           updated_at: string
@@ -387,6 +398,8 @@ export type Database = {
           created_at?: string
           details?: Json | null
           id: string
+          is_final_rejection?: boolean
+          rejection_image_url?: string | null
           request_type?: string
           status?: number
           updated_at?: string
@@ -398,6 +411,8 @@ export type Database = {
           created_at?: string
           details?: Json | null
           id?: string
+          is_final_rejection?: boolean
+          rejection_image_url?: string | null
           request_type?: string
           status?: number
           updated_at?: string
@@ -474,7 +489,9 @@ export type Database = {
           deleted_at: string | null
           id: string
           is_deleted: boolean
+          is_final_rejection: boolean
           max_duration_allowed: number
+          rejection_image_url: string | null
           status: string
           thumbnail_url: string | null
           title: string
@@ -491,7 +508,9 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_deleted?: boolean
+          is_final_rejection?: boolean
           max_duration_allowed?: number
+          rejection_image_url?: string | null
           status?: string
           thumbnail_url?: string | null
           title?: string
@@ -508,7 +527,9 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_deleted?: boolean
+          is_final_rejection?: boolean
           max_duration_allowed?: number
+          rejection_image_url?: string | null
           status?: string
           thumbnail_url?: string | null
           title?: string
@@ -890,10 +911,12 @@ export type Database = {
           amount_usd: number
           created_at: string
           id: string
+          is_final_rejection: boolean
           payment_details: string
           payment_method: string
           recipient_country: string
           recipient_name: string
+          rejection_image_url: string | null
           request_type: string
           status: string
           transaction_date: string | null
@@ -910,10 +933,12 @@ export type Database = {
           amount_usd: number
           created_at?: string
           id?: string
+          is_final_rejection?: boolean
           payment_details: string
           payment_method: string
           recipient_country: string
           recipient_name: string
+          rejection_image_url?: string | null
           request_type: string
           status?: string
           transaction_date?: string | null
@@ -930,10 +955,12 @@ export type Database = {
           amount_usd?: number
           created_at?: string
           id?: string
+          is_final_rejection?: boolean
           payment_details?: string
           payment_method?: string
           recipient_country?: string
           recipient_name?: string
+          rejection_image_url?: string | null
           request_type?: string
           status?: string
           transaction_date?: string | null
