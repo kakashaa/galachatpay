@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ interface BDData {
   agencies: any[];
   hosts: any[];
   users: any[];
+  supporters: any[];
   totals: { agency: number; host: number; user: number };
   withdrawals: any[];
 }
@@ -169,7 +170,7 @@ const BDInfoPage: React.FC = () => {
     );
   }
 
-  const { settings, agencies, totals, withdrawals = [] } = data;
+  const { settings, agencies, supporters = [], totals, withdrawals = [] } = data;
   const totalEarned = Number(settings.total_earned || 0);
   const availableBalance = Number(settings.available_balance || 0);
   const publishedDomain = "https://galachatpay.lovable.app";
@@ -186,6 +187,7 @@ const BDInfoPage: React.FC = () => {
   const completedWithdrawal = !hasActiveWithdrawal ? withdrawals.find((w: any) => w.status === "completed" && w.transfer_number) : null;
 
   const tabs = [
+    { key: "supporters" as const, label: "الداعمين", icon: Users, color: "text-blue-400", bgColor: "bg-blue-500/10", items: supporters, total: totals.user, pct: settings.user_commission_pct },
     { key: "agencies" as const, label: "الوكلاء", icon: Building2, color: "text-amber-400", bgColor: "bg-amber-500/10", items: agencies, total: totals.agency, pct: settings.agency_commission_pct },
   ];
 
