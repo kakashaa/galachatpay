@@ -55,6 +55,7 @@ serve(async (req) => {
     });
 
     const rawText = await response.text();
+    console.log("gala-salary raw API response:", rawText);
 
     let data;
     try {
@@ -66,9 +67,21 @@ serve(async (req) => {
       );
     }
 
+    // Even if the API says not found, check if there's date/transaction info in the response
+    // to determine if it's an expired transfer vs truly not found
     if (!response.ok || !data.success) {
+      // Check if the API response contains any transaction data despite failure
+      const failData = data.data || data;
+      const failTxDate = failData.created_at || failData.date || failData.transaction_date || null;
+      const failTxId = failData.transaction_id || failData.id || null;
+      
+      console.log("API failed response data:", JSON.stringify({ failTxDate, failTxId, message: data.message, error: data.error }));
+      
       return new Response(
-        JSON.stringify({ success: false, error: data.message || data.error || "Transaction check failed" }),
+        JSON.stringify({ 
+          success: false, 
+          error: data.message || data.error || "لم يتم العثور على تحويل بهذه البيانات. تأكد من صحة المعرف والمبلغ.",
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
