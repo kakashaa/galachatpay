@@ -1,8 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
-
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const UUID_REGEX = /^[a-zA-Z0-9_-]{3,64}$/;
+const MIN_AMOUNT_USD = 22;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -30,10 +31,33 @@ serve(async (req) => {
     }
 
     const parsedAmount = Number(amount);
-    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0 || parsedAmount > 1000000) {
+    if (!amount || isNaN(parsedAmount) || parsedAmount < MIN_AMOUNT_USD || parsedAmount > 1000000) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid amount" }),
+        JSON.stringify({ success: false, error: `الحد الأدنى للمبلغ هو ${MIN_AMOUNT_USD}$` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if user already has a pending/approved request with the same amount
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sb = createClient(supabaseUrl, supabaseKey);
+
+    const sanitizedUuid = (uuid as string).trim();
+
+    const { data: duplicateAmount } = await sb
+      .from("salary_requests")
+      .select("id")
+      .eq("user_uuid", sanitizedUuid)
+      .eq("amount_usd", parsedAmount)
+      .eq("request_type", "instant")
+      .in("status", ["pending", "approved"])
+      .limit(1);
+
+    if (duplicateAmount && duplicateAmount.length > 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "لديك طلب سحب بنفس المبلغ قيد المعالجة. يرجى استخدام مبلغ مختلف أو انتظار معالجة الطلب السابق." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -45,7 +69,6 @@ serve(async (req) => {
     const signPath = "api/newWebsite/" + endpoint;
     const headers = await getGalaHeaders("POST", signPath);
 
-    const sanitizedUuid = uuid.trim();
     const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
 
     const response = await fetch(url, {
