@@ -168,6 +168,9 @@ const AdminDashboardPage: React.FC = () => {
   const [approveReceiptFile, setApproveReceiptFile] = useState<File | null>(null);
   const [salaryActionLoading, setSalaryActionLoading] = useState(false);
   const [salaryFilter, setSalaryFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [rejectImageFile, setRejectImageFile] = useState<File | null>(null);
+  const [isFinalRejection, setIsFinalRejection] = useState(false);
+  const [animatedPhotoAction, setAnimatedPhotoAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
 
   // Ban reports state
   const [banReports, setBanReports] = useState<BanReport[]>([]);
@@ -680,26 +683,75 @@ const AdminDashboardPage: React.FC = () => {
     if (!rejectReason.trim()) { toast.error("يرجى كتابة سبب الرفض"); return; }
     setSalaryActionLoading(true);
     try {
+      let rejectionImageUrl: string | null = null;
+      if (rejectImageFile) {
+        rejectionImageUrl = await uploadFile(rejectImageFile);
+      }
       const request = salaryRequests.find(r => r.id === id);
-      await adminCall("update_salary_request", { id, status: "rejected", admin_note: rejectReason.trim() });
+      await adminCall("update_salary_request", { 
+        id, status: "rejected", admin_note: rejectReason.trim(),
+        rejection_image_url: rejectionImageUrl,
+        is_final_rejection: isFinalRejection,
+      });
       
-      // إضافة إشعار للمستخدم
       if (request) {
         await supabase.from("notifications").insert({
           user_uuid: request.user_uuid,
-          title: "❌ تم رفض طلبك",
-          body: `للأسف، تم رفض طلبك. السبب: ${rejectReason.trim()}\n\nيمكنك إعادة إرسال الطلب مع التعديلات المطلوبة.`,
+          title: isFinalRejection ? "⛔ رفض نهائي" : "❌ تم رفض طلبك",
+          body: isFinalRejection 
+            ? `تم رفض طلبك نهائياً. السبب: ${rejectReason.trim()}`
+            : `تم رفض طلبك. السبب: ${rejectReason.trim()}\n\nيمكنك تعديل البيانات وإعادة الإرسال.`,
           target: "personal"
         });
       }
       
-      toast.success("تم رفض الطلب");
-      setSalaryAction(null); setRejectReason("");
-      // Optimistic update
+      toast.success(isFinalRejection ? "تم الرفض النهائي" : "تم رفض الطلب");
+      setSalaryAction(null); setRejectReason(""); setRejectImageFile(null); setIsFinalRejection(false);
       setSalaryRequests(prev => prev.map(r => r.id === id ? { ...r, status: "rejected", admin_note: rejectReason.trim() } : r));
       setAllSalaryRequests(prev => prev.map(r => r.id === id ? { ...r, status: "rejected", admin_note: rejectReason.trim() } : r));
       setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
     } catch { toast.error("فشل التحديث"); }
+    finally { setSalaryActionLoading(false); }
+  };
+
+  // Animated photo approve/reject handlers
+  const handleAnimatedPhotoApprove = async (photo: AnimatedPhotoRequest) => {
+    setSalaryActionLoading(true);
+    try {
+      await adminCall("update_animated_photo", { id: photo.id, status: "approved" });
+      await supabase.from("notifications").insert({
+        user_uuid: photo.user_uuid, title: "✅ تم قبول صورتك المتحركة",
+        body: "تم قبول طلب الصورة المتحركة بنجاح!", target: "personal",
+      });
+      toast.success("تم قبول الصورة");
+      setAnimatedPhotoAction(null);
+      setAnimatedPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: "approved" } : p));
+      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
+    } catch { toast.error("فشل القبول"); }
+    finally { setSalaryActionLoading(false); }
+  };
+
+  const handleAnimatedPhotoReject = async (photo: AnimatedPhotoRequest) => {
+    if (!rejectReason.trim()) { toast.error("يرجى كتابة سبب الرفض"); return; }
+    setSalaryActionLoading(true);
+    try {
+      let rejectionImageUrl: string | null = null;
+      if (rejectImageFile) rejectionImageUrl = await uploadFile(rejectImageFile);
+      await adminCall("update_animated_photo", { 
+        id: photo.id, status: "rejected", admin_note: rejectReason.trim(),
+        rejection_image_url: rejectionImageUrl, is_final_rejection: isFinalRejection,
+      });
+      await supabase.from("notifications").insert({
+        user_uuid: photo.user_uuid,
+        title: isFinalRejection ? "⛔ رفض نهائي" : "❌ تم رفض صورتك",
+        body: `السبب: ${rejectReason.trim()}${!isFinalRejection ? "\n\nيمكنك التعديل وإعادة الإرسال." : ""}`,
+        target: "personal",
+      });
+      toast.success("تم رفض الصورة");
+      setAnimatedPhotoAction(null); setRejectReason(""); setRejectImageFile(null); setIsFinalRejection(false);
+      setAnimatedPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, status: "rejected" } : p));
+      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
+    } catch { toast.error("فشل الرفض"); }
     finally { setSalaryActionLoading(false); }
   };
 
@@ -1206,11 +1258,20 @@ const AdminDashboardPage: React.FC = () => {
                           <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
                             <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
                             <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
+                            <div className="space-y-1">
+                              <label className="text-xs text-muted-foreground">صورة توضيحية (اختياري)</label>
+                              <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
+                                className="w-full text-sm file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:bg-destructive/10 file:text-destructive bg-muted/20 border border-border/30 rounded-lg p-1" />
+                            </div>
+                            <label className="flex items-center gap-2 text-xs cursor-pointer">
+                              <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
+                              <span className="text-destructive font-bold">⛔ رفض نهائي (لا يمكن للمستخدم التعديل)</span>
+                            </label>
                             <div className="flex gap-2">
                               <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)}>
-                                {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />تأكيد الرفض</>}
+                                {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)}>إلغاء</Button>
+                              <Button size="sm" variant="outline" onClick={() => { setSalaryAction(null); setRejectImageFile(null); setIsFinalRejection(false); }}>إلغاء</Button>
                             </div>
                           </div>
                         )}
@@ -2132,6 +2193,38 @@ const AdminDashboardPage: React.FC = () => {
                       </div>
                       {photo.gif_url && (
                         <a href={photo.gif_url} target="_blank" rel="noopener" className="text-xs text-primary underline">🖼️ عرض الصورة</a>
+                      )}
+                      {/* Action buttons for pending photos */}
+                      {photo.status === "pending" && (
+                        <div className="flex gap-2 pt-2 border-t border-border/30">
+                          <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleAnimatedPhotoApprove(photo)} disabled={salaryActionLoading}>
+                            <CheckCircle className="w-4 h-4 ml-1" />قبول
+                          </Button>
+                          <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setAnimatedPhotoAction({ id: photo.id, type: "reject" }); setRejectReason(""); setRejectImageFile(null); setIsFinalRejection(false); }}>
+                            <XCircle className="w-4 h-4 ml-1" />رفض
+                          </Button>
+                        </div>
+                      )}
+                      {animatedPhotoAction?.id === photo.id && animatedPhotoAction.type === "reject" && (
+                        <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl mt-2">
+                          <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
+                          <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض..." className="text-sm min-h-[60px]" />
+                          <div className="space-y-1">
+                            <label className="text-xs text-muted-foreground">صورة توضيحية (اختياري)</label>
+                            <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
+                              className="w-full text-sm file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:bg-destructive/10 file:text-destructive bg-muted/20 border border-border/30 rounded-lg p-1" />
+                          </div>
+                          <label className="flex items-center gap-2 text-xs cursor-pointer">
+                            <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
+                            <span className="text-destructive font-bold">⛔ رفض نهائي</span>
+                          </label>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleAnimatedPhotoReject(photo)}>
+                              {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => { setAnimatedPhotoAction(null); setRejectImageFile(null); setIsFinalRejection(false); }}>إلغاء</Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
