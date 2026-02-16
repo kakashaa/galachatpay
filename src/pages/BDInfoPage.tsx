@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Mic, Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, AlertCircle, ArrowDown } from "lucide-react";
+import { Users, Mic, Building2, DollarSign, RefreshCw, Loader2, Copy, CheckCircle, Wallet, Link2, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,9 @@ const BDInfoPage: React.FC = () => {
   const { user: authUser } = useAuth();
   const [data, setData] = useState<BDData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"agencies" | "hosts" | "users">("agencies");
   const [copied, setCopied] = useState(false);
+  const [earningsExpanded, setEarningsExpanded] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   // Withdrawal state
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -341,11 +342,15 @@ const BDInfoPage: React.FC = () => {
 
           {/* Earnings */}
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="bg-primary/10 rounded-xl p-3 text-center">
+            <button
+              onClick={() => setEarningsExpanded(!earningsExpanded)}
+              className="bg-primary/10 rounded-xl p-3 text-center transition-colors hover:bg-primary/15 relative"
+            >
               <DollarSign className="w-4 h-4 text-primary mx-auto mb-1" />
               <p className="text-base font-bold text-amber-400">${totalEarned.toFixed(2)}</p>
               <p className="text-[9px] text-muted-foreground">أرباح الشهر الحالي</p>
-            </div>
+              <ChevronDown className={`w-3 h-3 text-muted-foreground mx-auto mt-1 transition-transform ${earningsExpanded ? "rotate-180" : ""}`} />
+            </button>
             <button
               className="bg-primary/10 rounded-xl p-3 text-center transition-all hover:bg-primary/20 active:scale-95"
               onClick={() => { if (availableBalance >= 60) setShowWithdraw(!showWithdraw); else if (availableBalance > 0) toast.error("الحد الأدنى للسحب 60 دولار"); }}
@@ -356,6 +361,61 @@ const BDInfoPage: React.FC = () => {
               {availableBalance >= 60 && <p className="text-[8px] text-primary mt-1">اضغط للسحب</p>}
             </button>
           </div>
+
+          {/* Earnings breakdown - expandable categories */}
+          {earningsExpanded && (
+            <div className="space-y-2 mb-3 animate-in slide-in-from-top-2 duration-200">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isCatExpanded = expandedCategory === tab.key;
+                return (
+                  <div key={tab.key} className="bg-muted/10 rounded-xl border border-border/20 overflow-hidden">
+                    <button
+                      onClick={() => setExpandedCategory(isCatExpanded ? null : tab.key)}
+                      className="w-full p-3 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-full ${tab.bgColor} flex items-center justify-center`}>
+                          <Icon className={`w-4 h-4 ${tab.color}`} />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-foreground">{tab.label} ({tab.items.length})</p>
+                          <p className="text-[10px] text-muted-foreground">نسبة: {tab.pct}%</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-primary">${tab.total.toFixed(2)}</p>
+                        {isCatExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                      </div>
+                    </button>
+                    {isCatExpanded && (
+                      <div className="px-3 pb-3">
+                        {tab.items.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-3">لا يوجد أعضاء بعد</p>
+                        ) : (
+                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                            {tab.items.map((member: any) => (
+                              <div key={member.id} className="flex items-center justify-between p-2.5 bg-background/50 rounded-lg border border-border/20">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-foreground truncate">{member.member_name || "—"}</p>
+                                  <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</p>
+                                  <p className="text-[9px] text-muted-foreground">{userTypeLabels[member.type_user] || "مستخدم عادي"}</p>
+                                </div>
+                                <div className="text-left shrink-0 mr-2">
+                                  <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
+                                  <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Withdraw form */}
           {showWithdraw && (
@@ -415,70 +475,6 @@ const BDInfoPage: React.FC = () => {
             </Button>
           </div>
         </div>
-
-        {/* Three tabs */}
-        <div className="flex gap-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${isActive ? "border-primary bg-primary/10" : "border-border/20 bg-muted/10"}`}
-              >
-                <div className={`w-10 h-10 rounded-full ${tab.bgColor} flex items-center justify-center`}>
-                  <Icon className={`w-5 h-5 ${tab.color}`} />
-                </div>
-                <p className="text-[10px] font-bold text-foreground">{tab.label}</p>
-                <p className="text-[9px] text-muted-foreground">{tab.items.length} عضو</p>
-                <p className="text-[10px] font-bold text-primary">${tab.total.toFixed(2)}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Active tab content */}
-        {tabs.map((tab) => {
-          if (activeTab !== tab.key) return null;
-          const Icon = tab.icon;
-          return (
-            <div key={tab.key} className="glass-card p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <Icon className={`w-4 h-4 ${tab.color}`} />
-                  {tab.label} ({tab.items.length})
-                </h3>
-                <div className="text-[10px] text-muted-foreground">
-                  نسبة: <span className="text-primary font-bold">{tab.pct}%</span>
-                </div>
-              </div>
-              <div className="bg-muted/20 rounded-lg p-2.5 text-center">
-                <p className="text-xs font-bold text-amber-400">${tab.total.toFixed(2)}</p>
-                <p className="text-[9px] text-muted-foreground">إجمالي الأرباح من {tab.label}</p>
-              </div>
-              {tab.items.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">لا يوجد أعضاء بعد</p>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {tab.items.map((member: any) => (
-                    <div key={member.id} className="flex items-center justify-between p-2.5 bg-muted/10 rounded-lg border border-border/20">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-foreground truncate">{member.member_name || "—"}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</p>
-                        <p className="text-[9px] text-muted-foreground">{userTypeLabels[member.type_user] || "مستخدم عادي"}</p>
-                      </div>
-                      <div className="text-left shrink-0 mr-2">
-                        <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
-                        <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
 
         {/* Withdrawal history */}
         {withdrawals.length > 0 && (
