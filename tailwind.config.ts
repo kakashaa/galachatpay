@@ -101,6 +101,16 @@ export default {
           "0%": { opacity: "0", transform: "translateY(12px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "dock-bounce": {
+          "0%, 100%": { transform: "translateY(0) scale(1)" },
+          "40%": { transform: "translateY(-4px) scale(1.15)" },
+          "60%": { transform: "translateY(1px) scale(0.95)" },
+        },
+        "dock-wiggle": {
+          "0%, 100%": { transform: "rotate(0deg)" },
+          "25%": { transform: "rotate(-8deg)" },
+          "75%": { transform: "rotate(8deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -110,6 +120,8 @@ export default {
         "pulse-glow": "pulse-glow 4s ease-in-out infinite",
         "bounce-slow": "bounce-slow 3s ease-in-out infinite",
         "fade-in": "fade-in 0.4s ease-out forwards",
+        "dock-bounce": "dock-bounce 0.6s ease-in-out infinite",
+        "dock-wiggle": "dock-wiggle 0.4s ease-in-out",
       },
     },
   },
