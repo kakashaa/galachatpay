@@ -26,13 +26,10 @@ serve(async (req) => {
         const { bd_uuid } = params;
         if (!bd_uuid) throw new Error("bd_uuid required");
 
-        // First try direct lookup
         let { data: settingsData } = await supabase.from("bd_commission_settings").select("*").eq("bd_uuid", bd_uuid).single();
 
-        // If not found, check if user changed their ID and find old BD uuid
         let resolvedUuid = bd_uuid;
         if (!settingsData) {
-          // Look through id_changes chain to find the original BD uuid
           let currentUuid = bd_uuid;
           for (let i = 0; i < 10; i++) {
             const { data: change } = await supabase
@@ -51,14 +48,12 @@ serve(async (req) => {
             if (found) {
               settingsData = found;
               resolvedUuid = change.user_uuid;
-              // Migrate BD uuid to new one
               await Promise.all([
                 supabase.from("bd_commission_settings").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
                 supabase.from("bd_members").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
                 supabase.from("bd_commission_logs").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
                 supabase.from("bd_events").update({ bd_uuid: bd_uuid }).eq("bd_uuid", resolvedUuid),
               ]);
-              // Update the settings data with new uuid
               settingsData.bd_uuid = bd_uuid;
               break;
             }
@@ -71,13 +66,15 @@ serve(async (req) => {
         }
 
         const lookupUuid = settingsData.bd_uuid;
-        const [membersRes, logsRes] = await Promise.all([
+        const [membersRes, logsRes, withdrawalsRes] = await Promise.all([
           supabase.from("bd_members").select("*").eq("bd_uuid", lookupUuid).order("created_at", { ascending: false }),
           supabase.from("bd_commission_logs").select("*").eq("bd_uuid", lookupUuid).order("created_at", { ascending: false }).limit(100),
+          supabase.from("bd_withdrawals").select("*").eq("bd_uuid", lookupUuid).order("created_at", { ascending: false }),
         ]);
 
         const members = membersRes.data || [];
         const logs = logsRes.data || [];
+        const withdrawals = withdrawalsRes.data || [];
 
         const agencies = members.filter(m => m.member_type === "agency");
         const hosts = members.filter(m => m.member_type === "host");
@@ -96,6 +93,7 @@ serve(async (req) => {
             users,
             totals: { agency: agencyTotal, host: hostTotal, user: userTotal },
             logs,
+            withdrawals,
           },
         });
       }
@@ -106,7 +104,6 @@ serve(async (req) => {
         if (!referral_code || !member_uuid) throw new Error("referral_code and member_uuid required");
         if (!/^\d+$/.test(member_uuid)) return json({ success: false, error: "الآيدي يجب أن يكون أرقام فقط" });
 
-        // Find BD by referral code
         const { data: bdSettings } = await supabase
           .from("bd_commission_settings")
           .select("*")
@@ -117,7 +114,6 @@ serve(async (req) => {
         if (!bdSettings) return json({ success: false, error: "رمز الدعوة غير صالح" });
         if (bdSettings.bd_uuid === member_uuid) return json({ success: false, error: "لا يمكنك تسجيل نفسك" });
 
-        // Check if already registered
         const { data: existing } = await supabase
           .from("bd_members")
           .select("id")
@@ -126,7 +122,6 @@ serve(async (req) => {
 
         if (existing) return json({ success: false, error: "هذا الحساب مسجل بالفعل لدى BD آخر" });
 
-        // Get user type from external API
         let memberName = "";
         let typeUser = 0;
         let memberType = "user";
@@ -164,7 +159,6 @@ serve(async (req) => {
               if (apiData?.data) {
                 memberName = apiData.data.name || apiData.data.nickname || "";
                 typeUser = Number(apiData.data.type_user || 0);
-                // type_user: 0=user, 1=host, 2=agent_hosts, 3=agent_charge, 4=agent_both, 5=agent_charge_host, 6=all
                 if (typeUser >= 2) memberType = "agency";
                 else if (typeUser === 1) memberType = "host";
                 else memberType = "user";
@@ -175,7 +169,6 @@ serve(async (req) => {
           console.error("Failed to get user info:", e);
         }
 
-        // Insert member
         const { error: insertErr } = await supabase.from("bd_members").insert({
           bd_uuid: bdSettings.bd_uuid,
           member_uuid,
@@ -199,7 +192,6 @@ serve(async (req) => {
           .select("*")
           .order("created_at", { ascending: false });
 
-        // Get member counts for each BD
         const bds = data || [];
         const enriched = await Promise.all(
           bds.map(async (bd) => {
@@ -234,7 +226,173 @@ serve(async (req) => {
         return json({ success: true });
       }
 
-      // Public: get BD info by referral code (no sensitive data)
+      // BD: Request withdrawal
+      case "request_withdrawal": {
+        const { bd_uuid, amount } = params;
+        if (!bd_uuid) throw new Error("bd_uuid required");
+        const numAmount = Number(amount);
+        if (!numAmount || numAmount < 60) return json({ success: false, error: "الحد الأدنى للسحب 60 دولار" });
+
+        // Check BD exists and has enough balance
+        const { data: bdSettings } = await supabase
+          .from("bd_commission_settings")
+          .select("*")
+          .eq("bd_uuid", bd_uuid)
+          .single();
+
+        if (!bdSettings) return json({ success: false, error: "حساب BD غير موجود" });
+        if (Number(bdSettings.available_balance) < numAmount) return json({ success: false, error: "الرصيد المتاح غير كافٍ" });
+
+        // Check no pending withdrawal
+        const { data: pendingW } = await supabase
+          .from("bd_withdrawals")
+          .select("id")
+          .eq("bd_uuid", bd_uuid)
+          .in("status", ["pending", "approved"])
+          .limit(1);
+
+        if (pendingW && pendingW.length > 0) return json({ success: false, error: "لديك طلب سحب قيد المعالجة بالفعل" });
+
+        // Create withdrawal & deduct balance
+        const { error: wErr } = await supabase.from("bd_withdrawals").insert({
+          bd_uuid,
+          bd_name: bdSettings.bd_name,
+          amount: numAmount,
+          status: "pending",
+        });
+        if (wErr) throw wErr;
+
+        // Deduct from available balance
+        const newBalance = Number(bdSettings.available_balance) - numAmount;
+        await supabase.from("bd_commission_settings").update({
+          available_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        }).eq("bd_uuid", bd_uuid);
+
+        return json({ success: true });
+      }
+
+      // Admin: approve withdrawal (BD needs to fill recipient info)
+      case "approve_withdrawal": {
+        const { withdrawal_id } = params;
+        if (!withdrawal_id) throw new Error("withdrawal_id required");
+
+        const { error } = await supabase.from("bd_withdrawals").update({
+          status: "approved",
+          approved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", withdrawal_id);
+
+        if (error) throw error;
+
+        // Get withdrawal to notify BD
+        const { data: w } = await supabase.from("bd_withdrawals").select("*").eq("id", withdrawal_id).single();
+        if (w) {
+          await supabase.from("notifications").insert({
+            user_uuid: w.bd_uuid,
+            title: "✅ تمت الموافقة على طلب السحب",
+            body: `تمت الموافقة على سحب $${Number(w.amount).toFixed(2)}. يرجى إضافة معلومات المستلم لإتمام التحويل.`,
+            target: "personal",
+          });
+        }
+
+        return json({ success: true });
+      }
+
+      // Admin: reject withdrawal
+      case "reject_withdrawal": {
+        const { withdrawal_id, admin_note } = params;
+        if (!withdrawal_id) throw new Error("withdrawal_id required");
+
+        const { data: w } = await supabase.from("bd_withdrawals").select("*").eq("id", withdrawal_id).single();
+        if (!w) return json({ success: false, error: "الطلب غير موجود" });
+
+        // Return balance
+        const { data: bdSettings } = await supabase.from("bd_commission_settings").select("available_balance").eq("bd_uuid", w.bd_uuid).single();
+        if (bdSettings) {
+          await supabase.from("bd_commission_settings").update({
+            available_balance: Number(bdSettings.available_balance) + Number(w.amount),
+            updated_at: new Date().toISOString(),
+          }).eq("bd_uuid", w.bd_uuid);
+        }
+
+        await supabase.from("bd_withdrawals").update({
+          status: "rejected",
+          admin_note: admin_note || null,
+          rejected_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", withdrawal_id);
+
+        await supabase.from("notifications").insert({
+          user_uuid: w.bd_uuid,
+          title: "❌ تم رفض طلب السحب",
+          body: `تم رفض طلب سحب $${Number(w.amount).toFixed(2)}.${admin_note ? " السبب: " + admin_note : ""}`,
+          target: "personal",
+        });
+
+        return json({ success: true });
+      }
+
+      // BD: submit recipient info after approval
+      case "submit_recipient_info": {
+        const { withdrawal_id, recipient_name, recipient_phone, transfer_type, country } = params;
+        if (!withdrawal_id || !recipient_name || !recipient_phone || !transfer_type || !country) {
+          return json({ success: false, error: "جميع الحقول مطلوبة" });
+        }
+
+        const { error } = await supabase.from("bd_withdrawals").update({
+          recipient_name,
+          recipient_phone,
+          transfer_type,
+          country,
+          status: "info_submitted",
+          updated_at: new Date().toISOString(),
+        }).eq("id", withdrawal_id).eq("status", "approved");
+
+        if (error) throw error;
+        return json({ success: true });
+      }
+
+      // Admin: complete transfer (add transfer number and receipt)
+      case "complete_transfer": {
+        const { withdrawal_id, transfer_number, receipt_url } = params;
+        if (!withdrawal_id || !transfer_number) throw new Error("withdrawal_id and transfer_number required");
+
+        const { error } = await supabase.from("bd_withdrawals").update({
+          status: "completed",
+          transfer_number,
+          receipt_url: receipt_url || null,
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", withdrawal_id);
+
+        if (error) throw error;
+
+        // Notify BD
+        const { data: w } = await supabase.from("bd_withdrawals").select("*").eq("id", withdrawal_id).single();
+        if (w) {
+          await supabase.from("notifications").insert({
+            user_uuid: w.bd_uuid,
+            title: "💰 تم تحويل أرباحك",
+            body: `تم تحويل $${Number(w.amount).toFixed(2)} بنجاح. رقم الحوالة: ${transfer_number}`,
+            target: "personal",
+          });
+        }
+
+        return json({ success: true });
+      }
+
+      // Admin: list all BD withdrawals
+      case "list_bd_withdrawals": {
+        const { data } = await supabase
+          .from("bd_withdrawals")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        return json({ success: true, data: data || [] });
+      }
+
+      // Public: get BD info by referral code
       case "get_bd_public_info": {
         const { referral_code } = params;
         if (!referral_code) throw new Error("referral_code required");
