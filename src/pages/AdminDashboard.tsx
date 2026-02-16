@@ -2270,18 +2270,39 @@ const AdminDashboardPage: React.FC = () => {
                 {bdManagementList.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-8">لا يوجد حسابات BD مفعّلة</p>
                 ) : (
-                  bdManagementList.map((bd: any) => (
+                  bdManagementList.map((bd: any) => {
+                    const isEditing = editingBdSettings?.bd_uuid === bd.bd_uuid;
+                    return (
                     <div key={bd.id} className="bg-card border rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-bold text-foreground">{bd.bd_name}</p>
                           <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bd.bd_uuid}</p>
                         </div>
-                        <div className="text-left">
-                          <p className="text-xs font-bold text-primary">${Number(bd.total_earned || 0).toFixed(2)}</p>
-                          <p className="text-[9px] text-muted-foreground">رصيد: ${Number(bd.available_balance || 0).toFixed(2)}</p>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant={isEditing ? "default" : "outline"}
+                          className="h-7 text-[10px] gap-1"
+                          onClick={() => {
+                            if (isEditing) {
+                              setEditingBdSettings(null);
+                            } else {
+                              setEditingBdSettings({
+                                bd_uuid: bd.bd_uuid,
+                                agency_commission_pct: bd.agency_commission_pct,
+                                host_commission_pct: bd.host_commission_pct,
+                                user_commission_pct: bd.user_commission_pct,
+                                total_earned: bd.total_earned,
+                                available_balance: bd.available_balance,
+                              });
+                            }
+                          }}
+                        >
+                          {isEditing ? <><X className="w-3 h-3" /> إلغاء</> : <><Edit2 className="w-3 h-3" /> تعديل</>}
+                        </Button>
                       </div>
+
+                      {/* Stats Grid */}
                       <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                         <div className="bg-muted/20 rounded-lg p-2">
                           <p className="font-bold text-foreground">{bd.agency_count || 0}</p>
@@ -2296,43 +2317,109 @@ const AdminDashboardPage: React.FC = () => {
                           <p className="text-muted-foreground">مستخدمين</p>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <p className="text-[10px] text-muted-foreground font-bold">النسب المئوية:</p>
-                        {[
-                          { label: "وكلاء", field: "agency_commission_pct", val: bd.agency_commission_pct },
-                          { label: "مضيفين", field: "host_commission_pct", val: bd.host_commission_pct },
-                          { label: "مستخدمين", field: "user_commission_pct", val: bd.user_commission_pct },
-                        ].map((pct) => (
-                          <div key={pct.field} className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground w-16">{pct.label}:</span>
+
+                      {/* Financial Info */}
+                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+                        <div className="bg-emerald-500/10 rounded-lg p-2.5 text-center">
+                          <p className="text-muted-foreground mb-1">إجمالي الأرباح</p>
+                          {isEditing ? (
                             <Input
                               type="number"
                               min="0"
-                              max="100"
-                              step="0.5"
-                              defaultValue={pct.val}
-                              className="h-7 text-xs text-center w-20"
-                              onBlur={async (e) => {
-                                const newVal = parseFloat(e.target.value);
-                                if (isNaN(newVal)) return;
-                                try {
-                                  await supabase.functions.invoke("bd-manage", {
-                                    body: { action: "update_bd_settings", bd_uuid: bd.bd_uuid, [pct.field]: newVal },
-                                  });
-                                  toast.success("تم تحديث النسبة");
-                                  loadData();
-                                } catch { toast.error("فشل التحديث"); }
-                              }}
+                              step="0.01"
+                              value={editingBdSettings.total_earned}
+                              onChange={(e) => setEditingBdSettings({ ...editingBdSettings, total_earned: parseFloat(e.target.value) || 0 })}
+                              className="h-7 text-xs text-center"
                             />
+                          ) : (
+                            <p className="text-sm font-bold text-emerald-400">${Number(bd.total_earned || 0).toFixed(2)}</p>
+                          )}
+                        </div>
+                        <div className="bg-primary/10 rounded-lg p-2.5 text-center">
+                          <p className="text-muted-foreground mb-1">الرصيد المتاح</p>
+                          {isEditing ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={editingBdSettings.available_balance}
+                              onChange={(e) => setEditingBdSettings({ ...editingBdSettings, available_balance: parseFloat(e.target.value) || 0 })}
+                              className="h-7 text-xs text-center"
+                            />
+                          ) : (
+                            <p className="text-sm font-bold text-primary">${Number(bd.available_balance || 0).toFixed(2)}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Commission Percentages */}
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-muted-foreground font-bold">النسب المئوية:</p>
+                        {[
+                          { label: "وكلاء", field: "agency_commission_pct" as const },
+                          { label: "مضيفين", field: "host_commission_pct" as const },
+                          { label: "مستخدمين", field: "user_commission_pct" as const },
+                        ].map((pct) => (
+                          <div key={pct.field} className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground w-16">{pct.label}:</span>
+                            {isEditing ? (
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                value={editingBdSettings[pct.field]}
+                                onChange={(e) => setEditingBdSettings({ ...editingBdSettings, [pct.field]: parseFloat(e.target.value) || 0 })}
+                                className="h-7 text-xs text-center w-20"
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-foreground">{bd[pct.field]}</span>
+                            )}
                             <span className="text-[10px] text-muted-foreground">%</span>
                           </div>
                         ))}
                       </div>
+
+                      {/* Save Button */}
+                      {isEditing && (
+                        <Button
+                          size="sm"
+                          className="w-full h-9 text-xs gap-1"
+                          disabled={bdSettingsLoading}
+                          onClick={async () => {
+                            setBdSettingsLoading(true);
+                            try {
+                              const { error } = await supabase.functions.invoke("bd-manage", {
+                                body: {
+                                  action: "update_bd_settings",
+                                  bd_uuid: bd.bd_uuid,
+                                  agency_commission_pct: editingBdSettings.agency_commission_pct,
+                                  host_commission_pct: editingBdSettings.host_commission_pct,
+                                  user_commission_pct: editingBdSettings.user_commission_pct,
+                                  total_earned: editingBdSettings.total_earned,
+                                  available_balance: editingBdSettings.available_balance,
+                                },
+                              });
+                              if (error) throw error;
+                              toast.success("تم حفظ التعديلات بنجاح");
+                              setEditingBdSettings(null);
+                              loadData();
+                            } catch {
+                              toast.error("فشل حفظ التعديلات");
+                            }
+                            setBdSettingsLoading(false);
+                          }}
+                        >
+                          {bdSettingsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-3.5 h-3.5" /> حفظ التعديلات</>}
+                        </Button>
+                      )}
+
                       <div className="text-[9px] text-muted-foreground">
                         رمز الدعوة: <span className="font-mono text-primary">{bd.referral_code}</span>
                       </div>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </motion.div>
             )}
