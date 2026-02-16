@@ -12,7 +12,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: User, label: "حسابي", path: "/dashboard" },
+  { icon: User, label: "حسابي", path: "/my-requests" },
   { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true },
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
 ];
@@ -44,9 +44,7 @@ const BottomNav: React.FC = () => {
         >
           {navItems.map((item, index) => {
             const Icon = item.icon;
-            const isReallyActive = item.label === "الرئيسية"
-              ? location.pathname === "/dashboard"
-              : location.pathname === item.path;
+            const isReallyActive = location.pathname === item.path;
 
             return (
               <button
