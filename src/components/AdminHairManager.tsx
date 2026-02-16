@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Loader2, Upload, Trash2, Eye, EyeOff, Save, X } from "lucide-react";
+import { Loader2, Upload, Trash2, Eye, EyeOff, Save, X, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 
@@ -23,6 +23,51 @@ interface AdminHairManagerProps {
   adminUsername: string;
 }
 
+/** Render an SVGA file to a canvas and capture a frame as base64 PNG */
+async function captureSvgaFrame(file: File): Promise<string> {
+  const { Parser, Player } = await import("svga-web");
+
+  // Create offscreen canvas
+  const canvas = document.createElement("canvas");
+  canvas.width = 300;
+  canvas.height = 300;
+  canvas.style.display = "none";
+  document.body.appendChild(canvas);
+
+  try {
+    const parser = new Parser();
+    const arrayBuffer = await file.arrayBuffer();
+    const svgaData = await parser.do(arrayBuffer);
+
+    const player = new Player(canvas);
+    player.set({ loop: 1, fillMode: "forwards" });
+    await player.mount(svgaData);
+    player.start();
+
+    // Wait a bit for the first frame to render
+    await new Promise(r => setTimeout(r, 300));
+    player.pause();
+
+    // Capture canvas as base64
+    const dataUrl = canvas.toDataURL("image/png");
+    const base64 = dataUrl.split(",")[1] || "";
+
+    player.destroy();
+    return base64;
+  } finally {
+    document.body.removeChild(canvas);
+  }
+}
+
+/** Send captured frame to AI for Arabic name extraction */
+async function extractNameWithAI(imageBase64: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("extract-svga-name", {
+    body: { image_base64: imageBase64 },
+  });
+  if (error) return "";
+  return data?.name || "";
+}
+
 const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, adminUsername }) => {
   const [hairs, setHairs] = useState<HairItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +75,10 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadTotal, setUploadTotal] = useState(0);
   const [uploadCurrent, setUploadCurrent] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [aiEnabled, setAiEnabled] = useState(true);
 
   const loadHairs = useCallback(async () => {
     setLoading(true);
@@ -46,12 +93,9 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
   useEffect(() => { loadHairs(); }, [loadHairs]);
 
-  // Extract clean Arabic title from filename
-  const extractTitle = (fileName: string): string => {
+  const extractTitleFromFilename = (fileName: string): string => {
     let name = fileName.replace(/\.svga$/i, "");
-    // Remove common prefixes/suffixes, numbers, and English text - keep Arabic
     name = name.replace(/[-_]/g, " ").trim();
-    // Try to extract Arabic portion if mixed
     const arabicMatch = name.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF\s]+/g);
     if (arabicMatch) {
       const arabicName = arabicMatch.join(" ").trim();
@@ -70,18 +114,18 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
       return;
     }
 
-    // Filter out files containing "hawa" (case-insensitive)
+    // Filter out files containing "hawa"
     const hawaSkipped = allSvga.filter(f => /hawa/i.test(f.name));
     const afterHawaFilter = allSvga.filter(f => !/hawa/i.test(f.name));
 
-    // Filter out duplicates by comparing title with existing hairs
+    // Filter out duplicates
     const existingTitles = new Set(hairs.map(h => h.title.trim().toLowerCase()));
     const uploadSet = new Set<string>();
     const svgaFiles: File[] = [];
     let dupSkipped = 0;
 
     for (const file of afterHawaFilter) {
-      const title = extractTitle(file.name).toLowerCase();
+      const title = extractTitleFromFilename(file.name).toLowerCase();
       if (existingTitles.has(title) || uploadSet.has(title)) {
         dupSkipped++;
         continue;
@@ -90,13 +134,8 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
       svgaFiles.push(file);
     }
 
-    // Show skip summary
-    if (hawaSkipped.length > 0) {
-      toast.info(`⏭️ تم تخطي ${hawaSkipped.length} ملف يحتوي "hawa"`);
-    }
-    if (dupSkipped > 0) {
-      toast.info(`⏭️ تم تخطي ${dupSkipped} ملف مكرر`);
-    }
+    if (hawaSkipped.length > 0) toast.info(`⏭️ تم تخطي ${hawaSkipped.length} ملف يحتوي "hawa"`);
+    if (dupSkipped > 0) toast.info(`⏭️ تم تخطي ${dupSkipped} ملف مكرر`);
 
     if (svgaFiles.length === 0) {
       toast.warning("لا توجد ملفات جديدة للرفع بعد الفلترة");
@@ -112,6 +151,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
     const currentMaxOrder = hairs.length > 0 ? Math.max(...hairs.map(h => h.display_order)) : 0;
     let successCount = 0;
     let failCount = 0;
+    let aiExtracted = 0;
 
     for (let i = 0; i < svgaFiles.length; i++) {
       const file = svgaFiles[i];
@@ -119,6 +159,8 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
       setUploadProgress(Math.round(((i + 1) / svgaFiles.length) * 100));
 
       try {
+        // Step 1: Upload file
+        setUploadStatus(`📤 رفع ${i + 1}/${svgaFiles.length}`);
         const formData = new FormData();
         formData.append("session_token", adminSessionToken);
         formData.append("username", adminUsername);
@@ -133,7 +175,27 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
           continue;
         }
 
-        const title = extractTitle(file.name);
+        // Step 2: Try AI name extraction if enabled
+        let title = extractTitleFromFilename(file.name);
+
+        if (aiEnabled) {
+          try {
+            setUploadStatus(`🧠 تحليل ${i + 1}/${svgaFiles.length}`);
+            const base64 = await captureSvgaFrame(file);
+            if (base64) {
+              const aiName = await extractNameWithAI(base64);
+              if (aiName && aiName !== "بدون_اسم" && aiName.length > 0) {
+                title = aiName;
+                aiExtracted++;
+              }
+            }
+          } catch (aiErr) {
+            // AI failed, fallback to filename
+            console.warn("AI extraction failed, using filename:", aiErr);
+          }
+        }
+
+        // Step 3: Insert record
         const { error: insertError } = await supabase.from("hairs").insert({
           title,
           file_url: uploadResult.url,
@@ -152,13 +214,13 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
     setUploading(false);
     setUploadProgress(0);
-    
+    setUploadStatus("");
+
     if (successCount > 0) {
-      toast.success(`✅ تم رفع ${successCount} شعرة بنجاح`);
+      const aiMsg = aiEnabled && aiExtracted > 0 ? ` (🧠 ${aiExtracted} اسم بالذكاء)` : "";
+      toast.success(`✅ تم رفع ${successCount} شعرة بنجاح${aiMsg}`);
     }
-    if (failCount > 0) {
-      toast.error(`❌ فشل رفع ${failCount} ملف`);
-    }
+    if (failCount > 0) toast.error(`❌ فشل رفع ${failCount} ملف`);
 
     e.target.value = "";
     loadHairs();
@@ -213,12 +275,29 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
     <motion.div key="hairs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
       {/* Upload Section */}
       <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
-        <div className="flex items-center gap-2 mb-2">
-          <Upload className="w-5 h-5 text-primary" />
-          <h3 className="text-sm font-bold text-foreground">رفع شعرات SVGA</h3>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Upload className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">رفع شعرات SVGA</h3>
+          </div>
+          <button
+            onClick={() => setAiEnabled(!aiEnabled)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              aiEnabled
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "bg-muted/30 text-muted-foreground border border-border/30"
+            }`}
+          >
+            <Brain className="w-3.5 h-3.5" />
+            {aiEnabled ? "AI مفعل" : "AI معطل"}
+          </button>
         </div>
-        <p className="text-xs text-muted-foreground">يمكنك اختيار أكثر من 100 ملف SVGA ورفعهم دفعة واحدة</p>
-        
+        <p className="text-xs text-muted-foreground">
+          {aiEnabled
+            ? "🧠 الذكاء الاصطناعي سيستخرج الاسم العربي من داخل كل ملف SVGA تلقائياً"
+            : "يمكنك اختيار أكثر من 100 ملف SVGA ورفعهم دفعة واحدة"}
+        </p>
+
         <label className="block">
           <input
             type="file"
@@ -234,7 +313,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
           <div className="space-y-2">
             <Progress value={uploadProgress} className="h-2" />
             <p className="text-xs text-center text-muted-foreground">
-              جاري الرفع... {uploadCurrent} / {uploadTotal} ({uploadProgress}%)
+              {uploadStatus || `جاري الرفع... ${uploadCurrent} / ${uploadTotal}`} ({uploadProgress}%)
             </p>
           </div>
         )}
@@ -260,7 +339,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
               className={`bg-card border border-border/40 rounded-xl p-3 flex items-center gap-3 ${!hair.is_active ? "opacity-50" : ""}`}
             >
               <span className="text-xs text-muted-foreground font-mono w-6 text-center">{index + 1}</span>
-              
+
               <div className="flex-1 min-w-0">
                 {editingId === hair.id ? (
                   <div className="flex gap-2">
