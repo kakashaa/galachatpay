@@ -94,27 +94,32 @@ serve(async (req) => {
 
     // Check if transaction is older than 24 hours
     if (transactionDate) {
-      const txTime = new Date(transactionDate).getTime();
-      const now = Date.now();
-      const diffHours = (now - txTime) / (1000 * 60 * 60);
-      if (diffHours > 24) {
-        const diffDays = Math.floor(diffHours / 24);
-        const remainingHours = Math.floor(diffHours % 24);
-        const ageText = diffDays > 0
-          ? `${diffDays} يوم و ${remainingHours} ساعة`
-          : `${Math.floor(diffHours)} ساعة`;
-        const txDateFormatted = new Date(transactionDate).toLocaleString("ar-EG", {
-          year: "numeric", month: "short", day: "numeric",
-          hour: "2-digit", minute: "2-digit",
-        });
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: `هذا التحويل قديم ولا يمكن استخدامه.\n\n📅 تاريخ التحويل: ${txDateFormatted}\n⏳ عمر التحويل: ${ageText}\n⚠️ السبب: مضى أكثر من 24 ساعة على التحويل.\n\nيرجى إجراء تحويل جديد وإعادة المحاولة.`,
-            expired: true,
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      try {
+        const txTime = new Date(transactionDate).getTime();
+        const now = Date.now();
+        const diffHours = (now - txTime) / (1000 * 60 * 60);
+        console.log("Transaction age check:", { transactionDate, diffHours, txTime, now });
+        
+        if (diffHours > 24) {
+          const diffDays = Math.floor(diffHours / 24);
+          const remainingHours = Math.floor(diffHours % 24);
+          const ageText = diffDays > 0
+            ? `${diffDays} يوم و ${remainingHours} ساعة`
+            : `${Math.floor(diffHours)} ساعة`;
+          const txDateObj = new Date(transactionDate);
+          const txDateFormatted = `${txDateObj.getUTCFullYear()}/${String(txDateObj.getUTCMonth() + 1).padStart(2, "0")}/${String(txDateObj.getUTCDate()).padStart(2, "0")} ${String(txDateObj.getUTCHours()).padStart(2, "0")}:${String(txDateObj.getUTCMinutes()).padStart(2, "0")}`;
+          
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: `هذا التحويل قديم ولا يمكن استخدامه.\n\n📅 تاريخ التحويل: ${txDateFormatted}\n⏳ عمر التحويل: ${ageText}\n⚠️ السبب: مضى أكثر من 24 ساعة على التحويل.\n\nيرجى إجراء تحويل جديد وإعادة المحاولة.`,
+              expired: true,
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (dateErr) {
+        console.error("Date check error:", dateErr);
       }
     }
 
