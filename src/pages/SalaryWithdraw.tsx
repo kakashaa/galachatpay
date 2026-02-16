@@ -323,7 +323,7 @@ const SalaryWithdraw: React.FC = () => {
               <span className="font-bold text-foreground">{userTypeLabels[user.type_user] || "مستخدم"}</span>
             </div>
             <div className="flex justify-between bg-muted/30 rounded-lg p-2.5">
-              <span className="text-muted-foreground">الرصيد</span>
+              <span className="text-muted-foreground">الكوينزات</span>
               <span className="font-bold text-primary flex items-center gap-1">
                 <Crown className="w-3 h-3" /> {availableBalance.toLocaleString()}
               </span>
@@ -339,7 +339,7 @@ const SalaryWithdraw: React.FC = () => {
                 <Wallet className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">الرصيد المتاح</p>
+                <p className="text-xs text-muted-foreground">الكوينزات المتاحة</p>
                 <p className="text-xl font-bold text-foreground">{availableBalance.toLocaleString()}</p>
               </div>
             </div>
