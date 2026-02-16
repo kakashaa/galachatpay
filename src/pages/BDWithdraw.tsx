@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Wallet, DollarSign, Loader2, AlertCircle, CheckCircle, Clock, Coins } from "lucide-react";
+import { Wallet, DollarSign, Loader2, AlertCircle, CheckCircle, Coins, Ban } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { useBD } from "@/contexts/BDContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const COIN_RATE = 7500;
 
@@ -12,14 +13,26 @@ const BDWithdraw: React.FC = () => {
   const { bdUser, withdraw, loading, refreshDashboard } = useBD();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [withdrawEnabled, setWithdrawEnabled] = useState(true);
+  const [_checkingSettings, setCheckingSettings] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "bd_monthly_withdraw_enabled")
+        .single();
+      if (data) setWithdrawEnabled(data.value === "true");
+      setCheckingSettings(false);
+    })();
+  }, []);
 
   if (!bdUser) { navigate("/bd"); return null; }
 
   const balanceUsd = bdUser.available_balance || 0;
   const balanceCoins = Math.round(balanceUsd * COIN_RATE);
-  const today = new Date();
-  const dayOfMonth = today.getDate();
-  const canWithdraw = dayOfMonth <= 7;
+  const canWithdraw = withdrawEnabled;
 
   const handleWithdraw = async () => {
     setError("");
@@ -62,9 +75,9 @@ const BDWithdraw: React.FC = () => {
           </div>
 
           {!canWithdraw && (
-            <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-              <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-              <p className="text-xs text-amber-400">السحب متاح فقط أول 7 أيام من الشهر</p>
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
+              <Ban className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-xs text-destructive">السحب الشهري متوقف حالياً من قبل الإدارة</p>
             </div>
           )}
 
