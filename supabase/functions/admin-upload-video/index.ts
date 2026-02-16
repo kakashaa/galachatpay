@@ -7,7 +7,8 @@ const corsHeaders = {
 };
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
-const ALLOWED_EXTENSIONS = new Set(["mp4", "webm", "mov", "avi"]);
+const ALLOWED_VIDEO_EXTENSIONS = new Set(["mp4", "webm", "mov", "avi"]);
+const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
 
 const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: string }> = {
   naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "super_admin" },
@@ -58,12 +59,16 @@ Deno.serve(async (req) => {
 
     // Validate file extension
     const ext = (file.name.split(".").pop() || "").toLowerCase();
-    if (!ALLOWED_EXTENSIONS.has(ext)) {
+    const isVideo = ALLOWED_VIDEO_EXTENSIONS.has(ext);
+    const isImage = ALLOWED_IMAGE_EXTENSIONS.has(ext);
+    if (!isVideo && !isImage) {
       return new Response(
         JSON.stringify({ error: "نوع الملف غير مدعوم" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const bucket = isImage ? "attachments" : "videos";
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -72,17 +77,18 @@ Deno.serve(async (req) => {
 
     const fileName = `${crypto.randomUUID()}.${ext}`;
 
+    const defaultContentType = isImage ? `image/${ext === "jpg" ? "jpeg" : ext}` : "video/mp4";
     const { error: uploadError } = await supabase.storage
-      .from("videos")
+      .from(bucket)
       .upload(fileName, file, {
-        contentType: file.type || "video/mp4",
+        contentType: file.type || defaultContentType,
         upsert: false,
       });
 
     if (uploadError) throw uploadError;
 
     const { data: urlData } = supabase.storage
-      .from("videos")
+      .from(bucket)
       .getPublicUrl(fileName);
 
     return new Response(
