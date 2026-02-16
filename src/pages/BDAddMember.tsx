@@ -5,7 +5,8 @@ import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useBD } from "@/contexts/BDContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const TYPE_CONFIG = {
   supporter: { label: "داعم", icon: Users, color: "text-blue-400", bg: "bg-blue-500/10" },
@@ -18,25 +19,44 @@ const BDAddMember: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const memberType = (searchParams.get("type") || "supporter") as keyof typeof TYPE_CONFIG;
-  const { sendInvitation, loading } = useBD();
+  const { user: authUser } = useAuth();
   const config = TYPE_CONFIG[memberType] || TYPE_CONFIG.supporter;
 
   const [step, setStep] = useState<Step>("terms");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [uuid, setUuid] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [addedName, setAddedName] = useState("");
 
   const handleSendInvitation = async () => {
     if (!uuid.trim()) { setError("أدخل UUID العضو"); return; }
+    if (!authUser?.uuid) { setError("يجب تسجيل الدخول أولاً"); return; }
     setError("");
-    const res = await sendInvitation(uuid.trim(), memberType);
-    if (res.success) {
-      setAddedName(res.name || uuid.trim());
-      setStep("instructions");
-      setUuid("");
-    } else {
-      setError(res.error || "فشل إرسال الدعوة");
+    setLoading(true);
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("bd-referral", {
+        body: {
+          action: "send_invitation",
+          bd_uuid: authUser.uuid,
+          bd_name: authUser.name || authUser.uuid,
+          bd_referral_code: "",
+          member_uuid: uuid.trim(),
+          member_type: memberType,
+        },
+      });
+      if (fnError) throw fnError;
+      if (data?.success) {
+        setAddedName(data?.name || uuid.trim());
+        setStep("instructions");
+        setUuid("");
+      } else {
+        setError(data?.error || "فشل إرسال الدعوة");
+      }
+    } catch (e: any) {
+      setError(e.message || "خطأ في الاتصال");
+    } finally {
+      setLoading(false);
     }
   };
 
