@@ -34,7 +34,7 @@ serve(async (req) => {
     if (!amount || isNaN(parsedAmount) || parsedAmount < MIN_AMOUNT_USD || parsedAmount > 1000000) {
       return new Response(
         JSON.stringify({ success: false, error: `الحد الأدنى للمبلغ هو ${MIN_AMOUNT_USD}$` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
