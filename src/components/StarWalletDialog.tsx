@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Star, Gift, DollarSign, IdCard } from "lucide-react";
+import { Star, Gift, DollarSign, IdCard, History } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import StarIdPurchase from "@/components/StarIdPurchase";
+import StarTransactionHistory from "@/components/StarTransactionHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useStarBalance } from "@/hooks/use-star-balance";
@@ -20,7 +21,7 @@ interface Props {
 
 const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main" }) => {
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "cashout_confirm" | "code_result" | "buy_id">(initialView);
+  const [currentView, setCurrentView] = useState<"main" | "gift" | "cashout" | "cashout_confirm" | "code_result" | "buy_id" | "history">(initialView);
   const [friendUuid, setFriendUuid] = useState("");
   const [giftAmount, setGiftAmount] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -230,6 +231,10 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 </Button>
               </div>
               <div className="flex gap-2">
+                <Button onClick={() => setCurrentView("history")} variant="outline" className="flex-1">
+                  <History className="w-4 h-4 ml-1" />
+                  سجل العمليات
+                </Button>
                 <Button onClick={() => setShowTutorial(true)} variant="outline" className="flex-1">
                   <PulsingHelpIcon size={16} />
                   <span className="mr-1">الشروط</span>
@@ -383,6 +388,9 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
 
               <button onClick={() => { setCurrentView("main"); onClose(); }} className="w-full text-center text-sm text-muted-foreground py-1">إغلاق</button>
             </div>
+          )}
+          {currentView === "history" && user?.uuid && (
+            <StarTransactionHistory userUuid={user.uuid} onBack={() => setCurrentView("main")} />
           )}
           {currentView === "buy_id" && (
             <StarIdPurchase
