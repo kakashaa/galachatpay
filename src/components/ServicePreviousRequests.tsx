@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
+import React, { useState } from "react";
+import { ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, FileText, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface RequestItem {
@@ -9,6 +9,7 @@ interface RequestItem {
   refId?: string;
   status?: "pending" | "approved" | "rejected" | "completed" | "done";
   date: string;
+  transferImageUrl?: string | null;
 }
 
 interface ServicePreviousRequestsProps {
@@ -77,7 +78,7 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
         case "salary": {
           const { data } = await supabase
             .from("salary_requests")
-            .select("id, request_type, amount_usd, status, created_at, transaction_id")
+            .select("id, request_type, amount_usd, status, created_at, transaction_id, transfer_image_url")
             .eq("user_uuid", userUuid)
             .order("created_at", { ascending: false })
             .limit(20);
@@ -88,6 +89,7 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
             refId: r.transaction_id ? String(r.transaction_id) : r.id?.slice(0, 8)?.toUpperCase(),
             status: r.status as any,
             date: r.created_at,
+            transferImageUrl: r.transfer_image_url,
           }));
           break;
         }
@@ -219,28 +221,43 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
           ) : (
             requests.map((req) => {
               const st = statusMap[req.status || "done"] || statusMap.done;
+              const isApprovedSalary = req.status === "approved" && req.transferImageUrl;
               return (
                 <div
                   key={req.id}
-                  className="flex items-center justify-between bg-muted/20 rounded-lg px-2.5 py-2"
+                  className="bg-muted/20 rounded-lg px-2.5 py-2 space-y-2"
                   dir="rtl"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-bold text-foreground truncate">{req.label}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[9px] text-muted-foreground">{formatDate(req.date)}</span>
-                      {req.detail && (
-                        <span className="text-[9px] text-muted-foreground">• {req.detail}</span>
-                      )}
-                      {req.refId && (
-                        <span className="text-[9px] font-mono text-primary/70">#{req.refId}</span>
-                      )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold text-foreground truncate">{req.label}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[9px] text-muted-foreground">{formatDate(req.date)}</span>
+                        {req.detail && (
+                          <span className="text-[9px] text-muted-foreground">• {req.detail}</span>
+                        )}
+                        {req.refId && (
+                          <span className="text-[9px] font-mono text-primary/70">#{req.refId}</span>
+                        )}
+                      </div>
                     </div>
+                    <span className={`text-[10px] font-bold flex items-center gap-1 ${isApprovedSalary ? "text-emerald-400" : st.color}`}>
+                      {isApprovedSalary ? <CheckCircle className="w-3 h-3" /> : st.icon}
+                      {isApprovedSalary ? "تم التحويل ✅" : st.label}
+                    </span>
                   </div>
-                  <span className={`text-[10px] font-bold flex items-center gap-1 ${st.color}`}>
-                    {st.icon}
-                    {st.label}
-                  </span>
+                  {isApprovedSalary && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                        <ImageIcon className="w-3 h-3" /> إيصال التحويل:
+                      </p>
+                      <img
+                        src={req.transferImageUrl!}
+                        alt="إيصال التحويل"
+                        className="w-full max-h-48 object-contain rounded-lg border border-emerald-500/20 bg-black/20"
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })
