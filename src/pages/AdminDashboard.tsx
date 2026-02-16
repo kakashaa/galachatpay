@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 import { Camera, Briefcase, MessageSquare, Headset, Zap } from "lucide-react";
 import AdminNotificationListener from "@/components/AdminNotificationListener";
@@ -268,6 +269,36 @@ const AdminDashboardPage: React.FC = () => {
   const [bdManagementList, setBdManagementList] = useState<any[]>([]);
   const [editingBdSettings, setEditingBdSettings] = useState<any>(null);
   const [bdSettingsLoading, setBdSettingsLoading] = useState(false);
+  const [bdWithdrawEnabled, setBdWithdrawEnabled] = useState(true);
+  const [bdWithdrawToggleLoading, setBdWithdrawToggleLoading] = useState(false);
+
+  // Load withdraw toggle setting
+  const loadWithdrawSetting = useCallback(async () => {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "bd_monthly_withdraw_enabled")
+      .single();
+    if (data) setBdWithdrawEnabled(data.value === "true");
+  }, []);
+
+  useEffect(() => { loadWithdrawSetting(); }, [loadWithdrawSetting]);
+
+  const toggleBdWithdraw = async () => {
+    setBdWithdrawToggleLoading(true);
+    const newVal = !bdWithdrawEnabled;
+    const { error } = await supabase
+      .from("app_settings")
+      .update({ value: String(newVal), updated_at: new Date().toISOString() })
+      .eq("key", "bd_monthly_withdraw_enabled");
+    if (!error) {
+      setBdWithdrawEnabled(newVal);
+      toast.success(newVal ? "تم تفعيل السحب الشهري" : "تم إيقاف السحب الشهري");
+    } else {
+      toast.error("فشل تحديث الإعداد");
+    }
+    setBdWithdrawToggleLoading(false);
+  };
 
   // BD withdrawals state
   const [bdWithdrawals, setBdWithdrawals] = useState<any[]>([]);
@@ -2307,6 +2338,19 @@ const AdminDashboardPage: React.FC = () => {
             {/* BD Management Tab */}
             {activeTab === "bd_management" && (
               <motion.div key="bd_management" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {/* Monthly Withdraw Toggle */}
+                <div className="bg-card border rounded-xl p-4 flex items-center justify-between" dir="rtl">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">السحب الشهري</p>
+                    <p className="text-[10px] text-muted-foreground">{bdWithdrawEnabled ? "مفعّل - يمكن للبيدي تقديم طلبات سحب" : "متوقف - لا يمكن تقديم طلبات سحب"}</p>
+                  </div>
+                  <Switch
+                    checked={bdWithdrawEnabled}
+                    onCheckedChange={toggleBdWithdraw}
+                    disabled={bdWithdrawToggleLoading}
+                  />
+                </div>
+
                 {bdManagementList.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-8">لا يوجد حسابات BD مفعّلة</p>
                 ) : (
