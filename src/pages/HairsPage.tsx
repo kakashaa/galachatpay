@@ -195,7 +195,7 @@ const HairsPage: React.FC = () => {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           {hairs.map((hair, index) => {
             const isLocked = index >= unlockCount;
             const isSelected = selectedIds.has(hair.id);
@@ -210,19 +210,19 @@ const HairsPage: React.FC = () => {
                   isSelected
                     ? "border-primary bg-primary/10 shadow-lg shadow-primary/20"
                     : isLocked
-                    ? "border-border/20 bg-muted/10 opacity-50"
+                    ? "border-border/20 bg-muted/20"
                     : "border-border/40 bg-card hover:border-primary/50"
                 }`}
               >
-                <div className="aspect-square flex items-center justify-center p-1">
+                <div className="aspect-[4/3] flex items-center justify-center overflow-hidden">
                   {isLocked ? (
-                    <Lock className="w-8 h-8 text-muted-foreground/40" />
+                    <Lock className="w-7 h-7 text-muted-foreground/30" />
                   ) : (
-                    <SvgaPlayer src={hair.file_url} loop={0} width={100} height={100} className="w-full h-full" />
+                    <SvgaPlayer src={hair.file_url} loop={0} width={150} height={112} className="w-full h-full object-contain" />
                   )}
                 </div>
-                <div className="px-1.5 pb-1.5">
-                  <p className="text-[10px] text-center truncate text-muted-foreground">{hair.title || "—"}</p>
+                <div className="px-1 pb-1.5 pt-0.5">
+                  <p className="text-[10px] text-center truncate text-muted-foreground leading-tight">{hair.title || "—"}</p>
                 </div>
                 {isSelected && (
                   <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
