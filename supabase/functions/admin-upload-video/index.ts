@@ -98,9 +98,11 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("admin-upload-video error:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : "";
+    console.error("admin-upload-video error:", errMsg, errStack);
     return new Response(
-      JSON.stringify({ error: "حدث خطأ أثناء رفع الملف" }),
+      JSON.stringify({ error: "حدث خطأ أثناء رفع الملف", details: errMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
