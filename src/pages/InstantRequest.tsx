@@ -154,7 +154,7 @@ const InstantRequest: React.FC = () => {
     setLoading(true);
     try {
       const receiptUrl = await uploadReceipt();
-      const { data: insertedData, error: insertError } = await supabase.from("salary_requests").insert({
+      const { error: insertError } = await supabase.from("salary_requests").insert({
         user_uuid: user.uuid,
         user_name: user.name,
         user_phone: user.phone,
@@ -167,13 +167,14 @@ const InstantRequest: React.FC = () => {
         payment_details: accountInfo,
         status: "pending",
         transfer_image_url: receiptUrl,
-      }).select("id").single();
+      });
       if (insertError) {
+        console.error("Insert error:", insertError);
         setError("حدث خطأ في حفظ الطلب.");
         setLoading(false);
         return;
       }
-      const refId = ((insertedData as any)?.id as string)?.slice(0, 8)?.toUpperCase() || "";
+      const refId = `#${Date.now().toString(36).toUpperCase().slice(-8)}`;
       setRequestId(refId);
       setSubmitted(true);
     } catch {
