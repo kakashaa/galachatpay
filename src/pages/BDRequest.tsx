@@ -24,6 +24,7 @@ const BDRequest: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [bdStatus, setBdStatus] = useState<BDStatus>("none");
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     if (!authUser) return;
@@ -68,6 +69,7 @@ const BDRequest: React.FC = () => {
   }, [authUser]);
 
   const checkExistingRequest = async () => {
+    setChecking(true);
     try {
       // First check via bd-manage edge function (handles ID migration automatically)
       try {
@@ -76,6 +78,7 @@ const BDRequest: React.FC = () => {
         });
         if (bdResult?.success) {
           setBdStatus("approved");
+          setChecking(false);
           return;
         }
       } catch {}
@@ -89,6 +92,7 @@ const BDRequest: React.FC = () => {
       
       if (bdSettings?.is_approved) {
         setBdStatus("approved");
+        setChecking(false);
         return;
       }
 
@@ -105,12 +109,15 @@ const BDRequest: React.FC = () => {
         const latest = cachedRequests[0];
         if (latest.status === 1) {
           setBdStatus("approved");
+          setChecking(false);
           return;
         } else if (latest.status === 2) {
           setBdStatus("rejected");
+          setChecking(false);
           return;
         } else if (latest.status === 0) {
           setBdStatus("pending");
+          setChecking(false);
           return;
         }
       }
@@ -151,6 +158,8 @@ const BDRequest: React.FC = () => {
     } catch (err) {
       console.error("checkExistingRequest error:", err);
       setBdStatus("none");
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -216,9 +225,19 @@ const BDRequest: React.FC = () => {
     }
   }, [bdStatus, authUser]);
 
+  // Show loading while checking BD status
+  if (checking) {
+    return (
+      <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      </MobileLayout>
+    );
+  }
+
   if (bdStatus === "approved") {
     if (!showCongrats) return null; // waiting for useEffect redirect
-
     return (
       <MobileLayout showHeader headerTitle="طلب BD" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
