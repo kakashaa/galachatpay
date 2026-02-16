@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
-
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const UUID_REGEX = /^[a-zA-Z0-9_-]{3,64}$/;
 
@@ -86,9 +86,10 @@ serve(async (req) => {
       );
     }
 
-    // Extract transaction_id from the API response
+    // Extract charge_id (the unique internal ID for each transfer) and transaction info
     const txData = data.data || data;
-    const transactionId = txData.transaction_id || txData.id || null;
+    const chargeId = txData.id ? String(txData.id) : null; // e.g. "46438" - unique per transfer
+    const transactionId = txData.transaction_id || null; // e.g. "TRX-WG85ADR1CY"
     const transactionDate = txData.created_at || txData.date || null;
     const txAmount = txData.amount || parsedAmount;
 
@@ -123,10 +124,35 @@ serve(async (req) => {
       }
     }
 
-    // Return enriched data with transaction_id
+    // Check if this charge_id was already used in a previous salary request
+    if (chargeId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(supabaseUrl, supabaseKey);
+
+      const { data: existing } = await sb
+        .from("salary_requests")
+        .select("id")
+        .eq("transaction_id", chargeId)
+        .limit(1);
+
+      if (existing && existing.length > 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "تم رفع هذا الراتب مسبقاً. لا يمكن استخدام نفس التحويل مرتين.\nإذا حولت مبلغ جديد بنفس القيمة، انتظر حتى يظهر في النظام.",
+            duplicate: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Return enriched data with charge_id as transaction_id
     return new Response(JSON.stringify({
       ...data,
-      transaction_id: transactionId ? String(transactionId) : null,
+      transaction_id: chargeId, // Store charge_id (unique per transfer)
+      transaction_ref: transactionId, // The TRX-... reference
       transaction_date: transactionDate,
       confirmed_amount: txAmount,
     }), {
