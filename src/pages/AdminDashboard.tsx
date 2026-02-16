@@ -272,6 +272,9 @@ const AdminDashboardPage: React.FC = () => {
   const [bdWithdrawals, setBdWithdrawals] = useState<any[]>([]);
   const [bdWithdrawLoading, setBdWithdrawLoading] = useState(false);
   const [bdWithdrawFilter, setBdWithdrawFilter] = useState<"all" | "pending" | "approved" | "info_submitted" | "completed" | "rejected">("pending");
+  const [transferFormId, setTransferFormId] = useState<string | null>(null);
+  const [transferNumber, setTransferNumber] = useState("");
+  const [transferReceiptFile, setTransferReceiptFile] = useState<File | null>(null);
   useEffect(() => {
     if (!adminSessionToken) {
       navigate("/admin");
@@ -2549,53 +2552,56 @@ const AdminDashboardPage: React.FC = () => {
                         )}
 
                         {w.status === "info_submitted" && (
-                          <Button size="sm" className="w-full gap-1" onClick={() => {
-                            const transferNum = prompt("أدخل رقم الحوالة:");
-                            if (!transferNum) return;
-                            (async () => {
-                              setBdWithdrawLoading(true);
-                              try {
-                                // Upload receipt if needed
-                                let receiptUrl = "";
-                                const fileInput = document.createElement("input");
-                                fileInput.type = "file";
-                                fileInput.accept = "image/*";
-                                fileInput.onchange = async () => {
-                                  const file = fileInput.files?.[0];
-                                  if (file) {
-                                    try {
-                                      receiptUrl = await uploadFile(file);
-                                    } catch { console.error("Receipt upload failed"); }
-                                  }
+                          transferFormId === w.id ? (
+                            <div className="space-y-2 bg-muted/20 rounded-lg p-3 border border-primary/20">
+                              <p className="text-xs font-bold text-foreground">إتمام التحويل</p>
+                              <Input
+                                placeholder="رقم الحوالة *"
+                                value={transferNumber}
+                                onChange={(e) => setTransferNumber(e.target.value)}
+                                className="h-9 text-sm"
+                                dir="ltr"
+                              />
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-muted-foreground">صورة الإيصال (اختياري)</label>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => setTransferReceiptFile(e.target.files?.[0] || null)}
+                                  className="h-9 text-xs"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" className="flex-1 gap-1" disabled={!transferNumber.trim() || bdWithdrawLoading} onClick={async () => {
+                                  setBdWithdrawLoading(true);
                                   try {
+                                    let receiptUrl = "";
+                                    if (transferReceiptFile) {
+                                      try { receiptUrl = await uploadFile(transferReceiptFile); } catch { console.error("Receipt upload failed"); }
+                                    }
                                     const { error } = await supabase.functions.invoke("bd-manage", {
-                                      body: { action: "complete_transfer", withdrawal_id: w.id, transfer_number: transferNum, receipt_url: receiptUrl },
+                                      body: { action: "complete_transfer", withdrawal_id: w.id, transfer_number: transferNumber, receipt_url: receiptUrl },
                                     });
                                     if (error) throw error;
                                     toast.success("تم إتمام التحويل");
+                                    setTransferFormId(null);
+                                    setTransferNumber("");
+                                    setTransferReceiptFile(null);
                                     loadData();
                                   } catch { toast.error("فشل"); }
                                   setBdWithdrawLoading(false);
-                                };
-                                // Give option to skip receipt
-                                if (confirm("هل تريد رفع صورة الإيصال؟")) {
-                                  fileInput.click();
-                                } else {
-                                  try {
-                                    const { error } = await supabase.functions.invoke("bd-manage", {
-                                      body: { action: "complete_transfer", withdrawal_id: w.id, transfer_number: transferNum, receipt_url: "" },
-                                    });
-                                    if (error) throw error;
-                                    toast.success("تم إتمام التحويل");
-                                    loadData();
-                                  } catch { toast.error("فشل"); }
-                                  setBdWithdrawLoading(false);
-                                }
-                              } catch { setBdWithdrawLoading(false); }
-                            })();
-                          }}>
-                            <DollarSign className="w-3 h-3" /> تم التحويل
-                          </Button>
+                                }}>
+                                  {bdWithdrawLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                                  تأكيد
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => { setTransferFormId(null); setTransferNumber(""); setTransferReceiptFile(null); }}>إلغاء</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button size="sm" className="w-full gap-1" onClick={() => setTransferFormId(w.id)}>
+                              <DollarSign className="w-3 h-3" /> تم التحويل
+                            </Button>
+                          )
                         )}
                       </div>
                     );
