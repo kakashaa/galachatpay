@@ -3,6 +3,7 @@ import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Sticker, Lock, Loader2, Check } from "lucide-react";
+import LazySvgaPlayer from "@/components/LazySvgaPlayer";
 import SvgaPlayer from "@/components/SvgaPlayer";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +12,7 @@ interface HairItem {
   id: string;
   title: string;
   file_url: string;
+  thumbnail_url: string | null;
   display_order: number;
   is_active: boolean;
 }
@@ -64,7 +66,7 @@ const HairsPage: React.FC = () => {
       setLoading(true);
       const { data } = await supabase
         .from("hairs")
-        .select("id, title, file_url, display_order, is_active")
+        .select("id, title, file_url, thumbnail_url, display_order, is_active")
         .eq("is_deleted", false)
         .eq("is_active", true)
         .order("display_order", { ascending: true });
@@ -215,7 +217,7 @@ const HairsPage: React.FC = () => {
                 }`}
               >
                 <div className="aspect-[4/3] flex items-center justify-center overflow-hidden relative">
-                  <SvgaPlayer src={hair.file_url} loop={0} width={150} height={112} className="w-full h-full object-contain" />
+                  <LazySvgaPlayer src={hair.file_url} loop={0} width={150} height={112} thumbnailUrl={hair.thumbnail_url} className="w-full h-full object-contain" />
                   {isLocked && (
                     <div className="absolute inset-0 bg-background/60 flex items-center justify-center rounded-lg">
                       <Lock className="w-6 h-6 text-muted-foreground/60" />
