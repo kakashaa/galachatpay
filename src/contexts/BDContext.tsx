@@ -64,7 +64,6 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     try {
       const data = await callApi("dashboard", { uuid });
       if (!data?.success && !data?.ok) {
-        // Don't set error for auto-check - caller handles it
         setLoading(false);
         return false;
       }
@@ -91,6 +90,26 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         withdrawals: apiData?.withdrawals || [],
       };
       saveBdUser(mapped);
+
+      // Ensure local bd_commission_settings record exists
+      try {
+        const { data: existing } = await supabase
+          .from("bd_commission_settings")
+          .select("id")
+          .eq("bd_uuid", uuid)
+          .maybeSingle();
+        if (!existing) {
+          await supabase.from("bd_commission_settings").insert({
+            bd_uuid: uuid,
+            bd_name: mapped.name,
+            is_approved: true,
+            referral_code: `BD${uuid}`,
+          });
+        }
+      } catch (e) {
+        console.warn("[BD] Failed to ensure local record:", e);
+      }
+
       setLoading(false);
       return true;
     } catch (e: any) {
