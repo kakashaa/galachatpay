@@ -161,6 +161,24 @@ serve(async (req) => {
           .update({ status: "accepted", updated_at: new Date().toISOString() })
           .eq("id", invitation_id);
 
+        // Add member to bd_members table
+        const { error: memberInsertError } = await sb
+          .from("bd_members")
+          .upsert({
+            bd_uuid: inv.bd_uuid,
+            member_uuid: inv.member_uuid,
+            member_name: inv.member_name,
+            member_type: inv.member_type,
+            type_user: 0,
+            monthly_charges: 0,
+            current_month_commission: 0,
+            total_commission: 0,
+          }, { onConflict: "bd_uuid,member_uuid", ignoreDuplicates: true });
+
+        if (memberInsertError) {
+          console.error("[bd-referral] Failed to insert into bd_members:", memberInsertError);
+        }
+
         return respond({ success: true, message: "تم قبول الدعوة بنجاح" });
       }
 
