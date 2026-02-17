@@ -198,10 +198,25 @@ serve(async (req) => {
         const bds = data || [];
         const enriched = await Promise.all(
           bds.map(async (bd) => {
-            const { count: agencyCount } = await supabase.from("bd_members").select("id", { count: "exact", head: true }).eq("bd_uuid", bd.bd_uuid).eq("member_type", "agency");
-            const { count: hostCount } = await supabase.from("bd_members").select("id", { count: "exact", head: true }).eq("bd_uuid", bd.bd_uuid).eq("member_type", "host");
-            const { count: userCount } = await supabase.from("bd_members").select("id", { count: "exact", head: true }).eq("bd_uuid", bd.bd_uuid).eq("member_type", "user");
-            return { ...bd, agency_count: agencyCount || 0, host_count: hostCount || 0, user_count: userCount || 0 };
+            const { data: members } = await supabase.from("bd_members").select("*").eq("bd_uuid", bd.bd_uuid).order("created_at", { ascending: false });
+            const allMembers = members || [];
+            const agencies = allMembers.filter(m => m.member_type === "agency");
+            const hosts = allMembers.filter(m => m.member_type === "host");
+            const users = allMembers.filter(m => m.member_type === "user");
+            const supporters = allMembers.filter(m => m.member_type === "supporter");
+            return {
+              ...bd,
+              agency_count: agencies.length,
+              host_count: hosts.length,
+              user_count: users.length,
+              supporter_count: supporters.length,
+              agencies,
+              supporters,
+              totals: {
+                agency: agencies.reduce((s, m) => s + Number(m.total_commission), 0),
+                user: users.reduce((s, m) => s + Number(m.total_commission), 0),
+              },
+            };
           })
         );
 

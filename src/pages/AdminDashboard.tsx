@@ -9,7 +9,7 @@ import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, Upload, Wallet,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift,
+  CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift, Users,
   ArrowRight, Bell, ScrollText, Hash,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -2544,26 +2544,10 @@ const AdminDashboardPage: React.FC = () => {
                         </Button>
                       </div>
 
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                        <div className="bg-muted/20 rounded-lg p-2">
-                          <p className="font-bold text-foreground">{bd.agency_count || 0}</p>
-                          <p className="text-muted-foreground">وكلاء</p>
-                        </div>
-                        <div className="bg-muted/20 rounded-lg p-2">
-                          <p className="font-bold text-foreground">{bd.host_count || 0}</p>
-                          <p className="text-muted-foreground">مضيفين</p>
-                        </div>
-                        <div className="bg-muted/20 rounded-lg p-2">
-                          <p className="font-bold text-foreground">{bd.user_count || 0}</p>
-                          <p className="text-muted-foreground">مستخدمين</p>
-                        </div>
-                      </div>
-
-                      {/* Financial Info */}
-                      <div className="grid grid-cols-2 gap-2 text-[10px]">
-                        <div className="bg-emerald-500/10 rounded-lg p-2.5 text-center">
-                          <p className="text-muted-foreground mb-1">إجمالي الأرباح</p>
+                      {/* Earnings */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-emerald-500/10 rounded-xl p-3 text-center">
+                          <DollarSign className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
                           {isEditing ? (
                             <Input
                               type="number"
@@ -2574,11 +2558,12 @@ const AdminDashboardPage: React.FC = () => {
                               className="h-7 text-xs text-center"
                             />
                           ) : (
-                            <p className="text-sm font-bold text-emerald-400">${Number(bd.total_earned || 0).toFixed(2)}</p>
+                            <p className="text-base font-bold text-amber-400">${Number(bd.total_earned || 0).toFixed(2)}</p>
                           )}
+                          <p className="text-[9px] text-muted-foreground">أرباح الشهر الحالي</p>
                         </div>
-                        <div className="bg-primary/10 rounded-lg p-2.5 text-center">
-                          <p className="text-muted-foreground mb-1">الرصيد المتاح</p>
+                        <div className="bg-primary/10 rounded-xl p-3 text-center">
+                          <Wallet className="w-4 h-4 text-primary mx-auto mb-1" />
                           {isEditing ? (
                             <Input
                               type="number"
@@ -2589,38 +2574,83 @@ const AdminDashboardPage: React.FC = () => {
                               className="h-7 text-xs text-center"
                             />
                           ) : (
-                            <p className="text-sm font-bold text-primary">${Number(bd.available_balance || 0).toFixed(2)}</p>
+                            <p className="text-base font-bold text-green-400">${Number(bd.available_balance || 0).toFixed(2)}</p>
                           )}
+                          <p className="text-[9px] text-muted-foreground">الرصيد المتاح</p>
                         </div>
                       </div>
 
-                      {/* Commission Percentages */}
-                      <div className="space-y-2">
-                        <p className="text-[10px] text-muted-foreground font-bold">النسب المئوية:</p>
-                        {[
-                          { label: "وكلاء", field: "agency_commission_pct" as const },
-                          { label: "مضيفين", field: "host_commission_pct" as const },
-                          { label: "مستخدمين", field: "user_commission_pct" as const },
-                        ].map((pct) => (
-                          <div key={pct.field} className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground w-16">{pct.label}:</span>
-                            {isEditing ? (
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.5"
-                                value={editingBdSettings[pct.field]}
-                                onChange={(e) => setEditingBdSettings({ ...editingBdSettings, [pct.field]: parseFloat(e.target.value) || 0 })}
-                                className="h-7 text-xs text-center w-20"
-                              />
-                            ) : (
-                              <span className="text-xs font-bold text-foreground">{bd[pct.field]}</span>
-                            )}
-                            <span className="text-[10px] text-muted-foreground">%</span>
-                          </div>
-                        ))}
-                      </div>
+                      {/* Member Categories - Expandable like BD page */}
+                      {[
+                        { key: "supporters", label: "الداعمين", color: "text-blue-400", bgColor: "bg-blue-500/10", items: bd.supporters || [], total: bd.totals?.user || 0, pct: bd.user_commission_pct },
+                        { key: "agencies", label: "الوكلاء", color: "text-amber-400", bgColor: "bg-amber-500/10", items: bd.agencies || [], total: bd.totals?.agency || 0, pct: bd.agency_commission_pct },
+                      ].map((cat) => (
+                        <div key={cat.key} className="bg-muted/10 rounded-xl border border-border/20 overflow-hidden">
+                          <button
+                            onClick={() => setExpandedBD(expandedBD === `${bd.bd_uuid}_${cat.key}` ? null : `${bd.bd_uuid}_${cat.key}`)}
+                            className="w-full p-3 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-8 h-8 rounded-full ${cat.bgColor} flex items-center justify-center`}>
+                                {cat.key === "supporters" ? <Users className={`w-4 h-4 ${cat.color}`} /> : <Briefcase className={`w-4 h-4 ${cat.color}`} />}
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-bold text-foreground">{cat.label} ({cat.items.length})</p>
+                                {isEditing && cat.key === "supporters" ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-muted-foreground">نسبة:</span>
+                                    <Input type="number" min="0" max="100" step="0.5" value={editingBdSettings.user_commission_pct} onChange={(e) => setEditingBdSettings({ ...editingBdSettings, user_commission_pct: parseFloat(e.target.value) || 0 })} className="h-5 text-[10px] text-center w-14" />
+                                    <span className="text-[10px] text-muted-foreground">%</span>
+                                  </div>
+                                ) : isEditing && cat.key === "agencies" ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-muted-foreground">نسبة:</span>
+                                    <Input type="number" min="0" max="100" step="0.5" value={editingBdSettings.agency_commission_pct} onChange={(e) => setEditingBdSettings({ ...editingBdSettings, agency_commission_pct: parseFloat(e.target.value) || 0 })} className="h-5 text-[10px] text-center w-14" />
+                                    <span className="text-[10px] text-muted-foreground">%</span>
+                                  </div>
+                                ) : (
+                                  <p className="text-[10px] text-muted-foreground">نسبة: {cat.pct}%</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-primary">${cat.total.toFixed(2)}</p>
+                              {expandedBD === `${bd.bd_uuid}_${cat.key}` ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+                            </div>
+                          </button>
+                          {expandedBD === `${bd.bd_uuid}_${cat.key}` && (
+                            <div className="px-3 pb-3">
+                              {cat.items.length === 0 ? (
+                                <p className="text-xs text-muted-foreground text-center py-3">لا يوجد أعضاء بعد</p>
+                              ) : (
+                                <div className="space-y-2 max-h-60 overflow-y-auto">
+                                  {cat.items.map((member: any) => (
+                                    <div key={member.id} className="flex items-center justify-between p-2.5 bg-background/50 rounded-lg border border-border/20">
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-bold text-foreground truncate">{member.member_name || "—"}</p>
+                                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</p>
+                                      </div>
+                                      <div className="text-left shrink-0 mr-2">
+                                        <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
+                                        <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Commission: host (hidden in BD page but keep for admin) */}
+                      {isEditing && (
+                        <div className="flex items-center gap-2 px-1">
+                          <span className="text-[10px] text-muted-foreground w-16">مضيفين:</span>
+                          <Input type="number" min="0" max="100" step="0.5" value={editingBdSettings.host_commission_pct} onChange={(e) => setEditingBdSettings({ ...editingBdSettings, host_commission_pct: parseFloat(e.target.value) || 0 })} className="h-7 text-xs text-center w-20" />
+                          <span className="text-[10px] text-muted-foreground">%</span>
+                        </div>
+                      )}
 
                       {/* Save Button */}
                       {isEditing && (
