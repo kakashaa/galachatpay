@@ -144,9 +144,15 @@ serve(async (req) => {
           body: formData.toString(),
         });
         const apiData = await apiRes.json();
+        console.log("[bd-referral] accept API response:", JSON.stringify(apiData));
 
-        if (!apiData?.success) {
-          return respond({ success: false, error: apiData?.error || "فشل إضافة العضو" });
+        // Check if external API failed AND it's NOT an "already registered" scenario
+        const isAlreadyRegistered = apiData?.error && (
+          apiData.error.includes("مسجل") || apiData.error.includes("registered")
+        );
+
+        if (!apiData?.success && !apiData?.ok && !isAlreadyRegistered) {
+          return respond({ success: false, error: apiData?.error || apiData?.message || "فشل إضافة العضو" });
         }
 
         // Update invitation status
