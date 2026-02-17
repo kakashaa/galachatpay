@@ -2789,16 +2789,9 @@ const AdminDashboardPage: React.FC = () => {
                         {w.status === "info_submitted" && (
                           transferFormId === w.id ? (
                             <div className="space-y-2 bg-muted/20 rounded-lg p-3 border border-primary/20">
-                              <p className="text-xs font-bold text-foreground">إتمام التحويل</p>
-                              <Input
-                                placeholder="رقم الحوالة *"
-                                value={transferNumber}
-                                onChange={(e) => setTransferNumber(e.target.value)}
-                                className="h-9 text-sm"
-                                dir="ltr"
-                              />
+                              <p className="text-xs font-bold text-foreground">رفع إيصال الشحن</p>
                               <div className="space-y-1">
-                                <label className="text-[10px] text-muted-foreground">صورة الإيصال (اختياري)</label>
+                                <label className="text-[10px] text-muted-foreground">صورة الإيصال *</label>
                                 <Input
                                   type="file"
                                   accept="image/*"
@@ -2807,29 +2800,33 @@ const AdminDashboardPage: React.FC = () => {
                                 />
                               </div>
                               <div className="flex gap-2">
-                                <Button size="sm" className="flex-1 gap-1" disabled={!transferNumber.trim() || bdWithdrawLoading} onClick={async () => {
+                                <Button size="sm" className="flex-1 gap-1" disabled={!transferReceiptFile || bdWithdrawLoading} onClick={async () => {
                                   setBdWithdrawLoading(true);
                                   try {
                                     let receiptUrl = "";
                                     if (transferReceiptFile) {
                                       try { receiptUrl = await uploadFile(transferReceiptFile); } catch { console.error("Receipt upload failed"); }
                                     }
+                                    if (!receiptUrl) {
+                                      toast.error("فشل رفع الصورة");
+                                      setBdWithdrawLoading(false);
+                                      return;
+                                    }
                                     const { error } = await supabase.functions.invoke("bd-manage", {
-                                      body: { action: "complete_transfer", withdrawal_id: w.id, transfer_number: transferNumber, receipt_url: receiptUrl },
+                                      body: { action: "complete_transfer", withdrawal_id: w.id, transfer_number: "coins-transfer", receipt_url: receiptUrl },
                                     });
                                     if (error) throw error;
-                                    toast.success("تم إتمام التحويل");
+                                    toast.success("تم إتمام التحويل وإرسال الإشعار");
                                     setTransferFormId(null);
-                                    setTransferNumber("");
                                     setTransferReceiptFile(null);
                                     loadData();
                                   } catch { toast.error("فشل"); }
                                   setBdWithdrawLoading(false);
                                 }}>
                                   {bdWithdrawLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
-                                  تأكيد
+                                  إرسال
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => { setTransferFormId(null); setTransferNumber(""); setTransferReceiptFile(null); }}>إلغاء</Button>
+                                <Button size="sm" variant="outline" onClick={() => { setTransferFormId(null); setTransferReceiptFile(null); }}>إلغاء</Button>
                               </div>
                             </div>
                           ) : (

@@ -112,7 +112,13 @@ const Notifications: React.FC = () => {
             <p className="text-sm text-muted-foreground">لا توجد إشعارات حالياً</p>
           </div>
         ) : (
-          notifications.map((notif) => (
+          notifications.map((notif) => {
+            // Extract receipt URL from notification body if exists
+            const receiptMatch = notif.body.match(/📎 إيصال الشحن: (https?:\/\/[^\s]+)/);
+            const receiptUrl = receiptMatch ? receiptMatch[1] : null;
+            const displayBody = receiptUrl ? notif.body.replace(/\n?📎 إيصال الشحن: https?:\/\/[^\s]+/, "") : notif.body;
+
+            return (
             <div
               key={notif.id}
               className={`rounded-xl p-3.5 border transition-colors ${
@@ -134,12 +140,24 @@ const Notifications: React.FC = () => {
                       <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{notif.body}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{displayBody}</p>
+                  {receiptUrl && (
+                    <a
+                      href={receiptUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-primary font-bold bg-primary/10 rounded-lg px-2.5 py-1.5 hover:bg-primary/20 transition-colors"
+                    >
+                      📎 فتح إيصال الشحن
+                      <ArrowRight className="w-3 h-3" />
+                    </a>
+                  )}
                   <span className="text-[10px] text-muted-foreground/60 mt-1 block">{timeAgo(notif.created_at)}</span>
                 </div>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </MobileLayout>

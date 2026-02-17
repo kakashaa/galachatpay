@@ -263,6 +263,14 @@ serve(async (req) => {
         target: "admin",
       });
 
+      // Send notification to BD user
+      await sb.from("notifications").insert({
+        user_uuid: String(uuid),
+        title: "📋 تم رفع طلب السحب",
+        body: `لقد قمت برفع طلب شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid}. الطلب قيد المراجعة.`,
+        target: "personal",
+      });
+
       console.log(`[bd-referral] Local withdraw: $${parsedAmount} (${coinsAmount} coins) to ${recipient_uuid}. New balance: $${newBalance}`);
 
       return respond({ success: true, new_balance: newBalance });
