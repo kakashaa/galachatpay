@@ -42,7 +42,7 @@ const RequestVip: React.FC = () => {
   // Limits state
   const [usedTotal, setUsedTotal] = useState(0);         // total requests this month (for regular users)
   const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0, 6: 0});
-  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 5, 5: 5, 6: 0});
+  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 2, 6: 0});
   const [giftedRecipients, setGiftedRecipients] = useState<string[]>([]); // already gifted IDs
 
   useEffect(() => {
@@ -98,7 +98,9 @@ const RequestVip: React.FC = () => {
       if (usedTotal >= 1) return "used_up";
       return "available";
     }
-    // Agents: per-level limits from overrides
+    // Agents: total 5/month limit
+    if (usedTotal >= 5) return "used_up";
+    // Per-level limits from overrides
     if (level >= 4) {
       const limit = limitsPerLevel[level] ?? 0;
       if (limit <= 0) return "locked";
