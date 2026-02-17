@@ -33,7 +33,7 @@ const AdminTopAgents: React.FC = () => {
   const [addUuid, setAddUuid] = useState("");
   const [addLoading, setAddLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ vip4_limit: 5, vip5_limit: 5, vip6_limit: 0 });
+  const [editData, setEditData] = useState({ vip4_limit: 3, vip5_limit: 2, vip6_limit: 0 });
 
   const loadAgents = useCallback(async () => {
     setLoading(true);
@@ -86,8 +86,8 @@ const AdminTopAgents: React.FC = () => {
       const { error } = await supabase.from("agent_vip_overrides").insert({
         agent_uuid: uuid,
         agent_name: name,
-        vip4_limit: 5,
-        vip5_limit: 5,
+        vip4_limit: 3,
+        vip5_limit: 2,
         vip6_limit: 0,
       });
       if (error) throw error;
