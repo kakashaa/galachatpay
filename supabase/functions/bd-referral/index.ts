@@ -105,8 +105,29 @@ serve(async (req) => {
       });
       const apiData = await apiRes.json();
 
-      // Get member name from API
+      // Get member name and validate eligibility
       const memberName = apiData?.name || member_uuid;
+
+      // ── Reject accounts with level > 0 (not new accounts) ──
+      const memberLevel = Math.max(
+        Number(apiData?.level?.charger_level) || 0,
+        Number(apiData?.level?.sender_level) || 0,
+        Number(apiData?.level?.receiver_level) || 0
+      );
+      if (memberLevel > 0) {
+        return respond({ success: false, error: "لا يمكن إضافة حساب ذو مستوى أعلى من صفر. يُقبل فقط الحسابات الجديدة" });
+      }
+
+      // ── Reject old accounts (created more than 7 days ago) ──
+      const createdAt = apiData?.created_at || apiData?.register_date;
+      if (createdAt) {
+        const accountDate = new Date(createdAt);
+        const now = new Date();
+        const diffDays = (now.getTime() - accountDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays > 7) {
+          return respond({ success: false, error: "لا يمكن إضافة حساب قديم. يُقبل فقط الحسابات المنشأة حديثاً (أقل من 7 أيام)" });
+        }
+      }
 
       // Create invitation
       const { error: insertErr } = await sb
