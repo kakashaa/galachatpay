@@ -105,53 +105,68 @@ serve(async (req) => {
 
       // Agents (type 2-6)
       if (isAgent) {
-        // Check agent_vip_overrides for custom per-level limits
-        const { data: override } = await sb
-          .from("agent_vip_overrides")
-          .select("vip4_limit, vip5_limit, vip6_limit")
-          .eq("agent_uuid", sanitizedUuid)
-          .maybeSingle();
-
-        // Default limits: VIP 4=3/month, VIP 5=2/month, VIP 6=blocked, total=5/month
-        const vip4Limit = override?.vip4_limit ?? 3;
-        const vip5Limit = override?.vip5_limit ?? 2;
-        const vip6Limit = override?.vip6_limit ?? 0;
-
-        // Check total monthly limit (5 requests across all VIP levels)
         const { data: allVipRequests } = await sb
           .from("vip_requests")
-          .select("vip_level")
+          .select("vip_level, recipient_uuid")
           .eq("user_uuid", sanitizedUuid)
           .eq("request_month", currentMonth);
 
-        const totalUsed = allVipRequests?.length || 0;
-        if (totalUsed >= 5) {
-          return new Response(
-            JSON.stringify({ success: false, error: "لقد استخدمت الحد الأقصى (5 طلبات VIP) هذا الشهر." }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        const allReqs = allVipRequests || [];
 
-        if (vipLevel >= 4) {
-          // Get per-level usage this month
-          const usedPerLevel: Record<number, number> = { 4: 0, 5: 0, 6: 0 };
-          for (const r of allVipRequests || []) {
-            if (r.vip_level >= 4) usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
-          }
+        if (sanitizedRecipient) {
+          // === GIFTING MODE: per-level limits apply ===
+          const { data: override } = await sb
+            .from("agent_vip_overrides")
+            .select("vip4_limit, vip5_limit, vip6_limit")
+            .eq("agent_uuid", sanitizedUuid)
+            .maybeSingle();
 
-          const limitForLevel = vipLevel === 4 ? vip4Limit : vipLevel === 5 ? vip5Limit : vip6Limit;
-          const usedForLevel = usedPerLevel[vipLevel] || 0;
+          const vip4Limit = override?.vip4_limit ?? 3;
+          const vip5Limit = override?.vip5_limit ?? 2;
+          const vip6Limit = override?.vip6_limit ?? 0;
 
-          if (limitForLevel <= 0) {
+          // Total gifting limit: 5/month
+          const totalGifts = allReqs.filter(r => r.recipient_uuid).length;
+          if (totalGifts >= 5) {
             return new Response(
-              JSON.stringify({ success: false, error: `VIP ${vipLevel} غير متاح لك حالياً.` }),
+              JSON.stringify({ success: false, error: "لقد استخدمت الحد الأقصى (5 إهداءات) هذا الشهر." }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
 
-          if (usedForLevel >= limitForLevel) {
+          if (vipLevel >= 4) {
+            const usedPerLevel: Record<number, number> = { 4: 0, 5: 0, 6: 0 };
+            for (const r of allReqs) {
+              if (r.vip_level >= 4 && r.recipient_uuid) usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
+            }
+            const limitForLevel = vipLevel === 4 ? vip4Limit : vipLevel === 5 ? vip5Limit : vip6Limit;
+            const usedForLevel = usedPerLevel[vipLevel] || 0;
+
+            if (limitForLevel <= 0) {
+              return new Response(
+                JSON.stringify({ success: false, error: `VIP ${vipLevel} غير متاح لك حالياً.` }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+            if (usedForLevel >= limitForLevel) {
+              return new Response(
+                JSON.stringify({ success: false, error: `لقد استخدمت حد الـ ${limitForLevel} إهداءات لـ VIP ${vipLevel} هذا الشهر.` }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          }
+        } else {
+          // === SELF MODE: one request per month for VIP 1-5 ===
+          if (vipLevel > 5) {
             return new Response(
-              JSON.stringify({ success: false, error: `لقد استخدمت حد الـ ${limitForLevel} طلبات لـ VIP ${vipLevel} هذا الشهر.` }),
+              JSON.stringify({ success: false, error: "VIP 6 متاح فقط كإهداء." }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          const selfRequests = allReqs.filter(r => !r.recipient_uuid).length;
+          if (selfRequests >= 1) {
+            return new Response(
+              JSON.stringify({ success: false, error: "لقد استخدمت طلبك الشخصي هذا الشهر. يمكنك الطلب لنفسك مرة واحدة شهرياً." }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }

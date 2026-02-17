@@ -40,7 +40,8 @@ const RequestVip: React.FC = () => {
   const [recipientId, setRecipientId] = useState("");
 
   // Limits state
-  const [usedTotal, setUsedTotal] = useState(0);         // total requests this month (for regular users)
+  const [usedSelf, setUsedSelf] = useState(0);            // self requests this month
+  const [usedGiftTotal, setUsedGiftTotal] = useState(0);  // total gifts this month
   const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0, 6: 0});
   const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 2, 6: 0});
   const [giftedRecipients, setGiftedRecipients] = useState<string[]>([]); // already gifted IDs
@@ -65,11 +66,14 @@ const RequestVip: React.FC = () => {
       ]);
 
       const allReqs = reqResult.data || [];
-      setUsedTotal(allReqs.length);
+      const selfCount = allReqs.filter((r: any) => !r.recipient_uuid).length;
+      const giftCount = allReqs.filter((r: any) => r.recipient_uuid).length;
+      setUsedSelf(selfCount);
+      setUsedGiftTotal(giftCount);
       
       const perLevel: Record<number, number> = {4: 0, 5: 0, 6: 0};
       for (const r of allReqs) {
-        if (r.vip_level >= 4) perLevel[r.vip_level] = (perLevel[r.vip_level] || 0) + 1;
+        if (r.vip_level >= 4 && r.recipient_uuid) perLevel[r.vip_level] = (perLevel[r.vip_level] || 0) + 1;
       }
       setUsedPerLevel(perLevel);
 
@@ -95,16 +99,25 @@ const RequestVip: React.FC = () => {
   const getTierState = (level: number) => {
     if (!isAgent) {
       if (level >= 4) return "locked_agent_only";
-      if (usedTotal >= 1) return "used_up";
+      if (usedSelf >= 1) return "used_up";
       return "available";
     }
-    // Agents: total 5/month limit
-    if (usedTotal >= 5) return "used_up";
-    // Per-level limits from overrides
-    if (level >= 4) {
-      const limit = limitsPerLevel[level] ?? 0;
-      if (limit <= 0) return "locked";
-      if ((usedPerLevel[level] || 0) >= limit) return "used_up";
+    // Agents: different rules for self vs gift
+    if (mode === "gift") {
+      if (usedGiftTotal >= 5) return "used_up";
+      if (level >= 4) {
+        const limit = limitsPerLevel[level] ?? 0;
+        if (limit <= 0) return "locked";
+        if ((usedPerLevel[level] || 0) >= limit) return "used_up";
+      }
+      if (level === 6) {
+        const limit = limitsPerLevel[6] ?? 0;
+        if (limit <= 0) return "locked";
+      }
+    } else {
+      // Self: once per month, VIP 1-5 only
+      if (level >= 6) return "locked";
+      if (usedSelf >= 1) return "used_up";
     }
     return "available";
   };
@@ -138,18 +151,22 @@ const RequestVip: React.FC = () => {
       if (!data?.success) { setError(data?.error || "فشل الطلب."); setLoading(false); return; }
 
       // Update local state
-      setUsedTotal(prev => prev + 1);
-      if (selectedVip >= 4) {
-        setUsedPerLevel(prev => ({ ...prev, [selectedVip]: (prev[selectedVip] || 0) + 1 }));
-      }
-      if (mode === "gift" && recipientId.trim()) {
-        setGiftedRecipients(prev => [...prev, recipientId.trim()]);
+      if (mode === "gift") {
+        setUsedGiftTotal(prev => prev + 1);
+        if (selectedVip >= 4) {
+          setUsedPerLevel(prev => ({ ...prev, [selectedVip]: (prev[selectedVip] || 0) + 1 }));
+        }
+        if (recipientId.trim()) {
+          setGiftedRecipients(prev => [...prev, recipientId.trim()]);
+        }
+      } else {
+        setUsedSelf(prev => prev + 1);
       }
       setSubmitted(true);
     } catch { setError("حدث خطأ غير متوقع."); } finally { setLoading(false); }
   };
 
-  const regularLimitReached = !isAgent && usedTotal >= 1;
+  const regularLimitReached = !isAgent && usedSelf >= 1;
 
   return (
     <MobileLayout showHeader headerTitle="طلب VIP" onBack={() => navigate("/dashboard")}>
@@ -168,8 +185,10 @@ const RequestVip: React.FC = () => {
                 <Calendar className="w-3 h-3 text-primary" />
                 <p className="text-[10px] text-primary">
                   {isAgent
-                    ? `VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]} • VIP 6: ${Math.max(0, limitsPerLevel[6] - (usedPerLevel[6]||0))}/${limitsPerLevel[6]}`
-                    : `مرة واحدة شهرياً (10 أيام) • ${usedTotal >= 1 ? "تم الاستخدام" : "متاح"}`}
+                    ? mode === "gift"
+                      ? `إهداء: ${usedGiftTotal}/5 • VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]}`
+                      : `لنفسك: ${usedSelf >= 1 ? "تم الاستخدام" : "متاح (مرة واحدة شهرياً)"}`
+                    : `مرة واحدة شهرياً (10 أيام) • ${usedSelf >= 1 ? "تم الاستخدام" : "متاح"}`}
                 </p>
               </div>
             </div>
