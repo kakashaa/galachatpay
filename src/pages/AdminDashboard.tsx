@@ -312,7 +312,7 @@ const AdminDashboardPage: React.FC = () => {
   const [bdWithdrawFilter, setBdWithdrawFilter] = useState<"all" | "pending" | "approved" | "info_submitted" | "completed" | "rejected">("pending");
   const [transferFormId, setTransferFormId] = useState<string | null>(null);
    const [bdGroupExpanded, setBdGroupExpanded] = useState(false);
-   const [bdWithdrawSubExpanded, setBdWithdrawSubExpanded] = useState(false);
+   
   const [transferNumber, setTransferNumber] = useState("");
   const [transferReceiptFile, setTransferReceiptFile] = useState<File | null>(null);
   useEffect(() => {
@@ -1168,6 +1168,7 @@ const AdminDashboardPage: React.FC = () => {
                   {[
                     { key: "bd_requests" as Tab, label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
                     { key: "bd_management" as Tab, label: "تحكم BD", icon: <Briefcase className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400", count: bdManagementList.length },
+                    { key: "bd_withdrawals" as Tab, label: "سحب أرباح", icon: <Wallet className="w-7 h-7" />, color: "from-lime-500/20 to-lime-600/10 text-lime-400", count: bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length },
                   ].map((tab) => (
                     <motion.button
                       key={tab.key}
@@ -1186,68 +1187,7 @@ const AdminDashboardPage: React.FC = () => {
                       ) : null}
                     </motion.button>
                   ))}
-
-                  {/* BD Withdrawals - expandable sub-group */}
-                  {(() => {
-                    const withdrawPendingCount = bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length;
-                    return (
-                      <motion.button
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setBdWithdrawSubExpanded(!bdWithdrawSubExpanded)}
-                        className={`relative flex flex-col items-center gap-2.5 p-5 rounded-2xl border transition-all ${bdWithdrawSubExpanded ? "border-lime-500/50 bg-lime-500/10" : "border-teal-500/20 bg-teal-500/5 hover:border-teal-500/40"}`}
-                      >
-                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-lime-500/20 to-lime-600/10 text-lime-400 flex items-center justify-center">
-                          <Wallet className="w-7 h-7" />
-                        </div>
-                        <span className="text-xs font-bold text-foreground">سحب أرباح</span>
-                        {withdrawPendingCount > 0 && (
-                          <span className="absolute top-2 left-2 min-w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold px-1">
-                            {withdrawPendingCount}
-                          </span>
-                        )}
-                        <ChevronDown className={`w-3 h-3 text-muted-foreground absolute bottom-1.5 transition-transform ${bdWithdrawSubExpanded ? "rotate-180" : ""}`} />
-                      </motion.button>
-                    );
-                  })()}
                 </div>
-
-                {/* BD Withdrawals Sub-categories */}
-                <AnimatePresence>
-                  {bdWithdrawSubExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="grid grid-cols-4 gap-2 pt-3" dir="rtl">
-                        {[
-                          { filter: "pending" as const, label: "معلقة", icon: <Loader2 className="w-5 h-5" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: bdWithdrawals.filter((w: any) => w.status === "pending").length },
-                          { filter: "info_submitted" as const, label: "بانتظار التحويل", icon: <DollarSign className="w-5 h-5" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400", count: bdWithdrawals.filter((w: any) => w.status === "info_submitted").length },
-                          { filter: "completed" as const, label: "مكتمله", icon: <CheckCircle className="w-5 h-5" />, color: "from-green-500/20 to-green-600/10 text-green-400", count: bdWithdrawals.filter((w: any) => w.status === "completed").length },
-                          { filter: "rejected" as const, label: "مرفوضه", icon: <XCircle className="w-5 h-5" />, color: "from-red-500/20 to-red-600/10 text-red-400", count: bdWithdrawals.filter((w: any) => w.status === "rejected").length },
-                        ].map((item) => (
-                          <motion.button
-                            key={item.filter}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => { setBdWithdrawFilter(item.filter); setActiveTab("bd_withdrawals"); }}
-                            className="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border border-lime-500/20 bg-lime-500/5 hover:border-lime-500/40 transition-all"
-                          >
-                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center`}>
-                              {item.icon}
-                            </div>
-                            <span className="text-[10px] font-bold text-foreground leading-tight text-center">{item.label}</span>
-                            {item.count > 0 && (
-                              <span className="absolute top-1 left-1 min-w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] flex items-center justify-center font-bold px-0.5">
-                                {item.count}
-                              </span>
-                            )}
-                          </motion.button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>
@@ -2729,24 +2669,35 @@ const AdminDashboardPage: React.FC = () => {
             {/* BD Withdrawals Tab */}
             {activeTab === "bd_withdrawals" && (
               <motion.div key="bd_withdrawals" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-                {/* Filters */}
-                <div className="flex gap-1.5 flex-wrap">
+                {/* Icon Filters */}
+                <div className="grid grid-cols-4 gap-2" dir="rtl">
                   {([
-                    { key: "pending", label: "معلقة" },
-                    { key: "approved", label: "موافق عليها" },
-                    { key: "info_submitted", label: "بانتظار التحويل" },
-                    { key: "completed", label: "مكتملة" },
-                    { key: "rejected", label: "مرفوضة" },
-                    { key: "all", label: "الكل" },
-                  ] as const).map((f) => (
-                    <button
-                      key={f.key}
-                      onClick={() => setBdWithdrawFilter(f.key)}
-                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${bdWithdrawFilter === f.key ? "bg-primary text-primary-foreground" : "bg-muted/20 text-muted-foreground"}`}
-                    >
-                      {f.label} ({bdWithdrawals.filter((w: any) => f.key === "all" ? true : w.status === f.key).length})
-                    </button>
-                  ))}
+                    { key: "pending" as const, label: "معلقة", icon: <Loader2 className="w-6 h-6" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", borderActive: "border-yellow-500/50 bg-yellow-500/10" },
+                    { key: "info_submitted" as const, label: "بانتظار التحويل", icon: <DollarSign className="w-6 h-6" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400", borderActive: "border-blue-500/50 bg-blue-500/10" },
+                    { key: "completed" as const, label: "مكتمله", icon: <CheckCircle className="w-6 h-6" />, color: "from-green-500/20 to-green-600/10 text-green-400", borderActive: "border-green-500/50 bg-green-500/10" },
+                    { key: "rejected" as const, label: "مرفوضه", icon: <XCircle className="w-6 h-6" />, color: "from-red-500/20 to-red-600/10 text-red-400", borderActive: "border-red-500/50 bg-red-500/10" },
+                  ]).map((f) => {
+                    const count = bdWithdrawals.filter((w: any) => w.status === f.key).length;
+                    const isActive = bdWithdrawFilter === f.key;
+                    return (
+                      <motion.button
+                        key={f.key}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setBdWithdrawFilter(f.key)}
+                        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${isActive ? f.borderActive : "border-border/30 bg-card hover:border-border/60"}`}
+                      >
+                        <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center`}>
+                          {f.icon}
+                        </div>
+                        <span className="text-[10px] font-bold text-foreground leading-tight text-center">{f.label}</span>
+                        {count > 0 && (
+                          <span className="absolute top-1 left-1 min-w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] flex items-center justify-center font-bold px-0.5">
+                            {count}
+                          </span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
                 </div>
 
                 {(() => {
