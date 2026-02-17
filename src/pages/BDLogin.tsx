@@ -20,6 +20,14 @@ const BDLogin: React.FC = () => {
   const uuid = galaUser?.uuid || "";
   const userLevel = galaUser?.level?.charger_level || 0;
   const displayError = localError || error;
+  const { refreshUser } = useAuth();
+
+  // تحديث بيانات المستخدم عند فتح الصفحة للحصول على أحدث مستوى
+  useEffect(() => {
+    if (galaUser?.uuid) {
+      refreshUser();
+    }
+  }, []);
 
   // إذا مسجل كبيدي بالفعل → لوحة التحكم
   useEffect(() => {
@@ -37,7 +45,6 @@ const BDLogin: React.FC = () => {
         if (ok) {
           navigate("/bd/dashboard", { replace: true });
         } else {
-          // Clear the error from auto-check - it's expected for non-BD users
           setLocalError("");
         }
       })();
