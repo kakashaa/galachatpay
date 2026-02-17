@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, DollarSign, Coins, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useBD } from "@/contexts/BDContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -12,17 +12,36 @@ const COIN_RATE = 8500;
 
 const BDWithdraw: React.FC = () => {
   const navigate = useNavigate();
-  const { bdUser, refreshDashboard } = useBD();
+  const { user: authUser } = useAuth();
 
   const [step, setStep] = useState<"balance" | "form" | "success">("balance");
   const [amount, setAmount] = useState("");
   const [recipientUuid, setRecipientUuid] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [balanceUsd, setBalanceUsd] = useState(0);
+  const [loadingBalance, setLoadingBalance] = useState(true);
 
-  if (!bdUser) { navigate("/bd"); return null; }
+  // Load balance from bd_commission_settings directly
+  useEffect(() => {
+    if (!authUser?.uuid) return;
+    const loadBalance = async () => {
+      setLoadingBalance(true);
+      const { data } = await supabase
+        .from("bd_commission_settings")
+        .select("available_balance")
+        .eq("bd_uuid", authUser.uuid)
+        .maybeSingle();
+      if (data) {
+        setBalanceUsd(Number(data.available_balance) || 0);
+      }
+      setLoadingBalance(false);
+    };
+    loadBalance();
+  }, [authUser?.uuid]);
 
-  const balanceUsd = bdUser.available_balance || 0;
+  if (!authUser) { navigate("/"); return null; }
+
   const balanceCoins = Math.round(balanceUsd * COIN_RATE);
 
   const parsedAmount = parseFloat(amount) || 0;
@@ -38,7 +57,7 @@ const BDWithdraw: React.FC = () => {
       const { data, error: fnError } = await supabase.functions.invoke("bd-referral", {
         body: {
           action: "bd_withdraw_coins",
-          uuid: bdUser.uuid,
+          uuid: authUser.uuid,
           amount: parsedAmount,
           recipient_uuid: recipientUuid.trim(),
         },
@@ -52,7 +71,14 @@ const BDWithdraw: React.FC = () => {
       }
 
       setStep("success");
-      refreshDashboard();
+      // Refresh balance
+      const { data: refreshed } = await supabase
+        .from("bd_commission_settings")
+        .select("available_balance")
+        .eq("bd_uuid", authUser.uuid)
+        .maybeSingle();
+      if (refreshed) setBalanceUsd(Number(refreshed.available_balance) || 0);
+      
       toast.success("تم شحن الكوينزات بنجاح ⚡");
     } catch (e: any) {
       setError(e.message || "خطأ في الاتصال");
@@ -61,11 +87,21 @@ const BDWithdraw: React.FC = () => {
     }
   };
 
+  if (loadingBalance) {
+    return (
+      <MobileLayout showHeader headerTitle="السحب" onBack={() => navigate("/bd/dashboard")}>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      </MobileLayout>
+    );
+  }
+
   return (
     <MobileLayout showHeader headerTitle="السحب" onBack={() => navigate("/bd/dashboard")}>
       <div className="px-5 py-6 space-y-5" dir="rtl">
 
-        {/* ─── Balance Card (always visible) ─── */}
+        {/* ─── Balance Card ─── */}
         <div
           className={`glass-card p-5 space-y-4 transition-all ${step === "balance" ? "cursor-pointer active:scale-[0.98]" : ""}`}
           onClick={() => step === "balance" && setStep("form")}
@@ -106,7 +142,6 @@ const BDWithdraw: React.FC = () => {
           <div className="glass-card p-5 space-y-4 animate-fade-in">
             <h3 className="text-sm font-bold text-foreground">طلب سحب جديد</h3>
 
-            {/* Amount input */}
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground">المبلغ بالدولار</label>
               <Input
@@ -132,7 +167,6 @@ const BDWithdraw: React.FC = () => {
               )}
             </div>
 
-            {/* Recipient UUID */}
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground">آيدي المستلم (UUID) في غلا</label>
               <Input
@@ -148,7 +182,6 @@ const BDWithdraw: React.FC = () => {
               </p>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="flex items-center gap-2 text-destructive text-xs p-2 bg-destructive/10 rounded-lg">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -156,7 +189,6 @@ const BDWithdraw: React.FC = () => {
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -193,30 +225,6 @@ const BDWithdraw: React.FC = () => {
             >
               سحب آخر
             </Button>
-          </div>
-        )}
-
-        {/* ─── Withdrawal History ─── */}
-        {(bdUser.withdrawals || []).length > 0 && (
-          <div className="glass-card p-4 space-y-3">
-            <h3 className="text-sm font-bold text-foreground">سجل السحوبات</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {bdUser.withdrawals.map((w: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-muted/10 rounded-lg border border-border/20">
-                  <div>
-                    <p className="text-xs font-bold text-foreground">${(w.amount || 0).toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground">{w.created_at ? new Date(w.created_at).toLocaleDateString("ar-EG") : "—"}</p>
-                  </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                    w.status === "completed" ? "bg-green-500/20 text-green-400" :
-                    w.status === "pending" ? "bg-amber-500/20 text-amber-400" :
-                    "bg-muted/20 text-muted-foreground"
-                  }`}>
-                    {w.status === "completed" ? "مكتمل" : w.status === "pending" ? "قيد المعالجة" : w.status || "—"}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>
