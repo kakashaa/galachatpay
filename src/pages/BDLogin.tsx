@@ -1,81 +1,66 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogIn, UserPlus, Loader2, AlertCircle, Briefcase, CheckCircle } from "lucide-react";
+import { LogIn, Loader2, AlertCircle, Briefcase, CheckCircle, ShieldAlert, ArrowUp } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBD } from "@/contexts/BDContext";
+
+const REQUIRED_LEVEL = 10;
 
 const BDLogin: React.FC = () => {
   const navigate = useNavigate();
   const { user: galaUser } = useAuth();
   const { login, register, loading, error, bdUser } = useBD();
-  const [mode, setMode] = useState<"idle" | "register">("idle");
-  const [name, setName] = useState("");
   const [localError, setLocalError] = useState("");
-  const [regSuccess, setRegSuccess] = useState(false);
   const [autoChecked, setAutoChecked] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [regSuccess, setRegSuccess] = useState(false);
 
-  // إذا مسجل دخول كبيدي بالفعل، وجّه للوحة التحكم
+  const uuid = galaUser?.uuid || "";
+  const userLevel = galaUser?.level?.charger_level || 0;
+  const displayError = localError || error;
+
+  // إذا مسجل كبيدي بالفعل → لوحة التحكم
   useEffect(() => {
     if (bdUser) {
       navigate("/bd/dashboard", { replace: true });
     }
   }, [bdUser]);
 
-  // تحقق تلقائي من حساب البيدي عند وجود حساب غلا مسجل
+  // فحص تلقائي عند وجود حساب غلا
   useEffect(() => {
     if (galaUser?.uuid && !bdUser && !autoChecked) {
       setAutoChecked(true);
       (async () => {
         const ok = await login(galaUser.uuid);
-        if (ok) {
-          navigate("/bd/dashboard", { replace: true });
-        }
+        if (ok) navigate("/bd/dashboard", { replace: true });
       })();
     }
   }, [galaUser?.uuid, autoChecked]);
 
-  const displayError = localError || error;
-  const uuid = galaUser?.uuid || "";
-
-  const handleLogin = async () => {
-    if (!uuid) {
-      setLocalError("سجّل دخول بحسابك في غلا لايف أولاً");
-      return;
-    }
+  // التسجيل التلقائي كبيدي (لفل 10+)
+  const handleAcceptBD = async () => {
+    if (!uuid) return;
     setLocalError("");
-    const ok = await login(uuid);
-    if (ok) navigate("/bd/dashboard");
-  };
-
-  const handleRegister = async () => {
-    if (!uuid) {
-      setLocalError("سجّل دخول بحسابك في غلا لايف أولاً");
-      return;
-    }
-    const regName = name.trim() || galaUser?.name || "";
-    if (!regName) {
-      setLocalError("أدخل اسمك");
-      return;
-    }
-    setLocalError("");
+    setRegistering(true);
+    const regName = galaUser?.name || uuid;
     const res = await register(uuid, regName);
     if (res.success) {
       setRegSuccess(true);
       setTimeout(async () => {
         setRegSuccess(false);
-        setMode("idle");
         const ok = await login(uuid);
         if (ok) navigate("/bd/dashboard");
+        setRegistering(false);
       }, 1500);
     } else {
       setLocalError(res.error || "فشل التسجيل");
+      setRegistering(false);
     }
   };
 
-  // إذا ما في حساب غلا مسجل
+  // ما في حساب غلا مسجل
   if (!galaUser) {
     return (
       <MobileLayout showHeader headerTitle="نظام البيدي" onBack={() => navigate("/")}>
@@ -96,20 +81,29 @@ const BDLogin: React.FC = () => {
     );
   }
 
+  // لو الفحص التلقائي جاري أو لسه ما خلص
+  if (loading && !autoChecked) {
+    return (
+      <MobileLayout showHeader headerTitle="نظام البيدي" onBack={() => navigate("/dashboard")}>
+        <div className="px-5 py-16 flex flex-col items-center gap-4" dir="rtl">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">جاري التحقق...</span>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   return (
     <MobileLayout showHeader headerTitle="نظام البيدي" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-8 space-y-6 flex flex-col items-center" dir="rtl">
+        {/* أيقونة */}
         <div className="w-20 h-20 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center">
           <Briefcase className="w-10 h-10 text-primary" />
         </div>
-        <h1 className="text-xl font-bold text-foreground text-center">نظام البيدي — غلا لايف</h1>
-        <p className="text-xs text-muted-foreground text-center max-w-xs">
-          سجّل الداعمين والمضيفين والوكالات واحصل على عمولاتك
-        </p>
 
-        {/* معلومات الحساب المربوط */}
+        {/* معلومات الحساب */}
         <div className="glass-card p-4 w-full max-w-sm">
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center gap-3">
             <img
               src={galaUser.profile?.image || "/placeholder.svg"}
               alt=""
@@ -117,70 +111,86 @@ const BDLogin: React.FC = () => {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground truncate">{galaUser.name}</p>
-              <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{galaUser.uuid}</p>
+              <p className="text-[10px] text-muted-foreground">المستوى: {userLevel}</p>
             </div>
           </div>
         </div>
 
-        {mode === "idle" ? (
-          <div className="w-full max-w-sm space-y-3">
-            {displayError && !loading && (
-              <div className="flex items-center gap-2 text-destructive text-xs p-3 bg-destructive/10 rounded-lg">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{displayError}</span>
-              </div>
-            )}
-
-            {/* إذا الفحص التلقائي فشل (ما عنده حساب بيدي) */}
-            {autoChecked && !loading && !bdUser && (
-              <>
-                <p className="text-xs text-muted-foreground text-center">ما عندك حساب بيدي مسجل بعد</p>
-                <Button onClick={() => { setMode("register"); setLocalError(""); }} className="w-full gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  سجّل كبيدي جديد
-                </Button>
-                <Button variant="outline" onClick={handleLogin} disabled={loading} className="w-full gap-2 text-xs">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
-                  إعادة المحاولة
-                </Button>
-              </>
-            )}
-
-            {loading && (
-              <div className="flex items-center justify-center gap-2 py-4">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                <span className="text-xs text-muted-foreground">جاري التحقق...</span>
-              </div>
-            )}
+        {/* الفحص التلقائي لسه شغال */}
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            <span className="text-xs text-muted-foreground">جاري التحقق...</span>
           </div>
-        ) : (
-          <div className="glass-card p-5 w-full max-w-sm space-y-4">
-            <p className="text-sm font-bold text-foreground text-center">تسجيل حساب بيدي جديد</p>
-            <Input
-              placeholder="اسمك (اختياري - يُستخدم اسم حسابك)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="text-center text-sm"
-            />
-            {displayError && (
-              <div className="flex items-center gap-2 text-destructive text-xs">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{displayError}</span>
+        )}
+
+        {/* بعد الفحص التلقائي وما عنده حساب بيدي */}
+        {autoChecked && !loading && !bdUser && (
+          <div className="w-full max-w-sm">
+            {userLevel < REQUIRED_LEVEL ? (
+              /* ═══ تحت لفل 10 ═══ */
+              <div className="glass-card p-6 space-y-4 text-center">
+                <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center">
+                  <ArrowUp className="w-8 h-8 text-amber-400" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">ارفع مستواك أولاً</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  للحصول على صلاحية <span className="text-primary font-semibold">بي دي</span> يجب أن يكون مستوى حسابك{" "}
+                  <span className="text-primary font-bold">{REQUIRED_LEVEL}</span> أو أعلى.
+                </p>
+                <div className="flex items-center justify-center gap-2 p-3 bg-muted/30 rounded-lg">
+                  <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-xs text-muted-foreground">
+                    مستواك الحالي: <span className="font-bold text-foreground">{userLevel}</span> — تحتاج{" "}
+                    <span className="font-bold text-primary">{REQUIRED_LEVEL - userLevel}</span> مستوى إضافي
+                  </span>
+                </div>
+                <Button variant="outline" onClick={() => navigate("/dashboard")} className="w-full mt-2">
+                  العودة للرئيسية
+                </Button>
+              </div>
+            ) : (
+              /* ═══ لفل 10 أو أعلى ═══ */
+              <div className="glass-card p-6 space-y-4 text-center">
+                <div className="w-16 h-16 mx-auto rounded-full bg-green-500/20 border-2 border-green-500/40 flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 text-green-400" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">أنت مؤهل!</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  مستوى حسابك <span className="text-primary font-bold">{userLevel}</span> يؤهلك لتصبح{" "}
+                  <span className="text-primary font-semibold">بي دي</span> في غلا لايف.
+                  <br />
+                  سيتم إنشاء كود خاص بك تلقائياً.
+                </p>
+
+                {displayError && (
+                  <div className="flex items-center gap-2 text-destructive text-xs p-3 bg-destructive/10 rounded-lg">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{displayError}</span>
+                  </div>
+                )}
+
+                {regSuccess && (
+                  <div className="flex items-center gap-2 text-green-400 text-xs p-3 bg-green-500/10 rounded-lg">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>تم تسجيلك كبيدي بنجاح! جاري الدخول...</span>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleAcceptBD}
+                  disabled={loading || registering || regSuccess}
+                  className="w-full gap-2 text-base py-5"
+                >
+                  {registering ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Briefcase className="w-5 h-5" />
+                  )}
+                  {registering ? "جاري التسجيل..." : "موافق — أريد أن أصبح بيدي"}
+                </Button>
               </div>
             )}
-            {regSuccess && (
-              <div className="flex items-center gap-2 text-green-400 text-xs p-2 bg-green-500/10 rounded-lg">
-                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>تم التسجيل بنجاح! جاري الدخول...</span>
-              </div>
-            )}
-            <Button onClick={handleRegister} disabled={loading} className="w-full gap-2">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              تسجيل
-            </Button>
-            <Button variant="ghost" onClick={() => { setMode("idle"); setLocalError(""); }} className="w-full text-xs text-muted-foreground">
-              رجوع
-            </Button>
           </div>
         )}
       </div>
