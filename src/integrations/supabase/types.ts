@@ -1361,6 +1361,30 @@ export type Database = {
           },
         ]
       }
+      user_devices: {
+        Row: {
+          created_at: string
+          device_id: string
+          id: string
+          updated_at: string
+          user_uuid: string
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          id?: string
+          updated_at?: string
+          user_uuid: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          id?: string
+          updated_at?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       user_star_balance: {
         Row: {
           carryover_stars: number
