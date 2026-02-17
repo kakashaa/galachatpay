@@ -466,6 +466,46 @@ serve(async (req) => {
         });
       }
 
+      // Admin: manually create a BD
+      case "create_bd": {
+        const { bd_uuid, bd_name, referral_code } = params;
+        if (!bd_uuid || !bd_name) throw new Error("bd_uuid و bd_name مطلوبان");
+
+        // Check if already exists
+        const { data: existing } = await supabase
+          .from("bd_commission_settings")
+          .select("id")
+          .eq("bd_uuid", bd_uuid)
+          .single();
+
+        if (existing) throw new Error("هذا الحساب مسجل كبيدي بالفعل");
+
+        const code = referral_code || `BD${Date.now().toString(36).toUpperCase()}`;
+
+        const { error } = await supabase.from("bd_commission_settings").insert({
+          bd_uuid,
+          bd_name,
+          referral_code: code,
+          is_approved: true,
+          agency_commission_pct: 5,
+          host_commission_pct: 3,
+          user_commission_pct: 2,
+          total_earned: 0,
+          available_balance: 0,
+        });
+
+        if (error) throw error;
+
+        await supabase.from("notifications").insert({
+          user_uuid: bd_uuid,
+          title: "🎉 تم تفعيلك كبيدي",
+          body: `مرحباً ${bd_name}، تم تفعيل حسابك كمطور أعمال (BD) من قبل الإدارة.`,
+          target: "personal",
+        });
+
+        return json({ success: true });
+      }
+
       // Admin: delete (deactivate) a BD
       case "delete_bd": {
         const { bd_uuid } = params;

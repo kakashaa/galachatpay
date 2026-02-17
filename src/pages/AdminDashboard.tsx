@@ -276,6 +276,9 @@ const AdminDashboardPage: React.FC = () => {
   const [bdDeletedList, setBdDeletedList] = useState<any[]>([]);
   const [bdViewMode, setBdViewMode] = useState<"active" | "deleted">("active");
   const [editingBdSettings, setEditingBdSettings] = useState<any>(null);
+  const [showAddBd, setShowAddBd] = useState(false);
+  const [newBd, setNewBd] = useState({ bd_uuid: "", bd_name: "", referral_code: "" });
+  const [addBdLoading, setAddBdLoading] = useState(false);
   const [bdSettingsLoading, setBdSettingsLoading] = useState(false);
   const [bdWithdrawEnabled, setBdWithdrawEnabled] = useState(true);
   const [bdWithdrawToggleLoading, setBdWithdrawToggleLoading] = useState(false);
@@ -2513,7 +2516,7 @@ const AdminDashboardPage: React.FC = () => {
                   />
                 </div>
 
-                {/* Active / Deleted toggle */}
+                {/* Add BD + Active / Deleted toggle */}
                 <div className="flex gap-2" dir="rtl">
                   <Button
                     size="sm"
@@ -2531,7 +2534,85 @@ const AdminDashboardPage: React.FC = () => {
                   >
                     <Trash2 className="w-3.5 h-3.5" /> المحذوفين ({bdDeletedList.length})
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 text-xs gap-1.5 border-primary/50 text-primary"
+                    onClick={() => setShowAddBd(!showAddBd)}
+                  >
+                    <Plus className="w-3.5 h-3.5" /> إضافة BD
+                  </Button>
                 </div>
+
+                {/* Add BD Form */}
+                <AnimatePresence>
+                  {showAddBd && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-card border border-primary/30 rounded-xl p-4 space-y-3"
+                      dir="rtl"
+                    >
+                      <p className="text-sm font-bold text-foreground">إضافة بيدي جديد</p>
+                      <Input
+                        placeholder="UUID الحساب (آيدي المستخدم)"
+                        value={newBd.bd_uuid}
+                        onChange={(e) => setNewBd({ ...newBd, bd_uuid: e.target.value.trim() })}
+                        className="text-xs"
+                        dir="ltr"
+                      />
+                      <Input
+                        placeholder="اسم البيدي"
+                        value={newBd.bd_name}
+                        onChange={(e) => setNewBd({ ...newBd, bd_name: e.target.value })}
+                        className="text-xs"
+                      />
+                      <Input
+                        placeholder="رمز الدعوة (اختياري - يتم إنشاؤه تلقائياً)"
+                        value={newBd.referral_code}
+                        onChange={(e) => setNewBd({ ...newBd, referral_code: e.target.value.trim() })}
+                        className="text-xs"
+                        dir="ltr"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-8 text-xs"
+                          disabled={addBdLoading || !newBd.bd_uuid || !newBd.bd_name}
+                          onClick={async () => {
+                            setAddBdLoading(true);
+                            try {
+                              const { data, error } = await supabase.functions.invoke("bd-manage", {
+                                body: {
+                                  action: "create_bd",
+                                  bd_uuid: newBd.bd_uuid,
+                                  bd_name: newBd.bd_name,
+                                  referral_code: newBd.referral_code || undefined,
+                                },
+                              });
+                              if (error || !data?.success) throw new Error(data?.error || "فشل");
+                              toast.success("تم إضافة البيدي بنجاح");
+                              setNewBd({ bd_uuid: "", bd_name: "", referral_code: "" });
+                              setShowAddBd(false);
+                              loadData();
+                            } catch (err: any) {
+                              toast.error(err?.message || "فشل إضافة البيدي");
+                            } finally {
+                              setAddBdLoading(false);
+                            }
+                          }}
+                        >
+                          {addBdLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                          إضافة
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setShowAddBd(false)}>
+                          إلغاء
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Deleted BDs view */}
                 {bdViewMode === "deleted" && (
