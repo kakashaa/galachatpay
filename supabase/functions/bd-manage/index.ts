@@ -275,13 +275,13 @@ serve(async (req) => {
         return json({ success: true });
       }
 
-      // Admin: approve withdrawal (BD needs to fill recipient info)
+      // Admin: approve withdrawal → moves directly to "info_submitted" (بانتظار التحويل)
       case "approve_withdrawal": {
         const { withdrawal_id } = params;
         if (!withdrawal_id) throw new Error("withdrawal_id required");
 
         const { error } = await supabase.from("bd_withdrawals").update({
-          status: "approved",
+          status: "info_submitted",
           approved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq("id", withdrawal_id);
@@ -294,7 +294,7 @@ serve(async (req) => {
           await supabase.from("notifications").insert({
             user_uuid: w.bd_uuid,
             title: "✅ تمت الموافقة على طلب السحب",
-            body: `تمت الموافقة على سحب $${Number(w.amount).toFixed(2)}. يرجى إضافة معلومات المستلم لإتمام التحويل.`,
+            body: `تمت الموافقة على طلب سحب $${Number(w.amount).toFixed(2)}. جاري التحويل.`,
             target: "personal",
           });
         }
@@ -371,13 +371,14 @@ serve(async (req) => {
 
         if (error) throw error;
 
-        // Notify BD
+        // Notify BD with receipt info
         const { data: w } = await supabase.from("bd_withdrawals").select("*").eq("id", withdrawal_id).single();
         if (w) {
+          const receiptInfo = w.receipt_url ? `\n📎 إيصال الشحن: ${w.receipt_url}` : "";
           await supabase.from("notifications").insert({
             user_uuid: w.bd_uuid,
             title: "💰 تم تحويل أرباحك",
-            body: `تم تحويل $${Number(w.amount).toFixed(2)} بنجاح. رقم الحوالة: ${transfer_number}`,
+            body: `تم تحويل $${Number(w.amount).toFixed(2)} بنجاح. طلبك مكتمل وتم التحويل.${receiptInfo}`,
             target: "personal",
           });
         }
