@@ -34,7 +34,12 @@ const BDLogin: React.FC = () => {
       setAutoChecked(true);
       (async () => {
         const ok = await login(galaUser.uuid);
-        if (ok) navigate("/bd/dashboard", { replace: true });
+        if (ok) {
+          navigate("/bd/dashboard", { replace: true });
+        } else {
+          // Clear the error from auto-check - it's expected for non-BD users
+          setLocalError("");
+        }
       })();
     }
   }, [galaUser?.uuid, autoChecked]);
