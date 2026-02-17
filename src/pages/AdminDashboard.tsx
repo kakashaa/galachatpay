@@ -2521,27 +2521,49 @@ const AdminDashboardPage: React.FC = () => {
                           <p className="text-sm font-bold text-foreground">{bd.bd_name}</p>
                           <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bd.bd_uuid}</p>
                         </div>
-                        <Button
-                          size="sm"
-                          variant={isEditing ? "default" : "outline"}
-                          className="h-7 text-[10px] gap-1"
-                          onClick={() => {
-                            if (isEditing) {
-                              setEditingBdSettings(null);
-                            } else {
-                              setEditingBdSettings({
-                                bd_uuid: bd.bd_uuid,
-                                agency_commission_pct: bd.agency_commission_pct,
-                                host_commission_pct: bd.host_commission_pct,
-                                user_commission_pct: bd.user_commission_pct,
-                                total_earned: bd.total_earned,
-                                available_balance: bd.available_balance,
-                              });
-                            }
-                          }}
-                        >
-                          {isEditing ? <><X className="w-3 h-3" /> إلغاء</> : <><Edit2 className="w-3 h-3" /> تعديل</>}
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 text-[10px] gap-1"
+                            onClick={async () => {
+                              if (!confirm(`هل أنت متأكد من حذف ${bd.bd_name} كبيدي؟`)) return;
+                              try {
+                                const { error } = await supabase.functions.invoke("bd-manage", {
+                                  body: { action: "delete_bd", bd_uuid: bd.bd_uuid },
+                                });
+                                if (error) throw error;
+                                toast.success("تم حذف البيدي بنجاح");
+                                loadData();
+                              } catch {
+                                toast.error("فشل حذف البيدي");
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" /> حذف
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={isEditing ? "default" : "outline"}
+                            className="h-7 text-[10px] gap-1"
+                            onClick={() => {
+                              if (isEditing) {
+                                setEditingBdSettings(null);
+                              } else {
+                                setEditingBdSettings({
+                                  bd_uuid: bd.bd_uuid,
+                                  agency_commission_pct: bd.agency_commission_pct,
+                                  host_commission_pct: bd.host_commission_pct,
+                                  user_commission_pct: bd.user_commission_pct,
+                                  total_earned: bd.total_earned,
+                                  available_balance: bd.available_balance,
+                                });
+                              }
+                            }}
+                          >
+                            {isEditing ? <><X className="w-3 h-3" /> إلغاء</> : <><Edit2 className="w-3 h-3" /> تعديل</>}
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Earnings */}

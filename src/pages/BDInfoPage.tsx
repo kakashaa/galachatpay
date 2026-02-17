@@ -87,6 +87,22 @@ const BDInfoPage: React.FC = () => {
     );
   }
 
+  // Check if BD is deleted (is_approved === false)
+  if (data.settings && data.settings.is_approved === false) {
+    return (
+      <MobileLayout showHeader headerTitle="لوحة البيدي" onBack={() => navigate("/")}>
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+            <Users className="w-8 h-8 text-destructive" />
+          </div>
+          <p className="text-base font-bold text-destructive">لقد تم حذفك كبيدي</p>
+          <p className="text-sm text-muted-foreground">تواصل مع الإدارة لمعرفة السبب</p>
+          <Button onClick={() => navigate("/")} variant="outline">العودة للرئيسية</Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   const { settings, agencies, supporters = [], totals, withdrawals = [] } = data;
   const totalEarned = Number(settings.total_earned || 0);
   const availableBalance = Number(settings.available_balance || 0);
