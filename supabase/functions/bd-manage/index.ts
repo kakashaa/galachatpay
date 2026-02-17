@@ -224,6 +224,17 @@ serve(async (req) => {
         return json({ success: true, data: enriched });
       }
 
+      // Admin: list deleted BDs
+      case "list_deleted_bds": {
+        const { data } = await supabase
+          .from("bd_commission_settings")
+          .select("*")
+          .eq("is_approved", false)
+          .order("updated_at", { ascending: false });
+
+        return json({ success: true, data: data || [] });
+      }
+
       // Admin: update BD commission settings
       case "update_bd_settings": {
         const { bd_uuid, agency_commission_pct, host_commission_pct, user_commission_pct, available_balance, total_earned } = params;
@@ -472,6 +483,28 @@ serve(async (req) => {
           user_uuid: bd_uuid,
           title: "⛔ تم إلغاء حسابك كبيدي",
           body: "تم حذفك كبيدي من قبل الإدارة. تواصل مع الإدارة لمعرفة السبب.",
+          target: "personal",
+        });
+
+        return json({ success: true });
+      }
+
+      // Admin: restore (reactivate) a BD
+      case "restore_bd": {
+        const { bd_uuid } = params;
+        if (!bd_uuid) throw new Error("bd_uuid required");
+
+        const { error } = await supabase
+          .from("bd_commission_settings")
+          .update({ is_approved: true, updated_at: new Date().toISOString() })
+          .eq("bd_uuid", bd_uuid);
+
+        if (error) throw error;
+
+        await supabase.from("notifications").insert({
+          user_uuid: bd_uuid,
+          title: "✅ تم إعادة تفعيل حسابك كبيدي",
+          body: "تم إعادة تفعيل حسابك كبيدي من قبل الإدارة.",
           target: "personal",
         });
 
