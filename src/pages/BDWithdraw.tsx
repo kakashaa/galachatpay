@@ -156,10 +156,13 @@ const BDWithdraw: React.FC = () => {
                 step="0.01"
               />
               {parsedAmount > 0 && (
-                <div className="flex items-center justify-center gap-1.5 text-amber-400 text-xs">
-                  <Coins className="w-3.5 h-3.5" />
-                  <span className="font-bold">{amountCoins.toLocaleString()}</span>
-                  <span className="text-muted-foreground">كوينز</span>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mt-2">
+                  <p className="text-[10px] text-muted-foreground text-center mb-1">ما يعادلها بالكوينزات</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Coins className="w-5 h-5 text-amber-400" />
+                    <span className="text-xl font-bold text-amber-400">{amountCoins.toLocaleString()}</span>
+                    <span className="text-xs text-muted-foreground">كوينز</span>
+                  </div>
                 </div>
               )}
               {parsedAmount > balanceUsd && (
