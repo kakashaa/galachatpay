@@ -64,12 +64,23 @@ const BDLogin: React.FC = () => {
     const res = await register(uuid, regName);
     if (res.success) {
       setRegSuccess(true);
-      setTimeout(async () => {
+      // إعادة المحاولة عدة مرات مع تأخير لأن الخادم قد يحتاج وقت لمعالجة التسجيل
+      const tryLogin = async (attempts: number): Promise<boolean> => {
+        for (let i = 0; i < attempts; i++) {
+          await new Promise(r => setTimeout(r, i === 0 ? 1500 : 2000));
+          const ok = await login(uuid);
+          if (ok) return true;
+        }
+        return false;
+      };
+      const ok = await tryLogin(3);
+      if (ok) {
+        navigate("/bd/dashboard", { replace: true });
+      } else {
         setRegSuccess(false);
-        const ok = await login(uuid);
-        if (ok) navigate("/bd/dashboard");
-        setRegistering(false);
-      }, 1500);
+        setLocalError("تم التسجيل بنجاح لكن فشل تحميل لوحة التحكم. أعد تسجيل الدخول.");
+      }
+      setRegistering(false);
     } else {
       setLocalError(res.error || "فشل التسجيل");
       setRegistering(false);
