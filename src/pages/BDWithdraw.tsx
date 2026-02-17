@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Wallet, DollarSign, Coins, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { Wallet, DollarSign, Loader2, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,21 +8,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const COIN_RATE = 8500;
-
 const BDWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
 
   const [step, setStep] = useState<"balance" | "form" | "success">("balance");
   const [amount, setAmount] = useState("");
-  const [recipientUuid, setRecipientUuid] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [balanceUsd, setBalanceUsd] = useState(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
 
-  // Load balance from bd_commission_settings directly
   useEffect(() => {
     if (!authUser?.uuid) return;
     const loadBalance = async () => {
@@ -42,11 +38,8 @@ const BDWithdraw: React.FC = () => {
 
   if (!authUser) { navigate("/"); return null; }
 
-  const balanceCoins = Math.round(balanceUsd * COIN_RATE);
-
   const parsedAmount = parseFloat(amount) || 0;
-  const amountCoins = Math.round(parsedAmount * COIN_RATE);
-  const canSubmit = parsedAmount > 0 && parsedAmount <= balanceUsd && recipientUuid.trim().length >= 3;
+  const canSubmit = parsedAmount >= 60 && parsedAmount <= balanceUsd;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -54,12 +47,11 @@ const BDWithdraw: React.FC = () => {
     setError("");
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("bd-referral", {
+      const { data, error: fnError } = await supabase.functions.invoke("bd-manage", {
         body: {
-          action: "bd_withdraw_coins",
-          uuid: authUser.uuid,
+          action: "request_withdrawal",
+          bd_uuid: authUser.uuid,
           amount: parsedAmount,
-          recipient_uuid: recipientUuid.trim(),
         },
       });
 
@@ -79,7 +71,7 @@ const BDWithdraw: React.FC = () => {
         .maybeSingle();
       if (refreshed) setBalanceUsd(Number(refreshed.available_balance) || 0);
       
-      toast.success("تم شحن الكوينزات بنجاح ⚡");
+      toast.success("تم رفع طلب السحب بنجاح 📋");
     } catch (e: any) {
       setError(e.message || "خطأ في الاتصال");
     } finally {
@@ -112,27 +104,20 @@ const BDWithdraw: React.FC = () => {
             </div>
             <div>
               <p className="text-sm font-bold text-foreground">رصيدك المتاح</p>
-              <p className="text-[10px] text-muted-foreground">$1 = {COIN_RATE.toLocaleString()} كوينز</p>
+              <p className="text-[10px] text-muted-foreground">الحد الأدنى للسحب: $60</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-primary/10 rounded-xl p-3 text-center">
-              <DollarSign className="w-4 h-4 text-green-400 mx-auto mb-1" />
-              <p className="text-lg font-bold text-green-400">${balanceUsd.toFixed(2)}</p>
-              <p className="text-[9px] text-muted-foreground">بالدولار</p>
-            </div>
-            <div className="bg-primary/10 rounded-xl p-3 text-center">
-              <Coins className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-              <p className="text-lg font-bold text-amber-400">{balanceCoins.toLocaleString()}</p>
-              <p className="text-[9px] text-muted-foreground">بالكوينز</p>
-            </div>
+          <div className="bg-primary/10 rounded-xl p-4 text-center">
+            <DollarSign className="w-5 h-5 text-green-400 mx-auto mb-1" />
+            <p className="text-2xl font-bold text-green-400">${balanceUsd.toFixed(2)}</p>
+            <p className="text-[9px] text-muted-foreground">بالدولار</p>
           </div>
 
           {step === "balance" && (
-            <Button className="w-full gap-2 h-12 mt-2">
+            <Button className="w-full gap-2 h-12 mt-2" disabled={balanceUsd < 60}>
               <Wallet className="w-4 h-4" />
-              سحب الرصيد
+              {balanceUsd < 60 ? "الرصيد غير كافٍ (الحد الأدنى $60)" : "طلب سحب"}
             </Button>
           )}
         </div>
@@ -143,7 +128,7 @@ const BDWithdraw: React.FC = () => {
             <h3 className="text-sm font-bold text-foreground">طلب سحب جديد</h3>
 
             <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">المبلغ بالدولار</label>
+              <label className="text-xs text-muted-foreground">المبلغ بالدولار (الحد الأدنى $60)</label>
               <Input
                 type="number"
                 inputMode="decimal"
@@ -151,37 +136,21 @@ const BDWithdraw: React.FC = () => {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="text-center text-lg font-bold h-12"
-                min={0}
+                min={60}
                 max={balanceUsd}
                 step="0.01"
               />
-              {parsedAmount > 0 && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mt-2">
-                  <p className="text-[10px] text-muted-foreground text-center mb-1">ما يعادلها بالكوينزات</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Coins className="w-5 h-5 text-amber-400" />
-                    <span className="text-xl font-bold text-amber-400">{amountCoins.toLocaleString()}</span>
-                    <span className="text-xs text-muted-foreground">كوينز</span>
-                  </div>
-                </div>
+              {parsedAmount > 0 && parsedAmount < 60 && (
+                <p className="text-[10px] text-destructive text-center">الحد الأدنى للسحب $60</p>
               )}
               {parsedAmount > balanceUsd && (
                 <p className="text-[10px] text-destructive text-center">المبلغ أكبر من الرصيد المتاح</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">آيدي المستلم (UUID) في غلا</label>
-              <Input
-                type="text"
-                placeholder="أدخل آيدي المستلم"
-                value={recipientUuid}
-                onChange={(e) => setRecipientUuid(e.target.value)}
-                className="text-center h-12"
-                maxLength={64}
-              />
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
               <p className="text-[10px] text-muted-foreground text-center">
-                يمكنك شحن لحسابك أو لحساب آخر
+                بعد الموافقة على الطلب، سيُطلب منك إدخال معلومات المستلم لإتمام التحويل
               </p>
             </div>
 
@@ -196,7 +165,7 @@ const BDWithdraw: React.FC = () => {
               <Button
                 variant="outline"
                 className="flex-1 h-11"
-                onClick={() => { setStep("balance"); setError(""); setAmount(""); setRecipientUuid(""); }}
+                onClick={() => { setStep("balance"); setError(""); setAmount(""); }}
               >
                 <ArrowLeft className="w-4 h-4 ml-1" />
                 رجوع
@@ -206,8 +175,8 @@ const BDWithdraw: React.FC = () => {
                 disabled={!canSubmit || loading}
                 onClick={handleSubmit}
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Coins className="w-4 h-4" />}
-                شحن الكوينزات
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+                رفع الطلب
               </Button>
             </div>
           </div>
@@ -217,16 +186,18 @@ const BDWithdraw: React.FC = () => {
         {step === "success" && (
           <div className="glass-card p-5 space-y-4 animate-fade-in text-center">
             <CheckCircle className="w-12 h-12 text-green-400 mx-auto" />
-            <h3 className="text-sm font-bold text-foreground">تم الشحن بنجاح! ⚡</h3>
+            <h3 className="text-sm font-bold text-foreground">تم رفع طلب السحب بنجاح! 📋</h3>
             <p className="text-xs text-muted-foreground">
-              تم شحن <span className="text-amber-400 font-bold">{amountCoins.toLocaleString()}</span> كوينز
-              إلى الحساب <span className="text-primary font-bold">{recipientUuid}</span>
+              تم رفع طلب سحب بمبلغ <span className="text-green-400 font-bold">${parsedAmount.toFixed(2)}</span>
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              سيتم مراجعة الطلب من قبل الإدارة وإشعارك بالنتيجة
             </p>
             <Button
               className="w-full h-11"
-              onClick={() => { setStep("balance"); setAmount(""); setRecipientUuid(""); setError(""); }}
+              onClick={() => { setStep("balance"); setAmount(""); setError(""); }}
             >
-              سحب آخر
+              تم
             </Button>
           </div>
         )}
