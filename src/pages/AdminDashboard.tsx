@@ -280,6 +280,10 @@ const AdminDashboardPage: React.FC = () => {
   const [newBd, setNewBd] = useState({ bd_uuid: "", bd_name: "", referral_code: "" });
   const [addBdLoading, setAddBdLoading] = useState(false);
   const [bdSettingsLoading, setBdSettingsLoading] = useState(false);
+  const [addMemberBdUuid, setAddMemberBdUuid] = useState<string | null>(null);
+  const [newMemberUuid, setNewMemberUuid] = useState("");
+  const [newMemberType, setNewMemberType] = useState<"supporter" | "agency">("supporter");
+  const [addMemberLoading, setAddMemberLoading] = useState(false);
   const [bdWithdrawEnabled, setBdWithdrawEnabled] = useState(true);
   const [bdWithdrawToggleLoading, setBdWithdrawToggleLoading] = useState(false);
 
@@ -2851,6 +2855,75 @@ const AdminDashboardPage: React.FC = () => {
                           }}
                         >
                           {bdSettingsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-3.5 h-3.5" /> حفظ التعديلات</>}
+                        </Button>
+                      )}
+
+                      {/* Add Member Form */}
+                      {addMemberBdUuid === bd.bd_uuid && (
+                        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-2" dir="rtl">
+                          <p className="text-xs font-bold text-foreground">إضافة عضو لـ {bd.bd_name}</p>
+                          <Input
+                            placeholder="UUID العضو"
+                            value={newMemberUuid}
+                            onChange={(e) => setNewMemberUuid(e.target.value.trim())}
+                            className="text-xs h-8"
+                            dir="ltr"
+                          />
+                          <div className="flex gap-2">
+                            {(["supporter", "agency"] as const).map((t) => (
+                              <button
+                                key={t}
+                                onClick={() => setNewMemberType(t)}
+                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                                  newMemberType === t ? "bg-primary text-primary-foreground" : "bg-muted/20 text-muted-foreground"
+                                }`}
+                              >
+                                {t === "supporter" ? "داعم" : "وكالة"}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="flex-1 h-7 text-[10px]"
+                              disabled={addMemberLoading || !newMemberUuid}
+                              onClick={async () => {
+                                setAddMemberLoading(true);
+                                try {
+                                  const { data, error } = await supabase.functions.invoke("bd-manage", {
+                                    body: { action: "admin_add_member", bd_uuid: bd.bd_uuid, member_uuid: newMemberUuid, member_type: newMemberType },
+                                  });
+                                  if (error || !data?.success) throw new Error(data?.error || "فشل");
+                                  toast.success(`تم إضافة ${data.name || newMemberUuid} بنجاح`);
+                                  setNewMemberUuid("");
+                                  setAddMemberBdUuid(null);
+                                  loadData();
+                                } catch (err: any) {
+                                  toast.error(err?.message || "فشل إضافة العضو");
+                                } finally {
+                                  setAddMemberLoading(false);
+                                }
+                              }}
+                            >
+                              {addMemberLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                              إضافة
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => { setAddMemberBdUuid(null); setNewMemberUuid(""); }}>
+                              إلغاء
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add member button */}
+                      {addMemberBdUuid !== bd.bd_uuid && !isEditing && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-7 text-[10px] gap-1 border-primary/30 text-primary"
+                          onClick={() => { setAddMemberBdUuid(bd.bd_uuid); setNewMemberUuid(""); setNewMemberType("supporter"); }}
+                        >
+                          <Plus className="w-3 h-3" /> إضافة عضو
                         </Button>
                       )}
 

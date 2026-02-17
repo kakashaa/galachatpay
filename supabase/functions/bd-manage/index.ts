@@ -506,6 +506,60 @@ serve(async (req) => {
         return json({ success: true });
       }
 
+      // Admin: add member to a BD manually
+      case "admin_add_member": {
+        const { bd_uuid, member_uuid, member_type } = params;
+        if (!bd_uuid || !member_uuid) throw new Error("bd_uuid و member_uuid مطلوبان");
+
+        // Check BD exists
+        const { data: bdCheck } = await supabase.from("bd_commission_settings").select("bd_name").eq("bd_uuid", bd_uuid).eq("is_approved", true).single();
+        if (!bdCheck) return json({ success: false, error: "حساب BD غير موجود أو غير مفعل" });
+
+        // Check member not already registered
+        const { data: existingMember } = await supabase.from("bd_members").select("id").eq("member_uuid", member_uuid).single();
+        if (existingMember) return json({ success: false, error: "هذا العضو مسجل بالفعل لدى BD آخر" });
+
+        // Fetch member info from API
+        let memberName = "";
+        let typeUser = 0;
+        let resolvedType = member_type || "supporter";
+        try {
+          const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
+          const GALA_API_KEY = Deno.env.get("GALA_API_KEY");
+          const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
+          if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
+            const timestamp = Math.floor(Date.now() / 1000).toString();
+            const nonce = crypto.randomUUID();
+            const path = "api/newWebsite/getUserInfo";
+            const message = `GET${path}${timestamp}${nonce}`;
+            const encoder = new TextEncoder();
+            const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+            const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+            const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+            const url = `${GALA_API_BASE_URL}/${path}?uuid=${member_uuid}`;
+            const apiRes = await fetch(url, { method: "GET", headers: { "X-API-KEY": GALA_API_KEY, "X-SIGNATURE": signature, "X-TIMESTAMP": timestamp, "X-NONCE": nonce, Accept: "application/json" } });
+            if (apiRes.ok) {
+              const apiData = await apiRes.json();
+              if (apiData?.data) {
+                memberName = apiData.data.name || apiData.data.nickname || "";
+                typeUser = Number(apiData.data.type_user || 0);
+              }
+            }
+          }
+        } catch (e) { console.error("Failed to get user info:", e); }
+
+        const { error: insertErr } = await supabase.from("bd_members").insert({
+          bd_uuid,
+          member_uuid,
+          member_name: memberName || member_uuid,
+          member_type: resolvedType,
+          type_user: typeUser,
+        });
+        if (insertErr) throw insertErr;
+
+        return json({ success: true, name: memberName || member_uuid });
+      }
+
       // Admin: delete (deactivate) a BD
       case "delete_bd": {
         const { bd_uuid } = params;
