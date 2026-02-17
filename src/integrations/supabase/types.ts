@@ -418,6 +418,39 @@ export type Database = {
         }
         Relationships: []
       }
+      bd_registration_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_level: number
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_level?: number
+          user_name?: string
+          user_uuid: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_level?: number
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       bd_requests_cache: {
         Row: {
           admin_note: string | null
