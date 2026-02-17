@@ -64,7 +64,7 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
     try {
       const data = await callApi("dashboard", { uuid });
       if (!data?.success && !data?.ok) {
-        setError(data?.error || "الحساب غير موجود");
+        // Don't set error for auto-check - caller handles it
         setLoading(false);
         return false;
       }
