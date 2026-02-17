@@ -70,7 +70,7 @@ const BDDashboard: React.FC = () => {
   ];
 
   return (
-    <MobileLayout showHeader headerTitle="لوحة البيدي" onBack={() => navigate("/bd")}>
+    <MobileLayout showHeader headerTitle="لوحة البيدي" onBack={() => navigate("/")}>
       <div className="px-4 py-4 space-y-4" dir="rtl">
         {/* Header card */}
         <div className="glass-card p-4">
