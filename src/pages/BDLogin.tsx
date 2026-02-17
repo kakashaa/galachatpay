@@ -62,7 +62,8 @@ const BDLogin: React.FC = () => {
     setRegistering(true);
     const regName = galaUser?.name || uuid;
     const res = await register(uuid, regName);
-    if (res.success) {
+    const isAlreadyRegistered = !res.success && res.error?.toLowerCase().includes("already registered");
+    if (res.success || isAlreadyRegistered) {
       setRegSuccess(true);
       // إعادة المحاولة عدة مرات مع تأخير لأن الخادم قد يحتاج وقت لمعالجة التسجيل
       const tryLogin = async (attempts: number): Promise<boolean> => {
