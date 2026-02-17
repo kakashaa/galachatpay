@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, UserPlus, Building2, DollarSign, RefreshCw, Loader2, CheckCircle, Wallet, AlertCircle, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, UserPlus, Building2, DollarSign, RefreshCw, Loader2, CheckCircle, Wallet, ArrowDown, ChevronDown, ChevronUp } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +28,7 @@ const BDInfoPage: React.FC = () => {
   const [earningsExpanded, setEarningsExpanded] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  // Withdrawal state
-  const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  // Withdrawal state removed - now uses /bd/withdraw page
 
   // Recipient info state (for approved withdrawals)
   const [showRecipientForm, setShowRecipientForm] = useState(false);
@@ -74,31 +71,7 @@ const BDInfoPage: React.FC = () => {
   };
 
 
-  const handleWithdrawRequest = async () => {
-    const amount = parseFloat(withdrawAmount);
-    if (!amount || amount < 60) {
-      toast.error("الحد الأدنى للسحب 60 دولار");
-      return;
-    }
-    setWithdrawLoading(true);
-    try {
-      const { data: result, error } = await supabase.functions.invoke("bd-manage", {
-        body: { action: "request_withdrawal", bd_uuid: authUser?.uuid, amount },
-      });
-      if (error) throw error;
-      if (result?.success) {
-        toast.success("تم إرسال طلب السحب بنجاح");
-        setShowWithdraw(false);
-        setWithdrawAmount("");
-        loadData();
-      } else {
-        toast.error(result?.error || "فشل إرسال الطلب");
-      }
-    } catch (e: any) {
-      toast.error(e.message || "خطأ");
-    }
-    setWithdrawLoading(false);
-  };
+  // Old handleWithdrawRequest removed - now uses /bd/withdraw page
 
   const handleSubmitRecipientInfo = async (withdrawalId: string) => {
     if (!recipientInfo.name || !recipientInfo.country) {
@@ -343,12 +316,12 @@ const BDInfoPage: React.FC = () => {
             </button>
             <button
               className="bg-primary/10 rounded-xl p-3 text-center transition-all hover:bg-primary/20 active:scale-95"
-              onClick={() => { if (availableBalance >= 60) setShowWithdraw(!showWithdraw); else if (availableBalance > 0) toast.error("الحد الأدنى للسحب 60 دولار"); }}
+              onClick={() => navigate("/bd/withdraw")}
             >
               <Wallet className="w-4 h-4 text-primary mx-auto mb-1" />
               <p className="text-base font-bold text-green-400">${availableBalance.toFixed(2)}</p>
               <p className="text-[9px] text-muted-foreground">الرصيد المتاح</p>
-              {availableBalance >= 60 && <p className="text-[8px] text-primary mt-1">اضغط للسحب</p>}
+              <p className="text-[8px] text-primary mt-1">اضغط للسحب</p>
             </button>
           </div>
 
@@ -407,42 +380,7 @@ const BDInfoPage: React.FC = () => {
             </div>
           )}
 
-          {/* Withdraw form */}
-          {showWithdraw && (
-            <div className="bg-muted/20 rounded-xl p-3 space-y-3 mb-3 border border-primary/20">
-              <p className="text-xs font-bold text-foreground">طلب سحب الرصيد المتاح</p>
-              <p className="text-[10px] text-muted-foreground">الحد الأدنى: $60 • المتاح: ${availableBalance.toFixed(2)}</p>
-              <Input
-                type="number"
-                min="60"
-                max={availableBalance}
-                step="0.01"
-                placeholder="المبلغ بالدولار"
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                className="h-10 text-sm text-center"
-                dir="ltr"
-              />
-              {parseFloat(withdrawAmount) > 0 && parseFloat(withdrawAmount) < 60 && (
-                <div className="flex items-center gap-1.5 text-destructive text-[10px]">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>الحد الأدنى للسحب 60 دولار</span>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1 gap-1"
-                  disabled={withdrawLoading || !parseFloat(withdrawAmount) || parseFloat(withdrawAmount) < 60 || parseFloat(withdrawAmount) > availableBalance}
-                  onClick={handleWithdrawRequest}
-                >
-                  {withdrawLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-                  تأكيد السحب
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => { setShowWithdraw(false); setWithdrawAmount(""); }}>إلغاء</Button>
-              </div>
-            </div>
-          )}
+          {/* Withdraw form removed - now uses /bd/withdraw page */}
 
           {/* Add member button */}
           <div className="bg-muted/20 rounded-xl p-3 space-y-2">
