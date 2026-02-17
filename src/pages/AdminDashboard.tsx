@@ -273,6 +273,8 @@ const AdminDashboardPage: React.FC = () => {
 
   // BD management state
   const [bdManagementList, setBdManagementList] = useState<any[]>([]);
+  const [bdDeletedList, setBdDeletedList] = useState<any[]>([]);
+  const [bdViewMode, setBdViewMode] = useState<"active" | "deleted">("active");
   const [editingBdSettings, setEditingBdSettings] = useState<any>(null);
   const [bdSettingsLoading, setBdSettingsLoading] = useState(false);
   const [bdWithdrawEnabled, setBdWithdrawEnabled] = useState(true);
@@ -593,11 +595,13 @@ const AdminDashboardPage: React.FC = () => {
         }
         case "bd_management": {
           try {
-            const { data: result, error } = await supabase.functions.invoke("bd-manage", {
-              body: { action: "list_all_bds" },
-            });
-            if (!error && result?.success) setBdManagementList(result.data || []);
-          } catch { setBdManagementList([]); }
+            const [activeRes, deletedRes] = await Promise.all([
+              supabase.functions.invoke("bd-manage", { body: { action: "list_all_bds" } }),
+              supabase.functions.invoke("bd-manage", { body: { action: "list_deleted_bds" } }),
+            ]);
+            if (!activeRes.error && activeRes.data?.success) setBdManagementList(activeRes.data.data || []);
+            if (!deletedRes.error && deletedRes.data?.success) setBdDeletedList(deletedRes.data.data || []);
+          } catch { setBdManagementList([]); setBdDeletedList([]); }
           break;
         }
         case "bd_withdrawals": {
@@ -2509,7 +2513,68 @@ const AdminDashboardPage: React.FC = () => {
                   />
                 </div>
 
-                {bdManagementList.length === 0 ? (
+                {/* Active / Deleted toggle */}
+                <div className="flex gap-2" dir="rtl">
+                  <Button
+                    size="sm"
+                    variant={bdViewMode === "active" ? "default" : "outline"}
+                    className="flex-1 h-9 text-xs gap-1.5"
+                    onClick={() => setBdViewMode("active")}
+                  >
+                    <Eye className="w-3.5 h-3.5" /> المفعّلين ({bdManagementList.length})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={bdViewMode === "deleted" ? "destructive" : "outline"}
+                    className="flex-1 h-9 text-xs gap-1.5"
+                    onClick={() => setBdViewMode("deleted")}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> المحذوفين ({bdDeletedList.length})
+                  </Button>
+                </div>
+
+                {/* Deleted BDs view */}
+                {bdViewMode === "deleted" && (
+                  bdDeletedList.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-8">لا يوجد حسابات BD محذوفة</p>
+                  ) : (
+                    bdDeletedList.map((bd: any) => (
+                      <div key={bd.id} className="bg-card border border-destructive/30 rounded-xl p-4 space-y-2" dir="rtl">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{bd.bd_name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bd.bd_uuid}</p>
+                            <p className="text-[10px] text-destructive">محذوف</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 border-green-500/50 text-green-400 hover:bg-green-500/10"
+                            onClick={async () => {
+                              if (!confirm(`هل تريد إعادة تفعيل ${bd.bd_name}؟`)) return;
+                              try {
+                                const { error } = await supabase.functions.invoke("bd-manage", {
+                                  body: { action: "restore_bd", bd_uuid: bd.bd_uuid },
+                                });
+                                if (error) throw error;
+                                toast.success("تم إعادة تفعيل البيدي");
+                                loadData();
+                              } catch {
+                                toast.error("فشل إعادة التفعيل");
+                              }
+                            }}
+                          >
+                            <Unlock className="w-3 h-3" /> إعادة تفعيل
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )
+                )}
+
+                {/* Active BDs view */}
+                {bdViewMode === "active" && (
+                (bdManagementList.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-8">لا يوجد حسابات BD مفعّلة</p>
                 ) : (
                   bdManagementList.map((bd: any) => {
@@ -2714,6 +2779,7 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
                     );
                   })
+                ))
                 )}
               </motion.div>
             )}
