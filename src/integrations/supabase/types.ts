@@ -68,6 +68,39 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_vip_overrides: {
+        Row: {
+          agent_name: string
+          agent_uuid: string
+          created_at: string
+          id: string
+          updated_at: string
+          vip4_limit: number
+          vip5_limit: number
+          vip6_limit: number
+        }
+        Insert: {
+          agent_name?: string
+          agent_uuid: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          vip4_limit?: number
+          vip5_limit?: number
+          vip6_limit?: number
+        }
+        Update: {
+          agent_name?: string
+          agent_uuid?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          vip4_limit?: number
+          vip5_limit?: number
+          vip6_limit?: number
+        }
+        Relationships: []
+      }
       animated_photo_requests: {
         Row: {
           admin_note: string | null

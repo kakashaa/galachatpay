@@ -41,7 +41,8 @@ const RequestVip: React.FC = () => {
 
   // Limits state
   const [usedTotal, setUsedTotal] = useState(0);         // total requests this month (for regular users)
-  const [usedHighVip, setUsedHighVip] = useState(0);     // VIP 4-5 requests this month (for agents)
+  const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0, 6: 0});
+  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 5, 5: 5, 6: 0});
   const [giftedRecipients, setGiftedRecipients] = useState<string[]>([]); // already gifted IDs
 
   useEffect(() => {
@@ -50,15 +51,36 @@ const RequestVip: React.FC = () => {
       setChecking(true);
       const currentMonth = getCurrentMonth();
 
-      const { data: requests } = await supabase
-        .from("vip_requests")
-        .select("vip_level, created_at, recipient_uuid")
-        .eq("user_uuid", user.uuid)
-        .eq("request_month", currentMonth);
+      const [reqResult, overrideResult] = await Promise.all([
+        supabase
+          .from("vip_requests")
+          .select("vip_level, created_at, recipient_uuid")
+          .eq("user_uuid", user.uuid)
+          .eq("request_month", currentMonth),
+        supabase
+          .from("agent_vip_overrides")
+          .select("vip4_limit, vip5_limit, vip6_limit")
+          .eq("agent_uuid", user.uuid)
+          .maybeSingle(),
+      ]);
 
-      const allReqs = requests || [];
+      const allReqs = reqResult.data || [];
       setUsedTotal(allReqs.length);
-      setUsedHighVip(allReqs.filter((r: any) => r.vip_level >= 4).length);
+      
+      const perLevel: Record<number, number> = {4: 0, 5: 0, 6: 0};
+      for (const r of allReqs) {
+        if (r.vip_level >= 4) perLevel[r.vip_level] = (perLevel[r.vip_level] || 0) + 1;
+      }
+      setUsedPerLevel(perLevel);
+
+      if (overrideResult.data) {
+        setLimitsPerLevel({
+          4: overrideResult.data.vip4_limit,
+          5: overrideResult.data.vip5_limit,
+          6: overrideResult.data.vip6_limit,
+        });
+      }
+
       setGiftedRecipients(allReqs.filter((r: any) => r.recipient_uuid).map((r: any) => r.recipient_uuid));
       setChecking(false);
     };
@@ -72,14 +94,16 @@ const RequestVip: React.FC = () => {
   // Determine which tiers to show and their state
   const getTierState = (level: number) => {
     if (!isAgent) {
-      // Regular user/host: VIP 1-3 available, 4-6 locked
       if (level >= 4) return "locked_agent_only";
       if (usedTotal >= 1) return "used_up";
       return "available";
     }
-    // Agents: VIP 1-5 available, VIP 6 locked
-    if (level === 6) return "locked";
-    if (level >= 4 && usedHighVip >= 5) return "used_up";
+    // Agents: per-level limits from overrides
+    if (level >= 4) {
+      const limit = limitsPerLevel[level] ?? 0;
+      if (limit <= 0) return "locked";
+      if ((usedPerLevel[level] || 0) >= limit) return "used_up";
+    }
     return "available";
   };
 
@@ -113,7 +137,9 @@ const RequestVip: React.FC = () => {
 
       // Update local state
       setUsedTotal(prev => prev + 1);
-      if (selectedVip >= 4) setUsedHighVip(prev => prev + 1);
+      if (selectedVip >= 4) {
+        setUsedPerLevel(prev => ({ ...prev, [selectedVip]: (prev[selectedVip] || 0) + 1 }));
+      }
       if (mode === "gift" && recipientId.trim()) {
         setGiftedRecipients(prev => [...prev, recipientId.trim()]);
       }
@@ -140,7 +166,7 @@ const RequestVip: React.FC = () => {
                 <Calendar className="w-3 h-3 text-primary" />
                 <p className="text-[10px] text-primary">
                   {isAgent
-                    ? `VIP 4-5: متبقي ${Math.max(0, 5 - usedHighVip)} من 5 • VIP 1-3: غير محدود`
+                    ? `VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]} • VIP 6: ${Math.max(0, limitsPerLevel[6] - (usedPerLevel[6]||0))}/${limitsPerLevel[6]}`
                     : `مرة واحدة شهرياً (10 أيام) • ${usedTotal >= 1 ? "تم الاستخدام" : "متاح"}`}
                 </p>
               </div>

@@ -105,25 +105,45 @@ serve(async (req) => {
 
       // Agents (type 2-6)
       if (isAgent) {
-        if (vipLevel === 6) {
-          return new Response(
-            JSON.stringify({ success: false, error: "VIP 6 غير متاح حالياً." }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        // Check agent_vip_overrides for custom per-level limits
+        const { data: override } = await sb
+          .from("agent_vip_overrides")
+          .select("vip4_limit, vip5_limit, vip6_limit")
+          .eq("agent_uuid", sanitizedUuid)
+          .maybeSingle();
 
-        // For VIP 4-5: combined 5/month limit
+        // Default limits: VIP 4-5 combined 5/month, VIP 6 blocked
+        const vip4Limit = override?.vip4_limit ?? 5;
+        const vip5Limit = override?.vip5_limit ?? 5;
+        const vip6Limit = override?.vip6_limit ?? 0;
+
         if (vipLevel >= 4) {
-          const { data: highVipRequests } = await sb
+          // Get per-level usage this month
+          const { data: vipRequests } = await sb
             .from("vip_requests")
-            .select("id")
+            .select("vip_level")
             .eq("user_uuid", sanitizedUuid)
             .eq("request_month", currentMonth)
             .gte("vip_level", 4);
 
-          if ((highVipRequests?.length || 0) >= 5) {
+          const usedPerLevel: Record<number, number> = { 4: 0, 5: 0, 6: 0 };
+          for (const r of vipRequests || []) {
+            usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
+          }
+
+          const limitForLevel = vipLevel === 4 ? vip4Limit : vipLevel === 5 ? vip5Limit : vip6Limit;
+          const usedForLevel = usedPerLevel[vipLevel] || 0;
+
+          if (limitForLevel <= 0) {
             return new Response(
-              JSON.stringify({ success: false, error: "لقد استخدمت حد الـ 5 طلبات لـ VIP 4-5 هذا الشهر." }),
+              JSON.stringify({ success: false, error: `VIP ${vipLevel} غير متاح لك حالياً.` }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          if (usedForLevel >= limitForLevel) {
+            return new Response(
+              JSON.stringify({ success: false, error: `لقد استخدمت حد الـ ${limitForLevel} طلبات لـ VIP ${vipLevel} هذا الشهر.` }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
