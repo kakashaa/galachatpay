@@ -193,6 +193,7 @@ serve(async (req) => {
         const { data } = await supabase
           .from("bd_commission_settings")
           .select("*")
+          .eq("is_approved", true)
           .order("created_at", { ascending: false });
 
         const bds = data || [];
