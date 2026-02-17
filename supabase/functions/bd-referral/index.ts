@@ -53,6 +53,34 @@ serve(async (req) => {
         return respond({ success: false, error: "هذا العضو مسجل بالفعل لدى بي دي آخر" });
       }
 
+      // ── Device-based restriction: check if member's device already has another user registered with a different BD ──
+      const { data: memberDevice } = await sb
+        .from("user_devices")
+        .select("device_id")
+        .eq("user_uuid", member_uuid)
+        .maybeSingle();
+
+      if (memberDevice?.device_id) {
+        // Find all users on the same device
+        const { data: sameDeviceUsers } = await sb
+          .from("user_devices")
+          .select("user_uuid")
+          .eq("device_id", memberDevice.device_id);
+
+        if (sameDeviceUsers && sameDeviceUsers.length > 0) {
+          const deviceUuids = sameDeviceUsers.map(u => u.user_uuid);
+          // Check if any of these users are already a member of a different BD
+          const { data: existingMembers } = await sb
+            .from("bd_members")
+            .select("member_uuid, bd_uuid")
+            .in("member_uuid", deviceUuids);
+
+          if (existingMembers && existingMembers.length > 0) {
+            return respond({ success: false, error: "هذا الجهاز مسجل كعضو لدى بيدي آخر. لا يمكن التسجيل لدى أكثر من بيدي بنفس الجهاز" });
+          }
+        }
+      }
+
       // Check if there's already a pending invitation for this member
       const { data: existingInv } = await sb
         .from("bd_member_invitations")
@@ -130,6 +158,35 @@ serve(async (req) => {
       }
 
       if (invResponse === "accept") {
+        // ── Device-based restriction on accept ──
+        const { data: memberDevice } = await sb
+          .from("user_devices")
+          .select("device_id")
+          .eq("user_uuid", inv.member_uuid)
+          .maybeSingle();
+
+        if (memberDevice?.device_id) {
+          const { data: sameDeviceUsers } = await sb
+            .from("user_devices")
+            .select("user_uuid")
+            .eq("device_id", memberDevice.device_id);
+
+          if (sameDeviceUsers && sameDeviceUsers.length > 0) {
+            const deviceUuids = sameDeviceUsers.map(u => u.user_uuid);
+            const { data: existingMembers } = await sb
+              .from("bd_members")
+              .select("member_uuid")
+              .in("member_uuid", deviceUuids);
+
+            if (existingMembers && existingMembers.length > 0) {
+              await sb
+                .from("bd_member_invitations")
+                .update({ status: "rejected", updated_at: new Date().toISOString() })
+                .eq("id", invitation_id);
+              return respond({ success: false, error: "هذا الجهاز مسجل كعضو لدى بيدي آخر. لا يمكن التسجيل لدى أكثر من بيدي بنفس الجهاز" });
+            }
+          }
+        }
         // Call external API to add member
         const formData = new URLSearchParams();
         formData.append("key", API_KEY);

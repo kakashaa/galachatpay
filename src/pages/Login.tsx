@@ -218,6 +218,19 @@ const Login: React.FC = () => {
       }
       keysToDelete.forEach(key => localStorage.removeItem(key));
 
+      // Register device_id for this user
+      try {
+        let deviceId = localStorage.getItem("gala_device_id");
+        if (!deviceId) {
+          deviceId = crypto.randomUUID();
+          localStorage.setItem("gala_device_id", deviceId);
+        }
+        await supabase.from("user_devices").upsert(
+          { user_uuid: apiUser.uuid, device_id: deviceId, updated_at: new Date().toISOString() },
+          { onConflict: "user_uuid" }
+        );
+      } catch { /* ignore device registration errors */ }
+
       navigate("/dashboard", { replace: true });
     } catch {
       setError("حدث خطأ غير متوقع. حاول مرة أخرى.");
