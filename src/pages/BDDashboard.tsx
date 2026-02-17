@@ -12,8 +12,12 @@ const BDDashboard: React.FC = () => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!bdUser) { navigate("/bd"); return; }
-    refreshDashboard();
+    if (!bdUser) { navigate("/bd", { replace: true }); return; }
+    refreshDashboard().catch(() => {
+      // If refresh fails (BD not found on server), redirect to registration
+      logout();
+      navigate("/bd", { replace: true });
+    });
   }, []);
 
   if (!bdUser) return null;
