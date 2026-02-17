@@ -272,14 +272,6 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         }).eq("bd_uuid", bd_uuid);
 
-        // Notify BD about submission
-        await supabase.from("notifications").insert({
-          user_uuid: bd_uuid,
-          title: "📋 تم رفع طلب السحب",
-          body: `تم رفع طلب سحب بمبلغ $${numAmount.toFixed(2)} بنجاح. الطلب قيد المراجعة.`,
-          target: "personal",
-        });
-
         return json({ success: true });
       }
 
