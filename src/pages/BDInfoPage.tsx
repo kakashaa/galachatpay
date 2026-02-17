@@ -4,6 +4,7 @@ import { Users, UserPlus, Building2, DollarSign, RefreshCw, Loader2, Wallet, Che
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBD } from "@/contexts/BDContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { userTypeLabels } from "@/utils/userTypeResolver";
@@ -21,6 +22,7 @@ interface BDData {
 const BDInfoPage: React.FC = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
+  const { logout: bdLogout } = useBD();
   const [data, setData] = useState<BDData | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -57,7 +59,8 @@ const BDInfoPage: React.FC = () => {
       if (result?.success) {
         setData(result.data);
       } else if (result?.error === "BD not found") {
-        // User is not registered as BD - redirect to registration page
+        // Clear stale BD data from localStorage to break redirect loop
+        bdLogout();
         navigate("/bd", { replace: true });
         return;
       } else {
