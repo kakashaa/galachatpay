@@ -294,7 +294,7 @@ serve(async (req) => {
           await supabase.from("notifications").insert({
             user_uuid: w.bd_uuid,
             title: "✅ تمت الموافقة على طلب السحب",
-            body: `تمت الموافقة على طلب سحب $${Number(w.amount).toFixed(2)}. جاري التحويل.`,
+            body: `تمت الموافقة على طلب السحب، يرجى انتظار التحويل.`,
             target: "personal",
           });
         }
