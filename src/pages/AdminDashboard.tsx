@@ -311,6 +311,7 @@ const AdminDashboardPage: React.FC = () => {
   const [bdWithdrawLoading, setBdWithdrawLoading] = useState(false);
   const [bdWithdrawFilter, setBdWithdrawFilter] = useState<"all" | "pending" | "approved" | "info_submitted" | "completed" | "rejected">("pending");
   const [transferFormId, setTransferFormId] = useState<string | null>(null);
+  const [bdGroupExpanded, setBdGroupExpanded] = useState(false);
   const [transferNumber, setTransferNumber] = useState("");
   const [transferReceiptFile, setTransferReceiptFile] = useState<File | null>(null);
   useEffect(() => {
@@ -953,9 +954,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
-    { key: "bd_requests", label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
-    { key: "bd_management", label: "تحكم BD", icon: <Briefcase className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400", count: bdManagementList.length },
-    { key: "bd_withdrawals", label: "سحب أرباح BD", icon: <Wallet className="w-7 h-7" />, color: "from-lime-500/20 to-lime-600/10 text-lime-400", count: bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length },
+    // BD items are grouped separately below
     { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
     { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
     { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
@@ -1129,7 +1128,68 @@ const AdminDashboardPage: React.FC = () => {
                 ) : null}
               </motion.button>
             ))}
+
+            {/* BD Group Button */}
+            {(() => {
+              const bdTotalCount = (bdRequests.filter(r => r.status === 0 || r.status === "pending").length) +
+                (bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length);
+              return (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setBdGroupExpanded(!bdGroupExpanded)}
+                  className={`relative flex flex-col items-center gap-2.5 p-5 rounded-2xl border transition-all ${bdGroupExpanded ? "border-teal-500/50 bg-teal-500/5" : "border-border/40 bg-card hover:border-primary/30"}`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500/20 to-emerald-600/10 text-teal-400 flex items-center justify-center">
+                    <Briefcase className="w-7 h-7" />
+                  </div>
+                  <span className="text-xs font-bold text-foreground">BD</span>
+                  {bdTotalCount > 0 && (
+                    <span className="absolute top-2 left-2 min-w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold px-1">
+                      {bdTotalCount}
+                    </span>
+                  )}
+                  <ChevronDown className={`w-3 h-3 text-muted-foreground absolute bottom-1.5 transition-transform ${bdGroupExpanded ? "rotate-180" : ""}`} />
+                </motion.button>
+              );
+            })()}
           </div>
+
+          {/* BD Sub-items */}
+          <AnimatePresence>
+            {bdGroupExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-3 gap-3 pt-3" dir="rtl">
+                  {[
+                    { key: "bd_requests" as Tab, label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
+                    { key: "bd_management" as Tab, label: "تحكم BD", icon: <Briefcase className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400", count: bdManagementList.length },
+                    { key: "bd_withdrawals" as Tab, label: "سحب أرباح", icon: <Wallet className="w-7 h-7" />, color: "from-lime-500/20 to-lime-600/10 text-lime-400", count: bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length },
+                  ].map((tab) => (
+                    <motion.button
+                      key={tab.key}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setActiveTab(tab.key)}
+                      className="relative flex flex-col items-center gap-2.5 p-5 rounded-2xl border border-teal-500/20 bg-teal-500/5 hover:border-teal-500/40 transition-all"
+                    >
+                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center`}>
+                        {tab.icon}
+                      </div>
+                      <span className="text-xs font-bold text-foreground">{tab.label}</span>
+                      {tab.count && tab.count > 0 ? (
+                        <span className="absolute top-2 left-2 min-w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold px-1">
+                          {tab.count}
+                        </span>
+                      ) : null}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
