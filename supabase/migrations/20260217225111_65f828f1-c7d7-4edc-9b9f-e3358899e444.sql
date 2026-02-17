@@ -1,0 +1,2 @@
+ALTER TABLE public.salary_requests DROP CONSTRAINT salary_requests_request_type_check;
+ALTER TABLE public.salary_requests ADD CONSTRAINT salary_requests_request_type_check CHECK (request_type = ANY (ARRAY['monthly'::text, 'instant'::text, 'star_code'::text]));
