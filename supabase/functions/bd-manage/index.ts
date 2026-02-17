@@ -79,10 +79,12 @@ serve(async (req) => {
         const agencies = members.filter(m => m.member_type === "agency");
         const hosts = members.filter(m => m.member_type === "host");
         const users = members.filter(m => m.member_type === "user");
+        const supporters = members.filter(m => m.member_type === "supporter");
 
         const agencyTotal = agencies.reduce((s, m) => s + Number(m.total_commission), 0);
         const hostTotal = hosts.reduce((s, m) => s + Number(m.total_commission), 0);
         const userTotal = users.reduce((s, m) => s + Number(m.total_commission), 0);
+        const supporterTotal = supporters.reduce((s, m) => s + Number(m.total_commission), 0);
 
         return json({
           success: true,
@@ -91,7 +93,8 @@ serve(async (req) => {
             agencies,
             hosts,
             users,
-            totals: { agency: agencyTotal, host: hostTotal, user: userTotal },
+            supporters,
+            totals: { agency: agencyTotal, host: hostTotal, user: userTotal, supporter: supporterTotal },
             logs,
             withdrawals,
           },
