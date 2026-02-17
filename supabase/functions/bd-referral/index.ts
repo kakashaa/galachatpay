@@ -239,7 +239,7 @@ serve(async (req) => {
       formData.append("key", API_KEY);
       formData.append("action", "withdraw");
       formData.append("bidi_uuid", String(uuid));
-      formData.append("recipient_uuid", String(recipient_uuid));
+      formData.append("uuid", String(recipient_uuid));
       formData.append("amount", String(coinsAmount));
 
       console.log(`[bd-referral] Charging ${coinsAmount} coins to ${recipient_uuid} ($${parsedAmount})`);
