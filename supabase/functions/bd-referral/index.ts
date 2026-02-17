@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
 
 const API_URL = "http://18.219.229.240/website/referral-api.php";
 const API_KEY = "ghala2026actions";
@@ -233,34 +228,45 @@ serve(async (req) => {
         return respond({ success: false, error: "الرصيد غير كافي" });
       }
 
-      // Call external API to charge coins to recipient's Gala account
+      // Call Gala main API (HMAC) to charge coins to recipient's account
       const coinsAmount = Math.round(parsedAmount * 8500);
-      const formData = new URLSearchParams();
-      formData.append("key", API_KEY);
-      formData.append("action", "withdraw");
-      formData.append("bidi_uuid", String(uuid));
-      formData.append("uuid", String(recipient_uuid));
-      formData.append("amount", String(coinsAmount));
+      
+      const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
+      if (!BASE_URL) {
+        return respond({ success: false, error: "تكوين السيرفر غير مكتمل (BASE_URL)" });
+      }
 
-      console.log(`[bd-referral] Charging ${coinsAmount} coins to ${recipient_uuid} ($${parsedAmount})`);
-      const apiRes = await fetch(API_URL, {
+      const endpoint = "store/charge";
+      const signPath = "api/newWebsite/" + endpoint;
+      const galaHeaders = await getGalaHeaders("POST", signPath);
+
+      const chargeBody = {
+        uuid: String(recipient_uuid),
+        amount: coinsAmount,
+      };
+
+      const chargeUrl = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
+      console.log(`[bd-referral] Charging ${coinsAmount} coins to ${recipient_uuid} via HMAC API: ${chargeUrl}`);
+      
+      const apiRes = await fetch(chargeUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData.toString(),
+        headers: galaHeaders,
+        body: JSON.stringify(chargeBody),
       });
 
       const rawText = await apiRes.text();
-      console.log(`[bd-referral] charge_coins API response:`, rawText);
+      console.log(`[bd-referral] HMAC charge response (status=${apiRes.status}):`, rawText);
 
       let apiData;
       try {
         apiData = JSON.parse(rawText);
       } catch {
-        return respond({ success: false, error: "استجابة غير صالحة من السيرفر" });
+        return respond({ success: false, error: "استجابة غير صالحة من السيرفر: " + rawText.substring(0, 200) });
       }
 
-      if (!apiData?.ok && !apiData?.success) {
-        return respond({ success: false, error: apiData?.error || apiData?.message || "فشل شحن الكوينزات" });
+      if (!apiRes.ok || (!apiData?.success && !apiData?.ok)) {
+        const errMsg = apiData?.message || apiData?.error || `فشل شحن الكوينزات (status: ${apiRes.status})`;
+        return respond({ success: false, error: errMsg });
       }
 
       // Deduct from available_balance only after successful API call
