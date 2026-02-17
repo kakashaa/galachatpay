@@ -2802,9 +2802,31 @@ const AdminDashboardPage: React.FC = () => {
                                         <p className="text-xs font-bold text-foreground truncate">{member.member_name || "—"}</p>
                                         <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</p>
                                       </div>
-                                      <div className="text-left shrink-0 mr-2">
-                                        <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
-                                        <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
+                                      <div className="flex items-center gap-1.5 shrink-0 mr-2">
+                                        <div className="text-left">
+                                          <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
+                                          <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
+                                        </div>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+                                          onClick={async () => {
+                                            if (!confirm(`هل تريد إزالة ${member.member_name || member.member_uuid} من هذا البيدي؟`)) return;
+                                            try {
+                                              const { data: res, error } = await supabase.functions.invoke("bd-manage", {
+                                                body: { action: "remove_member", member_id: member.id, bd_uuid: bd.bd_uuid },
+                                              });
+                                              if (error || !res?.success) throw new Error(res?.error || "فشل");
+                                              toast.success(`تم إزالة ${member.member_name || "العضو"} بنجاح`);
+                                              loadData();
+                                            } catch (err: any) {
+                                              toast.error(err?.message || "فشل إزالة العضو");
+                                            }
+                                          }}
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
                                       </div>
                                     </div>
                                   ))}
