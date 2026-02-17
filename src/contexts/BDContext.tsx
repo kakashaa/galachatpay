@@ -141,8 +141,15 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
           agencies: apiData?.agencies?.list || [],
           withdrawals: apiData?.withdrawals || [],
         });
+      } else {
+        // BD not found on server - clear local data
+        saveBdUser(null);
+        throw new Error("BD not found");
       }
-    } catch {}
+    } catch (e) {
+      setLoading(false);
+      throw e;
+    }
     setLoading(false);
   }, [bdUser?.uuid]);
 
