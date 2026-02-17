@@ -112,23 +112,31 @@ serve(async (req) => {
           .eq("agent_uuid", sanitizedUuid)
           .maybeSingle();
 
-        // Default limits: VIP 4-5 combined 5/month, VIP 6 blocked
-        const vip4Limit = override?.vip4_limit ?? 5;
-        const vip5Limit = override?.vip5_limit ?? 5;
+        // Default limits: VIP 4=3/month, VIP 5=2/month, VIP 6=blocked, total=5/month
+        const vip4Limit = override?.vip4_limit ?? 3;
+        const vip5Limit = override?.vip5_limit ?? 2;
         const vip6Limit = override?.vip6_limit ?? 0;
+
+        // Check total monthly limit (5 requests across all VIP levels)
+        const { data: allVipRequests } = await sb
+          .from("vip_requests")
+          .select("vip_level")
+          .eq("user_uuid", sanitizedUuid)
+          .eq("request_month", currentMonth);
+
+        const totalUsed = allVipRequests?.length || 0;
+        if (totalUsed >= 5) {
+          return new Response(
+            JSON.stringify({ success: false, error: "لقد استخدمت الحد الأقصى (5 طلبات VIP) هذا الشهر." }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
 
         if (vipLevel >= 4) {
           // Get per-level usage this month
-          const { data: vipRequests } = await sb
-            .from("vip_requests")
-            .select("vip_level")
-            .eq("user_uuid", sanitizedUuid)
-            .eq("request_month", currentMonth)
-            .gte("vip_level", 4);
-
           const usedPerLevel: Record<number, number> = { 4: 0, 5: 0, 6: 0 };
-          for (const r of vipRequests || []) {
-            usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
+          for (const r of allVipRequests || []) {
+            if (r.vip_level >= 4) usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
           }
 
           const limitForLevel = vipLevel === 4 ? vip4Limit : vipLevel === 5 ? vip5Limit : vip6Limit;
