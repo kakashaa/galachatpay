@@ -1,50 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Wallet, DollarSign, Loader2, AlertCircle, CheckCircle, Coins, Ban } from "lucide-react";
+import { Wallet, DollarSign, Coins } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
-import { Button } from "@/components/ui/button";
 import { useBD } from "@/contexts/BDContext";
-import { supabase } from "@/integrations/supabase/client";
 
 const COIN_RATE = 7500;
 
 const BDWithdraw: React.FC = () => {
   const navigate = useNavigate();
-  const { bdUser, withdraw, loading, refreshDashboard } = useBD();
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [withdrawEnabled, setWithdrawEnabled] = useState(true);
-  const [_checkingSettings, setCheckingSettings] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("app_settings")
-        .select("value")
-        .eq("key", "bd_monthly_withdraw_enabled")
-        .single();
-      if (data) setWithdrawEnabled(data.value === "true");
-      setCheckingSettings(false);
-    })();
-  }, []);
+  const { bdUser } = useBD();
 
   if (!bdUser) { navigate("/bd"); return null; }
 
   const balanceUsd = bdUser.available_balance || 0;
   const balanceCoins = Math.round(balanceUsd * COIN_RATE);
-  const canWithdraw = withdrawEnabled;
-
-  const handleWithdraw = async () => {
-    setError("");
-    setSuccess(false);
-    const res = await withdraw();
-    if (res.success) {
-      setSuccess(true);
-      refreshDashboard();
-    } else {
-      setError(res.error || "فشل السحب");
-    }
-  };
 
   return (
     <MobileLayout showHeader headerTitle="السحب" onBack={() => navigate("/bd/dashboard")}>
@@ -73,36 +42,6 @@ const BDWithdraw: React.FC = () => {
               <p className="text-[9px] text-muted-foreground">بالكوينز</p>
             </div>
           </div>
-
-          {!canWithdraw && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl">
-              <Ban className="w-4 h-4 text-destructive shrink-0" />
-              <p className="text-xs text-destructive">السحب الشهري متوقف حالياً من قبل الإدارة</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-center gap-2 text-destructive text-xs p-2 bg-destructive/10 rounded-lg">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="flex items-center gap-2 text-green-400 text-xs p-2 bg-green-500/10 rounded-lg">
-              <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>تم إرسال طلب السحب بنجاح</span>
-            </div>
-          )}
-
-          <Button
-            onClick={handleWithdraw}
-            disabled={loading || !canWithdraw || balanceUsd <= 0}
-            className="w-full gap-2 h-12"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
-            طلب سحب
-          </Button>
         </div>
 
         {/* Withdrawal history */}
