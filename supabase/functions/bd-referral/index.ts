@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
-import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 const API_URL = "http://18.219.229.240/website/referral-api.php";
 const API_KEY = "ghala2026actions";
@@ -228,66 +233,37 @@ serve(async (req) => {
         return respond({ success: false, error: "الرصيد غير كافي" });
       }
 
-      // Call Gala main API (HMAC) to charge coins to recipient's account
+      // Local withdrawal: deduct balance + log for admin to process
       const coinsAmount = Math.round(parsedAmount * 8500);
-      
-      const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
-      if (!BASE_URL) {
-        return respond({ success: false, error: "تكوين السيرفر غير مكتمل (BASE_URL)" });
-      }
 
-      const endpoint = "store/charge";
-      const signPath = "api/newWebsite/" + endpoint;
-      const galaHeaders = await getGalaHeaders("POST", signPath);
-
-      const chargeBody = {
-        uuid: String(recipient_uuid),
-        amount: coinsAmount,
-      };
-
-      const chargeUrl = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
-      console.log(`[bd-referral] Charging ${coinsAmount} coins to ${recipient_uuid} via HMAC API: ${chargeUrl}`);
-      
-      const apiRes = await fetch(chargeUrl, {
-        method: "POST",
-        headers: galaHeaders,
-        body: JSON.stringify(chargeBody),
-      });
-
-      const rawText = await apiRes.text();
-      console.log(`[bd-referral] HMAC charge response (status=${apiRes.status}):`, rawText);
-
-      let apiData;
-      try {
-        apiData = JSON.parse(rawText);
-      } catch {
-        return respond({ success: false, error: "استجابة غير صالحة من السيرفر: " + rawText.substring(0, 200) });
-      }
-
-      if (!apiRes.ok || (!apiData?.success && !apiData?.ok)) {
-        const errMsg = apiData?.message || apiData?.error || `فشل شحن الكوينزات (status: ${apiRes.status})`;
-        return respond({ success: false, error: errMsg });
-      }
-
-      // Deduct from available_balance only after successful API call
+      // Deduct from available_balance
       const newBalance = availableBalance - parsedAmount;
       await sb
         .from("bd_commission_settings")
         .update({ available_balance: newBalance, updated_at: new Date().toISOString() })
         .eq("bd_uuid", uuid);
 
-      // Log the withdrawal
+      // Log the withdrawal as pending for admin
       await sb
         .from("bd_withdrawals")
         .insert({
           bd_uuid: String(uuid),
           bd_name: settings.bd_name || "",
           amount: parsedAmount,
-          status: "completed",
+          status: "pending",
           recipient_name: String(recipient_uuid),
           transfer_type: "coins",
-          completed_at: new Date().toISOString(),
+          admin_note: `شحن ${coinsAmount.toLocaleString()} كوينز للآيدي ${recipient_uuid}`,
         });
+
+      // Send notification to admin
+      await sb.from("notifications").insert({
+        title: "💰 طلب سحب BD جديد",
+        body: `${settings.bd_name || uuid} يطلب شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid}`,
+        target: "admin",
+      });
+
+      console.log(`[bd-referral] Local withdraw: $${parsedAmount} (${coinsAmount} coins) to ${recipient_uuid}. New balance: $${newBalance}`);
 
       return respond({ success: true, new_balance: newBalance });
     }
