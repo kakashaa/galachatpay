@@ -560,6 +560,19 @@ serve(async (req) => {
         return json({ success: true, name: memberName || member_uuid });
       }
 
+      // Admin: remove member from BD
+      case "remove_member": {
+        const { member_id } = params;
+        if (!member_id) throw new Error("member_id مطلوب");
+
+        const { data: member } = await supabase.from("bd_members").select("member_name, member_uuid").eq("id", member_id).single();
+        
+        const { error } = await supabase.from("bd_members").delete().eq("id", member_id);
+        if (error) throw error;
+
+        return json({ success: true, removed_name: member?.member_name || "" });
+      }
+
       // Admin: delete (deactivate) a BD
       case "delete_bd": {
         const { bd_uuid } = params;
