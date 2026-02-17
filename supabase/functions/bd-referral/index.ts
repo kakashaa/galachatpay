@@ -203,6 +203,88 @@ serve(async (req) => {
       return respond({ success: true, data: invitations || [] });
     }
 
+    // ─── BD Withdraw Coins: validate balance, proxy as "withdraw", update DB ───
+    if (action === "bd_withdraw_coins") {
+      const { uuid, amount, recipient_uuid } = params;
+      if (!uuid || !amount || !recipient_uuid) {
+        return respond({ success: false, error: "بيانات ناقصة" });
+      }
+
+      const parsedAmount = Number(amount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return respond({ success: false, error: "مبلغ غير صالح" });
+      }
+
+      const sb = getSupabase();
+
+      // Check available balance
+      const { data: settings } = await sb
+        .from("bd_commission_settings")
+        .select("available_balance, bd_name")
+        .eq("bd_uuid", uuid)
+        .maybeSingle();
+
+      if (!settings) {
+        return respond({ success: false, error: "حساب BD غير موجود" });
+      }
+
+      const availableBalance = Number(settings.available_balance) || 0;
+      if (parsedAmount > availableBalance) {
+        return respond({ success: false, error: "الرصيد غير كافي" });
+      }
+
+      // Proxy to external API with action "withdraw"
+      const formData = new URLSearchParams();
+      formData.append("key", API_KEY);
+      formData.append("action", "withdraw");
+      formData.append("uuid", String(uuid));
+      formData.append("amount", String(parsedAmount));
+      formData.append("recipient_uuid", String(recipient_uuid));
+
+      console.log(`[bd-referral] BD withdraw coins: uuid=${uuid}, amount=${parsedAmount}, recipient=${recipient_uuid}`);
+      const apiRes = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      });
+
+      const rawText = await apiRes.text();
+      console.log(`[bd-referral] Withdraw API response:`, rawText);
+
+      let apiData;
+      try {
+        apiData = JSON.parse(rawText);
+      } catch {
+        return respond({ success: false, error: "استجابة غير صالحة من السيرفر" });
+      }
+
+      if (!apiData?.ok && !apiData?.success) {
+        return respond({ success: false, error: apiData?.error || apiData?.message || "فشل عملية السحب" });
+      }
+
+      // Deduct from available_balance
+      const newBalance = availableBalance - parsedAmount;
+      await sb
+        .from("bd_commission_settings")
+        .update({ available_balance: newBalance, updated_at: new Date().toISOString() })
+        .eq("bd_uuid", uuid);
+
+      // Log the withdrawal
+      await sb
+        .from("bd_withdrawals")
+        .insert({
+          bd_uuid: String(uuid),
+          bd_name: settings.bd_name || "",
+          amount: parsedAmount,
+          status: "completed",
+          recipient_name: String(recipient_uuid),
+          transfer_type: "coins",
+          completed_at: new Date().toISOString(),
+        });
+
+      return respond({ success: true, new_balance: newBalance });
+    }
+
     // ─── Default: proxy to external API ───
     const formData = new URLSearchParams();
     formData.append("key", API_KEY);
