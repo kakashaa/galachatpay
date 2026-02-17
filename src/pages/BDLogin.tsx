@@ -18,7 +18,11 @@ const BDLogin: React.FC = () => {
   const [regSuccess, setRegSuccess] = useState(false);
 
   const uuid = galaUser?.uuid || "";
-  const userLevel = galaUser?.level?.charger_level || 0;
+  const userLevel = Math.max(
+    galaUser?.level?.charger_level || 0,
+    galaUser?.level?.sender_level || 0,
+    galaUser?.level?.receiver_level || 0
+  );
   const displayError = localError || error;
   const { refreshUser } = useAuth();
 
