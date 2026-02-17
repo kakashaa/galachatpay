@@ -454,6 +454,29 @@ serve(async (req) => {
         });
       }
 
+      // Admin: delete (deactivate) a BD
+      case "delete_bd": {
+        const { bd_uuid } = params;
+        if (!bd_uuid) throw new Error("bd_uuid required");
+
+        const { error } = await supabase
+          .from("bd_commission_settings")
+          .update({ is_approved: false, updated_at: new Date().toISOString() })
+          .eq("bd_uuid", bd_uuid);
+
+        if (error) throw error;
+
+        // Notify the BD
+        await supabase.from("notifications").insert({
+          user_uuid: bd_uuid,
+          title: "⛔ تم إلغاء حسابك كبيدي",
+          body: "تم حذفك كبيدي من قبل الإدارة. تواصل مع الإدارة لمعرفة السبب.",
+          target: "personal",
+        });
+
+        return json({ success: true });
+      }
+
       default:
         return json({ success: false, error: "Unknown action" }, 400);
     }
