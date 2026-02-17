@@ -40,7 +40,7 @@ const BDInfoPage: React.FC = () => {
   const [recipientLoading, setRecipientLoading] = useState(false);
 
   useEffect(() => {
-    if (!authUser?.uuid) { navigate("/dashboard"); return; }
+    if (!authUser?.uuid) { navigate("/"); return; }
     loadData();
   }, [authUser?.uuid]);
 
@@ -143,7 +143,7 @@ const BDInfoPage: React.FC = () => {
 
   if (loading) {
     return (
-      <MobileLayout showHeader headerTitle="لوحة BD" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle="لوحة البيدي" onBack={() => navigate("/")}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -153,10 +153,10 @@ const BDInfoPage: React.FC = () => {
 
   if (!data) {
     return (
-      <MobileLayout showHeader headerTitle="لوحة BD" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle="لوحة البيدي" onBack={() => navigate("/")}>
         <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
           <p className="text-sm text-muted-foreground mb-4">لم يتم العثور على بيانات BD</p>
-          <Button onClick={() => navigate("/dashboard")} variant="outline">العودة</Button>
+          <Button onClick={() => navigate("/")} variant="outline">العودة</Button>
         </div>
       </MobileLayout>
     );
@@ -182,7 +182,7 @@ const BDInfoPage: React.FC = () => {
   ];
 
   return (
-    <MobileLayout showHeader headerTitle="لوحة BD" onBack={() => navigate("/dashboard")}>
+    <MobileLayout showHeader headerTitle="لوحة البيدي" onBack={() => navigate("/")}>
       <div className="px-4 py-4 space-y-4" dir="rtl">
         {/* Approved withdrawal notification - needs recipient info */}
         {approvedWithdrawal && (
