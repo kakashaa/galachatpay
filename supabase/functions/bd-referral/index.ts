@@ -233,35 +233,6 @@ serve(async (req) => {
         return respond({ success: false, error: "الرصيد غير كافي" });
       }
 
-      // Proxy to external API with action "withdraw"
-      const formData = new URLSearchParams();
-      formData.append("key", API_KEY);
-      formData.append("action", "withdraw");
-      formData.append("uuid", String(uuid));
-      formData.append("amount", String(parsedAmount));
-      formData.append("recipient_uuid", String(recipient_uuid));
-
-      console.log(`[bd-referral] BD withdraw coins: uuid=${uuid}, amount=${parsedAmount}, recipient=${recipient_uuid}`);
-      const apiRes = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: formData.toString(),
-      });
-
-      const rawText = await apiRes.text();
-      console.log(`[bd-referral] Withdraw API response:`, rawText);
-
-      let apiData;
-      try {
-        apiData = JSON.parse(rawText);
-      } catch {
-        return respond({ success: false, error: "استجابة غير صالحة من السيرفر" });
-      }
-
-      if (!apiData?.ok && !apiData?.success) {
-        return respond({ success: false, error: apiData?.error || apiData?.message || "فشل عملية السحب" });
-      }
-
       // Deduct from available_balance
       const newBalance = availableBalance - parsedAmount;
       await sb
