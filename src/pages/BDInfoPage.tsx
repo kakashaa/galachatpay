@@ -54,8 +54,15 @@ const BDInfoPage: React.FC = () => {
         body: { action: "get_bd_info", bd_uuid: authUser.uuid },
       });
       if (error) throw error;
-      if (result?.success) setData(result.data);
-      else toast.error(result?.error || "فشل تحميل البيانات");
+      if (result?.success) {
+        setData(result.data);
+      } else if (result?.error === "BD not found") {
+        // User is not registered as BD - redirect to registration page
+        navigate("/bd", { replace: true });
+        return;
+      } else {
+        toast.error(result?.error || "فشل تحميل البيانات");
+      }
     } catch (e: any) {
       toast.error(e.message || "خطأ في الاتصال");
     } finally {
