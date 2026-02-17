@@ -22,26 +22,13 @@ import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime"
 import { useAnimatedPhotosRealtime } from "@/hooks/use-animated-photos-realtime";
 import { useSupportTicketsRealtime } from "@/hooks/use-support-tickets-realtime";
 import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-sessions-realtime";
-import { useBdRequestsRealtime } from "@/hooks/use-bd-requests-realtime";
+
 import { useBdWithdrawalsRealtime } from "@/hooks/use-bd-withdrawals-realtime";
 
 import AdminHairManager from "@/components/AdminHairManager";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_requests" | "bd_management" | "bd_withdrawals" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "bd_management" | "bd_withdrawals" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | null;
 
-interface BDRequestItem {
-  id: string;
-  user_uuid: string;
-  user_name: string;
-  request_type: string;
-  status: number | string; // 0=pending, 1=approved, 2=rejected
-  details: {
-    description?: string;
-    document_url?: string;
-  };
-  created_at: string;
-  admin_note?: string;
-}
 
 interface VideoTutorial {
   id: string;
@@ -224,7 +211,7 @@ const AdminDashboardPage: React.FC = () => {
    const [allFrameClaims, setAllFrameClaims] = useState<ClaimRecord[]>([]);
    const [allAnimatedPhotos, setAllAnimatedPhotos] = useState<AnimatedPhotoRequest[]>([]);
    const [allCustomGifts, setAllCustomGifts] = useState<any[]>([]);
-   const [allBdRequests, setAllBdRequests] = useState<BDRequestItem[]>([]);
+   
    const [allQuickSupport, setAllQuickSupport] = useState<any[]>([]);
    const [allVipRequests, setAllVipRequests] = useState<any[]>([]);
    const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
@@ -238,13 +225,8 @@ const AdminDashboardPage: React.FC = () => {
   const [adminStarAmount, setAdminStarAmount] = useState("");
   const [adminStarLoading, setAdminStarLoading] = useState(false);
 
-  // BD requests state
-  const [bdRequests, setBdRequests] = useState<BDRequestItem[]>([]);
+  // BD management expand state (shared with bd_management tab)
   const [expandedBD, setExpandedBD] = useState<string | null>(null);
-  const [bdAction, setBdAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
-  const [bdRejectReason, setBdRejectReason] = useState("");
-  const [bdActionLoading, setBdActionLoading] = useState(false);
-  const [bdFilter, setBdFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
@@ -375,22 +357,6 @@ const AdminDashboardPage: React.FC = () => {
     loadStats();
   });
 
-  // Realtime subscription for BD requests (cached from external API)
-  useBdRequestsRealtime(
-    (updatedRecord) => {
-      setBdRequests((prev) =>
-        prev.map((r) => (String(r.id) === updatedRecord.id ? { ...r, status: updatedRecord.status, admin_note: updatedRecord.admin_note } : r))
-      );
-      loadStats();
-    },
-    (newRecord) => {
-      setBdRequests((prev) => {
-        if (prev.some((r) => String(r.id) === newRecord.id)) return prev;
-        return [{ id: newRecord.id, user_uuid: newRecord.user_uuid, user_name: newRecord.user_name, request_type: newRecord.request_type, status: newRecord.status, details: newRecord.details || {}, created_at: newRecord.created_at, admin_note: newRecord.admin_note || undefined } as BDRequestItem, ...prev];
-      });
-      loadStats();
-    }
-  );
 
   // Realtime subscription for BD withdrawals
   useBdWithdrawalsRealtime(
@@ -409,14 +375,13 @@ const AdminDashboardPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const [salary, reports, animated, customG, tickets, quickSupport, bdCache, vipReqs, bdWithdrawalsData] = await Promise.all([
+      const [salary, reports, animated, customG, tickets, quickSupport, vipReqs, bdWithdrawalsData] = await Promise.all([
         supabase.from("salary_requests").select("status"),
         supabase.from("ban_reports").select("is_verified"),
         supabase.from("animated_photo_requests").select("status"),
         supabase.from("custom_gifts").select("status").eq("is_deleted", false),
         supabase.from("support_tickets").select("status"),
         supabase.from("quick_support_requests").select("status"),
-        supabase.from("bd_requests_cache").select("status"),
         supabase.from("vip_requests").select("id"),
         supabase.from("bd_withdrawals").select("id,status,bd_name,bd_uuid,amount,created_at,updated_at,recipient_name,recipient_phone,transfer_type,country,admin_note,transfer_number,receipt_url,approved_at,completed_at,rejected_at").order("created_at", { ascending: false }),
       ]);
@@ -434,20 +399,17 @@ const AdminDashboardPage: React.FC = () => {
                       (animated.data?.filter(r => r.status === "pending").length || 0) +
                       (customG.data?.filter(r => r.status === "pending").length || 0) +
                       (tickets.data?.filter(r => r.status === "open").length || 0) +
-                      (quickSupport.data?.filter((r: any) => r.status === "pending").length || 0) +
-                      (bdCache.data?.filter((r: any) => r.status === 0).length || 0);
+                      (quickSupport.data?.filter((r: any) => r.status === "pending").length || 0);
       const approved = (salary.data?.filter(r => r.status === "approved").length || 0) +
                        (reports.data?.filter(r => r.is_verified).length || 0) +
                        (animated.data?.filter(r => r.status === "approved").length || 0) +
                        (customG.data?.filter(r => r.status === "approved").length || 0) +
                        (tickets.data?.filter(r => r.status === "replied" || r.status === "closed").length || 0) +
                        (quickSupport.data?.filter((r: any) => r.status === "resolved").length || 0) +
-                       (bdCache.data?.filter((r: any) => r.status === 1).length || 0) +
                        (vipReqs.data?.length || 0);
       const rejected = (salary.data?.filter(r => r.status === "rejected").length || 0) +
                        (animated.data?.filter(r => r.status === "rejected").length || 0) +
-                       (customG.data?.filter(r => r.status === "rejected").length || 0) +
-                       (bdCache.data?.filter((r: any) => r.status === 2).length || 0);
+                       (customG.data?.filter(r => r.status === "rejected").length || 0);
       
       setStats({ pending, approved, rejected });
     } catch (err) {
@@ -514,46 +476,10 @@ const AdminDashboardPage: React.FC = () => {
           setAllCustomGifts(customG || []);
           setAllQuickSupport(qs || []);
           setAllVipRequests(vip || []);
-          // Load BD requests from cache
-          const { data: bdCacheData } = await supabase
-            .from("bd_requests_cache")
-            .select("*")
-            .order("created_at", { ascending: false });
-          setAllBdRequests((bdCacheData || []).map((r: any) => ({
-            id: r.id,
-            user_uuid: r.user_uuid,
-            user_name: r.user_name,
-            request_type: r.request_type,
-            status: r.status,
-            details: r.details || {},
-            created_at: r.created_at,
-            admin_note: r.admin_note,
-          })));
           break;
         }
         case "animated_photos": {
           setAnimatedPhotos(await adminCall("list_animated_photos") || []);
-          break;
-        }
-        case "bd_requests": {
-          const { data: bdCacheList, error: bdErr } = await supabase
-            .from("bd_requests_cache")
-            .select("*")
-            .order("created_at", { ascending: false });
-          if (bdErr) {
-            console.error("Failed to load BD requests:", bdErr);
-            toast.error("فشل تحميل طلبات BD");
-          }
-          setBdRequests((bdCacheList || []).map((r: any) => ({
-            id: r.id,
-            user_uuid: r.user_uuid,
-            user_name: r.user_name,
-            request_type: r.request_type,
-            status: r.status,
-            details: r.details || {},
-            created_at: r.created_at,
-            admin_note: r.admin_note,
-          })));
           break;
         }
         case "trash": {
@@ -815,62 +741,6 @@ const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  // BD request actions
-  const handleBDApprove = async (reqItem: BDRequestItem) => {
-    setBdActionLoading(true);
-    try {
-      // Create BD commission settings with referral code
-      const referralCode = `BD${reqItem.user_uuid.slice(-6).toUpperCase()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
-      await supabase.from("bd_commission_settings").upsert({
-        bd_uuid: reqItem.user_uuid,
-        bd_name: reqItem.user_name,
-        referral_code: referralCode,
-        is_approved: true,
-        agency_commission_pct: 5,
-        host_commission_pct: 3,
-        user_commission_pct: 2,
-      }, { onConflict: "bd_uuid" });
-
-      // Send notification
-      await supabase.from("notifications").insert({
-        user_uuid: reqItem.user_uuid,
-        title: "✅ تم قبول طلب BD",
-        body: "مبروك! تم قبول طلبك كمطور أعمال (BD). يمكنك الآن الوصول إلى لوحة BD.",
-        target: "personal",
-      });
-      toast.success("تم قبول طلب BD");
-      setBdAction(null);
-      // Optimistic update
-      setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
-      setAllBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 1 } : r));
-      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
-      // Sync cache table via admin edge function (service role)
-      await adminCall("update_bd_cache", { id: reqItem.id, status: 1, user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, details: reqItem.details || {} });
-    } catch { toast.error("فشل قبول الطلب"); }
-    finally { setBdActionLoading(false); }
-  };
-
-  const handleBDReject = async (reqItem: BDRequestItem) => {
-    if (!bdRejectReason.trim()) { toast.error("يرجى كتابة سبب الرفض"); return; }
-    setBdActionLoading(true);
-    try {
-      await supabase.from("notifications").insert({
-        user_uuid: reqItem.user_uuid,
-        title: "❌ تم رفض طلب BD",
-        body: `تم رفض طلبك. السبب: ${bdRejectReason.trim()}\nيمكنك إعادة التقديم مع تعديل البيانات.`,
-        target: "personal",
-      });
-      toast.success("تم رفض الطلب");
-      setBdAction(null); setBdRejectReason("");
-      // Optimistic update
-      setBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
-      setAllBdRequests(prev => prev.map(r => r.id === reqItem.id ? { ...r, status: 2, admin_note: bdRejectReason.trim() } : r));
-      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
-      // Sync cache table via admin edge function (service role)
-      await adminCall("update_bd_cache", { id: reqItem.id, status: 2, admin_note: bdRejectReason.trim(), user_uuid: reqItem.user_uuid, user_name: reqItem.user_name, request_type: reqItem.request_type, details: reqItem.details || {} });
-    } catch { toast.error("فشل رفض الطلب"); }
-    finally { setBdActionLoading(false); }
-  };
 
   const updateBanReport = async (id: string, updates: Partial<BanReport>) => {
     try { await adminCall("update_ban_report", { id, ...updates }); toast.success("تم التحديث"); loadData(); }
@@ -1143,8 +1013,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* BD Group Button */}
             {(() => {
-              const bdTotalCount = (bdRequests.filter(r => r.status === 0 || r.status === "pending").length) +
-                (bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length);
+              const bdTotalCount = bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length;
               return (
                 <motion.button
                   whileTap={{ scale: 0.95 }}
@@ -1177,7 +1046,6 @@ const AdminDashboardPage: React.FC = () => {
               >
                 <div className="grid grid-cols-3 gap-3 pt-3" dir="rtl">
                   {[
-                    { key: "bd_requests" as Tab, label: "طلبات BD", icon: <Briefcase className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400", count: bdRequests.filter(r => r.status === 0 || r.status === "pending").length },
                     { key: "bd_management" as Tab, label: "تحكم BD", icon: <Briefcase className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400", count: bdManagementList.length },
                     { key: "bd_withdrawals" as Tab, label: "سحب أرباح", icon: <Wallet className="w-7 h-7" />, color: "from-lime-500/20 to-lime-600/10 text-lime-400", count: bdWithdrawals.filter((w: any) => w.status === "pending" || w.status === "info_submitted").length },
                   ].map((tab) => (
@@ -1982,53 +1850,6 @@ const AdminDashboardPage: React.FC = () => {
                   ) : null;
                 })()}
 
-                {/* BD Requests Section */}
-                {(() => {
-                  const filtered = allBdRequests.filter((r: any) => {
-                    const statusNum = typeof r.status === "number" ? r.status : r.status === "pending" ? 0 : r.status === "approved" ? 1 : 2;
-                    if (allRequestsFilter === "all") return true;
-                    if (allRequestsFilter === "pending") return statusNum === 0;
-                    if (allRequestsFilter === "approved") return statusNum === 1;
-                    if (allRequestsFilter === "rejected") return statusNum === 2;
-                    return true;
-                  });
-                  const searched = filtered.filter((r: any) =>
-                    allRequestsSearch === "" ||
-                    r.user_name?.toLowerCase().includes(allRequestsSearch.toLowerCase()) ||
-                    r.user_uuid?.toLowerCase().includes(allRequestsSearch.toLowerCase())
-                  );
-                  return searched.length > 0 ? (
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-teal-500" /> طلبات BD ({searched.length})
-                      </h3>
-                      {searched.map((req: any) => {
-                        const statusNum = typeof req.status === "number" ? req.status : req.status === "pending" ? 0 : req.status === "approved" ? 1 : 2;
-                        return (
-                          <div key={req.id} className="bg-card border rounded-xl p-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  statusNum === 0 ? "bg-yellow-500/20 text-yellow-500" :
-                                  statusNum === 1 ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
-                                }`}>
-                                  {statusNum === 0 ? "معلق" : statusNum === 1 ? "مقبول" : "مرفوض"}
-                                </span>
-                                <span className="text-xs font-bold">{req.user_name}</span>
-                              </div>
-                              <span className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-1 text-[11px]">
-                              <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{req.user_uuid}</span></div>
-                              <div><span className="text-muted-foreground">النوع:</span> {req.request_type}</div>
-                              {req.admin_note && <div className="col-span-2"><span className="text-muted-foreground">ملاحظة:</span> {req.admin_note}</div>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null;
-                })()}
 
                 {/* Quick Support Section */}
                 {(() => {
@@ -2108,7 +1929,7 @@ const AdminDashboardPage: React.FC = () => {
 
                 {/* Empty State */}
                 {allSalaryRequests.length === 0 && allEntryClaims.length === 0 && allFrameClaims.length === 0 && 
-                 allAnimatedPhotos.length === 0 && allCustomGifts.length === 0 && allBdRequests.length === 0 && 
+                 allAnimatedPhotos.length === 0 && allCustomGifts.length === 0 && 
                  allQuickSupport.length === 0 && allVipRequests.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground">
                     <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -2308,135 +2129,7 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* BD Requests Tab */}
-            {activeTab === "bd_requests" && (
-              <motion.div key="bd_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-                {/* Filter Buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { key: "all" as const, label: "الكل", count: bdRequests.length, color: "bg-muted/30" },
-                    { key: "pending" as const, label: "معلقة", count: bdRequests.filter(r => (typeof r.status === "number" ? r.status === 0 : r.status === "pending")).length, color: "bg-yellow-500/10 border-yellow-500/30" },
-                    { key: "approved" as const, label: "مقبولة", count: bdRequests.filter(r => (typeof r.status === "number" ? r.status === 1 : r.status === "approved")).length, color: "bg-green-500/10 border-green-500/30" },
-                    { key: "rejected" as const, label: "مرفوضة", count: bdRequests.filter(r => (typeof r.status === "number" ? r.status === 2 : r.status === "rejected")).length, color: "bg-red-500/10 border-red-500/30" },
-                  ].map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => setBdFilter(f.key)}
-                      className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
-                        bdFilter === f.key
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : f.color + " border"
-                      }`}
-                    >
-                      {f.label}
-                      <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
-                    </button>
-                  ))}
-                </div>
-                {bdRequests.length === 0 && (
-                  <div className="text-center py-10 text-muted-foreground">
-                    <Briefcase className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                    <p>لا توجد طلبات BD</p>
-                    <p className="text-xs mt-1">قد يكون الخادم الخارجي غير متاح حالياً</p>
-                  </div>
-                )}
-                {bdRequests
-                  .filter(req => {
-                    const statusNum = typeof req.status === "number" ? req.status : req.status === "pending" ? 0 : req.status === "approved" ? 1 : 2;
-                    if (bdFilter === "all") return true;
-                    if (bdFilter === "pending") return statusNum === 0;
-                    if (bdFilter === "approved") return statusNum === 1;
-                    if (bdFilter === "rejected") return statusNum === 2;
-                    return true;
-                  })
-                  .map((req) => {
-                  const statusNum = typeof req.status === "number" ? req.status : req.status === "pending" ? 0 : req.status === "approved" ? 1 : 2;
-                  const statusLabel = statusNum === 0 ? "معلق" : statusNum === 1 ? "مقبول" : "مرفوض";
-                  const statusColor = statusNum === 0 ? "bg-yellow-500/20 text-yellow-500" : statusNum === 1 ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive";
 
-                  return (
-                    <div key={req.id} className="bg-card border rounded-xl overflow-hidden">
-                      <button onClick={() => setExpandedBD(expandedBD === req.id ? null : req.id)} className="w-full p-4 flex items-center justify-between text-right">
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${statusColor}`}>{statusLabel}</span>
-                          <div>
-                            <p className="font-bold text-sm">{req.user_name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{req.user_uuid}</p>
-                          </div>
-                        </div>
-                        {expandedBD === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-
-                      {expandedBD === req.id && (
-                        <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
-                          <div className="text-xs space-y-1.5">
-                            <p><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{req.user_uuid}</span></p>
-                            <p><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</p>
-                            {req.details?.description && (
-                              <div className="p-2 bg-muted/30 rounded-lg mt-2">
-                                <p className="text-muted-foreground font-bold mb-1">التفاصيل:</p>
-                                <p className="text-foreground whitespace-pre-wrap">{req.details.description}</p>
-                              </div>
-                            )}
-                            {req.details?.document_url && (
-                              <a href={req.details.document_url} target="_blank" rel="noopener" className="text-primary underline text-xs inline-block mt-1">
-                                📎 عرض المستند المرفق
-                              </a>
-                            )}
-                            {req.admin_note && (
-                              <div className="p-2 bg-muted/30 rounded-lg">
-                                <p className="text-muted-foreground font-bold mb-1">ملاحظة الأدمن:</p>
-                                <p>{req.admin_note}</p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Actions for pending requests */}
-                          {statusNum === 0 && bdAction?.id !== req.id && (
-                            <div className="flex gap-2">
-                              <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => setBdAction({ id: req.id, type: "approve" })}>
-                                <CheckCircle className="w-4 h-4 ml-1" />قبول
-                              </Button>
-                              <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setBdAction({ id: req.id, type: "reject" }); setBdRejectReason(""); }}>
-                                <XCircle className="w-4 h-4 ml-1" />رفض
-                              </Button>
-                            </div>
-                          )}
-
-                          {/* Approve confirmation */}
-                          {bdAction?.id === req.id && bdAction.type === "approve" && (
-                            <div className="space-y-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl">
-                              <p className="text-xs font-bold text-green-500">هل أنت متأكد من قبول هذا الطلب؟</p>
-                              <p className="text-[11px] text-muted-foreground">سيتم منح المستخدم صلاحيات BD</p>
-                              <div className="flex gap-2">
-                                <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={bdActionLoading} onClick={() => handleBDApprove(req)}>
-                                  {bdActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4 ml-1" />تأكيد القبول</>}
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setBdAction(null)}>إلغاء</Button>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Reject with reason */}
-                          {bdAction?.id === req.id && bdAction.type === "reject" && (
-                            <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
-                              <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
-                              <Textarea value={bdRejectReason} onChange={(e) => setBdRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="destructive" className="flex-1" disabled={bdActionLoading} onClick={() => handleBDReject(req)}>
-                                  {bdActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />تأكيد الرفض</>}
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setBdAction(null)}>إلغاء</Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </motion.div>
-            )}
 
             {/* Trash Tab - Super Admin Only */}
             {activeTab === "trash" && adminRole === "super_admin" && (

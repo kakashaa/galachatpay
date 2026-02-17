@@ -25,7 +25,7 @@ const EntryRequest = lazy(() => import("./pages/EntryRequest"));
 const FramesRequest = lazy(() => import("./pages/FramesRequest"));
 const ReportPage = lazy(() => import("./pages/ReportPage"));
 const SalaryWithdraw = lazy(() => import("./pages/SalaryWithdraw"));
-const BDRequest = lazy(() => import("./pages/BDRequest"));
+
 const BDLoginPage = lazy(() => import("./pages/BDLogin"));
 // BDDashboard removed - merged into BDInfoPage
 const BDAddMember = lazy(() => import("./pages/BDAddMember"));
@@ -82,7 +82,7 @@ const App = () => (
                 <Route path="/entry-request" element={<EntryRequest />} />
                 <Route path="/frames" element={<FramesRequest />} />
                 <Route path="/hairs" element={<HairsPage />} />
-                <Route path="/bd-request" element={<BDRequest />} />
+                
                 <Route path="/bd" element={<BDLoginPage />} />
                 <Route path="/bd/dashboard" element={<BDInfoPage />} />
                 <Route path="/bd/info" element={<BDInfoPage />} />
