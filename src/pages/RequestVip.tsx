@@ -44,6 +44,7 @@ const RequestVip: React.FC = () => {
   const [usedGiftTotal, setUsedGiftTotal] = useState(0);  // total gifts this month
   const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0, 6: 0});
   const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 2, 6: 0});
+  const [isTopAgent, setIsTopAgent] = useState(false);     // has custom overrides
   const [giftedRecipients, setGiftedRecipients] = useState<string[]>([]); // already gifted IDs
 
   useEffect(() => {
@@ -78,11 +79,14 @@ const RequestVip: React.FC = () => {
       setUsedPerLevel(perLevel);
 
       if (overrideResult.data) {
+        setIsTopAgent(true);
         setLimitsPerLevel({
           4: overrideResult.data.vip4_limit,
           5: overrideResult.data.vip5_limit,
           6: overrideResult.data.vip6_limit,
         });
+      } else {
+        setIsTopAgent(false);
       }
 
       setGiftedRecipients(allReqs.filter((r: any) => r.recipient_uuid).map((r: any) => r.recipient_uuid));
@@ -104,7 +108,7 @@ const RequestVip: React.FC = () => {
     }
     // Agents: different rules for self vs gift
     if (mode === "gift") {
-      if (usedGiftTotal >= 5) return "used_up";
+      if (!isTopAgent && usedGiftTotal >= 5) return "used_up";
       if (level >= 4) {
         const limit = limitsPerLevel[level] ?? 0;
         if (limit <= 0) return "locked";
@@ -186,7 +190,7 @@ const RequestVip: React.FC = () => {
                 <p className="text-[10px] text-primary">
                   {isAgent
                     ? mode === "gift"
-                      ? `إهداء: ${usedGiftTotal}/5 • VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]}`
+                      ? `${isTopAgent ? `إهداء: ${usedGiftTotal}` : `إهداء: ${usedGiftTotal}/5`} • VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]}`
                       : `لنفسك: ${usedSelf >= 1 ? "تم الاستخدام" : "متاح (مرة واحدة شهرياً)"}`
                     : `مرة واحدة شهرياً (10 أيام) • ${usedSelf >= 1 ? "تم الاستخدام" : "متاح"}`}
                 </p>
