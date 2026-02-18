@@ -1,0 +1,1 @@
+ALTER TABLE public.bd_commission_settings ADD COLUMN withdraw_exempt boolean NOT NULL DEFAULT false;
