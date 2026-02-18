@@ -38,28 +38,11 @@ serve(async (req) => {
       );
     }
 
-    // Check if user already has a pending/approved request with the same amount
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, supabaseKey);
 
     const sanitizedUuid = (uuid as string).trim();
-
-    const { data: duplicateAmount } = await sb
-      .from("salary_requests")
-      .select("id")
-      .eq("user_uuid", sanitizedUuid)
-      .eq("amount_usd", parsedAmount)
-      .eq("request_type", "instant")
-      .in("status", ["pending", "approved"])
-      .limit(1);
-
-    if (duplicateAmount && duplicateAmount.length > 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: "لديك طلب سحب بنفس المبلغ قيد المعالجة. يرجى استخدام مبلغ مختلف أو انتظار معالجة الطلب السابق." }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     const AGENCY_ID = 23;
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
@@ -109,10 +92,10 @@ serve(async (req) => {
       );
     }
 
-    // Extract charge_id (the unique internal ID for each transfer) and transaction info
+    // Extract charge_id and transaction info
     const txData = data.data || data;
-    const chargeId = txData.id ? String(txData.id) : null; // e.g. "46438" - unique per transfer
-    const transactionId = txData.transaction_id || null; // e.g. "TRX-WG85ADR1CY"
+    const chargeId = txData.id ? String(txData.id) : null;
+    const transactionId = txData.transaction_id || null;
     const transactionDate = txData.created_at || txData.date || null;
     const txAmount = txData.amount || parsedAmount;
 
@@ -145,6 +128,33 @@ serve(async (req) => {
       } catch (dateErr) {
         console.error("Date check error:", dateErr);
       }
+    }
+
+    // ── Check if this charge_id was already used ──
+    if (chargeId) {
+      const { data: existingCharge } = await sb
+        .from("used_charge_ids")
+        .select("id")
+        .eq("charge_id", chargeId)
+        .limit(1);
+
+      if (existingCharge && existingCharge.length > 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "هذا التحويل تم استخدامه مسبقاً في طلب سحب آخر.\n\nيرجى إجراء تحويل جديد بمبلغ مختلف وإعادة المحاولة.",
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Store the charge_id as used
+      await sb.from("used_charge_ids").insert({
+        charge_id: chargeId,
+        user_uuid: sanitizedUuid,
+        amount_usd: txAmount,
+      });
+      console.log("Stored charge_id:", chargeId, "for user:", sanitizedUuid);
     }
 
     // Return enriched data with charge_id as transaction_id
