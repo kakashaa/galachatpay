@@ -39,12 +39,35 @@ const LiveSupportChat: React.FC<Props> = ({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgIdRef = useRef(0);
 
-  // Helper to merge messages without duplicates
+  // Helper to merge messages without duplicates, replacing temp messages with real ones
   const mergeMessages = useCallback((prev: Message[], incoming: Message[]) => {
-    const existingIds = new Set(prev.map(m => m.id));
-    const newMsgs = incoming.filter(m => !existingIds.has(m.id));
-    if (newMsgs.length === 0) return prev;
-    return [...prev, ...newMsgs].sort((a, b) => 
+    const realMessages = incoming.filter(m => !m.id.startsWith("temp-"));
+    // Remove temp messages that now have a real version
+    const cleanedPrev = prev.filter(p => {
+      if (!p.id.startsWith("temp-")) return true;
+      return !realMessages.some(r => 
+        r.sender_type === p.sender_type && 
+        r.message === p.message &&
+        Math.abs(new Date(r.created_at).getTime() - new Date(p.created_at).getTime()) < 60000
+      );
+    });
+    const existingIds = new Set(cleanedPrev.map(m => m.id));
+    const newMsgs = incoming.filter(m => {
+      if (existingIds.has(m.id)) return false;
+      // Prevent near-duplicate real messages (same content+sender within 10s)
+      if (!m.id.startsWith("temp-")) {
+        const isDupe = cleanedPrev.some(p => 
+          !p.id.startsWith("temp-") &&
+          p.sender_type === m.sender_type && 
+          p.message === m.message &&
+          Math.abs(new Date(p.created_at).getTime() - new Date(m.created_at).getTime()) < 10000
+        );
+        if (isDupe) return false;
+      }
+      return true;
+    });
+    if (newMsgs.length === 0 && cleanedPrev.length === prev.length) return prev;
+    return [...cleanedPrev, ...newMsgs].sort((a, b) => 
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
   }, []);
@@ -145,7 +168,7 @@ const LiveSupportChat: React.FC<Props> = ({
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || ended) return;
+    if (!input.trim() || ended || sending) return;
     const msgText = input.trim();
     setSending(true);
     setInput("");
