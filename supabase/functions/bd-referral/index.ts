@@ -334,6 +334,7 @@ serve(async (req) => {
       }
 
       if (!apiSuccess) {
+        await sendTelegram(`❌ فشل سحب BD\n${settings.bd_name || uuid} حاول شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid}\nالسبب: ${apiError}`);
         return respond({ success: false, error: apiError || "فشل شحن الكوينزات تلقائياً" });
       }
 
@@ -372,6 +373,9 @@ serve(async (req) => {
         body: `تم شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid} بنجاح!`,
         target: "personal",
       });
+
+      // Send Telegram notification
+      await sendTelegram(`✅ سحب BD تلقائي\n${settings.bd_name || uuid} شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid}`);
 
       console.log(`[bd-referral] Auto withdraw success: $${parsedAmount} (${coinsAmount} coins) to ${recipient_uuid}. New balance: $${newBalance}`);
 
@@ -421,4 +425,19 @@ function respond(data: Record<string, unknown>) {
   return new Response(JSON.stringify(data), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function sendTelegram(text: string) {
+  try {
+    const token = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+    if (!token || !chatId) return;
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+    });
+  } catch (e) {
+    console.error("[bd-referral] Telegram error:", e);
+  }
 }
