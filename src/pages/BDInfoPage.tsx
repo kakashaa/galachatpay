@@ -294,6 +294,8 @@ const BDInfoPage: React.FC = () => {
               <SupportersTab
                 supporters={data?.supporters || []}
                 commissionPct={Number(settings?.user_commission_pct || 2)}
+                agencies={data?.agencies || []}
+                agencyCommissionPct={Number(settings?.agency_commission_pct || 5)}
               />
             )}
 
@@ -662,52 +664,28 @@ const ChargesTab: React.FC<{
 export default BDInfoPage;
 
 // ═══════════════════════════════════════════
-// Supporters Tab - shows all supporters from local BD data
+// Supporters Tab - shows supporters & agencies from local BD data
 // ═══════════════════════════════════════════
 const SupportersTab: React.FC<{
   supporters: any[];
   commissionPct?: number;
-}> = ({ supporters, commissionPct = 2 }) => {
+  agencies?: any[];
+  agencyCommissionPct?: number;
+}> = ({ supporters, commissionPct = 2, agencies = [], agencyCommissionPct = 5 }) => {
   const totalCommission = supporters.reduce((s: number, m: any) => s + Number(m.total_commission || 0), 0);
   const totalCharges = supporters.reduce((s: number, m: any) => s + Number(m.monthly_charges || 0), 0);
   const totalCurrentMonth = supporters.reduce((s: number, m: any) => s + Number(m.current_month_commission || 0), 0);
 
-  return (
-    <div className="space-y-4">
-      <h4 className="text-xs font-bold text-foreground">نظرة عامة على الداعمين</h4>
+  const agTotalCommission = agencies.reduce((s: number, m: any) => s + Number(m.total_commission || 0), 0);
+  const agTotalCharges = agencies.reduce((s: number, m: any) => s + Number(m.monthly_charges || 0), 0);
+  const agTotalCurrentMonth = agencies.reduce((s: number, m: any) => s + Number(m.current_month_commission || 0), 0);
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-primary/5 rounded-lg p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{supporters.length}</p>
-          <p className="text-[9px] text-muted-foreground">داعم</p>
-        </div>
-        <div className="bg-primary/5 rounded-lg p-3 text-center">
-          <p className="text-lg font-bold text-primary">${totalCommission.toFixed(2)}</p>
-          <p className="text-[9px] text-muted-foreground">إجمالي العمولات</p>
-        </div>
-        <div className="bg-emerald-500/5 rounded-lg p-3 text-center">
-          <p className="text-lg font-bold text-emerald-400">${totalCharges.toFixed(2)}</p>
-          <p className="text-[9px] text-muted-foreground">إجمالي الشحن الشهري</p>
-        </div>
-        <div className="bg-amber-500/5 rounded-lg p-3 text-center">
-          <p className="text-lg font-bold text-amber-400">${totalCurrentMonth.toFixed(2)}</p>
-          <p className="text-[9px] text-muted-foreground">عمولة الشهر الحالي</p>
-        </div>
-      </div>
-
-      {/* Commission rate info */}
-      <div className="bg-muted/10 rounded-lg p-3 border border-border/20">
-        <p className="text-[10px] text-muted-foreground text-center">
-          نسبة العمولة: <span className="font-bold text-primary">{commissionPct}%</span> من شحن كل داعم
-        </p>
-      </div>
-
-      {/* Supporters list */}
-      {supporters.length > 0 ? (
+  const renderMemberList = (items: any[], pct: number, label: string) => (
+    <>
+      {items.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-[10px] font-bold text-muted-foreground">تفاصيل الداعمين</p>
-          {supporters.map((s: any, i: number) => {
+          <p className="text-[10px] font-bold text-muted-foreground">تفاصيل {label}</p>
+          {items.map((s: any, i: number) => {
             const charges = Number(s.monthly_charges || 0);
             const monthComm = Number(s.current_month_commission || 0);
             const totalComm = Number(s.total_commission || 0);
@@ -720,7 +698,6 @@ const SupportersTab: React.FC<{
                   </div>
                 </div>
                 <p className="text-[9px] text-muted-foreground font-mono" dir="ltr">{s.member_uuid || ""}</p>
-                {/* Detailed breakdown */}
                 <div className="grid grid-cols-3 gap-1 bg-background/30 rounded-lg p-2">
                   <div className="text-center">
                     <p className="text-[10px] font-bold text-emerald-400">${charges.toFixed(2)}</p>
@@ -735,10 +712,9 @@ const SupportersTab: React.FC<{
                     <p className="text-[8px] text-muted-foreground">إجمالي العمولة</p>
                   </div>
                 </div>
-                {/* Commission calculation formula */}
                 {charges > 0 && (
                   <p className="text-[8px] text-muted-foreground text-center">
-                    ${charges.toFixed(2)} × {commissionPct}% = <span className="text-primary font-bold">${(charges * commissionPct / 100).toFixed(2)}</span>
+                    ${charges.toFixed(2)} × {pct}% = <span className="text-primary font-bold">${(charges * pct / 100).toFixed(2)}</span>
                   </p>
                 )}
               </div>
@@ -746,8 +722,50 @@ const SupportersTab: React.FC<{
           })}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground text-center py-4">لا يوجد داعمين حالياً</p>
+        <p className="text-xs text-muted-foreground text-center py-4">لا يوجد {label} حالياً</p>
       )}
+    </>
+  );
+
+  const renderSummary = (count: number, charges: number, currentMonth: number, commission: number, pct: number, label: string, color: string) => (
+    <div className="space-y-3">
+      <h4 className="text-xs font-bold text-foreground">{label}</h4>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-primary/5 rounded-lg p-3 text-center">
+          <p className="text-lg font-bold text-foreground">{count}</p>
+          <p className="text-[9px] text-muted-foreground">{label}</p>
+        </div>
+        <div className="bg-primary/5 rounded-lg p-3 text-center">
+          <p className="text-lg font-bold text-primary">${commission.toFixed(2)}</p>
+          <p className="text-[9px] text-muted-foreground">إجمالي العمولات</p>
+        </div>
+        <div className="bg-emerald-500/5 rounded-lg p-3 text-center">
+          <p className="text-lg font-bold text-emerald-400">${charges.toFixed(2)}</p>
+          <p className="text-[9px] text-muted-foreground">إجمالي الشحن الشهري</p>
+        </div>
+        <div className="bg-amber-500/5 rounded-lg p-3 text-center">
+          <p className="text-lg font-bold text-amber-400">${currentMonth.toFixed(2)}</p>
+          <p className="text-[9px] text-muted-foreground">عمولة الشهر الحالي</p>
+        </div>
+      </div>
+      <div className="bg-muted/10 rounded-lg p-3 border border-border/20">
+        <p className="text-[10px] text-muted-foreground text-center">
+          نسبة العمولة: <span className="font-bold text-primary">{pct}%</span> من شحن كل {label.replace("ال", "")}
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Supporters section */}
+      {renderSummary(supporters.length, totalCharges, totalCurrentMonth, totalCommission, commissionPct, "الداعمين", "blue")}
+      {renderMemberList(supporters, commissionPct, "الداعمين")}
+
+      {/* Agencies section */}
+      {(agencies.length > 0 || supporters.length > 0) && <div className="border-t border-border/20 pt-4" />}
+      {renderSummary(agencies.length, agTotalCharges, agTotalCurrentMonth, agTotalCommission, agencyCommissionPct, "الوكلاء", "amber")}
+      {renderMemberList(agencies, agencyCommissionPct, "الوكلاء")}
     </div>
   );
 };
