@@ -142,10 +142,12 @@ const LiveSupportChat: React.FC<Props> = ({
       });
       const data = result.data;
       if (data?.ok) {
-        const newStatus = data.chat?.status || data.status || "active";
+        const chat = data.chat;
+        const newStatus = chat?.status || data.status || "active";
         setChatStatus(newStatus);
         if (data.queue_position) setQueuePos(data.queue_position);
-        if (newStatus === "ended" || newStatus === "closed") {
+        // Only mark as ended if the API explicitly has ended_at set
+        if ((newStatus === "ended" || newStatus === "closed") && chat?.ended_at) {
           setEnded(true);
           onEnded?.();
         }
