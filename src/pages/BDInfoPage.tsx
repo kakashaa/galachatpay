@@ -38,7 +38,7 @@ const BDInfoPage: React.FC = () => {
   const [bdDashboard, setBdDashboard] = useState<any>(null);
   const [agencySalaries, setAgencySalaries] = useState<any>(null);
   const [agencyCharges, setAgencyCharges] = useState<any>(null);
-  const [supportersData, setSupportersData] = useState<any>(null);
+  
   const [apiLoading, setApiLoading] = useState(false);
 
   useEffect(() => {
@@ -130,18 +130,8 @@ const BDInfoPage: React.FC = () => {
     }
   }, [fetchBdData]);
 
-  // Load supporters data
-  const loadSupportersData = useCallback(async () => {
-    setApiLoading(true);
-    try {
-      const res = await fetchBdData("bd-supporters", { month: salaryMonth, year: salaryYear });
-      setSupportersData(res);
-    } catch (_e: any) {
-      toast.error("فشل تحميل بيانات الداعمين");
-    } finally {
-      setApiLoading(false);
-    }
-  }, [fetchBdData, salaryMonth, salaryYear]);
+  // Load supporters data (unused now, kept for potential future use)
+
 
   // Load tab data when tab changes
   useEffect(() => {
@@ -302,9 +292,7 @@ const BDInfoPage: React.FC = () => {
             {/* ── Supporters Tab ── */}
             {activeTab === "supporters" && (
               <SupportersTab
-                data={supportersData}
-                loading={apiLoading}
-                onRefresh={loadSupportersData}
+                supporters={data?.supporters || []}
               />
             )}
 
@@ -673,52 +661,22 @@ const ChargesTab: React.FC<{
 export default BDInfoPage;
 
 // ═══════════════════════════════════════════
-// Supporters Tab
+// Supporters Tab - shows all supporters from local BD data
 // ═══════════════════════════════════════════
 const SupportersTab: React.FC<{
-  data: any;
-  loading: boolean;
-  onRefresh: () => void;
-}> = ({ data, loading, onRefresh }) => {
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
-  if (!data?.ok && !data?.supporters) {
-    return (
-      <div className="text-center py-6 space-y-3">
-        <p className="text-xs text-muted-foreground">اضغط لتحميل بيانات الداعمين</p>
-        <Button size="sm" variant="outline" onClick={onRefresh} className="gap-2 text-xs">
-          <RefreshCw className="w-3.5 h-3.5" /> تحميل بيانات الداعمين
-        </Button>
-      </div>
-    );
-  }
-
-  const supportersList = data?.supporters || [];
-  const totalMembers = supportersList.reduce((s: number, a: any) => s + (a.member_count || 0), 0);
-  const totalCharges = supportersList.reduce((s: number, a: any) => s + (Number(a.total_charges || a.total_charged || 0)), 0);
-  const totalCommission = supportersList.reduce((s: number, a: any) => s + (Number(a.total_commission || a.commission || 0)), 0);
+  supporters: any[];
+}> = ({ supporters }) => {
+  const totalCommission = supporters.reduce((s: number, m: any) => s + Number(m.total_commission || 0), 0);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-bold text-foreground">نظرة عامة على الداعمين</h4>
-        <Button variant="ghost" size="icon" onClick={onRefresh} className="h-7 w-7">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </Button>
-      </div>
+      <h4 className="text-xs font-bold text-foreground">نظرة عامة على الداعمين</h4>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-primary/5 rounded-lg p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{supportersList.length}</p>
+          <p className="text-lg font-bold text-foreground">{supporters.length}</p>
           <p className="text-[9px] text-muted-foreground">داعم</p>
-        </div>
-        <div className="bg-primary/5 rounded-lg p-3 text-center">
-          <p className="text-lg font-bold text-foreground">{totalMembers}</p>
-          <p className="text-[9px] text-muted-foreground">عضو</p>
-        </div>
-        <div className="bg-emerald-500/5 rounded-lg p-3 text-center">
-          <p className="text-lg font-bold text-emerald-400">${totalCharges.toFixed(2)}</p>
-          <p className="text-[9px] text-muted-foreground">إجمالي الشحن</p>
         </div>
         <div className="bg-primary/5 rounded-lg p-3 text-center">
           <p className="text-lg font-bold text-primary">${totalCommission.toFixed(2)}</p>
@@ -727,38 +685,23 @@ const SupportersTab: React.FC<{
       </div>
 
       {/* Supporters list */}
-      {supportersList.length > 0 && (
+      {supporters.length > 0 ? (
         <div className="space-y-2">
           <p className="text-[10px] font-bold text-muted-foreground">تفاصيل الداعمين</p>
-          {supportersList.map((s: any, i: number) => (
+          {supporters.map((s: any, i: number) => (
             <div key={s.id || i} className="p-3 bg-muted/10 rounded-lg border border-border/20">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-bold ${i < 3 ? "text-amber-400" : "text-muted-foreground"}`}>#{i + 1}</span>
-                  <p className="text-xs font-bold text-foreground">{s.name || "—"}</p>
+                  <p className="text-xs font-bold text-foreground">{s.member_name || "—"}</p>
                 </div>
-                {s.member_count !== undefined && (
-                  <span className="text-[10px] text-muted-foreground">{s.member_count} عضو</span>
-                )}
+                <span className="text-[10px] text-primary font-bold">${Number(s.total_commission || 0).toFixed(2)}</span>
               </div>
-              {s.uuid && <p className="text-[9px] text-muted-foreground font-mono mb-1" dir="ltr">{s.uuid}</p>}
-              <div className="flex gap-3 text-[10px]">
-                {(s.total_charges || s.total_charged) !== undefined && (
-                  <span className="text-emerald-400">الشحن: ${Number(s.total_charges || s.total_charged || 0).toFixed(2)}</span>
-                )}
-                {(s.total_commission || s.commission) !== undefined && (
-                  <span className="text-primary font-bold">العمولة: ${Number(s.total_commission || s.commission || 0).toFixed(2)}</span>
-                )}
-                {s.charger_level !== undefined && (
-                  <span className="text-muted-foreground">مستوى: {s.charger_level}</span>
-                )}
-              </div>
+              <p className="text-[9px] text-muted-foreground font-mono" dir="ltr">{s.member_uuid || ""}</p>
             </div>
           ))}
         </div>
-      )}
-
-      {supportersList.length === 0 && data && (
+      ) : (
         <p className="text-xs text-muted-foreground text-center py-4">لا يوجد داعمين حالياً</p>
       )}
     </div>
