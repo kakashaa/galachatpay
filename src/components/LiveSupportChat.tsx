@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Send, ArrowRight, Loader2, Users } from "lucide-react";
+import { Send, ArrowRight, Loader2, Users, ImagePlus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
-  id: string;
-  chat_id: string;
+  id: number;
   sender_type: string;
   sender_name: string;
-  sender_uuid: string;
   message: string;
-  is_read: boolean;
+  attachment_url?: string | null;
   created_at: string;
 }
 
@@ -35,106 +33,70 @@ const LiveSupportChat: React.FC<Props> = ({
   const [queuePos, setQueuePos] = useState(initialQueue || 0);
   const [ended, setEnded] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgIdRef = useRef(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to merge messages without duplicates, replacing temp messages with real ones
-  const mergeMessages = useCallback((prev: Message[], incoming: Message[]) => {
-    const realMessages = incoming.filter(m => !m.id.startsWith("temp-"));
-    // Remove temp messages that now have a real version
-    const cleanedPrev = prev.filter(p => {
-      if (!p.id.startsWith("temp-")) return true;
-      return !realMessages.some(r => 
-        r.sender_type === p.sender_type && 
-        r.message === p.message &&
-        Math.abs(new Date(r.created_at).getTime() - new Date(p.created_at).getTime()) < 60000
-      );
-    });
-    const existingIds = new Set(cleanedPrev.map(m => m.id));
-    const newMsgs = incoming.filter(m => {
-      if (existingIds.has(m.id)) return false;
-      // Prevent near-duplicate real messages (same content+sender within 10s)
-      if (!m.id.startsWith("temp-")) {
-        const isDupe = cleanedPrev.some(p => 
-          !p.id.startsWith("temp-") &&
-          p.sender_type === m.sender_type && 
-          p.message === m.message &&
-          Math.abs(new Date(p.created_at).getTime() - new Date(m.created_at).getTime()) < 10000
-        );
-        if (isDupe) return false;
-      }
-      return true;
-    });
-    if (newMsgs.length === 0 && cleanedPrev.length === prev.length) return prev;
-    return [...cleanedPrev, ...newMsgs].sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-  }, []);
-
-  // Load messages directly from Supabase
-  const loadFromSupabase = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from("support_chat_messages")
-        .select("*")
-        .eq("chat_id", chatKey)
-        .order("created_at", { ascending: true });
-      if (error) {
-        console.error("[LiveSupportChat] Supabase load error:", error);
-        return;
-      }
-      if (data) {
-        setMessages(prev => mergeMessages(prev, data as Message[]));
-      }
-    } catch (e) {
-      console.error("[LiveSupportChat] Supabase load exception:", e);
-    }
-  }, [chatKey, mergeMessages]);
-
-  // Initial load
-  useEffect(() => {
-    loadFromSupabase().then(() => setInitialLoaded(true));
-  }, [loadFromSupabase]);
-
-  // Supabase Realtime for instant messages
-  useEffect(() => {
-    const channel = supabase
-      .channel(`live-support-${chatKey}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "support_chat_messages",
-        filter: `chat_id=eq.${chatKey}`,
-      }, (payload) => {
-        const msg = payload.new as Message;
-        setMessages(prev => mergeMessages(prev, [msg]));
-        if (msg.sender_type === "admin") toast.success("رد جديد من الدعم!");
-        if (msg.sender_type === "system" && msg.message.includes("إنهاء")) {
-          setEnded(true);
-          onEnded?.();
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [chatKey, onEnded, mergeMessages]);
-
-  // Poll: trigger edge function to sync API messages to Supabase, then refresh from Supabase
-  const pollMessages = useCallback(async () => {
+  // Fetch messages directly from external API via edge function
+  const fetchMessages = useCallback(async () => {
     try {
       const result = await supabase.functions.invoke("support-chat", {
         body: { action: "messages", chat_key: chatKey, after_id: lastMsgIdRef.current },
       });
       const data = result.data;
       if (data?.ok && data?.messages?.length) {
-        const maxId = Math.max(...data.messages.map((m: any) => m.id || 0));
+        const newMsgs: Message[] = data.messages.map((m: any) => ({
+          id: m.id,
+          sender_type: m.sender_type,
+          sender_name: m.sender_name || "",
+          message: m.message || "",
+          attachment_url: m.attachment_url || null,
+          created_at: m.created_at,
+        }));
+        const maxId = Math.max(...newMsgs.map(m => m.id));
         if (maxId > lastMsgIdRef.current) lastMsgIdRef.current = maxId;
-      }
-    } catch { /* silent */ }
-    // Always refresh from Supabase after polling API (catches synced admin messages)
-    await loadFromSupabase();
-  }, [chatKey, loadFromSupabase]);
 
+        setMessages(prev => {
+          // Merge: add only new IDs, replace temp messages
+          const existingIds = new Set(prev.filter(p => typeof p.id === "number").map(p => p.id));
+          const brandNew = newMsgs.filter(m => !existingIds.has(m.id));
+          if (brandNew.length === 0) return prev;
+
+          // Remove temp messages that match new real messages
+          const cleaned = prev.filter(p => {
+            if (typeof p.id === "number") return true;
+            return !brandNew.some(r =>
+              r.sender_type === p.sender_type &&
+              r.message === p.message
+            );
+          });
+
+          // Check system messages for end signal
+          for (const m of brandNew) {
+            if (m.sender_type === "system" && m.message.includes("إنهاء")) {
+              setEnded(true);
+              onEnded?.();
+            }
+            if (m.sender_type === "admin") {
+              toast.success("رد جديد من الدعم!");
+            }
+          }
+
+          return [...cleaned, ...brandNew].sort((a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+      }
+      if (!initialLoaded) setInitialLoaded(true);
+    } catch {
+      if (!initialLoaded) setInitialLoaded(true);
+    }
+  }, [chatKey, onEnded, initialLoaded]);
+
+  // Poll status from external API
   const pollStatus = useCallback(async () => {
     try {
       const result = await supabase.functions.invoke("support-chat", {
@@ -146,7 +108,6 @@ const LiveSupportChat: React.FC<Props> = ({
         const newStatus = chat?.status || data.status || "active";
         setChatStatus(newStatus);
         if (data.queue_position) setQueuePos(data.queue_position);
-        // Only mark as ended if the API explicitly has ended_at set
         if ((newStatus === "ended" || newStatus === "closed") && chat?.ended_at) {
           setEnded(true);
           onEnded?.();
@@ -155,35 +116,81 @@ const LiveSupportChat: React.FC<Props> = ({
     } catch { /* silent */ }
   }, [chatKey, onEnded]);
 
+  // Start polling every 2 seconds
   useEffect(() => {
-    pollMessages();
+    fetchMessages();
     pollStatus();
     pollRef.current = setInterval(() => {
-      pollMessages();
+      fetchMessages();
       pollStatus();
-    }, 4000);
+    }, 2000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [pollMessages, pollStatus]);
+  }, [fetchMessages, pollStatus]);
 
+  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Upload image to storage
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `support-chat/${chatKey}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("attachments")
+        .upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch (e) {
+      console.error("[LiveSupportChat] Upload error:", e);
+      toast.error("فشل رفع الصورة");
+      return null;
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("يرجى اختيار صورة فقط");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("الحد الأقصى 5 ميجابايت");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || ended || sending) return;
+    if ((!input.trim() && !imageFile) || ended || sending) return;
     const msgText = input.trim();
     setSending(true);
     setInput("");
 
-    // Optimistic: add message to UI immediately
+    let attachmentUrl: string | null = null;
+    if (imageFile) {
+      attachmentUrl = await uploadImage(imageFile);
+      clearImage();
+    }
+
+    // Optimistic: add message to UI immediately with temp id
+    const tempId = `temp-${Date.now()}` as any;
     const optimisticMsg: Message = {
-      id: `temp-${Date.now()}`,
-      chat_id: chatKey,
+      id: tempId,
       sender_type: "user",
       sender_name: userName,
-      sender_uuid: userUuid,
       message: msgText,
-      is_read: false,
+      attachment_url: attachmentUrl,
       created_at: new Date().toISOString(),
     };
     setMessages(prev => [...prev, optimisticMsg]);
@@ -193,19 +200,17 @@ const LiveSupportChat: React.FC<Props> = ({
         body: {
           action: "send",
           chat_key: chatKey,
-          message: msgText,
+          message: msgText || (attachmentUrl ? "📷 صورة" : ""),
           sender_type: "user",
           sender_name: userName,
           user_uuid: userUuid,
+          attachment_url: attachmentUrl,
         },
       });
-      // After send, refresh from Supabase to get the real record (replaces optimistic)
-      setTimeout(() => loadFromSupabase(), 1000);
     } catch {
       toast.error("فشل إرسال الرسالة");
       setInput(msgText);
-      // Remove optimistic message on failure
-      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     }
     setSending(false);
   };
@@ -220,7 +225,15 @@ const LiveSupportChat: React.FC<Props> = ({
     } catch { /* silent */ }
   };
 
-  const formatTime = (d: string) => new Date(d).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+  const formatTime = (d: string) => {
+    try {
+      return new Date(d).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "";
+    }
+  };
+
+  const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
 
   return (
     <div className="flex flex-col h-full">
@@ -283,9 +296,26 @@ const LiveSupportChat: React.FC<Props> = ({
                 }`}
               >
                 {msg.sender_type === "admin" && (
-                  <p className="text-[10px] font-bold text-emerald-400 mb-1">فريق الدعم</p>
+                  <p className="text-[10px] font-bold text-emerald-400 mb-1">{msg.sender_name || "فريق الدعم"}</p>
                 )}
-                {msg.message && <p className="text-xs text-foreground whitespace-pre-line">{msg.message}</p>}
+                {/* Attachment image */}
+                {msg.attachment_url && isImageUrl(msg.attachment_url) && (
+                  <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
+                    <img
+                      src={msg.attachment_url}
+                      alt="مرفق"
+                      className="rounded-lg max-h-48 w-auto object-cover border border-border/20"
+                      loading="lazy"
+                    />
+                  </a>
+                )}
+                {msg.attachment_url && !isImageUrl(msg.attachment_url) && (
+                  <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] text-primary underline block mb-1">📎 مرفق</a>
+                )}
+                {msg.message && msg.message !== "📷 صورة" && (
+                  <p className="text-xs text-foreground whitespace-pre-line">{msg.message}</p>
+                )}
                 <p className="text-[9px] text-muted-foreground mt-1">{formatTime(msg.created_at)}</p>
               </motion.div>
             </div>
@@ -314,10 +344,46 @@ const LiveSupportChat: React.FC<Props> = ({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Image preview */}
+      <AnimatePresence>
+        {imagePreview && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="px-4 py-2 border-t border-border/10 bg-card/50"
+          >
+            <div className="relative inline-block">
+              <img src={imagePreview} alt="preview" className="h-20 rounded-lg border border-border/30 object-cover" />
+              <button
+                onClick={clearImage}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center"
+              >
+                <X className="w-3 h-3 text-destructive-foreground" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input */}
       {!ended && (
         <div className="px-4 py-2 border-t border-border/10 bg-card/50">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending}
+              className="w-10 h-10 rounded-xl bg-muted/20 border border-border/30 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+            >
+              <ImagePlus className="w-4 h-4" />
+            </button>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -327,7 +393,7 @@ const LiveSupportChat: React.FC<Props> = ({
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim() || sending}
+              disabled={(!input.trim() && !imageFile) || sending}
               className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
             >
               {sending ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" />}
