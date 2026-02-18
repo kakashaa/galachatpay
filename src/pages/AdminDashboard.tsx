@@ -2520,8 +2520,8 @@ const AdminDashboardPage: React.FC = () => {
                                 <p className="text-xs text-muted-foreground text-center py-3">لا يوجد أعضاء بعد</p>
                               ) : (
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                                  {/* Summary cards for supporters */}
-                                  {cat.key === "supporters" && cat.items.length > 0 && (
+                                   {/* Summary cards for supporters & agencies */}
+                                   {cat.items.length > 0 && (
                                     <div className="grid grid-cols-3 gap-1.5 mb-2">
                                       <div className="bg-emerald-500/5 rounded-lg p-2 text-center">
                                         <p className="text-xs font-bold text-emerald-400">${cat.items.reduce((s: number, m: any) => s + Number(m.monthly_charges || 0), 0).toFixed(2)}</p>
@@ -2592,10 +2592,30 @@ const AdminDashboardPage: React.FC = () => {
                                           )}
                                         </>
                                       )}
-                                      {/* Simple view for agencies */}
-                                      {cat.key !== "supporters" && (
-                                        <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
-                                      )}
+                                       {/* Detailed breakdown for agencies (same as supporters) */}
+                                       {cat.key === "agencies" && (
+                                         <>
+                                           <div className="grid grid-cols-3 gap-1 bg-muted/10 rounded-lg p-2">
+                                             <div className="text-center">
+                                               <p className="text-[10px] font-bold text-emerald-400">${Number(member.monthly_charges || 0).toFixed(2)}</p>
+                                               <p className="text-[8px] text-muted-foreground">الشحن الشهري</p>
+                                             </div>
+                                             <div className="text-center border-x border-border/20">
+                                               <p className="text-[10px] font-bold text-amber-400">${Number(member.current_month_commission || 0).toFixed(2)}</p>
+                                               <p className="text-[8px] text-muted-foreground">عمولة الشهر</p>
+                                             </div>
+                                             <div className="text-center">
+                                               <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
+                                               <p className="text-[8px] text-muted-foreground">إجمالي العمولة</p>
+                                             </div>
+                                           </div>
+                                           {Number(member.monthly_charges || 0) > 0 && (
+                                             <p className="text-[8px] text-muted-foreground text-center">
+                                               ${Number(member.monthly_charges || 0).toFixed(2)} × {cat.pct}% = <span className="text-primary font-bold">${(Number(member.monthly_charges || 0) * Number(cat.pct) / 100).toFixed(2)}</span>
+                                             </p>
+                                           )}
+                                         </>
+                                       )}
                                     </div>
                                   ))}
                                 </div>
