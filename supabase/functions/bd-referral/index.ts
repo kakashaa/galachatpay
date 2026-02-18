@@ -382,6 +382,12 @@ serve(async (req) => {
       return respond({ success: true, new_balance: newBalance });
     }
 
+    // ─── Test Telegram ───
+    if (action === "test_telegram") {
+      const result = await sendTelegram("🔔 رسالة اختبار من نظام BD\nإذا وصلت هذه الرسالة فالإعدادات صحيحة ✅");
+      return respond({ success: true, telegram_result: result });
+    }
+
     // ─── Default: proxy to external API ───
     const formData = new URLSearchParams();
     formData.append("key", API_KEY);
@@ -427,17 +433,22 @@ function respond(data: Record<string, unknown>) {
   });
 }
 
-async function sendTelegram(text: string) {
+async function sendTelegram(text: string): Promise<Record<string, unknown>> {
   try {
     const token = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
-    if (!token || !chatId) return;
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    console.log(`[bd-referral] sendTelegram: token=${token ? "SET(" + token.length + " chars)" : "MISSING"}, chatId=${chatId || "MISSING"}`);
+    if (!token || !chatId) return { sent: false, reason: "missing_env", token_set: !!token, chat_id_set: !!chatId };
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
     });
+    const data = await res.json();
+    console.log(`[bd-referral] Telegram API response:`, JSON.stringify(data));
+    return { sent: true, status: res.status, ok: data.ok, description: data.description || null };
   } catch (e) {
     console.error("[bd-referral] Telegram error:", e);
+    return { sent: false, error: (e as Error).message };
   }
 }
