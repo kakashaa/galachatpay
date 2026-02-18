@@ -21,7 +21,7 @@ serve(async (req) => {
       );
     }
 
-    const { uuid, amount } = body as Record<string, unknown>;
+    const { uuid, amount, transaction_id } = body as Record<string, unknown>;
 
     if (!uuid || typeof uuid !== "string" || !UUID_REGEX.test(uuid.trim())) {
       return new Response(
@@ -53,10 +53,16 @@ serve(async (req) => {
 
     const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
 
+    // Build request body - include transaction_id if provided to get specific transaction
+    const apiBody: Record<string, unknown> = { uuid: sanitizedUuid, amount: parsedAmount };
+    if (transaction_id) {
+      apiBody.transaction_id = String(transaction_id);
+    }
+
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ uuid: sanitizedUuid, amount: parsedAmount }),
+      body: JSON.stringify(apiBody),
     });
 
     const rawText = await response.text();
