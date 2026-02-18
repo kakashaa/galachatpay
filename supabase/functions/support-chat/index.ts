@@ -66,25 +66,25 @@ serve(async (req) => {
       data = { ok: false, error: "Invalid API response", raw: rawText.substring(0, 200) };
     }
 
-    // Sync messages to Supabase if action is "send" and it succeeded
+    // Sync sent message to Supabase support_chat_messages
     if (action === "send" && data?.ok && params.chat_key) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const sb = createClient(supabaseUrl, supabaseKey);
-        await sb.from("support_messages").insert({
-          request_id: params.chat_key,
+        await sb.from("support_chat_messages").insert({
+          chat_id: params.chat_key,
           sender_type: params.sender_type || "user",
           sender_name: params.sender_name || "",
+          sender_uuid: params.user_uuid || "unknown",
           message: params.message || "",
-          attachment_url: params.attachment_url || null,
         });
       } catch (e) {
         console.error("[support-chat] Supabase sync error:", e);
       }
     }
 
-    // Sync incoming messages to Supabase if action is "messages"
+    // Sync incoming admin/system messages to Supabase
     if (action === "messages" && data?.ok && data?.messages?.length && params.chat_key) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -92,25 +92,22 @@ serve(async (req) => {
         const sb = createClient(supabaseUrl, supabaseKey);
         
         for (const msg of data.messages) {
-          // Only sync admin/system messages (user messages already synced on send)
           if (msg.sender_type !== "user") {
-            // Use upsert with a unique constraint workaround - insert with check
             const { data: existing } = await sb
-              .from("support_messages")
+              .from("support_chat_messages")
               .select("id")
-              .eq("request_id", params.chat_key)
+              .eq("chat_id", params.chat_key)
               .eq("message", msg.message)
               .eq("sender_type", msg.sender_type)
-              .eq("created_at", msg.created_at)
               .limit(1);
             
             if (!existing || existing.length === 0) {
-              await sb.from("support_messages").insert({
-                request_id: params.chat_key,
+              await sb.from("support_chat_messages").insert({
+                chat_id: params.chat_key,
                 sender_type: msg.sender_type,
                 sender_name: msg.sender_name || "فريق الدعم",
+                sender_uuid: "admin",
                 message: msg.message,
-                attachment_url: msg.attachment_url || null,
               });
             }
           }
