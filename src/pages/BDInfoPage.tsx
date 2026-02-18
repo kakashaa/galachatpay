@@ -232,56 +232,10 @@ const BDInfoPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Members Overview */}
-          <div className="bg-muted/20 rounded-xl p-3 space-y-3">
-            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-primary" /> نظرة عامة على الأعضاء
-            </p>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { label: "داعمين", count: data.supporters?.length || 0, color: "text-blue-400" },
-                { label: "مستخدمين", count: data.users?.length || 0, color: "text-emerald-400" },
-                { label: "وكلاء", count: data.agencies?.length || 0, color: "text-amber-400" },
-                { label: "مضيفين", count: data.hosts?.length || 0, color: "text-purple-400" },
-              ].map((item) => (
-                <div key={item.label} className="bg-background/50 rounded-lg p-2 text-center">
-                  <p className={`text-base font-bold ${item.color}`}>{item.count}</p>
-                  <p className="text-[8px] text-muted-foreground">{item.label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Supporters list */}
-            {(data.supporters?.length > 0) && (
-              <div className="space-y-1.5 mt-2">
-                <p className="text-[10px] font-bold text-blue-400">الداعمين:</p>
-                {data.supporters.map((s: any) => (
-                  <div key={s.id || s.member_uuid} className="flex items-center justify-between bg-background/30 rounded-lg px-2 py-1.5">
-                    <span className="text-[10px] text-foreground font-mono" dir="ltr">{s.member_name || s.member_uuid}</span>
-                    <span className="text-[9px] text-muted-foreground">${Number(s.total_commission || 0).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Users list */}
-            {(data.users?.length > 0) && (
-              <div className="space-y-1.5 mt-2">
-                <p className="text-[10px] font-bold text-emerald-400">المستخدمين:</p>
-                {data.users.map((u: any) => (
-                  <div key={u.id || u.member_uuid} className="flex items-center justify-between bg-background/30 rounded-lg px-2 py-1.5">
-                    <span className="text-[10px] text-foreground font-mono" dir="ltr">{u.member_name || u.member_uuid}</span>
-                    <span className="text-[9px] text-muted-foreground">${Number(u.total_commission || 0).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
           {/* Add member button */}
           <div className="bg-muted/20 rounded-xl p-3 space-y-2">
             <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <UserPlus className="w-3.5 h-3.5 text-primary" /> إضافة أعضاء
+              <Users className="w-3.5 h-3.5 text-primary" /> إضافة أعضاء
             </p>
             <p className="text-[10px] text-muted-foreground">أضف أعضاء جدد يدوياً عبر إدخال الآيدي الخاص بهم</p>
             <Button size="sm" variant="default" onClick={() => navigate("/bd/add-member")} className="w-full gap-2 text-xs">
