@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Loader2, Upload, Trash2, Eye, EyeOff, Save, X, Brain } from "lucide-react";
+import { Loader2, Upload, Trash2, Eye, EyeOff, Save, X, Brain, CheckCircle, XCircle, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 
@@ -16,6 +16,7 @@ interface HairItem {
   is_active: boolean;
   is_deleted: boolean;
   created_at: string;
+  star_cost?: number;
 }
 
 interface AdminHairManagerProps {
@@ -79,6 +80,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [aiEnabled, setAiEnabled] = useState(true);
+
 
   const loadHairs = useCallback(async () => {
     setLoading(true);
@@ -326,6 +328,9 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
         <span className="text-sm font-bold text-foreground">{hairs.length}</span>
       </div>
 
+      {/* Hair Selections Management */}
+      <HairSelectionsPanel hairs={hairs} />
+
       {/* Hair Items */}
       {hairs.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground">
@@ -365,7 +370,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
               <div className="flex items-center gap-1">
                 <button onClick={() => toggleActive(hair)} className="p-1.5 rounded-lg hover:bg-muted">
-                  {hair.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                  {hair.is_active ? <Eye className="w-4 h-4 text-emerald-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
                 </button>
                 <button onClick={() => deleteHair(hair.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
                   <Trash2 className="w-4 h-4 text-destructive" />
@@ -376,6 +381,107 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
         </div>
       )}
     </motion.div>
+  );
+};
+
+// ============ Hair Selections Admin Panel ============
+
+const HairSelectionsPanel: React.FC<{ hairs: HairItem[] }> = ({ hairs }) => {
+  const [selections, setSelections] = useState<any[]>([]);
+  const [filter, setFilter] = useState<"pending" | "approved" | "rejected">("pending");
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const loadSelections = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("hair_selections")
+      .select("*" as any)
+      .eq("status", filter)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setSelections((data as any) || []);
+    setLoading(false);
+  }, [filter]);
+
+  useEffect(() => {
+    if (expanded) loadSelections();
+  }, [expanded, loadSelections]);
+
+  const handleAction = async (id: string, status: "approved" | "rejected") => {
+    const { error } = await supabase
+      .from("hair_selections")
+      .update({ status } as any)
+      .eq("id", id);
+    if (!error) {
+      setSelections(prev => prev.filter(s => s.id !== id));
+      toast.success(status === "approved" ? "✅ تم قبول الطلب" : "❌ تم رفض الطلب");
+    }
+  };
+
+  const getHairTitle = (hairId: string) => {
+    return hairs.find(h => h.id === hairId)?.title || hairId.slice(0, 8);
+  };
+
+  return (
+    <div className="bg-card border border-border/40 rounded-xl overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full p-3 flex items-center justify-between text-sm font-bold text-foreground"
+      >
+        <span className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" />
+          طلبات الشعرات
+        </span>
+        <span className="text-xs text-muted-foreground">{expanded ? "▲" : "▼"}</span>
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Filter */}
+          <div className="flex gap-2">
+            {(["pending", "approved", "rejected"] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`text-[11px] px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                  filter === f ? "bg-primary/15 text-primary" : "bg-muted/20 text-muted-foreground"
+                }`}
+              >
+                {f === "pending" ? "معلقة" : f === "approved" ? "مقبولة" : "مرفوضة"}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
+          ) : selections.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">لا توجد طلبات</p>
+          ) : (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {selections.map((sel: any) => (
+                <div key={sel.id} className="bg-muted/10 border border-border/20 rounded-lg p-2.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground truncate">{getHairTitle(sel.hair_id)}</p>
+                    <p className="text-[10px] text-muted-foreground">UUID: {sel.user_uuid} · {sel.selection_week}</p>
+                  </div>
+                  {filter === "pending" && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => handleAction(sel.id, "approved")} className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20">
+                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      </button>
+                      <button onClick={() => handleAction(sel.id, "rejected")} className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20">
+                        <XCircle className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -814,24 +814,30 @@ export type Database = {
       }
       hair_selections: {
         Row: {
+          admin_note: string | null
           created_at: string
           hair_id: string
           id: string
           selection_week: string
+          status: string
           user_uuid: string
         }
         Insert: {
+          admin_note?: string | null
           created_at?: string
           hair_id: string
           id?: string
           selection_week: string
+          status?: string
           user_uuid: string
         }
         Update: {
+          admin_note?: string | null
           created_at?: string
           hair_id?: string
           id?: string
           selection_week?: string
+          status?: string
           user_uuid?: string
         }
         Relationships: [
@@ -853,6 +859,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_deleted: boolean
+          star_cost: number
           thumbnail_url: string | null
           title: string
         }
@@ -864,6 +871,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_deleted?: boolean
+          star_cost?: number
           thumbnail_url?: string | null
           title?: string
         }
@@ -875,6 +883,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_deleted?: boolean
+          star_cost?: number
           thumbnail_url?: string | null
           title?: string
         }
