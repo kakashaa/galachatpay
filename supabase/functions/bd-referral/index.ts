@@ -292,45 +292,84 @@ serve(async (req) => {
         return respond({ success: false, error: "الرصيد غير كافي" });
       }
 
-      // Local withdrawal: deduct balance + log for admin to process
       const coinsAmount = Math.round(parsedAmount * 8500);
 
-      // Deduct from available_balance
+      // ─── Call external API to actually charge coins ───
+      const formData = new URLSearchParams();
+      formData.append("key", API_KEY);
+      formData.append("action", "withdraw_coins");
+      formData.append("bidi_uuid", String(uuid));
+      formData.append("recipient_uuid", String(recipient_uuid));
+      formData.append("amount_usd", String(parsedAmount));
+      formData.append("coins", String(coinsAmount));
+
+      console.log(`[bd-referral] Calling external API: withdraw_coins for ${uuid} -> ${recipient_uuid}, $${parsedAmount} (${coinsAmount} coins)`);
+
+      let apiSuccess = false;
+      let apiError = "";
+      try {
+        const apiRes = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: formData.toString(),
+        });
+        const apiRaw = await apiRes.text();
+        console.log(`[bd-referral] withdraw_coins API response:`, apiRaw);
+        
+        let apiData;
+        try { apiData = JSON.parse(apiRaw); } catch { apiData = {}; }
+        
+        if (apiData?.success || apiData?.ok) {
+          apiSuccess = true;
+        } else {
+          apiError = apiData?.error || apiData?.message || "فشل الشحن من السيرفر";
+        }
+      } catch (e) {
+        apiError = (e as Error).message || "خطأ في الاتصال بالسيرفر";
+        console.error(`[bd-referral] withdraw_coins API error:`, apiError);
+      }
+
+      if (!apiSuccess) {
+        return respond({ success: false, error: apiError || "فشل شحن الكوينزات تلقائياً" });
+      }
+
+      // ─── API succeeded → deduct balance + log ───
       const newBalance = availableBalance - parsedAmount;
       await sb
         .from("bd_commission_settings")
         .update({ available_balance: newBalance, updated_at: new Date().toISOString() })
         .eq("bd_uuid", uuid);
 
-      // Log the withdrawal as pending for admin
+      // Log the withdrawal as completed
       await sb
         .from("bd_withdrawals")
         .insert({
           bd_uuid: String(uuid),
           bd_name: settings.bd_name || "",
           amount: parsedAmount,
-          status: "pending",
+          status: "completed",
+          completed_at: new Date().toISOString(),
           recipient_name: String(recipient_uuid),
           transfer_type: "coins",
-          admin_note: `شحن ${coinsAmount.toLocaleString()} كوينز للآيدي ${recipient_uuid}`,
+          admin_note: `✅ تم شحن ${coinsAmount.toLocaleString()} كوينز تلقائياً للآيدي ${recipient_uuid}`,
         });
 
-      // Send notification to admin
+      // Notify admin
       await sb.from("notifications").insert({
-        title: "💰 طلب سحب BD جديد",
-        body: `${settings.bd_name || uuid} يطلب شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid}`,
+        title: "✅ سحب BD تلقائي",
+        body: `${settings.bd_name || uuid} شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid} — تم تلقائياً`,
         target: "admin",
       });
 
-      // Send notification to BD user
+      // Notify BD user
       await sb.from("notifications").insert({
         user_uuid: String(uuid),
-        title: "📋 تم رفع طلب السحب",
-        body: `لقد قمت برفع طلب شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid}. الطلب قيد المراجعة.`,
+        title: "⚡ تم شحن الكوينزات",
+        body: `تم شحن ${coinsAmount.toLocaleString()} كوينز ($${parsedAmount}) للآيدي ${recipient_uuid} بنجاح!`,
         target: "personal",
       });
 
-      console.log(`[bd-referral] Local withdraw: $${parsedAmount} (${coinsAmount} coins) to ${recipient_uuid}. New balance: $${newBalance}`);
+      console.log(`[bd-referral] Auto withdraw success: $${parsedAmount} (${coinsAmount} coins) to ${recipient_uuid}. New balance: $${newBalance}`);
 
       return respond({ success: true, new_balance: newBalance });
     }
