@@ -2520,38 +2520,82 @@ const AdminDashboardPage: React.FC = () => {
                                 <p className="text-xs text-muted-foreground text-center py-3">لا يوجد أعضاء بعد</p>
                               ) : (
                                 <div className="space-y-2 max-h-60 overflow-y-auto">
+                                  {/* Summary cards for supporters */}
+                                  {cat.key === "supporters" && cat.items.length > 0 && (
+                                    <div className="grid grid-cols-3 gap-1.5 mb-2">
+                                      <div className="bg-emerald-500/5 rounded-lg p-2 text-center">
+                                        <p className="text-xs font-bold text-emerald-400">${cat.items.reduce((s: number, m: any) => s + Number(m.monthly_charges || 0), 0).toFixed(2)}</p>
+                                        <p className="text-[8px] text-muted-foreground">شحن الشهر</p>
+                                      </div>
+                                      <div className="bg-amber-500/5 rounded-lg p-2 text-center">
+                                        <p className="text-xs font-bold text-amber-400">${cat.items.reduce((s: number, m: any) => s + Number(m.current_month_commission || 0), 0).toFixed(2)}</p>
+                                        <p className="text-[8px] text-muted-foreground">عمولة الشهر</p>
+                                      </div>
+                                      <div className="bg-primary/5 rounded-lg p-2 text-center">
+                                        <p className="text-xs font-bold text-primary">${cat.total.toFixed(2)}</p>
+                                        <p className="text-[8px] text-muted-foreground">إجمالي العمولات</p>
+                                      </div>
+                                    </div>
+                                  )}
                                   {cat.items.map((member: any) => (
-                                    <div key={member.id} className="flex items-center justify-between p-2.5 bg-background/50 rounded-lg border border-border/20">
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-xs font-bold text-foreground truncate">{member.member_name || "—"}</p>
-                                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</p>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 shrink-0 mr-2">
-                                        <div className="text-left">
-                                          <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
-                                          <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
+                                    <div key={member.id} className="p-2.5 bg-background/50 rounded-lg border border-border/20 space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-xs font-bold text-foreground truncate">{member.member_name || "—"}</p>
+                                          <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</p>
                                         </div>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
-                                          onClick={async () => {
-                                            if (!confirm(`هل تريد إزالة ${member.member_name || member.member_uuid} من هذا البيدي؟`)) return;
-                                            try {
-                                              const { data: res, error } = await supabase.functions.invoke("bd-manage", {
-                                                body: { action: "remove_member", member_id: member.id, bd_uuid: bd.bd_uuid },
-                                              });
-                                              if (error || !res?.success) throw new Error(res?.error || "فشل");
-                                              toast.success(`تم إزالة ${member.member_name || "العضو"} بنجاح`);
-                                              loadData();
-                                            } catch (err: any) {
-                                              toast.error(err?.message || "فشل إزالة العضو");
-                                            }
-                                          }}
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
+                                        <div className="flex items-center gap-1.5 shrink-0 mr-2">
+                                          <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10"
+                                            onClick={async () => {
+                                              if (!confirm(`هل تريد إزالة ${member.member_name || member.member_uuid} من هذا البيدي؟`)) return;
+                                              try {
+                                                const { data: res, error } = await supabase.functions.invoke("bd-manage", {
+                                                  body: { action: "remove_member", member_id: member.id, bd_uuid: bd.bd_uuid },
+                                                });
+                                                if (error || !res?.success) throw new Error(res?.error || "فشل");
+                                                toast.success(`تم إزالة ${member.member_name || "العضو"} بنجاح`);
+                                                loadData();
+                                              } catch (err: any) {
+                                                toast.error(err?.message || "فشل إزالة العضو");
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </div>
                                       </div>
+                                      {/* Detailed breakdown for supporters */}
+                                      {cat.key === "supporters" && (
+                                        <>
+                                          <div className="grid grid-cols-3 gap-1 bg-muted/10 rounded-lg p-2">
+                                            <div className="text-center">
+                                              <p className="text-[10px] font-bold text-emerald-400">${Number(member.monthly_charges || 0).toFixed(2)}</p>
+                                              <p className="text-[8px] text-muted-foreground">الشحن الشهري</p>
+                                            </div>
+                                            <div className="text-center border-x border-border/20">
+                                              <p className="text-[10px] font-bold text-amber-400">${Number(member.current_month_commission || 0).toFixed(2)}</p>
+                                              <p className="text-[8px] text-muted-foreground">عمولة الشهر</p>
+                                            </div>
+                                            <div className="text-center">
+                                              <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
+                                              <p className="text-[8px] text-muted-foreground">إجمالي العمولة</p>
+                                            </div>
+                                          </div>
+                                          {Number(member.monthly_charges || 0) > 0 && (
+                                            <p className="text-[8px] text-muted-foreground text-center">
+                                              ${Number(member.monthly_charges || 0).toFixed(2)} × {cat.pct}% = <span className="text-primary font-bold">${(Number(member.monthly_charges || 0) * Number(cat.pct) / 100).toFixed(2)}</span>
+                                            </p>
+                                          )}
+                                        </>
+                                      )}
+                                      {/* Simple view for agencies */}
+                                      {cat.key !== "supporters" && (
+                                        <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
