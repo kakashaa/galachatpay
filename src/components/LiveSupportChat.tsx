@@ -25,6 +25,7 @@ interface Props {
   onEnded?: () => void;
 }
 
+// Live support chat component
 const LiveSupportChat: React.FC<Props> = ({
   chatKey, userUuid, userName, chatType: _chatType, queuePosition: initialQueue, onBack, onEnded
 }) => {
