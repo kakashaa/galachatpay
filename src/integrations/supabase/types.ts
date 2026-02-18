@@ -1394,6 +1394,33 @@ export type Database = {
           },
         ]
       }
+      used_charge_ids: {
+        Row: {
+          amount_usd: number
+          charge_id: string
+          created_at: string
+          id: string
+          salary_request_id: string | null
+          user_uuid: string
+        }
+        Insert: {
+          amount_usd: number
+          charge_id: string
+          created_at?: string
+          id?: string
+          salary_request_id?: string | null
+          user_uuid: string
+        }
+        Update: {
+          amount_usd?: number
+          charge_id?: string
+          created_at?: string
+          id?: string
+          salary_request_id?: string | null
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       user_devices: {
         Row: {
           created_at: string
