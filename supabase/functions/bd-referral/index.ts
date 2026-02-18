@@ -297,10 +297,10 @@ serve(async (req) => {
       // ─── Call external API to actually charge coins ───
       const formData = new URLSearchParams();
       formData.append("key", API_KEY);
-      formData.append("action", "withdraw_coins");
-      formData.append("bidi_uuid", String(uuid));
+      formData.append("action", "withdraw");
+      formData.append("uuid", String(uuid));
       formData.append("recipient_uuid", String(recipient_uuid));
-      formData.append("amount_usd", String(parsedAmount));
+      formData.append("amount", String(parsedAmount));
       formData.append("coins", String(coinsAmount));
 
       console.log(`[bd-referral] Calling external API: withdraw_coins for ${uuid} -> ${recipient_uuid}, $${parsedAmount} (${coinsAmount} coins)`);
