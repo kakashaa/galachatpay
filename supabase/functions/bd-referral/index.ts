@@ -276,10 +276,10 @@ serve(async (req) => {
 
       const sb = getSupabase();
 
-      // Check available balance
+      // Check available balance and exemption status
       const { data: settings } = await sb
         .from("bd_commission_settings")
-        .select("available_balance, bd_name")
+        .select("available_balance, bd_name, withdraw_exempt")
         .eq("bd_uuid", uuid)
         .maybeSingle();
 
@@ -302,6 +302,10 @@ serve(async (req) => {
       formData.append("recipient_uuid", String(recipient_uuid));
       formData.append("amount", String(parsedAmount));
       formData.append("coins", String(coinsAmount));
+      // If BD is exempt from date restriction, pass bypass flag
+      if (settings.withdraw_exempt) {
+        formData.append("bypass_date", "1");
+      }
 
       console.log(`[bd-referral] Calling external API: withdraw_coins for ${uuid} -> ${recipient_uuid}, $${parsedAmount} (${coinsAmount} coins)`);
 

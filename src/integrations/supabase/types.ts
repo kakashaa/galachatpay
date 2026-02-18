@@ -262,6 +262,7 @@ export type Database = {
           total_earned: number
           updated_at: string
           user_commission_pct: number
+          withdraw_exempt: boolean
         }
         Insert: {
           agency_commission_pct?: number
@@ -276,6 +277,7 @@ export type Database = {
           total_earned?: number
           updated_at?: string
           user_commission_pct?: number
+          withdraw_exempt?: boolean
         }
         Update: {
           agency_commission_pct?: number
@@ -290,6 +292,7 @@ export type Database = {
           total_earned?: number
           updated_at?: string
           user_commission_pct?: number
+          withdraw_exempt?: boolean
         }
         Relationships: []
       }

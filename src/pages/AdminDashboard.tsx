@@ -2366,6 +2366,30 @@ const AdminDashboardPage: React.FC = () => {
                     const isEditing = editingBdSettings?.bd_uuid === bd.bd_uuid;
                     return (
                     <div key={bd.id} className="bg-card border rounded-xl p-4 space-y-3">
+                      {/* Withdraw Exemption Toggle */}
+                      <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2" dir="rtl">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="text-[10px] font-bold text-amber-400">استثناء السحب</span>
+                          <span className="text-[9px] text-muted-foreground">(سحب بأي وقت)</span>
+                        </div>
+                        <Switch
+                          checked={!!bd.withdraw_exempt}
+                          onCheckedChange={async (checked) => {
+                            try {
+                              const { error } = await supabase
+                                .from("bd_commission_settings")
+                                .update({ withdraw_exempt: checked, updated_at: new Date().toISOString() })
+                                .eq("bd_uuid", bd.bd_uuid);
+                              if (error) throw error;
+                              toast.success(checked ? "تم تفعيل الاستثناء ✅" : "تم إلغاء الاستثناء");
+                              loadData();
+                            } catch {
+                              toast.error("فشل تحديث الاستثناء");
+                            }
+                          }}
+                        />
+                      </div>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-bold text-foreground">{bd.bd_name}</p>
