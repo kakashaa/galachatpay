@@ -58,6 +58,7 @@ serve(async (req) => {
     if (transaction_id) {
       apiBody.transaction_id = String(transaction_id);
     }
+    console.log("Sending to API:", JSON.stringify(apiBody));
 
     const response = await fetch(url, {
       method: "POST",
