@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, UserPlus, Building2, DollarSign, RefreshCw, Loader2, Wallet, ChevronDown, ChevronUp, BarChart3, Receipt } from "lucide-react";
+import { Users, UserPlus, DollarSign, RefreshCw, Loader2, Wallet, BarChart3, Receipt } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBD } from "@/contexts/BDContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { userTypeLabels } from "@/utils/userTypeResolver";
+
 
 interface BDData {
   settings: any;
@@ -30,8 +30,6 @@ const BDInfoPage: React.FC = () => {
   const [data, setData] = useState<BDData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [earningsExpanded, setEarningsExpanded] = useState(false);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   // ── New: API data sections ──
   const [activeTab, setActiveTab] = useState<"overview" | "salaries" | "charges">("overview");
@@ -175,19 +173,13 @@ const BDInfoPage: React.FC = () => {
     );
   }
 
-  const { settings, agencies, supporters = [], totals, withdrawals = [] } = data;
-  const totalEarned = Number(settings.total_earned || 0);
+  const { settings, withdrawals = [] } = data;
   const availableBalance = Number(settings.available_balance || 0);
 
   const pendingWithdrawal = withdrawals.find((w: any) => w.status === "pending");
   const infoSubmittedWithdrawal = withdrawals.find((w: any) => w.status === "info_submitted");
   const hasActiveWithdrawal = pendingWithdrawal || infoSubmittedWithdrawal;
   const completedWithdrawal = !hasActiveWithdrawal ? withdrawals.find((w: any) => w.status === "completed" && w.receipt_url) : null;
-
-  const tabs = [
-    { key: "supporters" as const, label: "الداعمين", icon: Users, color: "text-blue-400", bgColor: "bg-blue-500/10", items: supporters, total: totals.user, pct: settings.user_commission_pct },
-    { key: "agencies" as const, label: "الوكلاء", icon: Building2, color: "text-amber-400", bgColor: "bg-amber-500/10", items: agencies, total: totals.agency, pct: settings.agency_commission_pct },
-  ];
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
@@ -227,19 +219,10 @@ const BDInfoPage: React.FC = () => {
             </Button>
           </div>
 
-          {/* Earnings */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
+          {/* Balance */}
+          <div className="mb-3">
             <button
-              onClick={() => setEarningsExpanded(!earningsExpanded)}
-              className="bg-primary/10 rounded-xl p-3 text-center transition-colors hover:bg-primary/15 relative"
-            >
-              <DollarSign className="w-4 h-4 text-primary mx-auto mb-1" />
-              <p className="text-base font-bold text-amber-400">${totalEarned.toFixed(2)}</p>
-              <p className="text-[9px] text-muted-foreground">أرباح الشهر الحالي</p>
-              <ChevronDown className={`w-3 h-3 text-muted-foreground mx-auto mt-1 transition-transform ${earningsExpanded ? "rotate-180" : ""}`} />
-            </button>
-            <button
-              className="bg-primary/10 rounded-xl p-3 text-center transition-all hover:bg-primary/20 active:scale-95"
+              className="w-full bg-primary/10 rounded-xl p-3 text-center transition-all hover:bg-primary/20 active:scale-95"
               onClick={() => navigate("/bd/withdraw")}
             >
               <Wallet className="w-4 h-4 text-primary mx-auto mb-1" />
@@ -248,61 +231,6 @@ const BDInfoPage: React.FC = () => {
               <p className="text-[8px] text-primary mt-1">اضغط للسحب</p>
             </button>
           </div>
-
-          {/* Earnings breakdown */}
-          {earningsExpanded && (
-            <div className="space-y-2 mb-3 animate-in slide-in-from-top-2 duration-200">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isCatExpanded = expandedCategory === tab.key;
-                return (
-                  <div key={tab.key} className="bg-muted/10 rounded-xl border border-border/20 overflow-hidden">
-                    <button
-                      onClick={() => setExpandedCategory(isCatExpanded ? null : tab.key)}
-                      className="w-full p-3 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-full ${tab.bgColor} flex items-center justify-center`}>
-                          <Icon className={`w-4 h-4 ${tab.color}`} />
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs font-bold text-foreground">{tab.label} ({tab.items.length})</p>
-                          <p className="text-[10px] text-muted-foreground">نسبة: {tab.pct}%</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-bold text-primary">${tab.total.toFixed(2)}</p>
-                        {isCatExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-                      </div>
-                    </button>
-                    {isCatExpanded && (
-                      <div className="px-3 pb-3">
-                        {tab.items.length === 0 ? (
-                          <p className="text-xs text-muted-foreground text-center py-3">لا يوجد أعضاء بعد</p>
-                        ) : (
-                          <div className="space-y-2 max-h-60 overflow-y-auto">
-                            {tab.items.map((member: any) => (
-                              <div key={member.id} className="flex items-center justify-between p-2.5 bg-background/50 rounded-lg border border-border/20">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-xs font-bold text-foreground truncate">{member.member_name || "—"}</p>
-                                  <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</p>
-                                  <p className="text-[9px] text-muted-foreground">{userTypeLabels[member.type_user] || "مستخدم عادي"}</p>
-                                </div>
-                                <div className="text-left shrink-0 mr-2">
-                                  <p className="text-[10px] font-bold text-primary">${Number(member.total_commission || 0).toFixed(2)}</p>
-                                  <p className="text-[9px] text-muted-foreground">{new Date(member.created_at).toLocaleDateString("ar-EG")}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
 
           {/* Add member button */}
           <div className="bg-muted/20 rounded-xl p-3 space-y-2">
@@ -421,11 +349,6 @@ const BDInfoPage: React.FC = () => {
         )}
 
         {/* Note */}
-        <div className="bg-muted/10 rounded-xl p-3 border border-border/20">
-          <p className="text-[10px] text-muted-foreground text-center">
-            💰 أرباح الشهر الحالي تُنقل تلقائياً للرصيد المتاح بنهاية الشهر
-          </p>
-        </div>
       </div>
     </MobileLayout>
   );
