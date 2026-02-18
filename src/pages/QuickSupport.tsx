@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Send, CheckCircle2, ArrowRight, Zap, ShieldX,
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
+import QuickSupportChat from "@/components/QuickSupportChat";
 
 
 
@@ -73,6 +74,25 @@ const QuickSupport: React.FC = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedRequestId, setSubmittedRequestId] = useState<string | null>(null);
+  
+
+  // Check for existing pending requests to show chat
+  const [existingRequests, setExistingRequests] = useState<any[]>([]);
+  useEffect(() => {
+    if (!authUser) return;
+    const loadExisting = async () => {
+      const { data } = await supabase
+        .from("quick_support_requests" as any)
+        .select("*")
+        .eq("user_uuid", authUser.uuid)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (data) setExistingRequests(data as any);
+    };
+    loadExisting();
+  }, [authUser]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,7 +135,7 @@ const QuickSupport: React.FC = () => {
       }
 
       // Save to database
-      const { error: dbError } = await supabase.from("quick_support_requests" as any).insert({
+      const { data: inserted, error: dbError } = await supabase.from("quick_support_requests" as any).insert({
         user_uuid: authUser?.uuid || "",
         user_name: authUser?.name || "",
         request_type: selectedType,
@@ -123,9 +143,28 @@ const QuickSupport: React.FC = () => {
         description: description.trim() || null,
         phone_number: selectedType === "direct_contact" ? phoneNumber.trim() : null,
         attachment_url: attachmentUrl,
-      } as any);
+      } as any).select().single();
 
       if (dbError) throw dbError;
+
+      // Send first message in chat
+      if (inserted) {
+        const firstMsg = selectedType === "admin_visit" 
+          ? `طلب إداري - رقم الغرفة: ${roomCode}${description ? `\n${description}` : ""}`
+          : selectedType === "direct_contact"
+          ? `طلب تواصل مباشر - رقم الهاتف: ${phoneNumber}${description ? `\n${description}` : ""}`
+          : description;
+        
+        await supabase.from("support_messages" as any).insert({
+          request_id: (inserted as any).id,
+          sender_type: "user",
+          sender_name: authUser?.name || "",
+          message: firstMsg || "طلب جديد",
+          attachment_url: attachmentUrl,
+        } as any);
+
+        setSubmittedRequestId((inserted as any).id);
+      }
 
       playSuccessChime();
       setSubmitted(true);
@@ -219,31 +258,63 @@ const QuickSupport: React.FC = () => {
         <div className="w-16" />
       </header>
 
-      <div className="flex-1 flex flex-col px-5 py-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
-          {submitted ? (
+          {submitted && submittedRequestId ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <QuickSupportChat
+                requestId={submittedRequestId}
+                userUuid={authUser?.uuid || ""}
+                userName={authUser?.name || ""}
+                onBack={() => navigate(-1)}
+              />
+            </div>
+          ) : submitted ? (
             <SuccessView navigate={navigate} />
           ) : !selectedType ? (
-            <ServiceSelector
-              options={serviceOptions}
-              onSelect={setSelectedType}
-            />
+            <motion.div key="selector-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 py-4 overflow-y-auto space-y-4">
+              {/* Existing pending requests */}
+              {existingRequests.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-foreground">طلباتك السابقة:</p>
+                  {existingRequests.map((req: any) => (
+                    <button
+                      key={req.id}
+                      onClick={() => { setSubmittedRequestId(req.id); setSubmitted(true); }}
+                      className="w-full glass-card p-3 flex items-center justify-between active:scale-[0.98] transition-transform"
+                    >
+                      <div className="text-right">
+                        <p className="text-xs font-bold text-foreground">{serviceOptions.find(o => o.type === req.request_type)?.label || req.request_type}</p>
+                        <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleDateString("ar-EG")}</p>
+                      </div>
+                      <span className="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">متابعة</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <ServiceSelector
+                options={serviceOptions}
+                onSelect={setSelectedType}
+              />
+            </motion.div>
           ) : (
-            <RequestForm
-              type={selectedType}
-              roomCode={roomCode}
-              setRoomCode={setRoomCode}
-              description={description}
-              setDescription={setDescription}
-              phoneNumber={phoneNumber}
-              setPhoneNumber={setPhoneNumber}
-              attachment={attachment}
-              onFileChange={handleFileChange}
-              onRemoveFile={() => setAttachment(null)}
-              submitting={submitting}
-              
-              onSubmit={handleSubmit}
-            />
+            <div className="px-5 py-4 overflow-y-auto">
+              <RequestForm
+                type={selectedType}
+                roomCode={roomCode}
+                setRoomCode={setRoomCode}
+                description={description}
+                setDescription={setDescription}
+                phoneNumber={phoneNumber}
+                setPhoneNumber={setPhoneNumber}
+                attachment={attachment}
+                onFileChange={handleFileChange}
+                onRemoveFile={() => setAttachment(null)}
+                submitting={submitting}
+                
+                onSubmit={handleSubmit}
+              />
+            </div>
           )}
         </AnimatePresence>
       </div>
