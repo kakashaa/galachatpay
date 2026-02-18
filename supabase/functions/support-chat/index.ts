@@ -41,10 +41,18 @@ serve(async (req) => {
     } else {
       // POST actions: start, send, end
       console.log(`[support-chat] POST action=${action}`, JSON.stringify(params));
+      
+      // Try form-urlencoded first (PHP APIs often expect this)
+      const formData = new URLSearchParams();
+      formData.append("action", action);
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null) formData.append(k, String(v));
+      }
+      
       apiRes = await fetch(API_BASE, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ...params }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
       });
     }
 
