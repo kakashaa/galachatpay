@@ -39,30 +39,42 @@ const LiveSupportChat: React.FC<Props> = ({
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgIdRef = useRef(0);
 
-  // Load initial messages from Supabase
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("support_chat_messages")
-          .select("*")
-          .eq("chat_id", chatKey)
-          .order("created_at", { ascending: true });
-        if (error) {
-          console.error("[LiveSupportChat] Initial load error:", error);
-        }
-        if (data && data.length > 0) {
-          setMessages(data as any);
-        }
-      } catch (e) {
-        console.error("[LiveSupportChat] Initial load exception:", e);
-      }
-      setInitialLoaded(true);
-    };
-    load();
-  }, [chatKey]);
+  // Helper to merge messages without duplicates
+  const mergeMessages = useCallback((prev: Message[], incoming: Message[]) => {
+    const existingIds = new Set(prev.map(m => m.id));
+    const newMsgs = incoming.filter(m => !existingIds.has(m.id));
+    if (newMsgs.length === 0) return prev;
+    return [...prev, ...newMsgs].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }, []);
 
-  // Supabase Realtime
+  // Load messages directly from Supabase
+  const loadFromSupabase = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("support_chat_messages")
+        .select("*")
+        .eq("chat_id", chatKey)
+        .order("created_at", { ascending: true });
+      if (error) {
+        console.error("[LiveSupportChat] Supabase load error:", error);
+        return;
+      }
+      if (data) {
+        setMessages(prev => mergeMessages(prev, data as Message[]));
+      }
+    } catch (e) {
+      console.error("[LiveSupportChat] Supabase load exception:", e);
+    }
+  }, [chatKey, mergeMessages]);
+
+  // Initial load
+  useEffect(() => {
+    loadFromSupabase().then(() => setInitialLoaded(true));
+  }, [loadFromSupabase]);
+
+  // Supabase Realtime for instant messages
   useEffect(() => {
     const channel = supabase
       .channel(`live-support-${chatKey}`)
@@ -73,10 +85,7 @@ const LiveSupportChat: React.FC<Props> = ({
         filter: `chat_id=eq.${chatKey}`,
       }, (payload) => {
         const msg = payload.new as Message;
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === msg.id)) return prev;
-          return [...prev, msg];
-        });
+        setMessages(prev => mergeMessages(prev, [msg]));
         if (msg.sender_type === "admin") toast.success("رد جديد من الدعم!");
         if (msg.sender_type === "system" && msg.message.includes("إنهاء")) {
           setEnded(true);
@@ -85,9 +94,9 @@ const LiveSupportChat: React.FC<Props> = ({
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [chatKey, onEnded]);
+  }, [chatKey, onEnded, mergeMessages]);
 
-  // Poll API for new messages (syncs admin messages to Supabase)
+  // Poll: trigger edge function to sync API messages to Supabase, then refresh from Supabase
   const pollMessages = useCallback(async () => {
     try {
       const result = await supabase.functions.invoke("support-chat", {
@@ -99,7 +108,9 @@ const LiveSupportChat: React.FC<Props> = ({
         if (maxId > lastMsgIdRef.current) lastMsgIdRef.current = maxId;
       }
     } catch { /* silent */ }
-  }, [chatKey]);
+    // Always refresh from Supabase after polling API (catches synced admin messages)
+    await loadFromSupabase();
+  }, [chatKey, loadFromSupabase]);
 
   const pollStatus = useCallback(async () => {
     try {
@@ -108,10 +119,9 @@ const LiveSupportChat: React.FC<Props> = ({
       });
       const data = result.data;
       if (data?.ok) {
-        const newStatus = data.status || data.chat?.status || "active";
+        const newStatus = data.chat?.status || data.status || "active";
         setChatStatus(newStatus);
         if (data.queue_position) setQueuePos(data.queue_position);
-        if (data.chat?.status) setChatStatus(data.chat.status);
         if (newStatus === "ended" || newStatus === "closed") {
           setEnded(true);
           onEnded?.();
@@ -121,10 +131,8 @@ const LiveSupportChat: React.FC<Props> = ({
   }, [chatKey, onEnded]);
 
   useEffect(() => {
-    // Initial poll immediately
     pollMessages();
     pollStatus();
-    
     pollRef.current = setInterval(() => {
       pollMessages();
       pollStatus();
@@ -141,6 +149,20 @@ const LiveSupportChat: React.FC<Props> = ({
     const msgText = input.trim();
     setSending(true);
     setInput("");
+
+    // Optimistic: add message to UI immediately
+    const optimisticMsg: Message = {
+      id: `temp-${Date.now()}`,
+      chat_id: chatKey,
+      sender_type: "user",
+      sender_name: userName,
+      sender_uuid: userUuid,
+      message: msgText,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+
     try {
       await supabase.functions.invoke("support-chat", {
         body: {
@@ -152,9 +174,13 @@ const LiveSupportChat: React.FC<Props> = ({
           user_uuid: userUuid,
         },
       });
+      // After send, refresh from Supabase to get the real record (replaces optimistic)
+      setTimeout(() => loadFromSupabase(), 1000);
     } catch {
       toast.error("فشل إرسال الرسالة");
       setInput(msgText);
+      // Remove optimistic message on failure
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
     }
     setSending(false);
   };
