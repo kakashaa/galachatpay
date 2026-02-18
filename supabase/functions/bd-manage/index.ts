@@ -197,14 +197,46 @@ serve(async (req) => {
           .order("created_at", { ascending: false });
 
         const bds = data || [];
+        const REFERRAL_API_URL = "http://18.219.229.240/website/referral-api.php";
+        const REFERRAL_API_KEY = "ghala2026actions";
+
         const enriched = await Promise.all(
           bds.map(async (bd) => {
+            // Fetch local members
             const { data: members } = await supabase.from("bd_members").select("*").eq("bd_uuid", bd.bd_uuid).order("created_at", { ascending: false });
             const allMembers = members || [];
-            const agencies = allMembers.filter(m => m.member_type === "agency");
+            const localAgencies = allMembers.filter(m => m.member_type === "agency");
             const hosts = allMembers.filter(m => m.member_type === "host");
             const users = allMembers.filter(m => m.member_type === "user");
             const supporters = allMembers.filter(m => m.member_type === "supporter");
+
+            // Also fetch agencies from external API
+            let externalAgencies: any[] = [];
+            try {
+              const formData = new URLSearchParams();
+              formData.append("key", REFERRAL_API_KEY);
+              formData.append("action", "dashboard");
+              formData.append("uuid", bd.bd_uuid);
+              const apiRes = await fetch(REFERRAL_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData.toString(),
+              });
+              const apiData = await apiRes.json();
+              if (apiData?.success || apiData?.ok) {
+                const d = apiData?.data || apiData;
+                externalAgencies = d?.agencies?.list || [];
+              }
+            } catch (e) {
+              console.error(`[bd-manage] Failed to fetch external agencies for ${bd.bd_uuid}:`, e);
+            }
+
+            // Merge: use external agencies if available, fallback to local
+            const agencies = externalAgencies.length > 0 ? externalAgencies : localAgencies;
+            const agencyTotal = externalAgencies.length > 0
+              ? (externalAgencies.reduce((s: number, m: any) => s + Number(m.total_commission || m.commission || 0), 0))
+              : localAgencies.reduce((s, m) => s + Number(m.total_commission), 0);
+
             return {
               ...bd,
               agency_count: agencies.length,
@@ -214,8 +246,8 @@ serve(async (req) => {
               agencies,
               supporters,
               totals: {
-                agency: agencies.reduce((s, m) => s + Number(m.total_commission), 0),
-                user: users.reduce((s, m) => s + Number(m.total_commission), 0),
+                agency: agencyTotal,
+                user: users.reduce((s, m) => s + Number(m.total_commission), 0) + supporters.reduce((s, m) => s + Number(m.total_commission), 0),
               },
             };
           })
