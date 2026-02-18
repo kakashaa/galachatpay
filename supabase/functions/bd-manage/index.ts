@@ -197,8 +197,8 @@ serve(async (req) => {
           .order("created_at", { ascending: false });
 
         const bds = data || [];
-        const REFERRAL_API_URL = "http://18.219.229.240/website/referral-api.php";
-        const REFERRAL_API_KEY = "ghala2026actions";
+        const BD_DATA_URL = "http://18.219.229.240/website/bd-data-api.php";
+        const BD_DATA_KEY = "ghala2026actions";
 
         const enriched = await Promise.all(
           bds.map(async (bd) => {
@@ -210,31 +210,29 @@ serve(async (req) => {
             const users = allMembers.filter(m => m.member_type === "user");
             const supporters = allMembers.filter(m => m.member_type === "supporter");
 
-            // Also fetch agencies from external API
+            // Fetch agencies from bd-data external API (same source as BDInfoPage)
             let externalAgencies: any[] = [];
             try {
-              const formData = new URLSearchParams();
-              formData.append("key", REFERRAL_API_KEY);
-              formData.append("action", "dashboard");
-              formData.append("uuid", bd.bd_uuid);
-              const apiRes = await fetch(REFERRAL_API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: formData.toString(),
-              });
+              const now = new Date();
+              const qp = new URLSearchParams();
+              qp.append("key", BD_DATA_KEY);
+              qp.append("action", "bd-dashboard");
+              qp.append("uuid", bd.bd_uuid);
+              qp.append("month", String(now.getMonth() + 1));
+              qp.append("year", String(now.getFullYear()));
+              const apiRes = await fetch(`${BD_DATA_URL}?${qp.toString()}`);
               const apiData = await apiRes.json();
-              if (apiData?.success || apiData?.ok) {
-                const d = apiData?.data || apiData;
-                externalAgencies = d?.agencies?.list || [];
+              if (apiData?.ok !== false && apiData?.agencies) {
+                externalAgencies = apiData.agencies || [];
               }
             } catch (e) {
-              console.error(`[bd-manage] Failed to fetch external agencies for ${bd.bd_uuid}:`, e);
+              console.error(`[bd-manage] Failed to fetch bd-data agencies for ${bd.bd_uuid}:`, e);
             }
 
-            // Merge: use external agencies if available, fallback to local
+            // Use external agencies if available, fallback to local
             const agencies = externalAgencies.length > 0 ? externalAgencies : localAgencies;
             const agencyTotal = externalAgencies.length > 0
-              ? (externalAgencies.reduce((s: number, m: any) => s + Number(m.total_commission || m.commission || 0), 0))
+              ? externalAgencies.reduce((s: number, a: any) => s + Number(a.agency_salary || 0), 0)
               : localAgencies.reduce((s, m) => s + Number(m.total_commission), 0);
 
             return {
