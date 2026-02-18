@@ -70,7 +70,7 @@ const LiveSupportChat: React.FC<Props> = ({
             if (typeof p.id === "number") return true;
             return !brandNew.some(r =>
               r.sender_type === p.sender_type &&
-              r.message === p.message
+              (r.message === p.message || (r.attachment_url && r.attachment_url === p.attachment_url))
             );
           });
 
@@ -189,7 +189,7 @@ const LiveSupportChat: React.FC<Props> = ({
       id: tempId,
       sender_type: "user",
       sender_name: userName,
-      message: msgText,
+      message: msgText || (attachmentUrl ? "📷 صورة" : ""),
       attachment_url: attachmentUrl,
       created_at: new Date().toISOString(),
     };
