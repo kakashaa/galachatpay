@@ -30,8 +30,13 @@ interface TicketReply {
 }
 
 const TICKET_SUBJECTS = [
-  "مشكلة تقنية", "مشكلة في الشحن", "مشكلة في البث",
-  "استفسار عن الحساب", "طلب استرجاع", "بلاغ عن مستخدم", "أخرى",
+  { id: "tech", label: "مشكلة تقنية", color: "text-red-400 bg-red-500/10" },
+  { id: "balance", label: "رصيد/شحن", color: "text-amber-400 bg-amber-500/10" },
+  { id: "account", label: "حساب", color: "text-blue-400 bg-blue-500/10" },
+  { id: "gifts", label: "هدايا", color: "text-purple-400 bg-purple-500/10" },
+  { id: "voice", label: "صوت/غرف", color: "text-emerald-400 bg-emerald-500/10" },
+  { id: "report", label: "بلاغ", color: "text-orange-400 bg-orange-500/10" },
+  { id: "inquiry", label: "استفسار", color: "text-sky-400 bg-sky-500/10" },
 ];
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -288,7 +293,7 @@ const SupportTicketsEmbed: React.FC = () => {
             <label className="text-xs font-bold text-muted-foreground">الموضوع</label>
             <div className="grid grid-cols-2 gap-2">
               {TICKET_SUBJECTS.map((s) => (
-                <button key={s} type="button" onClick={() => setSubject(s)} className={`p-2.5 rounded-xl text-[11px] font-semibold border transition-all ${subject === s ? "border-primary bg-primary/10 text-primary" : "border-border/30 bg-card/50 text-muted-foreground"}`}>{s}</button>
+                <button key={s.id} type="button" onClick={() => setSubject(s.label)} className={`p-2.5 rounded-xl text-[11px] font-semibold border transition-all ${subject === s.label ? "border-primary bg-primary/10 text-primary" : "border-border/30 bg-card/50 text-muted-foreground"}`}>{s.label}</button>
               ))}
             </div>
           </div>

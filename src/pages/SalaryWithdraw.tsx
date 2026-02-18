@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
+import SalaryHistory from "@/components/SalaryHistory";
 
 const countryCodes = [
   { code: "+967", flag: "🇾🇪", name: "اليمن" },
@@ -331,6 +332,9 @@ const SalaryWithdraw: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5">
+        {/* سجل الرواتب من API */}
+        <SalaryHistory userUuid={user.uuid} />
+
         {/* طلباتي السابقة */}
         <ServicePreviousRequests userUuid={user.uuid} serviceType="salary" />
 

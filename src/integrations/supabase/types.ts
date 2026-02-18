@@ -1308,6 +1308,44 @@ export type Database = {
         }
         Relationships: []
       }
+      support_messages: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          id: string
+          message: string
+          request_id: string
+          sender_name: string
+          sender_type: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          request_id: string
+          sender_name?: string
+          sender_type?: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          request_id?: string
+          sender_name?: string
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "quick_support_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           admin_reply: string | null
@@ -1319,6 +1357,7 @@ export type Database = {
           replied_at: string | null
           status: string
           subject: string
+          ticket_type: string
           updated_at: string
           user_name: string
           user_uuid: string
@@ -1333,6 +1372,7 @@ export type Database = {
           replied_at?: string | null
           status?: string
           subject: string
+          ticket_type?: string
           updated_at?: string
           user_name: string
           user_uuid: string
@@ -1347,11 +1387,50 @@ export type Database = {
           replied_at?: string | null
           status?: string
           subject?: string
+          ticket_type?: string
           updated_at?: string
           user_name?: string
           user_uuid?: string
         }
         Relationships: []
+      }
+      ticket_messages: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          id: string
+          message: string
+          sender_name: string
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          sender_name?: string
+          sender_type?: string
+          ticket_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          sender_name?: string
+          sender_type?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_replies: {
         Row: {
