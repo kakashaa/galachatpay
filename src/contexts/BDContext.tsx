@@ -91,7 +91,7 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
       };
       saveBdUser(mapped);
 
-      // Ensure local bd_commission_settings record exists
+      // Ensure local bd_commission_settings record exists & sync balance
       try {
         const { data: existing } = await supabase
           .from("bd_commission_settings")
@@ -104,7 +104,14 @@ export const BDProvider: React.FC<{ children: React.ReactNode }> = ({ children }
             bd_name: mapped.name,
             is_approved: true,
             referral_code: `BD${uuid}`,
+            available_balance: bidi.balance_usd || 0,
           });
+        } else {
+          // Sync balance from external API
+          await supabase
+            .from("bd_commission_settings")
+            .update({ available_balance: bidi.balance_usd || 0, updated_at: new Date().toISOString() })
+            .eq("bd_uuid", uuid);
         }
       } catch (e) {
         console.warn("[BD] Failed to ensure local record:", e);
