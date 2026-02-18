@@ -44,7 +44,6 @@ serve(async (req) => {
 
     const sanitizedUuid = (uuid as string).trim();
 
-    const AGENCY_ID = 23;
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
     if (!BASE_URL) throw new Error("Server configuration error");
 
@@ -57,7 +56,7 @@ serve(async (req) => {
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ uuid: sanitizedUuid, amount: parsedAmount, charger_type: "app", agency_id: AGENCY_ID }),
+      body: JSON.stringify({ uuid: sanitizedUuid, amount: parsedAmount }),
     });
 
     const rawText = await response.text();
