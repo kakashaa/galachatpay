@@ -21,7 +21,7 @@ serve(async (req) => {
       );
     }
 
-    const { uuid, amount, transaction_id } = body as Record<string, unknown>;
+    const { uuid, amount } = body as Record<string, unknown>;
 
     if (!uuid || typeof uuid !== "string" || !UUID_REGEX.test(uuid.trim())) {
       return new Response(
@@ -38,12 +38,30 @@ serve(async (req) => {
       );
     }
 
+    // Check if user already has a pending/approved request with the same amount
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, supabaseKey);
 
     const sanitizedUuid = (uuid as string).trim();
 
+    const { data: duplicateAmount } = await sb
+      .from("salary_requests")
+      .select("id")
+      .eq("user_uuid", sanitizedUuid)
+      .eq("amount_usd", parsedAmount)
+      .eq("request_type", "instant")
+      .in("status", ["pending", "approved"])
+      .limit(1);
+
+    if (duplicateAmount && duplicateAmount.length > 0) {
+      return new Response(
+        JSON.stringify({ success: false, error: "لديك طلب سحب بنفس المبلغ قيد المعالجة. يرجى استخدام مبلغ مختلف أو انتظار معالجة الطلب السابق." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const AGENCY_ID = 23;
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL");
     if (!BASE_URL) throw new Error("Server configuration error");
 
@@ -53,17 +71,10 @@ serve(async (req) => {
 
     const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
 
-    // Build request body - include transaction_id if provided to get specific transaction
-    const apiBody: Record<string, unknown> = { uuid: sanitizedUuid, amount: parsedAmount };
-    if (transaction_id) {
-      apiBody.transaction_id = String(transaction_id);
-    }
-    console.log("Sending to API:", JSON.stringify(apiBody));
-
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify(apiBody),
+      body: JSON.stringify({ uuid: sanitizedUuid, amount: parsedAmount, charger_type: "app", agency_id: AGENCY_ID }),
     });
 
     const rawText = await response.text();
@@ -98,38 +109,42 @@ serve(async (req) => {
       );
     }
 
-    // Extract charge_id and transaction info
+    // Extract charge_id (the unique internal ID for each transfer) and transaction info
     const txData = data.data || data;
-    const chargeId = txData.id ? String(txData.id) : null;
-    const transactionId = txData.transaction_id || null;
+    const chargeId = txData.id ? String(txData.id) : null; // e.g. "46438" - unique per transfer
+    const transactionId = txData.transaction_id || null; // e.g. "TRX-WG85ADR1CY"
     const transactionDate = txData.created_at || txData.date || null;
     const txAmount = txData.amount || parsedAmount;
 
-    // ── Check if this charge_id was already used ──
-    if (chargeId) {
-      const { data: existingCharge } = await sb
-        .from("used_charge_ids")
-        .select("id")
-        .eq("charge_id", chargeId)
-        .limit(1);
-
-      if (existingCharge && existingCharge.length > 0) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: "هذا التحويل تم استخدامه مسبقاً في طلب سحب آخر.\n\nيرجى إجراء تحويل جديد بمبلغ مختلف وإعادة المحاولة.",
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    // Check if transaction is older than 24 hours
+    if (transactionDate) {
+      try {
+        const txTime = new Date(transactionDate).getTime();
+        const now = Date.now();
+        const diffHours = (now - txTime) / (1000 * 60 * 60);
+        console.log("Transaction age check:", { transactionDate, diffHours, txTime, now });
+        
+        if (diffHours > 24) {
+          const diffDays = Math.floor(diffHours / 24);
+          const remainingHours = Math.floor(diffHours % 24);
+          const ageText = diffDays > 0
+            ? `${diffDays} يوم و ${remainingHours} ساعة`
+            : `${Math.floor(diffHours)} ساعة`;
+          const txDateObj = new Date(transactionDate);
+          const txDateFormatted = `${txDateObj.getUTCFullYear()}/${String(txDateObj.getUTCMonth() + 1).padStart(2, "0")}/${String(txDateObj.getUTCDate()).padStart(2, "0")} ${String(txDateObj.getUTCHours()).padStart(2, "0")}:${String(txDateObj.getUTCMinutes()).padStart(2, "0")}`;
+          
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: `هذا التحويل قديم ولا يمكن استخدامه.\n\n📅 تاريخ التحويل: ${txDateFormatted}\n⏳ عمر التحويل: ${ageText}\n⚠️ السبب: مضى أكثر من 24 ساعة على التحويل.\n\nيرجى إجراء تحويل جديد وإعادة المحاولة.`,
+              expired: true,
+            }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (dateErr) {
+        console.error("Date check error:", dateErr);
       }
-
-      // Store the charge_id as used
-      await sb.from("used_charge_ids").insert({
-        charge_id: chargeId,
-        user_uuid: sanitizedUuid,
-        amount_usd: txAmount,
-      });
-      console.log("Stored charge_id:", chargeId, "for user:", sanitizedUuid);
     }
 
     // Return enriched data with charge_id as transaction_id
