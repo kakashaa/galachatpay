@@ -25,7 +25,6 @@ interface Props {
   onEnded?: () => void;
 }
 
-// Live support chat component
 const LiveSupportChat: React.FC<Props> = ({
   chatKey, userUuid, userName, chatType: _chatType, queuePosition: initialQueue, onBack, onEnded
 }) => {
@@ -35,19 +34,30 @@ const LiveSupportChat: React.FC<Props> = ({
   const [chatStatus, setChatStatus] = useState<string>("active");
   const [queuePos, setQueuePos] = useState(initialQueue || 0);
   const [ended, setEnded] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgIdRef = useRef(0);
 
-  // Load initial messages
+  // Load initial messages from Supabase
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from("support_chat_messages")
-        .select("*")
-        .eq("chat_id", chatKey)
-        .order("created_at", { ascending: true });
-      if (data) setMessages(data as any);
+      try {
+        const { data, error } = await supabase
+          .from("support_chat_messages")
+          .select("*")
+          .eq("chat_id", chatKey)
+          .order("created_at", { ascending: true });
+        if (error) {
+          console.error("[LiveSupportChat] Initial load error:", error);
+        }
+        if (data && data.length > 0) {
+          setMessages(data as any);
+        }
+      } catch (e) {
+        console.error("[LiveSupportChat] Initial load exception:", e);
+      }
+      setInitialLoaded(true);
     };
     load();
   }, [chatKey]);
@@ -98,9 +108,11 @@ const LiveSupportChat: React.FC<Props> = ({
       });
       const data = result.data;
       if (data?.ok) {
-        setChatStatus(data.status || "active");
+        const newStatus = data.status || data.chat?.status || "active";
+        setChatStatus(newStatus);
         if (data.queue_position) setQueuePos(data.queue_position);
-        if (data.status === "ended" || data.status === "closed") {
+        if (data.chat?.status) setChatStatus(data.chat.status);
+        if (newStatus === "ended" || newStatus === "closed") {
           setEnded(true);
           onEnded?.();
         }
@@ -109,12 +121,14 @@ const LiveSupportChat: React.FC<Props> = ({
   }, [chatKey, onEnded]);
 
   useEffect(() => {
+    // Initial poll immediately
+    pollMessages();
+    pollStatus();
+    
     pollRef.current = setInterval(() => {
       pollMessages();
       pollStatus();
-    }, 5000);
-    pollMessages();
-    pollStatus();
+    }, 4000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [pollMessages, pollStatus]);
 
@@ -124,21 +138,23 @@ const LiveSupportChat: React.FC<Props> = ({
 
   const handleSend = async () => {
     if (!input.trim() || ended) return;
+    const msgText = input.trim();
     setSending(true);
+    setInput("");
     try {
       await supabase.functions.invoke("support-chat", {
         body: {
           action: "send",
           chat_key: chatKey,
-          message: input.trim(),
+          message: msgText,
           sender_type: "user",
           sender_name: userName,
           user_uuid: userUuid,
         },
       });
-      setInput("");
     } catch {
       toast.error("فشل إرسال الرسالة");
+      setInput(msgText);
     }
     setSending(false);
   };
@@ -224,10 +240,15 @@ const LiveSupportChat: React.FC<Props> = ({
             </div>
           );
         })}
-        {messages.length === 0 && !ended && (
+        {messages.length === 0 && !ended && !initialLoaded && (
           <div className="text-center py-8">
             <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto mb-2" />
             <p className="text-xs text-muted-foreground">جاري الاتصال بفريق الدعم...</p>
+          </div>
+        )}
+        {messages.length === 0 && !ended && initialLoaded && (
+          <div className="text-center py-8">
+            <p className="text-xs text-muted-foreground">ابدأ المحادثة بإرسال رسالة 💬</p>
           </div>
         )}
         {ended && (
