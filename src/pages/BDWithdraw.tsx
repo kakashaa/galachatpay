@@ -22,18 +22,40 @@ const BDWithdraw: React.FC = () => {
   const [balanceUsd, setBalanceUsd] = useState(0);
   const [loadingBalance, setLoadingBalance] = useState(true);
 
-  // Load balance from bd_commission_settings directly
+  // Load REAL balance from external API (source of truth)
   useEffect(() => {
     if (!authUser?.uuid) return;
     const loadBalance = async () => {
       setLoadingBalance(true);
-      const { data } = await supabase
-        .from("bd_commission_settings")
-        .select("available_balance")
-        .eq("bd_uuid", authUser.uuid)
-        .maybeSingle();
-      if (data) {
-        setBalanceUsd(Number(data.available_balance) || 0);
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke("bd-referral", {
+          body: { action: "dashboard", uuid: authUser.uuid },
+        });
+        if (!fnError && (data?.ok || data?.success)) {
+          const realBalance = Number(data?.bidi?.balance_usd) || 0;
+          setBalanceUsd(realBalance);
+          // Sync local DB with external balance
+          await supabase
+            .from("bd_commission_settings")
+            .update({ available_balance: realBalance, updated_at: new Date().toISOString() })
+            .eq("bd_uuid", authUser.uuid);
+        } else {
+          // Fallback to local DB
+          const { data: local } = await supabase
+            .from("bd_commission_settings")
+            .select("available_balance")
+            .eq("bd_uuid", authUser.uuid)
+            .maybeSingle();
+          if (local) setBalanceUsd(Number(local.available_balance) || 0);
+        }
+      } catch {
+        // Fallback to local DB on error
+        const { data: local } = await supabase
+          .from("bd_commission_settings")
+          .select("available_balance")
+          .eq("bd_uuid", authUser.uuid)
+          .maybeSingle();
+        if (local) setBalanceUsd(Number(local.available_balance) || 0);
       }
       setLoadingBalance(false);
     };
@@ -71,13 +93,20 @@ const BDWithdraw: React.FC = () => {
       }
 
       setStep("success");
-      // Refresh balance
-      const { data: refreshed } = await supabase
-        .from("bd_commission_settings")
-        .select("available_balance")
-        .eq("bd_uuid", authUser.uuid)
-        .maybeSingle();
-      if (refreshed) setBalanceUsd(Number(refreshed.available_balance) || 0);
+      // Refresh balance from external API
+      try {
+        const { data: refreshData } = await supabase.functions.invoke("bd-referral", {
+          body: { action: "dashboard", uuid: authUser.uuid },
+        });
+        if (refreshData?.ok || refreshData?.success) {
+          const newBal = Number(refreshData?.bidi?.balance_usd) || 0;
+          setBalanceUsd(newBal);
+          await supabase
+            .from("bd_commission_settings")
+            .update({ available_balance: newBal, updated_at: new Date().toISOString() })
+            .eq("bd_uuid", authUser.uuid);
+        }
+      } catch {}
       
       toast.success("تم شحن الكوينزات بنجاح ⚡");
     } catch (e: any) {
