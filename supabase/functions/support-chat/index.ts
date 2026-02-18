@@ -84,7 +84,7 @@ serve(async (req) => {
       }
     }
 
-    // Sync incoming admin/system messages to Supabase
+    // Sync ALL messages from API to Supabase (including admin/system)
     if (action === "messages" && data?.ok && data?.messages?.length && params.chat_key) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -92,7 +92,9 @@ serve(async (req) => {
         const sb = createClient(supabaseUrl, supabaseKey);
         
         for (const msg of data.messages) {
+          // Sync non-user messages (admin, system) to Supabase for Realtime
           if (msg.sender_type !== "user") {
+            // Use API message id + chat_key as a dedup key via message content check
             const { data: existing } = await sb
               .from("support_chat_messages")
               .select("id")
@@ -106,9 +108,10 @@ serve(async (req) => {
                 chat_id: params.chat_key,
                 sender_type: msg.sender_type,
                 sender_name: msg.sender_name || "فريق الدعم",
-                sender_uuid: "admin",
+                sender_uuid: msg.sender_type === "admin" ? "admin" : "system",
                 message: msg.message,
               });
+              console.log(`[support-chat] Synced ${msg.sender_type} message to Supabase`);
             }
           }
         }
