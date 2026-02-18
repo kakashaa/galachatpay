@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Sticker, Lock, Loader2, Check, ArrowRight } from "lucide-react";
+import { Sticker, Lock, Loader2, Check, ArrowRight, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LazySvgaPlayer from "@/components/LazySvgaPlayer";
 import SvgaPlayer from "@/components/SvgaPlayer";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useStarBalance } from "@/hooks/use-star-balance";
 
 interface HairItem {
   id: string;
@@ -16,6 +17,7 @@ interface HairItem {
   thumbnail_url: string | null;
   display_order: number;
   is_active: boolean;
+  star_cost: number;
 }
 
 // Level thresholds for unlocking hairs
@@ -55,6 +57,13 @@ const HairsPage: React.FC = () => {
   const nextTier = getNextTier(chargerLevel);
   const maxWeeklySelections = 7;
 
+  // Star balance
+  const { starBalance, fetchStarBalance } = useStarBalance(user?.uuid, chargerLevel);
+
+  useEffect(() => {
+    if (user?.uuid) fetchStarBalance();
+  }, [user?.uuid, fetchStarBalance]);
+
   // Current week key for selections
   const weekKey = useMemo(() => {
     const now = new Date();
@@ -68,11 +77,11 @@ const HairsPage: React.FC = () => {
       setLoading(true);
       const { data } = await supabase
         .from("hairs")
-        .select("id, title, file_url, thumbnail_url, display_order, is_active")
+        .select("id, title, file_url, thumbnail_url, display_order, is_active, star_cost" as any)
         .eq("is_deleted", false)
         .eq("is_active", true)
         .order("display_order", { ascending: true });
-      setHairs(data || []);
+      setHairs((data as any) || []);
 
       // Load user's current week selections
       if (user?.uuid) {
@@ -92,21 +101,37 @@ const HairsPage: React.FC = () => {
     loadData();
   }, [user?.uuid, weekKey]);
 
-  const toggleSelect = (hairId: string, isLocked: boolean) => {
+  const toggleSelect = (hair: HairItem, isLocked: boolean) => {
     if (isLocked) {
       toast.error("هذه الشعرة مقفلة، ارفع مستواك لفتحها");
       return;
     }
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(hairId)) {
-        next.delete(hairId);
+      if (next.has(hair.id)) {
+        next.delete(hair.id);
       } else {
         if (next.size >= maxWeeklySelections) {
           toast.error(`الحد الأقصى ${maxWeeklySelections} شعرات في الأسبوع`);
           return prev;
         }
-        next.add(hairId);
+        // Check star balance for new selections
+        const cost = hair.star_cost || 0;
+        if (cost > 0 && !savedIds.has(hair.id)) {
+          const totalStars = starBalance?.total_stars || 0;
+          // Count cost of other new selections
+          const otherNewCost = Array.from(prev)
+            .filter(id => !savedIds.has(id))
+            .reduce((sum, id) => {
+              const h = hairs.find(x => x.id === id);
+              return sum + (h?.star_cost || 0);
+            }, 0);
+          if (otherNewCost + cost > totalStars) {
+            toast.error(`رصيد النجوم غير كافي (${totalStars} ⭐)`);
+            return prev;
+          }
+        }
+        next.add(hair.id);
       }
       return next;
     });
@@ -115,6 +140,19 @@ const HairsPage: React.FC = () => {
   const handleSave = async () => {
     if (!user?.uuid) return;
     setSaving(true);
+
+    // Calculate total star cost for new selections
+    const newSelections = Array.from(selectedIds).filter(id => !savedIds.has(id));
+    const totalCost = newSelections.reduce((sum, id) => {
+      const h = hairs.find(x => x.id === id);
+      return sum + (h?.star_cost || 0);
+    }, 0);
+
+    if (totalCost > 0 && (starBalance?.total_stars || 0) < totalCost) {
+      toast.error(`رصيد النجوم غير كافي! تحتاج ${totalCost} ⭐`);
+      setSaving(false);
+      return;
+    }
 
     // Delete old selections for this week
     await supabase
@@ -129,8 +167,20 @@ const HairsPage: React.FC = () => {
         user_uuid: user.uuid,
         hair_id,
         selection_week: weekKey,
+        status: "pending",
       }));
-      await supabase.from("hair_selections").insert(rows);
+      await supabase.from("hair_selections").insert(rows as any);
+    }
+
+    // Deduct stars if cost > 0
+    if (totalCost > 0 && starBalance) {
+      const newTotal = starBalance.total_stars - totalCost;
+      await supabase
+        .from("user_star_balance")
+        .update({ total_stars: newTotal })
+        .eq("user_uuid", user.uuid)
+        .eq("current_month", starBalance.current_month);
+      fetchStarBalance();
     }
 
     setSavedIds(new Set(selectedIds));
@@ -143,6 +193,16 @@ const HairsPage: React.FC = () => {
     for (const id of selectedIds) if (!savedIds.has(id)) return true;
     return false;
   }, [selectedIds, savedIds]);
+
+  // Calculate total cost of new selections
+  const newSelectionCost = useMemo(() => {
+    return Array.from(selectedIds)
+      .filter(id => !savedIds.has(id))
+      .reduce((sum, id) => {
+        const h = hairs.find(x => x.id === id);
+        return sum + (h?.star_cost || 0);
+      }, 0);
+  }, [selectedIds, savedIds, hairs]);
 
   if (chargerLevel < 40) {
     return (
@@ -191,9 +251,14 @@ const HairsPage: React.FC = () => {
             <Sticker className="w-5 h-5 text-amber-400" />
             <h1 className="text-lg font-bold text-foreground">شعرات</h1>
           </div>
-          <span className="text-xs bg-primary/15 text-primary px-2 py-1 rounded-full font-medium">
-            {selectedIds.size}/{maxWeeklySelections}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+              <Star className="w-3 h-3" /> {starBalance?.total_stars ?? 0}
+            </span>
+            <span className="text-xs bg-primary/15 text-primary px-2 py-1 rounded-full font-medium">
+              {selectedIds.size}/{maxWeeklySelections}
+            </span>
+          </div>
         </div>
 
         {/* Level info */}
@@ -209,12 +274,13 @@ const HairsPage: React.FC = () => {
           {hairs.map((hair, index) => {
             const isLocked = index >= unlockCount;
             const isSelected = selectedIds.has(hair.id);
+            const cost = hair.star_cost || 0;
 
             return (
               <motion.div
                 key={hair.id}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => toggleSelect(hair.id, isLocked)}
+                onClick={() => toggleSelect(hair, isLocked)}
                 onDoubleClick={() => !isLocked && setPreviewHair(hair)}
                 className={`relative rounded-xl border-2 transition-all cursor-pointer overflow-hidden ${
                   isSelected
@@ -232,8 +298,13 @@ const HairsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <div className="px-1 pb-1.5 pt-0.5">
-                  <p className="text-[10px] text-center truncate text-muted-foreground leading-tight">{hair.title || "—"}</p>
+                <div className="px-1 pb-1.5 pt-0.5 flex items-center justify-between">
+                  <p className="text-[10px] truncate text-muted-foreground leading-tight flex-1">{hair.title || "—"}</p>
+                  {cost > 0 && !isLocked && (
+                    <span className="text-[9px] text-amber-400 flex items-center gap-0.5 shrink-0">
+                      <Star className="w-2.5 h-2.5" />{cost}
+                    </span>
+                  )}
                 </div>
                 {isSelected && (
                   <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
@@ -257,7 +328,9 @@ const HairsPage: React.FC = () => {
               disabled={saving}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-lg shadow-primary/30 disabled:opacity-50"
             >
-              {saving ? "جاري الحفظ..." : `حفظ الاختيارات (${selectedIds.size})`}
+              {saving ? "جاري الحفظ..." : (
+                <>حفظ الاختيارات ({selectedIds.size}){newSelectionCost > 0 && ` — ${newSelectionCost} ⭐`}</>
+              )}
             </button>
           </motion.div>
         )}
