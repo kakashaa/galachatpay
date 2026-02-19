@@ -255,7 +255,7 @@ const BDDashboard: React.FC = () => {
                   <div key={w.id} className="bg-card border border-border/40 rounded-xl p-3 flex items-center justify-between">
                     <div>
                       <div className="text-sm font-bold">${w.amount}</div>
-                      <div className="text-[10px] text-muted-foreground">{formatDateShort(w.created_at)}</div>
+                      <div className="text-[10px] text-muted-foreground">{formatDateAr(w.created_at)}</div>
                     </div>
                     <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${
                       w.status === "completed" ? "bg-green-500/10 text-green-400" :
@@ -295,7 +295,7 @@ const MemberCard: React.FC<{ member: any; commissionPct: number }> = ({ member, 
         </div>
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/20">
-        <span>انضم: {formatDateShort(member.created_at)}</span>
+        <span>انضم: {formatDateAr(member.created_at)}</span>
         <span>إجمالي: ${(member.total_commission || 0).toFixed(2)}</span>
       </div>
     </div>
