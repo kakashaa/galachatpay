@@ -7,7 +7,7 @@ serve(async (req) => {
   }
 
   try {
-    const { uuid } = await req.json();
+    const { uuid, password } = await req.json();
     if (!uuid) throw new Error("uuid required");
 
     const BASE_URL = Deno.env.get("GALA_API_BASE_URL")!.replace(/\/+$/, "");
@@ -19,7 +19,7 @@ serve(async (req) => {
     const apiRes = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ uuid }),
+      body: JSON.stringify({ uuid: uuid.trim(), password: password || "sync_dummy_123" }),
     });
     const data = await apiRes.json();
 
