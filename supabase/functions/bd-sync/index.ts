@@ -180,6 +180,14 @@ serve(async (req) => {
             total_earned: (bd.total_earned || 0) + commissionAmount,
           }).eq("bd_uuid", member.bd_uuid);
 
+          // Notify BD about new commission
+          await sb.from("notifications").insert({
+            title: "💰 عمولة جديدة",
+            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} من الداعم ${member.member_name} (${pct}% من $${chargeDiff.toFixed(2)})`,
+            target: "user",
+            user_uuid: member.bd_uuid,
+          });
+
           commissionUpdates++;
         }
 
@@ -230,6 +238,14 @@ serve(async (req) => {
             current_month_earnings: (bd.current_month_earnings || 0) + commissionAmount,
             total_earned: (bd.total_earned || 0) + commissionAmount,
           }).eq("bd_uuid", member.bd_uuid);
+
+          // Notify BD about new commission
+          await sb.from("notifications").insert({
+            title: "💰 عمولة جديدة",
+            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} من الوكالة ${member.member_name} (${pct}% من $${incomeDiff.toFixed(2)})`,
+            target: "user",
+            user_uuid: member.bd_uuid,
+          });
 
           commissionUpdates++;
         }
