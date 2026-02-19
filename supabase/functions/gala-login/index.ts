@@ -200,6 +200,83 @@ serve(async (req) => {
       if (d.level?.sender_img) d.level.sender_img = fullUrl(d.level.sender_img);
       if (d.level?.charger_img) d.level.charger_img = fullUrl(d.level.charger_img);
       if (d.country?.flag) d.country.flag = fullUrl(d.country.flag);
+
+      // Auto-update BD member name, charger data & calculate commissions on login
+      try {
+        const trimmedUuid = uuid.trim();
+        const currentName = d.name || "";
+        const chargerNum = d.level?.charger_num || 0;
+        const typeUser = d.type_user || 0;
+
+        // Find if this user is a BD member
+        const { data: bdMember } = await supabase
+          .from("bd_members")
+          .select("id, member_name, last_daily_charges, bd_uuid, member_type, monthly_charges, current_month_commission, total_commission")
+          .eq("member_uuid", trimmedUuid)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (bdMember) {
+          const updateObj: Record<string, unknown> = {
+            type_user: typeUser,
+          };
+
+          // Update name if changed
+          if (currentName && currentName !== bdMember.member_name) {
+            updateObj.member_name = currentName;
+          }
+
+          // Calculate charge diff and commissions
+          const dailyDiff = chargerNum - (bdMember.last_daily_charges || 0);
+          updateObj.last_daily_charges = chargerNum;
+
+          if (dailyDiff > 0) {
+            // Get BD commission settings
+            const { data: bdSettings } = await supabase
+              .from("bd_commission_settings")
+              .select("user_commission_pct, agency_commission_pct, current_month_earnings, total_earned")
+              .eq("bd_uuid", bdMember.bd_uuid)
+              .eq("is_active", true)
+              .maybeSingle();
+
+            if (bdSettings) {
+              let pct = 0;
+              if (bdMember.member_type === "supporter") pct = bdSettings.user_commission_pct || 2;
+              else if (bdMember.member_type === "agency") pct = bdSettings.agency_commission_pct || 5;
+
+              const commissionAmount = (dailyDiff * pct) / 100;
+
+              updateObj.monthly_charges = (bdMember.monthly_charges || 0) + dailyDiff;
+              updateObj.current_month_commission = (bdMember.current_month_commission || 0) + commissionAmount;
+              updateObj.total_commission = (bdMember.total_commission || 0) + commissionAmount;
+
+              // Log commission
+              const now = new Date();
+              const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+
+              await supabase.from("bd_commission_logs").insert({
+                bd_uuid: bdMember.bd_uuid,
+                member_uuid: trimmedUuid,
+                member_type: bdMember.member_type,
+                month,
+                source_amount: dailyDiff,
+                commission_pct: pct,
+                amount: commissionAmount,
+              });
+
+              // Update BD earnings
+              await supabase.from("bd_commission_settings").update({
+                current_month_earnings: (bdSettings.current_month_earnings || 0) + commissionAmount,
+                total_earned: (bdSettings.total_earned || 0) + commissionAmount,
+              }).eq("bd_uuid", bdMember.bd_uuid);
+            }
+          }
+
+          await supabase.from("bd_members").update(updateObj).eq("id", bdMember.id);
+        }
+      } catch (e) {
+        console.error("BD member sync on login:", e);
+      }
     }
 
     return new Response(JSON.stringify(data), {
