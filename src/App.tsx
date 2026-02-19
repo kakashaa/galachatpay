@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { BDProvider } from "@/contexts/BDContext";
 import { lazy, Suspense } from "react";
 
 const Login = lazy(() => import("./pages/Login"));
@@ -26,14 +25,6 @@ const FramesRequest = lazy(() => import("./pages/FramesRequest"));
 const ReportPage = lazy(() => import("./pages/ReportPage"));
 const SalaryWithdraw = lazy(() => import("./pages/SalaryWithdraw"));
 
-const BDLoginPage = lazy(() => import("./pages/BDLogin"));
-// BDDashboard removed - merged into BDInfoPage
-const BDAddMember = lazy(() => import("./pages/BDAddMember"));
-const BDWithdraw = lazy(() => import("./pages/BDWithdraw"));
-const BDInfoPage = lazy(() => import("./pages/BDInfoPage"));
-const BDReferral = lazy(() => import("./pages/BDReferral"));
-const BDEvents = lazy(() => import("./pages/BDEvents"));
-const BDEventManage = lazy(() => import("./pages/BDEventManage"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
 const InstantIntro = lazy(() => import("./pages/InstantIntro"));
 const InstantBanks = lazy(() => import("./pages/InstantBanks"));
@@ -59,7 +50,6 @@ const PageLoader = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <BDProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -83,14 +73,6 @@ const App = () => (
                 <Route path="/frames" element={<FramesRequest />} />
                 <Route path="/hairs" element={<HairsPage />} />
                 
-                <Route path="/bd" element={<BDLoginPage />} />
-                <Route path="/bd/dashboard" element={<BDInfoPage />} />
-                <Route path="/bd/info" element={<BDInfoPage />} />
-                <Route path="/bd/add-member" element={<BDAddMember />} />
-                <Route path="/bd/withdraw" element={<BDWithdraw />} />
-                <Route path="/bd/join/:code" element={<BDReferral />} />
-                <Route path="/bd/events/:code" element={<BDEvents />} />
-                <Route path="/bd/manage-events" element={<BDEventManage />} />
                 <Route path="/my-requests" element={<MyRequests />} />
                 <Route path="/instant" element={<InstantIntro />} />
                 <Route path="/instant/banks" element={<InstantBanks />} />
@@ -107,7 +89,6 @@ const App = () => (
             </Suspense>
           </BrowserRouter>
         </TooltipProvider>
-      </BDProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
