@@ -42,6 +42,7 @@ const AdminBDManager: React.FC = () => {
   // Settings
   const [walletsPaused, setWalletsPaused] = useState(false);
   const [autoWithdrawal, setAutoWithdrawal] = useState(false);
+  const [syncSchedule, setSyncSchedule] = useState<"hourly" | "daily">("daily");
   const [settingsLoading, setSettingsLoading] = useState(false);
 
   const bdCall = async (action: string, params: any = {}) => {
@@ -81,11 +82,12 @@ const AdminBDManager: React.FC = () => {
           const { data } = await supabase
             .from("app_settings")
             .select("*")
-            .in("key", ["bd_wallets_paused", "bd_auto_withdrawal"]);
+            .in("key", ["bd_wallets_paused", "bd_auto_withdrawal", "bd_sync_schedule"]);
           const map: Record<string, string> = {};
           (data || []).forEach((s: any) => { map[s.key] = s.value; });
           setWalletsPaused(map.bd_wallets_paused === "true");
           setAutoWithdrawal(map.bd_auto_withdrawal === "true");
+          setSyncSchedule((map.bd_sync_schedule as "hourly" | "daily") || "daily");
           break;
         }
       }
@@ -170,6 +172,17 @@ const AdminBDManager: React.FC = () => {
       if (key === "bd_wallets_paused") setWalletsPaused(res.value === "true");
       if (key === "bd_auto_withdrawal") setAutoWithdrawal(res.value === "true");
       toast.success("تم التحديث");
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+    finally { setSettingsLoading(false); }
+  };
+
+  const updateSyncSchedule = async (schedule: "hourly" | "daily") => {
+    if (schedule === syncSchedule) return;
+    setSettingsLoading(true);
+    try {
+      await bdCall("admin_toggle_setting", { key: "bd_sync_schedule", value: schedule });
+      setSyncSchedule(schedule);
+      toast.success(schedule === "hourly" ? "المزامنة: كل ساعة" : "المزامنة: يومياً الساعة 12 ص");
     } catch (err: any) { toast.error(err?.message || "فشل"); }
     finally { setSettingsLoading(false); }
   };
@@ -550,6 +563,41 @@ const AdminBDManager: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground">إرسال الكوينزات مباشرة بدون مراجعة</p>
                   </div>
                   <Switch checked={autoWithdrawal} onCheckedChange={() => toggleSetting("bd_auto_withdrawal")} disabled={settingsLoading} />
+                </div>
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sm font-bold">جدولة المزامنة التلقائية</p>
+                      <p className="text-[10px] text-muted-foreground">تحديث بيانات الأعضاء والعمولات تلقائياً</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => updateSyncSchedule("hourly")}
+                      disabled={settingsLoading}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        syncSchedule === "hourly"
+                          ? "bg-primary text-primary-foreground shadow-lg"
+                          : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      ⏰ كل ساعة
+                    </button>
+                    <button
+                      onClick={() => updateSyncSchedule("daily")}
+                      disabled={settingsLoading}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        syncSchedule === "daily"
+                          ? "bg-primary text-primary-foreground shadow-lg"
+                          : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      📅 يومياً (12 ص)
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2 text-center">
+                    {syncSchedule === "hourly" ? "المزامنة تعمل كل ساعة تلقائياً" : "المزامنة تعمل يومياً الساعة 12:00 صباحاً (UTC)"}
+                  </p>
                 </div>
               </div>
             </div>

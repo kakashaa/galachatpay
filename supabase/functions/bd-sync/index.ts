@@ -41,10 +41,29 @@ serve(async (req) => {
   }
 
   const sb = supabaseAdmin();
+  const body = await req.json().catch(() => ({}));
+  const isCronCall = body?.time === "cron-auto";
 
   try {
     const now = new Date();
     const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    // Check schedule setting for cron calls
+    if (isCronCall) {
+      const { data: scheduleSetting } = await sb
+        .from("app_settings")
+        .select("value")
+        .eq("key", "bd_sync_schedule")
+        .maybeSingle();
+      const schedule = scheduleSetting?.value || "daily";
+
+      if (schedule === "daily" && now.getUTCHours() !== 0) {
+        return new Response(JSON.stringify({ skipped: true, reason: "daily schedule - not midnight UTC" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // If hourly, always proceed
+    }
 
     // Get all active BD members
     const { data: members } = await sb
