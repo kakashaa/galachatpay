@@ -221,27 +221,33 @@ serve(async (req) => {
           .update({ status: "accepted", updated_at: new Date().toISOString() })
           .eq("id", invitation_id);
 
-        // Fetch initial_charger_num from Gala API
+        // Fetch initial_charger_num from Gala API via login
         let initialChargerNum = 0;
         let typeUser = 0;
         try {
           const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
-          if (GALA_API_BASE_URL) {
+          console.log(`[bd-referral] GALA_API_BASE_URL=${GALA_API_BASE_URL ? "SET" : "MISSING"}, member_password=${member_password ? "PROVIDED" : "MISSING"}`);
+          if (GALA_API_BASE_URL && member_password) {
             const endpoint = "auth/login/uuid";
             const signPath = "api/newWebsite/" + endpoint;
             const loginHeaders = await getGalaHeaders("POST", signPath);
             const url = GALA_API_BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
+            console.log(`[bd-referral] Calling login API: ${url} for uuid=${inv.member_uuid}`);
             const userRes = await fetch(url, {
               method: "POST",
               headers: loginHeaders,
               body: JSON.stringify({ uuid: inv.member_uuid, password: member_password }),
             });
-            if (userRes.ok) {
-              const userData = await userRes.json();
+            const rawText = await userRes.text();
+            console.log(`[bd-referral] Login API status=${userRes.status}, response=${rawText.substring(0, 500)}`);
+            try {
+              const userData = JSON.parse(rawText);
               if (userData?.data) {
                 initialChargerNum = Number(userData.data.level?.charger_num || 0);
                 typeUser = Number(userData.data.type_user || 0);
               }
+            } catch (parseErr) {
+              console.error("[bd-referral] Failed to parse login response:", parseErr);
             }
           }
         } catch (e) {
