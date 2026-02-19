@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays } from "lucide-react";
+import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays, FileText } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
 
-type Tab = "overview" | "supporters" | "agents" | "history" | "today";
+type Tab = "overview" | "supporters" | "agents" | "history" | "today" | "commission_report";
 
 interface BDData {
   bd: any;
@@ -28,6 +28,12 @@ const BDDashboard: React.FC = () => {
   const [tab, setTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
   const [todayLogs, setTodayLogs] = useState<any[]>([]);
+  const [commissionLogs, setCommissionLogs] = useState<any[]>([]);
+  const [commissionLoading, setCommissionLoading] = useState(false);
+  const [commissionMonth, setCommissionMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -61,11 +67,41 @@ const BDDashboard: React.FC = () => {
     }
   }, [user?.uuid, navigate]);
 
+  const loadCommissionReport = useCallback(async () => {
+    if (!user?.uuid) return;
+    setCommissionLoading(true);
+    try {
+      const startDate = `${commissionMonth}-01T00:00:00Z`;
+      const [y, m] = commissionMonth.split("-").map(Number);
+      const endDate = new Date(y, m, 1).toISOString();
+
+      const { data } = await supabase
+        .from("bd_commission_logs")
+        .select("*")
+        .eq("bd_uuid", user.uuid)
+        .gte("created_at", startDate)
+        .lt("created_at", endDate)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      setCommissionLogs(data || []);
+    } catch {
+      toast.error("فشل تحميل تقرير العمولات");
+    } finally {
+      setCommissionLoading(false);
+    }
+  }, [user?.uuid, commissionMonth]);
+
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, [loadData]);
+
+  useEffect(() => {
+    if (tab === "commission_report") {
+      loadCommissionReport();
+    }
+  }, [tab, loadCommissionReport]);
 
   if (loading) {
     return (
@@ -93,6 +129,7 @@ const BDDashboard: React.FC = () => {
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "overview", label: "نظرة عامة", icon: <TrendingUp className="w-4 h-4" /> },
     { key: "today", label: "عمولة اليوم", icon: <CalendarDays className="w-4 h-4" /> },
+    { key: "commission_report", label: "تقرير العمولات", icon: <FileText className="w-4 h-4" /> },
     { key: "supporters", label: `داعمين (${supporters.length})`, icon: <Users className="w-4 h-4" /> },
     { key: "agents", label: `وكلاء (${agents.length})`, icon: <Users className="w-4 h-4" /> },
     { key: "history", label: "سجل السحب", icon: <DollarSign className="w-4 h-4" /> },
@@ -293,6 +330,114 @@ const BDDashboard: React.FC = () => {
                     </div>
                   </div>
                 ))
+              )}
+            </motion.div>
+          )}
+
+
+          {/* Commission Report */}
+          {tab === "commission_report" && (
+            <motion.div key="commission_report" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              {/* Month Selector */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const [y, m] = commissionMonth.split("-").map(Number);
+                    const prev = new Date(y, m - 2, 1);
+                    setCommissionMonth(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`);
+                  }}
+                  className="p-2 rounded-xl bg-card border border-border/40 hover:bg-muted text-sm"
+                >
+                  ←
+                </button>
+                <div className="flex-1 text-center">
+                  <span className="text-sm font-bold">
+                    {new Date(Number(commissionMonth.split("-")[0]), Number(commissionMonth.split("-")[1]) - 1).toLocaleDateString("ar-SA", { month: "long", year: "numeric" })}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    const [y, m] = commissionMonth.split("-").map(Number);
+                    const next = new Date(y, m, 1);
+                    const now = new Date();
+                    if (next <= new Date(now.getFullYear(), now.getMonth() + 1, 1)) {
+                      setCommissionMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+                    }
+                  }}
+                  className="p-2 rounded-xl bg-card border border-border/40 hover:bg-muted text-sm"
+                >
+                  →
+                </button>
+              </div>
+
+              {/* Summary */}
+              {!commissionLoading && commissionLogs.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-card border border-primary/30 rounded-xl p-3 text-center">
+                    <div className="text-lg font-bold text-primary">
+                      ${commissionLogs.reduce((s, l) => s + (l.amount || 0), 0).toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">إجمالي العمولات</div>
+                  </div>
+                  <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
+                    <div className="text-lg font-bold text-emerald-400">
+                      ${commissionLogs.filter(l => l.member_type === "supporter").reduce((s, l) => s + (l.amount || 0), 0).toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">داعمين</div>
+                  </div>
+                  <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
+                    <div className="text-lg font-bold text-amber-400">
+                      ${commissionLogs.filter(l => l.member_type === "agency").reduce((s, l) => s + (l.amount || 0), 0).toFixed(2)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">وكلاء</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Logs */}
+              {commissionLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : commissionLogs.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات في هذا الشهر</div>
+              ) : (
+                commissionLogs.map((log: any) => (
+                  <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          log.member_type === "agency" ? "bg-amber-500/10" : "bg-emerald-500/10"
+                        }`}>
+                          <Users className={`w-4 h-4 ${log.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}`} />
+                        </div>
+                        <div>
+                          <div className="text-xs font-mono text-muted-foreground" dir="ltr">{log.member_uuid}</div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {log.member_type === "agency" ? "وكيل" : "داعم"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-left">
+                        <div className="text-sm font-bold text-primary">+${(log.amount || 0).toFixed(2)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/20">
+                      <span>المبلغ المصدر: <span className="font-bold text-foreground">${(log.source_amount || 0).toLocaleString()}</span></span>
+                      <span>النسبة: <span className="font-bold text-foreground">{log.commission_pct}%</span></span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {formatDateAr(log.created_at)}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {/* Total count */}
+              {!commissionLoading && commissionLogs.length > 0 && (
+                <div className="text-center text-[10px] text-muted-foreground py-2">
+                  إجمالي العمليات: {commissionLogs.length}
+                </div>
               )}
             </motion.div>
           )}
