@@ -2,11 +2,38 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
 
+const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
+const BD_API_KEY = "ghala2026actions";
+
 const supabaseAdmin = () =>
   createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
+
+async function fetchAgencyIncome(uuid: string) {
+  try {
+    const url = `${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${uuid}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) { await res.text(); return null; }
+    return await res.json();
+  } catch (e) {
+    console.error(`fetch agency-income failed for ${uuid}:`, e);
+    return null;
+  }
+}
+
+async function fetchUserCharges(uuid: string) {
+  try {
+    const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) { await res.text(); return null; }
+    return await res.json();
+  } catch (e) {
+    console.error(`fetch user-charges failed for ${uuid}:`, e);
+    return null;
+  }
+}
 
 // Launch date: accounts created before this are rejected
 const LAUNCH_DATE = "2026-02-19T00:00:00Z";
@@ -275,17 +302,34 @@ serve(async (req) => {
       }
 
       // All validations passed - add member
-      const chargerNum = levelData.charger_num || 0;
+      // For agencies: fetch agency income, for supporters: fetch user charges
+      let initialMonthly = 0;
+      let initialDaily = 0;
+
+      if (invite.member_type === "agency") {
+        const agencyData = await fetchAgencyIncome(invite.member_uuid);
+        if (agencyData?.commission) {
+          initialMonthly = agencyData.commission.month || 0;
+          initialDaily = agencyData.commission.today || 0;
+        }
+      } else {
+        const chargeData = await fetchUserCharges(invite.member_uuid);
+        if (chargeData?.charges) {
+          initialMonthly = chargeData.charges.month || 0;
+          initialDaily = chargeData.charges.today || 0;
+        }
+      }
 
       const { error: memberError } = await sb.from("bd_members").insert({
         bd_uuid: invite.bd_uuid,
         member_uuid: invite.member_uuid,
         member_name: userData.name || "",
         member_type: invite.member_type,
-        initial_charger_num: chargerNum,
+        initial_charger_num: initialMonthly,
+        monthly_charges: initialMonthly,
+        last_daily_charges: initialDaily,
         type_user: userData.type_user || 0,
         is_active: true,
-        last_daily_charges: chargerNum,
       });
 
       if (memberError) return json({ error: memberError.message }, 500);
@@ -524,11 +568,36 @@ serve(async (req) => {
       const { bd_uuid, member_uuid, member_name, member_type } = params;
       if (!bd_uuid || !member_uuid || !member_type) return json({ error: "بيانات ناقصة" }, 400);
       
+      // Fetch live data from BD API based on member type
+      let initialMonthly = 0;
+      let initialDaily = 0;
+
+      try {
+        if (member_type === "agency") {
+          const agencyData = await fetchAgencyIncome(member_uuid);
+          if (agencyData?.commission) {
+            initialMonthly = agencyData.commission.month || 0;
+            initialDaily = agencyData.commission.today || 0;
+          }
+        } else {
+          const chargeData = await fetchUserCharges(member_uuid);
+          if (chargeData?.charges) {
+            initialMonthly = chargeData.charges.month || 0;
+            initialDaily = chargeData.charges.today || 0;
+          }
+        }
+      } catch (e) {
+        console.error("BD API fetch on admin_add_member:", e);
+      }
+
       const { error } = await sb.from("bd_members").insert({
         bd_uuid,
         member_uuid,
         member_name: member_name || "",
         member_type,
+        initial_charger_num: initialMonthly,
+        monthly_charges: initialMonthly,
+        last_daily_charges: initialDaily,
         is_active: true,
       });
       if (error) return json({ error: error.message }, 500);
