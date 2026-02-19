@@ -30,6 +30,7 @@ const BDDashboard: React.FC = () => {
   const [search, setSearch] = useState("");
   const [todayLogs, setTodayLogs] = useState<any[]>([]);
   const [commissionLogs, setCommissionLogs] = useState<any[]>([]);
+  const [prevMonthLogs, setPrevMonthLogs] = useState<any[]>([]);
   const [commissionLoading, setCommissionLoading] = useState(false);
   const [commissionMonth, setCommissionMonth] = useState(() => {
     const now = new Date();
@@ -72,19 +73,35 @@ const BDDashboard: React.FC = () => {
     if (!user?.uuid) return;
     setCommissionLoading(true);
     try {
-      const startDate = `${commissionMonth}-01T00:00:00Z`;
       const [y, m] = commissionMonth.split("-").map(Number);
+      const startDate = `${commissionMonth}-01T00:00:00Z`;
       const endDate = new Date(y, m, 1).toISOString();
 
-      const { data } = await supabase
-        .from("bd_commission_logs")
-        .select("*")
-        .eq("bd_uuid", user.uuid)
-        .gte("created_at", startDate)
-        .lt("created_at", endDate)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      setCommissionLogs(data || []);
+      // Previous month range
+      const prevDate = new Date(y, m - 2, 1);
+      const prevStart = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-01T00:00:00Z`;
+      const prevEnd = `${y}-${String(m).padStart(2, "0")}-01T00:00:00Z`;
+
+      const [currentRes, prevRes] = await Promise.all([
+        supabase
+          .from("bd_commission_logs")
+          .select("*")
+          .eq("bd_uuid", user.uuid)
+          .gte("created_at", startDate)
+          .lt("created_at", endDate)
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("bd_commission_logs")
+          .select("*")
+          .eq("bd_uuid", user.uuid)
+          .gte("created_at", prevStart)
+          .lt("created_at", prevEnd)
+          .limit(500),
+      ]);
+
+      setCommissionLogs(currentRes.data || []);
+      setPrevMonthLogs(prevRes.data || []);
     } catch {
       toast.error("فشل تحميل تقرير العمولات");
     } finally {
@@ -396,6 +413,50 @@ const BDDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Monthly Comparison */}
+              {!commissionLoading && (() => {
+                const currentTotal = commissionLogs.reduce((s, l) => s + (l.amount || 0), 0);
+                const prevTotal = prevMonthLogs.reduce((s, l) => s + (l.amount || 0), 0);
+                const currentSupporter = commissionLogs.filter(l => l.member_type === "supporter").reduce((s, l) => s + (l.amount || 0), 0);
+                const prevSupporter = prevMonthLogs.filter(l => l.member_type === "supporter").reduce((s, l) => s + (l.amount || 0), 0);
+                const currentAgency = commissionLogs.filter(l => l.member_type === "agency").reduce((s, l) => s + (l.amount || 0), 0);
+                const prevAgency = prevMonthLogs.filter(l => l.member_type === "agency").reduce((s, l) => s + (l.amount || 0), 0);
+
+                const pctChange = (curr: number, prev: number) => {
+                  if (prev === 0) return curr > 0 ? 100 : 0;
+                  return ((curr - prev) / prev) * 100;
+                };
+
+                const totalPct = pctChange(currentTotal, prevTotal);
+                const supporterPct = pctChange(currentSupporter, prevSupporter);
+                const agencyPct = pctChange(currentAgency, prevAgency);
+
+                const ChangeIndicator = ({ pct, label }: { pct: number; label: string }) => (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">{label}</span>
+                    <span className={`text-xs font-bold ${pct > 0 ? "text-emerald-400" : pct < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                      {pct > 0 ? "↑" : pct < 0 ? "↓" : "="} {Math.abs(pct).toFixed(1)}%
+                    </span>
+                  </div>
+                );
+
+                const [cy, cm] = commissionMonth.split("-").map(Number);
+                const prevMonthDate = new Date(cy, cm - 2, 1);
+                const prevMonthName = prevMonthDate.toLocaleDateString("ar-SA", { month: "long" });
+
+                return (
+                  <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
+                    <h3 className="text-xs font-bold text-muted-foreground text-center">📈 مقارنة بشهر {prevMonthName}</h3>
+                    <ChangeIndicator pct={totalPct} label="إجمالي العمولات" />
+                    <ChangeIndicator pct={supporterPct} label="عمولة الداعمين" />
+                    <ChangeIndicator pct={agencyPct} label="عمولة الوكلاء" />
+                    <div className="text-[10px] text-muted-foreground text-center pt-1 border-t border-border/20">
+                      الشهر السابق: <span className="font-bold text-foreground">${prevTotal.toFixed(2)}</span> → الحالي: <span className="font-bold text-foreground">${currentTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Daily Commission Chart */}
               {!commissionLoading && commissionLogs.length > 0 && (() => {
