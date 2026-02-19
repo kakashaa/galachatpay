@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays, FileText, Info } from "lucide-react";
+import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays, FileText, Info, BarChart3 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
-type Tab = "overview" | "supporters" | "agents" | "history" | "today" | "commission_report";
+type Tab = "overview" | "supporters" | "agents" | "history" | "today" | "commission_report" | "weekly";
 
 interface BDData {
   bd: any;
@@ -36,6 +36,10 @@ const BDDashboard: React.FC = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
+  const [weeklyLogs, setWeeklyLogs] = useState<any[]>([]);
+  const [prevWeekLogs, setPrevWeekLogs] = useState<any[]>([]);
+  const [weeklyNewMembers, setWeeklyNewMembers] = useState(0);
+  const [weeklyLoading, setWeeklyLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -115,11 +119,63 @@ const BDDashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [loadData]);
 
+  const loadWeeklySummary = useCallback(async () => {
+    if (!user?.uuid) return;
+    setWeeklyLoading(true);
+    try {
+      const now = new Date();
+      const dayOfWeek = now.getUTCDay(); // 0=Sun
+      const weekStart = new Date(now);
+      weekStart.setUTCDate(now.getUTCDate() - dayOfWeek);
+      weekStart.setUTCHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
+
+      const prevWeekStart = new Date(weekStart);
+      prevWeekStart.setUTCDate(weekStart.getUTCDate() - 7);
+
+      const [currentRes, prevRes, newMembersRes] = await Promise.all([
+        supabase
+          .from("bd_commission_logs")
+          .select("*")
+          .eq("bd_uuid", user.uuid)
+          .gte("created_at", weekStart.toISOString())
+          .lt("created_at", weekEnd.toISOString())
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("bd_commission_logs")
+          .select("*")
+          .eq("bd_uuid", user.uuid)
+          .gte("created_at", prevWeekStart.toISOString())
+          .lt("created_at", weekStart.toISOString())
+          .limit(500),
+        supabase
+          .from("bd_members")
+          .select("id")
+          .eq("bd_uuid", user.uuid)
+          .gte("created_at", weekStart.toISOString())
+          .lt("created_at", weekEnd.toISOString()),
+      ]);
+
+      setWeeklyLogs(currentRes.data || []);
+      setPrevWeekLogs(prevRes.data || []);
+      setWeeklyNewMembers(newMembersRes.data?.length || 0);
+    } catch {
+      toast.error("فشل تحميل الملخص الأسبوعي");
+    } finally {
+      setWeeklyLoading(false);
+    }
+  }, [user?.uuid]);
+
   useEffect(() => {
     if (tab === "commission_report") {
       loadCommissionReport();
     }
-  }, [tab, loadCommissionReport]);
+    if (tab === "weekly") {
+      loadWeeklySummary();
+    }
+  }, [tab, loadCommissionReport, loadWeeklySummary]);
 
   if (loading) {
     return (
@@ -146,6 +202,7 @@ const BDDashboard: React.FC = () => {
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "overview", label: "نظرة عامة", icon: <TrendingUp className="w-4 h-4" /> },
+    { key: "weekly", label: "ملخص أسبوعي", icon: <BarChart3 className="w-4 h-4" /> },
     { key: "today", label: "عمولة اليوم", icon: <CalendarDays className="w-4 h-4" /> },
     { key: "commission_report", label: "تقرير العمولات", icon: <FileText className="w-4 h-4" /> },
     { key: "supporters", label: `داعمين (${supporters.length})`, icon: <Users className="w-4 h-4" /> },
@@ -341,6 +398,126 @@ const BDDashboard: React.FC = () => {
             </motion.div>
           )}
 
+
+          {/* Weekly Summary */}
+          {tab === "weekly" && (
+            <motion.div key="weekly" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              {weeklyLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : (() => {
+                const weekTotal = weeklyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const prevWeekTotal = prevWeekLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const weekSupporterTotal = weeklyLogs.filter((l: any) => l.member_type === "supporter").reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const weekAgencyTotal = weeklyLogs.filter((l: any) => l.member_type === "agency").reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const pctChange = prevWeekTotal === 0 ? (weekTotal > 0 ? 100 : 0) : ((weekTotal - prevWeekTotal) / prevWeekTotal) * 100;
+
+                // Top members by commission this week
+                const memberTotals: Record<string, { uuid: string; name: string; type: string; total: number }> = {};
+                weeklyLogs.forEach((l: any) => {
+                  if (!memberTotals[l.member_uuid]) {
+                    memberTotals[l.member_uuid] = { uuid: l.member_uuid, name: "", type: l.member_type, total: 0 };
+                    const found = [...supporters, ...agents].find((m: any) => m.member_uuid === l.member_uuid);
+                    if (found) memberTotals[l.member_uuid].name = found.member_name || "";
+                  }
+                  memberTotals[l.member_uuid].total += l.amount || 0;
+                });
+                const topMembers = Object.values(memberTotals).sort((a, b) => b.total - a.total).slice(0, 5);
+
+                // Daily chart data
+                const dayNames = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
+                const dailyData: { day: string; supporter: number; agency: number }[] = dayNames.map(d => ({ day: d, supporter: 0, agency: 0 }));
+                weeklyLogs.forEach((l: any) => {
+                  const dayIdx = new Date(l.created_at).getUTCDay();
+                  if (l.member_type === "supporter") dailyData[dayIdx].supporter += l.amount || 0;
+                  else dailyData[dayIdx].agency += l.amount || 0;
+                });
+
+                return (
+                  <>
+                    {/* Week Total */}
+                    <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center">
+                      <div className="text-xs text-muted-foreground mb-1">إجمالي عمولات الأسبوع</div>
+                      <div className="text-3xl font-bold text-primary">${weekTotal.toFixed(2)}</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">{weeklyLogs.length} عملية</div>
+                      <div className={`text-xs font-bold mt-1 ${pctChange > 0 ? "text-emerald-400" : pctChange < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                        {pctChange > 0 ? "↑" : pctChange < 0 ? "↓" : "="} {Math.abs(pctChange).toFixed(1)}% مقارنة بالأسبوع السابق
+                      </div>
+                    </div>
+
+                    {/* Breakdown */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
+                        <div className="text-lg font-bold text-emerald-400">${weekSupporterTotal.toFixed(2)}</div>
+                        <div className="text-[10px] text-muted-foreground">داعمين</div>
+                      </div>
+                      <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
+                        <div className="text-lg font-bold text-amber-400">${weekAgencyTotal.toFixed(2)}</div>
+                        <div className="text-[10px] text-muted-foreground">وكلاء</div>
+                      </div>
+                      <div className="bg-card border border-blue-500/30 rounded-xl p-3 text-center">
+                        <div className="text-lg font-bold text-blue-400">{weeklyNewMembers}</div>
+                        <div className="text-[10px] text-muted-foreground">أعضاء جدد</div>
+                      </div>
+                    </div>
+
+                    {/* Daily Chart */}
+                    {weeklyLogs.length > 0 && (
+                      <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-2">
+                        <h3 className="text-xs font-bold text-muted-foreground text-center">📊 العمولات اليومية للأسبوع</h3>
+                        <div style={{ width: "100%", height: 200 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dailyData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                              <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                              <Tooltip
+                                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, direction: "rtl" }}
+                                formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === "supporter" ? "داعمين" : "وكلاء"]}
+                              />
+                              <Bar dataKey="supporter" name="داعمين" fill="#34d399" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="agency" name="وكلاء" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> داعمين</span>
+                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> وكلاء</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Top Members */}
+                    {topMembers.length > 0 && (
+                      <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
+                        <h3 className="text-xs font-bold text-muted-foreground text-center">🏆 أفضل الأعضاء أداءً هذا الأسبوع</h3>
+                        {topMembers.map((m, i) => (
+                          <div key={m.uuid} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                i === 0 ? "bg-amber-500/20 text-amber-400" : i === 1 ? "bg-gray-400/20 text-gray-300" : "bg-orange-500/20 text-orange-400"
+                              }`}>
+                                {i + 1}
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold">{m.name || "بدون اسم"}</div>
+                                <div className="text-[10px] text-muted-foreground">{m.type === "agency" ? "وكيل" : "داعم"}</div>
+                              </div>
+                            </div>
+                            <div className="text-sm font-bold text-primary">${m.total.toFixed(2)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {weeklyLogs.length === 0 && (
+                      <div className="text-center py-6 text-muted-foreground text-sm">لا توجد عمولات هذا الأسبوع بعد</div>
+                    )}
+                  </>
+                );
+              })()}
+            </motion.div>
+          )}
 
           {/* Commission Report */}
           {tab === "commission_report" && (
