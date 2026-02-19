@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Loader2, ChevronDown, ChevronUp, CheckCircle, XCircle,
   Users, DollarSign, Shield, Trash2, RefreshCw,
-  Settings, UserPlus, UserMinus, Edit2, Save, X,
+  Settings, UserPlus, UserMinus, Edit2, Save, X, Search,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
@@ -25,6 +25,7 @@ const AdminBDManager: React.FC = () => {
   const [bds, setBds] = useState<any[]>([]);
   const [allMembers, setAllMembers] = useState<any[]>([]);
   const [expandedBd, setExpandedBd] = useState<string | null>(null);
+  const [bdSearchQuery, setBdSearchQuery] = useState("");
   const [editingBd, setEditingBd] = useState<string | null>(null);
   const [editBdData, setEditBdData] = useState<any>({});
 
@@ -316,8 +317,34 @@ const AdminBDManager: React.FC = () => {
           {/* BD List */}
           {subTab === "bds" && (
             <div className="space-y-3">
-              {bds.length === 0 && <p className="text-center text-muted-foreground py-10">لا يوجد بيدي مسجل</p>}
-              {bds.map((bd) => {
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="ابحث بالآيدي أو الاسم..."
+                  value={bdSearchQuery}
+                  onChange={(e) => setBdSearchQuery(e.target.value)}
+                  className="pr-9 text-xs"
+                  dir="rtl"
+                />
+              </div>
+              {bds.filter((bd) => {
+                if (!bdSearchQuery.trim()) return true;
+                const q = bdSearchQuery.trim().toLowerCase();
+                return (
+                  bd.bd_uuid?.toLowerCase().includes(q) ||
+                  bd.bd_name?.toLowerCase().includes(q) ||
+                  bd.referral_code?.toLowerCase().includes(q)
+                );
+              }).length === 0 && <p className="text-center text-muted-foreground py-10">{bdSearchQuery ? "لا توجد نتائج" : "لا يوجد بيدي مسجل"}</p>}
+              {bds.filter((bd) => {
+                if (!bdSearchQuery.trim()) return true;
+                const q = bdSearchQuery.trim().toLowerCase();
+                return (
+                  bd.bd_uuid?.toLowerCase().includes(q) ||
+                  bd.bd_name?.toLowerCase().includes(q) ||
+                  bd.referral_code?.toLowerCase().includes(q)
+                );
+              }).map((bd) => {
                 const members = allMembers.filter((m) => m.bd_uuid === bd.bd_uuid);
                 const supporters = members.filter((m) => m.member_type === "supporter");
                 const agents = members.filter((m) => m.member_type === "agency");
