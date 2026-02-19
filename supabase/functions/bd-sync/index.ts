@@ -143,13 +143,17 @@ serve(async (req) => {
         console.log(`[SYNC] supporter ${member.member_uuid} API response:`, JSON.stringify(chargeData));
         if (!chargeData || !chargeData.charges) continue;
 
-        const monthlyCharges = chargeData.charges.month || 0;
+        // TEST MODE: simulate charges for testing commission flow
+        const isTestMode = body?.test_mode === true;
+        const testCharges = body?.test_charges || 0;
+        const rawMonthly = typeof chargeData.charges.month === 'object' ? chargeData.charges.month.total : chargeData.charges.month;
+        const monthlyCharges = isTestMode && testCharges > 0 ? testCharges : (rawMonthly || 0);
         const previousMonthly = member.monthly_charges || 0;
         const chargeDiff = monthlyCharges - previousMonthly;
 
         const updateObj: Record<string, unknown> = {
           monthly_charges: monthlyCharges,
-          last_daily_charges: chargeData.charges.today || 0,
+          last_daily_charges: typeof chargeData.charges.today === 'object' ? (chargeData.charges.today.total || 0) : (chargeData.charges.today || 0),
         };
 
         if (chargeDiff > 0) {
@@ -179,7 +183,8 @@ serve(async (req) => {
           commissionUpdates++;
         }
 
-        await sb.from("bd_members").update(updateObj).eq("id", member.id);
+        const { error: memberUpdateError } = await sb.from("bd_members").update(updateObj).eq("id", member.id);
+        console.log(`[SYNC] member update ${member.member_uuid}:`, JSON.stringify(updateObj), "error:", memberUpdateError);
         synced++;
 
       } else if (member.member_type === "agency") {
@@ -188,14 +193,18 @@ serve(async (req) => {
         console.log(`[SYNC] agency ${member.member_uuid} API response:`, JSON.stringify(incomeData));
         if (!incomeData || !incomeData.commission) continue;
 
-        const monthlyIncome = incomeData.commission.month || 0;
+        // TEST MODE: simulate income for testing commission flow
+        const isTestModeAgency = body?.test_mode === true;
+        const testIncome = body?.test_agency_income || 0;
+        const rawMonthlyIncome = typeof incomeData.commission.month === 'object' ? incomeData.commission.month.total : incomeData.commission.month;
+        const monthlyIncome = isTestModeAgency && testIncome > 0 ? testIncome : (rawMonthlyIncome || 0);
         const salaryThisMonth = incomeData.salary_this_month || 0;
         const previousMonthly = member.monthly_charges || 0;
         const incomeDiff = monthlyIncome - previousMonthly;
 
         const updateObj: Record<string, unknown> = {
           monthly_charges: monthlyIncome,
-          last_daily_charges: incomeData.commission.today || 0,
+          last_daily_charges: typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0),
         };
 
         if (incomeDiff > 0) {
