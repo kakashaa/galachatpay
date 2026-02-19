@@ -230,8 +230,9 @@ serve(async (req) => {
           if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
             const timestamp = Math.floor(Date.now() / 1000).toString();
             const nonce = crypto.randomUUID();
-            const path = "api/newWebsite/getUserInfo";
-            const message = `GET${path}${timestamp}${nonce}`;
+            const path = "getUserInfo";
+            const signPath = "api/newWebsite/" + path;
+            const message = `GET${signPath}${timestamp}${nonce}`;
             const encoder = new TextEncoder();
             const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
             const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
