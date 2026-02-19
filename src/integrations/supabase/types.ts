@@ -418,6 +418,7 @@ export type Database = {
           created_at: string
           current_month_commission: number
           id: string
+          initial_charger_num: number
           member_name: string
           member_type: string
           member_uuid: string
@@ -431,6 +432,7 @@ export type Database = {
           created_at?: string
           current_month_commission?: number
           id?: string
+          initial_charger_num?: number
           member_name?: string
           member_type?: string
           member_uuid: string
@@ -444,6 +446,7 @@ export type Database = {
           created_at?: string
           current_month_commission?: number
           id?: string
+          initial_charger_num?: number
           member_name?: string
           member_type?: string
           member_uuid?: string
