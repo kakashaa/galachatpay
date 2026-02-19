@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 type Tab = "overview" | "supporters" | "agents" | "history" | "today" | "commission_report";
 
@@ -396,7 +397,46 @@ const BDDashboard: React.FC = () => {
                 </div>
               )}
 
-              {/* Logs */}
+              {/* Daily Commission Chart */}
+              {!commissionLoading && commissionLogs.length > 0 && (() => {
+                const dailyData: Record<string, { day: string; supporter: number; agency: number }> = {};
+                commissionLogs.forEach((log: any) => {
+                  const day = new Date(log.created_at).getUTCDate().toString();
+                  if (!dailyData[day]) dailyData[day] = { day, supporter: 0, agency: 0 };
+                  if (log.member_type === "supporter") {
+                    dailyData[day].supporter += log.amount || 0;
+                  } else {
+                    dailyData[day].agency += log.amount || 0;
+                  }
+                });
+                const chartData = Object.values(dailyData).sort((a, b) => Number(a.day) - Number(b.day));
+
+                return (
+                  <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-2">
+                    <h3 className="text-xs font-bold text-muted-foreground text-center">📊 تطور العمولات اليومية</h3>
+                    <div style={{ width: "100%", height: 200 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                          <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                          <Tooltip
+                            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, direction: "rtl" }}
+                            formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === "supporter" ? "داعمين" : "وكلاء"]}
+                            labelFormatter={(label) => `يوم ${label}`}
+                          />
+                          <Bar dataKey="supporter" name="داعمين" fill="#34d399" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="agency" name="وكلاء" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> داعمين</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> وكلاء</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {commissionLoading ? (
                 <div className="flex items-center justify-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
