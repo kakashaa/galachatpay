@@ -246,6 +246,28 @@ const BDDashboard: React.FC = () => {
                 <div className="text-[10px] text-muted-foreground mt-1">{todayLogs.length} عملية</div>
               </div>
 
+              {/* Supporter vs Agent breakdown */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
+                  <div className="text-[10px] text-muted-foreground mb-1">عمولة الداعمين</div>
+                  <div className="text-lg font-bold text-emerald-400">
+                    ${todayLogs.filter((l: any) => l.member_type === "supporter").reduce((s: number, l: any) => s + (l.amount || 0), 0).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {todayLogs.filter((l: any) => l.member_type === "supporter").length} عملية
+                  </div>
+                </div>
+                <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
+                  <div className="text-[10px] text-muted-foreground mb-1">عمولة الوكلاء</div>
+                  <div className="text-lg font-bold text-amber-400">
+                    ${todayLogs.filter((l: any) => l.member_type === "agency").reduce((s: number, l: any) => s + (l.amount || 0), 0).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {todayLogs.filter((l: any) => l.member_type === "agency").length} عملية
+                  </div>
+                </div>
+              </div>
+
               {/* Today Logs */}
               {todayLogs.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات اليوم بعد</div>
