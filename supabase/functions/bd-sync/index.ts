@@ -57,7 +57,7 @@ serve(async (req) => {
         .maybeSingle();
       const schedule = scheduleSetting?.value || "daily";
 
-      if (schedule === "daily" && now.getUTCHours() !== 0) {
+      if (schedule === "daily" && now.getUTCHours() !== 21) {
         return new Response(JSON.stringify({ skipped: true, reason: "daily schedule - not midnight UTC" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
