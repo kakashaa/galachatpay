@@ -140,6 +140,7 @@ serve(async (req) => {
       if (member.member_type === "supporter") {
         // For supporters: fetch their charges
         const chargeData = await fetchUserCharges(member.member_uuid);
+        console.log(`[SYNC] supporter ${member.member_uuid} API response:`, JSON.stringify(chargeData));
         if (!chargeData || !chargeData.charges) continue;
 
         const monthlyCharges = chargeData.charges.month || 0;
@@ -184,6 +185,7 @@ serve(async (req) => {
       } else if (member.member_type === "agency") {
         // For agencies: fetch agency income
         const incomeData = await fetchAgencyIncome(member.member_uuid);
+        console.log(`[SYNC] agency ${member.member_uuid} API response:`, JSON.stringify(incomeData));
         if (!incomeData || !incomeData.commission) continue;
 
         const monthlyIncome = incomeData.commission.month || 0;
