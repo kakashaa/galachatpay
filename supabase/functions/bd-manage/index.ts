@@ -345,6 +345,14 @@ serve(async (req) => {
         terms_accepted: true,
       }).eq("id", invitation_id);
 
+      // Notify BD about new member joining
+      await sb.from("notifications").insert({
+        title: "👤 عضو جديد انضم",
+        body: `انضم ${userData.name || "عضو"} (${invite.member_type === "agency" ? "وكالة" : "داعم"}) إلى فريقك عبر كود الإحالة الخاص بك`,
+        target: "user",
+        user_uuid: invite.bd_uuid,
+      });
+
       return json({
         success: true,
         message: `تم قبول الدعوة بنجاح! مرحباً ${userData.name}`,
