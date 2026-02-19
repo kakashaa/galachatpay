@@ -162,16 +162,24 @@ const BDDashboard: React.FC = () => {
                   {isCatExpanded && cat.items.length > 0 && (
                     <div className="px-3 pb-3 space-y-2 max-h-60 overflow-y-auto">
                       {cat.items.map((item: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between p-2.5 bg-muted/10 rounded-lg border border-border/20">
-                          <div>
-                            <p className="text-xs font-bold text-foreground">{item.name || "—"}</p>
-                            <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{item.uuid || item.member_uuid || "—"}</p>
+                        <div key={idx} className="p-2.5 bg-muted/10 rounded-lg border border-border/20 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-bold text-foreground">{item.name || "—"}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{item.uuid || item.member_uuid || "—"}</p>
+                            </div>
+                            <div className="text-left">
+                              {item.performance !== undefined && <p className="text-[10px] text-primary">{item.performance}</p>}
+                              {item.reward !== undefined && <p className="text-[10px] text-amber-400">${item.reward}</p>}
+                            </div>
                           </div>
-                          <div className="text-left">
-                            {item.performance !== undefined && <p className="text-[10px] text-primary">{item.performance}</p>}
-                            {item.reward !== undefined && <p className="text-[10px] text-amber-400">${item.reward}</p>}
-                            {item.created_at && <p className="text-[9px] text-muted-foreground">{new Date(item.created_at).toLocaleDateString("ar-EG")}</p>}
-                          </div>
+                          {item.created_at && (
+                            <div className="flex items-center gap-1.5 pt-1 border-t border-border/10">
+                              <span className="text-[9px] text-muted-foreground">📅 تاريخ الانضمام:</span>
+                              <span className="text-[9px] font-bold text-primary/80">{new Date(item.created_at).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric" })}</span>
+                              <span className="text-[8px] text-muted-foreground/60 mr-auto">(بداية احتساب العمولة)</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
