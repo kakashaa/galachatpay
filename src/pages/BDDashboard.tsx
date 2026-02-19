@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw } from "lucide-react";
+import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
 
-type Tab = "overview" | "supporters" | "agents" | "history";
+type Tab = "overview" | "supporters" | "agents" | "history" | "today";
 
 interface BDData {
   bd: any;
@@ -27,18 +27,33 @@ const BDDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
+  const [todayLogs, setTodayLogs] = useState<any[]>([]);
 
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
     try {
-      const { data: res } = await supabase.functions.invoke("bd-manage", {
-        body: { action: "get_dashboard", bd_uuid: user.uuid },
-      });
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const [dashRes, logsRes] = await Promise.all([
+        supabase.functions.invoke("bd-manage", {
+          body: { action: "get_dashboard", bd_uuid: user.uuid },
+        }),
+        supabase
+          .from("bd_commission_logs")
+          .select("*")
+          .eq("bd_uuid", user.uuid)
+          .gte("created_at", todayStart.toISOString())
+          .order("created_at", { ascending: false }),
+      ]);
+
+      const res = dashRes.data;
       if (res?.bd) {
         setData(res);
       } else {
         navigate("/bd", { replace: true });
       }
+      setTodayLogs(logsRes.data || []);
     } catch {
       toast.error("فشل تحميل البيانات");
     } finally {
@@ -66,6 +81,7 @@ const BDDashboard: React.FC = () => {
   const totalSupporterCommission = supporters.reduce((s: number, m: any) => s + (m.current_month_commission || 0), 0);
   const totalAgentCommission = agents.reduce((s: number, m: any) => s + (m.current_month_commission || 0), 0);
   const currentMonthEarnings = bd.current_month_earnings || 0;
+  const todayTotal = todayLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
 
   const filteredSupporters = supporters.filter((m: any) =>
     m.member_name?.includes(search) || m.member_uuid?.includes(search)
@@ -76,6 +92,7 @@ const BDDashboard: React.FC = () => {
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "overview", label: "نظرة عامة", icon: <TrendingUp className="w-4 h-4" /> },
+    { key: "today", label: "عمولة اليوم", icon: <CalendarDays className="w-4 h-4" /> },
     { key: "supporters", label: `داعمين (${supporters.length})`, icon: <Users className="w-4 h-4" /> },
     { key: "agents", label: `وكلاء (${agents.length})`, icon: <Users className="w-4 h-4" /> },
     { key: "history", label: "سجل السحب", icon: <DollarSign className="w-4 h-4" /> },
@@ -219,7 +236,45 @@ const BDDashboard: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Supporters */}
+          {/* Today's Commission */}
+          {tab === "today" && (
+            <motion.div key="today" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              {/* Today Total */}
+              <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center">
+                <div className="text-xs text-muted-foreground mb-1">إجمالي عمولة اليوم</div>
+                <div className="text-3xl font-bold text-primary">${todayTotal.toFixed(2)}</div>
+                <div className="text-[10px] text-muted-foreground mt-1">{todayLogs.length} عملية</div>
+              </div>
+
+              {/* Today Logs */}
+              {todayLogs.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات اليوم بعد</div>
+              ) : (
+                todayLogs.map((log: any) => (
+                  <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        log.member_type === "agency" ? "bg-amber-500/10" : "bg-emerald-500/10"
+                      }`}>
+                        <Users className={`w-4 h-4 ${log.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}`} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-mono text-muted-foreground" dir="ltr">{log.member_uuid}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {log.member_type === "agency" ? "وكيل" : "داعم"} • {log.commission_pct}%
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-primary">+${(log.amount || 0).toFixed(2)}</div>
+                      <div className="text-[10px] text-muted-foreground">من ${(log.source_amount || 0).toFixed(2)}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </motion.div>
+          )}
+
           {tab === "supporters" && (
             <motion.div key="supporters" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
               {filteredSupporters.length === 0 ? (
