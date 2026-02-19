@@ -220,6 +220,41 @@ serve(async (req) => {
           .update({ status: "accepted", updated_at: new Date().toISOString() })
           .eq("id", invitation_id);
 
+        // Fetch initial_charger_num from Gala API
+        let initialChargerNum = 0;
+        let typeUser = 0;
+        try {
+          const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
+          const GALA_API_KEY = Deno.env.get("GALA_API_KEY");
+          const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
+          if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
+            const timestamp = Math.floor(Date.now() / 1000).toString();
+            const nonce = crypto.randomUUID();
+            const path = "api/newWebsite/getUserInfo";
+            const message = `GET${path}${timestamp}${nonce}`;
+            const encoder = new TextEncoder();
+            const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+            const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+            const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+            const url = `${GALA_API_BASE_URL}/${path}?uuid=${inv.member_uuid}`;
+            const userRes = await fetch(url, {
+              method: "GET",
+              headers: { "X-API-KEY": GALA_API_KEY, "X-SIGNATURE": signature, "X-TIMESTAMP": timestamp, "X-NONCE": nonce, Accept: "application/json" },
+            });
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              if (userData?.data) {
+                initialChargerNum = Number(userData.data.level?.charger_num || 0);
+                typeUser = Number(userData.data.type_user || 0);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("[bd-referral] Failed to fetch initial_charger_num:", e);
+        }
+
+        console.log(`[bd-referral] Accepted: member=${inv.member_uuid}, initial_charger_num=${initialChargerNum}, type_user=${typeUser}`);
+
         // Add member to bd_members table
         const { error: memberInsertError } = await sb
           .from("bd_members")
@@ -228,7 +263,8 @@ serve(async (req) => {
             member_uuid: inv.member_uuid,
             member_name: inv.member_name,
             member_type: inv.member_type,
-            type_user: 0,
+            type_user: typeUser,
+            initial_charger_num: initialChargerNum,
             monthly_charges: 0,
             current_month_commission: 0,
             total_commission: 0,
