@@ -572,26 +572,40 @@ serve(async (req) => {
       const { bd_uuid, member_uuid, member_name, member_type } = params;
       if (!bd_uuid || !member_uuid || !member_type) return json({ error: "بيانات ناقصة" }, 400);
       
-      // Fetch live data from BD API based on member type
+      // Check if member already exists
+      const { data: existing } = await sb.from("bd_members")
+        .select("id")
+        .eq("member_uuid", member_uuid)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (existing) return json({ error: "هذا العضو مسجل بالفعل لدى بيدي آخر" }, 400);
+
+      // Try to fetch live data with a short timeout (5s, 1 retry)
       let initialMonthly = 0;
       let initialDaily = 0;
 
       try {
+        const quickFetch = async (url: string) => {
+          const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+          if (!res.ok) return null;
+          return await res.json();
+        };
+
         if (member_type === "agency") {
-          const agencyData = await fetchAgencyIncome(member_uuid);
+          const agencyData = await quickFetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${member_uuid}`);
           if (agencyData?.commission) {
             initialMonthly = agencyData.commission.month || 0;
             initialDaily = agencyData.commission.today || 0;
           }
         } else {
-          const chargeData = await fetchUserCharges(member_uuid);
+          const chargeData = await quickFetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${member_uuid}`);
           if (chargeData?.charges) {
             initialMonthly = chargeData.charges.month || 0;
             initialDaily = chargeData.charges.today || 0;
           }
         }
       } catch (e) {
-        console.error("BD API fetch on admin_add_member:", e);
+        console.log("BD API fetch skipped on admin_add_member (timeout ok):", e);
       }
 
       const { error } = await sb.from("bd_members").insert({
@@ -605,7 +619,7 @@ serve(async (req) => {
         is_active: true,
       });
       if (error) return json({ error: error.message }, 500);
-      return json({ success: true });
+      return json({ success: true, initial_monthly: initialMonthly });
     }
 
     if (action === "admin_update_bd") {
