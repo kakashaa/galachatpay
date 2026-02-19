@@ -133,7 +133,7 @@ serve(async (req) => {
 
     // ─── Respond to invitation (accept/reject) ───
     if (action === "respond_invitation") {
-      const { invitation_id, response: invResponse } = params;
+      const { invitation_id, response: invResponse, member_password } = params;
       if (!invitation_id || !invResponse) {
         return respond({ success: false, error: "بيانات ناقصة" });
       }
@@ -234,7 +234,7 @@ serve(async (req) => {
             const userRes = await fetch(url, {
               method: "POST",
               headers: loginHeaders,
-              body: JSON.stringify({ uuid: inv.member_uuid }),
+              body: JSON.stringify({ uuid: inv.member_uuid, password: member_password }),
             });
             if (userRes.ok) {
               const userData = await userRes.json();
