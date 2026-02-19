@@ -1,33 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
+import { corsHeaders } from "../_shared/hmac.ts";
 
 const supabaseAdmin = () =>
   createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
-
-async function fetchGalaUserInfo(uuid: string) {
-  const BASE_URL = Deno.env.get("GALA_API_BASE_URL")!.replace(/\/+$/, "");
-  const endpoint = "auth/login/uuid";
-  const signPath = "api/newWebsite/" + endpoint;
-  const headers = await getGalaHeaders("POST", signPath);
-  const url = `${BASE_URL}/${endpoint}`;
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ uuid: uuid.trim() }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) return null;
-    return data.data;
-  } catch {
-    return null;
-  }
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -37,10 +16,19 @@ serve(async (req) => {
   const sb = supabaseAdmin();
 
   try {
-    // Get all active BD members
+    const now = new Date();
+    const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    // BD-sync now works as a monthly reset & commission aggregation tool.
+    // Member names and charger data are updated on each login via gala-login.
+    // This cron job handles:
+    // 1. Monthly commission calculation from charge diffs stored during login
+    // 2. Month-end balance transfers (earnings -> available balance)
+
+    // Get all active BD members with their latest data
     const { data: members } = await sb
       .from("bd_members")
-      .select("id, member_uuid, member_name, last_daily_charges, member_type, bd_uuid")
+      .select("id, member_uuid, member_name, last_daily_charges, initial_charger_num, member_type, bd_uuid, monthly_charges, current_month_commission, total_commission")
       .eq("is_active", true);
 
     if (!members || members.length === 0) {
@@ -49,123 +37,65 @@ serve(async (req) => {
       });
     }
 
-    // Get BD commission settings for commission percentages
+    // Get BD commission settings
     const bdUuids = [...new Set(members.map((m: any) => m.bd_uuid))];
     const { data: bdSettings } = await sb
       .from("bd_commission_settings")
-      .select("bd_uuid, user_commission_pct, agency_commission_pct, host_commission_pct")
+      .select("bd_uuid, user_commission_pct, agency_commission_pct, host_commission_pct, current_month_earnings, total_earned, available_balance")
       .in("bd_uuid", bdUuids)
       .eq("is_active", true);
 
     const bdMap: Record<string, any> = {};
     (bdSettings || []).forEach((b: any) => { bdMap[b.bd_uuid] = b; });
 
-    const now = new Date();
-    const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+    // Check if it's a new month compared to last sync
+    const { data: lastSyncSetting } = await sb
+      .from("app_settings")
+      .select("value")
+      .eq("key", "bd_last_sync_month")
+      .maybeSingle();
 
-    let updated = 0;
-    let nameUpdates = 0;
-    const commissionLogs: any[] = [];
+    const lastSyncMonth = lastSyncSetting?.value || "";
+    const isNewMonth = lastSyncMonth !== "" && lastSyncMonth !== month;
 
-    // Process members in batches of 5 to avoid rate limits
-    for (let i = 0; i < members.length; i += 5) {
-      const batch = members.slice(i, i + 5);
-      const results = await Promise.all(
-        batch.map(async (member: any) => {
-          const userData = await fetchGalaUserInfo(member.member_uuid);
-          if (!userData) return null;
-          return { member, userData };
-        })
-      );
+    let monthlyResets = 0;
 
-      for (const result of results) {
-        if (!result) continue;
-        const { member, userData } = result;
-        const levelData = userData.level || {};
-        const currentChargerNum = levelData.charger_num || 0;
-        const currentName = userData.name || member.member_name;
-
-        // Calculate daily charges diff
-        const dailyDiff = currentChargerNum - (member.last_daily_charges || 0);
-
-        // Build update object - always update name
-        const updateObj: any = {
-          last_daily_charges: currentChargerNum,
-          type_user: userData.type_user || 0,
-        };
-
-        // Update name if changed
-        if (currentName && currentName !== member.member_name) {
-          updateObj.member_name = currentName;
-          nameUpdates++;
-        }
-
-        // Calculate commission if there's new charges
-        if (dailyDiff > 0) {
-          const bd = bdMap[member.bd_uuid];
-          if (bd) {
-            let pct = 0;
-            if (member.member_type === "supporter") pct = bd.user_commission_pct || 2;
-            else if (member.member_type === "agency") pct = bd.agency_commission_pct || 5;
-
-            const commissionAmount = (dailyDiff * pct) / 100;
-
-            updateObj.monthly_charges = (member.monthly_charges || 0) + dailyDiff;
-            updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
-            updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
-
-            commissionLogs.push({
-              bd_uuid: member.bd_uuid,
-              member_uuid: member.member_uuid,
-              member_type: member.member_type,
-              month,
-              source_amount: dailyDiff,
-              commission_pct: pct,
-              amount: commissionAmount,
-            });
-          }
-        }
-
-        await sb.from("bd_members").update(updateObj).eq("id", member.id);
-        updated++;
-      }
-
-      // Small delay between batches
-      if (i + 5 < members.length) {
-        await new Promise((r) => setTimeout(r, 500));
-      }
-    }
-
-    // Insert commission logs
-    if (commissionLogs.length > 0) {
-      await sb.from("bd_commission_logs").insert(commissionLogs);
-
-      // Update BD earnings
-      const bdEarnings: Record<string, number> = {};
-      for (const log of commissionLogs) {
-        bdEarnings[log.bd_uuid] = (bdEarnings[log.bd_uuid] || 0) + log.amount;
-      }
-      for (const [bdUuid, amount] of Object.entries(bdEarnings)) {
-        const { data: bd } = await sb
-          .from("bd_commission_settings")
-          .select("current_month_earnings, total_earned")
-          .eq("bd_uuid", bdUuid)
-          .maybeSingle();
-        if (bd) {
+    if (isNewMonth) {
+      // Transfer current_month_earnings to available_balance for all BDs
+      for (const [bdUuid, bd] of Object.entries(bdMap)) {
+        const monthEarnings = (bd as any).current_month_earnings || 0;
+        if (monthEarnings > 0) {
           await sb.from("bd_commission_settings").update({
-            current_month_earnings: (bd.current_month_earnings || 0) + amount,
-            total_earned: (bd.total_earned || 0) + amount,
+            available_balance: ((bd as any).available_balance || 0) + monthEarnings,
+            current_month_earnings: 0,
           }).eq("bd_uuid", bdUuid);
         }
       }
+
+      // Reset monthly charges and commissions for all members
+      for (const member of members) {
+        await sb.from("bd_members").update({
+          monthly_charges: 0,
+          current_month_commission: 0,
+        }).eq("id", member.id);
+        monthlyResets++;
+      }
     }
+
+    // Update last sync month
+    await sb.from("app_settings").upsert({
+      key: "bd_last_sync_month",
+      value: month,
+    }, { onConflict: "key" });
 
     return new Response(
       JSON.stringify({
         success: true,
-        updated,
-        name_updates: nameUpdates,
-        commissions_logged: commissionLogs.length,
+        month,
+        is_new_month: isNewMonth,
+        monthly_resets: monthlyResets,
+        active_members: members.length,
+        active_bds: bdUuids.length,
         timestamp: now.toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
