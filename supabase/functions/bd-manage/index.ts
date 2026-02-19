@@ -76,6 +76,90 @@ serve(async (req) => {
         const logs = logsRes.data || [];
         const withdrawals = withdrawalsRes.data || [];
 
+        // Fetch real-time charging data for supporters
+        const supporterMembers = members.filter(m => m.member_type === "supporter");
+        const userCommissionPct = Number(settingsData.user_commission_pct || 2);
+
+        if (supporterMembers.length > 0) {
+          const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
+          const GALA_API_KEY = Deno.env.get("GALA_API_KEY");
+          const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
+
+          if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
+            const updatePromises = supporterMembers.map(async (supporter) => {
+              try {
+                const timestamp = Math.floor(Date.now() / 1000).toString();
+                const nonce = crypto.randomUUID();
+                const path = "api/newWebsite/getUserInfo";
+                const message = `GET${path}${timestamp}${nonce}`;
+                const encoder = new TextEncoder();
+                const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+                const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
+                const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+                const url = `${GALA_API_BASE_URL}/${path}?uuid=${supporter.member_uuid}`;
+                const apiRes = await fetch(url, {
+                  method: "GET",
+                  headers: { "X-API-KEY": GALA_API_KEY, "X-SIGNATURE": signature, "X-TIMESTAMP": timestamp, "X-NONCE": nonce, Accept: "application/json" },
+                });
+
+                if (apiRes.ok) {
+                  const apiData = await apiRes.json();
+                  const currentChargerNum = Number(apiData?.data?.level?.charger_num || 0);
+                  const initialChargerNum = Number(supporter.initial_charger_num || 0);
+                  
+                  // Calculate charges since joining (in coins)
+                  const chargesSinceJoin = Math.max(0, currentChargerNum - initialChargerNum);
+                  // Convert coins to USD (8500 coins = $1)
+                  const chargesUsd = chargesSinceJoin / 8500;
+                  // Calculate commission
+                  const commission = chargesUsd * (userCommissionPct / 100);
+
+                  // Update member record
+                  supporter.monthly_charges = chargesUsd;
+                  supporter.total_commission = commission;
+                  supporter.current_month_commission = commission;
+
+                  // Update in database (fire and forget)
+                  await supabase.from("bd_members").update({
+                    monthly_charges: chargesUsd,
+                    total_commission: commission,
+                    current_month_commission: commission,
+                    updated_at: new Date().toISOString(),
+                  }).eq("id", supporter.id);
+
+                  // Update BD balance with new commissions
+                  console.log(`[bd-manage] Supporter ${supporter.member_uuid}: charger_num=${currentChargerNum}, initial=${initialChargerNum}, charges=$${chargesUsd.toFixed(2)}, commission=$${commission.toFixed(2)}`);
+                }
+              } catch (e) {
+                console.error(`[bd-manage] Failed to fetch supporter ${supporter.member_uuid} data:`, e);
+              }
+            });
+
+            await Promise.all(updatePromises);
+
+            // Recalculate and update BD available balance based on total commissions
+            const totalSupporterCommission = supporterMembers.reduce((s, m) => s + Number(m.total_commission || 0), 0);
+            const prevSupporterTotal = logs
+              .filter((l: any) => l.member_type === "supporter")
+              .reduce((s: number, l: any) => s + Number(l.amount || 0), 0);
+            
+            const newCommission = totalSupporterCommission - prevSupporterTotal;
+            if (newCommission > 0.01) {
+              // Add new commission to balance
+              const currentBalance = Number(settingsData.available_balance || 0);
+              const newBalance = currentBalance + newCommission;
+              await supabase.from("bd_commission_settings").update({
+                available_balance: newBalance,
+                total_earned: Number(settingsData.total_earned || 0) + newCommission,
+                updated_at: new Date().toISOString(),
+              }).eq("bd_uuid", lookupUuid);
+              settingsData.available_balance = newBalance;
+              settingsData.total_earned = Number(settingsData.total_earned || 0) + newCommission;
+            }
+          }
+        }
+
         const agencies = members.filter(m => m.member_type === "agency");
         const hosts = members.filter(m => m.member_type === "host");
         const users = members.filter(m => m.member_type === "user");
@@ -128,6 +212,7 @@ serve(async (req) => {
         let memberName = "";
         let typeUser = 0;
         let memberType = "user";
+        let initialChargerNum = 0;
 
         try {
           const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
@@ -162,6 +247,7 @@ serve(async (req) => {
               if (apiData?.data) {
                 memberName = apiData.data.name || apiData.data.nickname || "";
                 typeUser = Number(apiData.data.type_user || 0);
+                initialChargerNum = Number(apiData.data.level?.charger_num || 0);
                 if (typeUser >= 2) memberType = "agency";
                 else if (typeUser === 1) memberType = "host";
                 else memberType = "user";
@@ -178,6 +264,7 @@ serve(async (req) => {
           member_name: memberName || member_uuid,
           member_type: memberType,
           type_user: typeUser,
+          initial_charger_num: initialChargerNum,
         });
 
         if (insertErr) throw insertErr;
@@ -553,6 +640,7 @@ serve(async (req) => {
         let memberName = "";
         let typeUser = 0;
         let resolvedType = member_type || "supporter";
+        let initialChargerNum = 0;
         try {
           const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
           const GALA_API_KEY = Deno.env.get("GALA_API_KEY");
@@ -573,6 +661,7 @@ serve(async (req) => {
               if (apiData?.data) {
                 memberName = apiData.data.name || apiData.data.nickname || "";
                 typeUser = Number(apiData.data.type_user || 0);
+                initialChargerNum = Number(apiData.data.level?.charger_num || 0);
               }
             }
           }
@@ -584,6 +673,7 @@ serve(async (req) => {
           member_name: memberName || member_uuid,
           member_type: resolvedType,
           type_user: typeUser,
+          initial_charger_num: initialChargerNum,
         });
         if (insertErr) throw insertErr;
 
