@@ -11,28 +11,32 @@ const supabaseAdmin = () =>
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-async function fetchUserCharges(uuid: string) {
-  try {
-    const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) { await res.text(); return null; }
-    return await res.json();
-  } catch (e) {
-    console.error(`fetch user-charges failed for ${uuid}:`, e);
-    return null;
+async function fetchWithRetry(url: string, retries = 2): Promise<Response | null> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!res.ok) { await res.text(); return null; }
+      return res;
+    } catch (e) {
+      console.error(`fetch attempt ${i + 1} failed for ${url}:`, e);
+      if (i < retries) await new Promise(r => setTimeout(r, 1000));
+    }
   }
+  return null;
+}
+
+async function fetchUserCharges(uuid: string) {
+  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
+  const res = await fetchWithRetry(url);
+  if (!res) return null;
+  try { return await res.json(); } catch { return null; }
 }
 
 async function fetchAgencyIncome(uuid: string) {
-  try {
-    const url = `${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${uuid}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) { await res.text(); return null; }
-    return await res.json();
-  } catch (e) {
-    console.error(`fetch agency-income failed for ${uuid}:`, e);
-    return null;
-  }
+  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${uuid}`;
+  const res = await fetchWithRetry(url);
+  if (!res) return null;
+  try { return await res.json(); } catch { return null; }
 }
 
 serve(async (req) => {
