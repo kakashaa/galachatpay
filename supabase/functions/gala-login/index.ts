@@ -202,11 +202,14 @@ serve(async (req) => {
       if (d.country?.flag) d.country.flag = fullUrl(d.country.flag);
 
       // Auto-update BD member name, charger data & calculate commissions on login
+      // Uses the new BD Data API for accurate real-time data
       try {
         const trimmedUuid = uuid.trim();
         const currentName = d.name || "";
-        const chargerNum = d.level?.charger_num || 0;
         const typeUser = d.type_user || 0;
+
+        const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
+        const BD_API_KEY = "ghala2026actions";
 
         // Find if this user is a BD member
         const { data: bdMember } = await supabase
@@ -226,11 +229,44 @@ serve(async (req) => {
             updateObj.member_name = currentName;
           }
 
-          // Calculate charge diff and commissions
-          const dailyDiff = chargerNum - (bdMember.last_daily_charges || 0);
-          updateObj.last_daily_charges = chargerNum;
+          // Fetch real-time data from BD API based on member type
+          let liveMonthlyAmount = 0;
+          let liveDailyAmount = 0;
 
-          if (dailyDiff > 0) {
+          try {
+            if (bdMember.member_type === "supporter") {
+              const chargeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
+              if (chargeRes.ok) {
+                const chargeData = await chargeRes.json();
+                if (chargeData?.charges) {
+                  liveMonthlyAmount = chargeData.charges.month || 0;
+                  liveDailyAmount = chargeData.charges.today || 0;
+                }
+              } else { await chargeRes.text(); }
+            } else if (bdMember.member_type === "agency") {
+              const incomeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
+              if (incomeRes.ok) {
+                const incomeData = await incomeRes.json();
+                if (incomeData?.commission) {
+                  liveMonthlyAmount = incomeData.commission.month || 0;
+                  liveDailyAmount = incomeData.commission.today || 0;
+                }
+              } else { await incomeRes.text(); }
+            }
+          } catch (apiErr) {
+            console.error("BD API fetch on login:", apiErr);
+            // Fallback to login response charger_num
+            liveMonthlyAmount = 0;
+          }
+
+          // Calculate charge diff and commissions from live data
+          const previousMonthly = bdMember.monthly_charges || 0;
+          const chargeDiff = liveMonthlyAmount > previousMonthly ? liveMonthlyAmount - previousMonthly : 0;
+
+          updateObj.last_daily_charges = liveDailyAmount || (d.level?.charger_num || 0);
+          if (liveMonthlyAmount > 0) updateObj.monthly_charges = liveMonthlyAmount;
+
+          if (chargeDiff > 0) {
             // Get BD commission settings
             const { data: bdSettings } = await supabase
               .from("bd_commission_settings")
@@ -244,22 +280,21 @@ serve(async (req) => {
               if (bdMember.member_type === "supporter") pct = bdSettings.user_commission_pct || 2;
               else if (bdMember.member_type === "agency") pct = bdSettings.agency_commission_pct || 5;
 
-              const commissionAmount = (dailyDiff * pct) / 100;
+              const commissionAmount = (chargeDiff * pct) / 100;
 
-              updateObj.monthly_charges = (bdMember.monthly_charges || 0) + dailyDiff;
               updateObj.current_month_commission = (bdMember.current_month_commission || 0) + commissionAmount;
               updateObj.total_commission = (bdMember.total_commission || 0) + commissionAmount;
 
               // Log commission
-              const now = new Date();
-              const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+              const now2 = new Date();
+              const month = `${now2.getUTCFullYear()}-${String(now2.getUTCMonth() + 1).padStart(2, "0")}`;
 
               await supabase.from("bd_commission_logs").insert({
                 bd_uuid: bdMember.bd_uuid,
                 member_uuid: trimmedUuid,
                 member_type: bdMember.member_type,
                 month,
-                source_amount: dailyDiff,
+                source_amount: chargeDiff,
                 commission_pct: pct,
                 amount: commissionAmount,
               });
