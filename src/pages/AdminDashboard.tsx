@@ -27,8 +27,9 @@ import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-session
 
 import AdminHairManager from "@/components/AdminHairManager";
 import AdminTopAgents from "@/components/AdminTopAgents";
+import AdminBDManager from "@/components/AdminBDManager";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | null;
 
 
 interface VideoTutorial {
@@ -751,6 +752,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
     { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: idChanges.length },
     { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
+    { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400" },
     ...(adminRole === "super_admin" ? [
       { key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
       { key: "audit_log" as const, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
@@ -1984,6 +1986,11 @@ const AdminDashboardPage: React.FC = () => {
             {/* TOP Agents Tab */}
             {activeTab === "top_agents" && (
               <AdminTopAgents />
+            )}
+
+            {/* BD Management Tab */}
+            {activeTab === "bd_management" && (
+              <AdminBDManager />
             )}
 
 

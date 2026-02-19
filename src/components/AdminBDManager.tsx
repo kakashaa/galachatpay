@@ -1,0 +1,563 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import {
+  Loader2, ChevronDown, ChevronUp, CheckCircle, XCircle,
+  Users, DollarSign, Shield, Trash2, RefreshCw,
+  Settings, UserPlus, UserMinus, Edit2, Save, X,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { formatDateAr } from "@/utils/dateFormat";
+
+type SubTab = "registrations" | "bds" | "withdrawals" | "settings";
+
+const AdminBDManager: React.FC = () => {
+  const [subTab, setSubTab] = useState<SubTab>("registrations");
+  const [loading, setLoading] = useState(false);
+
+  // Registration requests
+  const [registrations, setRegistrations] = useState<any[]>([]);
+
+  // BD list
+  const [bds, setBds] = useState<any[]>([]);
+  const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [expandedBd, setExpandedBd] = useState<string | null>(null);
+  const [editingBd, setEditingBd] = useState<string | null>(null);
+  const [editBdData, setEditBdData] = useState<any>({});
+
+  // Add member
+  const [addMemberBd, setAddMemberBd] = useState<string | null>(null);
+  const [newMemberUuid, setNewMemberUuid] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberType, setNewMemberType] = useState<"supporter" | "agency">("supporter");
+  const [addMemberLoading, setAddMemberLoading] = useState(false);
+
+  // Withdrawals
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [withdrawalFilter, setWithdrawalFilter] = useState<"all" | "pending" | "completed" | "rejected">("pending");
+
+  // Settings
+  const [walletsPaused, setWalletsPaused] = useState(false);
+  const [autoWithdrawal, setAutoWithdrawal] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  const bdCall = async (action: string, params: any = {}) => {
+    const { data, error } = await supabase.functions.invoke("bd-manage", {
+      body: { action, ...params },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      switch (subTab) {
+        case "registrations": {
+          const res = await bdCall("admin_list_registrations");
+          setRegistrations(res.data || []);
+          break;
+        }
+        case "bds": {
+          const res = await bdCall("admin_list_bds");
+          setBds(res.bds || []);
+          setAllMembers(res.members || []);
+          break;
+        }
+        case "withdrawals": {
+          const { data } = await supabase
+            .from("bd_withdrawals")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(100);
+          setWithdrawals(data || []);
+          break;
+        }
+        case "settings": {
+          const { data } = await supabase
+            .from("app_settings")
+            .select("*")
+            .in("key", ["bd_wallets_paused", "bd_auto_withdrawal"]);
+          const map: Record<string, string> = {};
+          (data || []).forEach((s: any) => { map[s.key] = s.value; });
+          setWalletsPaused(map.bd_wallets_paused === "true");
+          setAutoWithdrawal(map.bd_auto_withdrawal === "true");
+          break;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("فشل تحميل البيانات");
+    } finally {
+      setLoading(false);
+    }
+  }, [subTab]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Registration actions
+  const approveRegistration = async (id: string) => {
+    try {
+      await bdCall("admin_approve_registration", { request_id: id });
+      toast.success("تمت الموافقة");
+      setRegistrations((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+  };
+
+  const rejectRegistration = async (id: string) => {
+    try {
+      await bdCall("admin_reject_registration", { request_id: id });
+      toast.success("تم الرفض");
+      setRegistrations((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+  };
+
+  // BD actions
+  const updateBd = async (bdUuid: string) => {
+    try {
+      await bdCall("admin_update_bd", { bd_uuid: bdUuid, ...editBdData });
+      toast.success("تم التحديث");
+      setEditingBd(null);
+      loadData();
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+  };
+
+  const deleteBd = async (bdUuid: string) => {
+    if (!confirm("هل تريد حذف هذا البيدي وجميع أعضائه؟")) return;
+    try {
+      await bdCall("admin_delete_bd", { bd_uuid: bdUuid });
+      toast.success("تم الحذف");
+      loadData();
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+  };
+
+  const removeMember = async (memberId: string) => {
+    try {
+      await bdCall("admin_remove_member", { member_id: memberId });
+      toast.success("تم إزالة العضو");
+      loadData();
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+  };
+
+  const addMember = async () => {
+    if (!addMemberBd || !newMemberUuid.trim()) { toast.error("UUID مطلوب"); return; }
+    setAddMemberLoading(true);
+    try {
+      await bdCall("admin_add_member", {
+        bd_uuid: addMemberBd,
+        member_uuid: newMemberUuid.trim(),
+        member_name: newMemberName.trim(),
+        member_type: newMemberType,
+      });
+      toast.success("تم إضافة العضو");
+      setAddMemberBd(null);
+      setNewMemberUuid("");
+      setNewMemberName("");
+      loadData();
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+    finally { setAddMemberLoading(false); }
+  };
+
+  // Settings toggle
+  const toggleSetting = async (key: string) => {
+    setSettingsLoading(true);
+    try {
+      const res = await bdCall("admin_toggle_setting", { key });
+      if (key === "bd_wallets_paused") setWalletsPaused(res.value === "true");
+      if (key === "bd_auto_withdrawal") setAutoWithdrawal(res.value === "true");
+      toast.success("تم التحديث");
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+    finally { setSettingsLoading(false); }
+  };
+
+  // Manual sync
+  const [syncing, setSyncing] = useState(false);
+  const triggerSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("bd-sync", { body: { time: "manual" } });
+      if (error) throw error;
+      toast.success(`تم المزامنة: ${data?.updated || 0} عضو، ${data?.name_updates || 0} تحديث اسم`);
+      if (subTab === "bds") loadData();
+    } catch (err: any) { toast.error(err?.message || "فشل المزامنة"); }
+    finally { setSyncing(false); }
+  };
+
+  // Withdrawal actions
+  const approveWithdrawal = async (id: string) => {
+    try {
+      await supabase.from("bd_withdrawals").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", id);
+      toast.success("تم تأكيد السحب");
+      setWithdrawals((prev) => prev.map((w) => w.id === id ? { ...w, status: "completed" } : w));
+    } catch { toast.error("فشل"); }
+  };
+
+  const rejectWithdrawal = async (id: string, bdUuid: string, amount: number) => {
+    try {
+      // Refund balance
+      const { data: bd } = await supabase
+        .from("bd_commission_settings")
+        .select("available_balance")
+        .eq("bd_uuid", bdUuid)
+        .maybeSingle();
+      if (bd) {
+        await supabase.from("bd_commission_settings")
+          .update({ available_balance: (bd.available_balance || 0) + amount })
+          .eq("bd_uuid", bdUuid);
+      }
+      await supabase.from("bd_withdrawals").update({ status: "rejected", rejected_at: new Date().toISOString() }).eq("id", id);
+      toast.success("تم رفض السحب وإعادة الرصيد");
+      setWithdrawals((prev) => prev.map((w) => w.id === id ? { ...w, status: "rejected" } : w));
+    } catch { toast.error("فشل"); }
+  };
+
+  const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
+    { key: "registrations", label: "طلبات التوثيق", icon: <Shield className="w-4 h-4" /> },
+    { key: "bds", label: "إدارة البيدي", icon: <Users className="w-4 h-4" /> },
+    { key: "withdrawals", label: "طلبات السحب", icon: <DollarSign className="w-4 h-4" /> },
+    { key: "settings", label: "إعدادات", icon: <Settings className="w-4 h-4" /> },
+  ];
+
+  const pendingRegs = registrations.filter((r) => r.status === "pending").length;
+  const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending").length;
+
+  return (
+    <div className="space-y-4">
+      {/* Sub tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {subTabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setSubTab(t.key)}
+            className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              subTab === t.key
+                ? "bg-primary text-primary-foreground"
+                : "bg-card border border-border/40 text-muted-foreground hover:border-primary/30"
+            }`}
+          >
+            {t.icon}
+            {t.label}
+            {t.key === "registrations" && pendingRegs > 0 && (
+              <span className="ml-1 min-w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">{pendingRegs}</span>
+            )}
+            {t.key === "withdrawals" && pendingWithdrawals > 0 && (
+              <span className="ml-1 min-w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">{pendingWithdrawals}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Sync button */}
+      <div className="flex justify-end">
+        <Button onClick={triggerSync} disabled={syncing} size="sm" variant="outline" className="text-xs">
+          <RefreshCw className={`w-3 h-3 ml-1 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "جاري المزامنة..." : "مزامنة الآن"}
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+      ) : (
+        <>
+          {/* Registrations */}
+          {subTab === "registrations" && (
+            <div className="space-y-3">
+              {registrations.length === 0 && <p className="text-center text-muted-foreground py-10">لا توجد طلبات</p>}
+              {registrations.map((reg) => (
+                <div key={reg.id} className="bg-card border rounded-xl p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-sm">{reg.user_name || reg.user_uuid}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{reg.user_uuid}</p>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      reg.status === "pending" ? "bg-orange-500/20 text-orange-400" :
+                      reg.status === "approved" ? "bg-green-500/20 text-green-400" :
+                      "bg-red-500/20 text-red-400"
+                    }`}>{reg.status === "pending" ? "معلق" : reg.status === "approved" ? "مقبول" : "مرفوض"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>لفل: {reg.user_level}</span>
+                    <span>•</span>
+                    <span>{formatDateAr(reg.created_at)}</span>
+                  </div>
+                  {reg.status === "pending" && (
+                    <div className="flex gap-2 pt-1">
+                      <Button onClick={() => approveRegistration(reg.id)} size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
+                        <CheckCircle className="w-3 h-3 ml-1" />قبول
+                      </Button>
+                      <Button onClick={() => rejectRegistration(reg.id)} size="sm" variant="destructive" className="flex-1">
+                        <XCircle className="w-3 h-3 ml-1" />رفض
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* BD List */}
+          {subTab === "bds" && (
+            <div className="space-y-3">
+              {bds.length === 0 && <p className="text-center text-muted-foreground py-10">لا يوجد بيدي مسجل</p>}
+              {bds.map((bd) => {
+                const members = allMembers.filter((m) => m.bd_uuid === bd.bd_uuid);
+                const supporters = members.filter((m) => m.member_type === "supporter");
+                const agents = members.filter((m) => m.member_type === "agency");
+                const isExpanded = expandedBd === bd.bd_uuid;
+                const isEditing = editingBd === bd.bd_uuid;
+
+                return (
+                  <div key={bd.id} className={`bg-card border rounded-xl overflow-hidden ${!bd.is_active ? "opacity-50" : ""}`}>
+                    {/* BD Header */}
+                    <button
+                      onClick={() => setExpandedBd(isExpanded ? null : bd.bd_uuid)}
+                      className="w-full p-4 flex items-center justify-between text-right"
+                    >
+                      <div className="flex-1">
+                        <p className="font-bold text-sm">{bd.bd_name || bd.bd_uuid}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bd.bd_uuid}</p>
+                        <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                          <span>كود: <span className="text-primary font-bold">{bd.referral_code}</span></span>
+                          <span>داعمين: {supporters.length}</span>
+                          <span>وكلاء: {agents.length}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-green-400">${Number(bd.available_balance || 0).toFixed(2)}</p>
+                          <p className="text-[10px] text-muted-foreground">رصيد متاح</p>
+                        </div>
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                    </button>
+
+                    {/* Expanded content */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="border-t"
+                        >
+                          <div className="p-4 space-y-4">
+                            {/* Stats */}
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">الشهر</p>
+                                <p className="font-bold text-primary">${Number(bd.current_month_earnings || 0).toFixed(2)}</p>
+                              </div>
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">الإجمالي</p>
+                                <p className="font-bold">${Number(bd.total_earned || 0).toFixed(2)}</p>
+                              </div>
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">نسب</p>
+                                <p className="font-bold">{bd.user_commission_pct}% / {bd.agency_commission_pct}%</p>
+                              </div>
+                            </div>
+
+                            {/* Edit BD */}
+                            {isEditing ? (
+                              <div className="space-y-2 bg-muted/20 rounded-xl p-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-[10px] text-muted-foreground">نسبة الداعمين %</label>
+                                    <Input type="number" value={editBdData.user_commission_pct ?? bd.user_commission_pct}
+                                      onChange={(e) => setEditBdData({ ...editBdData, user_commission_pct: Number(e.target.value) })} />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] text-muted-foreground">نسبة الوكلاء %</label>
+                                    <Input type="number" value={editBdData.agency_commission_pct ?? bd.agency_commission_pct}
+                                      onChange={(e) => setEditBdData({ ...editBdData, agency_commission_pct: Number(e.target.value) })} />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">الرصيد المتاح $</label>
+                                  <Input type="number" step="0.01" value={editBdData.available_balance ?? bd.available_balance}
+                                    onChange={(e) => setEditBdData({ ...editBdData, available_balance: Number(e.target.value) })} />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">أرباح الشهر الحالي $</label>
+                                  <Input type="number" step="0.01" value={editBdData.current_month_earnings ?? bd.current_month_earnings}
+                                    onChange={(e) => setEditBdData({ ...editBdData, current_month_earnings: Number(e.target.value) })} />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Switch checked={editBdData.withdraw_exempt ?? bd.withdraw_exempt}
+                                    onCheckedChange={(c) => setEditBdData({ ...editBdData, withdraw_exempt: c })} />
+                                  <span className="text-xs">معفى من قيود السحب</span>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button onClick={() => updateBd(bd.bd_uuid)} size="sm" className="flex-1">
+                                    <Save className="w-3 h-3 ml-1" />حفظ
+                                  </Button>
+                                  <Button onClick={() => setEditingBd(null)} size="sm" variant="outline" className="flex-1">
+                                    <X className="w-3 h-3 ml-1" />إلغاء
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <Button onClick={() => { setEditingBd(bd.bd_uuid); setEditBdData({}); }} size="sm" variant="outline" className="flex-1 text-xs">
+                                  <Edit2 className="w-3 h-3 ml-1" />تعديل
+                                </Button>
+                                <Button onClick={() => deleteBd(bd.bd_uuid)} size="sm" variant="destructive" className="text-xs">
+                                  <Trash2 className="w-3 h-3 ml-1" />حذف
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Members */}
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-bold">الأعضاء ({members.length})</p>
+                                <Button onClick={() => setAddMemberBd(addMemberBd === bd.bd_uuid ? null : bd.bd_uuid)} size="sm" variant="ghost" className="text-xs h-7">
+                                  <UserPlus className="w-3 h-3 ml-1" />{addMemberBd === bd.bd_uuid ? "إلغاء" : "إضافة"}
+                                </Button>
+                              </div>
+
+                              {/* Add member form */}
+                              {addMemberBd === bd.bd_uuid && (
+                                <div className="bg-muted/20 rounded-lg p-3 space-y-2 mb-2">
+                                  <Input placeholder="UUID العضو" value={newMemberUuid} onChange={(e) => setNewMemberUuid(e.target.value)} dir="ltr" />
+                                  <Input placeholder="اسم العضو (اختياري)" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} />
+                                  <div className="flex gap-2">
+                                    <button onClick={() => setNewMemberType("supporter")}
+                                      className={`flex-1 py-1.5 rounded-lg border text-xs font-bold ${newMemberType === "supporter" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-border/30"}`}>
+                                      داعم
+                                    </button>
+                                    <button onClick={() => setNewMemberType("agency")}
+                                      className={`flex-1 py-1.5 rounded-lg border text-xs font-bold ${newMemberType === "agency" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/30"}`}>
+                                      وكيل
+                                    </button>
+                                  </div>
+                                  <Button onClick={addMember} disabled={addMemberLoading} size="sm" className="w-full">
+                                    {addMemberLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "إضافة العضو"}
+                                  </Button>
+                                </div>
+                              )}
+
+                              {members.length === 0 ? (
+                                <p className="text-[10px] text-muted-foreground text-center py-2">لا يوجد أعضاء</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {members.map((m) => (
+                                    <div key={m.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
+                                      <div>
+                                        <p className="text-xs font-bold">{m.member_name || m.member_uuid}</p>
+                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                          <span className={m.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}>
+                                            {m.member_type === "agency" ? "وكيل" : "داعم"}
+                                          </span>
+                                          <span>عمولة: ${Number(m.current_month_commission || 0).toFixed(2)}</span>
+                                        </div>
+                                      </div>
+                                      <button onClick={() => removeMember(m.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
+                                        <UserMinus className="w-3.5 h-3.5 text-destructive" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Withdrawals */}
+          {subTab === "withdrawals" && (
+            <div className="space-y-3">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {(["all", "pending", "completed", "rejected"] as const).map((f) => (
+                  <button key={f} onClick={() => setWithdrawalFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap ${
+                      withdrawalFilter === f ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground"
+                    }`}>
+                    {f === "all" ? "الكل" : f === "pending" ? "معلقة" : f === "completed" ? "مكتملة" : "مرفوضة"}
+                  </button>
+                ))}
+              </div>
+
+              {withdrawals
+                .filter((w) => withdrawalFilter === "all" || w.status === withdrawalFilter)
+                .map((w) => (
+                  <div key={w.id} className="bg-card border rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-sm">{w.bd_name || w.bd_uuid}</p>
+                        <p className="text-[10px] text-muted-foreground">{formatDateAr(w.created_at)}</p>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-primary">${Number(w.amount || 0).toFixed(2)}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {Math.floor((w.amount || 0) * 8500).toLocaleString()} كوينز
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span className={`px-2 py-0.5 rounded-full font-bold ${
+                        w.status === "pending" ? "bg-orange-500/20 text-orange-400" :
+                        w.status === "completed" ? "bg-green-500/20 text-green-400" :
+                        "bg-red-500/20 text-red-400"
+                      }`}>
+                        {w.status === "pending" ? "معلق" : w.status === "completed" ? "مكتمل" : "مرفوض"}
+                      </span>
+                      {w.recipient_name && <span className="text-muted-foreground">→ {w.recipient_name}</span>}
+                    </div>
+                    {w.status === "pending" && (
+                      <div className="flex gap-2 pt-1">
+                        <Button onClick={() => approveWithdrawal(w.id)} size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-xs">
+                          <CheckCircle className="w-3 h-3 ml-1" />تأكيد
+                        </Button>
+                        <Button onClick={() => rejectWithdrawal(w.id, w.bd_uuid, w.amount)} size="sm" variant="destructive" className="flex-1 text-xs">
+                          <XCircle className="w-3 h-3 ml-1" />رفض وإعادة الرصيد
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              {withdrawals.filter((w) => withdrawalFilter === "all" || w.status === withdrawalFilter).length === 0 && (
+                <p className="text-center text-muted-foreground py-10">لا توجد طلبات سحب</p>
+              )}
+            </div>
+          )}
+
+          {/* Settings */}
+          {subTab === "settings" && (
+            <div className="space-y-4">
+              <div className="bg-card border rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold">إيقاف المحافظ</p>
+                    <p className="text-[10px] text-muted-foreground">تعطيل عمليات السحب لجميع البيدي</p>
+                  </div>
+                  <Switch checked={walletsPaused} onCheckedChange={() => toggleSetting("bd_wallets_paused")} disabled={settingsLoading} />
+                </div>
+                <div className="border-t pt-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold">السحب التلقائي</p>
+                    <p className="text-[10px] text-muted-foreground">إرسال الكوينزات مباشرة بدون مراجعة</p>
+                  </div>
+                  <Switch checked={autoWithdrawal} onCheckedChange={() => toggleSetting("bd_auto_withdrawal")} disabled={settingsLoading} />
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default AdminBDManager;
