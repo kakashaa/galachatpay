@@ -420,6 +420,32 @@ const AdminBDManager: React.FC = () => {
                               </div>
                             </div>
 
+                            {/* Monthly Goal Progress */}
+                            {(() => {
+                              const goal = bd.monthly_goal || 500;
+                              const earnings = Number(bd.current_month_earnings || 0);
+                              const pct = Math.min((earnings / goal) * 100, 100);
+                              return (
+                                <div className="bg-muted/20 rounded-lg p-3 space-y-1.5">
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className="font-bold">🎯 هدف الشهر</span>
+                                    <span className="text-muted-foreground">${earnings.toFixed(2)} / ${goal.toFixed(2)}</span>
+                                  </div>
+                                  <div className="w-full bg-muted/40 h-2 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-700 ${
+                                        pct >= 100 ? "bg-green-500" : pct >= 50 ? "bg-primary" : "bg-orange-400"
+                                      }`}
+                                      style={{ width: `${pct}%` }}
+                                    />
+                                  </div>
+                                  <p className={`text-center text-xs font-bold ${pct >= 100 ? "text-green-400" : "text-primary"}`}>
+                                    {pct.toFixed(0)}%{pct >= 100 ? " 🎉" : ""}
+                                  </p>
+                                </div>
+                              );
+                            })()}
+
                             {/* Edit BD */}
                             {isEditing ? (
                               <div className="space-y-2 bg-muted/20 rounded-xl p-3">
@@ -444,6 +470,11 @@ const AdminBDManager: React.FC = () => {
                                   <label className="text-[10px] text-muted-foreground">أرباح الشهر الحالي $</label>
                                   <Input type="number" step="0.01" value={editBdData.current_month_earnings ?? bd.current_month_earnings}
                                     onChange={(e) => setEditBdData({ ...editBdData, current_month_earnings: Number(e.target.value) })} />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">🎯 هدف العمولات الشهري $</label>
+                                  <Input type="number" step="1" value={editBdData.monthly_goal ?? bd.monthly_goal ?? 500}
+                                    onChange={(e) => setEditBdData({ ...editBdData, monthly_goal: Number(e.target.value) })} />
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Switch checked={editBdData.withdraw_exempt ?? bd.withdraw_exempt}

@@ -266,6 +266,38 @@ const BDDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Monthly Goal Progress */}
+        {(() => {
+          const monthlyGoal = bd.monthly_goal || 500;
+          const goalPct = Math.min((currentMonthEarnings / monthlyGoal) * 100, 100);
+          return (
+            <div className="bg-card/50 border border-border/30 rounded-2xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground">🎯 هدف الشهر</span>
+                <span className="text-xs text-muted-foreground">${currentMonthEarnings.toFixed(2)} / ${monthlyGoal.toFixed(2)}</span>
+              </div>
+              <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden relative">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${goalPct}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className={`absolute top-0 right-0 h-full rounded-full ${
+                    goalPct >= 100 ? "bg-gradient-to-l from-green-400 to-emerald-500" :
+                    goalPct >= 50 ? "bg-gradient-to-l from-primary to-blue-500" :
+                    "bg-gradient-to-l from-orange-400 to-amber-500"
+                  }`}
+                />
+              </div>
+              <div className="text-center">
+                <span className={`text-lg font-bold ${goalPct >= 100 ? "text-green-400" : "text-primary"}`}>
+                  {goalPct.toFixed(0)}%
+                </span>
+                {goalPct >= 100 && <span className="text-xs text-green-400 mr-2">🎉 تم تحقيق الهدف!</span>}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-card/50 border border-border/30 rounded-xl p-3 text-center">

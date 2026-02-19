@@ -638,7 +638,7 @@ serve(async (req) => {
     if (action === "admin_update_bd") {
       const { bd_uuid, ...updates } = params;
       if (!bd_uuid) return json({ error: "bd_uuid مطلوب" }, 400);
-      const allowed = ["user_commission_pct", "agency_commission_pct", "available_balance", "is_active", "current_month_earnings", "total_earned", "withdraw_exempt"];
+      const allowed = ["user_commission_pct", "agency_commission_pct", "available_balance", "is_active", "current_month_earnings", "total_earned", "withdraw_exempt", "monthly_goal"];
       const filtered: any = {};
       for (const k of allowed) {
         if (updates[k] !== undefined) filtered[k] = updates[k];
