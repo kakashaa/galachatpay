@@ -14,10 +14,14 @@ const BDDashboard: React.FC = () => {
   useEffect(() => {
     if (!bdUser) { navigate("/bd", { replace: true }); return; }
     refreshDashboard().catch(() => {
-      // If refresh fails (BD not found on server), redirect to registration
       logout();
       navigate("/bd", { replace: true });
     });
+    // Auto-refresh every 30 seconds to catch new commissions
+    const interval = setInterval(() => {
+      refreshDashboard().catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!bdUser) return null;
