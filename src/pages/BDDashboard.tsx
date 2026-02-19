@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays, FileText } from "lucide-react";
+import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays, FileText, Info } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -338,6 +338,19 @@ const BDDashboard: React.FC = () => {
           {/* Commission Report */}
           {tab === "commission_report" && (
             <motion.div key="commission_report" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              {/* How commissions work */}
+              <div className="bg-gradient-to-br from-primary/10 to-amber-500/10 border border-primary/20 rounded-xl p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-primary">
+                  <Info className="w-4 h-4 shrink-0" />
+                  <span>كيف تُحتسب العمولة؟</span>
+                </div>
+                <ul className="text-[11px] text-muted-foreground space-y-1.5 pr-5 list-disc marker:text-primary/60">
+                  <li><span className="text-emerald-400 font-bold">الداعمين:</span> تحصل على <span className="text-foreground font-bold">2%</span> من إجمالي شحنهم الشهري الجديد</li>
+                  <li><span className="text-amber-400 font-bold">الوكلاء:</span> تحصل على <span className="text-foreground font-bold">5%</span> من إجمالي دخل وكالتهم الشهري الجديد</li>
+                  <li>تُحتسب العمولة تلقائياً مع كل مزامنة بناءً على <span className="text-foreground font-semibold">الفارق</span> بين القيمة الحالية والسابقة</li>
+                  <li>تُجمع الأرباح في "أرباح الشهر" وتُنقل للرصيد المتاح بنهاية كل شهر</li>
+                </ul>
+              </div>
               {/* Month Selector */}
               <div className="flex items-center gap-2">
                 <button
