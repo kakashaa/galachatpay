@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserPlus, Check, X, Loader2 } from "lucide-react";
+import { UserPlus, Check, X, Loader2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 interface Invitation {
@@ -18,6 +19,7 @@ const BDInvitationBanner: React.FC = () => {
   const { user } = useAuth();
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [responding, setResponding] = useState<string | null>(null);
+  const [passwords, setPasswords] = useState<Record<string, string>>({});
 
   const fetchInvitations = useCallback(async () => {
     if (!user?.uuid) return;
@@ -56,14 +58,30 @@ const BDInvitationBanner: React.FC = () => {
   }, [user?.uuid, fetchInvitations]);
 
   const handleRespond = async (invId: string, response: "accept" | "reject") => {
+    if (response === "accept") {
+      const pw = passwords[invId]?.trim();
+      if (!pw) {
+        toast.error("يرجى إدخال الرمز السري لحسابك أولاً");
+        return;
+      }
+    }
+
     setResponding(invId);
     try {
-      const { data } = await supabase.functions.invoke("bd-referral", {
-        body: { action: "respond_invitation", invitation_id: invId, response },
-      });
+      const body: Record<string, string> = {
+        action: "respond_invitation",
+        invitation_id: invId,
+        response,
+      };
+      if (response === "accept") {
+        body.member_password = passwords[invId]?.trim();
+      }
+
+      const { data } = await supabase.functions.invoke("bd-referral", { body });
       if (data?.success) {
         toast.success(response === "accept" ? "تم قبول الدعوة بنجاح" : "تم رفض الدعوة");
         setInvitations((prev) => prev.filter((inv) => inv.id !== invId));
+        setPasswords((prev) => { const n = { ...prev }; delete n[invId]; return n; });
       } else {
         toast.error(data?.error || "فشلت العملية");
       }
@@ -107,11 +125,25 @@ const BDInvitationBanner: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-2 mt-3">
+          {/* Password input for acceptance */}
+          <div className="mt-2.5 relative">
+            <KeyRound className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+            <Input
+              type="password"
+              inputMode="numeric"
+              placeholder="أدخل الرمز السري لحسابك للموافقة"
+              value={passwords[inv.id] || ""}
+              onChange={(e) => setPasswords((prev) => ({ ...prev, [inv.id]: e.target.value }))}
+              className="h-8 text-xs pr-8 text-right"
+              disabled={responding === inv.id}
+            />
+          </div>
+
+          <div className="flex gap-2 mt-2.5">
             <Button
               size="sm"
               onClick={() => handleRespond(inv.id, "accept")}
-              disabled={responding === inv.id}
+              disabled={responding === inv.id || !passwords[inv.id]?.trim()}
               className="flex-1 gap-1.5 h-8 text-xs"
             >
               {responding === inv.id ? (
