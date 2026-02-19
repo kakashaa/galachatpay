@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
+import { getGalaHeaders } from "../_shared/hmac.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -225,22 +226,15 @@ serve(async (req) => {
         let typeUser = 0;
         try {
           const GALA_API_BASE_URL = Deno.env.get("GALA_API_BASE_URL");
-          const GALA_API_KEY = Deno.env.get("GALA_API_KEY");
-          const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
-          if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
-            const timestamp = Math.floor(Date.now() / 1000).toString();
-            const nonce = crypto.randomUUID();
-            const path = "getUserInfo";
-            const signPath = "api/newWebsite/" + path;
-            const message = `GET${signPath}${timestamp}${nonce}`;
-            const encoder = new TextEncoder();
-            const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-            const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-            const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-            const url = `${GALA_API_BASE_URL}/${path}?uuid=${inv.member_uuid}`;
+          if (GALA_API_BASE_URL) {
+            const endpoint = "auth/login/uuid";
+            const signPath = "api/newWebsite/" + endpoint;
+            const loginHeaders = await getGalaHeaders("POST", signPath);
+            const url = GALA_API_BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
             const userRes = await fetch(url, {
-              method: "GET",
-              headers: { "X-API-KEY": GALA_API_KEY, "X-SIGNATURE": signature, "X-TIMESTAMP": timestamp, "X-NONCE": nonce, Accept: "application/json" },
+              method: "POST",
+              headers: loginHeaders,
+              body: JSON.stringify({ uuid: inv.member_uuid }),
             });
             if (userRes.ok) {
               const userData = await userRes.json();

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getGalaHeaders } from "../_shared/hmac.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -87,23 +88,17 @@ serve(async (req) => {
           const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
           console.log(`[bd-manage] GALA_API env: BASE_URL=${GALA_API_BASE_URL ? "SET" : "MISSING"}, KEY=${GALA_API_KEY ? "SET" : "MISSING"}, SECRET=${GALA_API_SECRET ? "SET" : "MISSING"}`);
 
-          if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
+           if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
             const updatePromises = supporterMembers.map(async (supporter) => {
               try {
-                const timestamp = Math.floor(Date.now() / 1000).toString();
-                const nonce = crypto.randomUUID();
-                const path = "getUserInfo";
-                const signPath = "api/newWebsite/" + path;
-                const message = `GET${signPath}${timestamp}${nonce}`;
-                const encoder = new TextEncoder();
-                const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-                const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-                const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-
-                const url = `${GALA_API_BASE_URL}/${path}?uuid=${supporter.member_uuid}`;
+                const endpoint = "auth/login/uuid";
+                const signPath = "api/newWebsite/" + endpoint;
+                const headers = await getGalaHeaders("POST", signPath);
+                const url = GALA_API_BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
                 const apiRes = await fetch(url, {
-                  method: "GET",
-                  headers: { "X-API-KEY": GALA_API_KEY, "X-SIGNATURE": signature, "X-TIMESTAMP": timestamp, "X-NONCE": nonce, Accept: "application/json" },
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify({ uuid: supporter.member_uuid }),
                 });
 
                 console.log(`[bd-manage] API response for ${supporter.member_uuid}: status=${apiRes.status}`);
@@ -227,27 +222,14 @@ serve(async (req) => {
           const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
 
           if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
-            const timestamp = Math.floor(Date.now() / 1000).toString();
-            const nonce = crypto.randomUUID();
-            const path = "getUserInfo";
-            const signPath = "api/newWebsite/" + path;
-            const message = `GET${signPath}${timestamp}${nonce}`;
-
-            const encoder = new TextEncoder();
-            const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-            const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-            const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-
-            const url = `${GALA_API_BASE_URL}/${path}?uuid=${member_uuid}`;
+            const endpoint = "auth/login/uuid";
+            const signPath = "api/newWebsite/" + endpoint;
+            const loginHeaders = await getGalaHeaders("POST", signPath);
+            const url = GALA_API_BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
             const apiRes = await fetch(url, {
-              method: "GET",
-              headers: {
-                "X-API-KEY": GALA_API_KEY,
-                "X-SIGNATURE": signature,
-                "X-TIMESTAMP": timestamp,
-                "X-NONCE": nonce,
-                Accept: "application/json",
-              },
+              method: "POST",
+              headers: loginHeaders,
+              body: JSON.stringify({ uuid: member_uuid }),
             });
 
             if (apiRes.ok) {
@@ -654,17 +636,11 @@ serve(async (req) => {
           const GALA_API_KEY = Deno.env.get("GALA_API_KEY");
           const GALA_API_SECRET = Deno.env.get("GALA_API_SECRET");
           if (GALA_API_BASE_URL && GALA_API_KEY && GALA_API_SECRET) {
-            const timestamp = Math.floor(Date.now() / 1000).toString();
-            const nonce = crypto.randomUUID();
-            const path = "getUserInfo";
-            const signPath = "api/newWebsite/" + path;
-            const message = `GET${signPath}${timestamp}${nonce}`;
-            const encoder = new TextEncoder();
-            const key = await crypto.subtle.importKey("raw", encoder.encode(GALA_API_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-            const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(message));
-            const signature = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-            const url = `${GALA_API_BASE_URL}/${path}?uuid=${member_uuid}`;
-            const apiRes = await fetch(url, { method: "GET", headers: { "X-API-KEY": GALA_API_KEY, "X-SIGNATURE": signature, "X-TIMESTAMP": timestamp, "X-NONCE": nonce, Accept: "application/json" } });
+            const endpoint = "auth/login/uuid";
+            const signPath = "api/newWebsite/" + endpoint;
+            const loginHeaders = await getGalaHeaders("POST", signPath);
+            const url = GALA_API_BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
+            const apiRes = await fetch(url, { method: "POST", headers: loginHeaders, body: JSON.stringify({ uuid: member_uuid }) });
             if (apiRes.ok) {
               const apiData = await apiRes.json();
               if (apiData?.data) {
