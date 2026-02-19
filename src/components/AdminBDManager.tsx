@@ -384,6 +384,29 @@ const AdminBDManager: React.FC = () => {
                           <span>داعمين: {supporters.length}</span>
                           <span>وكلاء: {agents.length}</span>
                         </div>
+                        {/* Team Activity Rate */}
+                        {(() => {
+                          const total = members.length;
+                          const active = members.filter((m: any) => m.is_active).length;
+                          const pct = total > 0 ? Math.round((active / total) * 100) : 0;
+                          return total > 0 ? (
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <div className="flex-1 bg-muted/40 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-blue-500" : "bg-red-500"
+                                  }`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className={`text-[10px] font-bold ${
+                                pct >= 80 ? "text-green-400" : pct >= 50 ? "text-blue-400" : "text-red-400"
+                              }`}>
+                                👥 {active}/{total} ({pct}%)
+                              </span>
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-left">
