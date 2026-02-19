@@ -255,8 +255,10 @@ export type Database = {
           bd_name: string
           bd_uuid: string
           created_at: string
+          current_month_earnings: number
           host_commission_pct: number
           id: string
+          is_active: boolean
           is_approved: boolean
           referral_code: string
           total_earned: number
@@ -270,8 +272,10 @@ export type Database = {
           bd_name?: string
           bd_uuid: string
           created_at?: string
+          current_month_earnings?: number
           host_commission_pct?: number
           id?: string
+          is_active?: boolean
           is_approved?: boolean
           referral_code?: string
           total_earned?: number
@@ -285,8 +289,10 @@ export type Database = {
           bd_name?: string
           bd_uuid?: string
           created_at?: string
+          current_month_earnings?: number
           host_commission_pct?: number
           id?: string
+          is_active?: boolean
           is_approved?: boolean
           referral_code?: string
           total_earned?: number
@@ -384,6 +390,7 @@ export type Database = {
           member_type: string
           member_uuid: string
           status: string
+          terms_accepted: boolean
           updated_at: string
         }
         Insert: {
@@ -396,6 +403,7 @@ export type Database = {
           member_type?: string
           member_uuid: string
           status?: string
+          terms_accepted?: boolean
           updated_at?: string
         }
         Update: {
@@ -408,6 +416,7 @@ export type Database = {
           member_type?: string
           member_uuid?: string
           status?: string
+          terms_accepted?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -419,6 +428,8 @@ export type Database = {
           current_month_commission: number
           id: string
           initial_charger_num: number
+          is_active: boolean
+          last_daily_charges: number
           member_name: string
           member_type: string
           member_uuid: string
@@ -433,6 +444,8 @@ export type Database = {
           current_month_commission?: number
           id?: string
           initial_charger_num?: number
+          is_active?: boolean
+          last_daily_charges?: number
           member_name?: string
           member_type?: string
           member_uuid: string
@@ -447,6 +460,8 @@ export type Database = {
           current_month_commission?: number
           id?: string
           initial_charger_num?: number
+          is_active?: boolean
+          last_daily_charges?: number
           member_name?: string
           member_type?: string
           member_uuid?: string
