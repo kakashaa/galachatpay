@@ -528,17 +528,22 @@ serve(async (req) => {
     }
 
     if (action === "admin_list_bds") {
-      const { data: bds } = await sb
-        .from("bd_commission_settings")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { include_deleted } = params;
+      const query = sb.from("bd_commission_settings").select("*").order("created_at", { ascending: false });
+      
+      if (include_deleted) {
+        query.eq("is_active", false);
+      } else {
+        query.eq("is_active", true);
+      }
+      
+      const { data: bds } = await query;
 
       const allBdUuids = (bds || []).map((b: any) => b.bd_uuid);
       const { data: members } = await sb
         .from("bd_members")
         .select("*")
-        .in("bd_uuid", allBdUuids.length ? allBdUuids : ["__none__"])
-        .eq("is_active", true);
+        .in("bd_uuid", allBdUuids.length ? allBdUuids : ["__none__"]);
 
       return json({ bds: bds || [], members: members || [] });
     }
@@ -647,6 +652,15 @@ serve(async (req) => {
       if (!bd_uuid) return json({ error: "bd_uuid مطلوب" }, 400);
       await sb.from("bd_commission_settings").update({ is_active: false, is_approved: false }).eq("bd_uuid", bd_uuid);
       await sb.from("bd_members").update({ is_active: false }).eq("bd_uuid", bd_uuid);
+      return json({ success: true });
+    }
+
+    if (action === "admin_restore_bd") {
+      const { bd_uuid } = params;
+      if (!bd_uuid) return json({ error: "bd_uuid مطلوب" }, 400);
+      await sb.from("bd_commission_settings").update({ is_active: true, is_approved: true }).eq("bd_uuid", bd_uuid);
+      // Restore all members too
+      await sb.from("bd_members").update({ is_active: true }).eq("bd_uuid", bd_uuid);
       return json({ success: true });
     }
 

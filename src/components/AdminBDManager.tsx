@@ -7,12 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import {
   Loader2, ChevronDown, ChevronUp, CheckCircle, XCircle,
   Users, DollarSign, Shield, Trash2, RefreshCw,
-  Settings, UserPlus, UserMinus, Edit2, Save, X, Search,
+  Settings, UserPlus, UserMinus, Edit2, Save, X, Search, RotateCcw,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
 
-type SubTab = "registrations" | "bds" | "withdrawals" | "settings";
+type SubTab = "registrations" | "bds" | "withdrawals" | "settings" | "deleted";
 
 const AdminBDManager: React.FC = () => {
   const [subTab, setSubTab] = useState<SubTab>("registrations");
@@ -24,6 +24,8 @@ const AdminBDManager: React.FC = () => {
   // BD list
   const [bds, setBds] = useState<any[]>([]);
   const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [deletedBds, setDeletedBds] = useState<any[]>([]);
+  const [deletedMembers, setDeletedMembers] = useState<any[]>([]);
   const [expandedBd, setExpandedBd] = useState<string | null>(null);
   const [bdSearchQuery, setBdSearchQuery] = useState("");
   const [editingBd, setEditingBd] = useState<string | null>(null);
@@ -91,6 +93,12 @@ const AdminBDManager: React.FC = () => {
           setSyncSchedule((map.bd_sync_schedule as "hourly" | "daily") || "daily");
           break;
         }
+        case "deleted": {
+          const res = await bdCall("admin_list_bds", { include_deleted: true });
+          setDeletedBds(res.bds || []);
+          setDeletedMembers(res.members || []);
+          break;
+        }
       }
     } catch (err) {
       console.error(err);
@@ -134,6 +142,15 @@ const AdminBDManager: React.FC = () => {
     try {
       await bdCall("admin_delete_bd", { bd_uuid: bdUuid });
       toast.success("تم الحذف");
+      loadData();
+    } catch (err: any) { toast.error(err?.message || "فشل"); }
+  };
+
+  const restoreBd = async (bdUuid: string) => {
+    if (!confirm("هل تريد استعادة هذا البيدي وجميع أعضائه؟")) return;
+    try {
+      await bdCall("admin_restore_bd", { bd_uuid: bdUuid });
+      toast.success("تم استعادة البيدي بنجاح");
       loadData();
     } catch (err: any) { toast.error(err?.message || "فشل"); }
   };
@@ -232,6 +249,7 @@ const AdminBDManager: React.FC = () => {
   const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
     { key: "registrations", label: "طلبات التوثيق", icon: <Shield className="w-4 h-4" /> },
     { key: "bds", label: "إدارة البيدي", icon: <Users className="w-4 h-4" /> },
+    { key: "deleted", label: "المحذوف", icon: <Trash2 className="w-4 h-4" /> },
     { key: "withdrawals", label: "طلبات السحب", icon: <DollarSign className="w-4 h-4" /> },
     { key: "settings", label: "إعدادات", icon: <Settings className="w-4 h-4" /> },
   ];
@@ -505,6 +523,104 @@ const AdminBDManager: React.FC = () => {
                                 </div>
                               )}
                             </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Deleted BDs */}
+          {subTab === "deleted" && (
+            <div className="space-y-3">
+              {deletedBds.length === 0 && <p className="text-center text-muted-foreground py-10">لا يوجد بيدي محذوف</p>}
+              {deletedBds.map((bd) => {
+                const members = deletedMembers.filter((m) => m.bd_uuid === bd.bd_uuid);
+                const isExpanded = expandedBd === bd.bd_uuid;
+                return (
+                  <div key={bd.id} className="bg-card border border-destructive/30 rounded-xl overflow-hidden opacity-70 hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => setExpandedBd(isExpanded ? null : bd.bd_uuid)}
+                      className="w-full p-4 flex items-center justify-between text-right"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <p className="font-bold text-sm">{bd.bd_name || bd.bd_uuid}</p>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bd.bd_uuid}</p>
+                        <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                          <span>كود: <span className="text-primary font-bold">{bd.referral_code}</span></span>
+                          <span>أعضاء: {members.length}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-muted-foreground">${Number(bd.available_balance || 0).toFixed(2)}</p>
+                          <p className="text-[10px] text-muted-foreground">رصيد</p>
+                        </div>
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="border-t"
+                        >
+                          <div className="p-4 space-y-4">
+                            {/* Stats */}
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">الشهر</p>
+                                <p className="font-bold text-primary">${Number(bd.current_month_earnings || 0).toFixed(2)}</p>
+                              </div>
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">الإجمالي</p>
+                                <p className="font-bold">${Number(bd.total_earned || 0).toFixed(2)}</p>
+                              </div>
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">نسب</p>
+                                <p className="font-bold">{bd.user_commission_pct}% / {bd.agency_commission_pct}%</p>
+                              </div>
+                            </div>
+
+                            {/* Restore button */}
+                            <Button onClick={() => restoreBd(bd.bd_uuid)} className="w-full bg-green-600 hover:bg-green-700" size="sm">
+                              <RotateCcw className="w-4 h-4 ml-1" />
+                              استعادة البيدي وجميع الأعضاء
+                            </Button>
+
+                            {/* Members list */}
+                            {members.length > 0 && (
+                              <div>
+                                <p className="text-xs font-bold mb-2">الأعضاء ({members.length})</p>
+                                <div className="space-y-1.5">
+                                  {members.map((m) => (
+                                    <div key={m.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
+                                      <div>
+                                        <p className="text-xs font-bold">{m.member_name || m.member_uuid}</p>
+                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                          <span className={m.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}>
+                                            {m.member_type === "agency" ? "وكيل" : "داعم"}
+                                          </span>
+                                          <span>عمولة: ${Number(m.current_month_commission || 0).toFixed(2)}</span>
+                                          <span className={m.is_active ? "text-green-400" : "text-destructive"}>
+                                            {m.is_active ? "نشط" : "غير نشط"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       )}
