@@ -1,0 +1,1 @@
+ALTER TABLE public.bd_commission_settings ADD COLUMN monthly_goal numeric NOT NULL DEFAULT 500;
