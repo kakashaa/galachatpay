@@ -298,6 +298,41 @@ const BDDashboard: React.FC = () => {
           );
         })()}
 
+        {/* Team Activity Rate */}
+        {(() => {
+          const allMembers = [...supporters, ...agents];
+          const totalMembers = allMembers.length;
+          const activeMembers = allMembers.filter((m: any) => m.is_active).length;
+          const activityPct = totalMembers > 0 ? Math.round((activeMembers / totalMembers) * 100) : 0;
+          return (
+            <div className="bg-card/50 border border-border/30 rounded-2xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground">👥 نشاط الفريق</span>
+                <span className="text-xs text-muted-foreground">{activeMembers} / {totalMembers} نشط</span>
+              </div>
+              <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden relative">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${activityPct}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className={`absolute top-0 right-0 h-full rounded-full ${
+                    activityPct >= 80 ? "bg-gradient-to-l from-green-400 to-emerald-500" :
+                    activityPct >= 50 ? "bg-gradient-to-l from-blue-400 to-cyan-500" :
+                    "bg-gradient-to-l from-red-400 to-orange-500"
+                  }`}
+                />
+              </div>
+              <div className="text-center">
+                <span className={`text-lg font-bold ${
+                  activityPct >= 80 ? "text-green-400" : activityPct >= 50 ? "text-blue-400" : "text-red-400"
+                }`}>
+                  {activityPct}%
+                </span>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-card/50 border border-border/30 rounded-xl p-3 text-center">
