@@ -294,8 +294,6 @@ const BDInfoPage: React.FC = () => {
               <SupportersTab
                 supporters={data?.supporters || []}
                 commissionPct={Number(settings?.user_commission_pct || 2)}
-                agencies={data?.agencies || []}
-                agencyCommissionPct={Number(settings?.agency_commission_pct || 5)}
               />
             )}
 
@@ -669,16 +667,10 @@ export default BDInfoPage;
 const SupportersTab: React.FC<{
   supporters: any[];
   commissionPct?: number;
-  agencies?: any[];
-  agencyCommissionPct?: number;
-}> = ({ supporters, commissionPct = 2, agencies = [], agencyCommissionPct = 5 }) => {
+}> = ({ supporters, commissionPct = 2 }) => {
   const totalCommission = supporters.reduce((s: number, m: any) => s + Number(m.total_commission || 0), 0);
   const totalCharges = supporters.reduce((s: number, m: any) => s + Number(m.monthly_charges || 0), 0);
   const totalCurrentMonth = supporters.reduce((s: number, m: any) => s + Number(m.current_month_commission || 0), 0);
-
-  const agTotalCommission = agencies.reduce((s: number, m: any) => s + Number(m.total_commission || 0), 0);
-  const agTotalCharges = agencies.reduce((s: number, m: any) => s + Number(m.monthly_charges || 0), 0);
-  const agTotalCurrentMonth = agencies.reduce((s: number, m: any) => s + Number(m.current_month_commission || 0), 0);
 
   const renderMemberList = (items: any[], pct: number, label: string) => (
     <>
@@ -762,10 +754,6 @@ const SupportersTab: React.FC<{
       {renderSummary(supporters.length, totalCharges, totalCurrentMonth, totalCommission, commissionPct, "الداعمين", "blue")}
       {renderMemberList(supporters, commissionPct, "الداعمين")}
 
-      {/* Agencies section */}
-      {(agencies.length > 0 || supporters.length > 0) && <div className="border-t border-border/20 pt-4" />}
-      {renderSummary(agencies.length, agTotalCharges, agTotalCurrentMonth, agTotalCommission, agencyCommissionPct, "الوكلاء", "amber")}
-      {renderMemberList(agencies, agencyCommissionPct, "الوكلاء")}
     </div>
   );
 };
