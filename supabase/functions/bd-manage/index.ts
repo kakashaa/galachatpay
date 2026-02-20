@@ -209,10 +209,13 @@ serve(async (req) => {
         return json({ error: "يوجد دعوة معلقة لهذا العضو بالفعل" });
       }
 
-      // Fetch member info from Gala API to validate
-      // We need the password to login - but we can't get it. Instead we just validate the UUID exists
-      // by checking if we can find them. For now, we'll just create the invitation.
-      // The validation happens when the member ACCEPTS the invitation.
+      // Pre-validate: if inviting as agency, check if the user actually has an agency
+      if (member_type === "agency") {
+        const agencyData = await fetchAgencyIncome(member_uuid);
+        if (!agencyData || !agencyData.commission) {
+          return json({ error: "هذا الحساب لا يملك وكالة. لا يمكن دعوته كوكيل." });
+        }
+      }
 
       const { error } = await sb.from("bd_member_invitations").insert({
         bd_uuid,
