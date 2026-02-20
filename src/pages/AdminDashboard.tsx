@@ -653,8 +653,51 @@ const AdminDashboardPage: React.FC = () => {
 
 
   const updateBanReport = async (id: string, updates: Partial<BanReport>) => {
-    try { await adminCall("update_ban_report", { id, ...updates }); toast.success("تم التحديث"); loadData(); }
-    catch { toast.error("فشل التحديث"); }
+    try {
+      await adminCall("update_ban_report", { id, ...updates });
+      
+      // If verifying (approving) a ban report, auto-ban the user via API
+      if (updates.is_verified) {
+        const report = banReports.find(r => r.id === id);
+        if (report) {
+          try {
+            const rBanType = report.ban_type;
+            const isPromotion = rBanType === "promotion" || rBanType === "ترويج";
+            
+            const banUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=ban-user`;
+            
+            const response = await fetch(banUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              },
+              body: JSON.stringify({
+                uuid: parseInt(report.reported_user_id),
+                reason: report.description || rBanType,
+                ban_type: isPromotion ? "promotion" : "normal",
+                duration: isPromotion ? undefined : (rBanType === "violation" ? 48 : 24),
+              }),
+            });
+            
+            if (response.ok) {
+              toast.success("✅ تم حظر المستخدم تلقائياً");
+            } else {
+              toast.error("⚠️ تم تأكيد البلاغ لكن فشل الحظر التلقائي");
+            }
+          } catch (banErr) {
+            console.error("Auto-ban failed:", banErr);
+            toast.error("⚠️ تم تأكيد البلاغ لكن فشل الحظر التلقائي");
+          }
+        }
+      }
+      
+      toast.success("تم التحديث");
+      loadData();
+    } catch {
+      toast.error("فشل التحديث");
+    }
   };
 
   const unblockAccount = async (targetUuid: string) => {

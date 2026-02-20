@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, MessageSquare, User } from "lucide-react";
+import { Home, MessageSquare, User, ShieldBan } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 
@@ -15,6 +15,7 @@ const navItems: NavItem[] = [
   { icon: User, label: "حسابي", path: "/my-requests" },
   { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true },
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
+  { icon: ShieldBan, label: "حظر", path: "/report" },
 ];
 
 const BottomNav: React.FC = () => {

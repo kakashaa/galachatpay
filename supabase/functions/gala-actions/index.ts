@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // Allowlist of valid actions to prevent arbitrary API calls
 const ALLOWED_ACTIONS = new Set([
-  "list-wares", "list-requests", "submit-request", "update-request",
+  "list-wares", "list-requests", "submit-request", "update-request", "ban-user",
 ]);
 
 serve(async (req) => {
