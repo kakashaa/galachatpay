@@ -598,10 +598,17 @@ serve(async (req) => {
       const { data: bds } = await query;
 
       const allBdUuids = (bds || []).map((b: any) => b.bd_uuid);
-      const { data: members } = await sb
+      const memberQuery = sb
         .from("bd_members")
         .select("*")
         .in("bd_uuid", allBdUuids.length ? allBdUuids : ["__none__"]);
+      
+      // Only show active members unless viewing deleted
+      if (!include_deleted) {
+        memberQuery.eq("is_active", true);
+      }
+      
+      const { data: members } = await memberQuery;
 
       return json({ bds: bds || [], members: members || [] });
     }
