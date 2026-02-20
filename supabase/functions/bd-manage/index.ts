@@ -286,12 +286,18 @@ serve(async (req) => {
       const chargerLevel = levelData.charger_level || 0;
 
       if (receiverLevel > 0 || senderLevel > 0 || chargerLevel > 0) {
-        return json({ error: "لا يمكن قبول الدعوة. يجب أن تكون جميع مستويات الحساب صفر." });
+        const reason = `الحساب ${userData.name || invite.member_uuid} غير مؤهل (المستويات: استقبال ${receiverLevel}، إرسال ${senderLevel}، شحن ${chargerLevel})`;
+        // Delete the invitation since the account is not eligible
+        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        // Notify the BD about the rejection reason
+        await sb.from("notifications").insert({
+          title: "❌ فشل انضمام عضو",
+          body: reason,
+          target: "user",
+          user_uuid: invite.bd_uuid,
+        });
+        return json({ error: "لا يمكن قبول الدعوة. يجب أن تكون جميع مستويات الحساب صفر.", dismissed: true });
       }
-
-      // Check account creation date (use profile birthday or created_at if available)
-      // Since the API doesn't directly expose creation date, we rely on the level check
-      // and the fact that old accounts would have levels > 0
 
       // Check if already member of another BD
       const { data: existingMember } = await sb
@@ -302,7 +308,15 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingMember) {
-        return json({ error: "هذا الحساب مسجل لدى بيدي آخر بالفعل" });
+        const reason = `العضو ${userData.name || invite.member_uuid} مسجل لدى بيدي آخر بالفعل`;
+        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        await sb.from("notifications").insert({
+          title: "❌ فشل انضمام عضو",
+          body: reason,
+          target: "user",
+          user_uuid: invite.bd_uuid,
+        });
+        return json({ error: "هذا الحساب مسجل لدى بيدي آخر بالفعل", dismissed: true });
       }
 
       // All validations passed - add member
