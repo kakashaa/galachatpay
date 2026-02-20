@@ -8,7 +8,7 @@ import { VideoStoryCircle } from "@/components/VideoStoryCircle";
 import UserProfileCard from "@/components/UserProfileCard";
 import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
-
+import BDInvitationBanner from "@/components/BDInvitationBanner";
 import BottomNav from "@/components/BottomNav";
 import { toast } from "sonner";
 
@@ -159,6 +159,7 @@ const Dashboard: React.FC = () => {
 
       {/* Main */}
       <main className="relative z-10 px-3">
+        <BDInvitationBanner />
         <MarqueeBanner />
         <VideoStoryCircle />
         <div className="mt-3" />
