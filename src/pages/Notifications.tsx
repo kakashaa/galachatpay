@@ -50,41 +50,59 @@ const Notifications: React.FC = () => {
     }
   };
 
+  const fetchNotifs = async () => {
+    if (!user?.uuid) return;
+    const { data } = await supabase
+      .from("notifications")
+      .select("*")
+      .or(`target.eq.all,user_uuid.eq.${user.uuid}`)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    const newNotifications = (data as unknown as Notification[]) ?? [];
+    
+    // تشغيل السوند والهزة عند إشعار جديد
+    if (prevCount > 0 && newNotifications.length > prevCount) {
+      triggerNotificationEffect();
+    }
+    
+    setNotifications(newNotifications);
+    setPrevCount(newNotifications.length);
+    setLoading(false);
+
+    // Mark all as read
+    if (data && data.length > 0) {
+      const unreadIds = (data as unknown as Notification[])
+        .filter((n) => !n.is_read)
+        .map((n) => n.id);
+      if (unreadIds.length > 0) {
+        await supabase
+          .from("notifications")
+          .update({ is_read: true })
+          .in("id", unreadIds);
+      }
+    }
+  };
+
   useEffect(() => {
     if (!user?.uuid) return;
-    const fetchNotifs = async () => {
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .or(`target.eq.all,user_uuid.eq.${user.uuid}`)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      const newNotifications = (data as unknown as Notification[]) ?? [];
-      
-      // تشغيل السوند والهزة عند إشعار جديد
-      if (prevCount > 0 && newNotifications.length > prevCount) {
-        triggerNotificationEffect();
-      }
-      
-      setNotifications(newNotifications);
-      setPrevCount(newNotifications.length);
-      setLoading(false);
-
-      // Mark all as read
-      if (data && data.length > 0) {
-        const unreadIds = (data as unknown as Notification[])
-          .filter((n) => !n.is_read)
-          .map((n) => n.id);
-        if (unreadIds.length > 0) {
-          await supabase
-            .from("notifications")
-            .update({ is_read: true })
-            .in("id", unreadIds);
-        }
-      }
-    };
     fetchNotifs();
-  }, [user?.uuid, prevCount]);
+
+    // Realtime subscription for new notifications
+    const channel = supabase
+      .channel("notifications_realtime_" + user.uuid)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+      }, () => {
+        fetchNotifs();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.uuid]);
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
