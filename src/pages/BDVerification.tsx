@@ -73,7 +73,7 @@ const BDVerification: React.FC = () => {
       <div className="mobile-container min-h-screen bg-background text-foreground flex flex-col" dir="rtl">
         <header className="flex items-center gap-3 px-4 pt-6 pb-4">
           <button onClick={() => navigate("/dashboard")} className="p-2 rounded-xl hover:bg-muted"><ArrowRight className="w-5 h-5" /></button>
-          <h1 className="font-bold text-lg">توثيق بيدي</h1>
+          <h1 className="font-bold text-lg">works</h1>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
           <div className="w-20 h-20 rounded-full bg-orange-500/10 flex items-center justify-center">
@@ -93,7 +93,7 @@ const BDVerification: React.FC = () => {
     <div className="mobile-container min-h-screen bg-background text-foreground" dir="rtl">
       <header className="flex items-center gap-3 px-4 pt-6 pb-4">
         <button onClick={() => navigate("/dashboard")} className="p-2 rounded-xl hover:bg-muted"><ArrowRight className="w-5 h-5" /></button>
-        <h1 className="font-bold text-lg">توثيق بيدي</h1>
+        <h1 className="font-bold text-lg">works</h1>
       </header>
 
       <main className="px-4 pb-10">

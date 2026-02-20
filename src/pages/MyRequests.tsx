@@ -57,7 +57,7 @@ const requestTypeLabels: Record<string, string> = {
   entry_effect: "دخولية",
   animated_photo: "صورة متحركة",
   support: "دعم سريع",
-  bd_verify: "توثيق BD",
+  bd_verify: "works",
   frame: "إطار",
 };
 
