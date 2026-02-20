@@ -14,8 +14,12 @@ const BDVerification: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
 
-  const chargerLevel = user?.level?.charger_level || 0;
-  const isEligible = chargerLevel >= 10;
+  const highestLevel = Math.max(
+    user?.level?.charger_level || 0,
+    user?.level?.sender_level || 0,
+    user?.level?.receiver_level || 0
+  );
+  const isEligible = highestLevel >= 10;
 
   useEffect(() => {
     checkStatus();
@@ -47,7 +51,7 @@ const BDVerification: React.FC = () => {
           action: "register",
           user_uuid: user.uuid,
           user_name: user.name,
-          user_level: chargerLevel,
+          user_level: highestLevel,
         },
       });
       if (data?.error) {
@@ -78,7 +82,7 @@ const BDVerification: React.FC = () => {
           <h2 className="text-xl font-bold">غير مؤهل</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             يتطلب الانضمام كمطور أعمال (BD) الوصول للمستوى 10 على الأقل.
-            <br />مستواك الحالي: <span className="font-bold text-foreground">{chargerLevel}</span>
+            <br />مستواك الحالي: <span className="font-bold text-foreground">{highestLevel}</span>
           </p>
         </div>
       </div>
