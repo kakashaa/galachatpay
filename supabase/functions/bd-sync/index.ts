@@ -139,15 +139,20 @@ serve(async (req) => {
 
       if (member.member_type === "supporter") {
         // For supporters: fetch their charges
-        const chargeData = await fetchUserCharges(member.member_uuid);
+        const isTestMode = body?.test_mode === true;
+        const testCharges = body?.test_charges || 0;
+        let chargeData: any = null;
+        
+        if (isTestMode && testCharges > 0) {
+          chargeData = { charges: { month: { total: testCharges }, today: { total: 0 } } };
+        } else {
+          chargeData = await fetchUserCharges(member.member_uuid);
+        }
         console.log(`[SYNC] supporter ${member.member_uuid} API response:`, JSON.stringify(chargeData));
         if (!chargeData || !chargeData.charges) continue;
 
-        // TEST MODE: simulate charges for testing commission flow
-        const isTestMode = body?.test_mode === true;
-        const testCharges = body?.test_charges || 0;
         const rawMonthly = typeof chargeData.charges.month === 'object' ? chargeData.charges.month.total : chargeData.charges.month;
-        const monthlyCharges = isTestMode && testCharges > 0 ? testCharges : (rawMonthly || 0);
+        const monthlyCharges = rawMonthly || 0;
         const previousMonthly = member.monthly_charges || 0;
         const chargeDiff = monthlyCharges - previousMonthly;
 
@@ -197,16 +202,20 @@ serve(async (req) => {
 
       } else if (member.member_type === "agency") {
         // For agencies: fetch agency income
-        const incomeData = await fetchAgencyIncome(member.member_uuid);
+        const isTestModeAgency = body?.test_mode === true;
+        const testIncome = body?.test_agency_income || 0;
+        let incomeData: any = null;
+
+        if (isTestModeAgency && testIncome > 0) {
+          incomeData = { commission: { month: { total: testIncome }, today: { total: 0 } }, salary_this_month: 0 };
+        } else {
+          incomeData = await fetchAgencyIncome(member.member_uuid);
+        }
         console.log(`[SYNC] agency ${member.member_uuid} API response:`, JSON.stringify(incomeData));
         if (!incomeData || !incomeData.commission) continue;
 
-        // TEST MODE: simulate income for testing commission flow
-        const isTestModeAgency = body?.test_mode === true;
-        const testIncome = body?.test_agency_income || 0;
         const rawMonthlyIncome = typeof incomeData.commission.month === 'object' ? incomeData.commission.month.total : incomeData.commission.month;
-        const monthlyIncome = isTestModeAgency && testIncome > 0 ? testIncome : (rawMonthlyIncome || 0);
-        const salaryThisMonth = incomeData.salary_this_month || 0;
+        const monthlyIncome = rawMonthlyIncome || 0;
         const previousMonthly = member.monthly_charges || 0;
         const incomeDiff = monthlyIncome - previousMonthly;
 
