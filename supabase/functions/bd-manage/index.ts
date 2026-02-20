@@ -217,6 +217,18 @@ serve(async (req) => {
         }
       }
 
+      // Pre-validate levels: use user-charges to check if account has any levels > 0
+      const preCheckData = await fetchUserCharges(member_uuid);
+      if (preCheckData?.level) {
+        const lvl = preCheckData.level;
+        const rLvl = lvl.receiver_level || lvl.receiver || 0;
+        const sLvl = lvl.sender_level || lvl.sender || 0;
+        const cLvl = lvl.charger_level || lvl.charger || 0;
+        if (rLvl > 0 || sLvl > 0 || cLvl > 0) {
+          return json({ error: `لا يمكن دعوة هذا الحساب. المستويات ليست صفر (استقبال: ${rLvl}، إرسال: ${sLvl}، شحن: ${cLvl})` });
+        }
+      }
+
       const { error } = await sb.from("bd_member_invitations").insert({
         bd_uuid,
         bd_name: bd_name || "",
