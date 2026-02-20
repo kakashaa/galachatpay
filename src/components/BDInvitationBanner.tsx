@@ -68,6 +68,12 @@ const BDInvitationBanner: React.FC = () => {
 
       if (data?.error) {
         toast.error(data.error);
+        // If the invitation was dismissed (deleted by server due to ineligibility), remove from UI
+        if (data?.dismissed) {
+          setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
+          setShowPasswordFor(null);
+          setPassword("");
+        }
       } else {
         toast.success(data.message || (response === "accept" ? "تم قبول الدعوة!" : "تم رفض الدعوة"));
         setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
