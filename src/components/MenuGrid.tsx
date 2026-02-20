@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
-  Sparkles, PlayCircle, Frame, FileText, Sticker, ShieldCheck,
+  Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import GuestLoginPrompt from "./GuestLoginPrompt";
@@ -26,7 +26,7 @@ const menuItems: MenuItem[] = [
   { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400" },
   { icon: Frame, label: "إطار", route: "/frames", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400", guestAllowed: true },
   { icon: Sticker, label: "شعرات", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400" },
-  { icon: ShieldCheck, label: "works", route: "/bd", bg: "rgba(239,68,68,0.12)", iconColor: "text-red-400" },
+  { icon: Briefcase, label: "works", route: "/bd", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]" },
   { icon: FileText, label: "السياسة", route: "/policy", bg: "rgba(100,116,139,0.12)", iconColor: "text-slate-400", guestAllowed: true },
 ];
 
