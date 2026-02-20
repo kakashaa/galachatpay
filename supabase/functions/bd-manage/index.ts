@@ -314,6 +314,22 @@ serve(async (req) => {
         return json({ error: "لا يمكن قبول الدعوة. يجب أن تكون جميع مستويات الحساب صفر.", dismissed: true });
       }
 
+      // Check account creation date - must be after LAUNCH_DATE
+      const createdAt = userData.created_at || userData.profile?.created_at || userData.register_date;
+      if (createdAt) {
+        const accountDate = new Date(createdAt);
+        const launchDate = new Date(LAUNCH_DATE);
+        if (accountDate < launchDate) {
+          const reason = `الحساب ${userData.name || invite.member_uuid} قديم (تاريخ الإنشاء: ${createdAt}) - يجب أن يكون بعد ${LAUNCH_DATE.split("T")[0]}`;
+          await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+          await sb.from("notifications").insert([
+            { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.bd_uuid },
+            { title: "❌ تعذر قبول الدعوة", body: "لا يمكنك الانضمام لأن حسابك مُنشأ قبل تاريخ إطلاق النظام", target: "user", user_uuid: invite.member_uuid },
+          ]);
+          return json({ error: "لا يمكن الانضمام. الحساب مُنشأ قبل تاريخ إطلاق نظام البيدي.", dismissed: true });
+        }
+      }
+
       // Check if already member of another BD
       const { data: existingMember } = await sb
         .from("bd_members")
