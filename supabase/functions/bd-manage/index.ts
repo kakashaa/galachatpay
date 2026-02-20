@@ -319,6 +319,19 @@ serve(async (req) => {
         return json({ error: "هذا الحساب مسجل لدى بيدي آخر بالفعل", dismissed: true });
       }
 
+      // If member_type is "agency", verify the user actually has an agency (type_user >= 2)
+      const userType = userData.type_user || 0;
+      if (invite.member_type === "agency" && userType < 2) {
+        const reason = `العضو ${userData.name || invite.member_uuid} لا يملك وكالة (نوع الحساب: ${userType})، لا يمكن إضافته كوكيل`;
+        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        // Notify both BD and member
+        await sb.from("notifications").insert([
+          { title: "❌ فشل انضمام وكيل", body: reason, target: "user", user_uuid: invite.bd_uuid },
+          { title: "❌ تعذر قبول الدعوة", body: "لا يمكنك الانضمام كوكيل لأن حسابك لا يملك وكالة حالياً", target: "user", user_uuid: invite.member_uuid },
+        ]);
+        return json({ error: "لا يمكن الانضمام كوكيل بدون وكالة في الحساب", dismissed: true });
+      }
+
       // All validations passed - add member
       // For agencies: fetch agency income, for supporters: fetch user charges
       let initialMonthly = 0;
