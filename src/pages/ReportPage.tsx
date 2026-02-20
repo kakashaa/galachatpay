@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type BanType = "promotion" | "insult" | "defamation";
+type BanType = "promotion" | "behavior" | "insult" | "violation" | "other";
 type ViewMode = "menu" | "report" | "search" | "track";
 
 interface BanReport {
@@ -54,6 +54,8 @@ const BAN_TYPES: {
   requiresVideo: boolean;
   reward?: number;
   duration?: string;
+  apiType: string;
+  apiDuration?: number;
 }[] = [
   {
     value: "promotion",
@@ -62,23 +64,48 @@ const BAN_TYPES: {
     description: "الترويج لتطبيق آخر",
     requiresVideo: true,
     reward: 50000,
-    duration: "دائم",
+    duration: "دائم (حظر الجهاز)",
+    apiType: "promotion",
+  },
+  {
+    value: "behavior",
+    label: "مخالفة سلوك",
+    icon: <AlertTriangle className="w-6 h-6" />,
+    description: "سلوك مخالف لآداب التطبيق",
+    requiresVideo: false,
+    duration: "24 ساعة",
+    apiType: "normal",
+    apiDuration: 24,
   },
   {
     value: "insult",
-    label: "شتم",
+    label: "سب وشتم",
     icon: <MessageSquareWarning className="w-6 h-6" />,
     description: "شتم أو إساءة لفظية",
     requiresVideo: false,
     duration: "24 ساعة",
+    apiType: "normal",
+    apiDuration: 24,
   },
   {
-    value: "defamation",
-    label: "قذف",
-    icon: <AlertTriangle className="w-6 h-6" />,
-    description: "قذف أو تشهير",
+    value: "violation",
+    label: "مخالفة نظام وقوانين",
+    icon: <ShieldBan className="w-6 h-6" />,
+    description: "مخالفة نظام وقوانين التطبيق",
+    requiresVideo: false,
+    duration: "48 ساعة",
+    apiType: "normal",
+    apiDuration: 48,
+  },
+  {
+    value: "other",
+    label: "أخرى",
+    icon: <FileText className="w-6 h-6" />,
+    description: "سبب آخر (حدد السبب)",
     requiresVideo: false,
     duration: "24 ساعة",
+    apiType: "normal",
+    apiDuration: 24,
   },
 ];
 
@@ -97,6 +124,7 @@ const ReportPage = () => {
   const [reporterGalaId, setReporterGalaId] = useState("");
 
   const [banType, setBanType] = useState<BanType | null>(null);
+  const [customReason, setCustomReason] = useState("");
   const [reportedUserId, setReportedUserId] = useState("");
   const [description, setDescription] = useState("");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
@@ -287,6 +315,7 @@ const ReportPage = () => {
   const resetForm = () => {
     setCurrentStep(1);
     setBanType(null);
+    setCustomReason("");
     setReportedUserId("");
     setDescription("");
     setEvidenceFile(null);
@@ -482,15 +511,16 @@ const ReportPage = () => {
 
               {currentStep === 2 && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-bold text-center">اختر نوع المخالفة</h2>
+                  <h2 className="text-lg font-bold text-center">اختر سبب الحظر</h2>
                   <div className="space-y-3">
                     {BAN_TYPES.map((type) => (
-                      <button key={type.value} onClick={() => { setBanType(type.value); setCurrentStep(3); }} className={`w-full p-4 rounded-xl border-2 transition-all ${banType === type.value ? "border-destructive bg-destructive/10" : "border-border bg-card hover:border-destructive/50"}`}>
+                      <button key={type.value} onClick={() => { setBanType(type.value); if (type.value !== "other") { setCustomReason(""); setCurrentStep(3); } }} className={`w-full p-4 rounded-xl border-2 transition-all ${banType === type.value ? "border-destructive bg-destructive/10" : "border-border bg-card hover:border-destructive/50"}`}>
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-xl bg-destructive/20 flex items-center justify-center text-destructive">{type.icon}</div>
                           <div className="flex-1 text-right">
                             <p className="font-bold">{type.label}</p>
                             <p className="text-sm text-muted-foreground">{type.description}</p>
+                            {type.duration && <p className="text-xs text-warning mt-1">⏰ مدة الحظر: {type.duration}</p>}
                           </div>
                           {type.reward && (
                             <div className="bg-warning/20 text-warning px-2 py-1 rounded-lg text-xs font-bold">{type.reward.toLocaleString()} كوينز</div>
@@ -499,6 +529,15 @@ const ReportPage = () => {
                       </button>
                     ))}
                   </div>
+                  {banType === "other" && (
+                    <div className="space-y-3 mt-4">
+                      <label className="block text-sm font-medium">حدد السبب <span className="text-destructive">*</span></label>
+                      <Input placeholder="اكتب سبب الحظر" value={customReason} onChange={(e) => setCustomReason(e.target.value)} />
+                      <Button className="w-full h-12 bg-gradient-to-r from-destructive to-orange-600" disabled={!customReason.trim()} onClick={() => setCurrentStep(3)}>
+                        التالي <ArrowLeft className="w-4 h-4 mr-2" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
