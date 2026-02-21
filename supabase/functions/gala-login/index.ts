@@ -238,11 +238,12 @@ serve(async (req) => {
               const chargeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
               if (chargeRes.ok) {
                 const chargeData = await chargeRes.json();
+                console.log(`[LOGIN-BD-RAW] user-charges response for ${trimmedUuid}:`, JSON.stringify(chargeData));
               if (chargeData?.charges) {
                   liveMonthlyAmount = typeof chargeData.charges.month === 'object' ? (chargeData.charges.month.total || 0) : (chargeData.charges.month || 0);
                   liveDailyAmount = typeof chargeData.charges.today === 'object' ? (chargeData.charges.today.total || 0) : (chargeData.charges.today || 0);
                 }
-              } else { await chargeRes.text(); }
+              } else { const errText = await chargeRes.text(); console.log(`[LOGIN-BD-RAW] user-charges FAILED for ${trimmedUuid}: ${chargeRes.status} ${errText}`); }
             } else if (bdMember.member_type === "agency") {
               const incomeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
               if (incomeRes.ok) {
