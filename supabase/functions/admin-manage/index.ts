@@ -28,6 +28,61 @@ Deno.serve(async (req) => {
   try {
     const { username, password, action, data, session_token } = await req.json();
 
+    // === Auto-ban from report (no admin auth needed) ===
+    if (action === "auto_ban_report") {
+      const { uuid, reason, ban_type, duration, report_id } = data || {};
+      if (!uuid || !report_id) {
+        return new Response(
+          JSON.stringify({ error: "UUID والبلاغ مطلوبان" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const ACTIONS_URL = Deno.env.get("GALA_ACTIONS_URL");
+      const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY");
+      if (!ACTIONS_URL || !ACTIONS_KEY) {
+        return new Response(
+          JSON.stringify({ error: "إعدادات API غير مكتملة" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const targetUrl = new URL(ACTIONS_URL);
+      targetUrl.searchParams.set("key", ACTIONS_KEY);
+      targetUrl.searchParams.set("action", "ban-user");
+
+      const banResponse = await fetch(targetUrl.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uuid, reason: reason || "بلاغ مستخدم", ban_type: ban_type || "account", duration: duration || 24 }),
+      });
+
+      const banText = await banResponse.text();
+      let banData;
+      try {
+        banData = JSON.parse(banText);
+      } catch {
+        banData = { raw: banText.substring(0, 200) };
+      }
+
+      // Update report as verified if ban succeeded
+      if (banResponse.ok) {
+        const supabase = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        await supabase
+          .from("ban_reports")
+          .update({ is_verified: true })
+          .eq("id", report_id);
+      }
+
+      return new Response(
+        JSON.stringify({ data: { success: banResponse.ok, ban_result: banData } }),
+        { status: banResponse.ok ? 200 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // For actions after login, validate session token instead of password
     let auth: { role: "super_admin" | "admin" } | null = null;
     
