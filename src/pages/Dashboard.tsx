@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Bell, LogIn, RefreshCw } from "lucide-react";
+import { LogOut, Bell, LogIn, RefreshCw, ShieldBan } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import MarqueeBanner from "@/components/MarqueeBanner";
@@ -172,7 +172,27 @@ const Dashboard: React.FC = () => {
           <h3 className="text-xs font-black text-foreground">الخدمات</h3>
         </div>
 
-        <MenuGrid />
+        <MenuGrid
+          extraButton={
+            <button
+              onClick={() => navigate("/report")}
+              className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
+            >
+              <div
+                className="w-12 h-12 rounded-[14px] flex items-center justify-center"
+                style={{
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <ShieldBan className="w-5 h-5 text-red-400" />
+              </div>
+              <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">
+                حظر
+              </span>
+            </button>
+          }
+        />
       </main>
 
       <BottomNav />

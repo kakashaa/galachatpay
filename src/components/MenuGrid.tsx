@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
-  Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase, ShieldBan,
+  Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import GuestLoginPrompt from "./GuestLoginPrompt";
@@ -28,10 +28,9 @@ const menuItems: MenuItem[] = [
   { icon: Sticker, label: "شعرات", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400" },
   { icon: Briefcase, label: "works", route: "/bd", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]" },
   { icon: FileText, label: "السياسة", route: "/policy", bg: "rgba(100,116,139,0.12)", iconColor: "text-slate-400", guestAllowed: true },
-  { icon: ShieldBan, label: "حظر", route: "/report", bg: "rgba(239,68,68,0.12)", iconColor: "text-red-400", guestAllowed: true },
 ];
 
-const MenuGrid: React.FC = () => {
+const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
@@ -70,6 +69,7 @@ const MenuGrid: React.FC = () => {
             </button>
           );
         })}
+        {extraButton}
       </div>
       <GuestLoginPrompt open={showLogin} onClose={() => setShowLogin(false)} />
     </>
