@@ -242,6 +242,14 @@ const ReportPage = () => {
 
       setRequestId(data.id.substring(0, 8).toUpperCase());
       setIsSuccess(true);
+
+      // Show confirmation with expected ban duration
+      const durationText = selectedBanType?.value === "promotion"
+        ? "حظر دائم (حظر الجهاز)"
+        : `${selectedBanType?.apiDuration || 24} ساعة`;
+      toast.success(`✅ تم إرسال البلاغ بنجاح\nمدة الحظر المتوقعة: ${durationText}`, {
+        duration: 6000,
+      });
     } catch (error) {
       console.error("Error:", error);
       toast.error("حدث خطأ أثناء إرسال البلاغ");
