@@ -6,6 +6,7 @@ import {
   Trash2, Save, X, Loader2, Eye, EyeOff, UserPlus, Shield, Settings,
   ClipboardList, Sparkles, Frame, Scissors, Gift, DollarSign, Video, ShieldBan, Ban,
   Bell, Camera, Star, MessageSquare, Headset, Zap, Hash, Crown, Briefcase,
+  Pencil,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -43,6 +44,37 @@ const ALL_PERMISSIONS: { key: string; label: string; icon: React.ReactNode }[] =
   { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-4 h-4" /> },
   { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-4 h-4" /> },
 ];
+
+// Helper: check if a permission key is enabled (either "key" or "key:view")
+function isPermEnabled(perms: string[], key: string): boolean {
+  return perms.includes(key) || perms.includes(`${key}:view`);
+}
+
+// Helper: check if a permission is view-only
+function isViewOnly(perms: string[], key: string): boolean {
+  return perms.includes(`${key}:view`);
+}
+
+// Helper: toggle permission on/off (defaults to full access when enabling)
+function togglePerm(perms: string[], key: string): string[] {
+  if (isPermEnabled(perms, key)) {
+    return perms.filter(p => p !== key && p !== `${key}:view`);
+  }
+  return [...perms, key];
+}
+
+// Helper: toggle between full and view-only
+function toggleAccessLevel(perms: string[], key: string): string[] {
+  if (perms.includes(`${key}:view`)) {
+    return perms.map(p => p === `${key}:view` ? key : p);
+  }
+  return perms.map(p => p === key ? `${key}:view` : p);
+}
+
+// Helper: select all as full access
+function selectAllFull(): string[] {
+  return ALL_PERMISSIONS.map(p => p.key);
+}
 
 interface Props {
   adminCall: (action: string, data?: any) => Promise<any>;
@@ -157,18 +189,6 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
     }
   };
 
-  const togglePermission = (perms: string[], key: string, setter: (p: string[]) => void) => {
-    setter(perms.includes(key) ? perms.filter(p => p !== key) : [...perms, key]);
-  };
-
-  const selectAll = (setter: (p: string[]) => void) => {
-    setter(ALL_PERMISSIONS.map(p => p.key));
-  };
-
-  const deselectAll = (setter: (p: string[]) => void) => {
-    setter([]);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -176,6 +196,65 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
       </div>
     );
   }
+
+  const renderPermissionsGrid = (perms: string[], setPerms: (p: string[]) => void) => (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold text-foreground">الصلاحيات</p>
+        <div className="flex gap-2">
+          <button onClick={() => setPerms(selectAllFull())} className="text-[10px] text-primary hover:underline">تحديد الكل</button>
+          <button onClick={() => setPerms([])} className="text-[10px] text-muted-foreground hover:underline">إلغاء الكل</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        {ALL_PERMISSIONS.map((perm) => {
+          const enabled = isPermEnabled(perms, perm.key);
+          const viewOnly = isViewOnly(perms, perm.key);
+          return (
+            <div
+              key={perm.key}
+              className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
+                enabled
+                  ? "border-primary bg-primary/5"
+                  : "border-border/40 hover:border-border"
+              }`}
+            >
+              <button
+                onClick={() => setPerms(togglePerm(perms, perm.key))}
+                className="flex items-center gap-2 flex-1 min-w-0"
+              >
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                  enabled ? "bg-primary border-primary" : "border-muted-foreground/40"
+                }`}>
+                  {enabled && <span className="text-primary-foreground text-[10px] font-bold">✓</span>}
+                </div>
+                <span className={`flex items-center gap-1.5 text-xs font-medium ${enabled ? "text-foreground" : "text-muted-foreground"}`}>
+                  {perm.icon}
+                  {perm.label}
+                </span>
+              </button>
+              {enabled && (
+                <button
+                  onClick={() => setPerms(toggleAccessLevel(perms, perm.key))}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
+                    viewOnly
+                      ? "bg-amber-500/10 text-amber-600 border border-amber-500/30"
+                      : "bg-green-500/10 text-green-600 border border-green-500/30"
+                  }`}
+                >
+                  {viewOnly ? (
+                    <><Eye className="w-3 h-3" />مشاهدة</>
+                  ) : (
+                    <><Pencil className="w-3 h-3" />تصرف</>
+                  )}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -212,32 +291,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
               dir="ltr"
             />
 
-            {/* Permissions Grid */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-foreground">الصلاحيات</p>
-                <div className="flex gap-2">
-                  <button onClick={() => selectAll(setNewPermissions)} className="text-[10px] text-primary hover:underline">تحديد الكل</button>
-                  <button onClick={() => deselectAll(setNewPermissions)} className="text-[10px] text-muted-foreground hover:underline">إلغاء الكل</button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {ALL_PERMISSIONS.map((perm) => (
-                  <button
-                    key={perm.key}
-                    onClick={() => togglePermission(newPermissions, perm.key, setNewPermissions)}
-                    className={`flex items-center gap-2 p-2 rounded-lg border text-xs font-medium transition-all ${
-                      newPermissions.includes(perm.key)
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/40 text-muted-foreground hover:border-border"
-                    }`}
-                  >
-                    {perm.icon}
-                    <span>{perm.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {renderPermissionsGrid(newPermissions, setNewPermissions)}
 
             <Button onClick={handleAdd} disabled={actionLoading} className="w-full">
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
@@ -301,10 +355,17 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
           {editingId !== mod.id && (
             <div className="px-4 pb-3 flex flex-wrap gap-1">
               {(mod.permissions || []).map((p) => {
-                const permInfo = ALL_PERMISSIONS.find(ap => ap.key === p);
+                const baseKey = p.replace(":view", "");
+                const isView = p.endsWith(":view");
+                const permInfo = ALL_PERMISSIONS.find(ap => ap.key === baseKey);
                 return (
-                  <span key={p} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                    {permInfo?.label || p}
+                  <span key={p} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    isView
+                      ? "bg-amber-500/10 text-amber-600"
+                      : "bg-primary/10 text-primary"
+                  }`}>
+                    {permInfo?.label || baseKey}
+                    {isView && " 👁"}
                   </span>
                 );
               })}
@@ -336,31 +397,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
                   dir="ltr"
                 />
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-foreground">الصلاحيات</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => selectAll(setEditPermissions)} className="text-[10px] text-primary hover:underline">تحديد الكل</button>
-                      <button onClick={() => deselectAll(setEditPermissions)} className="text-[10px] text-muted-foreground hover:underline">إلغاء الكل</button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {ALL_PERMISSIONS.map((perm) => (
-                      <button
-                        key={perm.key}
-                        onClick={() => togglePermission(editPermissions, perm.key, setEditPermissions)}
-                        className={`flex items-center gap-2 p-2 rounded-lg border text-xs font-medium transition-all ${
-                          editPermissions.includes(perm.key)
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border/40 text-muted-foreground hover:border-border"
-                        }`}
-                      >
-                        {perm.icon}
-                        <span>{perm.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                {renderPermissionsGrid(editPermissions, setEditPermissions)}
 
                 <div className="flex gap-2">
                   <Button onClick={() => handleUpdate(mod)} disabled={actionLoading} className="flex-1">

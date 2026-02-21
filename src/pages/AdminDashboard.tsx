@@ -800,7 +800,10 @@ const AdminDashboardPage: React.FC = () => {
       { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
     ] : []),
   ];
-  const tabs = isModeratorRole ? allTabs.filter(t => adminPermissions.includes(t.key)) : allTabs;
+  // Check if moderator has access (full "key" or view-only "key:view")
+  const hasTabAccess = (key: string) => adminPermissions.includes(key) || adminPermissions.includes(`${key}:view`);
+  const isTabViewOnly = (key: string) => adminPermissions.includes(`${key}:view`) && !adminPermissions.includes(key);
+  const tabs = isModeratorRole ? allTabs.filter(t => hasTabAccess(t.key)) : allTabs;
 
   // Reusable item card for entries/frames with edit
   const renderMediaCard = (
@@ -2033,7 +2036,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* BD Management Tab */}
             {activeTab === "bd_management" && (
-              <AdminBDManager readOnly={isModeratorRole} />
+              <AdminBDManager readOnly={isModeratorRole && isTabViewOnly("bd_management")} />
             )}
 
             {/* Moderators Management Tab */}
