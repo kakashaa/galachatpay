@@ -30,6 +30,9 @@ const AdminLogin: React.FC = () => {
       // Store only username and role - never store passwords
       sessionStorage.setItem("admin_username", username.trim());
       sessionStorage.setItem("admin_role", data.data.role);
+      if (data.data.permissions) {
+        sessionStorage.setItem("admin_permissions", JSON.stringify(data.data.permissions));
+      }
       // Generate a session token from the function response
       sessionStorage.setItem("admin_session_token", data.data.session_token || Date.now().toString());
       navigate("/admin/dashboard", { replace: true });

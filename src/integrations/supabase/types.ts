@@ -41,6 +41,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_accounts: {
+        Row: {
+          created_at: string
+          created_by: string
+          display_name: string
+          id: string
+          is_active: boolean
+          password_hash: string
+          permissions: Json
+          role: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          password_hash: string
+          permissions?: Json
+          role?: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          password_hash?: string
+          permissions?: Json
+          role?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       admin_audit_log: {
         Row: {
           action: string
