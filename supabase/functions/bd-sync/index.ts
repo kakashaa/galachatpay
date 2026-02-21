@@ -163,7 +163,8 @@ serve(async (req) => {
 
         if (chargeDiff > 0) {
           const pct = bd.user_commission_pct || 2;
-          const commissionAmount = (chargeDiff * pct) / 100;
+          const commissionCoins = (chargeDiff * pct) / 100;
+          const commissionAmount = commissionCoins / 8500;
 
           updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
           updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
@@ -188,7 +189,7 @@ serve(async (req) => {
           // Notify BD about new commission
           await sb.from("notifications").insert({
             title: "💰 عمولة جديدة",
-            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} من الداعم ${member.member_name} (${pct}% من $${chargeDiff.toFixed(2)})`,
+            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} كونزه) من الداعم ${member.member_name} (${pct}% من ${chargeDiff.toLocaleString()} كونزه)`,
             target: "user",
             user_uuid: member.bd_uuid,
           });
@@ -226,7 +227,8 @@ serve(async (req) => {
 
         if (incomeDiff > 0) {
           const pct = bd.agency_commission_pct || 5;
-          const commissionAmount = (incomeDiff * pct) / 100;
+          const commissionCoins = (incomeDiff * pct) / 100;
+          const commissionAmount = commissionCoins / 8500;
 
           updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
           updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
@@ -251,7 +253,7 @@ serve(async (req) => {
           // Notify BD about new commission
           await sb.from("notifications").insert({
             title: "💰 عمولة جديدة",
-            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} من الوكالة ${member.member_name} (${pct}% من $${incomeDiff.toFixed(2)})`,
+            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} كونزه) من الوكالة ${member.member_name} (${pct}% من ${incomeDiff.toLocaleString()} كونزه)`,
             target: "user",
             user_uuid: member.bd_uuid,
           });
