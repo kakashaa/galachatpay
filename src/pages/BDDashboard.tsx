@@ -389,17 +389,45 @@ const BDDashboard: React.FC = () => {
           {/* Overview */}
           {tab === "overview" && (
             <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-              <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                <h3 className="font-bold text-sm text-emerald-400">📊 نظرة عامة - الداعمين</h3>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div><div className="text-sm font-bold">{supporters.length}</div><div className="text-[10px] text-muted-foreground">عدد الداعمين</div></div>
-                  <div><div className="text-sm font-bold">{bd.user_commission_pct || 2}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
-                </div>
-                <div className="text-center pt-1 border-t border-border/20">
-                  <div className="text-lg font-bold text-emerald-400">${totalSupporterCommission.toFixed(2)}</div>
-                  <div className="text-[10px] text-muted-foreground">عمولة الداعمين هذا الشهر</div>
-                </div>
-              </div>
+              {(() => {
+                const supporterPct = bd.user_commission_pct || 2;
+                const totalSupporterCoins = supporters.reduce((s: number, m: any) => s + (m.monthly_charges || 0), 0);
+                const totalSupporterCommCoins = (totalSupporterCoins * supporterPct) / 100;
+                const agentPct = bd.agency_commission_pct || 5;
+                const totalAgentCoins = agents.reduce((s: number, m: any) => s + (m.monthly_charges || 0), 0);
+                const totalAgentCommCoins = (totalAgentCoins * agentPct) / 100;
+                return (
+                  <>
+                    <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
+                      <h3 className="font-bold text-sm text-emerald-400">📊 نظرة عامة - الداعمين</h3>
+                      <div className="grid grid-cols-2 gap-3 text-center">
+                        <div><div className="text-sm font-bold">{supporters.length}</div><div className="text-[10px] text-muted-foreground">عدد الداعمين</div></div>
+                        <div><div className="text-sm font-bold">{supporterPct}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-border/20">
+                        <div className="text-muted-foreground">إجمالي الشحن: <span className="font-bold text-foreground">{totalSupporterCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{supporterPct}%</span></div>
+                        <div className="text-muted-foreground">العمولة: <span className="font-bold text-emerald-400">{totalSupporterCommCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${totalSupporterCommission.toFixed(2)}</span></div>
+                      </div>
+                    </div>
+
+                    <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
+                      <h3 className="font-bold text-sm text-amber-400">📊 نظرة عامة - الوكلاء</h3>
+                      <div className="grid grid-cols-2 gap-3 text-center">
+                        <div><div className="text-sm font-bold">{agents.length}</div><div className="text-[10px] text-muted-foreground">عدد الوكلاء</div></div>
+                        <div><div className="text-sm font-bold">{agentPct}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-border/20">
+                        <div className="text-muted-foreground">إجمالي الدخل: <span className="font-bold text-foreground">{totalAgentCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{agentPct}%</span></div>
+                        <div className="text-muted-foreground">العمولة: <span className="font-bold text-amber-400">{totalAgentCommCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${totalAgentCommission.toFixed(2)}</span></div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
                 <h3 className="font-bold text-sm text-amber-400">📊 نظرة عامة - الوكلاء</h3>
@@ -571,22 +599,36 @@ const BDDashboard: React.FC = () => {
                     {topMembers.length > 0 && (
                       <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
                         <h3 className="text-xs font-bold text-muted-foreground text-center">🏆 أفضل الأعضاء أداءً هذا الأسبوع</h3>
-                        {topMembers.map((m, i) => (
-                          <div key={m.uuid} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                i === 0 ? "bg-amber-500/20 text-amber-400" : i === 1 ? "bg-gray-400/20 text-gray-300" : "bg-orange-500/20 text-orange-400"
-                              }`}>
-                                {i + 1}
+                    {topMembers.map((m, i) => {
+                          const memberData = [...supporters, ...agents].find((mem: any) => mem.member_uuid === m.uuid);
+                          const memberCoins = memberData?.monthly_charges || 0;
+                          const memberPct = m.type === "agency" ? (bd.agency_commission_pct || 5) : (bd.user_commission_pct || 2);
+                          const commCoins = (memberCoins * memberPct) / 100;
+                          return (
+                            <div key={m.uuid} className="bg-card/50 border border-border/20 rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                    i === 0 ? "bg-amber-500/20 text-amber-400" : i === 1 ? "bg-gray-400/20 text-gray-300" : "bg-orange-500/20 text-orange-400"
+                                  }`}>
+                                    {i + 1}
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-bold">{m.name || "بدون اسم"}</div>
+                                    <div className="text-[10px] text-muted-foreground">{m.type === "agency" ? "وكيل" : "داعم"}</div>
+                                  </div>
+                                </div>
+                                <div className="text-sm font-bold text-primary">${m.total.toFixed(2)}</div>
                               </div>
-                              <div>
-                                <div className="text-xs font-bold">{m.name || "بدون اسم"}</div>
-                                <div className="text-[10px] text-muted-foreground">{m.type === "agency" ? "وكيل" : "داعم"}</div>
+                              <div className="grid grid-cols-2 gap-1 text-[10px] pt-1 border-t border-border/20">
+                                <div className="text-muted-foreground">الشحن: <span className="font-bold text-foreground">{memberCoins.toLocaleString()} كوينز</span></div>
+                                <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{memberPct}%</span></div>
+                                <div className="text-muted-foreground">العمولة: <span className="font-bold text-emerald-400">{commCoins.toLocaleString()} كوينز</span></div>
+                                <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${m.total.toFixed(2)}</span></div>
                               </div>
                             </div>
-                            <div className="text-sm font-bold text-primary">${m.total.toFixed(2)}</div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
@@ -867,6 +909,9 @@ const BDDashboard: React.FC = () => {
 
 // Member card component
 const MemberCard: React.FC<{ member: any; commissionPct: number }> = ({ member, commissionPct }) => {
+  const monthlyCoins = member.monthly_charges || 0;
+  const commissionCoins = (monthlyCoins * commissionPct) / 100;
+  const commissionUsd = member.current_month_commission || 0;
   return (
     <div className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
       <div className="flex items-center justify-between">
@@ -880,9 +925,15 @@ const MemberCard: React.FC<{ member: any; commissionPct: number }> = ({ member, 
           </div>
         </div>
         <div className="text-left">
-          <div className="text-sm font-bold text-green-400">${(member.current_month_commission || 0).toFixed(2)}</div>
+          <div className="text-sm font-bold text-green-400">${commissionUsd.toFixed(2)}</div>
           <div className="text-[10px] text-muted-foreground">{commissionPct}% عمولة</div>
         </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-[10px] pt-1 border-t border-border/20">
+        <div className="text-muted-foreground">الشحن الشهري: <span className="font-bold text-foreground">{monthlyCoins.toLocaleString()} كوينز</span></div>
+        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{commissionPct}%</span></div>
+        <div className="text-muted-foreground">العمولة: <span className="font-bold text-emerald-400">{commissionCoins.toLocaleString()} كوينز</span></div>
+        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${commissionUsd.toFixed(2)}</span></div>
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/20">
         <span>انضم: {formatDateAr(member.created_at)}</span>
