@@ -125,11 +125,11 @@ serve(async (req) => {
           const vip5Limit = override?.vip5_limit ?? 2;
           const vip6Limit = override?.vip6_limit ?? 0;
 
-          // Total gifting limit: 5/month (only for non-TOP agents)
+          // Total gifting limit: 100/month (only for non-TOP agents)
           const totalGifts = allReqs.filter(r => r.recipient_uuid).length;
-          if (!override && totalGifts >= 5) {
+          if (!override && totalGifts >= 100) {
             return new Response(
-              JSON.stringify({ success: false, error: "لقد استخدمت الحد الأقصى (5 إهداءات) هذا الشهر." }),
+              JSON.stringify({ success: false, error: "لقد استخدمت الحد الأقصى (100 إهداء) هذا الشهر." }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
