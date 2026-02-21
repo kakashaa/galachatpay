@@ -677,7 +677,7 @@ const AdminDashboardPage: React.FC = () => {
                 uuid: parseInt(report.reported_user_id),
                 reason: report.description || rBanType,
                 ban_type: isPromotion ? "promotion" : "normal",
-                duration: isPromotion ? undefined : 24,
+                duration: isPromotion ? 999999 : 24,
               }),
             });
             
