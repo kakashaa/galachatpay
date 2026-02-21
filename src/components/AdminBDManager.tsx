@@ -325,7 +325,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                     <span>•</span>
                     <span>{formatDateAr(reg.created_at)}</span>
                   </div>
-                  {reg.status === "pending" && !readOnly && (
+                  {reg.status === "pending" && (
                     <div className="flex gap-2 pt-1">
                       <Button onClick={() => approveRegistration(reg.id)} size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
                         <CheckCircle className="w-3 h-3 ml-1" />قبول
