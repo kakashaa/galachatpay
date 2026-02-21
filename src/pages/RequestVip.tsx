@@ -108,7 +108,7 @@ const RequestVip: React.FC = () => {
     }
     // Agents: different rules for self vs gift
     if (mode === "gift") {
-      if (!isTopAgent && usedGiftTotal >= 5) return "used_up";
+      if (!isTopAgent && usedGiftTotal >= 100) return "used_up";
       if (level >= 4) {
         const limit = limitsPerLevel[level] ?? 0;
         if (limit <= 0) return "locked";
@@ -190,7 +190,7 @@ const RequestVip: React.FC = () => {
                 <p className="text-[10px] text-primary">
                   {isAgent
                     ? mode === "gift"
-                      ? `${isTopAgent ? `إهداء: ${usedGiftTotal}` : `إهداء: ${usedGiftTotal}/5`} • VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]}`
+                      ? `${isTopAgent ? `إهداء: ${usedGiftTotal}` : `إهداء: ${usedGiftTotal}/100`} • VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]}`
                       : `لنفسك: ${usedSelf >= 1 ? "تم الاستخدام" : "متاح (مرة واحدة شهرياً)"}`
                     : `مرة واحدة شهرياً (10 أيام) • ${usedSelf >= 1 ? "تم الاستخدام" : "متاح"}`}
                 </p>
