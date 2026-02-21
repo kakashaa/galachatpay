@@ -22,6 +22,7 @@ interface HairItem {
 interface AdminHairManagerProps {
   adminSessionToken: string;
   adminUsername: string;
+  readOnly?: boolean;
 }
 
 /** Render an SVGA file to a canvas and capture a frame as base64 PNG */
@@ -69,7 +70,7 @@ async function extractNameWithAI(imageBase64: string): Promise<string> {
   return data?.name || "";
 }
 
-const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, adminUsername }) => {
+const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, adminUsername, readOnly = false }) => {
   const [hairs, setHairs] = useState<HairItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -277,6 +278,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
   return (
     <motion.div key="hairs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
       {/* Upload Section */}
+      {!readOnly && (
       <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -321,6 +323,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
           </div>
         )}
       </div>
+      )}
 
       {/* Stats */}
       <div className="bg-muted/20 rounded-xl p-3 flex items-center justify-between">
@@ -329,7 +332,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
       </div>
 
       {/* Hair Selections Management */}
-      <HairSelectionsPanel hairs={hairs} />
+      <HairSelectionsPanel hairs={hairs} readOnly={readOnly} />
 
       {/* Hair Items */}
       {hairs.length === 0 ? (
@@ -368,14 +371,14 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
                 )}
               </div>
 
-              <div className="flex items-center gap-1">
+              {!readOnly && <div className="flex items-center gap-1">
                 <button onClick={() => toggleActive(hair)} className="p-1.5 rounded-lg hover:bg-muted">
                   {hair.is_active ? <Eye className="w-4 h-4 text-emerald-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
                 </button>
                 <button onClick={() => deleteHair(hair.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </button>
-              </div>
+              </div>}
             </div>
           ))}
         </div>
@@ -386,7 +389,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
 // ============ Hair Selections Admin Panel ============
 
-const HairSelectionsPanel: React.FC<{ hairs: HairItem[] }> = ({ hairs }) => {
+const HairSelectionsPanel: React.FC<{ hairs: HairItem[]; readOnly?: boolean }> = ({ hairs, readOnly = false }) => {
   const [selections, setSelections] = useState<any[]>([]);
   const [filter, setFilter] = useState<"pending" | "approved" | "rejected">("pending");
   const [loading, setLoading] = useState(false);
@@ -465,7 +468,7 @@ const HairSelectionsPanel: React.FC<{ hairs: HairItem[] }> = ({ hairs }) => {
                     <p className="text-xs font-bold text-foreground truncate">{getHairTitle(sel.hair_id)}</p>
                     <p className="text-[10px] text-muted-foreground">UUID: {sel.user_uuid} · {sel.selection_week}</p>
                   </div>
-                  {filter === "pending" && (
+                  {filter === "pending" && !readOnly && (
                     <div className="flex items-center gap-1 shrink-0">
                       <button onClick={() => handleAction(sel.id, "approved")} className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
