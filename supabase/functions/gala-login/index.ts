@@ -238,18 +238,18 @@ serve(async (req) => {
               const chargeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
               if (chargeRes.ok) {
                 const chargeData = await chargeRes.json();
-                if (chargeData?.charges) {
-                  liveMonthlyAmount = chargeData.charges.month || 0;
-                  liveDailyAmount = chargeData.charges.today || 0;
+              if (chargeData?.charges) {
+                  liveMonthlyAmount = typeof chargeData.charges.month === 'object' ? (chargeData.charges.month.total || 0) : (chargeData.charges.month || 0);
+                  liveDailyAmount = typeof chargeData.charges.today === 'object' ? (chargeData.charges.today.total || 0) : (chargeData.charges.today || 0);
                 }
               } else { await chargeRes.text(); }
             } else if (bdMember.member_type === "agency") {
               const incomeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
               if (incomeRes.ok) {
                 const incomeData = await incomeRes.json();
-                if (incomeData?.commission) {
-                  liveMonthlyAmount = incomeData.commission.month || 0;
-                  liveDailyAmount = incomeData.commission.today || 0;
+              if (incomeData?.commission) {
+                  liveMonthlyAmount = typeof incomeData.commission.month === 'object' ? (incomeData.commission.month.total || 0) : (incomeData.commission.month || 0);
+                  liveDailyAmount = typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0);
                 }
               } else { await incomeRes.text(); }
             }
