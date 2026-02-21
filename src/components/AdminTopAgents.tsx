@@ -26,7 +26,11 @@ const getCurrentMonth = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
-const AdminTopAgents: React.FC = () => {
+interface AdminTopAgentsProps {
+  readOnly?: boolean;
+}
+
+const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => {
   const [agents, setAgents] = useState<AgentOverride[]>([]);
   const [usageMap, setUsageMap] = useState<Record<string, AgentUsage>>({});
   const [loading, setLoading] = useState(true);
@@ -136,6 +140,7 @@ const AdminTopAgents: React.FC = () => {
   return (
     <div className="space-y-4" dir="rtl">
       {/* Add agent */}
+      {!readOnly && (
       <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
         <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
           <Plus className="w-4 h-4 text-primary" /> إضافة وكيل TOP
@@ -154,6 +159,7 @@ const AdminTopAgents: React.FC = () => {
           </Button>
         </div>
       </div>
+      )}
 
       {/* Agents list */}
       {loading ? (
@@ -183,6 +189,7 @@ const AdminTopAgents: React.FC = () => {
                   </div>
                   <div className="flex gap-1">
                     {!isEditing ? (
+                      !readOnly && (
                       <>
                         <button onClick={() => startEdit(agent)} className="p-1.5 rounded-lg hover:bg-muted">
                           <Edit2 className="w-4 h-4 text-primary" />
@@ -191,6 +198,7 @@ const AdminTopAgents: React.FC = () => {
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </button>
                       </>
+                      )
                     ) : (
                       <>
                         <Button size="sm" onClick={() => handleSave(agent)} className="h-7 text-xs gap-1">

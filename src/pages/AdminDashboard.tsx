@@ -804,6 +804,8 @@ const AdminDashboardPage: React.FC = () => {
   const hasTabAccess = (key: string) => adminPermissions.includes(key) || adminPermissions.includes(`${key}:view`);
   const isTabViewOnly = (key: string) => adminPermissions.includes(`${key}:view`) && !adminPermissions.includes(key);
   const tabs = isModeratorRole ? allTabs.filter(t => hasTabAccess(t.key)) : allTabs;
+  // Helper: can the current user perform actions on the active tab?
+  const canAct = !isModeratorRole || (activeTab ? !isTabViewOnly(activeTab) : true);
 
   // Reusable item card for entries/frames with edit
   const renderMediaCard = (
@@ -860,11 +862,13 @@ const AdminDashboardPage: React.FC = () => {
                     {item.gift_type === "both" ? "الكل" : item.gift_type === "profile" ? "ملف" : "روم"}
                   </span>
                 )}
-                <button onClick={startEdit} className="p-1.5 rounded-lg hover:bg-muted"><Edit2 className="w-4 h-4 text-primary" /></button>
-                <button onClick={toggleActive} className="p-1.5 rounded-lg hover:bg-muted">
-                  {item.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-                </button>
-                <button onClick={handleDelete} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                {canAct && <>
+                  <button onClick={startEdit} className="p-1.5 rounded-lg hover:bg-muted"><Edit2 className="w-4 h-4 text-primary" /></button>
+                  <button onClick={toggleActive} className="p-1.5 rounded-lg hover:bg-muted">
+                    {item.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  <button onClick={handleDelete} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                </>}
               </div>
             </div>
             <p className="text-xs text-muted-foreground font-mono truncate" dir="ltr">{item.video_url || item.file_url}</p>
@@ -983,9 +987,9 @@ const AdminDashboardPage: React.FC = () => {
             {/* Videos Tab */}
             {activeTab === "videos" && (
               <motion.div key="videos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                <Button onClick={() => setShowAddVideo(!showAddVideo)} className="w-full" variant={showAddVideo ? "outline" : "default"}>
+                {canAct && <Button onClick={() => setShowAddVideo(!showAddVideo)} className="w-full" variant={showAddVideo ? "outline" : "default"}>
                   {showAddVideo ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة فيديو</>}
-                </Button>
+                </Button>}
                 {showAddVideo && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-card border rounded-xl p-4 space-y-3">
                     <Input placeholder="عنوان الفيديو *" value={newVideo.title} onChange={(e) => setNewVideo({ ...newVideo, title: e.target.value })} />
@@ -1007,10 +1011,12 @@ const AdminDashboardPage: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-sm">{video.title}</h3>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => toggleVideoActive(video)} className="p-1.5 rounded-lg hover:bg-muted">
-                          {video.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-                        </button>
-                        <button onClick={() => deleteVideo(video.id)} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                        {canAct && <>
+                          <button onClick={() => toggleVideoActive(video)} className="p-1.5 rounded-lg hover:bg-muted">
+                            {video.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                          </button>
+                          <button onClick={() => deleteVideo(video.id)} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                        </>}
                       </div>
                     </div>
                     {video.description && <p className="text-xs text-muted-foreground">{video.description}</p>}
@@ -1074,7 +1080,7 @@ const AdminDashboardPage: React.FC = () => {
                           <div className="col-span-2"><span className="text-muted-foreground">التفاصيل:</span> {req.payment_details}</div>
                           <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</div>
                         </div>
-                        {req.status === "pending" && salaryAction?.id !== req.id && (
+                        {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
                           <div className="flex gap-2">
                             <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
                               <CheckCircle className="w-4 h-4 ml-1" />قبول
@@ -1156,7 +1162,7 @@ const AdminDashboardPage: React.FC = () => {
                         {report.evidence_url && (
                           <a href={report.evidence_url} target="_blank" rel="noopener" className="text-xs text-primary underline">عرض الدليل</a>
                         )}
-                        {!report.is_verified && (
+                        {canAct && !report.is_verified && (
                           <Button size="sm" className="w-full" onClick={() => updateBanReport(report.id, { is_verified: true })}>
                             <CheckCircle className="w-4 h-4 ml-1" />تأكيد البلاغ
                           </Button>
@@ -1188,7 +1194,7 @@ const AdminDashboardPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">المحاولات: {acc.failed_attempts} | الحظر: {acc.block_count} مرة</div>
-                    {(acc.is_permanently_blocked || acc.blocked_until) && (
+                    {canAct && (acc.is_permanently_blocked || acc.blocked_until) && (
                       <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => unblockAccount(acc.target_uuid)}>
                         <Unlock className="w-4 h-4 ml-1" />فك الحظر
                       </Button>
@@ -1204,9 +1210,9 @@ const AdminDashboardPage: React.FC = () => {
             {/* Entries Tab */}
             {activeTab === "entries" && (
               <motion.div key="entries" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                <Button onClick={() => setShowAddEntry(!showAddEntry)} className="w-full" variant={showAddEntry ? "outline" : "default"}>
+                {canAct && <Button onClick={() => setShowAddEntry(!showAddEntry)} className="w-full" variant={showAddEntry ? "outline" : "default"}>
                   {showAddEntry ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة دخولية</>}
-                </Button>
+                </Button>}
                 {showAddEntry && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-card border rounded-xl p-4 space-y-3">
                     <Input placeholder="اسم الدخولية (اختياري)" value={newEntry.title} onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })} />
@@ -1251,9 +1257,9 @@ const AdminDashboardPage: React.FC = () => {
             {/* Frames Tab */}
             {activeTab === "frames" && (
               <motion.div key="frames" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                <Button onClick={() => setShowAddFrame(!showAddFrame)} className="w-full" variant={showAddFrame ? "outline" : "default"}>
+                {canAct && <Button onClick={() => setShowAddFrame(!showAddFrame)} className="w-full" variant={showAddFrame ? "outline" : "default"}>
                   {showAddFrame ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة إطار</>}
-                </Button>
+                </Button>}
                 {showAddFrame && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="bg-card border rounded-xl p-4 space-y-3">
                     <Input placeholder="اسم الإطار (اختياري)" value={newFrame.title} onChange={(e) => setNewFrame({ ...newFrame, title: e.target.value })} />
@@ -1470,7 +1476,7 @@ const AdminDashboardPage: React.FC = () => {
                                   )}
 
                                   {/* Actions */}
-                                  {req.status === "pending" && salaryAction?.id !== req.id && (
+                                  {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
                                     <div className="flex gap-2">
                                       <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
                                         <CheckCircle className="w-3 h-3 ml-1" />قبول
@@ -1560,7 +1566,7 @@ const AdminDashboardPage: React.FC = () => {
                                       <p className="text-xs">{req.admin_note}</p>
                                     </div>
                                   )}
-                                  {req.status === "pending" && salaryAction?.id !== req.id && (
+                                  {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
                                     <div className="flex gap-2">
                                       <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
                                         <CheckCircle className="w-3 h-3 ml-1" />قبول
@@ -1854,36 +1860,43 @@ const AdminDashboardPage: React.FC = () => {
 
             {activeTab === "notifications" && (
               <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                <div className="bg-card border rounded-xl p-4 space-y-3">
-                  <h3 className="font-bold text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />إرسال إشعار عام لجميع المستخدمين</h3>
-                  <Input 
-                    placeholder="عنوان الإشعار *" 
-                    value={notificationTitle} 
-                    onChange={(e) => setNotificationTitle(e.target.value)}
-                    maxLength={100}
-                  />
-                  <Textarea 
-                    placeholder="محتوى الإشعار * (مثل: إعلان أو تحديث عن الصيانة)" 
-                    value={notificationBody} 
-                    onChange={(e) => setNotificationBody(e.target.value)}
-                    className="min-h-[100px]"
-                    maxLength={500}
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    {notificationTitle.length}/100 أحرف | {notificationBody.length}/500 أحرف
+                {canAct ? (
+                  <div className="bg-card border rounded-xl p-4 space-y-3">
+                    <h3 className="font-bold text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />إرسال إشعار عام لجميع المستخدمين</h3>
+                    <Input 
+                      placeholder="عنوان الإشعار *" 
+                      value={notificationTitle} 
+                      onChange={(e) => setNotificationTitle(e.target.value)}
+                      maxLength={100}
+                    />
+                    <Textarea 
+                      placeholder="محتوى الإشعار * (مثل: إعلان أو تحديث عن الصيانة)" 
+                      value={notificationBody} 
+                      onChange={(e) => setNotificationBody(e.target.value)}
+                      className="min-h-[100px]"
+                      maxLength={500}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      {notificationTitle.length}/100 أحرف | {notificationBody.length}/500 أحرف
+                    </div>
+                    <Button 
+                      onClick={sendBroadcastNotification} 
+                      disabled={sendingNotification}
+                      className="w-full"
+                    >
+                      {sendingNotification ? (
+                        <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإرسال...</>
+                      ) : (
+                        <><Sparkles className="w-4 h-4 ml-2" />إرسال الإشعار</>
+                      )}
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={sendBroadcastNotification} 
-                    disabled={sendingNotification}
-                    className="w-full"
-                  >
-                    {sendingNotification ? (
-                      <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإرسال...</>
-                    ) : (
-                      <><Sparkles className="w-4 h-4 ml-2" />إرسال الإشعار</>
-                    )}
-                  </Button>
-                </div>
+                ) : (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Bell className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>وضع المشاهدة فقط - لا يمكنك إرسال إشعارات</p>
+                  </div>
+                )}
                 <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
                   <p className="text-xs text-blue-600 leading-relaxed">
                     💡 الإشعارات العامة سيتم إرسالها لجميع المستخدمين المتصلين وسيراها عند فتح صفحة الإشعارات أو عند وصول إشعار جديد.
@@ -1894,39 +1907,48 @@ const AdminDashboardPage: React.FC = () => {
 
             {activeTab === "admin_stars" && (
               <motion.div key="admin_stars" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                <div className="bg-card border rounded-xl p-4 space-y-3">
-                  <h3 className="font-bold text-sm flex items-center gap-2"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />منح نجوم لمستخدم عبر UUID</h3>
-                  <Input
-                    placeholder="UUID المستخدم *"
-                    value={adminStarUuid}
-                    onChange={(e) => setAdminStarUuid(e.target.value)}
-                    dir="ltr"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="عدد النجوم *"
-                    value={adminStarAmount}
-                    onChange={(e) => setAdminStarAmount(e.target.value)}
-                    min="1"
-                    dir="ltr"
-                  />
-                  <Button
-                    onClick={handleAdminSendStars}
-                    disabled={adminStarLoading || !adminStarUuid.trim() || !adminStarAmount}
-                    className="w-full"
-                  >
-                    {adminStarLoading ? (
-                      <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإرسال...</>
-                    ) : (
-                      <><Star className="w-4 h-4 ml-2" />إرسال النجوم</>
-                    )}
-                  </Button>
-                </div>
-                <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-                  <p className="text-xs text-amber-600 leading-relaxed">
-                    ⭐ سيتم إضافة النجوم مباشرة إلى رصيد المستخدم وتسجيل العملية في سجل الإهداءات.
-                  </p>
-                </div>
+                {canAct ? (
+                  <>
+                    <div className="bg-card border rounded-xl p-4 space-y-3">
+                      <h3 className="font-bold text-sm flex items-center gap-2"><Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />منح نجوم لمستخدم عبر UUID</h3>
+                      <Input
+                        placeholder="UUID المستخدم *"
+                        value={adminStarUuid}
+                        onChange={(e) => setAdminStarUuid(e.target.value)}
+                        dir="ltr"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="عدد النجوم *"
+                        value={adminStarAmount}
+                        onChange={(e) => setAdminStarAmount(e.target.value)}
+                        min="1"
+                        dir="ltr"
+                      />
+                      <Button
+                        onClick={handleAdminSendStars}
+                        disabled={adminStarLoading || !adminStarUuid.trim() || !adminStarAmount}
+                        className="w-full"
+                      >
+                        {adminStarLoading ? (
+                          <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإرسال...</>
+                        ) : (
+                          <><Star className="w-4 h-4 ml-2" />إرسال النجوم</>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+                      <p className="text-xs text-amber-600 leading-relaxed">
+                        ⭐ سيتم إضافة النجوم مباشرة إلى رصيد المستخدم وتسجيل العملية في سجل الإهداءات.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Star className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>وضع المشاهدة فقط - لا يمكنك منح نجوم</p>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1992,7 +2014,7 @@ const AdminDashboardPage: React.FC = () => {
                         <a href={photo.gif_url} target="_blank" rel="noopener" className="text-xs text-primary underline">🖼️ عرض الصورة</a>
                       )}
                       {/* Action buttons for pending photos */}
-                      {photo.status === "pending" && (
+                      {canAct && photo.status === "pending" && (
                         <div className="flex gap-2 pt-2 border-t border-border/30">
                           <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleAnimatedPhotoApprove(photo)} disabled={salaryActionLoading}>
                             <CheckCircle className="w-4 h-4 ml-1" />قبول
@@ -2031,7 +2053,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* TOP Agents Tab */}
             {activeTab === "top_agents" && (
-              <AdminTopAgents />
+              <AdminTopAgents readOnly={isModeratorRole && isTabViewOnly("top_agents")} />
             )}
 
             {/* BD Management Tab */}
@@ -2142,7 +2164,7 @@ const AdminDashboardPage: React.FC = () => {
                         <a href={req.attachment_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">📎 عرض المرفق</a>
                       )}
                       <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString("ar-EG")}</p>
-                      {req.status === "pending" && (
+                      {canAct && req.status === "pending" && (
                         <Button size="sm" className="w-full" onClick={async () => {
                           try {
                             await supabase.from("quick_support_requests").update({ status: "resolved" } as any).eq("id", req.id);
@@ -2192,7 +2214,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Hairs Tab */}
             {activeTab === "hairs" && (
-              <AdminHairManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} />
+              <AdminHairManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("hairs")} />
             )}
 
             {/* Audit Log Tab - Super Admin Only */}
