@@ -235,7 +235,7 @@ serve(async (req) => {
 
           try {
             if (bdMember.member_type === "supporter") {
-              const chargeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
+              const chargeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(15000) });
               if (chargeRes.ok) {
                 const chargeData = await chargeRes.json();
                 console.log(`[LOGIN-BD-RAW] user-charges response for ${trimmedUuid}:`, JSON.stringify(chargeData));
@@ -245,7 +245,7 @@ serve(async (req) => {
                 }
               } else { const errText = await chargeRes.text(); console.log(`[LOGIN-BD-RAW] user-charges FAILED for ${trimmedUuid}: ${chargeRes.status} ${errText}`); }
             } else if (bdMember.member_type === "agency") {
-              const incomeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(8000) });
+              const incomeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(15000) });
               if (incomeRes.ok) {
                 const incomeData = await incomeRes.json();
               if (incomeData?.commission) {
