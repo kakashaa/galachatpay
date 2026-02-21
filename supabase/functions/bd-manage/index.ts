@@ -215,12 +215,14 @@ serve(async (req) => {
         return json({ error: "يوجد دعوة معلقة لهذا العضو بالفعل" });
       }
 
-      // Pre-validate: if inviting as agency, check if the user actually has an agency
+      // Pre-validate: if inviting as agency, check if the user has an agency role (type_user >= 2)
       if (member_type === "agency") {
-        const agencyData = await fetchAgencyIncome(member_uuid);
-        if (!agencyData || !agencyData.commission) {
-          return json({ error: "هذا الحساب لا يملك وكالة. لا يمكن دعوته كوكيل." });
+        const chargeCheck = await fetchUserCharges(member_uuid);
+        const memberTypeUser = chargeCheck?.type_user ?? chargeCheck?.user?.type_user ?? -1;
+        if (memberTypeUser >= 0 && memberTypeUser < 2) {
+          return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
         }
+        // If API failed (memberTypeUser === -1), allow invitation to proceed - final validation happens on accept
       }
 
       // Pre-validate levels: use user-charges to check if account has any levels > 0
