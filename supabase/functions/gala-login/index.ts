@@ -259,9 +259,12 @@ serve(async (req) => {
             liveMonthlyAmount = 0;
           }
 
+          console.log(`[LOGIN-BD] uuid=${trimmedUuid} type=${bdMember.member_type} monthly=${liveMonthlyAmount} daily=${liveDailyAmount} prevMonthly=${bdMember.monthly_charges || 0}`);
+
           // Calculate charge diff and commissions from live data
           const previousMonthly = bdMember.monthly_charges || 0;
           const chargeDiff = liveMonthlyAmount > previousMonthly ? liveMonthlyAmount - previousMonthly : 0;
+          if (chargeDiff > 0) console.log(`[LOGIN-BD] chargeDiff=${chargeDiff} → commission will be calculated`);
 
           updateObj.last_daily_charges = liveDailyAmount || (d.level?.charger_num || 0);
           if (liveMonthlyAmount > 0) updateObj.monthly_charges = liveMonthlyAmount;
