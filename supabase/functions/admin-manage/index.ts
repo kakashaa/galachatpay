@@ -631,6 +631,41 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ========== BAN USER VIA EXTERNAL API ==========
+      case "ban_user": {
+        const { uuid, reason, ban_type, duration } = data;
+        if (!uuid) throw new Error("UUID مطلوب");
+
+        const ACTIONS_URL = Deno.env.get("GALA_ACTIONS_URL");
+        const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY");
+        if (!ACTIONS_URL || !ACTIONS_KEY) throw new Error("إعدادات API الحظر غير مكتملة");
+
+        const targetUrl = new URL(ACTIONS_URL);
+        targetUrl.searchParams.set("key", ACTIONS_KEY);
+        targetUrl.searchParams.set("action", "ban-user");
+
+        const banResponse = await fetch(targetUrl.toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uuid, reason, ban_type, duration }),
+        });
+
+        const banText = await banResponse.text();
+        let banData;
+        try {
+          banData = JSON.parse(banText);
+        } catch {
+          throw new Error("استجابة API غير صالحة: " + banText.substring(0, 200));
+        }
+
+        if (!banResponse.ok) {
+          throw new Error(banData?.error || banData?.message || "فشل الحظر من API");
+        }
+
+        result = { success: true, ban_result: banData };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),

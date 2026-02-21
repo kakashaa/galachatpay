@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Edge function for proxying admin actions
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Allowlist of valid actions to prevent arbitrary API calls
 const ALLOWED_ACTIONS = new Set([
   "list-wares", "list-requests", "submit-request", "update-request", "ban-user",
 ]);
@@ -32,7 +30,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate action against allowlist
     if (!ALLOWED_ACTIONS.has(action)) {
       return new Response(
         JSON.stringify({ success: false, error: "Action not allowed" }),
@@ -40,12 +37,10 @@ serve(async (req) => {
       );
     }
 
-    // Build target URL
     const targetUrl = new URL(ACTIONS_URL);
     targetUrl.searchParams.set("key", ACTIONS_KEY);
     targetUrl.searchParams.set("action", action);
 
-    // Forward additional query params for GET requests (sanitize)
     for (const [key, value] of url.searchParams.entries()) {
       if (key !== "action" && key.length <= 50 && value.length <= 500) {
         targetUrl.searchParams.set(key, value);
@@ -56,7 +51,6 @@ serve(async (req) => {
 
     if (req.method === "POST") {
       const body = await req.text();
-      // Limit body size
       if (body.length > 10000) {
         return new Response(
           JSON.stringify({ success: false, error: "Request body too large" }),
@@ -82,7 +76,7 @@ serve(async (req) => {
       data = JSON.parse(rawText);
     } catch {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid API response" }),
+        JSON.stringify({ success: false, error: "Invalid API response", raw: rawText.substring(0, 200) }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

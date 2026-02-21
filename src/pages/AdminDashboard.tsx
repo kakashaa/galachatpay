@@ -664,24 +664,15 @@ const AdminDashboardPage: React.FC = () => {
             const rBanType = report.ban_type;
             const isPromotion = rBanType === "promotion" || rBanType === "ترويج";
             
-            const banUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gala-actions?action=ban-user`;
-            
-            const response = await fetch(banUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              },
-              body: JSON.stringify({
-                uuid: parseInt(report.reported_user_id),
-                reason: report.description || rBanType,
-                ban_type: isPromotion ? "promotion" : "normal",
-                duration: isPromotion ? 999999 : 24,
-              }),
+            // Use admin-manage which is deployed and working
+            const banResult = await adminCall("ban_user", {
+              uuid: parseInt(report.reported_user_id),
+              reason: report.description || rBanType,
+              ban_type: isPromotion ? "promotion" : "normal",
+              duration: isPromotion ? 999999 : 24,
             });
             
-            if (response.ok) {
+            if (banResult?.success || banResult?.ban_result) {
               toast.success("✅ تم حظر المستخدم تلقائياً");
             } else {
               toast.error("⚠️ تم تأكيد البلاغ لكن فشل الحظر التلقائي");
