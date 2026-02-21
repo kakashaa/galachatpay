@@ -11,30 +11,30 @@ const supabaseAdmin = () =>
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-async function fetchWithRetry(url: string, retries = 2): Promise<Response | null> {
+async function fetchWithRetry(url: string, retries = 2, timeoutMs = 15000): Promise<Response | null> {
   for (let i = 0; i <= retries; i++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
       if (!res.ok) { await res.text(); return null; }
       return res;
     } catch (e) {
       console.error(`fetch attempt ${i + 1} failed for ${url}:`, e);
-      if (i < retries) await new Promise(r => setTimeout(r, 1000));
+      if (i < retries) await new Promise(r => setTimeout(r, 500));
     }
   }
   return null;
 }
 
-async function fetchAgencyIncome(uuid: string) {
+async function fetchAgencyIncome(uuid: string, quick = false) {
   const url = `${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${uuid}`;
-  const res = await fetchWithRetry(url);
+  const res = await fetchWithRetry(url, quick ? 0 : 2, quick ? 5000 : 15000);
   if (!res) return null;
   try { return await res.json(); } catch { return null; }
 }
 
-async function fetchUserCharges(uuid: string) {
+async function fetchUserCharges(uuid: string, quick = false) {
   const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
-  const res = await fetchWithRetry(url);
+  const res = await fetchWithRetry(url, quick ? 0 : 2, quick ? 5000 : 15000);
   if (!res) return null;
   try { return await res.json(); } catch { return null; }
 }
@@ -48,14 +48,20 @@ async function loginGalaUser(uuid: string, password: string) {
   const signPath = "api/newWebsite/" + endpoint;
   const headers = await getGalaHeaders("POST", signPath);
   const url = BASE_URL.replace(/\/+$/, "") + "/" + endpoint;
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ uuid: uuid.trim(), password }),
-  });
-  const data = await res.json();
-  if (!res.ok || !data.success) return null;
-  return data.data;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ uuid: uuid.trim(), password }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) return null;
+    return data.data;
+  } catch (e) {
+    console.error("loginGalaUser timeout/error:", e);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -369,13 +375,13 @@ serve(async (req) => {
       let initialDaily = 0;
 
       if (invite.member_type === "agency") {
-        const agencyData = await fetchAgencyIncome(invite.member_uuid);
+        const agencyData = await fetchAgencyIncome(invite.member_uuid, true);
         if (agencyData?.commission) {
           initialMonthly = agencyData.commission.month || 0;
           initialDaily = agencyData.commission.today || 0;
         }
       } else {
-        const chargeData = await fetchUserCharges(invite.member_uuid);
+        const chargeData = await fetchUserCharges(invite.member_uuid, true);
         if (chargeData?.charges) {
           initialMonthly = chargeData.charges.month || 0;
           initialDaily = chargeData.charges.today || 0;
