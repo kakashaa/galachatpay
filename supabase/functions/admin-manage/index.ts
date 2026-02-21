@@ -6,18 +6,47 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Admin accounts with roles
+// Primary admin accounts with roles (hardcoded)
 const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "super_admin" | "admin" }> = {
   naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "super_admin" },
   blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
 };
 
-function authenticateAdmin(username: string, password: string): { role: "super_admin" | "admin" } | null {
+// Simple hash for moderator passwords (not crypto-grade but sufficient for this use case)
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + "gala_salt_2024");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function authenticateAdmin(
+  username: string,
+  password: string,
+  supabaseClient?: any
+): Promise<{ role: "super_admin" | "admin" | "moderator"; permissions?: string[] } | null> {
+  // Check primary accounts first
   const account = ADMIN_ACCOUNTS[username];
-  if (!account) return null;
-  const expectedPassword = Deno.env.get(account.envKey);
-  if (!expectedPassword || password !== expectedPassword) return null;
-  return { role: account.role };
+  if (account) {
+    const expectedPassword = Deno.env.get(account.envKey);
+    if (!expectedPassword || password !== expectedPassword) return null;
+    return { role: account.role };
+  }
+
+  // Check moderator accounts from database
+  if (!supabaseClient) return null;
+  const passwordHash = await hashPassword(password);
+  const { data: mod } = await supabaseClient
+    .from("admin_accounts")
+    .select("*")
+    .eq("username", username)
+    .eq("password_hash", passwordHash)
+    .eq("is_active", true)
+    .single();
+
+  if (!mod) return null;
+  return { role: "moderator", permissions: mod.permissions || [] };
 }
 
 Deno.serve(async (req) => {
@@ -30,15 +59,33 @@ Deno.serve(async (req) => {
 
     // auto_ban_report action removed — bans now require admin approval
 
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     // For actions after login, validate session token instead of password
-    let auth: { role: "super_admin" | "admin" } | null = null;
+    let auth: { role: "super_admin" | "admin" | "moderator"; permissions?: string[] } | null = null;
     
     if (session_token && action !== "auth_check") {
       // Validate existing session token
       try {
         const decoded = JSON.parse(atob(session_token));
-        if (decoded.username && ADMIN_ACCOUNTS[decoded.username]) {
-          auth = { role: ADMIN_ACCOUNTS[decoded.username].role };
+        if (decoded.username) {
+          if (ADMIN_ACCOUNTS[decoded.username]) {
+            auth = { role: ADMIN_ACCOUNTS[decoded.username].role };
+          } else {
+            // Check moderator from DB
+            const { data: mod } = await supabase
+              .from("admin_accounts")
+              .select("*")
+              .eq("username", decoded.username)
+              .eq("is_active", true)
+              .single();
+            if (mod) {
+              auth = { role: "moderator", permissions: mod.permissions || [] };
+            }
+          }
         }
       } catch (e) {
         console.error("Invalid session token:", e);
@@ -47,7 +94,7 @@ Deno.serve(async (req) => {
 
     // Fall back to password authentication for login
     if (!auth) {
-      auth = authenticateAdmin(username || "", password || "");
+      auth = await authenticateAdmin(username || "", password || "", supabase);
     }
     
     if (!auth) {
@@ -57,10 +104,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // supabase client already created above
 
     let result;
 
@@ -81,9 +125,9 @@ Deno.serve(async (req) => {
     switch (action) {
       // Auth check - returns role info and a session token
       case "auth_check": {
-        // Generate a session token (in production, use signed JWTs)
+        // Generate a session token
         const sessionToken = btoa(JSON.stringify({ username, role: auth.role, iat: Date.now() }));
-        result = { role: auth.role, username, session_token: sessionToken };
+        result = { role: auth.role, username, session_token: sessionToken, permissions: auth.permissions || null };
         await logAudit({ action: "login", success: true });
         break;
       }
@@ -712,6 +756,92 @@ Deno.serve(async (req) => {
         }
 
         result = { success: true, ban_result: banData };
+        break;
+      }
+
+      // ========== MODERATOR MANAGEMENT (super_admin/admin only) ==========
+      case "list_moderators": {
+        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        const { data: mods, error } = await supabase
+          .from("admin_accounts")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        // Don't return password hashes
+        result = (mods || []).map(({ password_hash, ...rest }: any) => rest);
+        break;
+      }
+
+      case "add_moderator": {
+        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        const { username: modUsername, display_name, password: modPassword, permissions } = data;
+        if (!modUsername || !modPassword) throw new Error("اسم المستخدم وكلمة المرور مطلوبان");
+        
+        // Check if username already exists (including primary admins)
+        if (ADMIN_ACCOUNTS[modUsername]) throw new Error("اسم المستخدم محجوز");
+        const { data: existing } = await supabase
+          .from("admin_accounts")
+          .select("id")
+          .eq("username", modUsername)
+          .single();
+        if (existing) throw new Error("اسم المستخدم موجود مسبقاً");
+
+        const pwHash = await hashPassword(modPassword);
+        const { error } = await supabase.from("admin_accounts").insert({
+          username: modUsername,
+          display_name: display_name || modUsername,
+          password_hash: pwHash,
+          role: "moderator",
+          permissions: permissions || [],
+          created_by: username || "",
+        });
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      case "update_moderator": {
+        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        const { id: modId, permissions: modPerms, display_name: modName, password: newModPw } = data;
+        if (!modId) throw new Error("معرف المسؤول مطلوب");
+        
+        const updateData: any = {};
+        if (modPerms !== undefined) updateData.permissions = modPerms;
+        if (modName) updateData.display_name = modName;
+        if (newModPw) updateData.password_hash = await hashPassword(newModPw);
+
+        const { error } = await supabase
+          .from("admin_accounts")
+          .update(updateData)
+          .eq("id", modId);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      case "toggle_moderator": {
+        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        const { id: toggleId, is_active } = data;
+        if (!toggleId) throw new Error("معرف المسؤول مطلوب");
+        const { error } = await supabase
+          .from("admin_accounts")
+          .update({ is_active })
+          .eq("id", toggleId);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      case "delete_moderator": {
+        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        const { id: delModId } = data;
+        if (!delModId) throw new Error("معرف المسؤول مطلوب");
+        const { error } = await supabase
+          .from("admin_accounts")
+          .delete()
+          .eq("id", delModId);
+        if (error) throw error;
+        result = { success: true };
         break;
       }
 

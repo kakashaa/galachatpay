@@ -28,8 +28,9 @@ import { useSupportChatSessionsRealtime } from "@/hooks/use-support-chat-session
 import AdminHairManager from "@/components/AdminHairManager";
 import AdminTopAgents from "@/components/AdminTopAgents";
 import AdminBDManager from "@/components/AdminBDManager";
+import AdminModeratorManager from "@/components/AdminModeratorManager";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | null;
 
 
 interface VideoTutorial {
@@ -230,8 +231,12 @@ const AdminDashboardPage: React.FC = () => {
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
-  const adminRole = sessionStorage.getItem("admin_role") as "super_admin" | "admin" | null;
+  const adminRole = sessionStorage.getItem("admin_role") as "super_admin" | "admin" | "moderator" | null;
   const isSuperAdmin = adminRole === "super_admin";
+  const adminPermissions: string[] = (() => {
+    try { return JSON.parse(sessionStorage.getItem("admin_permissions") || "[]"); } catch { return []; }
+  })();
+  const isModeratorRole = adminRole === "moderator";
 
   // Trash state
   const [trashData, setTrashData] = useState<{ videos: any[]; entries: any[]; frames: any[]; customs: any[] }>({ videos: [], entries: [], frames: [], customs: [] });
@@ -469,6 +474,7 @@ const AdminDashboardPage: React.FC = () => {
     sessionStorage.removeItem("admin_session_token");
     sessionStorage.removeItem("admin_username");
     sessionStorage.removeItem("admin_role");
+    sessionStorage.removeItem("admin_permissions");
     navigate("/admin");
   };
 
@@ -766,7 +772,7 @@ const AdminDashboardPage: React.FC = () => {
     </div>
   );
 
-  const tabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
+  const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
     { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
     { key: "entries", label: "دخوليات", icon: <Sparkles className="w-7 h-7" />, color: "from-purple-500/20 to-purple-600/10 text-purple-400" },
     { key: "frames", label: "إطارات", icon: <Frame className="w-7 h-7" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400" },
@@ -780,18 +786,21 @@ const AdminDashboardPage: React.FC = () => {
     { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
     { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
     { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
-    // BD items are grouped separately below
     { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
     { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
     { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
     { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: idChanges.length },
     { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400" },
+    ...((adminRole === "super_admin" || adminRole === "admin") ? [
+      { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400" },
+    ] : []),
     ...(adminRole === "super_admin" ? [
-      { key: "trash" as const, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
-      { key: "audit_log" as const, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
+      { key: "trash" as Exclude<Tab, null>, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
+      { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
     ] : []),
   ];
+  const tabs = isModeratorRole ? allTabs.filter(t => adminPermissions.includes(t.key)) : allTabs;
 
   // Reusable item card for entries/frames with edit
   const renderMediaCard = (
