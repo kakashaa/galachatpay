@@ -226,45 +226,6 @@ const ReportPage = () => {
 
       if (error) throw error;
 
-      // === Auto-ban: call the external API immediately ===
-      const isPromotion = selectedBanType?.value === "promotion";
-
-      let banSuccess = false;
-      try {
-        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-        const banResponse = await fetch(
-          `https://${projectId}.supabase.co/functions/v1/admin-manage`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({
-              action: "auto_ban_report",
-              data: {
-                uuid: reportedUserId,
-                reason: description,
-                ban_type: isPromotion ? "device" : "account",
-                duration: isPromotion ? 999999 : (selectedBanType?.apiDuration || 24),
-                report_id: data.id,
-              },
-            }),
-          }
-        );
-
-        if (banResponse.ok) {
-          const banResult = await banResponse.json();
-          banSuccess = banResult?.data?.success === true;
-        } else {
-          const banError = await banResponse.text();
-          console.error("Auto-ban API error:", banError);
-        }
-      } catch (banErr) {
-        console.error("Auto-ban failed:", banErr);
-      }
-
       try {
         await notifyNewBanReport({
           id: data.id,
@@ -282,19 +243,9 @@ const ReportPage = () => {
       setRequestId(data.id.substring(0, 8).toUpperCase());
       setIsSuccess(true);
 
-      const durationText = isPromotion
-        ? "حظر دائم (حظر الجهاز)"
-        : `${selectedBanType?.apiDuration || 24} ساعة`;
-      
-      if (banSuccess) {
-        toast.success(`✅ تم إرسال البلاغ وتنفيذ الحظر تلقائياً!\nمدة الحظر: ${durationText}`, {
-          duration: 6000,
-        });
-      } else {
-        toast.success(`✅ تم إرسال البلاغ بنجاح\nسيتم مراجعة الحظر من الإدارة\nمدة الحظر المتوقعة: ${durationText}`, {
-          duration: 6000,
-        });
-      }
+      toast.success("✅ تم إرسال البلاغ بنجاح!\nسيتم مراجعته من الإدارة وتنفيذ الحظر بعد الموافقة", {
+        duration: 6000,
+      });
     } catch (error) {
       console.error("Error:", error);
       toast.error("حدث خطأ أثناء إرسال البلاغ");
@@ -415,7 +366,7 @@ const ReportPage = () => {
             <h1 className="text-2xl font-bold">تم إرسال البلاغ بنجاح!</h1>
             <p className="text-muted-foreground">رقم البلاغ: #{requestId}</p>
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-sm text-muted-foreground">
-              <p>يمكنك تتبع حالة البلاغ من خلال "تتبع بلاغاتي" باستخدام آيدي غلا لايف الخاص بك</p>
+              <p>سيتم مراجعة البلاغ من الإدارة وتنفيذ الحظر بعد الموافقة. يمكنك تتبع حالة البلاغ من "تتبع بلاغاتي"</p>
             </div>
             {selectedBanType?.reward && (
               <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
