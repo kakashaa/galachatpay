@@ -2036,6 +2036,10 @@ const AdminDashboardPage: React.FC = () => {
               <AdminBDManager />
             )}
 
+            {/* Moderators Management Tab */}
+            {activeTab === "moderators" && (adminRole === "super_admin" || adminRole === "admin") && (
+              <AdminModeratorManager adminCall={adminCall} />
+            )}
 
 
             {/* Trash Tab - Super Admin Only */}
