@@ -429,17 +429,6 @@ const BDDashboard: React.FC = () => {
                 );
               })()}
 
-              <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                <h3 className="font-bold text-sm text-amber-400">📊 نظرة عامة - الوكلاء</h3>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div><div className="text-sm font-bold">{agents.length}</div><div className="text-[10px] text-muted-foreground">عدد الوكلاء</div></div>
-                  <div><div className="text-sm font-bold">{bd.agency_commission_pct || 5}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
-                </div>
-                <div className="text-center pt-1 border-t border-border/20">
-                  <div className="text-lg font-bold text-amber-400">${totalAgentCommission.toFixed(2)}</div>
-                  <div className="text-[10px] text-muted-foreground">عمولة الوكلاء هذا الشهر</div>
-                </div>
-              </div>
             </motion.div>
           )}
 
