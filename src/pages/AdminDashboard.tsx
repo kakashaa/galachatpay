@@ -2033,7 +2033,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* BD Management Tab */}
             {activeTab === "bd_management" && (
-              <AdminBDManager />
+              <AdminBDManager readOnly={isModeratorRole} />
             )}
 
             {/* Moderators Management Tab */}

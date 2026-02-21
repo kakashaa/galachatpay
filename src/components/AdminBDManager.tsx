@@ -14,7 +14,11 @@ import { formatDateAr } from "@/utils/dateFormat";
 
 type SubTab = "registrations" | "bds" | "withdrawals" | "settings" | "deleted";
 
-const AdminBDManager: React.FC = () => {
+interface AdminBDManagerProps {
+  readOnly?: boolean;
+}
+
+const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => {
   const [subTab, setSubTab] = useState<SubTab>("registrations");
   const [loading, setLoading] = useState(false);
 
@@ -249,9 +253,13 @@ const AdminBDManager: React.FC = () => {
   const subTabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
     { key: "registrations", label: "طلبات التوثيق", icon: <Shield className="w-4 h-4" /> },
     { key: "bds", label: "إدارة البيدي", icon: <Users className="w-4 h-4" /> },
-    { key: "deleted", label: "المحذوف", icon: <Trash2 className="w-4 h-4" /> },
+    ...(!readOnly ? [
+      { key: "deleted" as SubTab, label: "المحذوف", icon: <Trash2 className="w-4 h-4" /> },
+    ] : []),
     { key: "withdrawals", label: "طلبات السحب", icon: <DollarSign className="w-4 h-4" /> },
-    { key: "settings", label: "إعدادات", icon: <Settings className="w-4 h-4" /> },
+    ...(!readOnly ? [
+      { key: "settings" as SubTab, label: "إعدادات", icon: <Settings className="w-4 h-4" /> },
+    ] : []),
   ];
 
   const pendingRegs = registrations.filter((r) => r.status === "pending").length;
@@ -317,7 +325,7 @@ const AdminBDManager: React.FC = () => {
                     <span>•</span>
                     <span>{formatDateAr(reg.created_at)}</span>
                   </div>
-                  {reg.status === "pending" && (
+                  {reg.status === "pending" && !readOnly && (
                     <div className="flex gap-2 pt-1">
                       <Button onClick={() => approveRegistration(reg.id)} size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
                         <CheckCircle className="w-3 h-3 ml-1" />قبول
@@ -513,7 +521,7 @@ const AdminBDManager: React.FC = () => {
                                   </Button>
                                 </div>
                               </div>
-                            ) : (
+                            ) : !readOnly ? (
                               <div className="flex gap-2">
                                 <Button onClick={() => { setEditingBd(bd.bd_uuid); setEditBdData({}); }} size="sm" variant="outline" className="flex-1 text-xs">
                                   <Edit2 className="w-3 h-3 ml-1" />تعديل
@@ -522,15 +530,17 @@ const AdminBDManager: React.FC = () => {
                                   <Trash2 className="w-3 h-3 ml-1" />حذف
                                 </Button>
                               </div>
-                            )}
+                            ) : null}
 
                             {/* Members */}
                             <div>
                               <div className="flex items-center justify-between mb-2">
                                 <p className="text-xs font-bold">الأعضاء ({members.length})</p>
-                                <Button onClick={() => setAddMemberBd(addMemberBd === bd.bd_uuid ? null : bd.bd_uuid)} size="sm" variant="ghost" className="text-xs h-7">
-                                  <UserPlus className="w-3 h-3 ml-1" />{addMemberBd === bd.bd_uuid ? "إلغاء" : "إضافة"}
-                                </Button>
+                                {!readOnly && (
+                                  <Button onClick={() => setAddMemberBd(addMemberBd === bd.bd_uuid ? null : bd.bd_uuid)} size="sm" variant="ghost" className="text-xs h-7">
+                                    <UserPlus className="w-3 h-3 ml-1" />{addMemberBd === bd.bd_uuid ? "إلغاء" : "إضافة"}
+                                  </Button>
+                                )}
                               </div>
 
                               {/* Add member form */}
@@ -569,9 +579,11 @@ const AdminBDManager: React.FC = () => {
                                           <span>عمولة: ${Number(m.current_month_commission || 0).toFixed(2)}</span>
                                         </div>
                                       </div>
-                                      <button onClick={() => removeMember(m.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
-                                        <UserMinus className="w-3.5 h-3.5 text-destructive" />
-                                      </button>
+                                      {!readOnly && (
+                                        <button onClick={() => removeMember(m.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
+                                          <UserMinus className="w-3.5 h-3.5 text-destructive" />
+                                        </button>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -725,7 +737,7 @@ const AdminBDManager: React.FC = () => {
                       </span>
                       {w.recipient_name && <span className="text-muted-foreground">→ {w.recipient_name}</span>}
                     </div>
-                    {w.status === "pending" && (
+                    {w.status === "pending" && !readOnly && (
                       <div className="flex gap-2 pt-1">
                         <Button onClick={() => approveWithdrawal(w.id)} size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-xs">
                           <CheckCircle className="w-3 h-3 ml-1" />تأكيد
