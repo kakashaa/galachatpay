@@ -232,6 +232,7 @@ serve(async (req) => {
           // Fetch real-time data from BD API based on member type
           let liveMonthlyAmount = 0;
           let liveDailyAmount = 0;
+          let apiFailed = false;
 
           try {
             if (bdMember.member_type === "supporter") {
@@ -243,7 +244,7 @@ serve(async (req) => {
                   liveMonthlyAmount = typeof chargeData.charges.month === 'object' ? (chargeData.charges.month.total || 0) : (chargeData.charges.month || 0);
                   liveDailyAmount = typeof chargeData.charges.today === 'object' ? (chargeData.charges.today.total || 0) : (chargeData.charges.today || 0);
                 }
-              } else { const errText = await chargeRes.text(); console.log(`[LOGIN-BD-RAW] user-charges FAILED for ${trimmedUuid}: ${chargeRes.status} ${errText}`); }
+              } else { const errText = await chargeRes.text(); console.log(`[LOGIN-BD-RAW] user-charges FAILED for ${trimmedUuid}: ${chargeRes.status} ${errText}`); apiFailed = true; }
             } else if (bdMember.member_type === "agency") {
               const incomeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(15000) });
               if (incomeRes.ok) {
@@ -252,12 +253,21 @@ serve(async (req) => {
                   liveMonthlyAmount = typeof incomeData.commission.month === 'object' ? (incomeData.commission.month.total || 0) : (incomeData.commission.month || 0);
                   liveDailyAmount = typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0);
                 }
-              } else { await incomeRes.text(); }
+              } else { await incomeRes.text(); apiFailed = true; }
             }
           } catch (apiErr) {
             console.error("BD API fetch on login:", apiErr);
-            // Fallback to login response charger_num
-            liveMonthlyAmount = 0;
+            apiFailed = true;
+          }
+
+          // Fallback: use charger_num from login response when BD API fails
+          if (apiFailed && liveMonthlyAmount === 0) {
+            const chargerNum = d.level?.charger_num || 0;
+            if (chargerNum > 0) {
+              liveMonthlyAmount = chargerNum;
+              liveDailyAmount = chargerNum;
+              console.log(`[LOGIN-BD-FALLBACK] Using charger_num=${chargerNum} as fallback for uuid=${trimmedUuid}`);
+            }
           }
 
           console.log(`[LOGIN-BD] uuid=${trimmedUuid} type=${bdMember.member_type} monthly=${liveMonthlyAmount} daily=${liveDailyAmount} prevMonthly=${bdMember.monthly_charges || 0}`);
