@@ -56,7 +56,7 @@ const BDInvitationBanner: React.FC = () => {
     setLoading(true);
     setRespondingId(inviteId);
     try {
-      const { data } = await supabase.functions.invoke("bd-manage", {
+      const result = await supabase.functions.invoke("bd-manage", {
         body: {
           action: "respond_invite",
           invitation_id: inviteId,
@@ -66,22 +66,33 @@ const BDInvitationBanner: React.FC = () => {
         },
       });
 
+      // Handle function invocation errors (network, timeout, etc.)
+      if (result.error) {
+        const errMsg = result.error?.message || "خطأ في الاتصال بالخادم";
+        console.error("BD invite response error:", result.error);
+        toast.error(`فشل الاتصال: ${errMsg}`);
+        return;
+      }
+
+      const data = result.data;
+
       if (data?.error) {
         toast.error(data.error);
-        // If the invitation was dismissed (deleted by server due to ineligibility), remove from UI
         if (data?.dismissed) {
           setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
           setShowPasswordFor(null);
           setPassword("");
         }
       } else {
-        toast.success(data.message || (response === "accept" ? "تم قبول الدعوة!" : "تم رفض الدعوة"));
+        toast.success(data?.message || (response === "accept" ? "تم قبول الدعوة!" : "تم رفض الدعوة"));
         setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
         setShowPasswordFor(null);
         setPassword("");
       }
-    } catch {
-      toast.error("فشل الرد على الدعوة");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "خطأ غير معروف";
+      console.error("BD invite catch error:", err);
+      toast.error(`فشل الرد على الدعوة: ${errorMessage}`);
     } finally {
       setLoading(false);
       setRespondingId(null);
