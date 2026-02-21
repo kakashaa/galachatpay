@@ -93,9 +93,9 @@ const BAN_TYPES: {
     icon: <ShieldBan className="w-6 h-6" />,
     description: "مخالفة نظام وقوانين التطبيق",
     requiresVideo: false,
-    duration: "48 ساعة",
+    duration: "24 ساعة",
     apiType: "normal",
-    apiDuration: 48,
+    apiDuration: 24,
   },
   {
     value: "other",
