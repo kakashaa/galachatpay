@@ -72,9 +72,9 @@ const RequestVip: React.FC = () => {
       setUsedSelf(selfCount);
       setUsedGiftTotal(giftCount);
       
-      const perLevel: Record<number, number> = {4: 0, 5: 0, 6: 0};
+      const perLevel: Record<number, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0};
       for (const r of allReqs) {
-        if (r.vip_level >= 4 && r.recipient_uuid) perLevel[r.vip_level] = (perLevel[r.vip_level] || 0) + 1;
+        if (r.recipient_uuid) perLevel[r.vip_level] = (perLevel[r.vip_level] || 0) + 1;
       }
       setUsedPerLevel(perLevel);
 
