@@ -189,9 +189,9 @@ const BDDashboard: React.FC = () => {
 
   const { bd, supporters, agents, withdrawals, wallets_paused } = data;
   const totalSupporterCommission = supporters.reduce((s: number, m: any) => s + (m.current_month_commission || 0), 0);
-  const totalAgentCommission = agents.reduce((s: number, m: any) => s + (m.current_month_commission || 0), 0);
   const currentMonthEarnings = bd.current_month_earnings || 0;
-  const todayTotal = todayLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
+  const supporterTodayLogs = todayLogs.filter((l: any) => l.member_type === "supporter");
+  const todayTotal = supporterTodayLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
 
   const filteredSupporters = supporters.filter((m: any) =>
     m.member_name?.includes(search) || m.member_uuid?.includes(search)
@@ -390,12 +390,9 @@ const BDDashboard: React.FC = () => {
           {tab === "overview" && (
             <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
               {(() => {
-                const supporterPct = bd.user_commission_pct || 2;
+              const supporterPct = bd.user_commission_pct || 2;
                 const totalSupporterCoins = supporters.reduce((s: number, m: any) => s + (m.monthly_charges || 0), 0);
                 const totalSupporterCommCoins = (totalSupporterCoins * supporterPct) / 100;
-                const agentPct = bd.agency_commission_pct || 5;
-                const totalAgentCoins = agents.reduce((s: number, m: any) => s + (m.monthly_charges || 0), 0);
-                const totalAgentCommCoins = (totalAgentCoins * agentPct) / 100;
                 return (
                   <>
                     <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
@@ -416,13 +413,9 @@ const BDDashboard: React.FC = () => {
                       <h3 className="font-bold text-sm text-amber-400">📊 نظرة عامة - الوكلاء</h3>
                       <div className="grid grid-cols-2 gap-3 text-center">
                         <div><div className="text-sm font-bold">{agents.length}</div><div className="text-[10px] text-muted-foreground">عدد الوكلاء</div></div>
-                        <div><div className="text-sm font-bold">{agentPct}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-border/20">
-                        <div className="text-muted-foreground">إجمالي الدخل: <span className="font-bold text-foreground">{totalAgentCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{agentPct}%</span></div>
-                        <div className="text-muted-foreground">العمولة: <span className="font-bold text-amber-400">{totalAgentCommCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${totalAgentCommission.toFixed(2)}</span></div>
+                      <div className="text-[10px] text-muted-foreground text-center pt-2 border-t border-border/20">
+                        سيتم إضافة نظام عمولات الوكلاء لاحقاً
                       </div>
                     </div>
                   </>
@@ -435,29 +428,18 @@ const BDDashboard: React.FC = () => {
           {/* Today's Commission */}
           {tab === "today" && (
             <motion.div key="today" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-              {/* Today Total */}
+              {/* Today Total - Supporters Only */}
               <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center">
-                <div className="text-xs text-muted-foreground mb-1">إجمالي عمولة اليوم</div>
+                <div className="text-xs text-muted-foreground mb-1">إجمالي عمولة اليوم (الداعمين)</div>
                 <div className="text-3xl font-bold text-primary">${todayTotal.toFixed(2)}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">{todayLogs.length} عملية</div>
+                <div className="text-[10px] text-muted-foreground mt-1">{supporterTodayLogs.length} عملية</div>
               </div>
 
-              {/* Supporter breakdown */}
-              <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
-                <div className="text-[10px] text-muted-foreground mb-1">عمولة الداعمين</div>
-                <div className="text-lg font-bold text-emerald-400">
-                  ${todayLogs.filter((l: any) => l.member_type === "supporter").reduce((s: number, l: any) => s + (l.amount || 0), 0).toFixed(2)}
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {todayLogs.filter((l: any) => l.member_type === "supporter").length} عملية
-                </div>
-              </div>
-
-              {/* Today Logs */}
-              {todayLogs.length === 0 ? (
+              {/* Today Logs - Supporters Only */}
+              {supporterTodayLogs.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات اليوم بعد</div>
               ) : (
-                todayLogs.map((log: any) => {
+                supporterTodayLogs.map((log: any) => {
                   const sourceCoins = log.source_amount || 0;
                   const pct = log.commission_pct || 0;
                   const commissionCoins = (sourceCoins * pct) / 100;
@@ -504,15 +486,15 @@ const BDDashboard: React.FC = () => {
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
               ) : (() => {
-                const weekTotal = weeklyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const prevWeekTotal = prevWeekLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const weekSupporterTotal = weeklyLogs.filter((l: any) => l.member_type === "supporter").reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const weekAgencyTotal = weeklyLogs.filter((l: any) => l.member_type === "agency").reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const supporterWeeklyLogs = weeklyLogs.filter((l: any) => l.member_type === "supporter");
+                const prevSupporterWeekLogs = prevWeekLogs.filter((l: any) => l.member_type === "supporter");
+                const weekTotal = supporterWeeklyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const prevWeekTotal = prevSupporterWeekLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
                 const pctChange = prevWeekTotal === 0 ? (weekTotal > 0 ? 100 : 0) : ((weekTotal - prevWeekTotal) / prevWeekTotal) * 100;
 
                 // Top members by commission this week
                 const memberTotals: Record<string, { uuid: string; name: string; type: string; total: number }> = {};
-                weeklyLogs.forEach((l: any) => {
+                supporterWeeklyLogs.forEach((l: any) => {
                   if (!memberTotals[l.member_uuid]) {
                     memberTotals[l.member_uuid] = { uuid: l.member_uuid, name: "", type: l.member_type, total: 0 };
                     const found = [...supporters, ...agents].find((m: any) => m.member_uuid === l.member_uuid);
@@ -524,34 +506,29 @@ const BDDashboard: React.FC = () => {
 
                 // Daily chart data
                 const dayNames = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
-                const dailyData: { day: string; supporter: number; agency: number }[] = dayNames.map(d => ({ day: d, supporter: 0, agency: 0 }));
-                weeklyLogs.forEach((l: any) => {
+                const dailyData: { day: string; amount: number }[] = dayNames.map(d => ({ day: d, amount: 0 }));
+                supporterWeeklyLogs.forEach((l: any) => {
                   const dayIdx = new Date(l.created_at).getUTCDay();
-                  if (l.member_type === "supporter") dailyData[dayIdx].supporter += l.amount || 0;
-                  else dailyData[dayIdx].agency += l.amount || 0;
+                  dailyData[dayIdx].amount += l.amount || 0;
                 });
 
                 return (
                   <>
                     {/* Week Total */}
                     <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center">
-                      <div className="text-xs text-muted-foreground mb-1">إجمالي عمولات الأسبوع</div>
+                      <div className="text-xs text-muted-foreground mb-1">إجمالي عمولات الأسبوع (الداعمين)</div>
                       <div className="text-3xl font-bold text-primary">${weekTotal.toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">{weeklyLogs.length} عملية</div>
+                      <div className="text-[10px] text-muted-foreground mt-1">{supporterWeeklyLogs.length} عملية</div>
                       <div className={`text-xs font-bold mt-1 ${pctChange > 0 ? "text-emerald-400" : pctChange < 0 ? "text-red-400" : "text-muted-foreground"}`}>
                         {pctChange > 0 ? "↑" : pctChange < 0 ? "↓" : "="} {Math.abs(pctChange).toFixed(1)}% مقارنة بالأسبوع السابق
                       </div>
                     </div>
 
                     {/* Breakdown */}
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
-                        <div className="text-lg font-bold text-emerald-400">${weekSupporterTotal.toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground">داعمين</div>
-                      </div>
-                      <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
-                        <div className="text-lg font-bold text-amber-400">${weekAgencyTotal.toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground">وكلاء</div>
+                        <div className="text-lg font-bold text-emerald-400">${weekTotal.toFixed(2)}</div>
+                        <div className="text-[10px] text-muted-foreground">عمولة الداعمين</div>
                       </div>
                       <div className="bg-card border border-blue-500/30 rounded-xl p-3 text-center">
                         <div className="text-lg font-bold text-blue-400">{weeklyNewMembers}</div>
@@ -560,9 +537,9 @@ const BDDashboard: React.FC = () => {
                     </div>
 
                     {/* Daily Chart */}
-                    {weeklyLogs.length > 0 && (
+                    {supporterWeeklyLogs.length > 0 && (
                       <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-2">
-                        <h3 className="text-xs font-bold text-muted-foreground text-center">📊 العمولات اليومية للأسبوع</h3>
+                        <h3 className="text-xs font-bold text-muted-foreground text-center">📊 عمولات الداعمين اليومية للأسبوع</h3>
                         <div style={{ width: "100%", height: 200 }}>
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={dailyData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
@@ -570,16 +547,11 @@ const BDDashboard: React.FC = () => {
                               <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
                               <Tooltip
                                 contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, direction: "rtl" }}
-                                formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === "supporter" ? "داعمين" : "وكلاء"]}
+                                formatter={(value: number) => [`$${value.toFixed(2)}`, "عمولة الداعمين"]}
                               />
-                              <Bar dataKey="supporter" name="داعمين" fill="#34d399" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="agency" name="وكلاء" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="amount" name="عمولة الداعمين" fill="#34d399" radius={[4, 4, 0, 0]} />
                             </BarChart>
                           </ResponsiveContainer>
-                        </div>
-                        <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
-                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> داعمين</span>
-                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> وكلاء</span>
                         </div>
                       </div>
                     )}
@@ -621,7 +593,7 @@ const BDDashboard: React.FC = () => {
                       </div>
                     )}
 
-                    {weeklyLogs.length === 0 && (
+                    {supporterWeeklyLogs.length === 0 && (
                       <div className="text-center py-6 text-muted-foreground text-sm">لا توجد عمولات هذا الأسبوع بعد</div>
                     )}
                   </>
@@ -678,38 +650,25 @@ const BDDashboard: React.FC = () => {
                 </button>
               </div>
 
-              {/* Summary */}
-              {!commissionLoading && commissionLogs.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
+              {/* Summary - Supporters Only */}
+              {!commissionLoading && (() => {
+                const supporterLogs = commissionLogs.filter(l => l.member_type === "supporter");
+                const supporterTotal = supporterLogs.reduce((s, l) => s + (l.amount || 0), 0);
+                return supporterLogs.length > 0 ? (
                   <div className="bg-card border border-primary/30 rounded-xl p-3 text-center">
-                    <div className="text-lg font-bold text-primary">
-                      ${commissionLogs.reduce((s, l) => s + (l.amount || 0), 0).toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">إجمالي العمولات</div>
+                    <div className="text-lg font-bold text-primary">${supporterTotal.toFixed(2)}</div>
+                    <div className="text-[10px] text-muted-foreground">إجمالي عمولات الداعمين</div>
+                    <div className="text-[10px] text-muted-foreground">{supporterLogs.length} عملية</div>
                   </div>
-                  <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
-                    <div className="text-lg font-bold text-emerald-400">
-                      ${commissionLogs.filter(l => l.member_type === "supporter").reduce((s, l) => s + (l.amount || 0), 0).toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">داعمين</div>
-                  </div>
-                  <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
-                    <div className="text-lg font-bold text-amber-400">
-                      ${commissionLogs.filter(l => l.member_type === "agency").reduce((s, l) => s + (l.amount || 0), 0).toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">وكلاء</div>
-                  </div>
-                </div>
-              )}
+                ) : null;
+              })()}
 
               {/* Monthly Comparison */}
               {!commissionLoading && (() => {
-                const currentTotal = commissionLogs.reduce((s, l) => s + (l.amount || 0), 0);
-                const prevTotal = prevMonthLogs.reduce((s, l) => s + (l.amount || 0), 0);
-                const currentSupporter = commissionLogs.filter(l => l.member_type === "supporter").reduce((s, l) => s + (l.amount || 0), 0);
-                const prevSupporter = prevMonthLogs.filter(l => l.member_type === "supporter").reduce((s, l) => s + (l.amount || 0), 0);
-                const currentAgency = commissionLogs.filter(l => l.member_type === "agency").reduce((s, l) => s + (l.amount || 0), 0);
-                const prevAgency = prevMonthLogs.filter(l => l.member_type === "agency").reduce((s, l) => s + (l.amount || 0), 0);
+                const supporterCurrentLogs = commissionLogs.filter(l => l.member_type === "supporter");
+                const supporterPrevLogs = prevMonthLogs.filter(l => l.member_type === "supporter");
+                const currentTotal = supporterCurrentLogs.reduce((s, l) => s + (l.amount || 0), 0);
+                const prevTotal = supporterPrevLogs.reduce((s, l) => s + (l.amount || 0), 0);
 
                 const pctChange = (curr: number, prev: number) => {
                   if (prev === 0) return curr > 0 ? 100 : 0;
@@ -717,17 +676,6 @@ const BDDashboard: React.FC = () => {
                 };
 
                 const totalPct = pctChange(currentTotal, prevTotal);
-                const supporterPct = pctChange(currentSupporter, prevSupporter);
-                const agencyPct = pctChange(currentAgency, prevAgency);
-
-                const ChangeIndicator = ({ pct, label }: { pct: number; label: string }) => (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">{label}</span>
-                    <span className={`text-xs font-bold ${pct > 0 ? "text-emerald-400" : pct < 0 ? "text-red-400" : "text-muted-foreground"}`}>
-                      {pct > 0 ? "↑" : pct < 0 ? "↓" : "="} {Math.abs(pct).toFixed(1)}%
-                    </span>
-                  </div>
-                );
 
                 const [cy, cm] = commissionMonth.split("-").map(Number);
                 const prevMonthDate = new Date(cy, cm - 2, 1);
@@ -735,10 +683,13 @@ const BDDashboard: React.FC = () => {
 
                 return (
                   <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                    <h3 className="text-xs font-bold text-muted-foreground text-center">📈 مقارنة بشهر {prevMonthName}</h3>
-                    <ChangeIndicator pct={totalPct} label="إجمالي العمولات" />
-                    <ChangeIndicator pct={supporterPct} label="عمولة الداعمين" />
-                    <ChangeIndicator pct={agencyPct} label="عمولة الوكلاء" />
+                    <h3 className="text-xs font-bold text-muted-foreground text-center">📈 مقارنة عمولة الداعمين بشهر {prevMonthName}</h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-muted-foreground">إجمالي عمولات الداعمين</span>
+                      <span className={`text-xs font-bold ${totalPct > 0 ? "text-emerald-400" : totalPct < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+                        {totalPct > 0 ? "↑" : totalPct < 0 ? "↓" : "="} {Math.abs(totalPct).toFixed(1)}%
+                      </span>
+                    </div>
                     <div className="text-[10px] text-muted-foreground text-center pt-1 border-t border-border/20">
                       الشهر السابق: <span className="font-bold text-foreground">${prevTotal.toFixed(2)}</span> → الحالي: <span className="font-bold text-foreground">${currentTotal.toFixed(2)}</span>
                     </div>
@@ -746,23 +697,20 @@ const BDDashboard: React.FC = () => {
                 );
               })()}
 
-              {/* Daily Commission Chart */}
-              {!commissionLoading && commissionLogs.length > 0 && (() => {
-                const dailyData: Record<string, { day: string; supporter: number; agency: number }> = {};
-                commissionLogs.forEach((log: any) => {
+              {/* Daily Commission Chart - Supporters Only */}
+              {!commissionLoading && commissionLogs.filter(l => l.member_type === "supporter").length > 0 && (() => {
+                const supporterOnly = commissionLogs.filter((l: any) => l.member_type === "supporter");
+                const dailyData: Record<string, { day: string; amount: number }> = {};
+                supporterOnly.forEach((log: any) => {
                   const day = new Date(log.created_at).getUTCDate().toString();
-                  if (!dailyData[day]) dailyData[day] = { day, supporter: 0, agency: 0 };
-                  if (log.member_type === "supporter") {
-                    dailyData[day].supporter += log.amount || 0;
-                  } else {
-                    dailyData[day].agency += log.amount || 0;
-                  }
+                  if (!dailyData[day]) dailyData[day] = { day, amount: 0 };
+                  dailyData[day].amount += log.amount || 0;
                 });
                 const chartData = Object.values(dailyData).sort((a, b) => Number(a.day) - Number(b.day));
 
                 return (
                   <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-2">
-                    <h3 className="text-xs font-bold text-muted-foreground text-center">📊 تطور العمولات اليومية</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground text-center">📊 تطور عمولات الداعمين اليومية</h3>
                     <div style={{ width: "100%", height: 200 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
@@ -770,17 +718,12 @@ const BDDashboard: React.FC = () => {
                           <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
                           <Tooltip
                             contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, direction: "rtl" }}
-                            formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === "supporter" ? "داعمين" : "وكلاء"]}
+                            formatter={(value: number) => [`$${value.toFixed(2)}`, "عمولة الداعمين"]}
                             labelFormatter={(label) => `يوم ${label}`}
                           />
-                          <Bar dataKey="supporter" name="داعمين" fill="#34d399" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey="agency" name="وكلاء" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="amount" name="عمولة الداعمين" fill="#34d399" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
-                    </div>
-                    <div className="flex items-center justify-center gap-4 text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> داعمين</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> وكلاء</span>
                     </div>
                   </div>
                 );
@@ -790,10 +733,10 @@ const BDDashboard: React.FC = () => {
                 <div className="flex items-center justify-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                 </div>
-              ) : commissionLogs.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات في هذا الشهر</div>
+              ) : commissionLogs.filter(l => l.member_type === "supporter").length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات داعمين في هذا الشهر</div>
               ) : (
-                commissionLogs.map((log: any) => {
+                commissionLogs.filter(l => l.member_type === "supporter").map((log: any) => {
                   const sourceCoins = log.source_amount || 0;
                   const pct = log.commission_pct || 0;
                   const commissionCoins = (sourceCoins * pct) / 100;
@@ -802,16 +745,12 @@ const BDDashboard: React.FC = () => {
                     <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            log.member_type === "agency" ? "bg-amber-500/10" : "bg-emerald-500/10"
-                          }`}>
-                            <Users className={`w-4 h-4 ${log.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}`} />
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center bg-emerald-500/10">
+                            <Users className="w-4 h-4 text-emerald-400" />
                           </div>
                           <div>
                             <div className="text-xs font-mono text-muted-foreground" dir="ltr">{log.member_uuid}</div>
-                            <div className="text-[10px] text-muted-foreground">
-                              {log.member_type === "agency" ? "وكيل" : "داعم"}
-                            </div>
+                            <div className="text-[10px] text-muted-foreground">داعم • {pct}%</div>
                           </div>
                         </div>
                         <div className="text-left">
@@ -833,11 +772,14 @@ const BDDashboard: React.FC = () => {
               )}
 
               {/* Total count */}
-              {!commissionLoading && commissionLogs.length > 0 && (
-                <div className="text-center text-[10px] text-muted-foreground py-2">
-                  إجمالي العمليات: {commissionLogs.length}
-                </div>
-              )}
+              {!commissionLoading && (() => {
+                const supporterCount = commissionLogs.filter(l => l.member_type === "supporter").length;
+                return supporterCount > 0 ? (
+                  <div className="text-center text-[10px] text-muted-foreground py-2">
+                    إجمالي العمليات: {supporterCount}
+                  </div>
+                ) : null;
+              })()}
             </motion.div>
           )}
 
@@ -856,11 +798,14 @@ const BDDashboard: React.FC = () => {
           {/* Agents */}
           {tab === "agents" && (
             <motion.div key="agents" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
+              <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl p-3 text-center">
+                <div className="text-[11px] text-muted-foreground">سيتم إضافة نظام عمولات الوكلاء في تحديث لاحق</div>
+              </div>
               {filteredAgents.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">لا يوجد وكلاء حالياً</div>
               ) : (
                 filteredAgents.map((m: any) => (
-                  <MemberCard key={m.id} member={m} commissionPct={bd.agency_commission_pct || 5} />
+                  <AgentCard key={m.id} member={m} />
                 ))
               )}
             </motion.div>
@@ -927,6 +872,32 @@ const MemberCard: React.FC<{ member: any; commissionPct: number }> = ({ member, 
       <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/20">
         <span>انضم: {formatDateAr(member.created_at)}</span>
         <span>إجمالي: ${(member.total_commission || 0).toFixed(2)}</span>
+      </div>
+    </div>
+  );
+};
+
+// Agent card - info only, no commission
+const AgentCard: React.FC<{ member: any }> = ({ member }) => {
+  return (
+    <div className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center">
+            <Users className="w-4 h-4 text-amber-400" />
+          </div>
+          <div>
+            <div className="text-sm font-bold">{member.member_name || "بدون اسم"}</div>
+            <div className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</div>
+          </div>
+        </div>
+        <div className="text-[10px] text-muted-foreground">وكيل</div>
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/20">
+        <span>انضم: {formatDateAr(member.created_at)}</span>
+        <span className={member.is_active ? "text-emerald-400" : "text-red-400"}>
+          {member.is_active ? "نشط" : "غير نشط"}
+        </span>
       </div>
     </div>
   );
