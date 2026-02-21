@@ -20,7 +20,7 @@ const AdminLogin: React.FC = () => {
     setError("");
     try {
       const { data, error: fnError } = await supabase.functions.invoke("admin-manage", {
-        body: { username: username.trim(), password, action: "auth_check", data: {} },
+        body: { username: username.trim().toLowerCase(), password, action: "auth_check", data: {} },
       });
       if (fnError || !data?.data) {
         setError("بيانات الدخول غير صحيحة");
