@@ -440,27 +440,40 @@ const BDDashboard: React.FC = () => {
               {todayLogs.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات اليوم بعد</div>
               ) : (
-                todayLogs.map((log: any) => (
-                  <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        log.member_type === "agency" ? "bg-amber-500/10" : "bg-emerald-500/10"
-                      }`}>
-                        <Users className={`w-4 h-4 ${log.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}`} />
-                      </div>
-                      <div>
-                        <div className="text-xs font-mono text-muted-foreground" dir="ltr">{log.member_uuid}</div>
-                        <div className="text-[10px] text-muted-foreground">
-                          {log.member_type === "agency" ? "وكيل" : "داعم"} • {log.commission_pct}%
+                todayLogs.map((log: any) => {
+                  const sourceCoins = log.source_amount || 0;
+                  const pct = log.commission_pct || 0;
+                  const commissionCoins = (sourceCoins * pct) / 100;
+                  const commissionUsd = log.amount || 0;
+                  return (
+                    <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            log.member_type === "agency" ? "bg-amber-500/10" : "bg-emerald-500/10"
+                          }`}>
+                            <Users className={`w-4 h-4 ${log.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}`} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-mono text-muted-foreground" dir="ltr">{log.member_uuid}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {log.member_type === "agency" ? "وكيل" : "داعم"} • {pct}%
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <div className="text-sm font-bold text-primary">+${commissionUsd.toFixed(2)}</div>
                         </div>
                       </div>
+                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-1 border-t border-border/20">
+                        <div className="text-muted-foreground">مبلغ الشحن: <span className="font-bold text-foreground">{sourceCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{pct}%</span></div>
+                        <div className="text-muted-foreground">العمولة: <span className="font-bold text-emerald-400">{commissionCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${commissionUsd.toFixed(2)}</span></div>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <div className="text-sm font-bold text-primary">+${(log.amount || 0).toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground">من ${(log.source_amount || 0).toFixed(2)}</div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </motion.div>
           )}
@@ -749,35 +762,43 @@ const BDDashboard: React.FC = () => {
               ) : commissionLogs.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات في هذا الشهر</div>
               ) : (
-                commissionLogs.map((log: any) => (
-                  <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          log.member_type === "agency" ? "bg-amber-500/10" : "bg-emerald-500/10"
-                        }`}>
-                          <Users className={`w-4 h-4 ${log.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}`} />
-                        </div>
-                        <div>
-                          <div className="text-xs font-mono text-muted-foreground" dir="ltr">{log.member_uuid}</div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {log.member_type === "agency" ? "وكيل" : "داعم"}
+                commissionLogs.map((log: any) => {
+                  const sourceCoins = log.source_amount || 0;
+                  const pct = log.commission_pct || 0;
+                  const commissionCoins = (sourceCoins * pct) / 100;
+                  const commissionUsd = log.amount || 0;
+                  return (
+                    <div key={log.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            log.member_type === "agency" ? "bg-amber-500/10" : "bg-emerald-500/10"
+                          }`}>
+                            <Users className={`w-4 h-4 ${log.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}`} />
+                          </div>
+                          <div>
+                            <div className="text-xs font-mono text-muted-foreground" dir="ltr">{log.member_uuid}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {log.member_type === "agency" ? "وكيل" : "داعم"}
+                            </div>
                           </div>
                         </div>
+                        <div className="text-left">
+                          <div className="text-sm font-bold text-primary">+${commissionUsd.toFixed(2)}</div>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <div className="text-sm font-bold text-primary">+${(log.amount || 0).toFixed(2)}</div>
+                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-1 border-t border-border/20">
+                        <div className="text-muted-foreground">مبلغ الشحن: <span className="font-bold text-foreground">{sourceCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{pct}%</span></div>
+                        <div className="text-muted-foreground">العمولة: <span className="font-bold text-emerald-400">{commissionCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${commissionUsd.toFixed(2)}</span></div>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {formatDateAr(log.created_at)}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/20">
-                      <span>المبلغ المصدر: <span className="font-bold text-foreground">${(log.source_amount || 0).toLocaleString()}</span></span>
-                      <span>النسبة: <span className="font-bold text-foreground">{log.commission_pct}%</span></span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {formatDateAr(log.created_at)}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
 
               {/* Total count */}
