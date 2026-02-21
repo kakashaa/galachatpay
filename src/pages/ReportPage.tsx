@@ -226,6 +226,45 @@ const ReportPage = () => {
 
       if (error) throw error;
 
+      // === Auto-ban: call the external API immediately ===
+      const isPromotion = selectedBanType?.value === "promotion";
+
+      let banSuccess = false;
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const banResponse = await fetch(
+          `https://${projectId}.supabase.co/functions/v1/admin-manage`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              action: "auto_ban_report",
+              data: {
+                uuid: reportedUserId,
+                reason: description,
+                ban_type: isPromotion ? "device" : "account",
+                duration: isPromotion ? 999999 : (selectedBanType?.apiDuration || 24),
+                report_id: data.id,
+              },
+            }),
+          }
+        );
+
+        if (banResponse.ok) {
+          const banResult = await banResponse.json();
+          banSuccess = banResult?.data?.success === true;
+        } else {
+          const banError = await banResponse.text();
+          console.error("Auto-ban API error:", banError);
+        }
+      } catch (banErr) {
+        console.error("Auto-ban failed:", banErr);
+      }
+
       try {
         await notifyNewBanReport({
           id: data.id,
@@ -243,13 +282,19 @@ const ReportPage = () => {
       setRequestId(data.id.substring(0, 8).toUpperCase());
       setIsSuccess(true);
 
-      // Show confirmation with expected ban duration
-      const durationText = selectedBanType?.value === "promotion"
+      const durationText = isPromotion
         ? "حظر دائم (حظر الجهاز)"
         : `${selectedBanType?.apiDuration || 24} ساعة`;
-      toast.success(`✅ تم إرسال البلاغ بنجاح\nمدة الحظر المتوقعة: ${durationText}`, {
-        duration: 6000,
-      });
+      
+      if (banSuccess) {
+        toast.success(`✅ تم إرسال البلاغ وتنفيذ الحظر تلقائياً!\nمدة الحظر: ${durationText}`, {
+          duration: 6000,
+        });
+      } else {
+        toast.success(`✅ تم إرسال البلاغ بنجاح\nسيتم مراجعة الحظر من الإدارة\nمدة الحظر المتوقعة: ${durationText}`, {
+          duration: 6000,
+        });
+      }
     } catch (error) {
       console.error("Error:", error);
       toast.error("حدث خطأ أثناء إرسال البلاغ");
