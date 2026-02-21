@@ -215,27 +215,28 @@ serve(async (req) => {
         return json({ error: "يوجد دعوة معلقة لهذا العضو بالفعل" });
       }
 
-      // Pre-validate: if inviting as agency, check if the user has an agency role (type_user >= 2)
-      if (member_type === "agency") {
-        const chargeCheck = await fetchUserCharges(member_uuid);
-        const memberTypeUser = chargeCheck?.type_user ?? chargeCheck?.user?.type_user ?? -1;
-        if (memberTypeUser >= 0 && memberTypeUser < 2) {
-          return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
+      // Pre-validate: single quick API call for both type_user and levels check
+      const preCheckData = await fetchUserCharges(member_uuid, true);
+      if (preCheckData) {
+        // Check agency role if inviting as agency
+        if (member_type === "agency") {
+          const memberTypeUser = preCheckData.type_user ?? preCheckData.user?.type_user ?? -1;
+          if (memberTypeUser >= 0 && memberTypeUser < 2) {
+            return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
+          }
         }
-        // If API failed (memberTypeUser === -1), allow invitation to proceed - final validation happens on accept
-      }
-
-      // Pre-validate levels: use user-charges to check if account has any levels > 0
-      const preCheckData = await fetchUserCharges(member_uuid);
-      if (preCheckData?.level) {
-        const lvl = preCheckData.level;
-        const rLvl = lvl.receiver_level || lvl.receiver || 0;
-        const sLvl = lvl.sender_level || lvl.sender || 0;
-        const cLvl = lvl.charger_level || lvl.charger || 0;
-        if (rLvl > 0 || sLvl > 0 || cLvl > 0) {
-          return json({ error: `لا يمكن دعوة هذا الحساب. المستويات ليست صفر (استقبال: ${rLvl}، إرسال: ${sLvl}، شحن: ${cLvl})` });
+        // Check levels
+        if (preCheckData.level) {
+          const lvl = preCheckData.level;
+          const rLvl = lvl.receiver_level || lvl.receiver || 0;
+          const sLvl = lvl.sender_level || lvl.sender || 0;
+          const cLvl = lvl.charger_level || lvl.charger || 0;
+          if (rLvl > 0 || sLvl > 0 || cLvl > 0) {
+            return json({ error: `لا يمكن دعوة هذا الحساب. المستويات ليست صفر (استقبال: ${rLvl}، إرسال: ${sLvl}، شحن: ${cLvl})` });
+          }
         }
       }
+      // If API failed, allow invitation - final validation happens on accept
 
       const { error } = await sb.from("bd_member_invitations").insert({
         bd_uuid,
