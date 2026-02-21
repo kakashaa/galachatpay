@@ -280,7 +280,54 @@ Deno.serve(async (req) => {
           .update(updateData)
           .eq("id", id);
         if (error) throw error;
+
+        // If admin approved (verified) the report, execute the ban via API and notify reporter
+        if (updateData.is_verified === true) {
+          // Fetch the full report to get details
+          const { data: report } = await supabase
+            .from("ban_reports")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+          if (report) {
+            // Execute ban via external API
+            try {
+              const actionsUrl = Deno.env.get("GALA_ACTIONS_URL");
+              const actionsKey = Deno.env.get("GALA_ACTIONS_KEY");
+              if (actionsUrl && actionsKey) {
+                const banDuration = report.ban_type === "promotion" ? 999999 : 24;
+                const banApiType = report.ban_type === "promotion" ? "promotion" : "normal";
+                const apiResponse = await fetch(actionsUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "ban-user",
+                    key: actionsKey,
+                    uuid: report.reported_user_id,
+                    duration: banDuration,
+                    reason: report.description || "مخالفة",
+                    ban_type: banApiType,
+                  }),
+                });
+                console.log("Ban API response:", await apiResponse.text());
+              }
+            } catch (banErr) {
+              console.error("Ban API call failed:", banErr);
+            }
+
+            // Notify the reporter
+            await supabase.from("notifications").insert({
+              user_uuid: report.reporter_gala_id,
+              title: "✅ تمت الموافقة على بلاغك",
+              body: `تمت الموافقة على بلاغك ضد ${report.reported_user_id} وتم تنفيذ الحظر. شكراً لمساهمتك في حماية المجتمع!`,
+              target: "personal",
+            });
+          }
+        }
+
         result = { success: true };
+        await logAudit({ report_id: id, ...updateData });
         break;
       }
 
