@@ -407,6 +407,44 @@ const BDDashboard: React.FC = () => {
           {/* ===== Overview ===== */}
           {tab === "overview" && (
             <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+              {/* External Profit Card */}
+              {(bd.external_total_profit > 0 || bd.external_available_profit > 0) && (
+                <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/30 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-sm text-yellow-400">💰 أرباح البيدي (خارجي)</h3>
+                    {bd.external_profit_status === "increase" && (
+                      <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold">
+                        ↑ +${(bd.external_profit_difference || 0).toFixed(2)}
+                      </span>
+                    )}
+                    {bd.external_profit_status === "decrease" && (
+                      <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">
+                        ↓ -${Math.abs(bd.external_profit_difference || 0).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <div className="text-xl font-bold text-yellow-400">${(bd.external_total_profit || 0).toFixed(2)}</div>
+                      <div className="text-[10px] text-muted-foreground">إجمالي الأرباح</div>
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold text-green-400">${(bd.external_available_profit || 0).toFixed(2)}</div>
+                      <div className="text-[10px] text-muted-foreground">قابل للسحب</div>
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold text-orange-400">${(bd.external_pending_profit || 0).toFixed(2)}</div>
+                      <div className="text-[10px] text-muted-foreground">معلّق</div>
+                    </div>
+                  </div>
+                  {bd.external_last_update && (
+                    <div className="text-[10px] text-muted-foreground text-center pt-1 border-t border-yellow-500/10">
+                      آخر تحديث: {bd.external_last_update}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {(() => {
                 const supporterPct = bd.user_commission_pct || 2;
                 const agentPct = bd.agency_commission_pct || 5;

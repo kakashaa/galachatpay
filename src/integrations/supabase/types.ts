@@ -295,6 +295,12 @@ export type Database = {
           bd_uuid: string
           created_at: string
           current_month_earnings: number
+          external_available_profit: number
+          external_last_update: string | null
+          external_pending_profit: number
+          external_profit_difference: number
+          external_profit_status: string
+          external_total_profit: number
           host_commission_pct: number
           id: string
           is_active: boolean
@@ -313,6 +319,12 @@ export type Database = {
           bd_uuid: string
           created_at?: string
           current_month_earnings?: number
+          external_available_profit?: number
+          external_last_update?: string | null
+          external_pending_profit?: number
+          external_profit_difference?: number
+          external_profit_status?: string
+          external_total_profit?: number
           host_commission_pct?: number
           id?: string
           is_active?: boolean
@@ -331,6 +343,12 @@ export type Database = {
           bd_uuid?: string
           created_at?: string
           current_month_earnings?: number
+          external_available_profit?: number
+          external_last_update?: string | null
+          external_pending_profit?: number
+          external_profit_difference?: number
+          external_profit_status?: string
+          external_total_profit?: number
           host_commission_pct?: number
           id?: string
           is_active?: boolean
