@@ -97,6 +97,50 @@ async function fetchAgencyIncome(sb: ReturnType<typeof supabaseAdmin>, uuid: str
   } catch { return null; }
 }
 
+// Find agency in the agencies list by owner UUID and get income data
+async function fetchAgencyIncomeForMember(sb: ReturnType<typeof supabaseAdmin>, memberUuid: string) {
+  const agencyData = await fetchAgencyIncome(sb, memberUuid);
+  if (!agencyData || !agencyData.agencies || !Array.isArray(agencyData.agencies)) {
+    return null;
+  }
+
+  // Find the agency owned by this member
+  const agency = agencyData.agencies.find((a: any) => 
+    String(a["المعرف المميز لصاحب الوكالة"]) === String(memberUuid)
+  );
+
+  if (!agency) {
+    console.log(`[SYNC] agency ${memberUuid}: not found in agencies list (${agencyData.agencies.length} agencies)`);
+    // Log all owner UUIDs for debugging
+    const ownerUuids = agencyData.agencies.map((a: any) => a["المعرف المميز لصاحب الوكالة"]).join(", ");
+    console.log(`[SYNC] Available owner UUIDs: ${ownerUuids}`);
+    return null;
+  }
+
+  console.log(`[SYNC] Found agency for ${memberUuid}: name=${agency["الاسم"]}, salary=${agency["الراتب"]}, hostGoal=${agency["إجمالي الهدف للمضيفين"]}, hosts=${agency["عدد المضيفين"]}`);
+  
+  // Try to get detailed income using agency-salaries endpoint
+  const agencyId = agency["العميل الصغير"] || agency["معرف"];
+  if (agencyId) {
+    const detailUrl = `${BD_API_URL}?key=${BD_API_KEY}&action=agency-salaries&agency_id=${agencyId}`;
+    const detailRes = await fetchWithRetry(detailUrl);
+    if (detailRes) {
+      try {
+        const detailData = await detailRes.json();
+        console.log(`[SYNC] agency-salaries response for agency ${agencyId}:`, JSON.stringify(detailData).substring(0, 500));
+        if (detailData && detailData.commission) {
+          return detailData;
+        }
+        // Return raw detail data for parsing
+        return { ...detailData, _agency_info: agency, _source: "agency-salaries" };
+      } catch { /* continue */ }
+    }
+  }
+
+  // Return agency info for salary-based calculation
+  return { _agency_info: agency, _source: "agency-list" };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -290,54 +334,74 @@ serve(async (req) => {
         synced++;
 
       } else if (member.member_type === "agency") {
-        // === AGENCY SYNC: use user-charges (total income) then subtract personal charges ===
+        // === AGENCY SYNC: try multiple data sources ===
         const isTestModeAgency = body?.test_mode === true;
         const testIncome = body?.test_agency_income || 0;
 
-        // Step 1: Get TOTAL income from user-charges (includes personal + agency)
-        let totalChargesData: any = null;
+        let agencyMonthlyIncome = 0;
+        let agencyDailyIncome = 0;
+        let dataSource = "none";
+
         if (isTestModeAgency && testIncome > 0) {
-          totalChargesData = { charges: { month: { total: testIncome }, today: { total: 0 } } };
+          agencyMonthlyIncome = testIncome;
+          dataSource = "test_mode";
         } else {
-          totalChargesData = await fetchUserCharges(sb, member.member_uuid);
-        }
-        console.log(`[SYNC] agency ${member.member_uuid} user-charges response:`, JSON.stringify(totalChargesData));
+          // Strategy 1: Try agency-income list to find this member's agency
+          const agencyResult = await fetchAgencyIncomeForMember(sb, member.member_uuid);
+          
+          if (agencyResult) {
+            if (agencyResult.commission) {
+              // Direct commission data from agency-salaries
+              const rawMonthly = typeof agencyResult.commission.month === 'object' 
+                ? agencyResult.commission.month.total : agencyResult.commission.month;
+              agencyMonthlyIncome = rawMonthly || 0;
+              agencyDailyIncome = typeof agencyResult.commission.today === 'object'
+                ? (agencyResult.commission.today.total || 0) : (agencyResult.commission.today || 0);
+              dataSource = "agency-salaries-commission";
+            } else if (agencyResult._source === "agency-salaries" && agencyResult.salary_this_month !== undefined) {
+              // Salary data from agency-salaries (in USD, convert to coins)
+              agencyMonthlyIncome = (agencyResult.salary_this_month || 0) * 8500;
+              dataSource = "agency-salaries-usd";
+            } else if (agencyResult._agency_info) {
+              // Fallback: use salary from agencies list
+              const salary = parseFloat(agencyResult._agency_info["الراتب"] || "0");
+              const hostGoal = parseFloat(agencyResult._agency_info["إجمالي الهدف للمضيفين"] || "0");
+              console.log(`[SYNC] agency ${member.member_uuid}: from list - salary=$${salary}, hostGoal=${hostGoal}`);
+              // Use hostGoal as income in coins (diamonds)
+              if (hostGoal > 0) {
+                agencyMonthlyIncome = hostGoal * 8500; // Convert USD to coins
+                dataSource = "agency-list-hostGoal";
+              } else if (salary > 0) {
+                agencyMonthlyIncome = salary * 8500; // Convert USD to coins
+                dataSource = "agency-list-salary";
+              }
+            }
+          }
 
-        if (!totalChargesData || !totalChargesData.charges) {
-          console.log(`[SYNC] Fallback for agency ${member.member_uuid}: user-charges returned no data`);
-          continue;
-        }
-
-        const rawTotal = typeof totalChargesData.charges.month === 'object'
-          ? (totalChargesData.charges.month.total || 0)
-          : (totalChargesData.charges.month || 0);
-
-        const dailyCharges = typeof totalChargesData.charges.today === 'object'
-          ? (totalChargesData.charges.today.total || 0)
-          : (totalChargesData.charges.today || 0);
-
-        // Step 2: Get personal charges to subtract (supporter charges for this user)
-        // The initial_charger_num tracks the charges the user had when they joined
-        // Monthly personal charges = coins charged as a regular user, not from agency
-        let personalCharges = 0;
-        if (!isTestModeAgency) {
-          // Check if there's a supporter entry for this same UUID to get personal charges
-          const { data: supporterEntry } = await sb.from("bd_members")
-            .select("monthly_charges")
-            .eq("member_uuid", member.member_uuid)
-            .eq("member_type", "supporter")
-            .eq("is_active", true)
-            .maybeSingle();
-
-          if (supporterEntry) {
-            personalCharges = supporterEntry.monthly_charges || 0;
-            console.log(`[SYNC] agency ${member.member_uuid}: found supporter entry, personal charges = ${personalCharges}`);
+          // Strategy 2: If agency-income failed, try user-charges as fallback
+          if (agencyMonthlyIncome === 0) {
+            const chargesData = await fetchUserCharges(sb, member.member_uuid);
+            if (chargesData?.charges) {
+              const monthTotal = typeof chargesData.charges.month === 'object'
+                ? (chargesData.charges.month.total || 0) : (chargesData.charges.month || 0);
+              agencyDailyIncome = typeof chargesData.charges.today === 'object'
+                ? (chargesData.charges.today.total || 0) : (chargesData.charges.today || 0);
+              if (monthTotal > 0) {
+                agencyMonthlyIncome = monthTotal;
+                dataSource = "user-charges";
+              }
+            }
           }
         }
 
-        // Step 3: Calculate pure agency income
-        const pureIncome = Math.max(0, rawTotal - personalCharges);
-        const currentDiamonds = pureIncome;
+        console.log(`[SYNC] agency ${member.member_uuid}: income=${agencyMonthlyIncome}, source=${dataSource}`);
+
+        if (agencyMonthlyIncome === 0 && !isTestModeAgency) {
+          console.log(`[SYNC] agency ${member.member_uuid}: no income data from any source, skipping`);
+          continue;
+        }
+
+        const currentDiamonds = agencyMonthlyIncome;
 
         // RE-READ fresh member data to prevent duplicate commissions
         const { data: freshAgencyMember } = await sb.from("bd_members")
@@ -346,11 +410,11 @@ serve(async (req) => {
         const lastProcessed = freshAgencyMember?.last_processed_diamonds || 0;
         const diamondDiff = currentDiamonds - lastProcessed;
 
-        console.log(`[SYNC] agency ${member.member_uuid}: rawTotal=${rawTotal}, personalCharges=${personalCharges}, pureIncome=${pureIncome}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
+        console.log(`[SYNC] agency ${member.member_uuid}: currentDiamonds=${currentDiamonds}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
 
         const updateObj: Record<string, unknown> = {
           monthly_charges: currentDiamonds,
-          last_daily_charges: dailyCharges,
+          last_daily_charges: agencyDailyIncome,
           last_processed_diamonds: currentDiamonds,
         };
 
