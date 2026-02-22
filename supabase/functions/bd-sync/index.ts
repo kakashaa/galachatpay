@@ -65,6 +65,23 @@ async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: stri
   } catch { return null; }
 }
 
+async function fetchBDProfit(sb: ReturnType<typeof supabaseAdmin>, bdId: string) {
+  const cacheKey = `bd_profit_${bdId}`;
+  const cached = await getCached(sb, cacheKey);
+  if (cached) return cached;
+
+  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=get_bd_profit&bd_id=${bdId}`;
+  const res = await fetchWithRetry(url);
+  if (!res) return null;
+  try {
+    const data = await res.json();
+    if (data.status === "success") {
+      await setCache(sb, cacheKey, data);
+    }
+    return data;
+  } catch { return null; }
+}
+
 async function fetchAgencyIncome(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
   const cacheKey = `agency_income_${uuid}`;
   const cached = await getCached(sb, cacheKey);
@@ -294,6 +311,26 @@ serve(async (req) => {
       }
     }
 
+    // === SYNC BD PROFIT from external API ===
+    let profitSynced = 0;
+    for (const bdUuid of bdUuids) {
+      const profitData = await fetchBDProfit(sb, bdUuid);
+      if (profitData?.status === "success" && profitData.profit) {
+        const p = profitData.profit;
+        const ps = profitData.profit_status || {};
+        await sb.from("bd_commission_settings").update({
+          external_total_profit: p.total_profit || 0,
+          external_available_profit: p.available_profit || 0,
+          external_pending_profit: p.pending_profit || 0,
+          external_profit_status: ps.type || "no_change",
+          external_profit_difference: ps.difference || 0,
+          external_last_update: profitData.last_update || null,
+        }).eq("bd_uuid", bdUuid);
+        profitSynced++;
+        console.log(`[PROFIT] synced BD ${bdUuid}: total=$${p.total_profit}, available=$${p.available_profit}`);
+      }
+    }
+
     // Update last sync month
     await sb.from("app_settings").upsert({
       key: "bd_last_sync_month", value: month,
@@ -306,7 +343,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true, month, is_new_month: isNewMonth,
         monthly_resets: monthlyResets, synced_members: synced,
-        commission_updates: commissionUpdates, active_members: members.length,
+        commission_updates: commissionUpdates, profit_synced: profitSynced,
+        active_members: members.length,
         active_bds: bdUuids.length, timestamp: now.toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
