@@ -193,7 +193,7 @@ const BDDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="mobile-container min-h-screen bg-background flex items-center justify-center">
+      <div className="mobile-container bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -229,7 +229,7 @@ const BDDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="mobile-container min-h-screen bg-background text-foreground pb-6" dir="rtl">
+    <div className="mobile-container bg-background text-foreground pb-6 overflow-y-auto" dir="rtl">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">

@@ -70,7 +70,7 @@ const BDWithdraw: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container min-h-screen bg-background text-foreground pb-10" dir="rtl">
+    <div className="mobile-container bg-background text-foreground pb-10 overflow-y-auto" dir="rtl">
       <header className="flex items-center gap-3 px-4 pt-6 pb-4">
         <button onClick={() => navigate("/bd/dashboard")} className="p-2 rounded-xl hover:bg-muted">
           <ArrowRight className="w-5 h-5" />

@@ -97,7 +97,7 @@ const Dashboard: React.FC = () => {
   return (
     <div
       ref={scrollContainerRef}
-      className="mobile-container text-foreground min-h-screen pb-24 overflow-x-hidden overflow-y-auto relative"
+      className="mobile-container text-foreground pb-24 overflow-x-hidden overflow-y-auto relative"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

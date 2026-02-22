@@ -890,7 +890,7 @@ const SupportChat: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container bg-background min-h-screen flex flex-col" dir="rtl">
+    <div className="mobile-container bg-background flex flex-col" dir="rtl">
       {/* header */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/90 backdrop-blur-xl border-b border-border/30">
         <button
