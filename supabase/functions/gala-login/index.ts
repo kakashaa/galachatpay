@@ -259,7 +259,11 @@ serve(async (req) => {
                   liveDailyAmount = typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0);
                 }
                 // Extract salary from agencies array using user's agency ID or UUID
+                // API returns paginated results (50 per page), so we need to find the right page
                 const userAgencyId = d.agency?.id;
+                let foundAgency = false;
+                
+                // First check the already-fetched first page
                 if (incomeData?.agencies && Array.isArray(incomeData.agencies)) {
                   const myAgency = incomeData.agencies.find((a: any) => 
                     String(a['معرف']) === String(userAgencyId) || 
@@ -268,15 +272,70 @@ serve(async (req) => {
                   );
                   if (myAgency && myAgency['الراتب']) {
                     const salaryVal = parseFloat(myAgency['الراتب']) || 0;
-                    console.log(`[LOGIN-SALARY] Found salary for user ${trimmedUuid} agency ${userAgencyId}: $${salaryVal}`);
-                    d.agency_salary = {
-                      amount_usd: salaryVal,
-                      cut: 0,
-                      is_paid: 0,
-                    };
-                  } else {
-                    console.log(`[LOGIN-SALARY] Agency not found. agencyId=${userAgencyId}, uuid=${trimmedUuid}, total=${incomeData.agencies.length}, sample keys=${JSON.stringify(Object.keys(incomeData.agencies[0] || {}))}`);
+                    console.log(`[LOGIN-SALARY] Found salary on page 1 for user ${trimmedUuid} agency ${userAgencyId}: $${salaryVal}`);
+                    d.agency_salary = { amount_usd: salaryVal, cut: 0, is_paid: 0 };
+                    foundAgency = true;
                   }
+                }
+                
+                // If not found, try fetching all pages (API may not support &page param)
+                if (!foundAgency && userAgencyId) {
+                  // Try with per_page / limit params to get all agencies
+                  const allParams = ['per_page=500', 'limit=500', 'all=true'];
+                  for (const param of allParams) {
+                    if (foundAgency) break;
+                    try {
+                      const allRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}&${param}`, { signal: AbortSignal.timeout(15000) });
+                      if (allRes.ok) {
+                        const allData = await allRes.json();
+                        console.log(`[LOGIN-SALARY] Tried ${param}: got ${allData?.agencies?.length || 0} agencies`);
+                        if (allData?.agencies && Array.isArray(allData.agencies) && allData.agencies.length > 50) {
+                          const myAgency = allData.agencies.find((a: any) => 
+                            String(a['معرف']) === String(userAgencyId) || 
+                            String(a['المعرف المميز لصاحب الوكالة']) === String(trimmedUuid)
+                          );
+                          if (myAgency && myAgency['الراتب']) {
+                            const salaryVal = parseFloat(myAgency['الراتب']) || 0;
+                            console.log(`[LOGIN-SALARY] Found via ${param}: $${salaryVal}`);
+                            d.agency_salary = { amount_usd: salaryVal, cut: 0, is_paid: 0 };
+                            foundAgency = true;
+                          }
+                        }
+                      }
+                    } catch (e) { /* skip */ }
+                  }
+                  
+                  // Last resort: paginate sequentially through all pages
+                  if (!foundAgency) {
+                    for (let page = 2; page <= 10 && !foundAgency; page++) {
+                      try {
+                        const pageRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}&page=${page}`, { signal: AbortSignal.timeout(8000) });
+                        if (pageRes.ok) {
+                          const pageData = await pageRes.json();
+                          const agencies = pageData?.agencies;
+                          if (!agencies || !Array.isArray(agencies) || agencies.length === 0) {
+                            console.log(`[LOGIN-SALARY] Page ${page}: empty, stopping`);
+                            break;
+                          }
+                          console.log(`[LOGIN-SALARY] Page ${page}: ${agencies.length} agencies, IDs: ${agencies.slice(0,3).map((a:any)=>a['معرف']).join(',')}`);
+                          const myAgency = agencies.find((a: any) => 
+                            String(a['معرف']) === String(userAgencyId) || 
+                            String(a['المعرف المميز لصاحب الوكالة']) === String(trimmedUuid)
+                          );
+                          if (myAgency && myAgency['الراتب']) {
+                            const salaryVal = parseFloat(myAgency['الراتب']) || 0;
+                            console.log(`[LOGIN-SALARY] Found on page ${page}: $${salaryVal}`);
+                            d.agency_salary = { amount_usd: salaryVal, cut: 0, is_paid: 0 };
+                            foundAgency = true;
+                          }
+                        }
+                      } catch (e) { /* skip */ }
+                    }
+                  }
+                }
+                
+                if (!foundAgency) {
+                  console.log(`[LOGIN-SALARY] Agency not found after pagination. agencyId=${userAgencyId}, uuid=${trimmedUuid}`);
                 }
               } else { await incomeRes.text(); apiFailed = true; }
             }
