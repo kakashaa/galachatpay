@@ -241,9 +241,9 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden relative bg-background">
-      {/* Lightweight CSS-only background glow */}
-      <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/15 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-accent/15 rounded-full blur-[100px] pointer-events-none" />
+      {/* Lightweight background */}
+      <div className="absolute top-0 left-0 w-64 h-64 bg-primary/8 rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-64 h-64 bg-accent/8 rounded-full pointer-events-none" />
 
       <div className={`w-full max-w-md flex flex-col items-center z-10 transition-opacity duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}>
         {/* Logo circle */}
