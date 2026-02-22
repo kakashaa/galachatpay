@@ -227,7 +227,7 @@ const UserProfileCard: React.FC = () => {
                   <span className="text-muted-foreground">{w.emoji}</span>
                 </div>
               ))}
-              {user.type_user >= 1 && agencySalary !== null && agencySalary !== user.my_store.usd && (
+              {user.type_user >= 2 && agencySalary !== null && agencySalary !== user.my_store.usd && (
                 <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
                   <span className="text-emerald-400 font-black">${agencySalary}</span>
                   <span className="text-muted-foreground">🏢</span>
