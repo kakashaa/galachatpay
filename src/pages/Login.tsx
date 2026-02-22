@@ -240,7 +240,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center p-6 overflow-y-auto relative bg-background">
+    <div className="mobile-container flex flex-col items-center px-6 py-8 pb-16 overflow-y-auto relative bg-background" style={{ justifyContent: 'safe center' }}>
       {/* Lightweight background */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-primary/8 rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-accent/8 rounded-full pointer-events-none" />
