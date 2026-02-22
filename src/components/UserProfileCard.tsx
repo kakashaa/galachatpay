@@ -51,6 +51,7 @@ const UserProfileCard: React.FC = () => {
   const [starWalletView, setStarWalletView] = useState<"main" | "cashout">("main");
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalStars, setTotalStars] = useState(0);
+  const [agencySalary, setAgencySalary] = useState<number | null>(null);
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
     ((user.vip as any).vip_level || (user.vip as any).level || 0) > 0);
@@ -73,9 +74,28 @@ const UserProfileCard: React.FC = () => {
         const monthly = getMonthlyStars(user.level?.charger_level ?? 0);
         setTotalStars(monthly);
       }
-      
     };
     fetchStars();
+    return () => { cancelled = true; };
+  }, [user?.uuid]);
+
+  // Fetch salary from agency API (host-salary)
+  useEffect(() => {
+    if (!user?.uuid) return;
+    let cancelled = false;
+    const fetchSalary = async () => {
+      try {
+        const { data: res } = await supabase.functions.invoke("bd-data", {
+          body: { action: "host-salary", uuid: user.uuid },
+        });
+        if (cancelled) return;
+        if (res?.ok && res.salaries?.length > 0) {
+          const current = res.salaries[0];
+          setAgencySalary(current.sallary - current.cut_amount);
+        }
+      } catch { /* silent */ }
+    };
+    fetchSalary();
     return () => { cancelled = true; };
   }, [user?.uuid]);
 
@@ -198,7 +218,7 @@ const UserProfileCard: React.FC = () => {
               {[
                 { value: user.my_store.coins, emoji: "💰", color: "yellow" },
                 { value: user.my_store.diamonds, emoji: "💎", color: "purple" },
-                { value: `$${user.my_store.usd}`, emoji: "💵", color: "green" },
+                { value: agencySalary !== null ? `$${agencySalary}` : `$${user.my_store.usd}`, emoji: "💵", color: "green" },
               ].map((w, i) => (
                 <div
                   key={i}
