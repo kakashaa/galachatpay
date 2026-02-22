@@ -433,11 +433,11 @@ const ReportPage = () => {
       </header>
 
       <div className="flex-1 p-4">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {/* Menu View */}
           {viewMode === "menu" && (
             <motion.div key="menu" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4">
-              <button onClick={() => setViewMode("report")} className="w-full bg-gradient-to-r from-destructive/10 to-orange-600/10 border border-destructive/20 rounded-2xl p-6 text-right">
+              <button onClick={(e) => { e.stopPropagation(); setViewMode("report"); }} className="w-full bg-gradient-to-r from-destructive/10 to-orange-600/10 border border-destructive/20 rounded-2xl p-6 text-right">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
                     <ShieldBan className="w-7 h-7 text-destructive" />
@@ -460,7 +460,7 @@ const ReportPage = () => {
                 </div>
               </div>
 
-              <button onClick={() => setViewMode("track")} className="w-full bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/20 rounded-2xl p-6 text-right">
+              <button onClick={(e) => { e.stopPropagation(); setViewMode("track"); }} className="w-full bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/20 rounded-2xl p-6 text-right">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
                     <FileText className="w-7 h-7 text-purple-500" />
@@ -473,7 +473,7 @@ const ReportPage = () => {
                 </div>
               </button>
 
-              <button onClick={() => setViewMode("search")} className="w-full bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-2xl p-6 text-right">
+              <button onClick={(e) => { e.stopPropagation(); setViewMode("search"); }} className="w-full bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-2xl p-6 text-right">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
                     <Search className="w-7 h-7 text-blue-500" />
