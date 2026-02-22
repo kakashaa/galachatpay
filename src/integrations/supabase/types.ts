@@ -709,6 +709,27 @@ export type Database = {
         }
         Relationships: []
       }
+      edge_function_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          key: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          key: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       entry_gift_claims: {
         Row: {
           charger_level_at_claim: number
