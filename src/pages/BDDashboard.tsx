@@ -36,6 +36,7 @@ const BDDashboard: React.FC = () => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
+  const [monthlyLogs, setMonthlyLogs] = useState<any[]>([]);
   const [weeklyLogs, setWeeklyLogs] = useState<any[]>([]);
   const [prevWeekLogs, setPrevWeekLogs] = useState<any[]>([]);
   const [weeklyNewMembers, setWeeklyNewMembers] = useState(0);
@@ -47,7 +48,12 @@ const BDDashboard: React.FC = () => {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
 
-      const [dashRes, logsRes] = await Promise.all([
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01T00:00:00Z`;
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const monthEnd = nextMonth.toISOString();
+
+      const [dashRes, logsRes, monthlyRes] = await Promise.all([
         supabase.functions.invoke("bd-manage", {
           body: { action: "get_dashboard", bd_uuid: user.uuid },
         }),
@@ -57,6 +63,14 @@ const BDDashboard: React.FC = () => {
           .eq("bd_uuid", user.uuid)
           .gte("created_at", todayStart.toISOString())
           .order("created_at", { ascending: false }),
+        supabase
+          .from("bd_commission_logs")
+          .select("*")
+          .eq("bd_uuid", user.uuid)
+          .gte("created_at", monthStart)
+          .lt("created_at", monthEnd)
+          .order("created_at", { ascending: false })
+          .limit(1000),
       ]);
 
       const res = dashRes.data;
@@ -66,6 +80,7 @@ const BDDashboard: React.FC = () => {
         navigate("/bd", { replace: true });
       }
       setTodayLogs(logsRes.data || []);
+      setMonthlyLogs(monthlyRes.data || []);
     } catch {
       toast.error("فشل تحميل البيانات");
     } finally {
@@ -187,8 +202,6 @@ const BDDashboard: React.FC = () => {
   if (!data?.bd) return null;
 
   const { bd, supporters, agents, withdrawals, wallets_paused } = data;
-  const totalSupporterCommission = supporters.reduce((s: number, m: any) => s + (m.current_month_commission || 0), 0);
-  const totalAgentCommission = agents.reduce((s: number, m: any) => s + (m.current_month_commission || 0), 0);
   const currentMonthEarnings = bd.current_month_earnings || 0;
   
   // Today logs - both types
@@ -397,39 +410,63 @@ const BDDashboard: React.FC = () => {
               {(() => {
                 const supporterPct = bd.user_commission_pct || 2;
                 const agentPct = bd.agency_commission_pct || 5;
-                const totalSupporterCoins = supporters.reduce((s: number, m: any) => s + (m.monthly_charges || 0), 0);
-                const totalSupporterCommCoins = (totalSupporterCoins * supporterPct) / 100;
-                const totalAgentCoins = agents.reduce((s: number, m: any) => s + (m.monthly_charges || 0), 0);
-                const totalAgentCommCoins = (totalAgentCoins * agentPct) / 100;
+
+                // Calculate from monthly commission logs for accurate full-month totals
+                const supporterMonthlyLogs = monthlyLogs.filter((l: any) => l.member_type === "supporter");
+                const agentMonthlyLogs = monthlyLogs.filter((l: any) => l.member_type === "agency");
+
+                const monthlySupporterCommission = supporterMonthlyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const monthlyAgentCommission = agentMonthlyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
+                const monthlyTotalCommission = monthlySupporterCommission + monthlyAgentCommission;
+
+                const totalSupporterSourceCoins = supporterMonthlyLogs.reduce((s: number, l: any) => s + (l.source_amount || 0), 0);
+                const totalAgentSourceCoins = agentMonthlyLogs.reduce((s: number, l: any) => s + (l.source_amount || 0), 0);
+
+                const totalSupporterCommCoins = (totalSupporterSourceCoins * supporterPct) / 100;
+                const totalAgentCommCoins = (totalAgentSourceCoins * agentPct) / 100;
+
                 return (
                   <>
+                    {/* Monthly Total */}
+                    <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center space-y-1">
+                      <div className="text-xs text-muted-foreground">إجمالي أرباح الشهر الحالي</div>
+                      <div className="text-3xl font-bold text-primary">${monthlyTotalCommission.toFixed(2)}</div>
+                      <div className="text-[10px] text-muted-foreground">{monthlyLogs.length} عملية هذا الشهر</div>
+                    </div>
+
                     {/* Supporters Overview */}
                     <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                      <h3 className="font-bold text-sm text-emerald-400">📊 نظرة عامة - الداعمين</h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-sm text-emerald-400">📊 الداعمين - الشهر الحالي</h3>
+                        <span className="text-[10px] text-muted-foreground">{supporterMonthlyLogs.length} عملية</span>
+                      </div>
                       <div className="grid grid-cols-2 gap-3 text-center">
                         <div><div className="text-sm font-bold">{supporters.length}</div><div className="text-[10px] text-muted-foreground">عدد الداعمين</div></div>
                         <div><div className="text-sm font-bold">{supporterPct}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-border/20">
-                        <div className="text-muted-foreground">إجمالي الشحن: <span className="font-bold text-foreground">{totalSupporterCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">إجمالي الشحن: <span className="font-bold text-foreground">{totalSupporterSourceCoins.toLocaleString()} كوينز</span></div>
                         <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{supporterPct}%</span></div>
                         <div className="text-muted-foreground">العمولة: <span className="font-bold text-emerald-400">{totalSupporterCommCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${totalSupporterCommission.toFixed(2)}</span></div>
+                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${monthlySupporterCommission.toFixed(2)}</span></div>
                       </div>
                     </div>
 
                     {/* Agents Overview */}
                     <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                      <h3 className="font-bold text-sm text-amber-400">📊 نظرة عامة - الوكلاء</h3>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-sm text-amber-400">📊 الوكلاء - الشهر الحالي</h3>
+                        <span className="text-[10px] text-muted-foreground">{agentMonthlyLogs.length} عملية</span>
+                      </div>
                       <div className="grid grid-cols-2 gap-3 text-center">
                         <div><div className="text-sm font-bold">{agents.length}</div><div className="text-[10px] text-muted-foreground">عدد الوكلاء</div></div>
                         <div><div className="text-sm font-bold">{agentPct}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-border/20">
-                        <div className="text-muted-foreground">إجمالي الدخل: <span className="font-bold text-foreground">{totalAgentCoins.toLocaleString()} كوينز</span></div>
+                        <div className="text-muted-foreground">إجمالي الدخل: <span className="font-bold text-foreground">{totalAgentSourceCoins.toLocaleString()} كوينز</span></div>
                         <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{agentPct}%</span></div>
                         <div className="text-muted-foreground">العمولة: <span className="font-bold text-amber-400">{totalAgentCommCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${totalAgentCommission.toFixed(2)}</span></div>
+                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${monthlyAgentCommission.toFixed(2)}</span></div>
                       </div>
                     </div>
                   </>
