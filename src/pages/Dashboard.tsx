@@ -1,3 +1,4 @@
+// Dashboard v2 - cache rebuild
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Bell, LogIn, RefreshCw, ShieldBan } from "lucide-react";
