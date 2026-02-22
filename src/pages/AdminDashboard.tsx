@@ -879,7 +879,7 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="mobile-container bg-background overflow-y-auto">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
