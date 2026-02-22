@@ -353,8 +353,8 @@ const ReportPage = () => {
   // Success view
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <div className="flex-1 flex items-center justify-center p-6">
+      <div className="mobile-container bg-background flex flex-col">
+        <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -394,7 +394,7 @@ const ReportPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="mobile-container bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-xl border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
@@ -432,7 +432,7 @@ const ReportPage = () => {
         </div>
       </header>
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 overflow-y-auto min-h-0 p-4">
         <AnimatePresence mode="popLayout">
           {/* Menu View */}
           {viewMode === "menu" && (
