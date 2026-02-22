@@ -243,11 +243,11 @@ const FramesRequest: React.FC = () => {
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={() => setShowPreview(false)}>
-        <DialogContent className="max-w-sm w-full h-[80vh] max-h-[700px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
+        <DialogContent className="max-w-sm w-full h-[75vh] max-h-[650px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
           <VisuallyHidden><DialogTitle>{selectedFrame?.title || "إطار"}</DialogTitle></VisuallyHidden>
-          <div className="relative w-full h-full">
-            <button onClick={() => setShowPreview(false)} className="absolute top-3 right-3 z-20 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
-              <X className="w-4 h-4" />
+          <div className="relative w-full h-full flex flex-col">
+            <button onClick={() => setShowPreview(false)} className="absolute top-3 right-3 z-30 w-10 h-10 bg-black/70 rounded-full flex items-center justify-center text-white active:scale-90">
+              <X className="w-5 h-5" />
             </button>
 
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-muted/5 to-muted/20 p-6">

@@ -369,10 +369,10 @@ const EntryRequest: React.FC = () => {
 
       {/* Video Fullscreen Dialog (TikTok style) */}
       <Dialog open={showVideo} onOpenChange={() => setShowVideo(false)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[80vh] max-h-[700px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
           <VisuallyHidden><DialogTitle>{selectedGift?.title || "دخولية"}</DialogTitle></VisuallyHidden>
-          <div className="relative w-full h-full">
-            <button onClick={() => setShowVideo(false)} className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+          <div className="relative w-full h-full flex flex-col">
+            <button onClick={() => setShowVideo(false)} className="absolute top-3 right-3 z-30 w-10 h-10 bg-black/70 rounded-full flex items-center justify-center text-white active:scale-90">
               <X className="w-5 h-5" />
             </button>
 
@@ -521,10 +521,10 @@ const EntryRequest: React.FC = () => {
 
       {/* Custom Gift Video Dialog */}
       <Dialog open={showCustomVideo} onOpenChange={() => setShowCustomVideo(false)}>
-        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[90vh] max-h-[800px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-md w-full h-[80vh] max-h-[700px] p-0 bg-black border-0 rounded-2xl overflow-hidden [&>button]:hidden">
           <VisuallyHidden><DialogTitle>{selectedCustomGift?.title || "هدية مخصصة"}</DialogTitle></VisuallyHidden>
-          <div className="relative w-full h-full">
-            <button onClick={() => setShowCustomVideo(false)} className="absolute top-4 right-4 z-20 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white">
+          <div className="relative w-full h-full flex flex-col">
+            <button onClick={() => setShowCustomVideo(false)} className="absolute top-3 right-3 z-30 w-10 h-10 bg-black/70 rounded-full flex items-center justify-center text-white active:scale-90">
               <X className="w-5 h-5" />
             </button>
 

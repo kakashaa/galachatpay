@@ -134,7 +134,7 @@ const TikTokInteraction: React.FC<TikTokInteractionProps> = ({ itemType, itemId 
   return (
     <>
       {/* TikTok-style sidebar buttons - positioned absolute on the right */}
-      <div className="absolute right-3 bottom-28 z-30 flex flex-col items-center gap-5">
+      <div className="absolute right-3 bottom-20 z-30 flex flex-col items-center gap-5">
         {/* Like button */}
         <button onClick={toggleLike} className="flex flex-col items-center gap-1">
           <motion.div
