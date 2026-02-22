@@ -4,7 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Login = lazy(() => import("./pages/Login"));
 
@@ -51,54 +52,67 @@ const PageLoader = () => (
   </div>
 );
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Login />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/change-id" element={<ChangeId />} />
-                <Route path="/request-vip" element={<RequestVip />} />
-                <Route path="/support" element={<SupportHub />} />
-                <Route path="/support/vip-chat" element={<VipChat />} />
-                <Route path="/support/tickets" element={<SupportTickets />} />
-                <Route path="/support-chat" element={<SupportChat />} />
-                <Route path="/salary" element={<SalaryWithdraw />} />
-                <Route path="/report" element={<ReportPage />} />
-                <Route path="/gift" element={<GiftRequest />} />
-                <Route path="/custom-gift" element={<CustomGiftUpload />} />
-                <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
-                <Route path="/entry-request" element={<EntryRequest />} />
-                <Route path="/frames" element={<FramesRequest />} />
-                <Route path="/hairs" element={<HairsPage />} />
-                
-                <Route path="/my-requests" element={<MyRequests />} />
-                <Route path="/instant" element={<InstantIntro />} />
-                <Route path="/instant/banks" element={<InstantBanks />} />
-                <Route path="/instant/request" element={<InstantRequest />} />
-                <Route path="/admin" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/policy" element={<PolicyPage />} />
-                <Route path="/quick-support" element={<QuickSupport />} />
-                <Route path="/support-main" element={<SupportMain />} />
-                <Route path="/install" element={<InstallApp />} />
-                <Route path="/bd" element={<BDVerification />} />
-                <Route path="/bd/dashboard" element={<BDDashboard />} />
-                <Route path="/bd/add-member" element={<BDAddMember />} />
-                <Route path="/bd/withdraw" element={<BDWithdraw />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    const handler = (e: PromiseRejectionEvent) => {
+      console.error("Unhandled rejection:", e.reason);
+      e.preventDefault();
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Login />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/change-id" element={<ChangeId />} />
+                  <Route path="/request-vip" element={<RequestVip />} />
+                  <Route path="/support" element={<SupportHub />} />
+                  <Route path="/support/vip-chat" element={<VipChat />} />
+                  <Route path="/support/tickets" element={<SupportTickets />} />
+                  <Route path="/support-chat" element={<SupportChat />} />
+                  <Route path="/salary" element={<SalaryWithdraw />} />
+                  <Route path="/report" element={<ReportPage />} />
+                  <Route path="/gift" element={<GiftRequest />} />
+                  <Route path="/custom-gift" element={<CustomGiftUpload />} />
+                  <Route path="/animated-photo" element={<AnimatedPhotoRequest />} />
+                  <Route path="/entry-request" element={<EntryRequest />} />
+                  <Route path="/frames" element={<FramesRequest />} />
+                  <Route path="/hairs" element={<HairsPage />} />
+                  
+                  <Route path="/my-requests" element={<MyRequests />} />
+                  <Route path="/instant" element={<InstantIntro />} />
+                  <Route path="/instant/banks" element={<InstantBanks />} />
+                  <Route path="/instant/request" element={<InstantRequest />} />
+                  <Route path="/admin" element={<AdminLogin />} />
+                  <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/policy" element={<PolicyPage />} />
+                  <Route path="/quick-support" element={<QuickSupport />} />
+                  <Route path="/support-main" element={<SupportMain />} />
+                  <Route path="/install" element={<InstallApp />} />
+                  <Route path="/bd" element={<BDVerification />} />
+                  <Route path="/bd/dashboard" element={<BDDashboard />} />
+                  <Route path="/bd/add-member" element={<BDAddMember />} />
+                  <Route path="/bd/withdraw" element={<BDWithdraw />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;
