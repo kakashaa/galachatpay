@@ -261,19 +261,31 @@ serve(async (req) => {
         } else {
           incomeData = await fetchAgencyIncome(sb, member.member_uuid);
         }
-        console.log(`[SYNC] agency ${member.member_uuid} response:`, JSON.stringify(incomeData));
+        console.log(`[SYNC] agency ${member.member_uuid} income response:`, JSON.stringify(incomeData));
         
         if (!incomeData || !incomeData.commission) {
           console.log(`[SYNC] Fallback for agency ${member.member_uuid}: using charger_num=${member.initial_charger_num}`);
           continue;
         }
 
+        // Fetch user charges to subtract from agency total (agency-income API includes charges)
+        let userChargesTotal = 0;
+        if (!isTestModeAgency) {
+          const chargeData = await fetchUserCharges(sb, member.member_uuid);
+          if (chargeData?.charges) {
+            userChargesTotal = typeof chargeData.charges.month === 'object' ? (chargeData.charges.month.total || 0) : (chargeData.charges.month || 0);
+          }
+          console.log(`[SYNC] agency ${member.member_uuid} charges to subtract: ${userChargesTotal}`);
+        }
+
         const rawMonthlyIncome = typeof incomeData.commission.month === 'object' ? incomeData.commission.month.total : incomeData.commission.month;
-        const currentDiamonds = rawMonthlyIncome || 0;
+        // Pure agency income = total from API minus user charges (coins)
+        const pureIncome = Math.max(0, (rawMonthlyIncome || 0) - userChargesTotal);
+        const currentDiamonds = pureIncome;
         const lastProcessed = member.last_processed_diamonds || 0;
         const diamondDiff = currentDiamonds - lastProcessed;
 
-        console.log(`[SYNC] agency ${member.member_uuid}: currentDiamonds=${currentDiamonds}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
+        console.log(`[SYNC] agency ${member.member_uuid}: rawTotal=${rawMonthlyIncome}, charges=${userChargesTotal}, pureIncome=${pureIncome}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
 
         const updateObj: Record<string, unknown> = {
           monthly_charges: currentDiamonds,
