@@ -254,6 +254,18 @@ serve(async (req) => {
                   liveMonthlyAmount = typeof incomeData.commission.month === 'object' ? (incomeData.commission.month.total || 0) : (incomeData.commission.month || 0);
                   liveDailyAmount = typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0);
                 }
+                // Inject agency salary into login response
+                if (incomeData?.salary_this_month) {
+                  const sal = incomeData.salary_this_month;
+                  d.agency_salary = {
+                    amount_usd: sal.amount_usd || 0,
+                    cut: sal.cut || 0,
+                    is_paid: sal.is_paid || 0,
+                  };
+                }
+                if (incomeData?.agency?.accumulated_salary_usd !== undefined) {
+                  d.agency_accumulated_salary = incomeData.agency.accumulated_salary_usd || 0;
+                }
               } else { await incomeRes.text(); apiFailed = true; }
             }
           } catch (apiErr) {

@@ -28,6 +28,12 @@ export interface GalaUser {
     diamonds: number;
     usd: number;
   };
+  agency_salary?: {
+    amount_usd: number;
+    cut: number;
+    is_paid: number;
+  };
+  agency_accumulated_salary?: number;
   vip: Record<string, unknown>;
   country: {
     id: number;
@@ -106,6 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           usd: apiUser.my_store?.usd ?? prevUser?.my_store?.usd ?? 0,
         },
         vip: apiUser.vip || prevUser?.vip || {},
+        agency_salary: apiUser.agency_salary || prevUser?.agency_salary,
+        agency_accumulated_salary: apiUser.agency_accumulated_salary ?? prevUser?.agency_accumulated_salary,
         country: {
           id: apiUser.country?.id ?? prevUser?.country?.id ?? 0,
           name: apiUser.country?.name || prevUser?.country?.name || "",
