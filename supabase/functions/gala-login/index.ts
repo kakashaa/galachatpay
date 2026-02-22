@@ -194,6 +194,9 @@ serve(async (req) => {
     if (data.data) {
       const d = data.data;
       console.log(`[LOGIN-DEBUG] my_store raw:`, JSON.stringify(d.my_store));
+      // Debug: log agency-related fields from login response
+      const agencyKeys = Object.keys(d).filter(k => k.toLowerCase().includes('agenc') || k.toLowerCase().includes('salary') || k.toLowerCase().includes('host'));
+      console.log(`[LOGIN-DEBUG] agency-related keys:`, agencyKeys, `agency:`, JSON.stringify(d.agency)?.substring(0, 500));
       // type resolution handled client-side via resolveUserType
       if (d.profile?.image) d.profile.image = fullUrl(d.profile.image);
       if (d.profile?.cover) d.profile.cover = fullUrl(d.profile.cover);
@@ -250,21 +253,30 @@ serve(async (req) => {
               const incomeRes = await fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${trimmedUuid}`, { signal: AbortSignal.timeout(15000) });
               if (incomeRes.ok) {
                 const incomeData = await incomeRes.json();
+                console.log(`[LOGIN-SALARY-DEBUG] agency-income response for ${trimmedUuid}:`, JSON.stringify(incomeData));
               if (incomeData?.commission) {
                   liveMonthlyAmount = typeof incomeData.commission.month === 'object' ? (incomeData.commission.month.total || 0) : (incomeData.commission.month || 0);
                   liveDailyAmount = typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0);
                 }
-                // Inject agency salary into login response
-                if (incomeData?.salary_this_month) {
-                  const sal = incomeData.salary_this_month;
-                  d.agency_salary = {
-                    amount_usd: sal.amount_usd || 0,
-                    cut: sal.cut || 0,
-                    is_paid: sal.is_paid || 0,
-                  };
-                }
-                if (incomeData?.agency?.accumulated_salary_usd !== undefined) {
-                  d.agency_accumulated_salary = incomeData.agency.accumulated_salary_usd || 0;
+                // Extract salary from agencies array using user's agency ID or UUID
+                const userAgencyId = d.agency?.id;
+                if (incomeData?.agencies && Array.isArray(incomeData.agencies)) {
+                  const myAgency = incomeData.agencies.find((a: any) => 
+                    String(a['معرف']) === String(userAgencyId) || 
+                    String(a['العميل الصغير']) === String(userAgencyId) ||
+                    String(a['المعرف المميز لصاحب الوكالة']) === String(trimmedUuid)
+                  );
+                  if (myAgency && myAgency['الراتب']) {
+                    const salaryVal = parseFloat(myAgency['الراتب']) || 0;
+                    console.log(`[LOGIN-SALARY] Found salary for user ${trimmedUuid} agency ${userAgencyId}: $${salaryVal}`);
+                    d.agency_salary = {
+                      amount_usd: salaryVal,
+                      cut: 0,
+                      is_paid: 0,
+                    };
+                  } else {
+                    console.log(`[LOGIN-SALARY] Agency not found. agencyId=${userAgencyId}, uuid=${trimmedUuid}, total=${incomeData.agencies.length}, sample keys=${JSON.stringify(Object.keys(incomeData.agencies[0] || {}))}`);
+                  }
                 }
               } else { await incomeRes.text(); apiFailed = true; }
             }
