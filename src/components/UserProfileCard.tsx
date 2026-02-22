@@ -79,24 +79,21 @@ const UserProfileCard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.uuid]);
 
-  // Calculate displayed salary based on user type
-  // Agents (type 2-6): user salary (my_store.usd) + agency salary
-  // Hosts (type 1): user salary (my_store.usd) only
+  // Calculate agency salary (net) for agents only
+  // This shows ONLY the agency portion (amount_usd - cut) from Gala's agency section
   useEffect(() => {
     if (!user) return;
-    const userUsd = user.my_store?.usd || 0;
-    const isAgent = user.type_user >= 2; // وكيل
+    const isAgent = user.type_user >= 2;
     
     if (isAgent && user.agency_salary) {
       const agencyNet = (user.agency_salary.amount_usd || 0) - (user.agency_salary.cut || 0);
-      setAgencySalary(userUsd + agencyNet);
-    } else if (isAgent && user.agency_accumulated_salary && user.agency_accumulated_salary > 0) {
-      setAgencySalary(userUsd + user.agency_accumulated_salary);
+      setAgencySalary(agencyNet);
+    } else if (isAgent && user.agency_accumulated_salary != null) {
+      setAgencySalary(user.agency_accumulated_salary);
     } else {
-      // Host (type 1) or regular user: show only user salary
-      setAgencySalary(userUsd);
+      setAgencySalary(0);
     }
-  }, [user?.agency_salary, user?.agency_accumulated_salary, user?.my_store?.usd, user?.type_user]);
+  }, [user?.agency_salary, user?.agency_accumulated_salary, user?.type_user]);
 
   const handleOpenWallet = (view: "main" | "cashout") => {
     setStarWalletView(view);
