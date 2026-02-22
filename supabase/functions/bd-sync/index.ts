@@ -110,6 +110,26 @@ serve(async (req) => {
     const now = new Date();
     const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 
+    // === SYNC LOCK: prevent concurrent runs causing duplicate commissions ===
+    const { data: lockData } = await sb
+      .from("edge_function_cache")
+      .select("value, expires_at")
+      .eq("key", "bd_sync_lock")
+      .maybeSingle();
+
+    if (lockData && new Date(lockData.expires_at) > new Date()) {
+      console.log("[LOCK] bd-sync already running, skipping");
+      return new Response(JSON.stringify({ skipped: true, reason: "sync already running" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Set lock for 5 minutes max
+    await sb.from("edge_function_cache").upsert(
+      { key: "bd_sync_lock", value: { running: true }, expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() },
+      { onConflict: "key" }
+    );
+
     // Check schedule setting for cron calls
     if (isCronCall) {
       const { data: scheduleSetting } = await sb
@@ -205,14 +225,16 @@ serve(async (req) => {
         console.log(`[SYNC] supporter ${member.member_uuid} response:`, JSON.stringify(chargeData));
         
         if (!chargeData || !chargeData.charges) {
-          // Fallback: use initial_charger_num if API fails
           console.log(`[SYNC] Fallback for supporter ${member.member_uuid}: using charger_num=${member.initial_charger_num}`);
           continue;
         }
 
         const rawMonthly = typeof chargeData.charges.month === 'object' ? chargeData.charges.month.total : chargeData.charges.month;
         const monthlyCharges = rawMonthly || 0;
-        const previousMonthly = member.monthly_charges || 0;
+
+        // RE-READ fresh member data to prevent duplicate commissions from concurrent runs
+        const { data: freshMember } = await sb.from("bd_members").select("monthly_charges, current_month_commission, total_commission").eq("id", member.id).maybeSingle();
+        const previousMonthly = freshMember?.monthly_charges || 0;
         const chargeDiff = monthlyCharges - previousMonthly;
 
         const updateObj: Record<string, unknown> = {
@@ -221,31 +243,47 @@ serve(async (req) => {
         };
 
         if (chargeDiff > 0) {
-          const pct = bd.user_commission_pct || 2;
-          const commissionCoins = (chargeDiff * pct) / 100;
-          const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
+          // DEDUP CHECK: look for existing commission log this sync cycle
+          const { data: existingLog } = await sb.from("bd_commission_logs")
+            .select("id")
+            .eq("bd_uuid", member.bd_uuid)
+            .eq("member_uuid", member.member_uuid)
+            .eq("month", month)
+            .eq("source_amount", chargeDiff)
+            .gte("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
+            .maybeSingle();
 
-          updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
-          updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
+          if (existingLog) {
+            console.log(`[SYNC] DEDUP: skipping duplicate commission for supporter ${member.member_uuid}, diff=${chargeDiff}`);
+          } else {
+            const pct = bd.user_commission_pct || 2;
+            const commissionCoins = (chargeDiff * pct) / 100;
+            const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
 
-          await sb.from("bd_commission_logs").insert({
-            bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
-            member_type: member.member_type, month,
-            source_amount: chargeDiff, commission_pct: pct, amount: commissionAmount,
-          });
+            updateObj.current_month_commission = (freshMember?.current_month_commission || 0) + commissionAmount;
+            updateObj.total_commission = (freshMember?.total_commission || 0) + commissionAmount;
 
-          await sb.from("bd_commission_settings").update({
-            current_month_earnings: (bd.current_month_earnings || 0) + commissionAmount,
-            total_earned: (bd.total_earned || 0) + commissionAmount,
-          }).eq("bd_uuid", member.bd_uuid);
+            await sb.from("bd_commission_logs").insert({
+              bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
+              member_type: member.member_type, month,
+              source_amount: chargeDiff, commission_pct: pct, amount: commissionAmount,
+            });
 
-          await sb.from("notifications").insert({
-            title: "💰 عمولة جديدة",
-            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} كونزه) من الداعم ${member.member_name} (${pct}% من ${chargeDiff.toLocaleString()} كونزه)`,
-            target: "user", user_uuid: member.bd_uuid,
-          });
+            // RE-READ BD settings for accurate accumulation
+            const { data: freshBd } = await sb.from("bd_commission_settings").select("current_month_earnings, total_earned").eq("bd_uuid", member.bd_uuid).maybeSingle();
+            await sb.from("bd_commission_settings").update({
+              current_month_earnings: (freshBd?.current_month_earnings || 0) + commissionAmount,
+              total_earned: (freshBd?.total_earned || 0) + commissionAmount,
+            }).eq("bd_uuid", member.bd_uuid);
 
-          commissionUpdates++;
+            await sb.from("notifications").insert({
+              title: "💰 عمولة جديدة",
+              body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} كونزه) من الداعم ${member.member_name} (${pct}% من ${chargeDiff.toLocaleString()} كونزه)`,
+              target: "user", user_uuid: member.bd_uuid,
+            });
+
+            commissionUpdates++;
+          }
         }
 
         await sb.from("bd_members").update(updateObj).eq("id", member.id);
@@ -282,7 +320,10 @@ serve(async (req) => {
         // Pure agency income = total from API minus user charges (coins)
         const pureIncome = Math.max(0, (rawMonthlyIncome || 0) - userChargesTotal);
         const currentDiamonds = pureIncome;
-        const lastProcessed = member.last_processed_diamonds || 0;
+
+        // RE-READ fresh member data to prevent duplicate commissions
+        const { data: freshAgencyMember } = await sb.from("bd_members").select("last_processed_diamonds, current_month_commission, total_commission").eq("id", member.id).maybeSingle();
+        const lastProcessed = freshAgencyMember?.last_processed_diamonds || 0;
         const diamondDiff = currentDiamonds - lastProcessed;
 
         console.log(`[SYNC] agency ${member.member_uuid}: rawTotal=${rawMonthlyIncome}, charges=${userChargesTotal}, pureIncome=${pureIncome}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
@@ -295,32 +336,48 @@ serve(async (req) => {
 
         // Only create commission if there's an actual increase in diamonds
         if (diamondDiff > 0) {
-          const pct = bd.agency_commission_pct || 5;
-          const commissionCoins = (diamondDiff * pct) / 100;
-          const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
+          // DEDUP CHECK: look for existing commission log this sync cycle
+          const { data: existingAgencyLog } = await sb.from("bd_commission_logs")
+            .select("id")
+            .eq("bd_uuid", member.bd_uuid)
+            .eq("member_uuid", member.member_uuid)
+            .eq("month", month)
+            .eq("source_amount", diamondDiff)
+            .gte("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
+            .maybeSingle();
 
-          updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
-          updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
+          if (existingAgencyLog) {
+            console.log(`[SYNC] DEDUP: skipping duplicate commission for agency ${member.member_uuid}, diff=${diamondDiff}`);
+          } else {
+            const pct = bd.agency_commission_pct || 5;
+            const commissionCoins = (diamondDiff * pct) / 100;
+            const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
 
-          await sb.from("bd_commission_logs").insert({
-            bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
-            member_type: member.member_type, month,
-            source_amount: diamondDiff, commission_pct: pct, amount: commissionAmount,
-          });
+            updateObj.current_month_commission = (freshAgencyMember?.current_month_commission || 0) + commissionAmount;
+            updateObj.total_commission = (freshAgencyMember?.total_commission || 0) + commissionAmount;
 
-          await sb.from("bd_commission_settings").update({
-            current_month_earnings: (bd.current_month_earnings || 0) + commissionAmount,
-            total_earned: (bd.total_earned || 0) + commissionAmount,
-          }).eq("bd_uuid", member.bd_uuid);
+            await sb.from("bd_commission_logs").insert({
+              bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
+              member_type: member.member_type, month,
+              source_amount: diamondDiff, commission_pct: pct, amount: commissionAmount,
+            });
 
-          await sb.from("notifications").insert({
-            title: "💰 عمولة جديدة",
-            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} ماسة) من الوكالة ${member.member_name} (${pct}% من ${diamondDiff.toLocaleString()} ماسة زيادة)`,
-            target: "user", user_uuid: member.bd_uuid,
-          });
+            // RE-READ BD settings for accurate accumulation
+            const { data: freshBdAgency } = await sb.from("bd_commission_settings").select("current_month_earnings, total_earned").eq("bd_uuid", member.bd_uuid).maybeSingle();
+            await sb.from("bd_commission_settings").update({
+              current_month_earnings: (freshBdAgency?.current_month_earnings || 0) + commissionAmount,
+              total_earned: (freshBdAgency?.total_earned || 0) + commissionAmount,
+            }).eq("bd_uuid", member.bd_uuid);
 
-          commissionUpdates++;
-          console.log(`[SYNC] agency ${member.member_uuid}: commission created $${commissionAmount} from ${diamondDiff} diamond increase`);
+            await sb.from("notifications").insert({
+              title: "💰 عمولة جديدة",
+              body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} ماسة) من الوكالة ${member.member_name} (${pct}% من ${diamondDiff.toLocaleString()} ماسة زيادة)`,
+              target: "user", user_uuid: member.bd_uuid,
+            });
+
+            commissionUpdates++;
+            console.log(`[SYNC] agency ${member.member_uuid}: commission created $${commissionAmount} from ${diamondDiff} diamond increase`);
+          }
         } else {
           console.log(`[SYNC] agency ${member.member_uuid}: no diamond increase, skipping commission`);
         }
@@ -355,8 +412,9 @@ serve(async (req) => {
       key: "bd_last_sync_month", value: month,
     }, { onConflict: "key" });
 
-    // Cleanup expired cache entries
+    // Cleanup expired cache entries + release sync lock
     await sb.from("edge_function_cache").delete().lt("expires_at", new Date().toISOString());
+    await sb.from("edge_function_cache").delete().eq("key", "bd_sync_lock");
 
     return new Response(
       JSON.stringify({
@@ -370,6 +428,8 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("bd-sync error:", error);
+    // Release lock on error
+    try { await sb.from("edge_function_cache").delete().eq("key", "bd_sync_lock"); } catch {}
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "خطأ داخلي" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
