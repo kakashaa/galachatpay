@@ -236,7 +236,7 @@ const LiveSupportChat: React.FC<Props> = ({
   const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border/20 bg-card/50 flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-1.5 text-primary text-sm font-bold">
@@ -273,7 +273,7 @@ const LiveSupportChat: React.FC<Props> = ({
       </AnimatePresence>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
         {messages.map((msg) => {
           if (msg.sender_type === "system") {
             return (
