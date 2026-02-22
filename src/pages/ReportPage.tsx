@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useSavedRequests } from "@/hooks/use-saved-requests";
 import { notifyNewBanReport } from "@/hooks/use-webhook-notification";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   ShieldBan,
   Search,
@@ -24,11 +25,13 @@ import {
   Clock,
   FileText,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type BanType = "promotion" | "behavior" | "insult" | "violation" | "other";
-type ViewMode = "menu" | "report" | "search" | "track";
+type ViewMode = "menu" | "report" | "search";
 
 interface BanReport {
   id: string;
@@ -114,6 +117,7 @@ const MIN_DESCRIPTION_LENGTH = 20;
 const ReportPage = () => {
   const navigate = useNavigate();
   const { saveTrackingCode } = useSavedRequests();
+  const { user: galaUser } = useAuth();
 
   const [viewMode, setViewMode] = useState<ViewMode>("menu");
   const [currentStep, setCurrentStep] = useState(1);
@@ -135,13 +139,21 @@ const ReportPage = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedReport, setSelectedReport] = useState<BanReport | null>(null);
 
-  const [trackQuery, setTrackQuery] = useState("");
-  const [trackResults, setTrackResults] = useState<BanReport[]>([]);
-  const [isTracking, setIsTracking] = useState(false);
+  // My previous reports (inside report flow)
+  const [showMyReports, setShowMyReports] = useState(false);
+  const [myReports, setMyReports] = useState<BanReport[]>([]);
+  const [isLoadingMyReports, setIsLoadingMyReports] = useState(false);
 
   const [resolvedEvidenceUrl, setResolvedEvidenceUrl] = useState("");
   const [isResolvingEvidence] = useState(false);
   const [evidenceLoadError, setEvidenceLoadError] = useState<string | null>(null);
+
+  // Pre-fill reporter ID from auth
+  useEffect(() => {
+    if (galaUser?.uuid && !reporterGalaId) {
+      setReporterGalaId(String(galaUser.uuid));
+    }
+  }, [galaUser]);
 
   useEffect(() => {
     if (selectedReport?.evidence_url) {
@@ -286,34 +298,30 @@ const ReportPage = () => {
     }
   };
 
-  const handleTrackReports = async () => {
-    if (!trackQuery.trim()) {
-      toast.error("يرجى إدخال الآيدي للتتبع");
-      return;
-    }
-
-    setIsTracking(true);
-    setTrackResults([]);
-
+  const loadMyReports = async () => {
+    if (!reporterGalaId.trim()) return;
+    setIsLoadingMyReports(true);
     try {
       const { data, error } = await supabase
         .from("ban_reports")
         .select("*")
-        .eq("reporter_gala_id", trackQuery.trim())
+        .eq("reporter_gala_id", reporterGalaId.trim())
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-
-      setTrackResults((data || []) as unknown as BanReport[]);
-      if (!data?.length) {
-        toast.info("لا توجد بلاغات مقدمة من هذا الآيدي");
-      }
+      setMyReports((data || []) as unknown as BanReport[]);
     } catch (error) {
       console.error("Error:", error);
-      toast.error("حدث خطأ أثناء البحث");
     } finally {
-      setIsTracking(false);
+      setIsLoadingMyReports(false);
     }
+  };
+
+  const toggleMyReports = () => {
+    if (!showMyReports && myReports.length === 0) {
+      loadMyReports();
+    }
+    setShowMyReports(!showMyReports);
   };
 
   const resetForm = () => {
@@ -326,7 +334,6 @@ const ReportPage = () => {
     setEvidencePreview("");
     setIsSuccess(false);
     setRequestId("");
-    setReporterGalaId("");
   };
 
   const getBanTypeLabel = (type: BanType) => {
@@ -338,7 +345,7 @@ const ReportPage = () => {
       return (
         <span className="flex items-center gap-1 bg-success/20 text-success px-2 py-1 rounded-full text-xs font-bold">
           <CheckCircle className="w-3 h-3" />
-          تم التحقق
+          تم الحظر
         </span>
       );
     }
@@ -366,7 +373,7 @@ const ReportPage = () => {
             <h1 className="text-2xl font-bold">تم إرسال البلاغ بنجاح!</h1>
             <p className="text-muted-foreground">رقم البلاغ: #{requestId}</p>
             <div className="bg-muted/50 border border-border rounded-xl p-4 text-sm text-muted-foreground">
-              <p>سيتم مراجعة البلاغ من الإدارة وتنفيذ الحظر بعد الموافقة. يمكنك تتبع حالة البلاغ من "تتبع بلاغاتي"</p>
+              <p>سيتم مراجعة البلاغ من الإدارة وتنفيذ الحظر بعد الموافقة. يمكنك متابعة حالة البلاغ من "طلباتي السابقة"</p>
             </div>
             {selectedBanType?.reward && (
               <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
@@ -407,6 +414,8 @@ const ReportPage = () => {
                 } else {
                   setViewMode("menu");
                   resetForm();
+                  setShowMyReports(false);
+                  setMyReports([]);
                 }
               } else {
                 navigate("/dashboard");
@@ -420,12 +429,11 @@ const ReportPage = () => {
               <ShieldBan className="w-5 h-5 text-destructive" />
             </div>
             <div>
-              <h1 className="font-bold">البلاغات والبند</h1>
+              <h1 className="font-bold">الحظر</h1>
               <p className="text-xs text-muted-foreground">
-                {viewMode === "menu" ? "بلّغ أو ابحث عن سبب البند" :
+                {viewMode === "menu" ? "بلّغ أو ابحث عن سبب الحظر" :
                  viewMode === "report" ? "تقديم بلاغ جديد" :
-                 viewMode === "track" ? "تتبع بلاغاتي" :
-                 "البحث عن سبب البند"}
+                 "البحث عن سبب الحظر"}
               </p>
             </div>
           </div>
@@ -434,22 +442,38 @@ const ReportPage = () => {
 
       <div className="flex-1 overflow-y-auto min-h-0 p-4">
         <AnimatePresence mode="popLayout">
-          {/* Menu View */}
+          {/* Menu View - Only 2 options */}
           {viewMode === "menu" && (
             <motion.div key="menu" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-4">
-              <button onClick={(e) => { e.stopPropagation(); setViewMode("report"); }} className="w-full bg-gradient-to-r from-destructive/10 to-orange-600/10 border border-destructive/20 rounded-2xl p-6 text-right">
+              {/* Report Button */}
+              <button onClick={() => setViewMode("report")} className="w-full bg-gradient-to-r from-destructive/10 to-orange-600/10 border border-destructive/20 rounded-2xl p-6 text-right">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
                     <ShieldBan className="w-7 h-7 text-destructive" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-lg font-bold">تقديم بلاغ</p>
+                    <p className="text-lg font-bold">بلّغ</p>
                     <p className="text-sm text-muted-foreground">بلّغ عن مخالفة واحصل على مكافأة</p>
                   </div>
                   <ArrowLeft className="w-5 h-5 text-muted-foreground" />
                 </div>
               </button>
 
+              {/* Search Button */}
+              <button onClick={() => setViewMode("search")} className="w-full bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-2xl p-6 text-right">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <Search className="w-7 h-7 text-blue-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-lg font-bold">بحث عن سبب الحظر</p>
+                    <p className="text-sm text-muted-foreground">ابحث عن آيدي لمعرفة سبب حظره والدليل</p>
+                  </div>
+                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+                </div>
+              </button>
+
+              {/* Reward Banner */}
               <div className="bg-gradient-to-r from-warning/20 to-amber-600/20 border border-warning/30 rounded-2xl p-4">
                 <div className="flex items-center gap-3">
                   <Gift className="w-8 h-8 text-warning shrink-0" />
@@ -459,39 +483,83 @@ const ReportPage = () => {
                   </div>
                 </div>
               </div>
-
-              <button onClick={(e) => { e.stopPropagation(); setViewMode("track"); }} className="w-full bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/20 rounded-2xl p-6 text-right">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
-                    <FileText className="w-7 h-7 text-purple-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-lg font-bold">تتبع بلاغاتي</p>
-                    <p className="text-sm text-muted-foreground">تابع حالة البلاغات التي قدمتها</p>
-                  </div>
-                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-                </div>
-              </button>
-
-              <button onClick={(e) => { e.stopPropagation(); setViewMode("search"); }} className="w-full bg-gradient-to-r from-blue-600/10 to-cyan-600/10 border border-blue-500/20 rounded-2xl p-6 text-right">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
-                    <Search className="w-7 h-7 text-blue-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-lg font-bold">البحث عن سبب البند</p>
-                    <p className="text-sm text-muted-foreground">ابحث عن آيدي لمعرفة سبب بنده</p>
-                  </div>
-                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-                </div>
-              </button>
             </motion.div>
           )}
 
           {/* Report View */}
           {viewMode === "report" && (
             <motion.div key="report" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <div className="flex items-center justify-center gap-2 mb-6">
+              
+              {/* My Previous Reports Toggle */}
+              <button
+                onClick={toggleMyReports}
+                className="w-full flex items-center justify-between bg-muted/50 border border-border rounded-xl px-4 py-3"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-bold">طلباتي السابقة</span>
+                  {myReports.length > 0 && (
+                    <span className="bg-destructive/20 text-destructive px-2 py-0.5 rounded-full text-xs font-bold">{myReports.length}</span>
+                  )}
+                </div>
+                {showMyReports ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              </button>
+
+              {/* My Reports List */}
+              <AnimatePresence>
+                {showMyReports && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden space-y-3"
+                  >
+                    {isLoadingMyReports ? (
+                      <div className="flex items-center justify-center py-6 text-muted-foreground gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">جاري التحميل...</span>
+                      </div>
+                    ) : myReports.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground text-sm">
+                        لا توجد بلاغات سابقة
+                      </div>
+                    ) : (
+                      myReports.map((report) => (
+                        <div key={report.id} className="bg-card border rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-destructive/20 text-destructive px-2 py-0.5 rounded-full text-xs font-bold">{getBanTypeLabel(report.ban_type)}</span>
+                              {getStatusBadge(report)}
+                            </div>
+                            <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-EG")}</span>
+                          </div>
+                          <div className="text-sm flex justify-between">
+                            <span className="text-muted-foreground">المُبلَّغ عنه:</span>
+                            <span className="font-bold">{report.reported_user_id}</span>
+                          </div>
+                          {report.admin_notes && (
+                            <div className="bg-muted/50 rounded-lg p-2 text-xs">
+                              <span className="text-muted-foreground">ملاحظة الإدارة: </span>{report.admin_notes}
+                            </div>
+                          )}
+                          {report.is_verified && report.reward_amount && (
+                            <div className={`text-xs rounded-lg p-2 ${report.reward_paid ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                              <Gift className="w-3 h-3 inline ml-1" />
+                              {report.reward_paid ? `تم صرف ${report.reward_amount.toLocaleString()} كوينز` : `مكافأة مستحقة: ${report.reward_amount.toLocaleString()} كوينز`}
+                            </div>
+                          )}
+                          <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => setSelectedReport(report)}>
+                            <Eye className="w-3 h-3 ml-1" />عرض التفاصيل
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Steps Progress */}
+              <div className="flex items-center justify-center gap-2 mb-2">
                 {[1, 2, 3, 4, 5].map((step) => (
                   <div key={step} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
                     currentStep > step ? "bg-success text-success-foreground" :
@@ -515,7 +583,7 @@ const ReportPage = () => {
 
               {currentStep === 2 && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-bold text-center">اختر سبب الحظر</h2>
+                  <h2 className="text-lg font-bold text-center">اختر نوع البلاغ</h2>
                   <div className="space-y-3">
                     {BAN_TYPES.map((type) => (
                       <button key={type.value} onClick={() => { setBanType(type.value); if (type.value !== "other") { setCustomReason(""); setCurrentStep(3); } }} className={`w-full p-4 rounded-xl border-2 transition-all ${banType === type.value ? "border-destructive bg-destructive/10" : "border-border bg-card hover:border-destructive/50"}`}>
@@ -530,6 +598,13 @@ const ReportPage = () => {
                             <div className="bg-warning/20 text-warning px-2 py-1 rounded-lg text-xs font-bold">{type.reward.toLocaleString()} كوينز</div>
                           )}
                         </div>
+                        {/* Show promotion reward detail when selected */}
+                        {type.value === "promotion" && banType === "promotion" && (
+                          <div className="mt-3 bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm text-warning text-center">
+                            <Gift className="w-4 h-4 inline ml-1" />
+                            مكافأة 50,000 كوينز عند رفع فيديو كإثبات!
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -573,9 +648,10 @@ const ReportPage = () => {
 
                   <div className="space-y-2">
                     <label className="block text-sm font-medium">رفع {selectedBanType?.requiresVideo ? "فيديو" : "صورة أو فيديو"} الإثبات <span className="text-destructive">*</span></label>
+                    <p className="text-xs text-muted-foreground">الحد الأقصى 100MB</p>
                     {selectedBanType?.requiresVideo && (
                       <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm text-warning">
-                        <Video className="w-4 h-4 inline ml-2" />يجب رفع فيديو للحصول على المكافأة
+                        <Video className="w-4 h-4 inline ml-2" />يجب رفع فيديو للحصول على المكافأة (50,000 كوينز)
                       </div>
                     )}
                     {evidencePreview ? (
@@ -593,6 +669,7 @@ const ReportPage = () => {
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                           {selectedBanType?.requiresVideo ? <Video className="w-10 h-10" /> : <Upload className="w-10 h-10" />}
                           <span>اضغط لرفع {selectedBanType?.requiresVideo ? "الفيديو" : "الملف"}</span>
+                          <span className="text-xs">الحد الأقصى 100MB</span>
                         </div>
                       </label>
                     )}
@@ -630,55 +707,11 @@ const ReportPage = () => {
             </motion.div>
           )}
 
-          {/* Track View */}
-          {viewMode === "track" && (
-            <motion.div key="track" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <h2 className="text-lg font-bold text-center">تتبع بلاغاتي</h2>
-              <div className="flex gap-2">
-                <Input type="text" inputMode="numeric" placeholder="أدخل آيدي غلا لايف الخاص بك" value={trackQuery} onChange={(e) => setTrackQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleTrackReports()} className="flex-1" />
-                <Button onClick={handleTrackReports} disabled={isTracking} className="bg-gradient-to-r from-purple-600 to-pink-600">
-                  {isTracking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                </Button>
-              </div>
-              {trackResults.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-bold text-sm text-muted-foreground">بلاغاتك ({trackResults.length})</h3>
-                  {trackResults.map((report) => (
-                    <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border rounded-xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">{getBanTypeLabel(report.ban_type)}</span>
-                          {getStatusBadge(report)}
-                        </div>
-                        <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-EG")}</span>
-                      </div>
-                      <div className="text-sm space-y-1">
-                        <div className="flex justify-between"><span className="text-muted-foreground">المُبلَّغ عنه:</span><span className="font-bold">{report.reported_user_id}</span></div>
-                      </div>
-                      {report.description && <p className="text-sm text-muted-foreground line-clamp-2">{report.description}</p>}
-                      {report.is_verified && report.reward_amount && (
-                        <div className={`text-sm rounded-lg p-2 ${report.reward_paid ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                          <Gift className="w-4 h-4 inline ml-1" />
-                          {report.reward_paid ? `تم صرف المكافأة: ${report.reward_amount.toLocaleString()} كوينز` : `مكافأة مستحقة: ${report.reward_amount.toLocaleString()} كوينز`}
-                        </div>
-                      )}
-                      {report.admin_notes && (
-                        <div className="bg-muted/50 rounded-lg p-2 text-sm"><span className="text-muted-foreground">ملاحظات الإدارة: </span>{report.admin_notes}</div>
-                      )}
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => setSelectedReport(report)}>
-                        <Eye className="w-4 h-4 ml-2" />عرض الإثبات
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-
           {/* Search View */}
           {viewMode === "search" && (
             <motion.div key="search" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <h2 className="text-lg font-bold text-center">البحث عن سبب البند</h2>
+              <h2 className="text-lg font-bold text-center">البحث عن سبب الحظر</h2>
+              <p className="text-sm text-muted-foreground text-center">أدخل آيدي المستخدم المحظور لمعرفة السبب ومشاهدة الدليل</p>
               <div className="flex gap-2">
                 <Input type="text" inputMode="numeric" placeholder="أدخل الآيدي للبحث" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()} className="flex-1" />
                 <Button onClick={handleSearch} disabled={isSearching} className="bg-gradient-to-r from-blue-600 to-cyan-600">
@@ -695,9 +728,6 @@ const ReportPage = () => {
                           <span className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">{getBanTypeLabel(report.ban_type)}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-bold ${report.expires_at ? "bg-warning/20 text-warning" : "bg-purple-500/20 text-purple-500"}`}>
                             {report.expires_at ? "⏰ مؤقت" : "🔒 دائم"}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${report.is_verified ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"}`}>
-                            {report.is_verified ? "✓ مؤكد" : "⏳ قيد المراجعة"}
                           </span>
                         </div>
                         <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-EG")}</span>
@@ -747,7 +777,7 @@ const ReportPage = () => {
                     <ShieldBan className="w-5 h-5 text-destructive" />
                   </div>
                   <div>
-                    <h3 className="font-bold">إثبات البند</h3>
+                    <h3 className="font-bold">إثبات الحظر</h3>
                     <p className="text-xs text-muted-foreground">الآيدي: {selectedReport.reported_user_id}</p>
                   </div>
                 </div>
@@ -767,8 +797,8 @@ const ReportPage = () => {
                 </div>
                 {evidenceLoadError && <div className="mt-3 text-sm text-muted-foreground bg-muted/40 border border-border rounded-lg p-3">{evidenceLoadError}</div>}
                 <div className="mt-4 space-y-2 bg-muted/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">نوع البند:</span><span className="font-bold text-destructive">{getBanTypeLabel(selectedReport.ban_type)}</span></div>
-                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">مدة البند:</span><span className="font-bold">{selectedReport.expires_at ? "مؤقت" : "دائم 🔒"}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">نوع الحظر:</span><span className="font-bold text-destructive">{getBanTypeLabel(selectedReport.ban_type)}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">مدة الحظر:</span><span className="font-bold">{selectedReport.expires_at ? "مؤقت" : "دائم 🔒"}</span></div>
                   {selectedReport.expires_at && (
                     <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">ينتهي في:</span><span className="font-bold text-warning">{new Date(selectedReport.expires_at).toLocaleString("ar-EG")}</span></div>
                   )}
