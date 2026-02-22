@@ -331,6 +331,7 @@ serve(async (req) => {
         const updateObj: Record<string, unknown> = {
           monthly_charges: currentDiamonds,
           last_daily_charges: typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0),
+          // ALWAYS update last_processed_diamonds to current value to prevent re-processing
           last_processed_diamonds: currentDiamonds,
         };
 
