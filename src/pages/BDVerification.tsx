@@ -70,7 +70,7 @@ const BDVerification: React.FC = () => {
 
   if (!isEligible) {
     return (
-      <div className="mobile-container min-h-screen bg-background text-foreground flex flex-col" dir="rtl">
+      <div className="mobile-container bg-background text-foreground flex flex-col" dir="rtl">
         <header className="flex items-center gap-3 px-4 pt-6 pb-4">
           <button onClick={() => navigate("/dashboard")} className="p-2 rounded-xl hover:bg-muted"><ArrowRight className="w-5 h-5" /></button>
           <h1 className="font-bold text-lg">works</h1>
@@ -90,7 +90,7 @@ const BDVerification: React.FC = () => {
   }
 
   return (
-    <div className="mobile-container min-h-screen bg-background text-foreground" dir="rtl">
+    <div className="mobile-container bg-background text-foreground overflow-y-auto" dir="rtl">
       <header className="flex items-center gap-3 px-4 pt-6 pb-4">
         <button onClick={() => navigate("/dashboard")} className="p-2 rounded-xl hover:bg-muted"><ArrowRight className="w-5 h-5" /></button>
         <h1 className="font-bold text-lg">works</h1>

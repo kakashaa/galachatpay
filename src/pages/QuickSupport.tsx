@@ -168,7 +168,7 @@ const QuickSupport: React.FC = () => {
   // Access control: VIP 6 only
   if (!isEligibleForQuickSupport(authUser)) {
     return (
-      <div className="mobile-container bg-background min-h-screen flex flex-col" dir="rtl">
+      <div className="mobile-container bg-background flex flex-col" dir="rtl">
         <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
           <motion.button initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} onClick={() => navigate(-1)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30">
             <ArrowRight className="w-5 h-5 text-primary" />
@@ -198,7 +198,7 @@ const QuickSupport: React.FC = () => {
   // Active chat view
   if (chatKey) {
     return (
-      <div className="mobile-container bg-background min-h-screen flex flex-col overflow-hidden" dir="rtl">
+      <div className="mobile-container bg-background flex flex-col overflow-hidden" dir="rtl">
         <LiveSupportChat
           chatKey={chatKey}
           userUuid={authUser?.uuid || ""}
@@ -213,7 +213,7 @@ const QuickSupport: React.FC = () => {
   }
 
   return (
-    <div className="mobile-container bg-background min-h-screen flex flex-col overflow-hidden" dir="rtl">
+    <div className="mobile-container bg-background flex flex-col overflow-hidden" dir="rtl">
       <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
         <motion.button initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} onClick={() => {
           if (selectedType) { setSelectedType(null); setRoomCode(""); setDescription(""); setPhoneNumber(""); setAttachment(null); }

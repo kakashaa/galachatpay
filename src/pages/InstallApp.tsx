@@ -40,7 +40,7 @@ const InstallApp: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container bg-background min-h-screen flex flex-col items-center justify-center px-6 text-center" dir="rtl">
+    <div className="mobile-container bg-background flex flex-col items-center justify-center px-6 text-center" dir="rtl">
       <button
         onClick={() => navigate(-1)}
         className="absolute top-4 right-4 text-muted-foreground p-2"
