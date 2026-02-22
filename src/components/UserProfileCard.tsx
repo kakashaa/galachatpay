@@ -79,16 +79,24 @@ const UserProfileCard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.uuid]);
 
-  // Get salary from agency data (already fetched during login)
+  // Calculate displayed salary based on user type
+  // Agents (type 2-6): user salary (my_store.usd) + agency salary
+  // Hosts (type 1): user salary (my_store.usd) only
   useEffect(() => {
     if (!user) return;
-    if (user.agency_salary) {
-      const net = (user.agency_salary.amount_usd || 0) - (user.agency_salary.cut || 0);
-      setAgencySalary(net);
-    } else if (user.agency_accumulated_salary !== undefined && user.agency_accumulated_salary > 0) {
-      setAgencySalary(user.agency_accumulated_salary);
+    const userUsd = user.my_store?.usd || 0;
+    const isAgent = user.type_user >= 2; // وكيل
+    
+    if (isAgent && user.agency_salary) {
+      const agencyNet = (user.agency_salary.amount_usd || 0) - (user.agency_salary.cut || 0);
+      setAgencySalary(userUsd + agencyNet);
+    } else if (isAgent && user.agency_accumulated_salary && user.agency_accumulated_salary > 0) {
+      setAgencySalary(userUsd + user.agency_accumulated_salary);
+    } else {
+      // Host (type 1) or regular user: show only user salary
+      setAgencySalary(userUsd);
     }
-  }, [user?.agency_salary, user?.agency_accumulated_salary]);
+  }, [user?.agency_salary, user?.agency_accumulated_salary, user?.my_store?.usd, user?.type_user]);
 
   const handleOpenWallet = (view: "main" | "cashout") => {
     setStarWalletView(view);
@@ -209,7 +217,7 @@ const UserProfileCard: React.FC = () => {
               {[
                 { value: user.my_store.coins, emoji: "💰", color: "yellow" },
                 { value: user.my_store.diamonds, emoji: "💎", color: "purple" },
-                { value: agencySalary !== null ? `$${agencySalary}` : `$${user.my_store.usd}`, emoji: "💵", color: "green" },
+                { value: `$${agencySalary ?? user.my_store.usd}`, emoji: "💵", color: "green" },
               ].map((w, i) => (
                 <div
                   key={i}
