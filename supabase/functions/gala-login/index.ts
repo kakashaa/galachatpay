@@ -379,7 +379,7 @@ serve(async (req) => {
               else if (bdMember.member_type === "agency") pct = bdSettings.agency_commission_pct || 5;
 
               const commissionCoins = (chargeDiff * pct) / 100;
-              const commissionAmount = commissionCoins / 8500;
+              const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
 
               updateObj.current_month_commission = (bdMember.current_month_commission || 0) + commissionAmount;
               updateObj.total_commission = (bdMember.total_commission || 0) + commissionAmount;

@@ -206,7 +206,7 @@ serve(async (req) => {
         if (chargeDiff > 0) {
           const pct = bd.user_commission_pct || 2;
           const commissionCoins = (chargeDiff * pct) / 100;
-          const commissionAmount = commissionCoins / 8500;
+          const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
 
           updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
           updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
@@ -264,7 +264,7 @@ serve(async (req) => {
         if (incomeDiff > 0) {
           const pct = bd.agency_commission_pct || 5;
           const commissionCoins = (incomeDiff * pct) / 100;
-          const commissionAmount = commissionCoins / 8500;
+          const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
 
           updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
           updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
