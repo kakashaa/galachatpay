@@ -54,8 +54,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<GalaUser | null>(() => {
-    const stored = localStorage.getItem("gala_user");
-    return stored ? JSON.parse(stored) : null;
+    try {
+      const stored = localStorage.getItem("gala_user");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      localStorage.removeItem("gala_user");
+      return null;
+    }
   });
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
