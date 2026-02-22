@@ -240,7 +240,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 overflow-hidden relative bg-background">
+    <div className="min-h-dvh flex flex-col items-center justify-center p-6 overflow-y-auto relative bg-background">
       {/* Lightweight background */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-primary/8 rounded-full pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-64 h-64 bg-accent/8 rounded-full pointer-events-none" />
