@@ -45,7 +45,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-y-4 gap-x-1.5 mb-32 px-1" dir="rtl">
+      <div className="grid grid-cols-4 gap-y-4 gap-x-1.5 mb-44 px-1" dir="rtl">
         {menuItems.map((item, index) => {
           const Icon = item.icon;
           return (
