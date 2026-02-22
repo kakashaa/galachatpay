@@ -111,7 +111,6 @@
     @apply max-w-[430px] mx-auto relative;
     height: 100dvh;
     max-height: 100dvh;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
     padding-top: env(safe-area-inset-top, 0px);
