@@ -109,7 +109,7 @@ const SupportMain: React.FC = () => {
   ];
 
   return (
-    <div className="mobile-container bg-background min-h-screen flex flex-col" dir="rtl">
+    <div className="mobile-container bg-background flex flex-col" dir="rtl" style={{ height: "100dvh", maxHeight: "100dvh" }}>
       <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-xl border-b border-border/30">
         <div className="flex items-center justify-between px-4 py-3">
           <motion.button initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} onClick={() => navigate("/dashboard")} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors">
@@ -156,7 +156,7 @@ const SupportMain: React.FC = () => {
         )}
       </header>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         <AnimatePresence mode="wait">
           {activeTab === "bot" ? (
             <motion.div key="bot" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }} className="flex-1 flex flex-col overflow-hidden">
