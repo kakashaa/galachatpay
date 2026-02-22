@@ -216,8 +216,11 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
     try {
       const { data, error } = await supabase.functions.invoke("bd-sync", { body: { time: "manual" } });
       if (error) throw error;
-      toast.success(`تم المزامنة: ${data?.updated || 0} عضو، ${data?.name_updates || 0} تحديث اسم`);
-      if (subTab === "bds") loadData();
+      const synced = data?.synced_members || 0;
+      const commissions = data?.commission_updates || 0;
+      const profit = data?.profit_synced || 0;
+      toast.success(`تم المزامنة: ${synced} عضو تم تحديثه، ${commissions} عمولة جديدة، ${profit} ربح BD`);
+      loadData();
     } catch (err: any) { toast.error(err?.message || "فشل المزامنة"); }
     finally { setSyncing(false); }
   };
