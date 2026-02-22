@@ -490,6 +490,7 @@ export type Database = {
           initial_charger_num: number
           is_active: boolean
           last_daily_charges: number
+          last_processed_diamonds: number
           member_name: string
           member_type: string
           member_uuid: string
@@ -506,6 +507,7 @@ export type Database = {
           initial_charger_num?: number
           is_active?: boolean
           last_daily_charges?: number
+          last_processed_diamonds?: number
           member_name?: string
           member_type?: string
           member_uuid: string
@@ -522,6 +524,7 @@ export type Database = {
           initial_charger_num?: number
           is_active?: boolean
           last_daily_charges?: number
+          last_processed_diamonds?: number
           member_name?: string
           member_type?: string
           member_uuid?: string
