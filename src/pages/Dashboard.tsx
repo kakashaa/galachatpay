@@ -115,10 +115,10 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Calm background */}
+      {/* Lightweight background */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-primary/10 rounded-full" style={{ filter: "blur(80px)" }} />
-        <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full" style={{ filter: "blur(80px)" }} />
+        <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full" />
+        <div className="absolute bottom-0 right-0 w-64 h-64 bg-accent/5 rounded-full" />
       </div>
 
       {/* Header */}

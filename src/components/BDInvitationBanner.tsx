@@ -41,10 +41,14 @@ const BDInvitationBanner: React.FC = () => {
 
   const loadInvitations = async () => {
     if (!user?.uuid) return;
-    const { data } = await supabase.functions.invoke("bd-manage", {
-      body: { action: "get_invitations", user_uuid: user.uuid },
-    });
-    setInvitations(data?.invitations || []);
+    try {
+      const { data } = await supabase.functions.invoke("bd-manage", {
+        body: { action: "get_invitations", user_uuid: user.uuid },
+      });
+      setInvitations(data?.invitations || []);
+    } catch {
+      // silent - don't block page load
+    }
   };
 
   const handleRespond = async (inviteId: string, response: "accept" | "reject") => {

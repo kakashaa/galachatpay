@@ -12,38 +12,8 @@ interface VideoTutorial {
   thumbnail_url: string | null;
 }
 
-// Component to extract a frame from a video as thumbnail
-const VideoThumbnail = ({ src, alt }: { src: string; alt: string }) => {
-  const [thumb, setThumb] = useState<string | null>(null);
-  const attempted = useRef(false);
-
-  useEffect(() => {
-    if (!src || attempted.current) return;
-    attempted.current = true;
-    const video = document.createElement('video');
-    video.crossOrigin = 'anonymous';
-    video.muted = true;
-    video.preload = 'metadata';
-    video.src = src;
-    video.currentTime = 1;
-    video.addEventListener('seeked', () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth || 96;
-        canvas.height = video.videoHeight || 96;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          setThumb(canvas.toDataURL('image/jpeg', 0.7));
-        }
-      } catch { /* CORS fallback */ }
-    }, { once: true });
-    video.addEventListener('error', () => {}, { once: true });
-  }, [src]);
-
-  if (thumb) {
-    return <img src={thumb} alt={alt} className="w-full h-full object-cover rounded-full" />;
-  }
+// Lightweight placeholder instead of extracting video frames (was causing heavy loading)
+const VideoThumbnail = ({ alt: _alt }: { src: string; alt: string }) => {
   return (
     <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
       <Play className="w-4 h-4 text-primary" />
@@ -220,14 +190,15 @@ export const VideoStoryCircle = () => {
     try {
       const { data, error } = await supabase
         .from('video_tutorials')
-        .select('*')
+        .select('id,title,description,video_url,thumbnail_url')
         .eq('is_active', true)
-        .order('display_order', { ascending: true });
+        .order('display_order', { ascending: true })
+        .limit(10);
 
       if (error) throw error;
       setVideos((data || []) as unknown as VideoTutorial[]);
-    } catch (error) {
-      console.error('Error fetching videos:', error);
+    } catch {
+      // silent - don't block page load
     } finally {
       setLoading(false);
     }
