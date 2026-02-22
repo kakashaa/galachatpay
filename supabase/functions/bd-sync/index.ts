@@ -129,7 +129,7 @@ serve(async (req) => {
     // Get all active BD members
     const { data: members } = await sb
       .from("bd_members")
-      .select("id, member_uuid, member_name, last_daily_charges, initial_charger_num, member_type, bd_uuid, monthly_charges, current_month_commission, total_commission")
+      .select("id, member_uuid, member_name, last_daily_charges, initial_charger_num, member_type, bd_uuid, monthly_charges, current_month_commission, total_commission, last_processed_diamonds")
       .eq("is_active", true);
 
     if (!members || members.length === 0) {
@@ -269,18 +269,22 @@ serve(async (req) => {
         }
 
         const rawMonthlyIncome = typeof incomeData.commission.month === 'object' ? incomeData.commission.month.total : incomeData.commission.month;
-        const monthlyIncome = rawMonthlyIncome || 0;
-        const previousMonthly = member.monthly_charges || 0;
-        const incomeDiff = monthlyIncome - previousMonthly;
+        const currentDiamonds = rawMonthlyIncome || 0;
+        const lastProcessed = member.last_processed_diamonds || 0;
+        const diamondDiff = currentDiamonds - lastProcessed;
+
+        console.log(`[SYNC] agency ${member.member_uuid}: currentDiamonds=${currentDiamonds}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
 
         const updateObj: Record<string, unknown> = {
-          monthly_charges: monthlyIncome,
+          monthly_charges: currentDiamonds,
           last_daily_charges: typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0),
+          last_processed_diamonds: currentDiamonds,
         };
 
-        if (incomeDiff > 0) {
+        // Only create commission if there's an actual increase in diamonds
+        if (diamondDiff > 0) {
           const pct = bd.agency_commission_pct || 5;
-          const commissionCoins = (incomeDiff * pct) / 100;
+          const commissionCoins = (diamondDiff * pct) / 100;
           const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
 
           updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
@@ -289,7 +293,7 @@ serve(async (req) => {
           await sb.from("bd_commission_logs").insert({
             bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
             member_type: member.member_type, month,
-            source_amount: incomeDiff, commission_pct: pct, amount: commissionAmount,
+            source_amount: diamondDiff, commission_pct: pct, amount: commissionAmount,
           });
 
           await sb.from("bd_commission_settings").update({
@@ -299,11 +303,14 @@ serve(async (req) => {
 
           await sb.from("notifications").insert({
             title: "💰 عمولة جديدة",
-            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} كونزه) من الوكالة ${member.member_name} (${pct}% من ${incomeDiff.toLocaleString()} كونزه)`,
+            body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} ماسة) من الوكالة ${member.member_name} (${pct}% من ${diamondDiff.toLocaleString()} ماسة زيادة)`,
             target: "user", user_uuid: member.bd_uuid,
           });
 
           commissionUpdates++;
+          console.log(`[SYNC] agency ${member.member_uuid}: commission created $${commissionAmount} from ${diamondDiff} diamond increase`);
+        } else {
+          console.log(`[SYNC] agency ${member.member_uuid}: no diamond increase, skipping commission`);
         }
 
         await sb.from("bd_members").update(updateObj).eq("id", member.id);
