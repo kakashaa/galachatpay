@@ -193,6 +193,7 @@ serve(async (req) => {
 
     if (data.data) {
       const d = data.data;
+      console.log(`[LOGIN-DEBUG] my_store raw:`, JSON.stringify(d.my_store));
       // type resolution handled client-side via resolveUserType
       if (d.profile?.image) d.profile.image = fullUrl(d.profile.image);
       if (d.profile?.cover) d.profile.cover = fullUrl(d.profile.cover);
