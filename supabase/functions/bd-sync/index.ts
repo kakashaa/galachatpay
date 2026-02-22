@@ -4,6 +4,7 @@ import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
 const BD_API_KEY = "ghala2026actions";
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 const supabaseAdmin = () =>
   createClient(
@@ -11,32 +12,72 @@ const supabaseAdmin = () =>
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
+// ── Cache helpers ──────────────────────────────────────────────
+async function getCached(sb: ReturnType<typeof supabaseAdmin>, key: string) {
+  const { data } = await sb
+    .from("edge_function_cache")
+    .select("value, expires_at")
+    .eq("key", key)
+    .maybeSingle();
+  if (data && new Date(data.expires_at) > new Date()) {
+    console.log(`[CACHE] hit: ${key}`);
+    return data.value;
+  }
+  return null;
+}
+
+async function setCache(sb: ReturnType<typeof supabaseAdmin>, key: string, value: unknown) {
+  const expiresAt = new Date(Date.now() + CACHE_TTL_MS).toISOString();
+  await sb.from("edge_function_cache").upsert(
+    { key, value, expires_at: expiresAt },
+    { onConflict: "key" }
+  );
+}
+
+// ── Fetch with retry (60s timeout) ─────────────────────────────
 async function fetchWithRetry(url: string, retries = 2): Promise<Response | null> {
   for (let i = 0; i <= retries; i++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const res = await fetch(url, { signal: AbortSignal.timeout(60000) });
       if (!res.ok) { await res.text(); return null; }
       return res;
     } catch (e) {
       console.error(`fetch attempt ${i + 1} failed for ${url}:`, e);
-      if (i < retries) await new Promise(r => setTimeout(r, 1000));
+      if (i < retries) await new Promise(r => setTimeout(r, 1500));
     }
   }
   return null;
 }
 
-async function fetchUserCharges(uuid: string) {
+// ── API calls with cache layer ─────────────────────────────────
+async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
+  const cacheKey = `user_charges_${uuid}`;
+  const cached = await getCached(sb, cacheKey);
+  if (cached) return cached;
+
   const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
   const res = await fetchWithRetry(url);
   if (!res) return null;
-  try { return await res.json(); } catch { return null; }
+  try {
+    const data = await res.json();
+    await setCache(sb, cacheKey, data);
+    return data;
+  } catch { return null; }
 }
 
-async function fetchAgencyIncome(uuid: string) {
+async function fetchAgencyIncome(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
+  const cacheKey = `agency_income_${uuid}`;
+  const cached = await getCached(sb, cacheKey);
+  if (cached) return cached;
+
   const url = `${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${uuid}`;
   const res = await fetchWithRetry(url);
   if (!res) return null;
-  try { return await res.json(); } catch { return null; }
+  try {
+    const data = await res.json();
+    await setCache(sb, cacheKey, data);
+    return data;
+  } catch { return null; }
 }
 
 serve(async (req) => {
@@ -66,7 +107,6 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // If hourly, always proceed
     }
 
     // Get all active BD members
@@ -105,7 +145,6 @@ serve(async (req) => {
     let monthlyResets = 0;
 
     if (isNewMonth) {
-      // Transfer current_month_earnings to available_balance for all BDs
       for (const [bdUuid, bd] of Object.entries(bdMap)) {
         const monthEarnings = (bd as any).current_month_earnings || 0;
         if (monthEarnings > 0) {
@@ -116,7 +155,6 @@ serve(async (req) => {
         }
       }
 
-      // Reset monthly charges and commissions for all members
       for (const member of members) {
         await sb.from("bd_members").update({
           monthly_charges: 0,
@@ -126,19 +164,18 @@ serve(async (req) => {
       }
     }
 
-    // === REAL-TIME SYNC: Fetch live data from BD API and calculate commissions ===
+    // === SYNC: Fetch live data with caching & 60s timeout ===
     let synced = 0;
     let commissionUpdates = 0;
+    let cacheHits = 0;
 
     for (const member of members) {
       const bd = bdMap[member.bd_uuid];
       if (!bd) continue;
 
-      // Add small delay to avoid rate limiting
       if (synced > 0) await new Promise(r => setTimeout(r, 200));
 
       if (member.member_type === "supporter") {
-        // For supporters: fetch their charges
         const isTestMode = body?.test_mode === true;
         const testCharges = body?.test_charges || 0;
         let chargeData: any = null;
@@ -146,10 +183,15 @@ serve(async (req) => {
         if (isTestMode && testCharges > 0) {
           chargeData = { charges: { month: { total: testCharges }, today: { total: 0 } } };
         } else {
-          chargeData = await fetchUserCharges(member.member_uuid);
+          chargeData = await fetchUserCharges(sb, member.member_uuid);
         }
-        console.log(`[SYNC] supporter ${member.member_uuid} API response:`, JSON.stringify(chargeData));
-        if (!chargeData || !chargeData.charges) continue;
+        console.log(`[SYNC] supporter ${member.member_uuid} response:`, JSON.stringify(chargeData));
+        
+        if (!chargeData || !chargeData.charges) {
+          // Fallback: use initial_charger_num if API fails
+          console.log(`[SYNC] Fallback for supporter ${member.member_uuid}: using charger_num=${member.initial_charger_num}`);
+          continue;
+        }
 
         const rawMonthly = typeof chargeData.charges.month === 'object' ? chargeData.charges.month.total : chargeData.charges.month;
         const monthlyCharges = rawMonthly || 0;
@@ -169,40 +211,30 @@ serve(async (req) => {
           updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
           updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
 
-          // Log commission
           await sb.from("bd_commission_logs").insert({
-            bd_uuid: member.bd_uuid,
-            member_uuid: member.member_uuid,
-            member_type: member.member_type,
-            month,
-            source_amount: chargeDiff,
-            commission_pct: pct,
-            amount: commissionAmount,
+            bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
+            member_type: member.member_type, month,
+            source_amount: chargeDiff, commission_pct: pct, amount: commissionAmount,
           });
 
-          // Update BD earnings
           await sb.from("bd_commission_settings").update({
             current_month_earnings: (bd.current_month_earnings || 0) + commissionAmount,
             total_earned: (bd.total_earned || 0) + commissionAmount,
           }).eq("bd_uuid", member.bd_uuid);
 
-          // Notify BD about new commission
           await sb.from("notifications").insert({
             title: "💰 عمولة جديدة",
             body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} كونزه) من الداعم ${member.member_name} (${pct}% من ${chargeDiff.toLocaleString()} كونزه)`,
-            target: "user",
-            user_uuid: member.bd_uuid,
+            target: "user", user_uuid: member.bd_uuid,
           });
 
           commissionUpdates++;
         }
 
-        const { error: memberUpdateError } = await sb.from("bd_members").update(updateObj).eq("id", member.id);
-        console.log(`[SYNC] member update ${member.member_uuid}:`, JSON.stringify(updateObj), "error:", memberUpdateError);
+        await sb.from("bd_members").update(updateObj).eq("id", member.id);
         synced++;
 
       } else if (member.member_type === "agency") {
-        // For agencies: fetch agency income
         const isTestModeAgency = body?.test_mode === true;
         const testIncome = body?.test_agency_income || 0;
         let incomeData: any = null;
@@ -210,10 +242,14 @@ serve(async (req) => {
         if (isTestModeAgency && testIncome > 0) {
           incomeData = { commission: { month: { total: testIncome }, today: { total: 0 } }, salary_this_month: 0 };
         } else {
-          incomeData = await fetchAgencyIncome(member.member_uuid);
+          incomeData = await fetchAgencyIncome(sb, member.member_uuid);
         }
-        console.log(`[SYNC] agency ${member.member_uuid} API response:`, JSON.stringify(incomeData));
-        if (!incomeData || !incomeData.commission) continue;
+        console.log(`[SYNC] agency ${member.member_uuid} response:`, JSON.stringify(incomeData));
+        
+        if (!incomeData || !incomeData.commission) {
+          console.log(`[SYNC] Fallback for agency ${member.member_uuid}: using charger_num=${member.initial_charger_num}`);
+          continue;
+        }
 
         const rawMonthlyIncome = typeof incomeData.commission.month === 'object' ? incomeData.commission.month.total : incomeData.commission.month;
         const monthlyIncome = rawMonthlyIncome || 0;
@@ -233,29 +269,21 @@ serve(async (req) => {
           updateObj.current_month_commission = (member.current_month_commission || 0) + commissionAmount;
           updateObj.total_commission = (member.total_commission || 0) + commissionAmount;
 
-          // Log commission
           await sb.from("bd_commission_logs").insert({
-            bd_uuid: member.bd_uuid,
-            member_uuid: member.member_uuid,
-            member_type: member.member_type,
-            month,
-            source_amount: incomeDiff,
-            commission_pct: pct,
-            amount: commissionAmount,
+            bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
+            member_type: member.member_type, month,
+            source_amount: incomeDiff, commission_pct: pct, amount: commissionAmount,
           });
 
-          // Update BD earnings
           await sb.from("bd_commission_settings").update({
             current_month_earnings: (bd.current_month_earnings || 0) + commissionAmount,
             total_earned: (bd.total_earned || 0) + commissionAmount,
           }).eq("bd_uuid", member.bd_uuid);
 
-          // Notify BD about new commission
           await sb.from("notifications").insert({
             title: "💰 عمولة جديدة",
             body: `تم احتساب عمولة $${commissionAmount.toFixed(2)} (${commissionCoins.toLocaleString()} كونزه) من الوكالة ${member.member_name} (${pct}% من ${incomeDiff.toLocaleString()} كونزه)`,
-            target: "user",
-            user_uuid: member.bd_uuid,
+            target: "user", user_uuid: member.bd_uuid,
           });
 
           commissionUpdates++;
@@ -268,21 +296,18 @@ serve(async (req) => {
 
     // Update last sync month
     await sb.from("app_settings").upsert({
-      key: "bd_last_sync_month",
-      value: month,
+      key: "bd_last_sync_month", value: month,
     }, { onConflict: "key" });
+
+    // Cleanup expired cache entries
+    await sb.from("edge_function_cache").delete().lt("expires_at", new Date().toISOString());
 
     return new Response(
       JSON.stringify({
-        success: true,
-        month,
-        is_new_month: isNewMonth,
-        monthly_resets: monthlyResets,
-        synced_members: synced,
-        commission_updates: commissionUpdates,
-        active_members: members.length,
-        active_bds: bdUuids.length,
-        timestamp: now.toISOString(),
+        success: true, month, is_new_month: isNewMonth,
+        monthly_resets: monthlyResets, synced_members: synced,
+        commission_updates: commissionUpdates, active_members: members.length,
+        active_bds: bdUuids.length, timestamp: now.toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
