@@ -79,25 +79,16 @@ const UserProfileCard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.uuid]);
 
-  // Fetch salary from agency API (host-salary)
+  // Get salary from agency data (already fetched during login)
   useEffect(() => {
-    if (!user?.uuid) return;
-    let cancelled = false;
-    const fetchSalary = async () => {
-      try {
-        const { data: res } = await supabase.functions.invoke("bd-data", {
-          body: { action: "host-salary", uuid: user.uuid },
-        });
-        if (cancelled) return;
-        if (res?.ok && res.salaries?.length > 0) {
-          const current = res.salaries[0];
-          setAgencySalary(current.sallary - current.cut_amount);
-        }
-      } catch { /* silent */ }
-    };
-    fetchSalary();
-    return () => { cancelled = true; };
-  }, [user?.uuid]);
+    if (!user) return;
+    if (user.agency_salary) {
+      const net = (user.agency_salary.amount_usd || 0) - (user.agency_salary.cut || 0);
+      setAgencySalary(net);
+    } else if (user.agency_accumulated_salary !== undefined && user.agency_accumulated_salary > 0) {
+      setAgencySalary(user.agency_accumulated_salary);
+    }
+  }, [user?.agency_salary, user?.agency_accumulated_salary]);
 
   const handleOpenWallet = (view: "main" | "cashout") => {
     setStarWalletView(view);
