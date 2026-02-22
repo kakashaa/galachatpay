@@ -290,54 +290,73 @@ serve(async (req) => {
         synced++;
 
       } else if (member.member_type === "agency") {
+        // === AGENCY SYNC: use user-charges (total income) then subtract personal charges ===
         const isTestModeAgency = body?.test_mode === true;
         const testIncome = body?.test_agency_income || 0;
-        let incomeData: any = null;
 
+        // Step 1: Get TOTAL income from user-charges (includes personal + agency)
+        let totalChargesData: any = null;
         if (isTestModeAgency && testIncome > 0) {
-          incomeData = { commission: { month: { total: testIncome }, today: { total: 0 } }, salary_this_month: 0 };
+          totalChargesData = { charges: { month: { total: testIncome }, today: { total: 0 } } };
         } else {
-          incomeData = await fetchAgencyIncome(sb, member.member_uuid);
+          totalChargesData = await fetchUserCharges(sb, member.member_uuid);
         }
-        console.log(`[SYNC] agency ${member.member_uuid} income response:`, JSON.stringify(incomeData));
-        
-        if (!incomeData || !incomeData.commission) {
-          console.log(`[SYNC] Fallback for agency ${member.member_uuid}: using charger_num=${member.initial_charger_num}`);
+        console.log(`[SYNC] agency ${member.member_uuid} user-charges response:`, JSON.stringify(totalChargesData));
+
+        if (!totalChargesData || !totalChargesData.charges) {
+          console.log(`[SYNC] Fallback for agency ${member.member_uuid}: user-charges returned no data`);
           continue;
         }
 
-        // Fetch user charges to subtract from agency total (agency-income API includes charges)
-        let userChargesTotal = 0;
+        const rawTotal = typeof totalChargesData.charges.month === 'object'
+          ? (totalChargesData.charges.month.total || 0)
+          : (totalChargesData.charges.month || 0);
+
+        const dailyCharges = typeof totalChargesData.charges.today === 'object'
+          ? (totalChargesData.charges.today.total || 0)
+          : (totalChargesData.charges.today || 0);
+
+        // Step 2: Get personal charges to subtract (supporter charges for this user)
+        // The initial_charger_num tracks the charges the user had when they joined
+        // Monthly personal charges = coins charged as a regular user, not from agency
+        let personalCharges = 0;
         if (!isTestModeAgency) {
-          const chargeData = await fetchUserCharges(sb, member.member_uuid);
-          if (chargeData?.charges) {
-            userChargesTotal = typeof chargeData.charges.month === 'object' ? (chargeData.charges.month.total || 0) : (chargeData.charges.month || 0);
+          // Check if there's a supporter entry for this same UUID to get personal charges
+          const { data: supporterEntry } = await sb.from("bd_members")
+            .select("monthly_charges")
+            .eq("member_uuid", member.member_uuid)
+            .eq("member_type", "supporter")
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (supporterEntry) {
+            personalCharges = supporterEntry.monthly_charges || 0;
+            console.log(`[SYNC] agency ${member.member_uuid}: found supporter entry, personal charges = ${personalCharges}`);
           }
-          console.log(`[SYNC] agency ${member.member_uuid} charges to subtract: ${userChargesTotal}`);
         }
 
-        const rawMonthlyIncome = typeof incomeData.commission.month === 'object' ? incomeData.commission.month.total : incomeData.commission.month;
-        // Pure agency income = total from API minus user charges (coins)
-        const pureIncome = Math.max(0, (rawMonthlyIncome || 0) - userChargesTotal);
+        // Step 3: Calculate pure agency income
+        const pureIncome = Math.max(0, rawTotal - personalCharges);
         const currentDiamonds = pureIncome;
 
         // RE-READ fresh member data to prevent duplicate commissions
-        const { data: freshAgencyMember } = await sb.from("bd_members").select("last_processed_diamonds, current_month_commission, total_commission").eq("id", member.id).maybeSingle();
+        const { data: freshAgencyMember } = await sb.from("bd_members")
+          .select("last_processed_diamonds, current_month_commission, total_commission")
+          .eq("id", member.id).maybeSingle();
         const lastProcessed = freshAgencyMember?.last_processed_diamonds || 0;
         const diamondDiff = currentDiamonds - lastProcessed;
 
-        console.log(`[SYNC] agency ${member.member_uuid}: rawTotal=${rawMonthlyIncome}, charges=${userChargesTotal}, pureIncome=${pureIncome}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
+        console.log(`[SYNC] agency ${member.member_uuid}: rawTotal=${rawTotal}, personalCharges=${personalCharges}, pureIncome=${pureIncome}, lastProcessed=${lastProcessed}, diff=${diamondDiff}`);
 
         const updateObj: Record<string, unknown> = {
           monthly_charges: currentDiamonds,
-          last_daily_charges: typeof incomeData.commission.today === 'object' ? (incomeData.commission.today.total || 0) : (incomeData.commission.today || 0),
-          // ALWAYS update last_processed_diamonds to current value to prevent re-processing
+          last_daily_charges: dailyCharges,
           last_processed_diamonds: currentDiamonds,
         };
 
         // Only create commission if there's an actual increase in diamonds
         if (diamondDiff > 0) {
-          // DEDUP CHECK: look for existing commission log this sync cycle
+          // DEDUP CHECK
           const { data: existingAgencyLog } = await sb.from("bd_commission_logs")
             .select("id")
             .eq("bd_uuid", member.bd_uuid)
@@ -363,8 +382,9 @@ serve(async (req) => {
               source_amount: diamondDiff, commission_pct: pct, amount: commissionAmount,
             });
 
-            // RE-READ BD settings for accurate accumulation
-            const { data: freshBdAgency } = await sb.from("bd_commission_settings").select("current_month_earnings, total_earned").eq("bd_uuid", member.bd_uuid).maybeSingle();
+            const { data: freshBdAgency } = await sb.from("bd_commission_settings")
+              .select("current_month_earnings, total_earned")
+              .eq("bd_uuid", member.bd_uuid).maybeSingle();
             await sb.from("bd_commission_settings").update({
               current_month_earnings: (freshBdAgency?.current_month_earnings || 0) + commissionAmount,
               total_earned: (freshBdAgency?.total_earned || 0) + commissionAmount,
