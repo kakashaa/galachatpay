@@ -248,9 +248,13 @@ serve(async (req) => {
         }
       }
 
-      // CRITICAL: Check charger level - must be 0 for new accounts
+      // CRITICAL: Check ALL levels - must be 0 for new accounts
       const chargerLevel = preCheckData.level?.charger_level || preCheckData.level?.charger || preCheckData.charger_num || 0;
-      if (chargerLevel > 0) {
+      const senderLevel = preCheckData.level?.sender_level || preCheckData.level?.sender || 0;
+      const receiverLevel = preCheckData.level?.receiver_level || preCheckData.level?.receiver || 0;
+
+      if (chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0) {
+        const levelDetails = `شحن: ${chargerLevel}، إرسال: ${senderLevel}، استقبال: ${receiverLevel}`;
         // Log violation
         await sb.from("bd_violations").insert({
           bd_uuid,
@@ -258,7 +262,7 @@ serve(async (req) => {
           violation_type: "ineligible_invite",
           member_uuid,
           member_name: preCheckData.name || preCheckData.user?.name || member_uuid,
-          details: `محاولة دعوة حساب قديم بمستوى شحن ${chargerLevel}`,
+          details: `محاولة دعوة حساب قديم (${levelDetails})`,
         });
 
         // Re-count violations after insert
@@ -290,20 +294,10 @@ serve(async (req) => {
 
         const remaining = 3 - newCount;
         return json({
-          error: `⚠️ المستخدم الذي تريد دعوته قديم في البرنامج (مستوى الشحن: ${chargerLevel}). هذا تحذير لك! إذا حبيت تدعو شخص، ادعو شخص جديد على التطبيق واكسب نسبتك. عندك هذا إنذار ${newCount} من 3. متبقي ${remaining} إنذار(ات) قبل إيقاف البيدي.`,
+          error: `⚠️ المستخدم الذي تريد دعوته قديم في البرنامج (${levelDetails}). هذا تحذير لك! إذا حبيت تدعو شخص، ادعو شخص جديد على التطبيق واكسب نسبتك. عندك هذا إنذار ${newCount} من 3. متبقي ${remaining} إنذار(ات) قبل إيقاف البيدي.`,
           violation: true,
           violation_count: newCount,
         });
-      }
-
-      // Check other levels too
-      if (preCheckData.level) {
-        const lvl = preCheckData.level;
-        const rLvl = lvl.receiver_level || lvl.receiver || 0;
-        const sLvl = lvl.sender_level || lvl.sender || 0;
-        if (rLvl > 0 || sLvl > 0) {
-          return json({ error: `لا يمكن دعوة هذا الحساب. المستويات ليست صفر (استقبال: ${rLvl}، إرسال: ${sLvl})` });
-        }
       }
 
       const { error } = await sb.from("bd_member_invitations").insert({
