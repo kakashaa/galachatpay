@@ -410,7 +410,7 @@ serve(async (req) => {
     }
 
     if (action === "respond_invite") {
-      const { invitation_id, response: invResponse, user_uuid, password } = params;
+      const { invitation_id, response: invResponse, user_uuid, password, charger_num: clientChargerNum } = params;
       if (!invitation_id || !invResponse) return json({ error: "بيانات ناقصة" }, 400);
 
       const { data: invite } = await sb
@@ -558,20 +558,11 @@ serve(async (req) => {
           baselineChargerNum = typeof m === "object" ? (m?.total ?? m?.count ?? 0) : (m || 0);
         }
       } else {
-        // For supporters: use charger_num from user-info as the baseline
-        // charger_num is the cumulative total - we set it as initial so only new charges count
-        const userInfo = await (async () => {
-          const uiUrl = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${invite.member_uuid}`;
-          try {
-            const r = await fetch(uiUrl, { signal: AbortSignal.timeout(10000) });
-            if (r.ok) return await r.json();
-          } catch { /* ignore */ }
-          return null;
-        })();
-        
-        const chargerNum = Number(userInfo?.user?.charger_num ?? userInfo?.charger_num ?? 0);
+        // For supporters: use charger_num passed from the frontend (from login response)
+        // The user-info API doesn't return charger_num, so we rely on the client
+        const chargerNum = Number(clientChargerNum || 0);
         baselineChargerNum = chargerNum;
-        console.log(`[BD-INVITE] Supporter baseline for ${invite.member_uuid}: charger_num=${chargerNum}`);
+        console.log(`[BD-INVITE] Supporter baseline for ${invite.member_uuid}: charger_num=${chargerNum} (from client)`);
       }
 
       const { error: memberError } = await sb.from("bd_members").insert({
