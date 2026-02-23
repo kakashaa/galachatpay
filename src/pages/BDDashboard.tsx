@@ -123,46 +123,42 @@ const BDDashboard: React.FC = () => {
   const { bd, supporters, agents } = data;
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display antialiased selection:bg-primary selection:text-white" dir="rtl">
-      <div className="fixed inset-0 pointer-events-none z-0 bg-grid-pattern opacity-20"></div>
-      
-      <main className="relative z-10 flex-1 flex flex-col max-w-md mx-auto w-full border-x border-white/5 bg-background-light dark:bg-background-dark shadow-2xl">
-        
+    <div className="mobile-container bg-background" dir="rtl">
         {/* Header */}
-        <header className="flex items-center justify-between px-6 pt-14 pb-4 bg-gradient-to-b from-background-dark to-transparent">
-          <div className="flex items-center gap-3">
+        <header className="shrink-0 flex items-center justify-between px-4 pt-10 pb-3">
+          <div className="flex items-center gap-2">
             {tab !== 'dashboard' ? (
               <button 
                 onClick={() => setTab('dashboard')}
-                className="p-2 rounded-full hover:bg-white/5 transition-colors text-slate-300 hover:text-white"
+                className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
               >
-                <span className="material-symbols-outlined">arrow_forward</span>
+                <span className="material-symbols-outlined text-xl">arrow_forward</span>
               </button>
             ) : (
               <button 
                 onClick={() => navigate("/")}
-                className="p-2 rounded-full hover:bg-white/5 transition-colors text-slate-300 hover:text-white"
+                className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
               >
-                <span className="material-symbols-outlined">arrow_forward</span>
+                <span className="material-symbols-outlined text-xl">arrow_forward</span>
               </button>
             )}
             <div className="flex flex-col">
-              {tab === 'dashboard' && <span className="text-xs text-slate-400 font-medium">مرحباً بعودتك 👋</span>}
-              <h1 className="text-lg font-bold text-white leading-tight">
-                {tab === 'dashboard' ? (bd.bd_name || user?.name || "BD Member") : 
+              {tab === 'dashboard' && <span className="text-[10px] text-muted-foreground">مرحباً 👋</span>}
+              <h1 className="text-sm font-bold text-foreground leading-tight">
+                {tab === 'dashboard' ? (bd.bd_name || user?.name || "BD") : 
                  tab === 'supporters' ? 'الداعمين' :
                  tab === 'agents' ? 'الوكالات' :
                  tab === 'wallet' ? 'المحفظة' : 'الإعدادات'}
               </h1>
             </div>
           </div>
-          <button className="relative p-2 rounded-full hover:bg-white/5 transition-colors text-slate-300 hover:text-white">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background-dark"></span>
+          <button className="relative p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground">
+            <span className="material-symbols-outlined text-xl">notifications</span>
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-24 space-y-6">
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4 space-y-4">
           
           {tab === 'supporters' ? (
             <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} />
@@ -182,7 +178,7 @@ const BDDashboard: React.FC = () => {
                         <span className="material-symbols-outlined text-sm text-emerald-400">account_balance_wallet</span>
                         الرصيد المتاح
                       </p>
-                      <h2 className="text-4xl font-bold text-white tracking-tight">${(bd.available_balance || 0).toFixed(2)}</h2>
+                      <h2 className="text-2xl font-bold text-foreground tracking-tight">${(bd.available_balance || 0).toFixed(2)}</h2>
                     </div>
                     <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                       <span className="material-symbols-outlined text-emerald-400">savings</span>
@@ -687,51 +683,22 @@ const BDDashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Bottom Navigation */}
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-[#1c1e2e]/95 backdrop-blur-md border-t border-white/5 pb-6 pt-2 px-6 rounded-t-2xl z-20">
+        <nav className="shrink-0 bg-card/95 backdrop-blur-md border-t border-border/30 pb-[env(safe-area-inset-bottom,8px)] pt-1.5 px-4">
           <div className="flex justify-between items-center">
-            <button onClick={() => setTab('dashboard')} className="flex flex-col items-center gap-1 group">
-              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'dashboard' ? '' : 'opacity-70'}`}>
-                {tab === 'dashboard' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
-                <span className={`material-symbols-outlined relative z-10 ${tab === 'dashboard' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>dashboard</span>
-              </div>
-              <span className={`text-[10px] font-bold ${tab === 'dashboard' ? 'text-white' : 'text-slate-400'}`}>لوحة التحكم</span>
-            </button>
-
-            <button onClick={() => setTab('supporters')} className="flex flex-col items-center gap-1 group">
-              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'supporters' ? '' : 'opacity-70'}`}>
-                {tab === 'supporters' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
-                <span className={`material-symbols-outlined relative z-10 ${tab === 'supporters' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>diversity_3</span>
-              </div>
-              <span className={`text-[10px] font-medium ${tab === 'supporters' ? 'text-white' : 'text-slate-400'}`}>الداعمين</span>
-            </button>
-
-            <button onClick={() => setTab('agents')} className="flex flex-col items-center gap-1 group">
-              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'agents' ? '' : 'opacity-70'}`}>
-                {tab === 'agents' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
-                <span className={`material-symbols-outlined relative z-10 ${tab === 'agents' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>domain</span>
-              </div>
-              <span className={`text-[10px] font-medium ${tab === 'agents' ? 'text-white' : 'text-slate-400'}`}>الوكالات</span>
-            </button>
-
-            <button onClick={() => setTab('wallet')} className="flex flex-col items-center gap-1 group">
-              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'wallet' ? '' : 'opacity-70'}`}>
-                {tab === 'wallet' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
-                <span className={`material-symbols-outlined relative z-10 ${tab === 'wallet' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>account_balance_wallet</span>
-              </div>
-              <span className={`text-[10px] font-medium ${tab === 'wallet' ? 'text-white' : 'text-slate-400'}`}>المحفظة</span>
-            </button>
-
-            <button onClick={() => setTab('settings')} className="flex flex-col items-center gap-1 group">
-              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'settings' ? '' : 'opacity-70'}`}>
-                {tab === 'settings' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
-                <span className={`material-symbols-outlined relative z-10 ${tab === 'settings' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>settings</span>
-              </div>
-              <span className={`text-[10px] font-medium ${tab === 'settings' ? 'text-white' : 'text-slate-400'}`}>الإعدادات</span>
-            </button>
+            {[
+              { id: 'dashboard' as const, icon: 'dashboard', label: 'الرئيسية' },
+              { id: 'supporters' as const, icon: 'diversity_3', label: 'الداعمين' },
+              { id: 'agents' as const, icon: 'domain', label: 'الوكالات' },
+              { id: 'wallet' as const, icon: 'account_balance_wallet', label: 'المحفظة' },
+              { id: 'settings' as const, icon: 'settings', label: 'الإعدادات' },
+            ].map(item => (
+              <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1 px-2">
+                <span className={`material-symbols-outlined text-xl ${tab === item.id ? 'text-primary' : 'text-muted-foreground'}`}>{item.icon}</span>
+                <span className={`text-[9px] font-bold ${tab === item.id ? 'text-foreground' : 'text-muted-foreground'}`}>{item.label}</span>
+              </button>
+            ))}
           </div>
         </nav>
-      </main>
     </div>
   );
 };
