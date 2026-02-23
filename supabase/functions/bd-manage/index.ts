@@ -285,7 +285,19 @@ serve(async (req) => {
 
       // Check agency role if inviting as agency
       if (member_type === "agency") {
+        // The user-info API returns Arabic keys; check "معرف الوكالة" (agency ID)
+        const userObj = userInfoData?.user || {};
+        const agencyId = userObj["معرف الوكالة"] ?? "";
         const memberTypeUser = preCheckData.type_user ?? preCheckData.user?.type_user ?? userInfoData?.type_user ?? -1;
+        
+        console.log("[BD-INVITE] Agency check:", { agencyId, memberTypeUser, userObj });
+        
+        // If agency ID is empty/falsy, user doesn't have an agency yet
+        if (!agencyId || agencyId === "" || agencyId === "0") {
+          return json({ error: "⚠️ هذا المستخدم لسا ما عنده وكالة! لازم ينشئ وكالة أول قبل ما ترسل له دعوة كوكيل." });
+        }
+        
+        // Also check numeric type if available
         if (memberTypeUser >= 0 && memberTypeUser < 2) {
           return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
         }
