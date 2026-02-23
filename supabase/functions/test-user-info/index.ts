@@ -28,6 +28,7 @@ serve(async (req) => {
 
   const monthStr = String(month).padStart(2, "0");
   const results = await Promise.all([
+    testEndpoint("user-info", `${BASE}/bd-data-api.php?key=${KEY}&action=user-info&uuid=${uuid}`),
     testEndpoint("top-chargers", `${BASE}/top-chargers-api.php?key=${KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthStr}`),
     testEndpoint("agency-target-api", `${BASE}/agency-target-api.php?key=${KEY}&uuid=${uuid}&year=${year}&month=${monthStr}`),
   ]);
