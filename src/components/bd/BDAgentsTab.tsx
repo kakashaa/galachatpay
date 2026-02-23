@@ -15,11 +15,27 @@ interface BDAgentsTabProps {
 }
 
 const BDAgentsTab: React.FC<BDAgentsTabProps> = ({ agents, commissionPct }) => {
+  const [search, setSearch] = React.useState("");
+  const filtered = agents.filter(a => 
+    a.member_name?.toLowerCase().includes(search.toLowerCase()) || 
+    a.member_uuid?.includes(search)
+  );
   const totalSalaryCoins = agents.reduce((sum, a) => sum + (a.monthly_charges || 0), 0);
   const totalCommission = agents.reduce((sum, a) => sum + (a.current_month_commission || 0), 0);
 
   return (
     <div className="space-y-5">
+      {/* Search */}
+      <div className="relative">
+        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+        <input
+          type="text"
+          placeholder="ابحث عن وكالة بالاسم أو ID..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full bg-[#1c1e2e] border border-white/10 rounded-xl py-2.5 pr-10 pl-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 transition-colors"
+        />
+      </div>
       {/* Header Stats */}
       <div className="bg-[#1c1e2e] border border-white/10 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-1">
@@ -48,17 +64,17 @@ const BDAgentsTab: React.FC<BDAgentsTabProps> = ({ agents, commissionPct }) => {
       <div>
         <div className="flex items-center justify-between px-1 mb-3">
           <h4 className="text-sm font-bold text-white uppercase tracking-wider">قائمة الوكالات</h4>
-          <span className="text-[10px] text-slate-400">{agents.length} وكالة</span>
+          <span className="text-[10px] text-slate-400">{filtered.length} وكالة</span>
         </div>
 
-        {agents.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-8 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-600 mb-2">domain_disabled</span>
-            <p className="text-sm text-slate-400">لا يوجد وكالات حالياً</p>
+            <span className="material-symbols-outlined text-4xl text-slate-600 mb-2">{search ? 'search_off' : 'domain_disabled'}</span>
+            <p className="text-sm text-slate-400">{search ? 'لا توجد نتائج' : 'لا يوجد وكالات حالياً'}</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {agents.map((agent) => {
+            {filtered.map((agent) => {
               const salaryCoins = agent.monthly_charges || 0;
               const salaryUSD = salaryCoins / 7500;
               const commUSD = agent.current_month_commission || 0;
