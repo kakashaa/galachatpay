@@ -86,7 +86,7 @@ async function fetchBatchMonthlyCharges(
   const monthNum = String(now.getUTCMonth() + 1).padStart(2, "0");
   const url = `${TOP_CHARGERS_API_URL}?key=${BD_API_KEY}&uuids=${uncachedUuids.join(",")}&year=${year}&month=${monthNum}`;
 
-  console.log(`[BATCH] fetching charges for ${uncachedUuids.length} supporters in ONE request`);
+  console.log(`[BATCH] fetching URL: ${url}`);
   const res = await fetchWithRetry(url, 2);
   if (!res) {
     console.error(`[BATCH] API request failed for ${uncachedUuids.length} uuids`);
@@ -94,7 +94,9 @@ async function fetchBatchMonthlyCharges(
   }
 
   try {
-    const data = await res.json();
+    const rawText = await res.text();
+    console.log(`[BATCH] raw response (first 300 chars): ${rawText.slice(0, 300)}`);
+    const data = JSON.parse(rawText);
     if (data?.status === "success" && Array.isArray(data.data)) {
       for (const entry of data.data) {
         const uuid = String(entry.uuid);
