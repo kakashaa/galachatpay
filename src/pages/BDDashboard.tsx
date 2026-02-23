@@ -156,6 +156,208 @@ const BDDashboard: React.FC = () => {
             <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} />
           ) : tab === 'agents' ? (
             <BDAgentsTab agents={agents} commissionPct={bd.agency_commission_pct || 5} />
+          ) : tab === 'wallet' ? (
+            /* ── Wallet Tab ── */
+            <div className="space-y-5 mt-2 animate-fade-in">
+              {/* Balance Card */}
+              <section className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/40 to-primary/40 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition duration-500"></div>
+                <div className="relative overflow-hidden rounded-2xl bg-[#1c1e2e] border border-white/10 p-6 shadow-xl">
+                  <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl"></div>
+                  <div className="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                      <p className="text-sm text-slate-400 mb-1 font-medium flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm text-emerald-400">account_balance_wallet</span>
+                        الرصيد المتاح
+                      </p>
+                      <h2 className="text-4xl font-bold text-white tracking-tight">${(bd.available_balance || 0).toFixed(2)}</h2>
+                    </div>
+                    <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                      <span className="material-symbols-outlined text-emerald-400">savings</span>
+                    </div>
+                  </div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 relative z-10">
+                    <div className="w-5 h-5 coin-icon text-[10px]">$</div>
+                    <span className="text-sm font-medium text-yellow-500">{((bd.available_balance || 0) * 7500).toLocaleString()} عملة</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-[#1c1e2e] border border-white/10 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-primary text-base">trending_up</span>
+                    <span className="text-xs text-slate-400">إجمالي المكتسب</span>
+                  </div>
+                  <p className="text-xl font-bold text-white">${(bd.total_earned || 0).toFixed(2)}</p>
+                </div>
+                <div className="rounded-2xl bg-[#1c1e2e] border border-white/10 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-emerald-400 text-base">calendar_month</span>
+                    <span className="text-xs text-slate-400">أرباح الشهر</span>
+                  </div>
+                  <p className="text-xl font-bold text-white">${(bd.current_month_earnings || 0).toFixed(2)}</p>
+                </div>
+              </div>
+
+              {/* Withdraw Button */}
+              <button
+                onClick={() => navigate("/bd/withdraw")}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all"
+              >
+                <span className="material-symbols-outlined text-lg">payments</span>
+                سحب الأرباح
+              </button>
+
+              {/* Withdrawal History */}
+              <section className="rounded-2xl bg-[#1c1e2e] border border-white/10 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+                  <span className="material-symbols-outlined text-primary text-base">receipt_long</span>
+                  <h3 className="text-sm font-bold text-white">آخر عمليات السحب</h3>
+                </div>
+                {(data?.withdrawals || []).length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <span className="material-symbols-outlined text-3xl mb-2 block">history</span>
+                    <p className="text-xs">لا توجد عمليات سحب بعد</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {(data?.withdrawals || []).slice(0, 5).map((w: any) => (
+                      <div key={w.id} className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-1.5 rounded-lg ${w.status === 'completed' ? 'bg-emerald-500/10' : w.status === 'rejected' ? 'bg-red-500/10' : 'bg-yellow-500/10'}`}>
+                            <span className={`material-symbols-outlined text-base ${w.status === 'completed' ? 'text-emerald-400' : w.status === 'rejected' ? 'text-red-400' : 'text-yellow-400'}`}>
+                              {w.status === 'completed' ? 'check_circle' : w.status === 'rejected' ? 'cancel' : 'pending'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-white">${(w.amount || 0).toFixed(2)}</p>
+                            <p className="text-[10px] text-slate-500">{new Date(w.created_at).toLocaleDateString('ar')}</p>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${w.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : w.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                          {w.status === 'completed' ? 'مكتمل' : w.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+              <div className="h-6"></div>
+            </div>
+          ) : tab === 'settings' ? (
+            /* ── Settings Tab ── */
+            <div className="space-y-4 mt-2 animate-fade-in">
+              {/* Profile Section */}
+              <section className="rounded-2xl bg-[#1c1e2e] border border-white/10 p-5">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                    {(bd.bd_name || "B")[0]}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-white">{bd.bd_name || user?.name}</h3>
+                    <p className="text-xs text-slate-400">UUID: {user?.uuid?.slice(0, 8)}...</p>
+                    <p className="text-xs text-slate-400">كود: {bd.referral_code}</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Commission Rates */}
+              <section className="rounded-2xl bg-[#1c1e2e] border border-white/10 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+                  <span className="material-symbols-outlined text-primary text-base">percent</span>
+                  <h3 className="text-sm font-bold text-white">نسب العمولة</h3>
+                </div>
+                <div className="divide-y divide-white/5">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-blue-400 text-base">diversity_3</span>
+                      <span className="text-xs text-slate-300">عمولة الداعمين</span>
+                    </div>
+                    <span className="text-sm font-bold text-primary">{bd.user_commission_pct || 2}%</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-purple-400 text-base">domain</span>
+                      <span className="text-xs text-slate-300">عمولة الوكالات</span>
+                    </div>
+                    <span className="text-sm font-bold text-primary">{bd.agency_commission_pct || 5}%</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-emerald-400 text-base">local_atm</span>
+                      <span className="text-xs text-slate-300">عمولة المضيفين</span>
+                    </div>
+                    <span className="text-sm font-bold text-primary">{bd.host_commission_pct || 3}%</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Quick Actions */}
+              <section className="rounded-2xl bg-[#1c1e2e] border border-white/10 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+                  <span className="material-symbols-outlined text-primary text-base">bolt</span>
+                  <h3 className="text-sm font-bold text-white">إجراءات سريعة</h3>
+                </div>
+                <div className="divide-y divide-white/5">
+                  <button onClick={() => navigate("/bd/add")} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-emerald-400 text-base">person_add</span>
+                      <span className="text-xs text-slate-300">إضافة عضو</span>
+                    </div>
+                    <span className="material-symbols-outlined text-slate-500 text-base">chevron_left</span>
+                  </button>
+                  <button onClick={() => navigate("/bd/withdraw")} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-yellow-400 text-base">payments</span>
+                      <span className="text-xs text-slate-300">سحب الأرباح</span>
+                    </div>
+                    <span className="material-symbols-outlined text-slate-500 text-base">chevron_left</span>
+                  </button>
+                  <button onClick={() => { copyReferralCode(); }} className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-blue-400 text-base">share</span>
+                      <span className="text-xs text-slate-300">مشاركة كود الإحالة</span>
+                    </div>
+                    <span className="material-symbols-outlined text-slate-500 text-base">chevron_left</span>
+                  </button>
+                </div>
+              </section>
+
+              {/* Account Info */}
+              <section className="rounded-2xl bg-[#1c1e2e] border border-white/10 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="material-symbols-outlined text-primary text-base">info</span>
+                  <h3 className="text-sm font-bold text-white">معلومات الحساب</h3>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">الحالة</span>
+                    <span className={`font-medium ${bd.is_active ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {bd.is_active ? '✅ نشط' : '❌ غير نشط'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">الهدف الشهري</span>
+                    <span className="font-medium text-white">${bd.monthly_goal || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">عدد الداعمين</span>
+                    <span className="font-medium text-white">{supporters.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">عدد الوكالات</span>
+                    <span className="font-medium text-white">{agents.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">تاريخ الانضمام</span>
+                    <span className="font-medium text-white">{new Date(bd.created_at).toLocaleDateString('ar')}</span>
+                  </div>
+                </div>
+              </section>
+              <div className="h-6"></div>
+            </div>
           ) : (
             <>
               {/* Main Profit Card */}
@@ -163,7 +365,6 @@ const BDDashboard: React.FC = () => {
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-purple-600/50 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition duration-500"></div>
                 <div className="relative overflow-hidden rounded-2xl bg-[#1c1e2e] border border-white/10 p-6 shadow-xl">
                   <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-primary/10 rounded-full blur-2xl"></div>
-                  
                   <div className="flex justify-between items-start mb-2 relative z-10">
                     <div>
                       <p className="text-sm text-slate-400 mb-1 font-medium flex items-center gap-1">
@@ -176,7 +377,6 @@ const BDDashboard: React.FC = () => {
                       <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
                     </div>
                   </div>
-
                   <div className="mb-6 relative z-10">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
                       <div className="w-5 h-5 coin-icon text-[10px]">$</div>
@@ -184,7 +384,6 @@ const BDDashboard: React.FC = () => {
                       <span className="text-[10px] text-slate-500 mr-1">(1$ = 7500)</span>
                     </div>
                   </div>
-
                   <div className="pt-4 border-t border-white/5 flex items-center justify-between relative z-10">
                     <div className="flex flex-col">
                       <span className="text-xs text-slate-500 mb-1">كود BD الخاص بك</span>
@@ -201,118 +400,31 @@ const BDDashboard: React.FC = () => {
                 </div>
               </section>
 
-              {/* Action Buttons */}
+              {/* Supporters & Agents Cards */}
               <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={() => navigate("/bd/add-member")}
-                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white py-3 rounded-xl shadow-lg shadow-primary/25 font-semibold transition-all active:scale-[0.98]"
-                >
-                  <span className="material-symbols-outlined text-[20px]">person_add</span>
-                  <span className="text-sm">إضافة عضو</span>
+                <button onClick={() => setTab('supporters')} className="rounded-2xl bg-[#1c1e2e] border border-white/10 p-4 text-right hover:border-primary/30 transition-all active:scale-[0.98]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-blue-400 text-base">diversity_3</span>
+                    <span className="text-xs text-slate-400">الداعمين</span>
+                  </div>
+                  <p className="text-xl font-bold text-white">{supporters.length}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">نسبة {bd.user_commission_pct || 2}%</p>
                 </button>
-                <button 
-                  onClick={() => {
-                    if (data.wallets_paused) {
-                      toast.error("السحب متوقف حالياً");
-                    } else {
-                      navigate("/bd/withdraw");
-                    }
-                  }}
-                  className="flex items-center justify-center gap-2 bg-[#2a2d3e] hover:bg-[#32364a] text-white py-3 rounded-xl border border-white/5 font-semibold transition-all active:scale-[0.98]"
-                >
-                  <span className="material-symbols-outlined text-[20px]">currency_exchange</span>
-                  <span className="text-sm">سحب الأرباح</span>
+                <button onClick={() => setTab('agents')} className="rounded-2xl bg-[#1c1e2e] border border-white/10 p-4 text-right hover:border-primary/30 transition-all active:scale-[0.98]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-purple-400 text-base">domain</span>
+                    <span className="text-xs text-slate-400">الوكالات</span>
+                  </div>
+                  <p className="text-xl font-bold text-white">{agents.length}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">نسبة {bd.agency_commission_pct || 5}%</p>
                 </button>
               </div>
 
-              {/* Performance Summary */}
-              <section className="space-y-4">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2 px-1">
-                  <span className="w-1 h-5 bg-primary rounded-full"></span>
-                  ملخص الأداء
-                </h3>
-
-                {/* Supporters Stats - clickable */}
-                <div 
-                  onClick={() => setTab('supporters')}
-                  className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-5 relative overflow-hidden cursor-pointer hover:border-white/10 transition-colors active:scale-[0.99]"
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                  <div className="flex items-center justify-between mb-4 relative z-10">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/10">
-                        <span className="material-symbols-outlined">diversity_3</span>
-                      </div>
-                      <div>
-                        <h4 className="text-base font-bold text-white">إجمالي الداعمين</h4>
-                        <p className="text-xs text-slate-400">نشاط الشحن</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-lg bg-white/5 text-xs font-medium text-slate-300 border border-white/5">
-                        {supporters.length} داعم
-                      </span>
-                      <span className="material-symbols-outlined text-slate-500 text-[18px]">chevron_left</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 relative z-10">
-                    <div className="bg-background-dark/50 p-3 rounded-xl border border-white/5">
-                      <p className="text-[10px] text-slate-400 mb-1">إجمالي العملات المشحونة</p>
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-3.5 h-3.5 coin-icon text-[8px]">$</div>
-                        <span className="text-sm font-bold text-white">{totalCharges.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <div className="bg-orange-500/5 p-3 rounded-xl border border-orange-500/10">
-                      <p className="text-[10px] text-orange-400/80 mb-1">حصة BD ({bd.user_commission_pct || 2}%)</p>
-                      <span className="text-lg font-bold text-orange-400">${((totalCharges * (bd.user_commission_pct || 2) / 100) / 7500).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Agencies Stats - clickable */}
-                <div 
-                  onClick={() => setTab('agents')}
-                  className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-5 relative overflow-hidden cursor-pointer hover:border-white/10 transition-colors active:scale-[0.99]"
-                >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                  <div className="flex items-center justify-between mb-4 relative z-10">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/10">
-                        <span className="material-symbols-outlined">domain</span>
-                      </div>
-                      <div>
-                        <h4 className="text-base font-bold text-white">إجمالي الوكالات</h4>
-                        <p className="text-xs text-slate-400">نشاط الرواتب</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-lg bg-white/5 text-xs font-medium text-slate-300 border border-white/5">
-                        {agents.length} وكالة
-                      </span>
-                      <span className="material-symbols-outlined text-slate-500 text-[18px]">chevron_left</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 relative z-10">
-                    <div className="bg-background-dark/50 p-3 rounded-xl border border-white/5">
-                      <p className="text-[10px] text-slate-400 mb-1">إجمالي الرواتب</p>
-                      <span className="text-sm font-bold text-white">${(totalSalaries / 7500).toFixed(2)}</span>
-                    </div>
-                    <div className="bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
-                      <p className="text-[10px] text-emerald-400/80 mb-1">حصة BD ({bd.agency_commission_pct || 5}%)</p>
-                      <span className="text-lg font-bold text-emerald-400">${((totalSalaries * (bd.agency_commission_pct || 5) / 100) / 7500).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Daily/Monthly Profit Stats */}
-              <section className="grid grid-cols-2 gap-4 pb-4">
-                <div className="bg-[#1c1e2e] border border-white/5 p-4 rounded-2xl flex flex-col justify-between hover:border-white/10 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
-                      <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                    </div>
+              {/* Today & Monthly Profit */}
+              <section className="rounded-2xl bg-[#1c1e2e] border border-white/10 p-4 flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="material-symbols-outlined text-primary text-sm">today</span>
                     <span className="text-[10px] text-emerald-400 font-medium bg-emerald-400/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                       <span className="material-symbols-outlined text-[10px]">arrow_upward</span> اليوم
                     </span>
@@ -322,11 +434,10 @@ const BDDashboard: React.FC = () => {
                     <h4 className="text-xl font-bold text-white">${todayProfit.toFixed(2)}</h4>
                   </div>
                 </div>
-                <div className="bg-[#1c1e2e] border border-white/5 p-4 rounded-2xl flex flex-col justify-between hover:border-white/10 transition-colors">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
-                      <span className="material-symbols-outlined text-[18px]">date_range</span>
-                    </div>
+                <div className="w-px h-12 bg-white/10"></div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="material-symbols-outlined text-primary text-sm">calendar_month</span>
                     <span className="text-[10px] text-emerald-400 font-medium bg-emerald-400/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                       <span className="material-symbols-outlined text-[10px]">arrow_upward</span> الشهر
                     </span>
