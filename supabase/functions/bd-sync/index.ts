@@ -51,10 +51,12 @@ async function fetchWithRetry(url: string, retries = 2): Promise<Response | null
 }
 
 // ── API 1: user-charges (for supporters ONLY) ──────────────────
-async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
+async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string, skipCache = false) {
   const cacheKey = `user_charges_${uuid}`;
-  const cached = await getCached(sb, cacheKey);
-  if (cached) return cached;
+  if (!skipCache) {
+    const cached = await getCached(sb, cacheKey);
+    if (cached) return cached;
+  }
 
   const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
   const res = await fetchWithRetry(url);
@@ -296,28 +298,30 @@ serve(async (req) => {
         let chargeData: any = null;
 
         if (isTestMode && testCharges > 0) {
-          chargeData = { charges: { month: { total: testCharges }, today: { total: 0 }, week: { total: 0 } } };
+          chargeData = { charges: { month: { total: testCharges }, today: { total: 0 } }, recent: [] };
         } else {
-          chargeData = await fetchUserCharges(sb, member.member_uuid);
+          chargeData = await fetchUserCharges(sb, member.member_uuid, isManual);
         }
 
-        if (!chargeData || !chargeData.charges) {
+        if (!chargeData) {
           console.log(`[SYNC] supporter ${member.member_uuid}: no charge data, skipping`);
           continue;
         }
 
-        let monthlyCharges = extractTotal(chargeData.charges.month);
-        const dailyCharges = extractTotal(chargeData.charges.today);
-
-        // If month.total is 0, check week total as a more accurate fallback
-        if (monthlyCharges === 0 && chargeData.charges.week) {
-          const weekTotal = extractTotal(chargeData.charges.week);
-          if (weekTotal > 0) {
-            monthlyCharges = weekTotal;
-            console.log(`[SYNC] supporter ${member.member_uuid}: month=0, using week=${weekTotal}`);
-          }
+        // Use charges.month.total first; if 0 fall back to sum of recent array
+        let monthlyCharges = 0;
+        if (chargeData.charges) {
+          monthlyCharges = extractTotal(chargeData.charges.month);
         }
-        console.log(`[SYNC] supporter ${member.member_uuid}: API month=${extractTotal(chargeData.charges.month)}, final=${monthlyCharges}`);
+        if (monthlyCharges === 0 && Array.isArray(chargeData.recent) && chargeData.recent.length > 0) {
+          monthlyCharges = chargeData.recent.reduce((sum: number, r: any) => {
+            const coins = Number(String(r["الكوينز"] || r.coins || r.amount || 0).replace(/,/g, ''));
+            return sum + (isNaN(coins) ? 0 : coins);
+          }, 0);
+        }
+        const dailyCharges = chargeData.charges ? extractTotal(chargeData.charges.today) : 0;
+
+        console.log(`[SYNC] supporter ${member.member_uuid}: total=${monthlyCharges}, daily=${dailyCharges}`);
 
         // RE-READ fresh data
         const { data: fresh } = await sb.from("bd_members")
