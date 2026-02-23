@@ -131,16 +131,49 @@ serve(async (req) => {
       const { user_uuid } = params;
       if (!user_uuid) return json({ error: "user_uuid مطلوب" }, 400);
 
-      // Check if approved BD
+      // Check if BD exists (active or banned)
       const { data: bd } = await sb
         .from("bd_commission_settings")
         .select("*")
         .eq("bd_uuid", user_uuid)
-        .eq("is_active", true)
         .maybeSingle();
 
-      if (bd && bd.is_approved) {
-        // Include violation count
+      // Check if banned (inactive with banned_at set)
+      if (bd && bd.banned_at && (!bd.is_active || !bd.is_approved)) {
+        const bannedAt = new Date(bd.banned_at);
+        const unbanDate = new Date(bannedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        
+        if (now >= unbanDate) {
+          // 30 days passed - auto-unban
+          await sb.from("bd_commission_settings")
+            .update({ is_active: true, is_approved: true, banned_at: null })
+            .eq("bd_uuid", user_uuid);
+          // Clear violations
+          await sb.from("bd_violations").delete().eq("bd_uuid", user_uuid);
+          // Re-activate members
+          await sb.from("bd_members")
+            .update({ is_active: true })
+            .eq("bd_uuid", user_uuid);
+          
+          const { data: updatedBd } = await sb
+            .from("bd_commission_settings")
+            .select("*")
+            .eq("bd_uuid", user_uuid)
+            .maybeSingle();
+          return json({ status: "approved", bd: updatedBd, violation_count: 0 });
+        }
+        
+        // Still banned
+        return json({ 
+          status: "banned", 
+          banned_at: bd.banned_at,
+          unban_date: unbanDate.toISOString(),
+          days_remaining: Math.ceil((unbanDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)),
+        });
+      }
+
+      if (bd && bd.is_active && bd.is_approved) {
         const { data: viol } = await sb.from("bd_violations").select("id").eq("bd_uuid", user_uuid);
         return json({ status: "approved", bd, violation_count: viol?.length || 0 });
       }
@@ -301,7 +334,7 @@ serve(async (req) => {
         // Auto-ban on 3rd violation
         if (newCount >= 3) {
           await sb.from("bd_commission_settings")
-            .update({ is_active: false, is_approved: false })
+            .update({ is_active: false, is_approved: false, banned_at: new Date().toISOString() })
             .eq("bd_uuid", bd_uuid);
           await sb.from("bd_members")
             .update({ is_active: false })

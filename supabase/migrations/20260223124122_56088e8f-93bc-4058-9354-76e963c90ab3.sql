@@ -1,0 +1,1 @@
+ALTER TABLE public.bd_commission_settings ADD COLUMN banned_at timestamp with time zone DEFAULT NULL;

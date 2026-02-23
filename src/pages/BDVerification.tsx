@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Shield, Loader2, CheckCircle, XCircle, Clock, Briefcase } from "lucide-react";
+import { ArrowRight, Shield, Loader2, CheckCircle, XCircle, Clock, Briefcase, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
+interface BanInfo {
+  banned_at: string;
+  unban_date: string;
+  days_remaining: number;
+}
+
 const BDVerification: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved" | "rejected">("loading");
+  const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved" | "rejected" | "banned">("loading");
   const [loading, setLoading] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
+  const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
 
   const highestLevel = Math.max(
     user?.level?.charger_level || 0,
@@ -28,17 +35,28 @@ const BDVerification: React.FC = () => {
   const checkAndAutoRegister = async () => {
     if (!user?.uuid) return;
     try {
-      // First check existing status
       const { data } = await supabase.functions.invoke("bd-manage", {
         body: { action: "check_status", user_uuid: user.uuid },
       });
-      if (data?.status === "approved") {
+
+      const responseData = typeof data === 'string' ? JSON.parse(data) : data;
+
+      if (responseData?.status === "banned") {
+        setStatus("banned");
+        setBanInfo({
+          banned_at: responseData.banned_at,
+          unban_date: responseData.unban_date,
+          days_remaining: responseData.days_remaining,
+        });
+        return;
+      }
+
+      if (responseData?.status === "approved") {
         navigate("/bd/dashboard", { replace: true });
         return;
       }
 
-      // If eligible and no active BD, auto-register (auto-approved)
-      if (isEligible) {
+      if (isEligible && responseData?.status !== "pending" && responseData?.status !== "rejected") {
         setLoading(true);
         const { data: regData } = await supabase.functions.invoke("bd-manage", {
           body: {
@@ -48,24 +66,25 @@ const BDVerification: React.FC = () => {
             user_level: highestLevel,
           },
         });
-        if (regData?.status === "approved" || regData?.already) {
+        const regResponse = typeof regData === 'string' ? JSON.parse(regData) : regData;
+        if (regResponse?.status === "approved" || regResponse?.already) {
           navigate("/bd/dashboard", { replace: true });
           return;
         }
-        if (regData?.error) {
-          toast.error(regData.error);
+        if (regResponse?.error) {
+          toast.error(regResponse.error);
         }
         setLoading(false);
       }
 
-      setStatus(data?.status || "none");
-      if (data?.request?.admin_note) setRejectionNote(data.request.admin_note);
+      setStatus(responseData?.status || "none");
+      if (responseData?.request?.admin_note) setRejectionNote(responseData.request.admin_note);
     } catch {
       setStatus("none");
     }
   };
 
-  if (!isEligible) {
+  if (!isEligible && status !== "banned") {
     return (
       <div className="mobile-container bg-background text-foreground flex flex-col" dir="rtl">
         <header className="flex items-center gap-3 px-4 pt-6 pb-4">
@@ -98,6 +117,80 @@ const BDVerification: React.FC = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
+        )}
+
+        {status === "banned" && banInfo && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 py-6">
+            <div className="text-center space-y-4">
+              <motion.div 
+                initial={{ scale: 0 }} 
+                animate={{ scale: 1 }} 
+                transition={{ type: "spring", delay: 0.2 }}
+                className="w-24 h-24 rounded-full bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center mx-auto"
+              >
+                <Lock className="w-12 h-12 text-red-500" />
+              </motion.div>
+              <h2 className="text-xl font-bold text-red-400">⛔ تم إيقاف البيدي</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                تم رفضك كبيدي لأنك خالفت الشروط والأحكام الخاصة بنظام البيدي.
+              </p>
+            </div>
+
+            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-5 space-y-4">
+              <div className="text-center space-y-1">
+                <p className="text-xs text-muted-foreground">سبب الإيقاف</p>
+                <p className="text-sm font-bold text-red-400">3 مخالفات متكررة (محاولة دعوة حسابات قديمة)</p>
+              </div>
+              
+              <div className="h-px bg-border/40" />
+
+              <div className="text-center space-y-1">
+                <p className="text-xs text-muted-foreground">تاريخ الإيقاف</p>
+                <p className="text-sm font-bold text-foreground">
+                  {new Date(banInfo.banned_at).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" })}
+                </p>
+              </div>
+
+              <div className="h-px bg-border/40" />
+
+              <div className="text-center space-y-1">
+                <p className="text-xs text-muted-foreground">سيتم فتح النظام تلقائياً في</p>
+                <p className="text-sm font-bold text-foreground">
+                  {new Date(banInfo.unban_date).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" })}
+                </p>
+              </div>
+
+              <div className="h-px bg-border/40" />
+
+              <div className="flex items-center justify-center gap-2">
+                <motion.div 
+                  animate={{ scale: [1, 1.1, 1] }} 
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center"
+                >
+                  <Clock className="w-6 h-6 text-amber-400" />
+                </motion.div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-amber-400">{banInfo.days_remaining}</p>
+                  <p className="text-xs text-muted-foreground">يوم متبقي</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-muted/30 border border-border/40 rounded-xl p-3">
+              <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                💡 بعد انتهاء فترة الإيقاف، ستتمكن من استخدام نظام البيدي مجدداً. يرجى الالتزام بالشروط لتجنب الإيقاف مرة أخرى.
+              </p>
+            </div>
+
+            <Button 
+              onClick={() => navigate("/dashboard")} 
+              variant="outline" 
+              className="w-full h-12 rounded-xl"
+            >
+              العودة للصفحة الرئيسية
+            </Button>
+          </motion.div>
         )}
 
         {status === "none" && (

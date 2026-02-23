@@ -291,6 +291,7 @@ export type Database = {
         Row: {
           agency_commission_pct: number
           available_balance: number
+          banned_at: string | null
           bd_name: string
           bd_uuid: string
           created_at: string
@@ -315,6 +316,7 @@ export type Database = {
         Insert: {
           agency_commission_pct?: number
           available_balance?: number
+          banned_at?: string | null
           bd_name?: string
           bd_uuid: string
           created_at?: string
@@ -339,6 +341,7 @@ export type Database = {
         Update: {
           agency_commission_pct?: number
           available_balance?: number
+          banned_at?: string | null
           bd_name?: string
           bd_uuid?: string
           created_at?: string
