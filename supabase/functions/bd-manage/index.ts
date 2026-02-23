@@ -294,7 +294,7 @@ serve(async (req) => {
         
         // If agency ID is empty/falsy, user doesn't have an agency yet
         if (!agencyId || agencyId === "" || agencyId === "0") {
-          return json({ error: "⚠️ هذا المستخدم لسا ما عنده وكالة! لازم ينشئ وكالة أول قبل ما ترسل له دعوة كوكيل." });
+          return json({ error: "⚠️ هذا المستخدم لسا ما عنده وكالة! لازم ينشئ وكالة أول قبل ما ترسل له دعوة كوكيل.", no_agency: true });
         }
         
         // Also check numeric type if available
@@ -427,24 +427,64 @@ serve(async (req) => {
         return json({ success: true, message: "تم رفض الدعوة" });
       }
 
-      // Accept flow - validate the account
+      // Accept flow - validate the referral code
       if (!password) {
-        return json({ error: "الرمز السري مطلوب للتحقق من الحساب" }, 400);
+        return json({ error: "كود الإحالة مطلوب للتحقق" }, 400);
       }
 
-      const userData = await loginGalaUser(invite.member_uuid, password);
+      // Validate referral code matches the BD's referral code
+      const enteredCode = password.trim().toUpperCase();
+      const expectedCode = (invite.bd_referral_code || "").trim().toUpperCase();
+      
+      console.log("[BD-INVITE] Referral code check:", { entered: enteredCode, expected: expectedCode });
+      
+      if (!expectedCode || enteredCode !== expectedCode) {
+        return json({ error: "كود الإحالة غير صحيح. تأكد من الكود الذي أعطاك إياه البيدي." });
+      }
+
+      // Fetch user data via user-info API (instead of login)
+      const userInfoUrl2 = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${invite.member_uuid}`;
+      let userData: any = null;
+      try {
+        const uiRes = await fetch(userInfoUrl2, { signal: AbortSignal.timeout(10000) });
+        if (uiRes.ok) {
+          const uiData = await uiRes.json();
+          userData = uiData?.user || uiData;
+        }
+      } catch (e) {
+        console.error("user-info fetch error:", e);
+      }
+
+      // Fallback: try login API if user-info failed
       if (!userData) {
-        return json({ error: "فشل التحقق من الحساب. تأكد من الرمز السري." });
+        // We can't login without a real password, so try to build minimal data from precheck
+        const preData = await fetchUserCharges(invite.member_uuid, true);
+        if (preData) {
+          userData = {
+            name: preData.name || preData.user?.name || "",
+            type_user: preData.type_user ?? preData.user?.type_user ?? 0,
+            level: preData.level || {},
+            created_at: preData.created_at || preData.user?.created_at,
+          };
+        }
       }
 
-      // Validate account conditions
+      if (!userData) {
+        return json({ error: "تعذر جلب بيانات الحساب. حاول مرة أخرى." });
+      }
+
+      // Validate account conditions - handle both English and Arabic API keys
       const levelData = userData.level || {};
-      const receiverLevel = levelData.receiver_level || 0;
-      const senderLevel = levelData.sender_level || 0;
-      const chargerLevel = levelData.charger_level || 0;
+      const receiverLevel = levelData.receiver_level || levelData.receiver || parseInt(userData["مستوى الاستقبال"] || "0") || 0;
+      const senderLevel = levelData.sender_level || levelData.sender || parseInt(userData["مستوى الارسال"] || "0") || 0;
+      const chargerLevel = levelData.charger_level || levelData.charger || parseInt(userData["مستوى الشحن"] || "0") || 0;
+      const userName = userData.name || userData["الاسم"] || invite.member_uuid;
+      const userTypeNum = (userData.type_user != null ? userData.type_user : (parseInt(userData["نوع المستخدم"] || "0") || 0));
+      
+      console.log("[BD-INVITE] Accept validation:", { receiverLevel, senderLevel, chargerLevel, userName, userTypeNum });
 
       if (receiverLevel > 0 || senderLevel > 0 || chargerLevel > 0) {
-        const reason = `الحساب ${userData.name || invite.member_uuid} غير مؤهل (المستويات: استقبال ${receiverLevel}، إرسال ${senderLevel}، شحن ${chargerLevel})`;
+        const reason = `الحساب ${userName} غير مؤهل (المستويات: استقبال ${receiverLevel}، إرسال ${senderLevel}، شحن ${chargerLevel})`;
         // Delete the invitation since the account is not eligible
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         // Notify the BD about the rejection reason
@@ -458,12 +498,12 @@ serve(async (req) => {
       }
 
       // Check account creation date - must be after LAUNCH_DATE
-      const createdAt = userData.created_at || userData.profile?.created_at || userData.register_date;
+      const createdAt = userData.created_at || userData.profile?.created_at || userData.register_date || userData["تاريخ الانشاء"];
       if (createdAt) {
         const accountDate = new Date(createdAt);
         const launchDate = new Date(LAUNCH_DATE);
         if (accountDate < launchDate) {
-          const reason = `الحساب ${userData.name || invite.member_uuid} قديم (تاريخ الإنشاء: ${createdAt}) - يجب أن يكون بعد ${LAUNCH_DATE.split("T")[0]}`;
+          const reason = `الحساب ${userName} قديم (تاريخ الإنشاء: ${createdAt}) - يجب أن يكون بعد ${LAUNCH_DATE.split("T")[0]}`;
           await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
           await sb.from("notifications").insert([
             { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.bd_uuid },
@@ -482,7 +522,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingMember) {
-        const reason = `العضو ${userData.name || invite.member_uuid} مسجل لدى بيدي آخر بالفعل`;
+        const reason = `العضو ${userName} مسجل لدى بيدي آخر بالفعل`;
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         await sb.from("notifications").insert({
           title: "❌ فشل انضمام عضو",
@@ -494,9 +534,8 @@ serve(async (req) => {
       }
 
       // If member_type is "agency", verify the user actually has an agency (type_user >= 2)
-      const userType = userData.type_user || 0;
-      if (invite.member_type === "agency" && userType < 2) {
-        const reason = `العضو ${userData.name || invite.member_uuid} لا يملك وكالة (نوع الحساب: ${userType})، لا يمكن إضافته كوكيل`;
+      if (invite.member_type === "agency" && userTypeNum < 2) {
+        const reason = `العضو ${userName} لا يملك وكالة (نوع الحساب: ${userTypeNum})، لا يمكن إضافته كوكيل`;
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         // Notify both BD and member
         await sb.from("notifications").insert([
@@ -528,12 +567,12 @@ serve(async (req) => {
       const { error: memberError } = await sb.from("bd_members").insert({
         bd_uuid: invite.bd_uuid,
         member_uuid: invite.member_uuid,
-        member_name: userData.name || "",
+        member_name: userName,
         member_type: invite.member_type,
         initial_charger_num: initialMonthly,
         monthly_charges: initialMonthly,
         last_daily_charges: initialDaily,
-        type_user: userData.type_user || 0,
+        type_user: userTypeNum,
         is_active: true,
       });
 
@@ -542,7 +581,7 @@ serve(async (req) => {
       // Update invitation status
       await sb.from("bd_member_invitations").update({
         status: "accepted",
-        member_name: userData.name || "",
+        member_name: userName,
         terms_accepted: true,
       }).eq("id", invitation_id);
 
