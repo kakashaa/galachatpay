@@ -140,7 +140,9 @@ serve(async (req) => {
         .maybeSingle();
 
       if (bd && bd.is_approved) {
-        return json({ status: "approved", bd });
+        // Include violation count
+        const { data: viol } = await sb.from("bd_violations").select("id").eq("bd_uuid", user_uuid);
+        return json({ status: "approved", bd, violation_count: viol?.length || 0 });
       }
 
       // Check registration request
@@ -196,6 +198,17 @@ serve(async (req) => {
         return json({ error: "نوع العضو غير صحيح" }, 400);
       }
 
+      // Check if BD is banned (3+ violations)
+      const { data: violations } = await sb
+        .from("bd_violations")
+        .select("id")
+        .eq("bd_uuid", bd_uuid);
+
+      const violationCount = violations?.length || 0;
+      if (violationCount >= 3) {
+        return json({ error: "تم إيقاف صلاحية البيدي الخاصة بك بسبب تكرار المخالفات (3 إنذارات). لا يمكنك دعوة أعضاء جدد." });
+      }
+
       // Check if member already in any BD
       const { data: existingMember } = await sb
         .from("bd_members")
@@ -221,35 +234,84 @@ serve(async (req) => {
         return json({ error: "يوجد دعوة معلقة لهذا العضو بالفعل" });
       }
 
-      // Pre-validate: single quick API call for both type_user and levels check
+      // Pre-validate: fetch user data to check charger level
       const preCheckData = await fetchUserCharges(member_uuid, true);
-      if (preCheckData) {
-        // Check agency role if inviting as agency
-        if (member_type === "agency") {
-          const memberTypeUser = preCheckData.type_user ?? preCheckData.user?.type_user ?? -1;
-          if (memberTypeUser >= 0 && memberTypeUser < 2) {
-            return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
-          }
-        }
-        // Check levels
-        if (preCheckData.level) {
-          const lvl = preCheckData.level;
-          const rLvl = lvl.receiver_level || lvl.receiver || 0;
-          const sLvl = lvl.sender_level || lvl.sender || 0;
-          const cLvl = lvl.charger_level || lvl.charger || 0;
-          if (rLvl > 0 || sLvl > 0 || cLvl > 0) {
-            return json({ error: `لا يمكن دعوة هذا الحساب. المستويات ليست صفر (استقبال: ${rLvl}، إرسال: ${sLvl}، شحن: ${cLvl})` });
-          }
+      if (!preCheckData) {
+        return json({ error: "تعذر التحقق من بيانات العضو. حاول مرة أخرى." });
+      }
+
+      // Check agency role if inviting as agency
+      if (member_type === "agency") {
+        const memberTypeUser = preCheckData.type_user ?? preCheckData.user?.type_user ?? -1;
+        if (memberTypeUser >= 0 && memberTypeUser < 2) {
+          return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
         }
       }
-      // If API failed, allow invitation - final validation happens on accept
+
+      // CRITICAL: Check charger level - must be 0 for new accounts
+      const chargerLevel = preCheckData.level?.charger_level || preCheckData.level?.charger || preCheckData.charger_num || 0;
+      if (chargerLevel > 0) {
+        // Log violation
+        await sb.from("bd_violations").insert({
+          bd_uuid,
+          bd_name: bd_name || "",
+          violation_type: "ineligible_invite",
+          member_uuid,
+          member_name: preCheckData.name || preCheckData.user?.name || member_uuid,
+          details: `محاولة دعوة حساب قديم بمستوى شحن ${chargerLevel}`,
+        });
+
+        // Re-count violations after insert
+        const { data: updatedViolations } = await sb
+          .from("bd_violations")
+          .select("id")
+          .eq("bd_uuid", bd_uuid);
+        const newCount = updatedViolations?.length || 0;
+
+        // Auto-ban on 3rd violation
+        if (newCount >= 3) {
+          await sb.from("bd_commission_settings")
+            .update({ is_active: false, is_approved: false })
+            .eq("bd_uuid", bd_uuid);
+          await sb.from("bd_members")
+            .update({ is_active: false })
+            .eq("bd_uuid", bd_uuid);
+          await sb.from("notifications").insert({
+            user_uuid: bd_uuid,
+            title: "🚫 تم إيقاف حساب البيدي",
+            body: "تم إيقاف صلاحية البيدي الخاصة بك نهائياً بسبب 3 مخالفات (محاولة دعوة حسابات قديمة).",
+            target: "personal",
+          });
+          return json({
+            error: "⛔ إنذار ثالث! تم إيقاف حساب البيدي الخاص بك نهائياً بسبب تكرار محاولة دعوة حسابات قديمة.",
+            banned: true,
+          });
+        }
+
+        const remaining = 3 - newCount;
+        return json({
+          error: `⚠️ المستخدم الذي تريد دعوته قديم في البرنامج (مستوى الشحن: ${chargerLevel}). هذا تحذير لك! إذا حبيت تدعو شخص، ادعو شخص جديد على التطبيق واكسب نسبتك. عندك هذا إنذار ${newCount} من 3. متبقي ${remaining} إنذار(ات) قبل إيقاف البيدي.`,
+          violation: true,
+          violation_count: newCount,
+        });
+      }
+
+      // Check other levels too
+      if (preCheckData.level) {
+        const lvl = preCheckData.level;
+        const rLvl = lvl.receiver_level || lvl.receiver || 0;
+        const sLvl = lvl.sender_level || lvl.sender || 0;
+        if (rLvl > 0 || sLvl > 0) {
+          return json({ error: `لا يمكن دعوة هذا الحساب. المستويات ليست صفر (استقبال: ${rLvl}، إرسال: ${sLvl})` });
+        }
+      }
 
       const { error } = await sb.from("bd_member_invitations").insert({
         bd_uuid,
         bd_name: bd_name || "",
         bd_referral_code: referral_code || "",
         member_uuid,
-        member_name: "", // Will be filled on accept
+        member_name: "",
         member_type,
         status: "pending",
       });

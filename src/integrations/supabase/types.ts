@@ -610,6 +610,39 @@ export type Database = {
         }
         Relationships: []
       }
+      bd_violations: {
+        Row: {
+          bd_name: string
+          bd_uuid: string
+          created_at: string
+          details: string | null
+          id: string
+          member_name: string
+          member_uuid: string
+          violation_type: string
+        }
+        Insert: {
+          bd_name?: string
+          bd_uuid: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          member_name?: string
+          member_uuid: string
+          violation_type?: string
+        }
+        Update: {
+          bd_name?: string
+          bd_uuid?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          member_name?: string
+          member_uuid?: string
+          violation_type?: string
+        }
+        Relationships: []
+      }
       bd_withdrawals: {
         Row: {
           admin_note: string | null
