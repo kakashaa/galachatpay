@@ -214,7 +214,7 @@ const UserProfileCard: React.FC = () => {
               {[
                 { value: user.my_store.coins, emoji: "💰", color: "yellow" },
                 { value: user.my_store.diamonds, emoji: "💎", color: "purple" },
-                { value: `$${user.my_store.usd}`, emoji: "💵", color: "green" },
+                { value: `$${user.salary != null ? user.salary : user.my_store.usd}`, emoji: "💵", color: "green" },
               ].map((w, i) => (
                 <div
                   key={i}

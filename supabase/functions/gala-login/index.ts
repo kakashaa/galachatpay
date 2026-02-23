@@ -411,6 +411,22 @@ serve(async (req) => {
       } catch (e) {
         console.error("BD member sync on login:", e);
       }
+
+      // Fetch salary from salary-api.php
+      try {
+        const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
+        const SALARY_API_KEY = "ghala2026actions";
+        const salaryRes = await fetch(`${SALARY_API_URL}?key=${SALARY_API_KEY}&uuid=${uuid.trim()}`, { signal: AbortSignal.timeout(10000) });
+        if (salaryRes.ok) {
+          const salaryData = await salaryRes.json();
+          if (salaryData?.ok && salaryData.salary != null) {
+            d.salary = salaryData.salary;
+            console.log(`[LOGIN-SALARY-API] uuid=${uuid.trim()} salary=${salaryData.salary}`);
+          }
+        }
+      } catch (e) {
+        console.error("Salary API fetch error:", e);
+      }
     }
 
     return new Response(JSON.stringify(data), {
