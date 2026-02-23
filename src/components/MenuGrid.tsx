@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
-  Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase,
+  Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase, Lock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import GuestLoginPrompt from "./GuestLoginPrompt";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MenuItem {
   icon: React.ElementType;
@@ -32,8 +33,30 @@ const menuItems: MenuItem[] = [
 
 const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
+  const [bdBanned, setBdBanned] = useState(false);
+
+  useEffect(() => {
+    if (!user?.uuid) return;
+    const checkBdBan = async () => {
+      try {
+        const { data } = await supabase
+          .from("bd_commission_settings")
+          .select("is_active, is_approved, banned_at")
+          .eq("bd_uuid", user.uuid)
+          .maybeSingle();
+        if (data && !data.is_active && !data.is_approved) {
+          setBdBanned(true);
+        } else {
+          setBdBanned(false);
+        }
+      } catch {
+        // silent
+      }
+    };
+    checkBdBan();
+  }, [user?.uuid]);
 
   const handleClick = (item: MenuItem) => {
     if (!isAuthenticated && !item.guestAllowed) {
@@ -48,6 +71,9 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
       <div className="grid grid-cols-4 gap-y-4 gap-x-1.5 mb-44 px-1" dir="rtl">
         {menuItems.map((item, index) => {
           const Icon = item.icon;
+          const isBdItem = item.route === "/bd";
+          const showLock = isBdItem && bdBanned;
+
           return (
             <button
               key={index}
@@ -55,15 +81,24 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
               className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
             >
               <div
-                className="w-12 h-12 rounded-[14px] flex items-center justify-center"
+                className="relative w-12 h-12 rounded-[14px] flex items-center justify-center"
                 style={{
-                  background: item.bg,
-                  border: "1px solid rgba(255,255,255,0.06)",
+                  background: showLock ? "rgba(239,68,68,0.12)" : item.bg,
+                  border: showLock ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(255,255,255,0.06)",
                 }}
               >
-                <Icon className={`w-5 h-5 ${item.iconColor}`} />
+                {showLock ? (
+                  <Lock className="w-5 h-5 text-red-400" />
+                ) : (
+                  <Icon className={`w-5 h-5 ${item.iconColor}`} />
+                )}
+                {showLock && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                    <span className="text-[8px] text-white font-bold">!</span>
+                  </div>
+                )}
               </div>
-              <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">
+              <span className={`text-[9px] font-bold leading-tight text-center ${showLock ? "text-red-400" : "text-muted-foreground"}`}>
                 {item.label}
               </span>
             </button>
