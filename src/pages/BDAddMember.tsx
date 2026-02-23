@@ -30,6 +30,8 @@ interface ViolationInfo {
   violations: Array<{ id: string; member_uuid: string; member_name: string; details: string; created_at: string }>;
 }
 
+// AgencyErrorInfo removed - using simple string state instead
+
 const BDAddMember: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -40,6 +42,7 @@ const BDAddMember: React.FC = () => {
   const [bdData, setBdData] = useState<any>(null);
   const [violationDialog, setViolationDialog] = useState<ViolationInfo | null>(null);
   const [agencyConfirm, setAgencyConfirm] = useState(false);
+  const [agencyError, setAgencyError] = useState<string | null>(null);
 
   React.useEffect(() => {
     const load = async () => {
@@ -110,6 +113,8 @@ const BDAddMember: React.FC = () => {
           banned: !!responseData.banned,
           violations,
         });
+      } else if (responseData?.no_agency) {
+        setAgencyError(responseData.error);
       } else if (responseData?.error) {
         toast.error(responseData.error);
       } else if (responseData?.success) {
@@ -346,6 +351,45 @@ const BDAddMember: React.FC = () => {
                 تأكدت، متابعة
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Agency Not Found Error Dialog */}
+      <Dialog open={!!agencyError} onOpenChange={() => setAgencyError(null)}>
+        <DialogContent className="max-w-sm mx-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-400">
+              <AlertTriangle className="w-6 h-6" />
+              ⚠️ لا يمكن إرسال الدعوة
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 space-y-3">
+              <p className="text-sm text-amber-400 font-bold leading-relaxed">
+                {agencyError}
+              </p>
+            </div>
+            <div className="bg-muted/30 rounded-xl p-3 space-y-2">
+              <p className="text-xs text-muted-foreground font-bold">✅ خطوات الحل:</p>
+              <ul className="space-y-1.5 text-xs text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold shrink-0">1.</span>
+                  اطلب من الوكيل فتح تطبيق غلا لايف
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold shrink-0">2.</span>
+                  يروح يعمل "إنشاء وكالة" من داخل التطبيق
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold shrink-0">3.</span>
+                  بعد ما تصير عنده وكالة، ارجع وارسل الدعوة
+                </li>
+              </ul>
+            </div>
+            <Button onClick={() => setAgencyError(null)} variant="outline" className="w-full">
+              فهمت، سأتأكد أولاً
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

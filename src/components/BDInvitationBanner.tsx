@@ -53,7 +53,7 @@ const BDInvitationBanner: React.FC = () => {
 
   const handleRespond = async (inviteId: string, response: "accept" | "reject") => {
     if (response === "accept" && !password.trim()) {
-      toast.error("يرجى إدخال الرمز السري للتحقق من حسابك");
+      toast.error("يرجى إدخال كود الإحالة الخاص بالبيدي");
       return;
     }
 
@@ -129,13 +129,14 @@ const BDInvitationBanner: React.FC = () => {
 
             {showPasswordFor === inv.id ? (
               <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">أدخل كود الإحالة الذي أعطاك إياه البيدي للتأكيد:</p>
                 <Input
-                  type="password"
-                  placeholder="أدخل الرمز السري للتحقق..."
+                  type="text"
+                  placeholder="أدخل كود الإحالة..."
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value.toUpperCase())}
                   dir="ltr"
-                  className="text-center"
+                  className="text-center font-mono tracking-widest"
                 />
                 <div className="flex gap-2">
                   <Button
