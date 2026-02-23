@@ -236,22 +236,35 @@ serve(async (req) => {
 
       // Pre-validate: fetch user data to check charger level
       const preCheckData = await fetchUserCharges(member_uuid, true);
+      console.log("[BD-INVITE] preCheckData for", member_uuid, ":", JSON.stringify(preCheckData));
       if (!preCheckData) {
         return json({ error: "تعذر التحقق من بيانات العضو. حاول مرة أخرى." });
       }
 
+      // Also try user-info API for more complete level data
+      const userInfoUrl = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${member_uuid}`;
+      let userInfoData: any = null;
+      try {
+        const uiRes = await fetch(userInfoUrl, { signal: AbortSignal.timeout(8000) });
+        if (uiRes.ok) userInfoData = await uiRes.json();
+      } catch { /* ignore */ }
+      console.log("[BD-INVITE] userInfoData for", member_uuid, ":", JSON.stringify(userInfoData));
+
       // Check agency role if inviting as agency
       if (member_type === "agency") {
-        const memberTypeUser = preCheckData.type_user ?? preCheckData.user?.type_user ?? -1;
+        const memberTypeUser = preCheckData.type_user ?? preCheckData.user?.type_user ?? userInfoData?.type_user ?? -1;
         if (memberTypeUser >= 0 && memberTypeUser < 2) {
           return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
         }
       }
 
       // CRITICAL: Check ALL levels - must be 0 for new accounts
-      const chargerLevel = preCheckData.level?.charger_level || preCheckData.level?.charger || preCheckData.charger_num || 0;
-      const senderLevel = preCheckData.level?.sender_level || preCheckData.level?.sender || 0;
-      const receiverLevel = preCheckData.level?.receiver_level || preCheckData.level?.receiver || 0;
+      // Try from preCheckData first, then fallback to userInfoData
+      const lvl = preCheckData.level || userInfoData?.level || {};
+      const chargerLevel = lvl.charger_level ?? lvl.charger ?? preCheckData.charger_num ?? userInfoData?.charger_num ?? 0;
+      const senderLevel = lvl.sender_level ?? lvl.sender ?? 0;
+      const receiverLevel = lvl.receiver_level ?? lvl.receiver ?? 0;
+      console.log("[BD-INVITE] Levels:", { chargerLevel, senderLevel, receiverLevel, rawLevel: lvl });
 
       if (chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0) {
         const levelDetails = `شحن: ${chargerLevel}، إرسال: ${senderLevel}، استقبال: ${receiverLevel}`;
