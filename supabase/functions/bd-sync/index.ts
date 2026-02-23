@@ -4,7 +4,7 @@ import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
 const TOP_CHARGERS_API_URL = "http://18.219.229.240/website/top-chargers-api.php";
-const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
+const AGENCY_TARGET_API_URL = "http://18.219.229.240/website/agency-target-api.php";
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -116,38 +116,34 @@ async function fetchBatchMonthlyCharges(
   return result;
 }
 
-// ── API 2: agency-income (for agencies) ────────────────────────
-async function fetchAgencyIncome(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
-  const cacheKey = `agency_income_${uuid}`;
-  const cached = await getCached(sb, cacheKey);
-  if (cached) return cached;
+// ── API 2: agency-target (for agencies - uses total_user_salary) ──
+async function fetchAgencyTarget(sb: ReturnType<typeof supabaseAdmin>, uuid: string, skipCache = false) {
+  const cacheKey = `agency_target_${uuid}`;
+  if (!skipCache) {
+    const cached = await getCached(sb, cacheKey);
+    if (cached) return cached;
+  }
 
-  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${uuid}`;
-  const res = await fetchWithRetry(url);
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
+  const url = `${AGENCY_TARGET_API_URL}?key=${BD_API_KEY}&uuid=${uuid}&year=${year}&month=${month}`;
+  console.log(`[API] agency-target URL: ${url}`);
+  const res = await fetchWithRetry(url, 2);
   if (!res) return null;
   try {
     const data = await res.json();
-    const keys = Object.keys(data || {});
-    console.log(`[API] agency-income keys for ${uuid}: [${keys.join(", ")}]`);
-    await setCache(sb, cacheKey, data);
-    return data;
-  } catch { return null; }
-}
-
-// ── API 3: salary-api (fallback for agency commission) ─────────
-async function fetchSalaryApi(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
-  const cacheKey = `salary_api_${uuid}`;
-  const cached = await getCached(sb, cacheKey);
-  if (cached) return cached;
-
-  const url = `${SALARY_API_URL}?key=${BD_API_KEY}&uuid=${uuid}`;
-  const res = await fetchWithRetry(url);
-  if (!res) return null;
-  try {
-    const data = await res.json();
-    console.log(`[API] salary-api keys for ${uuid}: [${Object.keys(data || {}).join(", ")}]`);
-    await setCache(sb, cacheKey, data);
-    return data;
+    console.log(`[API] agency-target response for ${uuid}:`, JSON.stringify(data).slice(0, 300));
+    if (data?.status === "success" || data?.data?.status === "success") {
+      const result = data?.data?.data || data?.data || data;
+      await setCache(sb, cacheKey, result);
+      return result;
+    }
+    if (data?.total_user_salary !== undefined) {
+      await setCache(sb, cacheKey, data);
+      return data;
+    }
+    return null;
   } catch { return null; }
 }
 
@@ -328,7 +324,7 @@ serve(async (req) => {
     for (let i = 0; i < members.length; i += BATCH_SIZE) {
       const batch = members.slice(i, i + BATCH_SIZE);
       const promises = batch.map(async (member: any) => {
-        const result: any = { userInfo: null, chargeData: null, agencyData: null, hostData: null, salaryData: null };
+        const result: any = { userInfo: null, chargeData: null, agencyData: null, hostData: null };
         
         const tasks: Promise<void>[] = [];
         
@@ -342,7 +338,7 @@ serve(async (req) => {
           result.chargeData = batchChargesMap.get(member.member_uuid) ?? null;
         } else if (member.member_type === "agency") {
           tasks.push(
-            fetchAgencyIncome(sb, member.member_uuid).then(d => { result.agencyData = d; }).catch(() => {})
+            fetchAgencyTarget(sb, member.member_uuid, isManual).then(d => { result.agencyData = d; }).catch(() => {})
           );
         } else if (member.member_type === "host") {
           tasks.push(
@@ -351,13 +347,6 @@ serve(async (req) => {
         }
 
         await Promise.all(tasks);
-
-        // Agency fallback
-        if (member.member_type === "agency" && (!result.agencyData || !result.agencyData.commission)) {
-          try {
-            result.salaryData = await fetchSalaryApi(sb, member.member_uuid);
-          } catch {}
-        }
 
         memberDataMap.set(member.member_uuid, result);
       });
@@ -465,53 +454,50 @@ serve(async (req) => {
       } else if (member.member_type === "agency") {
         const isTestMode = body?.test_mode === true;
         const testIncome = body?.test_agency_income || 0;
-        let monthlyIncome = 0;
-        let dailyIncome = 0;
+        let totalHostSalaries = 0;
 
         if (isTestMode && testIncome > 0) {
-          monthlyIncome = testIncome;
+          totalHostSalaries = testIncome;
         } else {
-          const incomeData = prefetched.agencyData;
-          if (incomeData && incomeData.commission) {
-            monthlyIncome = extractTotal(incomeData.commission.month);
-            dailyIncome = extractTotal(incomeData.commission.today);
+          const agencyData = prefetched.agencyData;
+          if (agencyData && agencyData.total_user_salary !== undefined) {
+            totalHostSalaries = Number(agencyData.total_user_salary) || 0;
+            console.log(`[SYNC] agency ${member.member_uuid}: total_user_salary=${totalHostSalaries}, agency_salary=${agencyData.agency_salary}`);
           } else {
-            const salaryData = prefetched.salaryData;
-            if (salaryData) {
-              monthlyIncome = Number(salaryData.salary) || Number(salaryData.commission) || Number(salaryData.income) || Number(salaryData.month) || 0;
-            } else {
-              console.log(`[SYNC] agency ${member.member_uuid}: both APIs failed, skipping`);
-              continue;
-            }
+            console.log(`[SYNC] agency ${member.member_uuid}: agency-target API failed or no data, skipping. Data:`, JSON.stringify(agencyData).slice(0, 200));
+            continue;
           }
         }
 
+        // Convert total_host_salaries (USD) to coins for storage consistency  
+        const totalHostSalaryCoins = Math.round(totalHostSalaries * 7500);
+
         const { data: fresh } = await sb.from("bd_members")
-          .select("last_processed_diamonds, current_month_commission, total_commission")
+          .select("last_processed_diamonds, current_month_commission, total_commission, monthly_charges")
           .eq("id", member.id).maybeSingle();
         const lastProcessed = fresh?.last_processed_diamonds || 0;
-        const diamondDiff = monthlyIncome - lastProcessed;
+        // Use USD value for diff calculation (commission is % of USD)
+        const salaryDiff = totalHostSalaries - lastProcessed;
 
-        console.log(`[SYNC] agency ${member.member_uuid}: income=${monthlyIncome}, prev=${lastProcessed}, diff=${diamondDiff}`);
+        console.log(`[SYNC] agency ${member.member_uuid}: totalHostSalaries=$${totalHostSalaries}, prev=$${lastProcessed}, diff=$${salaryDiff}`);
 
         const updateObj: Record<string, unknown> = {
-          monthly_charges: monthlyIncome,
-          last_daily_charges: dailyIncome,
-          last_processed_diamonds: monthlyIncome,
+          monthly_charges: totalHostSalaryCoins,
+          last_processed_diamonds: totalHostSalaries,
         };
 
-        if (diamondDiff > 0) {
+        if (salaryDiff > 0) {
           const { data: existingLog } = await sb.from("bd_commission_logs")
             .select("id")
             .eq("bd_uuid", member.bd_uuid).eq("member_uuid", member.member_uuid)
-            .eq("month", month).eq("source_amount", diamondDiff)
+            .eq("month", month).eq("source_amount", salaryDiff)
             .gte("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
             .maybeSingle();
 
           if (!existingLog) {
-            const pct = bd.agency_commission_pct || 5;
-            const commissionCoins = (diamondDiff * pct) / 100;
-            const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
+            const pct = bd.agency_commission_pct || 2;
+            // Commission = pct% of total_host_salaries (already in USD)
+            const commissionAmount = Math.round((salaryDiff * pct / 100) * 100) / 100;
 
             updateObj.current_month_commission = (fresh?.current_month_commission || 0) + commissionAmount;
             updateObj.total_commission = (fresh?.total_commission || 0) + commissionAmount;
@@ -519,7 +505,7 @@ serve(async (req) => {
             await sb.from("bd_commission_logs").insert({
               bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
               member_type: "agency", month,
-              source_amount: diamondDiff, commission_pct: pct, amount: commissionAmount,
+              source_amount: salaryDiff, commission_pct: pct, amount: commissionAmount,
             });
 
             const { data: freshBd } = await sb.from("bd_commission_settings")
@@ -531,7 +517,7 @@ serve(async (req) => {
 
             await sb.from("notifications").insert({
               title: "💰 عمولة وكالة",
-              body: `عمولة $${commissionAmount.toFixed(2)} من الوكالة ${member.member_name} (${pct}% من ${diamondDiff.toLocaleString()} ماسة زيادة)`,
+              body: `عمولة $${commissionAmount.toFixed(2)} من الوكالة ${member.member_name} (${pct}% من $${salaryDiff.toFixed(2)} رواتب مضيفين)`,
               target: "user", user_uuid: member.bd_uuid,
             });
             commissionUpdates++;
