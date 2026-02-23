@@ -309,17 +309,15 @@ serve(async (req) => {
         let monthlyCharges = extractTotal(chargeData.charges.month);
         const dailyCharges = extractTotal(chargeData.charges.today);
 
-        // FALLBACK: If month.total is 0 but recent charges exist, sum them up
-        if (monthlyCharges === 0 && Array.isArray(chargeData.recent) && chargeData.recent.length > 0) {
-          const recentSum = chargeData.recent.reduce((sum: number, r: any) => {
-            const coins = Number(String(r["الكوينز"] || r.coins || r.amount || 0).replace(/,/g, ''));
-            return sum + (isNaN(coins) ? 0 : coins);
-          }, 0);
-          if (recentSum > 0) {
-            monthlyCharges = recentSum;
-            console.log(`[SYNC] supporter ${member.member_uuid}: month.total=0, using recent sum=${recentSum}`);
+        // If month.total is 0, check week total as a more accurate fallback
+        if (monthlyCharges === 0 && chargeData.charges.week) {
+          const weekTotal = extractTotal(chargeData.charges.week);
+          if (weekTotal > 0) {
+            monthlyCharges = weekTotal;
+            console.log(`[SYNC] supporter ${member.member_uuid}: month=0, using week=${weekTotal}`);
           }
         }
+        console.log(`[SYNC] supporter ${member.member_uuid}: API month=${extractTotal(chargeData.charges.month)}, final=${monthlyCharges}`);
 
         // RE-READ fresh data
         const { data: fresh } = await sb.from("bd_members")
