@@ -246,28 +246,47 @@ const BDDashboard: React.FC = () => {
   return (
     <div className="mobile-container bg-background" dir="rtl">
       {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-4 pt-10 pb-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => tab !== 'dashboard' ? setTab('dashboard') : navigate("/")}
-            className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
-          >
-            <span className="material-symbols-outlined text-xl">arrow_forward</span>
-          </button>
-          <div className="flex flex-col">
-            {tab === 'dashboard' && <span className="text-[10px] text-muted-foreground">مرحباً 👋</span>}
-            <h1 className="text-sm font-bold text-foreground leading-tight">
-              {tab === 'dashboard' ? (bd.bd_name || user?.name || "BD") :
-               tab === 'supporters' ? 'الداعمين' :
-               tab === 'agents' ? 'الوكالات' :
-               tab === 'wallet' ? 'المحفظة' : 'الإعدادات'}
-            </h1>
+      <header className="shrink-0 px-4 pt-10 pb-2">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => tab !== 'dashboard' ? setTab('dashboard') : navigate("/")}
+              className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <span className="material-symbols-outlined text-xl">arrow_forward</span>
+            </button>
+            <div className="flex flex-col">
+              {tab === 'dashboard' && <span className="text-[10px] text-muted-foreground">مرحباً 👋</span>}
+              <h1 className="text-sm font-bold text-foreground leading-tight">
+                {tab === 'dashboard' ? (bd.bd_name || user?.name || "BD") :
+                 tab === 'supporters' ? 'الداعمين' :
+                 tab === 'agents' ? 'الوكالات' :
+                 tab === 'wallet' ? 'المحفظة' : 'الإعدادات'}
+              </h1>
+            </div>
           </div>
+          <button className="relative p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground">
+            <span className="material-symbols-outlined text-xl">notifications</span>
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
+          </button>
         </div>
-        <button className="relative p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground">
-          <span className="material-symbols-outlined text-xl">notifications</span>
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
-        </button>
+        {/* Quick Action Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate("/bd/add", { state: { memberType: "supporter" } })}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-l from-blue-600/20 to-blue-500/10 border border-blue-500/25 hover:border-blue-400/40 active:scale-[0.97] transition-all"
+          >
+            <span className="material-symbols-outlined text-blue-400 text-[15px]">person_add</span>
+            <span className="text-[11px] font-bold text-blue-400">جلب داعم</span>
+          </button>
+          <button
+            onClick={() => navigate("/bd/add", { state: { memberType: "agent" } })}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-l from-purple-600/20 to-purple-500/10 border border-purple-500/25 hover:border-purple-400/40 active:scale-[0.97] transition-all"
+          >
+            <span className="material-symbols-outlined text-purple-400 text-[15px]">domain_add</span>
+            <span className="text-[11px] font-bold text-purple-400">جلب وكالة</span>
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4 space-y-3">
