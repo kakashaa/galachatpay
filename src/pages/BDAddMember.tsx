@@ -65,25 +65,41 @@ const BDAddMember: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("bd-manage", {
-        body: {
-          action: "invite_member",
-          bd_uuid: user.uuid,
-          bd_name: bdData.bd_name || user.name,
-          member_uuid: memberUuid.trim(),
-          member_type: memberType,
-          referral_code: bdData.referral_code || "",
-        },
-      });
-
-      console.log("[BD-INVITE] Response:", JSON.stringify(data));
-
-      if (fnError) {
+      let data: any = null;
+      let fnError: any = null;
+      try {
+        const res = await supabase.functions.invoke("bd-manage", {
+          body: {
+            action: "invite_member",
+            bd_uuid: user.uuid,
+            bd_name: bdData.bd_name || user.name,
+            member_uuid: memberUuid.trim(),
+            member_type: memberType,
+            referral_code: bdData.referral_code || "",
+          },
+        });
+        data = res.data;
+        fnError = res.error;
+      } catch (e) {
+        console.error("[BD-INVITE] invoke error:", e);
         toast.error("فشل الاتصال بالسيرفر");
         return;
       }
 
-      const responseData = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log("[BD-INVITE] Response:", JSON.stringify(data));
+
+      if (fnError || !data) {
+        toast.error("فشل الاتصال بالسيرفر");
+        return;
+      }
+
+      let responseData: any;
+      try {
+        responseData = typeof data === 'string' ? JSON.parse(data) : data;
+      } catch {
+        toast.error("استجابة غير متوقعة من السيرفر");
+        return;
+      }
 
       if (responseData?.violation || responseData?.banned) {
         const violations = await fetchViolations(user.uuid);
