@@ -173,21 +173,28 @@ serve(async (req) => {
     const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 
     // === SYNC LOCK ===
+    const isManual = body?.manual === true;
     const { data: lockData } = await sb
       .from("edge_function_cache")
       .select("value, expires_at")
       .eq("key", "bd_sync_lock")
       .maybeSingle();
 
-    if (lockData && new Date(lockData.expires_at) > new Date()) {
+    if (lockData && new Date(lockData.expires_at) > new Date() && !isManual) {
       console.log("[LOCK] bd-sync already running, skipping");
       return new Response(JSON.stringify({ skipped: true, reason: "sync already running" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Manual sync always proceeds - delete stale lock first
+    if (isManual && lockData) {
+      await sb.from("edge_function_cache").delete().eq("key", "bd_sync_lock");
+      console.log("[LOCK] manual sync - cleared stale lock");
+    }
+
     await sb.from("edge_function_cache").upsert(
-      { key: "bd_sync_lock", value: { running: true }, expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() },
+      { key: "bd_sync_lock", value: { running: true }, expires_at: new Date(Date.now() + 3 * 60 * 1000).toISOString() },
       { onConflict: "key" }
     );
 
@@ -299,8 +306,20 @@ serve(async (req) => {
           continue;
         }
 
-        const monthlyCharges = extractTotal(chargeData.charges.month);
+        let monthlyCharges = extractTotal(chargeData.charges.month);
         const dailyCharges = extractTotal(chargeData.charges.today);
+
+        // FALLBACK: If month.total is 0 but recent charges exist, sum them up
+        if (monthlyCharges === 0 && Array.isArray(chargeData.recent) && chargeData.recent.length > 0) {
+          const recentSum = chargeData.recent.reduce((sum: number, r: any) => {
+            const coins = Number(String(r["الكوينز"] || r.coins || r.amount || 0).replace(/,/g, ''));
+            return sum + (isNaN(coins) ? 0 : coins);
+          }, 0);
+          if (recentSum > 0) {
+            monthlyCharges = recentSum;
+            console.log(`[SYNC] supporter ${member.member_uuid}: month.total=0, using recent sum=${recentSum}`);
+          }
+        }
 
         // RE-READ fresh data
         const { data: fresh } = await sb.from("bd_members")

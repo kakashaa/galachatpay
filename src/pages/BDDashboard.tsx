@@ -247,7 +247,7 @@ const BDDashboard: React.FC = () => {
                     <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full css-bar-fill ${isSup ? 'bg-blue-400' : 'bg-purple-400'}`} style={{ width: `${Math.max(pct, 2)}%` }} />
                     </div>
-                    <span className="text-[8px] text-muted-foreground font-mono">#{member.member_uuid?.slice(-4)}</span>
+                    <span className="text-[8px] text-muted-foreground font-mono">#{member.member_uuid}</span>
                   </div>
                 </div>
                 <div className="text-left">

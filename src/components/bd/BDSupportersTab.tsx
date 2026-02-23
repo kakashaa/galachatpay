@@ -97,7 +97,7 @@ const BDSupportersTab: React.FC<BDSupportersTabProps> = ({ supporters, commissio
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                           )}
                           <span className="text-[10px] text-slate-400 font-mono">
-                            #{supporter.member_uuid?.slice(-6) || "------"}
+                            #{supporter.member_uuid || "------"}
                           </span>
                         </div>
                       </div>
