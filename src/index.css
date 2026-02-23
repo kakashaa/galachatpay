@@ -168,6 +168,25 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .bg-grid-pattern {
+    background-image: linear-gradient(to right, #1c1e2e 1px, transparent 1px),
+                      linear-gradient(to bottom, #1c1e2e 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  }
+
+  .coin-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #FFD700 0%, #FDB931 100%);
+    color: #8B4513;
+    border-radius: 50%;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4);
+  }
 }
 
 @keyframes marquee {
