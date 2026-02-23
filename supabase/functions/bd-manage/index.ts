@@ -553,14 +553,18 @@ serve(async (req) => {
       if (invite.member_type === "agency") {
         const agencyData = await fetchAgencyIncome(invite.member_uuid, true);
         if (agencyData?.commission) {
-          initialMonthly = agencyData.commission.month || 0;
-          initialDaily = agencyData.commission.today || 0;
+          const m = agencyData.commission.month;
+          const d = agencyData.commission.today;
+          initialMonthly = typeof m === "object" ? (m?.total ?? m?.count ?? 0) : (m || 0);
+          initialDaily = typeof d === "object" ? (d?.total ?? d?.count ?? 0) : (d || 0);
         }
       } else {
         const chargeData = await fetchUserCharges(invite.member_uuid, true);
         if (chargeData?.charges) {
-          initialMonthly = chargeData.charges.month || 0;
-          initialDaily = chargeData.charges.today || 0;
+          const m = chargeData.charges.month;
+          const d = chargeData.charges.today;
+          initialMonthly = typeof m === "object" ? (m?.total ?? m?.count ?? 0) : (m || 0);
+          initialDaily = typeof d === "object" ? (d?.total ?? d?.count ?? 0) : (d || 0);
         }
       }
 
