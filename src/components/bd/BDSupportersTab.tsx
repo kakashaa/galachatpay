@@ -15,11 +15,27 @@ interface BDSupportersTabProps {
 }
 
 const BDSupportersTab: React.FC<BDSupportersTabProps> = ({ supporters, commissionPct }) => {
+  const [search, setSearch] = React.useState("");
+  const filtered = supporters.filter(s => 
+    s.member_name?.toLowerCase().includes(search.toLowerCase()) || 
+    s.member_uuid?.includes(search)
+  );
   const totalCoins = supporters.reduce((sum, s) => sum + (s.monthly_charges || 0), 0);
   const totalCommission = supporters.reduce((sum, s) => sum + (s.current_month_commission || 0), 0);
 
   return (
     <div className="space-y-5">
+      {/* Search */}
+      <div className="relative">
+        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+        <input
+          type="text"
+          placeholder="ابحث عن داعم بالاسم أو ID..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full bg-[#1c1e2e] border border-white/10 rounded-xl py-2.5 pr-10 pl-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/40 transition-colors"
+        />
+      </div>
       {/* Header Stats */}
       <div className="bg-[#1c1e2e] border border-white/10 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-1">
@@ -48,17 +64,17 @@ const BDSupportersTab: React.FC<BDSupportersTabProps> = ({ supporters, commissio
       <div>
         <div className="flex items-center justify-between px-1 mb-3">
           <h4 className="text-sm font-bold text-white uppercase tracking-wider">الداعمين النشطين</h4>
-          <span className="text-[10px] text-slate-400">{supporters.length} داعم</span>
+          <span className="text-[10px] text-slate-400">{filtered.length} داعم</span>
         </div>
 
-        {supporters.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-8 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-600 mb-2">group_off</span>
-            <p className="text-sm text-slate-400">لا يوجد داعمين حالياً</p>
+            <span className="material-symbols-outlined text-4xl text-slate-600 mb-2">{search ? 'search_off' : 'group_off'}</span>
+            <p className="text-sm text-slate-400">{search ? 'لا توجد نتائج' : 'لا يوجد داعمين حالياً'}</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {supporters.map((supporter) => {
+            {filtered.map((supporter) => {
               const coins = supporter.monthly_charges || 0;
               const commUSD = supporter.current_month_commission || 0;
               const totalCommUSD = supporter.total_commission || 0;
