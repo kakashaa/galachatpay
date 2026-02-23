@@ -67,7 +67,6 @@ const BDInvitationBanner: React.FC = () => {
           response,
           user_uuid: user?.uuid,
           password: response === "accept" ? password : undefined,
-          charger_num: response === "accept" ? (user?.level?.charger_num || 0) : undefined,
         },
       });
 
