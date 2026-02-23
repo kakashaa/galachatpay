@@ -22,12 +22,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const BD_UUID = "3734853";
+  const AGENT_UUID = "2315321";
+
   const results = await Promise.all([
-    testEndpoint("1-agency-salary", `${BASE}/salary-api.php?key=${KEY}&uuid=${UUID}`),
-    testEndpoint("2-agency-income", `${BASE}/bd-data-api.php?key=${KEY}&action=agency-income&uuid=${UUID}`),
-    testEndpoint("3-user-charges", `${BASE}/bd-data-api.php?key=${KEY}&action=user-charges&uuid=${UUID}`),
-    testEndpoint("4-user-info", `${BASE}/bd-data-api.php?key=${KEY}&action=user-info&uuid=${UUID}`),
-    testEndpoint("5-host-salary", `${BASE}/bd-data-api.php?key=${KEY}&action=host-salary&uuid=${UUID}`),
+    testEndpoint("1-agent-user-info", `${BASE}/bd-data-api.php?key=${KEY}&action=user-info&uuid=${AGENT_UUID}`),
+    testEndpoint("2-bd-user-info", `${BASE}/bd-data-api.php?key=${KEY}&action=user-info&uuid=${BD_UUID}`),
+    testEndpoint("3-agent-agency-income", `${BASE}/bd-data-api.php?key=${KEY}&action=agency-income&uuid=${AGENT_UUID}`),
+    testEndpoint("4-bd-agency-income", `${BASE}/bd-data-api.php?key=${KEY}&action=agency-income&uuid=${BD_UUID}`),
+    testEndpoint("5-agent-charges", `${BASE}/bd-data-api.php?key=${KEY}&action=user-charges&uuid=${AGENT_UUID}`),
+    testEndpoint("6-bd-charges", `${BASE}/bd-data-api.php?key=${KEY}&action=user-charges&uuid=${BD_UUID}`),
+    testEndpoint("7-agent-salary", `${BASE}/salary-api.php?key=${KEY}&uuid=${AGENT_UUID}`),
+    testEndpoint("8-bd-salary", `${BASE}/salary-api.php?key=${KEY}&uuid=${BD_UUID}`),
   ]);
 
   return new Response(JSON.stringify(results, null, 2), {
