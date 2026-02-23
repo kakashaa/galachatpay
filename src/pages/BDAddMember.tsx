@@ -39,6 +39,7 @@ const BDAddMember: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [bdData, setBdData] = useState<any>(null);
   const [violationDialog, setViolationDialog] = useState<ViolationInfo | null>(null);
+  const [agencyConfirm, setAgencyConfirm] = useState(false);
 
   React.useEffect(() => {
     const load = async () => {
@@ -188,7 +189,7 @@ const BDAddMember: React.FC = () => {
                   <div className="text-[10px] text-muted-foreground">عمولة 2%</div>
                 </button>
                 <button
-                  onClick={() => setMemberType("agency")}
+                  onClick={() => setAgencyConfirm(true)}
                   className={`p-4 rounded-2xl border text-center transition-all ${
                     memberType === "agency"
                       ? "border-amber-500 bg-amber-500/10"
@@ -240,63 +241,35 @@ const BDAddMember: React.FC = () => {
               {violationDialog?.banned ? "⛔ تم إيقاف البيدي" : "⚠️ تحذير - مخالفة"}
             </DialogTitle>
           </DialogHeader>
-
           <div className="space-y-4">
-            {/* 3 Strike Indicators */}
             <div className="flex items-center justify-center gap-3 py-3">
               {[1, 2, 3].map((num) => {
                 const isUsed = (violationDialog?.count || 0) >= num;
                 const isLatest = num === violationDialog?.count;
                 return (
-                  <motion.div
-                    key={num}
-                    initial={isLatest ? { scale: 0 } : {}}
-                    animate={isLatest ? { scale: 1 } : {}}
-                    transition={{ type: "spring", delay: 0.2 }}
-                    className="flex flex-col items-center gap-1"
-                  >
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all ${
-                      isUsed
-                        ? "border-red-500 bg-red-500/20"
-                        : "border-muted-foreground/30 bg-muted/20"
-                    }`}>
-                      {isUsed ? (
-                        <XCircle className="w-8 h-8 text-red-500" />
-                      ) : (
-                        <CircleDot className="w-8 h-8 text-muted-foreground/40" />
-                      )}
+                  <motion.div key={num} initial={isLatest ? { scale: 0 } : {}} animate={isLatest ? { scale: 1 } : {}} transition={{ type: "spring", delay: 0.2 }} className="flex flex-col items-center gap-1">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all ${isUsed ? "border-red-500 bg-red-500/20" : "border-muted-foreground/30 bg-muted/20"}`}>
+                      {isUsed ? <XCircle className="w-8 h-8 text-red-500" /> : <CircleDot className="w-8 h-8 text-muted-foreground/40" />}
                     </div>
-                    <span className={`text-[10px] font-bold ${isUsed ? "text-red-400" : "text-muted-foreground"}`}>
-                      إنذار {num}
-                    </span>
+                    <span className={`text-[10px] font-bold ${isUsed ? "text-red-400" : "text-muted-foreground"}`}>إنذار {num}</span>
                   </motion.div>
                 );
               })}
             </div>
-
-            {/* Warning Message */}
-            <div className={`rounded-xl p-3 text-sm leading-relaxed ${
-              violationDialog?.banned
-                ? "bg-red-500/10 border border-red-500/30 text-red-400"
-                : "bg-amber-500/10 border border-amber-500/30 text-amber-400"
-            }`}>
+            <div className={`rounded-xl p-3 text-sm leading-relaxed ${violationDialog?.banned ? "bg-red-500/10 border border-red-500/30 text-red-400" : "bg-amber-500/10 border border-amber-500/30 text-amber-400"}`}>
               {violationDialog?.banned ? (
-                <p className="font-bold">تم إيقاف حساب البيدي الخاص بك نهائياً بسبب 3 مخالفات متكررة. لن تتمكن من إضافة أعضاء أو الوصول لصلاحيات البيدي.</p>
+                <p className="font-bold">تم إيقاف حساب البيدي الخاص بك نهائياً بسبب 3 مخالفات متكررة.</p>
               ) : (
                 <p>المستخدم الذي تريد دعوته <strong>قديم في البرنامج</strong>. ادعو شخص جديد على التطبيق واكسب نسبتك!</p>
               )}
             </div>
-
-            {/* Violation History */}
             {violationDialog?.violations && violationDialog.violations.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-muted-foreground">سجل المحاولات:</h4>
                 <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {violationDialog.violations.map((v, i) => (
                     <div key={v.id} className="flex items-center gap-2 bg-muted/30 rounded-lg p-2 text-xs">
-                      <span className="bg-red-500/20 text-red-400 font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0">
-                        {i + 1}
-                      </span>
+                      <span className="bg-red-500/20 text-red-400 font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <span className="text-foreground font-mono">{v.member_uuid}</span>
                         <span className="text-muted-foreground mr-1">- {v.details || "حساب قديم"}</span>
@@ -306,26 +279,73 @@ const BDAddMember: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* Remaining Warnings */}
             {!violationDialog?.banned && (
               <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 text-center">
-                <p className="text-xs text-red-400 font-bold">
-                  ⚡ متبقي {3 - (violationDialog?.count || 0)} إنذار(ات) قبل إيقاف البيدي نهائياً
-                </p>
+                <p className="text-xs text-red-400 font-bold">⚡ متبقي {3 - (violationDialog?.count || 0)} إنذار(ات) قبل إيقاف البيدي نهائياً</p>
               </div>
             )}
-
-            <Button
-              onClick={() => {
-                setViolationDialog(null);
-                if (violationDialog?.banned) navigate("/bd", { replace: true });
-              }}
-              variant={violationDialog?.banned ? "destructive" : "outline"}
-              className="w-full"
-            >
+            <Button onClick={() => { setViolationDialog(null); if (violationDialog?.banned) navigate("/bd", { replace: true }); }} variant={violationDialog?.banned ? "destructive" : "outline"} className="w-full">
               {violationDialog?.banned ? "العودة للصفحة الرئيسية" : "فهمت، سأدعو شخص جديد"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Agency Confirmation Dialog */}
+      <Dialog open={agencyConfirm} onOpenChange={setAgencyConfirm}>
+        <DialogContent className="max-w-sm mx-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-400">
+              <AlertTriangle className="w-5 h-5" />
+              تأكيد إضافة وكيل
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 space-y-2">
+              <p className="text-sm text-amber-400 font-bold leading-relaxed">
+                قبل ما ترسل الدعوة، تأكد من التالي:
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                  <span>الوكيل <strong className="text-foreground">عنده وكالة</strong> أو أنشأ وكالة في التطبيق</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                  <span>إذا ما صارت عنده وكالة بعد، <strong className="text-red-400">انتظر</strong> لما يصير عنده وكالة وبعدين ارسل الطلب</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                  <span>جميع مستويات الوكيل <strong className="text-foreground">أصفار</strong> (شحن، إرسال، استقبال)</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3">
+              <p className="text-xs text-red-400 font-bold">
+                ⚠️ إذا الوكيل ما عنده وكالة أو مستوياته مو أصفار، الدعوة بتنرفض وبتحسب عليك إنذار!
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setAgencyConfirm(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={() => {
+                  setAgencyConfirm(false);
+                  setMemberType("agency");
+                }}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                <CheckCircle className="w-4 h-4 ml-1" />
+                تأكدت، متابعة
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
