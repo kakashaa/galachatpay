@@ -86,19 +86,6 @@ serve(async (req) => {
       const { user_uuid, user_name, user_level } = params;
       if (!user_uuid) return json({ error: "user_uuid مطلوب" }, 400);
 
-      // Check if already registered
-      const { data: existing } = await sb
-        .from("bd_registration_requests")
-        .select("id, status")
-        .eq("user_uuid", user_uuid)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existing && (existing.status === "pending" || existing.status === "approved")) {
-        return json({ error: "لديك طلب مسجل مسبقاً", existing_status: existing.status });
-      }
-
       // Check if already a BD
       const { data: bdExists } = await sb
         .from("bd_commission_settings")
@@ -108,17 +95,36 @@ serve(async (req) => {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (bdExists) return json({ error: "أنت مسجل كبيدي بالفعل" });
+      if (bdExists) return json({ status: "approved", already: true });
 
-      const { error } = await sb.from("bd_registration_requests").insert({
-        user_uuid,
-        user_name: user_name || "",
-        user_level: user_level || 0,
-        status: "pending",
-      });
+      // Auto-approve if level >= 10
+      const level = user_level || 0;
+      if (level >= 10) {
+        const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        await sb.from("bd_commission_settings").upsert({
+          bd_uuid: user_uuid,
+          bd_name: user_name || "",
+          is_approved: true,
+          is_active: true,
+          referral_code: referralCode,
+          user_commission_pct: 2,
+          agency_commission_pct: 5,
+          available_balance: 0,
+          total_earned: 0,
+          current_month_earnings: 0,
+        }, { onConflict: "bd_uuid" });
 
-      if (error) return json({ error: error.message }, 500);
-      return json({ success: true, message: "تم إرسال طلبك بنجاح" });
+        // Also mark any pending registration as approved
+        await sb.from("bd_registration_requests")
+          .update({ status: "approved" })
+          .eq("user_uuid", user_uuid)
+          .eq("status", "pending");
+
+        return json({ success: true, status: "approved", referral_code: referralCode });
+      }
+
+      // Fallback: shouldn't reach here if UI enforces level >= 10
+      return json({ error: "المستوى غير كافي" }, 400);
     }
 
     if (action === "check_status") {

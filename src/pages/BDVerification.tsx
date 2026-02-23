@@ -22,12 +22,13 @@ const BDVerification: React.FC = () => {
   const isEligible = highestLevel >= 10;
 
   useEffect(() => {
-    checkStatus();
+    checkAndAutoRegister();
   }, [user?.uuid]);
 
-  const checkStatus = async () => {
+  const checkAndAutoRegister = async () => {
     if (!user?.uuid) return;
     try {
+      // First check existing status
       const { data } = await supabase.functions.invoke("bd-manage", {
         body: { action: "check_status", user_uuid: user.uuid },
       });
@@ -35,36 +36,32 @@ const BDVerification: React.FC = () => {
         navigate("/bd/dashboard", { replace: true });
         return;
       }
+
+      // If eligible and no active BD, auto-register (auto-approved)
+      if (isEligible) {
+        setLoading(true);
+        const { data: regData } = await supabase.functions.invoke("bd-manage", {
+          body: {
+            action: "register",
+            user_uuid: user.uuid,
+            user_name: user.name,
+            user_level: highestLevel,
+          },
+        });
+        if (regData?.status === "approved" || regData?.already) {
+          navigate("/bd/dashboard", { replace: true });
+          return;
+        }
+        if (regData?.error) {
+          toast.error(regData.error);
+        }
+        setLoading(false);
+      }
+
       setStatus(data?.status || "none");
       if (data?.request?.admin_note) setRejectionNote(data.request.admin_note);
     } catch {
       setStatus("none");
-    }
-  };
-
-  const handleRegister = async () => {
-    if (!user?.uuid) return;
-    setLoading(true);
-    try {
-      const { data } = await supabase.functions.invoke("bd-manage", {
-        body: {
-          action: "register",
-          user_uuid: user.uuid,
-          user_name: user.name,
-          user_level: highestLevel,
-        },
-      });
-      if (data?.error) {
-        toast.error(data.error);
-        if (data.existing_status) setStatus(data.existing_status);
-      } else {
-        toast.success("تم إرسال طلبك بنجاح!");
-        setStatus("pending");
-      }
-    } catch {
-      toast.error("فشل إرسال الطلب");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -125,7 +122,7 @@ const BDVerification: React.FC = () => {
               </ul>
             </div>
 
-            <Button onClick={handleRegister} disabled={loading} className="w-full h-12 text-base font-bold rounded-xl">
+            <Button onClick={checkAndAutoRegister} disabled={loading} className="w-full h-12 text-base font-bold rounded-xl">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "نعم، أوافق وأريد الانضمام"}
             </Button>
           </motion.div>
