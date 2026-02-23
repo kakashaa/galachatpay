@@ -546,26 +546,32 @@ serve(async (req) => {
       }
 
       // All validations passed - add member
-      // For agencies: fetch agency income, for supporters: fetch user charges
-      let initialMonthly = 0;
-      let initialDaily = 0;
+      // Fetch the cumulative charger_num from user-info API to use as baseline
+      // This ensures commission is only calculated on NEW charges after joining
+      let baselineChargerNum = 0;
 
       if (invite.member_type === "agency") {
+        // For agencies, fetch agency income baseline
         const agencyData = await fetchAgencyIncome(invite.member_uuid, true);
         if (agencyData?.commission) {
           const m = agencyData.commission.month;
-          const d = agencyData.commission.today;
-          initialMonthly = typeof m === "object" ? (m?.total ?? m?.count ?? 0) : (m || 0);
-          initialDaily = typeof d === "object" ? (d?.total ?? d?.count ?? 0) : (d || 0);
+          baselineChargerNum = typeof m === "object" ? (m?.total ?? m?.count ?? 0) : (m || 0);
         }
       } else {
-        const chargeData = await fetchUserCharges(invite.member_uuid, true);
-        if (chargeData?.charges) {
-          const m = chargeData.charges.month;
-          const d = chargeData.charges.today;
-          initialMonthly = typeof m === "object" ? (m?.total ?? m?.count ?? 0) : (m || 0);
-          initialDaily = typeof d === "object" ? (d?.total ?? d?.count ?? 0) : (d || 0);
-        }
+        // For supporters: use charger_num from user-info as the baseline
+        // charger_num is the cumulative total - we set it as initial so only new charges count
+        const userInfo = await (async () => {
+          const uiUrl = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${invite.member_uuid}`;
+          try {
+            const r = await fetch(uiUrl, { signal: AbortSignal.timeout(10000) });
+            if (r.ok) return await r.json();
+          } catch { /* ignore */ }
+          return null;
+        })();
+        
+        const chargerNum = Number(userInfo?.user?.charger_num ?? userInfo?.charger_num ?? 0);
+        baselineChargerNum = chargerNum;
+        console.log(`[BD-INVITE] Supporter baseline for ${invite.member_uuid}: charger_num=${chargerNum}`);
       }
 
       const { error: memberError } = await sb.from("bd_members").insert({
@@ -573,9 +579,10 @@ serve(async (req) => {
         member_uuid: invite.member_uuid,
         member_name: userName,
         member_type: invite.member_type,
-        initial_charger_num: initialMonthly,
-        monthly_charges: initialMonthly,
-        last_daily_charges: initialDaily,
+        initial_charger_num: baselineChargerNum,
+        monthly_charges: 0,
+        last_daily_charges: baselineChargerNum,
+        last_processed_diamonds: baselineChargerNum,
         type_user: userTypeNum,
         is_active: true,
       });
