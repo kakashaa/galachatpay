@@ -14,7 +14,7 @@ serve(async (req) => {
 
     // Test salary-api.php for uuid 7524002
     try {
-      const url = `${SALARY_API_URL}?key=${API_KEY}&uuid=7524002`;
+      const url = `${SALARY_API_URL}?key=${API_KEY}&uuid=80001`;
       results.request_url = url;
       const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
       const text = await res.text();
