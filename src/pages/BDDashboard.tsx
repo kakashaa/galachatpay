@@ -114,25 +114,34 @@ const BDDashboard: React.FC = () => {
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display antialiased selection:bg-primary selection:text-white" dir="rtl">
       <div className="fixed inset-0 pointer-events-none z-0 bg-grid-pattern opacity-20"></div>
       
-      <main className="relative z-10 flex-1 flex flex-col pb-24 max-w-md mx-auto w-full border-x border-white/5 bg-background-light dark:bg-background-dark shadow-2xl">
+      <main className="relative z-10 flex-1 flex flex-col max-w-md mx-auto w-full border-x border-white/5 bg-background-light dark:bg-background-dark shadow-2xl">
         
         {/* Header */}
         <header className="flex items-center justify-between px-6 pt-14 pb-4 bg-gradient-to-b from-background-dark to-transparent">
           <div className="flex items-center gap-3">
-            <div className="relative group cursor-pointer" onClick={() => navigate("/profile")}>
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-purple-600 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-200"></div>
-              <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-background-dark">
-                <img 
-                  alt="Profile" 
-                  className="h-full w-full object-cover" 
-                  src={"/placeholder.svg"} 
-                  onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
-                />
-              </div>
-            </div>
+            {tab !== 'dashboard' ? (
+              <button 
+                onClick={() => setTab('dashboard')}
+                className="p-2 rounded-full hover:bg-white/5 transition-colors text-slate-300 hover:text-white"
+              >
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => navigate("/")}
+                className="p-2 rounded-full hover:bg-white/5 transition-colors text-slate-300 hover:text-white"
+              >
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+            )}
             <div className="flex flex-col">
-              <span className="text-xs text-slate-400 font-medium">مرحباً بعودتك 👋</span>
-              <h1 className="text-lg font-bold text-white leading-tight">{bd.bd_name || user?.name || "BD Member"}</h1>
+              {tab === 'dashboard' && <span className="text-xs text-slate-400 font-medium">مرحباً بعودتك 👋</span>}
+              <h1 className="text-lg font-bold text-white leading-tight">
+                {tab === 'dashboard' ? (bd.bd_name || user?.name || "BD Member") : 
+                 tab === 'supporters' ? 'الداعمين' :
+                 tab === 'agents' ? 'الوكالات' :
+                 tab === 'wallet' ? 'المحفظة' : 'الإعدادات'}
+              </h1>
             </div>
           </div>
           <button className="relative p-2 rounded-full hover:bg-white/5 transition-colors text-slate-300 hover:text-white">
@@ -141,7 +150,7 @@ const BDDashboard: React.FC = () => {
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 space-y-6">
+        <div className="flex-1 overflow-y-auto px-5 pb-24 space-y-6">
           
           {tab === 'supporters' ? (
             <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} />
@@ -335,7 +344,7 @@ const BDDashboard: React.FC = () => {
         </div>
 
         {/* Bottom Navigation */}
-        <nav className="absolute bottom-0 w-full bg-[#1c1e2e]/95 backdrop-blur-md border-t border-white/5 pb-6 pt-2 px-6 rounded-t-2xl z-20">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-[#1c1e2e]/95 backdrop-blur-md border-t border-white/5 pb-6 pt-2 px-6 rounded-t-2xl z-20">
           <div className="flex justify-between items-center">
             <button onClick={() => setTab('dashboard')} className="flex flex-col items-center gap-1 group">
               <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'dashboard' ? '' : 'opacity-70'}`}>
