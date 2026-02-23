@@ -26,6 +26,30 @@ const BDDashboard: React.FC = () => {
   const [dailyLogs, setDailyLogs] = useState<{day: string; amount: number}[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+
+  const handleManualSync = async () => {
+    if (syncing || !user?.uuid) return;
+    setSyncing(true);
+    try {
+      const res = await supabase.functions.invoke("bd-sync", { body: { manual: true } });
+      const result = res.data;
+      if (result?.skipped) {
+        toast.info("المزامنة قيد التنفيذ بالفعل، حاول بعد قليل");
+      } else {
+        const synced = result?.synced || 0;
+        const commissions = result?.commission_updates || 0;
+        toast.success(`✅ تم التحديث: ${synced} عضو، ${commissions} عمولة جديدة`);
+        setLastSync(new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }));
+        await loadData();
+      }
+    } catch {
+      toast.error("فشل التحديث، حاول مرة أخرى");
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -265,12 +289,25 @@ const BDDashboard: React.FC = () => {
               </h1>
             </div>
           </div>
-          <button className="relative p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground">
-            <span className="material-symbols-outlined text-xl">notifications</span>
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleManualSync}
+              disabled={syncing}
+              className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              <span className={`material-symbols-outlined text-xl ${syncing ? 'animate-spin' : ''}`}>sync</span>
+            </button>
+            <button className="relative p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground">
+              <span className="material-symbols-outlined text-xl">notifications</span>
+              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
+            </button>
+          </div>
         </div>
-        {/* Quick Action Buttons */}
+        {lastSync && (
+          <div className="text-center">
+            <span className="text-[9px] text-muted-foreground">آخر تحديث: {lastSync}</span>
+          </div>
+        )}
         <div className="flex gap-2">
           <button
             onClick={() => navigate("/bd/add", { state: { memberType: "supporter" } })}
