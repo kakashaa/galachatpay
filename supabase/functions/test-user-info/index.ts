@@ -26,8 +26,10 @@ serve(async (req) => {
   const year = body?.year || 2026;
   const month = body?.month || 2;
 
+  const monthStr = String(month).padStart(2, "0");
   const results = await Promise.all([
-    testEndpoint("agency-target-api", `${BASE}/agency-target-api.php?key=${KEY}&uuid=${uuid}&year=${year}&month=${month}`),
+    testEndpoint("top-chargers", `${BASE}/top-chargers-api.php?key=${KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthStr}`),
+    testEndpoint("agency-target-api", `${BASE}/agency-target-api.php?key=${KEY}&uuid=${uuid}&year=${year}&month=${monthStr}`),
   ]);
 
   return new Response(JSON.stringify(results, null, 2), {
