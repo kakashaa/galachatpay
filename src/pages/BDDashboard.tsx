@@ -1,16 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Users, Wallet, Search, TrendingUp, DollarSign, Loader2, UserPlus, RefreshCw, CalendarDays, FileText, Info, BarChart3 } from "lucide-react";
-
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { formatDateAr } from "@/utils/dateFormat";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-
-type Tab = "overview" | "supporters" | "agents" | "history" | "today" | "commission_report" | "weekly";
+import { Loader2 } from "lucide-react";
 
 interface BDData {
   bd: any;
@@ -26,21 +19,11 @@ const BDDashboard: React.FC = () => {
   const { user } = useAuth();
   const [data, setData] = useState<BDData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("overview");
-  const [search, setSearch] = useState("");
-  const [todayLogs, setTodayLogs] = useState<any[]>([]);
-  const [commissionLogs, setCommissionLogs] = useState<any[]>([]);
-  const [prevMonthLogs, setPrevMonthLogs] = useState<any[]>([]);
-  const [commissionLoading, setCommissionLoading] = useState(false);
-  const [commissionMonth, setCommissionMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
-  const [monthlyLogs, setMonthlyLogs] = useState<any[]>([]);
-  const [weeklyLogs, setWeeklyLogs] = useState<any[]>([]);
-  const [prevWeekLogs, setPrevWeekLogs] = useState<any[]>([]);
-  const [weeklyNewMembers, setWeeklyNewMembers] = useState(0);
-  const [weeklyLoading, setWeeklyLoading] = useState(false);
+  const [todayProfit, setTodayProfit] = useState(0);
+  const [monthlyProfit, setMonthlyProfit] = useState(0);
+  const [totalCharges, setTotalCharges] = useState(0);
+  const [totalSalaries, setTotalSalaries] = useState(0);
+  const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
 
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -50,27 +33,21 @@ const BDDashboard: React.FC = () => {
 
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01T00:00:00Z`;
-      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      const monthEnd = nextMonth.toISOString();
 
-      const [dashRes, logsRes, monthlyRes] = await Promise.all([
+      const [dashRes, todayLogsRes, monthLogsRes] = await Promise.all([
         supabase.functions.invoke("bd-manage", {
           body: { action: "get_dashboard", bd_uuid: user.uuid },
         }),
         supabase
           .from("bd_commission_logs")
-          .select("*")
+          .select("amount")
           .eq("bd_uuid", user.uuid)
-          .gte("created_at", todayStart.toISOString())
-          .order("created_at", { ascending: false }),
+          .gte("created_at", todayStart.toISOString()),
         supabase
           .from("bd_commission_logs")
-          .select("*")
+          .select("amount, source_amount, member_type")
           .eq("bd_uuid", user.uuid)
-          .gte("created_at", monthStart)
-          .lt("created_at", monthEnd)
-          .order("created_at", { ascending: false })
-          .limit(1000),
+          .gte("created_at", monthStart),
       ]);
 
       const res = dashRes.data;
@@ -79,8 +56,26 @@ const BDDashboard: React.FC = () => {
       } else {
         navigate("/bd", { replace: true });
       }
-      setTodayLogs(logsRes.data || []);
-      setMonthlyLogs(monthlyRes.data || []);
+
+      // Calculate totals
+      const todaySum = todayLogsRes.data?.reduce((sum, log) => sum + (log.amount || 0), 0) || 0;
+      const monthSum = monthLogsRes.data?.reduce((sum, log) => sum + (log.amount || 0), 0) || 0;
+      
+      setTodayProfit(todaySum);
+      setMonthlyProfit(monthSum);
+
+      // Calculate total source amounts from monthly logs (approximate for dashboard view)
+      const chargesSum = monthLogsRes.data
+        ?.filter(l => l.member_type !== 'agency')
+        .reduce((sum, log) => sum + (log.source_amount || 0), 0) || 0;
+        
+      const salariesSum = monthLogsRes.data
+        ?.filter(l => l.member_type === 'agency')
+        .reduce((sum, log) => sum + (log.source_amount || 0), 0) || 0;
+
+      setTotalCharges(chargesSum);
+      setTotalSalaries(salariesSum);
+
     } catch {
       toast.error("فشل تحميل البيانات");
     } finally {
@@ -88,112 +83,22 @@ const BDDashboard: React.FC = () => {
     }
   }, [user?.uuid, navigate]);
 
-  const loadCommissionReport = useCallback(async () => {
-    if (!user?.uuid) return;
-    setCommissionLoading(true);
-    try {
-      const [y, m] = commissionMonth.split("-").map(Number);
-      const startDate = `${commissionMonth}-01T00:00:00Z`;
-      const endDate = new Date(y, m, 1).toISOString();
-
-      const prevDate = new Date(y, m - 2, 1);
-      const prevStart = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-01T00:00:00Z`;
-      const prevEnd = `${y}-${String(m).padStart(2, "0")}-01T00:00:00Z`;
-
-      const [currentRes, prevRes] = await Promise.all([
-        supabase
-          .from("bd_commission_logs")
-          .select("*")
-          .eq("bd_uuid", user.uuid)
-          .gte("created_at", startDate)
-          .lt("created_at", endDate)
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("bd_commission_logs")
-          .select("*")
-          .eq("bd_uuid", user.uuid)
-          .gte("created_at", prevStart)
-          .lt("created_at", prevEnd)
-          .limit(500),
-      ]);
-
-      setCommissionLogs(currentRes.data || []);
-      setPrevMonthLogs(prevRes.data || []);
-    } catch {
-      toast.error("فشل تحميل تقرير العمولات");
-    } finally {
-      setCommissionLoading(false);
-    }
-  }, [user?.uuid, commissionMonth]);
-
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, [loadData]);
 
-  const loadWeeklySummary = useCallback(async () => {
-    if (!user?.uuid) return;
-    setWeeklyLoading(true);
-    try {
-      const now = new Date();
-      const dayOfWeek = now.getUTCDay();
-      const weekStart = new Date(now);
-      weekStart.setUTCDate(now.getUTCDate() - dayOfWeek);
-      weekStart.setUTCHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setUTCDate(weekStart.getUTCDate() + 7);
-
-      const prevWeekStart = new Date(weekStart);
-      prevWeekStart.setUTCDate(weekStart.getUTCDate() - 7);
-
-      const [currentRes, prevRes, newMembersRes] = await Promise.all([
-        supabase
-          .from("bd_commission_logs")
-          .select("*")
-          .eq("bd_uuid", user.uuid)
-          .gte("created_at", weekStart.toISOString())
-          .lt("created_at", weekEnd.toISOString())
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("bd_commission_logs")
-          .select("*")
-          .eq("bd_uuid", user.uuid)
-          .gte("created_at", prevWeekStart.toISOString())
-          .lt("created_at", weekStart.toISOString())
-          .limit(500),
-        supabase
-          .from("bd_members")
-          .select("id")
-          .eq("bd_uuid", user.uuid)
-          .gte("created_at", weekStart.toISOString())
-          .lt("created_at", weekEnd.toISOString()),
-      ]);
-
-      setWeeklyLogs(currentRes.data || []);
-      setPrevWeekLogs(prevRes.data || []);
-      setWeeklyNewMembers(newMembersRes.data?.length || 0);
-    } catch {
-      toast.error("فشل تحميل الملخص الأسبوعي");
-    } finally {
-      setWeeklyLoading(false);
+  const copyReferralCode = () => {
+    if (data?.bd?.referral_code) {
+      navigator.clipboard.writeText(data.bd.referral_code);
+      toast.success("تم نسخ كود الإحالة");
     }
-  }, [user?.uuid]);
-
-  useEffect(() => {
-    if (tab === "commission_report") {
-      loadCommissionReport();
-    }
-    if (tab === "weekly") {
-      loadWeeklySummary();
-    }
-  }, [tab, loadCommissionReport, loadWeeklySummary]);
+  };
 
   if (loading) {
     return (
-      <div className="mobile-container bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background-dark flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -201,802 +106,257 @@ const BDDashboard: React.FC = () => {
 
   if (!data?.bd) return null;
 
-  const { bd, supporters, agents, withdrawals, wallets_paused } = data;
-  const currentMonthEarnings = bd.current_month_earnings || 0;
-  
-  // Today logs - both types
-  const supporterTodayLogs = todayLogs.filter((l: any) => l.member_type === "supporter");
-  const agentTodayLogs = todayLogs.filter((l: any) => l.member_type === "agency");
-  const todayTotal = todayLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-  const todaySupporterTotal = supporterTodayLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-  const todayAgentTotal = agentTodayLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-
-  const filteredSupporters = supporters.filter((m: any) =>
-    m.member_name?.includes(search) || m.member_uuid?.includes(search)
-  );
-  const filteredAgents = agents.filter((m: any) =>
-    m.member_name?.includes(search) || m.member_uuid?.includes(search)
-  );
-
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "overview", label: "نظرة عامة", icon: <TrendingUp className="w-4 h-4" /> },
-    { key: "weekly", label: "ملخص أسبوعي", icon: <BarChart3 className="w-4 h-4" /> },
-    { key: "today", label: "عمولة اليوم", icon: <CalendarDays className="w-4 h-4" /> },
-    { key: "commission_report", label: "تقرير العمولات", icon: <FileText className="w-4 h-4" /> },
-    { key: "supporters", label: `داعمين (${supporters.length})`, icon: <Users className="w-4 h-4" /> },
-    { key: "agents", label: `وكلاء (${agents.length})`, icon: <Users className="w-4 h-4" /> },
-    { key: "history", label: "سجل السحب", icon: <DollarSign className="w-4 h-4" /> },
-  ];
+  const { bd, supporters, agents } = data;
 
   return (
-    <div className="mobile-container bg-background text-foreground pb-6 overflow-y-auto" dir="rtl">
-      {/* Header */}
-      <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between">
+    <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display antialiased selection:bg-primary selection:text-white" dir="rtl">
+      <div className="fixed inset-0 pointer-events-none z-0 bg-grid-pattern opacity-20"></div>
+      
+      <main className="relative z-10 flex-1 flex flex-col pb-24 max-w-md mx-auto w-full border-x border-white/5 bg-background-light dark:bg-background-dark shadow-2xl">
+        
+        {/* Header */}
+        <header className="flex items-center justify-between px-6 pt-14 pb-4 bg-gradient-to-b from-background-dark to-transparent">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/dashboard")} className="p-1.5 rounded-xl hover:bg-muted">
-              <ArrowRight className="w-5 h-5" />
-            </button>
-            <h1 className="font-bold text-lg">لوحة البيدي</h1>
+            <div className="relative group cursor-pointer" onClick={() => navigate("/profile")}>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-purple-600 rounded-full blur opacity-75 group-hover:opacity-100 transition duration-200"></div>
+              <div className="relative h-12 w-12 rounded-full overflow-hidden border-2 border-background-dark">
+                <img 
+                  alt="Profile" 
+                  className="h-full w-full object-cover" 
+                  src={"/placeholder.svg"} 
+                  onError={(e) => { e.currentTarget.src = "/placeholder.svg"; }}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-slate-400 font-medium">مرحباً بعودتك 👋</span>
+              <h1 className="text-lg font-bold text-white leading-tight">{bd.bd_name || user?.name || "BD Member"}</h1>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={loadData} className="p-2 rounded-xl hover:bg-muted">
-              <RefreshCw className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <button
+          <button className="relative p-2 rounded-full hover:bg-white/5 transition-colors text-slate-300 hover:text-white">
+            <span className="material-symbols-outlined">notifications</span>
+            <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background-dark"></span>
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto px-5 space-y-6">
+          
+          {/* Main Profit Card */}
+          <section className="relative group mt-2">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/50 to-purple-600/50 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition duration-500"></div>
+            <div className="relative overflow-hidden rounded-2xl bg-[#1c1e2e] border border-white/10 p-6 shadow-xl">
+              <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-primary/10 rounded-full blur-2xl"></div>
+              
+              <div className="flex justify-between items-start mb-2 relative z-10">
+                <div>
+                  <p className="text-sm text-slate-400 mb-1 font-medium flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm text-primary">monetization_on</span>
+                    إجمالي أرباح BD
+                  </p>
+                  <h2 className="text-4xl font-bold text-white tracking-tight">${(bd.total_earned || 0).toFixed(2)}</h2>
+                </div>
+                <div className="p-2 bg-white/5 rounded-lg border border-white/5">
+                  <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
+                </div>
+              </div>
+
+              <div className="mb-6 relative z-10">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                  <div className="w-5 h-5 coin-icon text-[10px]">$</div>
+                  <span className="text-sm font-medium text-yellow-500">{((bd.total_earned || 0) * 7500).toLocaleString()} عملة</span>
+                  <span className="text-[10px] text-slate-500 mr-1">(1$ = 7500)</span>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/5 flex items-center justify-between relative z-10">
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 mb-1">كود BD الخاص بك</span>
+                  <span className="text-base font-mono font-semibold text-slate-200 tracking-wider">{bd.referral_code}</span>
+                </div>
+                <button 
+                  onClick={copyReferralCode}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all active:scale-95 group/btn"
+                >
+                  <span className="text-xs font-medium text-primary group-hover/btn:text-white transition-colors">نسخ</span>
+                  <span className="material-symbols-outlined text-[16px] text-primary group-hover/btn:text-white transition-colors">content_copy</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <button 
               onClick={() => navigate("/bd/add-member")}
-              className="p-2 rounded-xl bg-primary/10 hover:bg-primary/20"
+              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-white py-3 rounded-xl shadow-lg shadow-primary/25 font-semibold transition-all active:scale-[0.98]"
             >
-              <UserPlus className="w-4 h-4 text-primary" />
+              <span className="material-symbols-outlined text-[20px]">person_add</span>
+              <span className="text-sm">إضافة عضو</span>
+            </button>
+            <button 
+              onClick={() => {
+                if (data.wallets_paused) {
+                  toast.error("السحب متوقف حالياً");
+                } else {
+                  navigate("/bd/withdraw");
+                }
+              }}
+              className="flex items-center justify-center gap-2 bg-[#2a2d3e] hover:bg-[#32364a] text-white py-3 rounded-xl border border-white/5 font-semibold transition-all active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-[20px]">currency_exchange</span>
+              <span className="text-sm">سحب الأرباح</span>
             </button>
           </div>
-        </div>
-      </header>
 
-      <main className="px-4 pt-4 space-y-4">
-        {/* Balance Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => {
-              if (wallets_paused) {
-                toast.error("ليس وقت السحب الآن");
-              } else {
-                navigate("/bd/withdraw");
-              }
-            }}
-            className="p-4 rounded-2xl border border-green-500/30 bg-card/50"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Wallet className="w-4 h-4 text-green-400" />
-              <span className="text-xs text-muted-foreground">الرصيد المتاح</span>
-            </div>
-            <div className="text-2xl font-bold text-green-400">${(bd.available_balance || 0).toFixed(2)}</div>
-            {wallets_paused && <span className="text-[10px] text-red-400 font-bold">🔒 السحب متوقف</span>}
-          </motion.button>
+          {/* Performance Summary */}
+          <section className="space-y-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 px-1">
+              <span className="w-1 h-5 bg-primary rounded-full"></span>
+              ملخص الأداء
+            </h3>
 
-          <div className="p-4 rounded-2xl border border-primary/30 bg-card/50">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              <span className="text-xs text-muted-foreground">أرباح الشهر</span>
-            </div>
-            <div className="text-2xl font-bold text-primary">${currentMonthEarnings.toFixed(2)}</div>
-          </div>
-        </div>
-
-        {/* Monthly Goal Progress */}
-        {(() => {
-          const monthlyGoal = bd.monthly_goal || 500;
-          const goalPct = Math.min((currentMonthEarnings / monthlyGoal) * 100, 100);
-          return (
-            <div className="bg-card/50 border border-border/30 rounded-2xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">🎯 هدف الشهر</span>
-                <span className="text-xs text-muted-foreground">${currentMonthEarnings.toFixed(2)} / ${monthlyGoal.toFixed(2)}</span>
-              </div>
-              <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden relative">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${goalPct}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className={`absolute top-0 right-0 h-full rounded-full ${
-                    goalPct >= 100 ? "bg-gradient-to-l from-green-400 to-emerald-500" :
-                    goalPct >= 50 ? "bg-gradient-to-l from-primary to-blue-500" :
-                    "bg-gradient-to-l from-orange-400 to-amber-500"
-                  }`}
-                />
-              </div>
-              <div className="text-center">
-                <span className={`text-lg font-bold ${goalPct >= 100 ? "text-green-400" : "text-primary"}`}>
-                  {goalPct.toFixed(0)}%
-                </span>
-                {goalPct >= 100 && <span className="text-xs text-green-400 mr-2">🎉 تم تحقيق الهدف!</span>}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Team Activity Rate */}
-        {(() => {
-          const allMembers = [...supporters, ...agents];
-          const totalMembers = allMembers.length;
-          const activeMembers = allMembers.filter((m: any) => m.is_active).length;
-          const activityPct = totalMembers > 0 ? Math.round((activeMembers / totalMembers) * 100) : 0;
-          return (
-            <div className="bg-card/50 border border-border/30 rounded-2xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">👥 نشاط الفريق</span>
-                <span className="text-xs text-muted-foreground">{activeMembers} / {totalMembers} نشط</span>
-              </div>
-              <div className="w-full bg-muted/30 h-3 rounded-full overflow-hidden relative">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${activityPct}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className={`absolute top-0 right-0 h-full rounded-full ${
-                    activityPct >= 80 ? "bg-gradient-to-l from-green-400 to-emerald-500" :
-                    activityPct >= 50 ? "bg-gradient-to-l from-blue-400 to-cyan-500" :
-                    "bg-gradient-to-l from-red-400 to-orange-500"
-                  }`}
-                />
-              </div>
-              <div className="text-center">
-                <span className={`text-lg font-bold ${
-                  activityPct >= 80 ? "text-green-400" : activityPct >= 50 ? "text-blue-400" : "text-red-400"
-                }`}>
-                  {activityPct}%
+            {/* Supporters Stats */}
+            <div className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/10">
+                    <span className="material-symbols-outlined">diversity_3</span>
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-white">إجمالي الداعمين</h4>
+                    <p className="text-xs text-slate-400">نشاط الشحن</p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 text-xs font-medium text-slate-300 border border-white/5">
+                  {supporters.length} داعم
                 </span>
               </div>
+              <div className="grid grid-cols-2 gap-4 relative z-10">
+                <div className="bg-background-dark/50 p-3 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-slate-400 mb-1">إجمالي العملات المشحونة</p>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3.5 h-3.5 coin-icon text-[8px]">$</div>
+                    <span className="text-sm font-bold text-white">{totalCharges.toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="bg-orange-500/5 p-3 rounded-xl border border-orange-500/10">
+                  <p className="text-[10px] text-orange-400/80 mb-1">حصة BD ({bd.user_commission_pct || 2}%)</p>
+                  <span className="text-lg font-bold text-orange-400">${((totalCharges * (bd.user_commission_pct || 2) / 100) / 7500).toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-          );
-        })()}
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-card/50 border border-border/30 rounded-xl p-3 text-center">
-            <div className="text-lg font-bold text-foreground">${(bd.total_earned || 0).toFixed(2)}</div>
-            <div className="text-[10px] text-muted-foreground">إجمالي الأرباح</div>
-          </div>
-          <div className="bg-card/50 border border-border/30 rounded-xl p-3 text-center">
-            <div className="text-lg font-bold text-foreground">{supporters.length}</div>
-            <div className="text-[10px] text-muted-foreground">داعمين</div>
-          </div>
-          <div className="bg-card/50 border border-border/30 rounded-xl p-3 text-center">
-            <div className="text-lg font-bold text-foreground">{agents.length}</div>
-            <div className="text-[10px] text-muted-foreground">وكلاء</div>
-          </div>
+            {/* Agencies Stats */}
+            <div className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/10">
+                    <span className="material-symbols-outlined">domain</span>
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-white">إجمالي الوكالات</h4>
+                    <p className="text-xs text-slate-400">نشاط الرواتب</p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-white/5 text-xs font-medium text-slate-300 border border-white/5">
+                  {agents.length} وكالة
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 relative z-10">
+                <div className="bg-background-dark/50 p-3 rounded-xl border border-white/5">
+                  <p className="text-[10px] text-slate-400 mb-1">إجمالي الرواتب</p>
+                  <span className="text-sm font-bold text-white">${(totalSalaries / 7500).toFixed(2)}</span>
+                </div>
+                <div className="bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/10">
+                  <p className="text-[10px] text-emerald-400/80 mb-1">حصة BD ({bd.agency_commission_pct || 5}%)</p>
+                  <span className="text-lg font-bold text-emerald-400">${((totalSalaries * (bd.agency_commission_pct || 5) / 100) / 7500).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Daily/Monthly Profit Stats */}
+          <section className="grid grid-cols-2 gap-4 pb-4">
+            <div className="bg-[#1c1e2e] border border-white/5 p-4 rounded-2xl flex flex-col justify-between hover:border-white/10 transition-colors">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                  <span className="material-symbols-outlined text-[18px]">calendar_today</span>
+                </div>
+                <span className="text-[10px] text-emerald-400 font-medium bg-emerald-400/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                  <span className="material-symbols-outlined text-[10px]">arrow_upward</span> اليوم
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">أرباح اليوم</p>
+                <h4 className="text-xl font-bold text-white">${todayProfit.toFixed(2)}</h4>
+              </div>
+            </div>
+            <div className="bg-[#1c1e2e] border border-white/5 p-4 rounded-2xl flex flex-col justify-between hover:border-white/10 transition-colors">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                  <span className="material-symbols-outlined text-[18px]">date_range</span>
+                </div>
+                <span className="text-[10px] text-emerald-400 font-medium bg-emerald-400/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                  <span className="material-symbols-outlined text-[10px]">arrow_upward</span> الشهر
+                </span>
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-1">أرباح الشهر</p>
+                <h4 className="text-xl font-bold text-white">${monthlyProfit.toFixed(2)}</h4>
+              </div>
+            </div>
+          </section>
+
+          <div className="h-6"></div>
         </div>
 
-        {/* BD Code */}
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">كود البيدي الخاص بك</span>
-          <span className="font-mono font-bold text-primary text-sm">{bd.referral_code}</span>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-                tab === t.key ? "bg-primary text-primary-foreground" : "bg-card border border-border/30 text-muted-foreground"
-              }`}
-            >
-              {t.icon}
-              {t.label}
+        {/* Bottom Navigation */}
+        <nav className="absolute bottom-0 w-full bg-[#1c1e2e]/95 backdrop-blur-md border-t border-white/5 pb-6 pt-2 px-6 rounded-t-2xl z-20">
+          <div className="flex justify-between items-center">
+            <button onClick={() => setTab('dashboard')} className="flex flex-col items-center gap-1 group">
+              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'dashboard' ? '' : 'opacity-70'}`}>
+                {tab === 'dashboard' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
+                <span className={`material-symbols-outlined relative z-10 ${tab === 'dashboard' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>dashboard</span>
+              </div>
+              <span className={`text-[10px] font-bold ${tab === 'dashboard' ? 'text-white' : 'text-slate-400'}`}>لوحة التحكم</span>
             </button>
-          ))}
-        </div>
 
-        {/* Search */}
-        {(tab === "supporters" || tab === "agents") && (
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="بحث بالاسم أو الآيدي..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pr-10"
-              dir="rtl"
-            />
+            <button onClick={() => setTab('supporters')} className="flex flex-col items-center gap-1 group">
+              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'supporters' ? '' : 'opacity-70'}`}>
+                {tab === 'supporters' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
+                <span className={`material-symbols-outlined relative z-10 ${tab === 'supporters' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>diversity_3</span>
+              </div>
+              <span className={`text-[10px] font-medium ${tab === 'supporters' ? 'text-white' : 'text-slate-400'}`}>الداعمين</span>
+            </button>
+
+            <button onClick={() => setTab('agents')} className="flex flex-col items-center gap-1 group">
+              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'agents' ? '' : 'opacity-70'}`}>
+                {tab === 'agents' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
+                <span className={`material-symbols-outlined relative z-10 ${tab === 'agents' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>domain</span>
+              </div>
+              <span className={`text-[10px] font-medium ${tab === 'agents' ? 'text-white' : 'text-slate-400'}`}>الوكالات</span>
+            </button>
+
+            <button onClick={() => setTab('wallet')} className="flex flex-col items-center gap-1 group">
+              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'wallet' ? '' : 'opacity-70'}`}>
+                {tab === 'wallet' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
+                <span className={`material-symbols-outlined relative z-10 ${tab === 'wallet' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>account_balance_wallet</span>
+              </div>
+              <span className={`text-[10px] font-medium ${tab === 'wallet' ? 'text-white' : 'text-slate-400'}`}>المحفظة</span>
+            </button>
+
+            <button onClick={() => setTab('settings')} className="flex flex-col items-center gap-1 group">
+              <div className={`relative p-1.5 rounded-xl transition-all duration-300 ${tab === 'settings' ? '' : 'opacity-70'}`}>
+                {tab === 'settings' && <span className="absolute inset-0 bg-primary/20 blur-sm rounded-xl opacity-100"></span>}
+                <span className={`material-symbols-outlined relative z-10 ${tab === 'settings' ? 'text-primary' : 'text-slate-400 group-hover:text-white'}`}>settings</span>
+              </div>
+              <span className={`text-[10px] font-medium ${tab === 'settings' ? 'text-white' : 'text-slate-400'}`}>الإعدادات</span>
+            </button>
           </div>
-        )}
-
-        <AnimatePresence mode="wait">
-          {/* ===== Overview ===== */}
-          {tab === "overview" && (
-            <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-              {/* External Profit Card */}
-              {(bd.external_total_profit > 0 || bd.external_available_profit > 0) && (
-                <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/5 border border-yellow-500/30 rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-sm text-yellow-400">💰 أرباح البيدي (خارجي)</h3>
-                    {bd.external_profit_status === "increase" && (
-                      <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold">
-                        ↑ +${(bd.external_profit_difference || 0).toFixed(2)}
-                      </span>
-                    )}
-                    {bd.external_profit_status === "decrease" && (
-                      <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">
-                        ↓ -${Math.abs(bd.external_profit_difference || 0).toFixed(2)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <div className="text-xl font-bold text-yellow-400">${(bd.external_total_profit || 0).toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground">إجمالي الأرباح</div>
-                    </div>
-                    <div>
-                      <div className="text-xl font-bold text-green-400">${(bd.external_available_profit || 0).toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground">قابل للسحب</div>
-                    </div>
-                    <div>
-                      <div className="text-xl font-bold text-orange-400">${(bd.external_pending_profit || 0).toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground">معلّق</div>
-                    </div>
-                  </div>
-                  {bd.external_last_update && (
-                    <div className="text-[10px] text-muted-foreground text-center pt-1 border-t border-yellow-500/10">
-                      آخر تحديث: {bd.external_last_update}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {(() => {
-                const supporterPct = bd.user_commission_pct || 2;
-                const agentPct = bd.agency_commission_pct || 5;
-
-                // Calculate from monthly commission logs for accurate full-month totals
-                const supporterMonthlyLogs = monthlyLogs.filter((l: any) => l.member_type === "supporter");
-                const agentMonthlyLogs = monthlyLogs.filter((l: any) => l.member_type === "agency");
-
-                const monthlySupporterCommission = supporterMonthlyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const monthlyAgentCommission = agentMonthlyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const monthlyTotalCommission = monthlySupporterCommission + monthlyAgentCommission;
-
-                const totalSupporterSourceCoins = supporterMonthlyLogs.reduce((s: number, l: any) => s + (l.source_amount || 0), 0);
-                const totalAgentSourceCoins = agentMonthlyLogs.reduce((s: number, l: any) => s + (l.source_amount || 0), 0);
-
-                const totalSupporterCommCoins = (totalSupporterSourceCoins * supporterPct) / 100;
-                const totalAgentCommCoins = (totalAgentSourceCoins * agentPct) / 100;
-
-                return (
-                  <>
-                    {/* Monthly Total */}
-                    <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center space-y-1">
-                      <div className="text-xs text-muted-foreground">إجمالي أرباح الشهر الحالي</div>
-                      <div className="text-3xl font-bold text-primary">${monthlyTotalCommission.toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground">{monthlyLogs.length} عملية هذا الشهر</div>
-                    </div>
-
-                    {/* Supporters Overview */}
-                    <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-sm text-emerald-400">📊 الداعمين - الشهر الحالي</h3>
-                        <span className="text-[10px] text-muted-foreground">{supporterMonthlyLogs.length} عملية</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-center">
-                        <div><div className="text-sm font-bold">{supporters.length}</div><div className="text-[10px] text-muted-foreground">عدد الداعمين</div></div>
-                        <div><div className="text-sm font-bold">{supporterPct}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-border/20">
-                        <div className="text-muted-foreground">إجمالي الشحن: <span className="font-bold text-foreground">{totalSupporterSourceCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{supporterPct}%</span></div>
-                        <div className="text-muted-foreground">العمولة: <span className="font-bold text-emerald-400">{totalSupporterCommCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${monthlySupporterCommission.toFixed(2)}</span></div>
-                      </div>
-                    </div>
-
-                    {/* Agents Overview */}
-                    <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-sm text-amber-400">📊 الوكلاء - الشهر الحالي</h3>
-                        <span className="text-[10px] text-muted-foreground">{agentMonthlyLogs.length} عملية</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-center">
-                        <div><div className="text-sm font-bold">{agents.length}</div><div className="text-[10px] text-muted-foreground">عدد الوكلاء</div></div>
-                        <div><div className="text-sm font-bold">{agentPct}%</div><div className="text-[10px] text-muted-foreground">نسبة العمولة</div></div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-border/20">
-                        <div className="text-muted-foreground">إجمالي الدخل: <span className="font-bold text-foreground">{totalAgentSourceCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{agentPct}%</span></div>
-                        <div className="text-muted-foreground">العمولة: <span className="font-bold text-amber-400">{totalAgentCommCoins.toLocaleString()} كوينز</span></div>
-                        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${monthlyAgentCommission.toFixed(2)}</span></div>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </motion.div>
-          )}
-
-          {/* ===== Today's Commission ===== */}
-          {tab === "today" && (
-            <motion.div key="today" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-              {/* Today Total */}
-              <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center">
-                <div className="text-xs text-muted-foreground mb-1">إجمالي عمولة اليوم</div>
-                <div className="text-3xl font-bold text-primary">${todayTotal.toFixed(2)}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">{todayLogs.length} عملية</div>
-              </div>
-
-              {/* Breakdown by type */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
-                  <div className="text-lg font-bold text-emerald-400">${todaySupporterTotal.toFixed(2)}</div>
-                  <div className="text-[10px] text-muted-foreground">داعمين ({supporterTodayLogs.length})</div>
-                </div>
-                <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
-                  <div className="text-lg font-bold text-amber-400">${todayAgentTotal.toFixed(2)}</div>
-                  <div className="text-[10px] text-muted-foreground">وكلاء ({agentTodayLogs.length})</div>
-                </div>
-              </div>
-
-              {/* Today Logs - All types */}
-              {todayLogs.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات اليوم بعد</div>
-              ) : (
-                todayLogs.map((log: any) => (
-                  <CommissionLogCard key={log.id} log={log} supporters={supporters} agents={agents} />
-                ))
-              )}
-            </motion.div>
-          )}
-
-          {/* ===== Weekly Summary ===== */}
-          {tab === "weekly" && (
-            <motion.div key="weekly" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-              {weeklyLoading ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : (() => {
-                const supporterWeeklyLogs = weeklyLogs.filter((l: any) => l.member_type === "supporter");
-                const agentWeeklyLogs = weeklyLogs.filter((l: any) => l.member_type === "agency");
-                const _prevSupporterWeekLogs = prevWeekLogs.filter((l: any) => l.member_type === "supporter");
-                const _prevAgentWeekLogs = prevWeekLogs.filter((l: any) => l.member_type === "agency");
-                
-                const weekTotal = weeklyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const prevWeekTotal = prevWeekLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const pctChange = prevWeekTotal === 0 ? (weekTotal > 0 ? 100 : 0) : ((weekTotal - prevWeekTotal) / prevWeekTotal) * 100;
-
-                const weekSupporterTotal = supporterWeeklyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-                const weekAgentTotal = agentWeeklyLogs.reduce((s: number, l: any) => s + (l.amount || 0), 0);
-
-                // Top members by commission this week (all types)
-                const memberTotals: Record<string, { uuid: string; name: string; type: string; total: number }> = {};
-                weeklyLogs.forEach((l: any) => {
-                  if (!memberTotals[l.member_uuid]) {
-                    memberTotals[l.member_uuid] = { uuid: l.member_uuid, name: "", type: l.member_type, total: 0 };
-                    const found = [...supporters, ...agents].find((m: any) => m.member_uuid === l.member_uuid);
-                    if (found) memberTotals[l.member_uuid].name = found.member_name || "";
-                  }
-                  memberTotals[l.member_uuid].total += l.amount || 0;
-                });
-                const topMembers = Object.values(memberTotals).sort((a, b) => b.total - a.total).slice(0, 5);
-
-                // Daily chart data - separate bars for supporters and agents
-                const dayNames = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
-                const dailyData = dayNames.map(d => ({ day: d, supporters: 0, agents: 0 }));
-                weeklyLogs.forEach((l: any) => {
-                  const dayIdx = new Date(l.created_at).getUTCDay();
-                  if (l.member_type === "agency") {
-                    dailyData[dayIdx].agents += l.amount || 0;
-                  } else {
-                    dailyData[dayIdx].supporters += l.amount || 0;
-                  }
-                });
-
-                return (
-                  <>
-                    {/* Week Total */}
-                    <div className="bg-card border border-primary/30 rounded-2xl p-4 text-center">
-                      <div className="text-xs text-muted-foreground mb-1">إجمالي عمولات الأسبوع</div>
-                      <div className="text-3xl font-bold text-primary">${weekTotal.toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground mt-1">{weeklyLogs.length} عملية</div>
-                      <div className={`text-xs font-bold mt-1 ${pctChange > 0 ? "text-emerald-400" : pctChange < 0 ? "text-red-400" : "text-muted-foreground"}`}>
-                        {pctChange > 0 ? "↑" : pctChange < 0 ? "↓" : "="} {Math.abs(pctChange).toFixed(1)}% مقارنة بالأسبوع السابق
-                      </div>
-                    </div>
-
-                    {/* Breakdown */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
-                        <div className="text-lg font-bold text-emerald-400">${weekSupporterTotal.toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground">داعمين</div>
-                      </div>
-                      <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
-                        <div className="text-lg font-bold text-amber-400">${weekAgentTotal.toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground">وكلاء</div>
-                      </div>
-                      <div className="bg-card border border-blue-500/30 rounded-xl p-3 text-center">
-                        <div className="text-lg font-bold text-blue-400">{weeklyNewMembers}</div>
-                        <div className="text-[10px] text-muted-foreground">أعضاء جدد</div>
-                      </div>
-                    </div>
-
-                    {/* Daily Chart */}
-                    {weeklyLogs.length > 0 && (
-                      <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-2">
-                        <h3 className="text-xs font-bold text-muted-foreground text-center">📊 العمولات اليومية للأسبوع</h3>
-                        <div style={{ width: "100%", height: 200 }}>
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dailyData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                              <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                              <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                              <Tooltip
-                                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, direction: "rtl" }}
-                                formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === "supporters" ? "داعمين" : "وكلاء"]}
-                              />
-                              <Bar dataKey="supporters" name="supporters" fill="#34d399" radius={[4, 4, 0, 0]} stackId="a" />
-                              <Bar dataKey="agents" name="agents" fill="#f59e0b" radius={[4, 4, 0, 0]} stackId="a" />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <div className="flex items-center justify-center gap-4 text-[10px]">
-                          <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-emerald-400" /> داعمين</div>
-                          <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-amber-400" /> وكلاء</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Top Members */}
-                    {topMembers.length > 0 && (
-                      <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                        <h3 className="text-xs font-bold text-muted-foreground text-center">🏆 أفضل الأعضاء أداءً هذا الأسبوع</h3>
-                        {topMembers.map((m, i) => {
-                          const memberData = [...supporters, ...agents].find((mem: any) => mem.member_uuid === m.uuid);
-                          const memberCoins = memberData?.monthly_charges || 0;
-                          const memberPct = m.type === "agency" ? (bd.agency_commission_pct || 5) : (bd.user_commission_pct || 2);
-                          const commCoins = (memberCoins * memberPct) / 100;
-                          const isAgent = m.type === "agency";
-                          return (
-                            <div key={m.uuid} className="bg-card/50 border border-border/20 rounded-xl p-3 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                    i === 0 ? "bg-amber-500/20 text-amber-400" : i === 1 ? "bg-gray-400/20 text-gray-300" : "bg-orange-500/20 text-orange-400"
-                                  }`}>
-                                    {i + 1}
-                                  </div>
-                                  <div>
-                                    <div className="text-xs font-bold">{m.name || "بدون اسم"}</div>
-                                    <div className={`text-[10px] ${isAgent ? "text-amber-400" : "text-emerald-400"}`}>
-                                      {isAgent ? "وكيل" : "داعم"}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-sm font-bold text-primary">${m.total.toFixed(2)}</div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-1 text-[10px] pt-1 border-t border-border/20">
-                                <div className="text-muted-foreground">{isAgent ? "الدخل" : "الشحن"}: <span className="font-bold text-foreground">{memberCoins.toLocaleString()} كوينز</span></div>
-                                <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{memberPct}%</span></div>
-                                <div className="text-muted-foreground">العمولة: <span className={`font-bold ${isAgent ? "text-amber-400" : "text-emerald-400"}`}>{commCoins.toLocaleString()} كوينز</span></div>
-                                <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${m.total.toFixed(2)}</span></div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {weeklyLogs.length === 0 && (
-                      <div className="text-center py-6 text-muted-foreground text-sm">لا توجد عمولات هذا الأسبوع بعد</div>
-                    )}
-                  </>
-                );
-              })()}
-            </motion.div>
-          )}
-
-          {/* ===== Commission Report ===== */}
-          {tab === "commission_report" && (
-            <motion.div key="commission_report" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-              {/* How commissions work */}
-              <div className="bg-gradient-to-br from-primary/10 to-amber-500/10 border border-primary/20 rounded-xl p-3 space-y-2">
-                <div className="flex items-center gap-2 text-sm font-bold text-primary">
-                  <Info className="w-4 h-4 shrink-0" />
-                  <span>كيف تُحتسب العمولة؟</span>
-                </div>
-                <ul className="text-[11px] text-muted-foreground space-y-1.5 pr-5 list-disc marker:text-primary/60">
-                  <li><span className="text-emerald-400 font-bold">الداعمين:</span> تحصل على <span className="text-foreground font-bold">{bd.user_commission_pct || 2}%</span> من إجمالي شحنهم الشهري الجديد</li>
-                  <li><span className="text-amber-400 font-bold">الوكلاء:</span> تحصل على <span className="text-foreground font-bold">{bd.agency_commission_pct || 5}%</span> من إجمالي دخل وكالتهم الشهري الجديد</li>
-                  <li>تُحتسب العمولة تلقائياً مع كل مزامنة بناءً على <span className="text-foreground font-semibold">الفارق</span> بين القيمة الحالية والسابقة</li>
-                  <li>تُجمع الأرباح في "أرباح الشهر" وتُنقل للرصيد المتاح بنهاية كل شهر</li>
-                </ul>
-              </div>
-              {/* Month Selector */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const [y, m] = commissionMonth.split("-").map(Number);
-                    const prev = new Date(y, m - 2, 1);
-                    setCommissionMonth(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`);
-                  }}
-                  className="p-2 rounded-xl bg-card border border-border/40 hover:bg-muted text-sm"
-                >
-                  ←
-                </button>
-                <div className="flex-1 text-center">
-                  <span className="text-sm font-bold">
-                    {new Date(Number(commissionMonth.split("-")[0]), Number(commissionMonth.split("-")[1]) - 1).toLocaleDateString("ar-SA", { month: "long", year: "numeric" })}
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    const [y, m] = commissionMonth.split("-").map(Number);
-                    const next = new Date(y, m, 1);
-                    const now = new Date();
-                    if (next <= new Date(now.getFullYear(), now.getMonth() + 1, 1)) {
-                      setCommissionMonth(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
-                    }
-                  }}
-                  className="p-2 rounded-xl bg-card border border-border/40 hover:bg-muted text-sm"
-                >
-                  →
-                </button>
-              </div>
-
-              {/* Summary - Total + Breakdown */}
-              {!commissionLoading && (() => {
-                const supporterLogs = commissionLogs.filter(l => l.member_type === "supporter");
-                const agentLogs = commissionLogs.filter(l => l.member_type === "agency");
-                const supporterTotal = supporterLogs.reduce((s, l) => s + (l.amount || 0), 0);
-                const agentTotal = agentLogs.reduce((s, l) => s + (l.amount || 0), 0);
-                const grandTotal = supporterTotal + agentTotal;
-                return commissionLogs.length > 0 ? (
-                  <>
-                    <div className="bg-card border border-primary/30 rounded-xl p-3 text-center">
-                      <div className="text-lg font-bold text-primary">${grandTotal.toFixed(2)}</div>
-                      <div className="text-[10px] text-muted-foreground">إجمالي العمولات</div>
-                      <div className="text-[10px] text-muted-foreground">{commissionLogs.length} عملية</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-card border border-emerald-500/30 rounded-xl p-3 text-center">
-                        <div className="text-sm font-bold text-emerald-400">${supporterTotal.toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground">داعمين ({supporterLogs.length})</div>
-                      </div>
-                      <div className="bg-card border border-amber-500/30 rounded-xl p-3 text-center">
-                        <div className="text-sm font-bold text-amber-400">${agentTotal.toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground">وكلاء ({agentLogs.length})</div>
-                      </div>
-                    </div>
-                  </>
-                ) : null;
-              })()}
-
-              {/* Monthly Comparison */}
-              {!commissionLoading && (() => {
-                const currentTotal = commissionLogs.reduce((s, l) => s + (l.amount || 0), 0);
-                const prevTotal = prevMonthLogs.reduce((s, l) => s + (l.amount || 0), 0);
-
-                const pctChange = (curr: number, prev: number) => {
-                  if (prev === 0) return curr > 0 ? 100 : 0;
-                  return ((curr - prev) / prev) * 100;
-                };
-
-                const totalPct = pctChange(currentTotal, prevTotal);
-
-                const [cy, cm] = commissionMonth.split("-").map(Number);
-                const prevMonthDate = new Date(cy, cm - 2, 1);
-                const prevMonthName = prevMonthDate.toLocaleDateString("ar-SA", { month: "long" });
-
-                return (
-                  <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-3">
-                    <h3 className="text-xs font-bold text-muted-foreground text-center">📈 مقارنة بشهر {prevMonthName}</h3>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-muted-foreground">إجمالي العمولات</span>
-                      <span className={`text-xs font-bold ${totalPct > 0 ? "text-emerald-400" : totalPct < 0 ? "text-red-400" : "text-muted-foreground"}`}>
-                        {totalPct > 0 ? "↑" : totalPct < 0 ? "↓" : "="} {Math.abs(totalPct).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground text-center pt-1 border-t border-border/20">
-                      الشهر السابق: <span className="font-bold text-foreground">${prevTotal.toFixed(2)}</span> → الحالي: <span className="font-bold text-foreground">${currentTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Daily Commission Chart - All types */}
-              {!commissionLoading && commissionLogs.length > 0 && (() => {
-                const dailyData: Record<string, { day: string; supporters: number; agents: number }> = {};
-                commissionLogs.forEach((log: any) => {
-                  const day = new Date(log.created_at).getUTCDate().toString();
-                  if (!dailyData[day]) dailyData[day] = { day, supporters: 0, agents: 0 };
-                  if (log.member_type === "agency") {
-                    dailyData[day].agents += log.amount || 0;
-                  } else {
-                    dailyData[day].supporters += log.amount || 0;
-                  }
-                });
-                const chartData = Object.values(dailyData).sort((a, b) => Number(a.day) - Number(b.day));
-
-                return (
-                  <div className="bg-card border border-border/40 rounded-2xl p-4 space-y-2">
-                    <h3 className="text-xs font-bold text-muted-foreground text-center">📊 تطور العمولات اليومية</h3>
-                    <div style={{ width: "100%", height: 200 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
-                          <XAxis dataKey="day" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                          <YAxis tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                          <Tooltip
-                            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11, direction: "rtl" }}
-                            formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name === "supporters" ? "داعمين" : "وكلاء"]}
-                            labelFormatter={(label) => `يوم ${label}`}
-                          />
-                          <Bar dataKey="supporters" name="supporters" fill="#34d399" radius={[4, 4, 0, 0]} stackId="a" />
-                          <Bar dataKey="agents" name="agents" fill="#f59e0b" radius={[4, 4, 0, 0]} stackId="a" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex items-center justify-center gap-4 text-[10px]">
-                      <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-emerald-400" /> داعمين</div>
-                      <div className="flex items-center gap-1"><div className="w-2.5 h-2.5 rounded-sm bg-amber-400" /> وكلاء</div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {commissionLoading ? (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : commissionLogs.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">لا توجد عمولات في هذا الشهر</div>
-              ) : (
-                commissionLogs.map((log: any) => (
-                  <CommissionLogCard key={log.id} log={log} supporters={supporters} agents={agents} showDate />
-                ))
-              )}
-
-              {/* Total count */}
-              {!commissionLoading && commissionLogs.length > 0 && (
-                <div className="text-center text-[10px] text-muted-foreground py-2">
-                  إجمالي العمليات: {commissionLogs.length}
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* ===== Supporters ===== */}
-          {tab === "supporters" && (
-            <motion.div key="supporters" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-              {filteredSupporters.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">لا يوجد داعمين حالياً</div>
-              ) : (
-                filteredSupporters.map((m: any) => (
-                  <MemberCard key={m.id} member={m} commissionPct={bd.user_commission_pct || 2} type="supporter" />
-                ))
-              )}
-            </motion.div>
-          )}
-
-          {/* ===== Agents ===== */}
-          {tab === "agents" && (
-            <motion.div key="agents" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-              {filteredAgents.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">لا يوجد وكلاء حالياً</div>
-              ) : (
-                filteredAgents.map((m: any) => (
-                  <MemberCard key={m.id} member={m} commissionPct={bd.agency_commission_pct || 5} type="agency" />
-                ))
-              )}
-            </motion.div>
-          )}
-
-          {/* ===== History ===== */}
-          {tab === "history" && (
-            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-              {withdrawals.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">لا يوجد سجل سحب</div>
-              ) : (
-                withdrawals.map((w: any) => (
-                  <div key={w.id} className="bg-card border border-border/40 rounded-xl p-3 flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-bold">${w.amount}</div>
-                      <div className="text-[10px] text-muted-foreground">{formatDateAr(w.created_at)}</div>
-                    </div>
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${
-                      w.status === "completed" ? "bg-green-500/10 text-green-400" :
-                      w.status === "pending" ? "bg-amber-500/10 text-amber-400" :
-                      "bg-red-500/10 text-red-400"
-                    }`}>
-                      {w.status === "completed" ? "مكتمل" : w.status === "pending" ? "قيد المراجعة" : "مرفوض"}
-                    </span>
-                  </div>
-                ))
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </nav>
       </main>
-    </div>
-  );
-};
-
-// ===== Shared Commission Log Card =====
-const CommissionLogCard: React.FC<{ log: any; supporters: any[]; agents: any[]; showDate?: boolean }> = ({ log, supporters, agents, showDate }) => {
-  const sourceCoins = log.source_amount || 0;
-  const pct = log.commission_pct || 0;
-  const commissionCoins = (sourceCoins * pct) / 100;
-  const commissionUsd = log.amount || 0;
-  const isAgent = log.member_type === "agency";
-  const memberData = [...supporters, ...agents].find((m: any) => m.member_uuid === log.member_uuid);
-  const memberName = memberData?.member_name || "";
-
-  return (
-    <div className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            isAgent ? "bg-amber-500/10" : "bg-emerald-500/10"
-          }`}>
-            <Users className={`w-4 h-4 ${isAgent ? "text-amber-400" : "text-emerald-400"}`} />
-          </div>
-          <div>
-            {memberName && <div className="text-xs font-bold">{memberName}</div>}
-            <div className="text-[10px] text-muted-foreground font-mono" dir="ltr">{log.member_uuid}</div>
-            <div className={`text-[10px] ${isAgent ? "text-amber-400" : "text-emerald-400"}`}>
-              {isAgent ? "وكيل" : "داعم"} • {pct}%
-            </div>
-          </div>
-        </div>
-        <div className="text-left">
-          <div className="text-sm font-bold text-primary">+${commissionUsd.toFixed(2)}</div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-[10px] pt-1 border-t border-border/20">
-        <div className="text-muted-foreground">{isAgent ? "دخل الوكالة" : "مبلغ الشحن"}: <span className="font-bold text-foreground">{sourceCoins.toLocaleString()} كوينز</span></div>
-        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{pct}%</span></div>
-        <div className="text-muted-foreground">العمولة: <span className={`font-bold ${isAgent ? "text-amber-400" : "text-emerald-400"}`}>{commissionCoins.toLocaleString()} كوينز</span></div>
-        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${commissionUsd.toFixed(2)}</span></div>
-      </div>
-      {showDate && (
-        <div className="text-[10px] text-muted-foreground">
-          {formatDateAr(log.created_at)}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ===== Unified Member Card (Supporters & Agents) =====
-const MemberCard: React.FC<{ member: any; commissionPct: number; type: "supporter" | "agency" }> = ({ member, commissionPct, type }) => {
-  const monthlyCoins = member.monthly_charges || 0;
-  const commissionCoins = (monthlyCoins * commissionPct) / 100;
-  const commissionUsd = member.current_month_commission || 0;
-  const isAgent = type === "agency";
-
-  return (
-    <div className="bg-card border border-border/40 rounded-xl p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isAgent ? "bg-amber-500/10" : "bg-primary/10"}`}>
-            <Users className={`w-4 h-4 ${isAgent ? "text-amber-400" : "text-primary"}`} />
-          </div>
-          <div>
-            <div className="text-sm font-bold">{member.member_name || "بدون اسم"}</div>
-            <div className="text-[10px] text-muted-foreground font-mono" dir="ltr">{member.member_uuid}</div>
-          </div>
-        </div>
-        <div className="text-left">
-          <div className={`text-sm font-bold ${isAgent ? "text-amber-400" : "text-green-400"}`}>${commissionUsd.toFixed(2)}</div>
-          <div className="text-[10px] text-muted-foreground">{commissionPct}% عمولة</div>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-[10px] pt-1 border-t border-border/20">
-        <div className="text-muted-foreground">{isAgent ? "الدخل الشهري" : "الشحن الشهري"}: <span className="font-bold text-foreground">{monthlyCoins.toLocaleString()} كوينز</span></div>
-        <div className="text-muted-foreground">النسبة: <span className="font-bold text-foreground">{commissionPct}%</span></div>
-        <div className="text-muted-foreground">العمولة: <span className={`font-bold ${isAgent ? "text-amber-400" : "text-emerald-400"}`}>{commissionCoins.toLocaleString()} كوينز</span></div>
-        <div className="text-muted-foreground">بالدولار: <span className="font-bold text-primary">${commissionUsd.toFixed(2)}</span></div>
-      </div>
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/20">
-        <span>انضم: {formatDateAr(member.created_at)}</span>
-        <span>إجمالي: ${(member.total_commission || 0).toFixed(2)}</span>
-      </div>
     </div>
   );
 };
