@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Loader2, ChevronDown, ChevronUp, CheckCircle, XCircle,
   Users, DollarSign, Shield, Trash2, RefreshCw,
-  Settings, UserPlus, UserMinus, Edit2, Save, X, Search, RotateCcw, Lock, Unlock,
+  Settings, UserPlus, UserMinus, Edit2, Save, X, Search, RotateCcw, Lock, Unlock, Copy,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
@@ -820,7 +820,20 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                   <div key={w.id} className="bg-card border rounded-xl p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-bold text-sm">{w.bd_name || w.bd_uuid}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-sm">{w.bd_name || w.bd_uuid}</p>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(w.bd_uuid);
+                              toast.success("تم نسخ الآيدي");
+                            }}
+                            className="p-1 rounded-md hover:bg-muted/50 transition-colors"
+                            title="نسخ الآيدي"
+                          >
+                            <Copy className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{w.bd_uuid}</p>
                         <p className="text-[10px] text-muted-foreground">{formatDateAr(w.created_at)}</p>
                       </div>
                       <div className="text-left">
