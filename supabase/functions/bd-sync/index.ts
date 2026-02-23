@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
+const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -49,7 +50,7 @@ async function fetchWithRetry(url: string, retries = 2): Promise<Response | null
   return null;
 }
 
-// ── API: user-charges (for supporters ONLY) ────────────────────
+// ── API 1: user-charges (for supporters ONLY) ──────────────────
 async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
   const cacheKey = `user_charges_${uuid}`;
   const cached = await getCached(sb, cacheKey);
@@ -65,7 +66,7 @@ async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: stri
   } catch { return null; }
 }
 
-// ── API: agency-income (for agencies ONLY) ─────────────────────
+// ── API 2: agency-income (for agencies) ────────────────────────
 async function fetchAgencyIncome(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
   const cacheKey = `agency_income_${uuid}`;
   const cached = await getCached(sb, cacheKey);
@@ -76,9 +77,58 @@ async function fetchAgencyIncome(sb: ReturnType<typeof supabaseAdmin>, uuid: str
   if (!res) return null;
   try {
     const data = await res.json();
-    // Log ALL top-level keys for debugging
     const keys = Object.keys(data || {});
     console.log(`[API] agency-income keys for ${uuid}: [${keys.join(", ")}]`);
+    await setCache(sb, cacheKey, data);
+    return data;
+  } catch { return null; }
+}
+
+// ── API 3: salary-api (fallback for agency commission) ─────────
+async function fetchSalaryApi(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
+  const cacheKey = `salary_api_${uuid}`;
+  const cached = await getCached(sb, cacheKey);
+  if (cached) return cached;
+
+  const url = `${SALARY_API_URL}?key=${BD_API_KEY}&uuid=${uuid}`;
+  const res = await fetchWithRetry(url);
+  if (!res) return null;
+  try {
+    const data = await res.json();
+    console.log(`[API] salary-api keys for ${uuid}: [${Object.keys(data || {}).join(", ")}]`);
+    await setCache(sb, cacheKey, data);
+    return data;
+  } catch { return null; }
+}
+
+// ── API 4: user-info ───────────────────────────────────────────
+async function fetchUserInfo(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
+  const cacheKey = `user_info_${uuid}`;
+  const cached = await getCached(sb, cacheKey);
+  if (cached) return cached;
+
+  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${uuid}`;
+  const res = await fetchWithRetry(url, 1); // fewer retries for non-critical
+  if (!res) return null;
+  try {
+    const data = await res.json();
+    await setCache(sb, cacheKey, data);
+    return data;
+  } catch { return null; }
+}
+
+// ── API 5: host-salary (for hosts) ─────────────────────────────
+async function fetchHostSalary(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
+  const cacheKey = `host_salary_${uuid}`;
+  const cached = await getCached(sb, cacheKey);
+  if (cached) return cached;
+
+  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=host-salary&uuid=${uuid}`;
+  const res = await fetchWithRetry(url);
+  if (!res) return null;
+  try {
+    const data = await res.json();
+    console.log(`[API] host-salary keys for ${uuid}: [${Object.keys(data || {}).join(", ")}]`);
     await setCache(sb, cacheKey, data);
     return data;
   } catch { return null; }
@@ -156,7 +206,7 @@ serve(async (req) => {
     // Get all active BD members
     const { data: members } = await sb
       .from("bd_members")
-      .select("id, member_uuid, member_name, last_daily_charges, initial_charger_num, member_type, bd_uuid, monthly_charges, current_month_commission, total_commission, last_processed_diamonds")
+      .select("id, member_uuid, member_name, last_daily_charges, initial_charger_num, member_type, bd_uuid, monthly_charges, current_month_commission, total_commission, last_processed_diamonds, type_user")
       .eq("is_active", true);
 
     if (!members || members.length === 0) {
@@ -204,11 +254,31 @@ serve(async (req) => {
     // === SYNC MEMBERS ===
     let synced = 0;
     let commissionUpdates = 0;
+    let infoUpdates = 0;
 
     for (const member of members) {
       const bd = bdMap[member.bd_uuid];
       if (!bd) continue;
       if (synced > 0) await new Promise(r => setTimeout(r, 200));
+
+      // ── Update member info from user-info API (non-blocking) ──
+      try {
+        const userInfo = await fetchUserInfo(sb, member.member_uuid);
+        if (userInfo && userInfo.name) {
+          const newName = userInfo.name || member.member_name;
+          const newType = Number(userInfo.type_user) || member.type_user || 0;
+          if (newName !== member.member_name || newType !== (member.type_user || 0)) {
+            await sb.from("bd_members").update({
+              member_name: newName,
+              type_user: newType,
+            }).eq("id", member.id);
+            infoUpdates++;
+            console.log(`[INFO] updated ${member.member_uuid}: name="${newName}", type=${newType}`);
+          }
+        }
+      } catch (e) {
+        console.log(`[INFO] failed for ${member.member_uuid}:`, e);
+      }
 
       // ════════════════════════════════════════════════════════════
       // SUPPORTER: use user-charges ONLY
@@ -291,46 +361,38 @@ serve(async (req) => {
         synced++;
 
       // ════════════════════════════════════════════════════════════
-      // AGENCY: use agency-income ONLY (NEVER user-charges)
+      // AGENCY: use agency-income → fallback to salary-api
       // ════════════════════════════════════════════════════════════
       } else if (member.member_type === "agency") {
         const isTestMode = body?.test_mode === true;
         const testIncome = body?.test_agency_income || 0;
-        let incomeData: any = null;
+        let monthlyIncome = 0;
+        let dailyIncome = 0;
 
         if (isTestMode && testIncome > 0) {
-          incomeData = { commission: { month: { total: testIncome }, today: { total: 0 }, week: { total: 0 } } };
+          monthlyIncome = testIncome;
         } else {
-          incomeData = await fetchAgencyIncome(sb, member.member_uuid);
-        }
-
-        // Check if response has commission field
-        if (!incomeData) {
-          console.log(`[SYNC] agency ${member.member_uuid}: API returned null, skipping`);
-          continue;
-        }
-
-        // Log all available fields for debugging
-        const topKeys = Object.keys(incomeData);
-        console.log(`[SYNC] agency ${member.member_uuid}: response keys=[${topKeys.join(",")}]`);
-
-        if (!incomeData.commission) {
-          console.log(`[SYNC] agency ${member.member_uuid}: NO commission field in response. Available: [${topKeys.join(",")}]`);
-          // Log any numeric fields that might be income
-          for (const key of topKeys) {
-            if (key !== "agencies" && key !== "ok" && key !== "uuid") {
-              console.log(`[SYNC] agency ${member.member_uuid}: field "${key}" = ${JSON.stringify(incomeData[key]).substring(0, 200)}`);
+          // Try agency-income first
+          const incomeData = await fetchAgencyIncome(sb, member.member_uuid);
+          
+          if (incomeData && incomeData.commission) {
+            monthlyIncome = extractTotal(incomeData.commission.month);
+            dailyIncome = extractTotal(incomeData.commission.today);
+            console.log(`[SYNC] agency ${member.member_uuid}: from agency-income, month=${monthlyIncome}`);
+          } else {
+            // Fallback to salary-api
+            console.log(`[SYNC] agency ${member.member_uuid}: agency-income missing commission, trying salary-api fallback`);
+            const salaryData = await fetchSalaryApi(sb, member.member_uuid);
+            if (salaryData) {
+              // salary-api may return salary, commission, or income fields
+              monthlyIncome = Number(salaryData.salary) || Number(salaryData.commission) || Number(salaryData.income) || Number(salaryData.month) || 0;
+              console.log(`[SYNC] agency ${member.member_uuid}: from salary-api fallback, income=${monthlyIncome}`);
+            } else {
+              console.log(`[SYNC] agency ${member.member_uuid}: both APIs failed, skipping`);
+              continue;
             }
           }
-          continue;
         }
-
-        // Use commission data from agency-income API
-        const monthlyIncome = extractTotal(incomeData.commission.month);
-        const dailyIncome = extractTotal(incomeData.commission.today);
-        const weeklyIncome = extractTotal(incomeData.commission.week);
-
-        console.log(`[SYNC] agency ${member.member_uuid}: commission month=${monthlyIncome}, week=${weeklyIncome}, today=${dailyIncome}`);
 
         // RE-READ fresh data
         const { data: fresh } = await sb.from("bd_members")
@@ -393,6 +455,83 @@ serve(async (req) => {
 
         await sb.from("bd_members").update(updateObj).eq("id", member.id);
         synced++;
+
+      // ════════════════════════════════════════════════════════════
+      // HOST: use host-salary API
+      // ════════════════════════════════════════════════════════════
+      } else if (member.member_type === "host") {
+        const hostData = await fetchHostSalary(sb, member.member_uuid);
+        
+        if (!hostData) {
+          console.log(`[SYNC] host ${member.member_uuid}: API returned null, skipping`);
+          continue;
+        }
+
+        // Extract salary data from host-salary response
+        const monthlySalary = Number(hostData.salary) || Number(hostData.month_salary) || Number(hostData.total) || 0;
+        const dailySalary = Number(hostData.today) || Number(hostData.daily) || 0;
+
+        console.log(`[SYNC] host ${member.member_uuid}: salary=${monthlySalary}, daily=${dailySalary}`);
+
+        // RE-READ fresh data
+        const { data: fresh } = await sb.from("bd_members")
+          .select("last_processed_diamonds, current_month_commission, total_commission")
+          .eq("id", member.id).maybeSingle();
+        const lastProcessed = fresh?.last_processed_diamonds || 0;
+        const salaryDiff = monthlySalary - lastProcessed;
+
+        const updateObj: Record<string, unknown> = {
+          monthly_charges: monthlySalary,
+          last_daily_charges: dailySalary,
+          last_processed_diamonds: monthlySalary,
+        };
+
+        if (salaryDiff > 0) {
+          // DEDUP CHECK
+          const { data: existingLog } = await sb.from("bd_commission_logs")
+            .select("id")
+            .eq("bd_uuid", member.bd_uuid).eq("member_uuid", member.member_uuid)
+            .eq("month", month).eq("source_amount", salaryDiff)
+            .gte("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
+            .maybeSingle();
+
+          if (existingLog) {
+            console.log(`[SYNC] DEDUP: host ${member.member_uuid}, diff=${salaryDiff}`);
+          } else {
+            const pct = bd.host_commission_pct || 3;
+            const commissionCoins = (salaryDiff * pct) / 100;
+            const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
+
+            updateObj.current_month_commission = (fresh?.current_month_commission || 0) + commissionAmount;
+            updateObj.total_commission = (fresh?.total_commission || 0) + commissionAmount;
+
+            await sb.from("bd_commission_logs").insert({
+              bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
+              member_type: "host", month,
+              source_amount: salaryDiff, commission_pct: pct, amount: commissionAmount,
+            });
+
+            const { data: freshBd } = await sb.from("bd_commission_settings")
+              .select("current_month_earnings, total_earned").eq("bd_uuid", member.bd_uuid).maybeSingle();
+            await sb.from("bd_commission_settings").update({
+              current_month_earnings: (freshBd?.current_month_earnings || 0) + commissionAmount,
+              total_earned: (freshBd?.total_earned || 0) + commissionAmount,
+            }).eq("bd_uuid", member.bd_uuid);
+
+            await sb.from("notifications").insert({
+              title: "💰 عمولة مضيف",
+              body: `عمولة $${commissionAmount.toFixed(2)} من المضيف ${member.member_name} (${pct}% من ${salaryDiff.toLocaleString()} زيادة)`,
+              target: "user", user_uuid: member.bd_uuid,
+            });
+            commissionUpdates++;
+            console.log(`[SYNC] host ${member.member_uuid}: commission $${commissionAmount} from ${salaryDiff} increase`);
+          }
+        } else {
+          console.log(`[SYNC] host ${member.member_uuid}: no increase (diff=${salaryDiff}), skipping`);
+        }
+
+        await sb.from("bd_members").update(updateObj).eq("id", member.id);
+        synced++;
       }
     }
 
@@ -430,6 +569,7 @@ serve(async (req) => {
         success: true, month, is_new_month: isNewMonth,
         monthly_resets: monthlyResets, synced_members: synced,
         commission_updates: commissionUpdates, profit_synced: profitSynced,
+        info_updates: infoUpdates,
         active_members: members.length, active_bds: bdUuids.length,
         timestamp: now.toISOString(),
       }),
