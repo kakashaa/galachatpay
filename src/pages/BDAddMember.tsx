@@ -65,7 +65,7 @@ const BDAddMember: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data } = await supabase.functions.invoke("bd-manage", {
+      const { data, error: fnError } = await supabase.functions.invoke("bd-manage", {
         body: {
           action: "invite_member",
           bd_uuid: user.uuid,
@@ -76,19 +76,30 @@ const BDAddMember: React.FC = () => {
         },
       });
 
-      if (data?.violation || data?.banned) {
+      console.log("[BD-INVITE] Response:", JSON.stringify(data));
+
+      if (fnError) {
+        toast.error("فشل الاتصال بالسيرفر");
+        return;
+      }
+
+      const responseData = typeof data === 'string' ? JSON.parse(data) : data;
+
+      if (responseData?.violation || responseData?.banned) {
         const violations = await fetchViolations(user.uuid);
         setViolationDialog({
-          count: data.violation_count || violations.length,
-          message: data.error,
-          banned: !!data.banned,
+          count: responseData.violation_count || violations.length,
+          message: responseData.error,
+          banned: !!responseData.banned,
           violations,
         });
-      } else if (data?.error) {
-        toast.error(data.error);
-      } else {
+      } else if (responseData?.error) {
+        toast.error(responseData.error);
+      } else if (responseData?.success) {
         toast.success("تم إرسال الدعوة بنجاح! سيتلقى العضو إشعاراً.");
         navigate("/bd/dashboard");
+      } else {
+        toast.error("حدث خطأ غير متوقع");
       }
     } catch {
       toast.error("فشل إرسال الدعوة");
