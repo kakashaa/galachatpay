@@ -7,12 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import {
   Loader2, ChevronDown, ChevronUp, CheckCircle, XCircle,
   Users, DollarSign, Shield, Trash2, RefreshCw,
-  Settings, UserPlus, UserMinus, Edit2, Save, X, Search, RotateCcw,
+  Settings, UserPlus, UserMinus, Edit2, Save, X, Search, RotateCcw, Lock, Unlock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDateAr } from "@/utils/dateFormat";
 
-type SubTab = "registrations" | "bds" | "withdrawals" | "settings" | "deleted";
+type SubTab = "registrations" | "bds" | "withdrawals" | "settings" | "deleted" | "banned";
 
 interface AdminBDManagerProps {
   readOnly?: boolean;
@@ -30,6 +30,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   const [allMembers, setAllMembers] = useState<any[]>([]);
   const [deletedBds, setDeletedBds] = useState<any[]>([]);
   const [deletedMembers, setDeletedMembers] = useState<any[]>([]);
+  const [bannedBds, setBannedBds] = useState<any[]>([]);
   const [expandedBd, setExpandedBd] = useState<string | null>(null);
   const [bdSearchQuery, setBdSearchQuery] = useState("");
   const [editingBd, setEditingBd] = useState<string | null>(null);
@@ -103,6 +104,15 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
           setDeletedMembers(res.members || []);
           break;
         }
+        case "banned": {
+          const { data } = await supabase
+            .from("bd_commission_settings")
+            .select("*")
+            .not("banned_at", "is", null)
+            .order("banned_at", { ascending: false });
+          setBannedBds(data || []);
+          break;
+        }
       }
     } catch (err) {
       console.error(err);
@@ -113,6 +123,15 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   }, [subTab]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Preload banned count for badge
+  useEffect(() => {
+    supabase
+      .from("bd_commission_settings")
+      .select("id, bd_uuid, bd_name, banned_at, available_balance, referral_code, is_active, is_approved, current_month_earnings, total_earned, user_commission_pct, agency_commission_pct")
+      .not("banned_at", "is", null)
+      .then(({ data }) => { if (data) setBannedBds(data); });
+  }, []);
 
   // Registration actions
   const approveRegistration = async (id: string) => {
@@ -258,6 +277,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
     { key: "bds", label: "إدارة البيدي", icon: <Users className="w-4 h-4" /> },
     ...(!readOnly ? [
       { key: "deleted" as SubTab, label: "المحذوف", icon: <Trash2 className="w-4 h-4" /> },
+      { key: "banned" as SubTab, label: "المحظور", icon: <Lock className="w-4 h-4" /> },
     ] : []),
     { key: "withdrawals", label: "طلبات السحب", icon: <DollarSign className="w-4 h-4" /> },
     ...(!readOnly ? [
@@ -267,6 +287,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
 
   const pendingRegs = registrations.filter((r) => r.status === "pending").length;
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending").length;
+  const bannedCount = bannedBds.length;
 
   return (
     <div className="space-y-4">
@@ -289,6 +310,9 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
             )}
             {t.key === "withdrawals" && pendingWithdrawals > 0 && (
               <span className="ml-1 min-w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">{pendingWithdrawals}</span>
+            )}
+            {t.key === "banned" && bannedCount > 0 && (
+              <span className="ml-1 min-w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">{bannedCount}</span>
             )}
           </button>
         ))}
@@ -694,6 +718,82 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Banned BDs */}
+          {subTab === "banned" && (
+            <div className="space-y-3">
+              {bannedBds.length === 0 && <p className="text-center text-muted-foreground py-10">لا يوجد بيدي محظور</p>}
+              {bannedBds.map((bd) => {
+                const bannedDate = bd.banned_at ? new Date(bd.banned_at) : null;
+                const unbanDate = bannedDate ? new Date(bannedDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+                const daysRemaining = unbanDate ? Math.max(0, Math.ceil((unbanDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+
+                return (
+                  <div key={bd.id} className="bg-card border border-red-500/30 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-red-400" />
+                        <div>
+                          <p className="font-bold text-sm">{bd.bd_name || bd.bd_uuid}</p>
+                          <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{bd.bd_uuid}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-400">محظور</span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                      <div className="bg-muted/30 rounded-lg p-2">
+                        <p className="text-muted-foreground">تاريخ الحظر</p>
+                        <p className="font-bold">{bannedDate ? formatDateAr(bd.banned_at) : "-"}</p>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-2">
+                        <p className="text-muted-foreground">تاريخ الفك</p>
+                        <p className="font-bold">{unbanDate ? unbanDate.toLocaleDateString("ar-EG") : "-"}</p>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-2">
+                        <p className="text-muted-foreground">أيام متبقية</p>
+                        <p className="font-bold text-amber-400">{daysRemaining}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
+                      <div className="bg-muted/30 rounded-lg p-2">
+                        <p className="text-muted-foreground">الرصيد</p>
+                        <p className="font-bold">${Number(bd.available_balance || 0).toFixed(2)}</p>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-2">
+                        <p className="text-muted-foreground">كود الإحالة</p>
+                        <p className="font-bold text-primary">{bd.referral_code}</p>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={async () => {
+                        if (!confirm("هل تريد فك الحظر عن هذا البيدي؟")) return;
+                        try {
+                          await supabase
+                            .from("bd_commission_settings")
+                            .update({ banned_at: null, is_active: true, is_approved: true })
+                            .eq("bd_uuid", bd.bd_uuid);
+                          await supabase
+                            .from("bd_violations")
+                            .delete()
+                            .eq("bd_uuid", bd.bd_uuid);
+                          toast.success("تم فك الحظر بنجاح");
+                          loadData();
+                        } catch { toast.error("فشل فك الحظر"); }
+                      }}
+                      size="sm"
+                      className="w-full bg-green-600 hover:bg-green-700 text-xs"
+                    >
+                      <Unlock className="w-3 h-3 ml-1" />
+                      فك الحظر وتصفير المخالفات
+                    </Button>
                   </div>
                 );
               })}
