@@ -397,13 +397,6 @@ serve(async (req) => {
           monthlyCharges = prefetched.chargeData;
         }
 
-        // Protection: never decrease monthly_charges (API may temporarily return 0)
-        const currentStored = member.monthly_charges || 0;
-        if (monthlyCharges < currentStored && monthlyCharges === 0) {
-          console.log(`[SYNC] supporter ${member.member_uuid}: API returned 0 but stored=${currentStored}, SKIPPING (API glitch protection)`);
-          continue;
-        }
-
         const { data: fresh } = await sb.from("bd_members")
           .select("monthly_charges, current_month_commission, total_commission")
           .eq("id", member.id).maybeSingle();
@@ -474,13 +467,6 @@ serve(async (req) => {
             console.log(`[SYNC] agency ${member.member_uuid}: agency-target API failed or no data, skipping. Data:`, JSON.stringify(agencyData).slice(0, 200));
             continue;
           }
-        }
-
-        // Protection: never decrease to 0 (API glitch protection)
-        const currentStoredAgency = member.monthly_charges || 0;
-        if (totalHostSalaries === 0 && currentStoredAgency > 0) {
-          console.log(`[SYNC] agency ${member.member_uuid}: API returned 0 but stored=${currentStoredAgency}, SKIPPING (API glitch protection)`);
-          continue;
         }
 
         // Convert total_host_salaries (USD) to coins for storage consistency  
