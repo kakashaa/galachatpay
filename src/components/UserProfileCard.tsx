@@ -52,6 +52,8 @@ const UserProfileCard: React.FC = () => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalStars, setTotalStars] = useState(0);
   const [agencySalary, setAgencySalary] = useState<number | null>(null);
+  const [salaryUsd, setSalaryUsd] = useState<number | null>(null);
+  const [salaryLoading, setSalaryLoading] = useState(false);
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
     ((user.vip as any).vip_level || (user.vip as any).level || 0) > 0);
@@ -76,6 +78,30 @@ const UserProfileCard: React.FC = () => {
       }
     };
     fetchStars();
+    return () => { cancelled = true; };
+  }, [user?.uuid]);
+
+  // Fetch salary from dedicated salary API (separate from login)
+  useEffect(() => {
+    if (!user?.uuid) return;
+    let cancelled = false;
+    const fetchSalary = async () => {
+      setSalaryLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("gala-salary", {
+          body: { uuid: user.uuid },
+        });
+        if (cancelled) return;
+        if (!error && data?.ok && data.salary != null) {
+          setSalaryUsd(data.salary);
+        }
+      } catch (e) {
+        console.error("Salary fetch error:", e);
+      } finally {
+        if (!cancelled) setSalaryLoading(false);
+      }
+    };
+    fetchSalary();
     return () => { cancelled = true; };
   }, [user?.uuid]);
 
@@ -214,7 +240,7 @@ const UserProfileCard: React.FC = () => {
               {[
                 { value: user.my_store.coins, emoji: "💰", color: "yellow" },
                 { value: user.my_store.diamonds, emoji: "💎", color: "purple" },
-                { value: `$${user.salary != null ? user.salary : user.my_store.usd}`, emoji: "💵", color: "green" },
+                { value: salaryLoading ? "..." : `$${salaryUsd != null ? salaryUsd : (user.salary != null ? user.salary : user.my_store.usd)}`, emoji: "💵", color: "green" },
               ].map((w, i) => (
                 <div
                   key={i}
