@@ -214,7 +214,7 @@ const BDAddMember: React.FC = () => {
 
       {/* Violation Warning Dialog */}
       <Dialog open={!!violationDialog} onOpenChange={() => {
-        if (violationDialog?.banned) navigate("/bd/dashboard");
+        if (violationDialog?.banned) navigate("/");
         setViolationDialog(null);
       }}>
         <DialogContent className="max-w-sm mx-auto" dir="rtl">
@@ -302,13 +302,13 @@ const BDAddMember: React.FC = () => {
 
             <Button
               onClick={() => {
-                if (violationDialog?.banned) navigate("/bd/dashboard");
                 setViolationDialog(null);
+                if (violationDialog?.banned) navigate("/");
               }}
               variant={violationDialog?.banned ? "destructive" : "outline"}
               className="w-full"
             >
-              {violationDialog?.banned ? "العودة للوحة التحكم" : "فهمت، سأدعو شخص جديد"}
+              {violationDialog?.banned ? "العودة للصفحة الرئيسية" : "فهمت، سأدعو شخص جديد"}
             </Button>
           </div>
         </DialogContent>
