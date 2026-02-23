@@ -292,27 +292,28 @@ serve(async (req) => {
       }
 
       // CRITICAL: Check if account is old/active
-      // Since the API doesn't return level data, check charge history as indicator
+      // Check levels from API data
       const lvl = preCheckData.level || userInfoData?.level || {};
       const chargerLevel = lvl.charger_level ?? lvl.charger ?? preCheckData.charger_num ?? userInfoData?.charger_num ?? 0;
       const senderLevel = lvl.sender_level ?? lvl.sender ?? 0;
       const receiverLevel = lvl.receiver_level ?? lvl.receiver ?? 0;
       
-      // Also check charge activity - if user has ANY recent charges, they're not new
+      // Check charge activity using ONLY the aggregated counts (today/week/month)
+      // NOTE: The "recent" array from the API returns GLOBAL charges, NOT user-specific ones,
+      // so we must NOT use it as an indicator of account activity.
       const recentCharges = preCheckData.charges || {};
-      const hasChargeHistory = (
+      const hasChargeActivity = (
         (recentCharges.today?.count > 0 || recentCharges.today?.total > 0) ||
         (recentCharges.week?.count > 0 || recentCharges.week?.total > 0) ||
-        (recentCharges.month?.count > 0 || recentCharges.month?.total > 0) ||
-        (Array.isArray(preCheckData.recent) && preCheckData.recent.length > 0)
+        (recentCharges.month?.count > 0 || recentCharges.month?.total > 0)
       );
       
-      const isOldAccount = chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0 || hasChargeHistory;
-      console.log("[BD-INVITE] Check:", { chargerLevel, senderLevel, receiverLevel, hasChargeHistory, recentCount: preCheckData.recent?.length, isOldAccount });
+      const isOldAccount = chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0 || hasChargeActivity;
+      console.log("[BD-INVITE] Check:", { chargerLevel, senderLevel, receiverLevel, hasChargeActivity, charges: recentCharges, isOldAccount });
 
       if (isOldAccount) {
-        const details = hasChargeHistory 
-          ? `حساب نشط (شحنات سابقة: ${preCheckData.recent?.length || 0})`
+        const details = hasChargeActivity 
+          ? `حساب نشط (شحنات: يوم=${recentCharges.today?.count||0} أسبوع=${recentCharges.week?.count||0} شهر=${recentCharges.month?.count||0})`
           : `شحن: ${chargerLevel}، إرسال: ${senderLevel}، استقبال: ${receiverLevel}`;
         // Log violation
         await sb.from("bd_violations").insert({
