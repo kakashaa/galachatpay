@@ -820,20 +820,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                   <div key={w.id} className="bg-card border rounded-xl p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-bold text-sm">{w.bd_name || w.bd_uuid}</p>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(w.bd_uuid);
-                              toast.success("تم نسخ الآيدي");
-                            }}
-                            className="p-1 rounded-md hover:bg-muted/50 transition-colors"
-                            title="نسخ الآيدي"
-                          >
-                            <Copy className="w-3 h-3 text-muted-foreground" />
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{w.bd_uuid}</p>
+                        <p className="font-bold text-sm">{w.bd_name || w.bd_uuid}</p>
                         <p className="text-[10px] text-muted-foreground">{formatDateAr(w.created_at)}</p>
                       </div>
                       <div className="text-left">
@@ -851,7 +838,21 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                       }`}>
                         {w.status === "pending" ? "معلق" : w.status === "completed" ? "مكتمل" : "مرفوض"}
                       </span>
-                      {w.recipient_name && <span className="text-muted-foreground">→ {w.recipient_name}</span>}
+                      {w.recipient_name && (
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          → {w.recipient_name}
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(w.recipient_name || "");
+                              toast.success("تم نسخ آيدي المستقبل");
+                            }}
+                            className="p-0.5 rounded hover:bg-muted/50 transition-colors"
+                            title="نسخ آيدي المستقبل"
+                          >
+                            <Copy className="w-3 h-3 text-muted-foreground" />
+                          </button>
+                        </span>
+                      )}
                     </div>
                     {w.status === "pending" && !readOnly && (
                       <div className="flex gap-2 pt-1">
