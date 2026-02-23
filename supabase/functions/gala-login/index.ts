@@ -416,7 +416,7 @@ serve(async (req) => {
       try {
         const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
         const SALARY_API_KEY = "ghala2026actions";
-        const salaryRes = await fetch(`${SALARY_API_URL}?key=${SALARY_API_KEY}&uuid=${uuid.trim()}`, { signal: AbortSignal.timeout(10000) });
+        const salaryRes = await fetch(`${SALARY_API_URL}?key=${SALARY_API_KEY}&uuid=${uuid.trim()}`, { signal: AbortSignal.timeout(25000) });
         if (salaryRes.ok) {
           const salaryData = await salaryRes.json();
           if (salaryData?.ok && salaryData.salary != null) {
