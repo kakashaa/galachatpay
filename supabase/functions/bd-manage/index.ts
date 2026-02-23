@@ -855,17 +855,26 @@ serve(async (req) => {
           return await res.json();
         };
 
+        // Helper to extract numeric value from API responses
+        // API may return numbers OR objects like {count: 0, total: 0}
+        const toNum = (v: unknown): number => {
+          if (typeof v === "number") return v;
+          if (v && typeof v === "object" && "total" in (v as any)) return Number((v as any).total) || 0;
+          if (v && typeof v === "object" && "count" in (v as any)) return Number((v as any).count) || 0;
+          return Number(v) || 0;
+        };
+
         if (member_type === "agency") {
           const agencyData = await quickFetch(`${BD_API_URL}?key=${BD_API_KEY}&action=agency-income&uuid=${member_uuid}`);
           if (agencyData?.commission) {
-            initialMonthly = agencyData.commission.month || 0;
-            initialDaily = agencyData.commission.today || 0;
+            initialMonthly = toNum(agencyData.commission.month);
+            initialDaily = toNum(agencyData.commission.today);
           }
         } else {
           const chargeData = await quickFetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${member_uuid}`);
           if (chargeData?.charges) {
-            initialMonthly = chargeData.charges.month || 0;
-            initialDaily = chargeData.charges.today || 0;
+            initialMonthly = toNum(chargeData.charges.month);
+            initialDaily = toNum(chargeData.charges.today);
           }
         }
       } catch (e) {
