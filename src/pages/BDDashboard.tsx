@@ -93,10 +93,26 @@ const BDDashboard: React.FC = () => {
     }
   }, [user?.uuid, navigate]);
 
+  // Auto-sync on mount (background, silent)
   useEffect(() => {
+    let mounted = true;
+    const autoSync = async () => {
+      try {
+        console.log("[BD] auto-sync on mount...");
+        await supabase.functions.invoke("bd-sync", { body: { manual: true } });
+        if (mounted) {
+          console.log("[BD] auto-sync done, reloading data");
+          await loadData();
+        }
+      } catch (e) {
+        console.error("[BD] auto-sync failed:", e);
+      }
+    };
+    // Load data immediately, then trigger sync in background
     loadData();
+    autoSync();
     const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+    return () => { mounted = false; clearInterval(interval); };
   }, [loadData]);
 
   const copyReferralCode = () => {
