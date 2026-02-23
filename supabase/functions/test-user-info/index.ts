@@ -12,15 +12,45 @@ serve(async (req) => {
   try {
     const results: Record<string, unknown> = {};
 
-    // Test salary-api.php for uuid 7524002
+    // Test 1: GET request
     try {
       const url = `${SALARY_API_URL}?key=${API_KEY}&uuid=80001`;
-      results.request_url = url;
+      results.get_url = url;
       const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
       const text = await res.text();
-      results.status = res.status;
-      try { results.salary_data = JSON.parse(text); } catch { results.salary_raw = text.substring(0, 2000); }
-    } catch (e) { results.salary_error = String(e); }
+      results.get_status = res.status;
+      results.get_headers = Object.fromEntries(res.headers.entries());
+      try { results.get_data = JSON.parse(text); } catch { results.get_raw = text.substring(0, 3000); }
+    } catch (e) { results.get_error = String(e); }
+
+    // Test 2: POST request with JSON body
+    try {
+      const res = await fetch(SALARY_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: API_KEY, uuid: "80001" }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const text = await res.text();
+      results.post_status = res.status;
+      try { results.post_data = JSON.parse(text); } catch { results.post_raw = text.substring(0, 3000); }
+    } catch (e) { results.post_error = String(e); }
+
+    // Test 3: POST with form data
+    try {
+      const formData = new URLSearchParams();
+      formData.append("key", API_KEY);
+      formData.append("uuid", "80001");
+      const res = await fetch(SALARY_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+        signal: AbortSignal.timeout(30000),
+      });
+      const text = await res.text();
+      results.form_status = res.status;
+      try { results.form_data = JSON.parse(text); } catch { results.form_raw = text.substring(0, 3000); }
+    } catch (e) { results.form_error = String(e); }
 
     return new Response(JSON.stringify(results, null, 2), {
       status: 200,
