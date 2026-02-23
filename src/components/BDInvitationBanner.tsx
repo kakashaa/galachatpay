@@ -123,8 +123,7 @@ const BDInvitationBanner: React.FC = () => {
             </div>
             <p className="text-xs text-muted-foreground">
               لقد تلقيت دعوة من <span className="font-bold text-foreground">{inv.bd_name}</span>
-              {" "}(كود: <span className="font-mono text-primary">{inv.bd_referral_code}</span>)
-              {" "}كـ{inv.member_type === "supporter" ? "داعم" : "وكيل"}
+              {" "}للانضمام كـ{inv.member_type === "supporter" ? "داعم" : "وكيل"}
             </p>
 
             {showPasswordFor === inv.id ? (
