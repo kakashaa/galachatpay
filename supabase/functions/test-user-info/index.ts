@@ -21,11 +21,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const SUPPORTER_UUID = "3901126"; // The supporter with the discrepancy
+  const body = await req.json().catch(() => ({}));
+  const uuid = body?.uuid || "80001";
+  const year = body?.year || 2026;
+  const month = body?.month || 2;
 
   const results = await Promise.all([
-    testEndpoint("1-NEW-monthly-charges-api", `${BASE}/monthly-charges-api.php?key=${KEY}&uuid=${SUPPORTER_UUID}`),
-    testEndpoint("2-OLD-user-charges", `${BASE}/bd-data-api.php?key=${KEY}&action=user-charges&uuid=${SUPPORTER_UUID}`),
+    testEndpoint("agency-target-api", `${BASE}/agency-target-api.php?key=${KEY}&uuid=${uuid}&year=${year}&month=${month}`),
   ]);
 
   return new Response(JSON.stringify(results, null, 2), {
