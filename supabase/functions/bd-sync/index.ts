@@ -84,7 +84,7 @@ async function fetchBatchMonthlyCharges(
   const now = new Date();
   const year = now.getUTCFullYear();
   const monthNum = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const url = `${TOP_CHARGERS_API_URL}?key=${BD_API_KEY}&uuids=${uncachedUuids.join(",")}&year=${year}&month=${monthNum}`;
+  const url = `${TOP_CHARGERS_API_URL}?key=${BD_API_KEY}&action=top-chargers&uuids=${uncachedUuids.join(",")}&year=${year}&month=${monthNum}`;
 
   console.log(`[BATCH] fetching URL: ${url}`);
   const res = await fetchWithRetry(url, 2);
