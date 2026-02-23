@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
+const MONTHLY_CHARGES_API_URL = "http://18.219.229.240/website/monthly-charges-api.php";
 const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -50,21 +51,27 @@ async function fetchWithRetry(url: string, retries = 2): Promise<Response | null
   return null;
 }
 
-// ── API 1: user-charges (for supporters ONLY) ──────────────────
-async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string, skipCache = false) {
-  const cacheKey = `user_charges_${uuid}`;
+// ── API 1: monthly-charges (for supporters ONLY) ──────────────
+async function fetchMonthlyCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string, skipCache = false): Promise<number | null> {
+  const cacheKey = `monthly_charges_${uuid}`;
   if (!skipCache) {
     const cached = await getCached(sb, cacheKey);
-    if (cached) return cached;
+    if (cached !== null && typeof cached === 'number') return cached;
   }
 
-  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
+  const url = `${MONTHLY_CHARGES_API_URL}?key=${BD_API_KEY}&uuid=${uuid}`;
   const res = await fetchWithRetry(url);
   if (!res) return null;
   try {
     const data = await res.json();
-    await setCache(sb, cacheKey, data);
-    return data;
+    if (data?.ok === true && data.total_charged !== undefined) {
+      const total = Number(data.total_charged) || 0;
+      await setCache(sb, cacheKey, total);
+      console.log(`[API] monthly-charges for ${uuid}: ${total}`);
+      return total;
+    }
+    console.log(`[API] monthly-charges for ${uuid}: unexpected response`, data);
+    return null;
   } catch { return null; }
 }
 
@@ -290,38 +297,25 @@ serve(async (req) => {
       }
 
       // ════════════════════════════════════════════════════════════
-      // SUPPORTER: use user-charges ONLY
+      // SUPPORTER: use monthly-charges-api ONLY
       // ════════════════════════════════════════════════════════════
       if (member.member_type === "supporter") {
         const isTestMode = body?.test_mode === true;
         const testCharges = body?.test_charges || 0;
-        let chargeData: any = null;
+        let monthlyCharges = 0;
 
         if (isTestMode && testCharges > 0) {
-          chargeData = { charges: { month: { total: testCharges }, today: { total: 0 } }, recent: [] };
+          monthlyCharges = testCharges;
         } else {
-          chargeData = await fetchUserCharges(sb, member.member_uuid, isManual);
+          const result = await fetchMonthlyCharges(sb, member.member_uuid, isManual);
+          if (result === null) {
+            console.log(`[SYNC] supporter ${member.member_uuid}: API failed, skipping`);
+            continue;
+          }
+          monthlyCharges = result;
         }
 
-        if (!chargeData) {
-          console.log(`[SYNC] supporter ${member.member_uuid}: no charge data, skipping`);
-          continue;
-        }
-
-        // Use charges.month.total first; if 0 fall back to sum of recent array
-        let monthlyCharges = 0;
-        if (chargeData.charges) {
-          monthlyCharges = extractTotal(chargeData.charges.month);
-        }
-        if (monthlyCharges === 0 && Array.isArray(chargeData.recent) && chargeData.recent.length > 0) {
-          monthlyCharges = chargeData.recent.reduce((sum: number, r: any) => {
-            const coins = Number(String(r["الكوينز"] || r.coins || r.amount || 0).replace(/,/g, ''));
-            return sum + (isNaN(coins) ? 0 : coins);
-          }, 0);
-        }
-        const dailyCharges = chargeData.charges ? extractTotal(chargeData.charges.today) : 0;
-
-        console.log(`[SYNC] supporter ${member.member_uuid}: total=${monthlyCharges}, daily=${dailyCharges}`);
+        console.log(`[SYNC] supporter ${member.member_uuid}: total=${monthlyCharges}`);
 
         // RE-READ fresh data
         const { data: fresh } = await sb.from("bd_members")
@@ -334,7 +328,6 @@ serve(async (req) => {
 
         const updateObj: Record<string, unknown> = {
           monthly_charges: monthlyCharges,
-          last_daily_charges: dailyCharges,
         };
 
         if (chargeDiff > 0) {
