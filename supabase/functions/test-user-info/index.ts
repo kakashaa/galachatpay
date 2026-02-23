@@ -3,7 +3,7 @@ import { corsHeaders } from "../_shared/hmac.ts";
 
 const BASE = "http://18.219.229.240/website";
 const KEY = "ghala2026actions";
-const UUID = "80001";
+const UUID = "7524002";
 
 async function testEndpoint(name: string, url: string): Promise<Record<string, unknown>> {
   try {
