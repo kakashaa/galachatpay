@@ -258,16 +258,29 @@ serve(async (req) => {
         }
       }
 
-      // CRITICAL: Check ALL levels - must be 0 for new accounts
-      // Try from preCheckData first, then fallback to userInfoData
+      // CRITICAL: Check if account is old/active
+      // Since the API doesn't return level data, check charge history as indicator
       const lvl = preCheckData.level || userInfoData?.level || {};
       const chargerLevel = lvl.charger_level ?? lvl.charger ?? preCheckData.charger_num ?? userInfoData?.charger_num ?? 0;
       const senderLevel = lvl.sender_level ?? lvl.sender ?? 0;
       const receiverLevel = lvl.receiver_level ?? lvl.receiver ?? 0;
-      console.log("[BD-INVITE] Levels:", { chargerLevel, senderLevel, receiverLevel, rawLevel: lvl });
+      
+      // Also check charge activity - if user has ANY recent charges, they're not new
+      const recentCharges = preCheckData.charges || {};
+      const hasChargeHistory = (
+        (recentCharges.today?.count > 0 || recentCharges.today?.total > 0) ||
+        (recentCharges.week?.count > 0 || recentCharges.week?.total > 0) ||
+        (recentCharges.month?.count > 0 || recentCharges.month?.total > 0) ||
+        (Array.isArray(preCheckData.recent) && preCheckData.recent.length > 0)
+      );
+      
+      const isOldAccount = chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0 || hasChargeHistory;
+      console.log("[BD-INVITE] Check:", { chargerLevel, senderLevel, receiverLevel, hasChargeHistory, recentCount: preCheckData.recent?.length, isOldAccount });
 
-      if (chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0) {
-        const levelDetails = `شحن: ${chargerLevel}، إرسال: ${senderLevel}، استقبال: ${receiverLevel}`;
+      if (isOldAccount) {
+        const details = hasChargeHistory 
+          ? `حساب نشط (شحنات سابقة: ${preCheckData.recent?.length || 0})`
+          : `شحن: ${chargerLevel}، إرسال: ${senderLevel}، استقبال: ${receiverLevel}`;
         // Log violation
         await sb.from("bd_violations").insert({
           bd_uuid,
@@ -275,7 +288,7 @@ serve(async (req) => {
           violation_type: "ineligible_invite",
           member_uuid,
           member_name: preCheckData.name || preCheckData.user?.name || member_uuid,
-          details: `محاولة دعوة حساب قديم (${levelDetails})`,
+          details: `محاولة دعوة حساب قديم (${details})`,
         });
 
         // Re-count violations after insert
@@ -307,7 +320,7 @@ serve(async (req) => {
 
         const remaining = 3 - newCount;
         return json({
-          error: `⚠️ المستخدم الذي تريد دعوته قديم في البرنامج (${levelDetails}). هذا تحذير لك! إذا حبيت تدعو شخص، ادعو شخص جديد على التطبيق واكسب نسبتك. عندك هذا إنذار ${newCount} من 3. متبقي ${remaining} إنذار(ات) قبل إيقاف البيدي.`,
+          error: `⚠️ المستخدم الذي تريد دعوته قديم في البرنامج (${details}). هذا تحذير لك! إذا حبيت تدعو شخص، ادعو شخص جديد على التطبيق واكسب نسبتك. عندك هذا إنذار ${newCount} من 3. متبقي ${remaining} إنذار(ات) قبل إيقاف البيدي.`,
           violation: true,
           violation_count: newCount,
         });
