@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
-const MONTHLY_CHARGES_API_URL = "http://18.219.229.240/website/monthly-charges-api.php";
+const TOP_CHARGERS_API_URL = "http://18.219.229.240/website/top-chargers-api.php";
 const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -51,28 +51,67 @@ async function fetchWithRetry(url: string, retries = 1): Promise<Response | null
   return null;
 }
 
-// ── API 1: monthly-charges (for supporters ONLY) ──────────────
-async function fetchMonthlyCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string, skipCache = false): Promise<number | null> {
-  const cacheKey = `monthly_charges_${uuid}`;
+// ── API 1: batch monthly-charges (for ALL supporters at once) ──
+async function fetchBatchMonthlyCharges(
+  sb: ReturnType<typeof supabaseAdmin>,
+  uuids: string[],
+  skipCache = false
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (uuids.length === 0) return result;
+
+  // Check cache first for non-manual syncs
+  const uncachedUuids: string[] = [];
   if (!skipCache) {
-    const cached = await getCached(sb, cacheKey);
-    if (cached !== null && typeof cached === 'number') return cached;
+    for (const uuid of uuids) {
+      const cached = await getCached(sb, `monthly_charges_${uuid}`);
+      if (cached !== null && typeof cached === 'number') {
+        result.set(uuid, cached);
+      } else {
+        uncachedUuids.push(uuid);
+      }
+    }
+  } else {
+    uncachedUuids.push(...uuids);
   }
 
-  const url = `${MONTHLY_CHARGES_API_URL}?key=${BD_API_KEY}&uuid=${uuid}`;
-  const res = await fetchWithRetry(url);
-  if (!res) return null;
+  if (uncachedUuids.length === 0) {
+    console.log(`[BATCH] all ${uuids.length} supporters served from cache`);
+    return result;
+  }
+
+  // Build batch request with year/month
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const monthNum = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const url = `${TOP_CHARGERS_API_URL}?key=${BD_API_KEY}&uuids=${uncachedUuids.join(",")}&year=${year}&month=${monthNum}`;
+
+  console.log(`[BATCH] fetching charges for ${uncachedUuids.length} supporters in ONE request`);
+  const res = await fetchWithRetry(url, 2);
+  if (!res) {
+    console.error(`[BATCH] API request failed for ${uncachedUuids.length} uuids`);
+    return result;
+  }
+
   try {
     const data = await res.json();
-    if (data?.ok === true && data.total_charged !== undefined) {
-      const total = Number(data.total_charged) || 0;
-      await setCache(sb, cacheKey, total);
-      console.log(`[API] monthly-charges for ${uuid}: ${total}`);
-      return total;
+    if (data?.status === "success" && Array.isArray(data.data)) {
+      for (const entry of data.data) {
+        const uuid = String(entry.uuid);
+        const total = Number(entry.total_charges) || 0;
+        result.set(uuid, total);
+        // Cache each result individually
+        await setCache(sb, `monthly_charges_${uuid}`, total);
+      }
+      console.log(`[BATCH] got charges for ${data.data.length} supporters`);
+    } else {
+      console.log(`[BATCH] unexpected response:`, JSON.stringify(data).slice(0, 200));
     }
-    console.log(`[API] monthly-charges for ${uuid}: unexpected response`, data);
-    return null;
-  } catch { return null; }
+  } catch (e) {
+    console.error(`[BATCH] parse error:`, e);
+  }
+
+  return result;
 }
 
 // ── API 2: agency-income (for agencies) ────────────────────────
@@ -267,13 +306,21 @@ serve(async (req) => {
       }
     }
 
-    // === SYNC MEMBERS (PARALLEL BATCHES) ===
+    // === SYNC MEMBERS ===
     let synced = 0;
     let commissionUpdates = 0;
     let infoUpdates = 0;
 
-    // Pre-fetch ALL API data in parallel (batches of 5)
-    const BATCH_SIZE = 5;
+    // ── Step 1: Batch-fetch ALL supporter charges in ONE API call ──
+    const supporterUuids = members
+      .filter((m: any) => m.member_type === "supporter")
+      .map((m: any) => m.member_uuid);
+    
+    const batchChargesMap = await fetchBatchMonthlyCharges(sb, supporterUuids, isManual);
+    console.log(`[SYNC] batch charges fetched: ${batchChargesMap.size}/${supporterUuids.length} supporters`);
+
+    // ── Step 2: Fetch user-info + agency/host data in parallel batches ──
+    const BATCH_SIZE = 10;
     const memberDataMap = new Map<string, { userInfo: any; chargeData: number | null; agencyData: any; hostData: any; salaryData: any }>();
 
     for (let i = 0; i < members.length; i += BATCH_SIZE) {
@@ -281,7 +328,6 @@ serve(async (req) => {
       const promises = batch.map(async (member: any) => {
         const result: any = { userInfo: null, chargeData: null, agencyData: null, hostData: null, salaryData: null };
         
-        // Fetch user-info + type-specific data IN PARALLEL
         const tasks: Promise<void>[] = [];
         
         // Always fetch user-info
@@ -289,11 +335,9 @@ serve(async (req) => {
           fetchUserInfo(sb, member.member_uuid).then(d => { result.userInfo = d; }).catch(() => {})
         );
 
-        // Type-specific fetch
+        // For supporters, use the batch result (already fetched)
         if (member.member_type === "supporter") {
-          tasks.push(
-            fetchMonthlyCharges(sb, member.member_uuid, isManual).then(d => { result.chargeData = d; }).catch(() => {})
-          );
+          result.chargeData = batchChargesMap.get(member.member_uuid) ?? null;
         } else if (member.member_type === "agency") {
           tasks.push(
             fetchAgencyIncome(sb, member.member_uuid).then(d => { result.agencyData = d; }).catch(() => {})
@@ -306,7 +350,7 @@ serve(async (req) => {
 
         await Promise.all(tasks);
 
-        // Agency fallback to salary-api if needed
+        // Agency fallback
         if (member.member_type === "agency" && (!result.agencyData || !result.agencyData.commission)) {
           try {
             result.salaryData = await fetchSalaryApi(sb, member.member_uuid);
