@@ -2,9 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/hmac.ts";
 
-const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
-const TOP_CHARGERS_API_URL = "http://18.219.229.240/website/top-chargers-api.php";
-const AGENCY_TARGET_API_URL = "http://18.219.229.240/website/agency-target-api.php";
+const BD_API_URL = "https://hola-chat.com/bd-data-api.php";
+const TOP_CHARGERS_API_URL = "https://hola-chat.com/top-chargers-api.php";
+const AGENCY_TARGET_API_URL = "https://hola-chat.com/agency-target-api.php";
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 

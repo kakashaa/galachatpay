@@ -212,7 +212,7 @@ serve(async (req) => {
         const currentName = d.name || "";
         const typeUser = d.type_user || 0;
 
-        const BD_API_URL = "http://18.219.229.240/website/bd-data-api.php";
+        const BD_API_URL = "https://hola-chat.com/bd-data-api.php";
         const BD_API_KEY = "ghala2026actions";
 
         // Find if this user is a BD member
