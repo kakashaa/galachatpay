@@ -29,3 +29,24 @@ verify_jwt = false
 
 [functions.bd-sync]
 verify_jwt = false
+
+[functions.ban-report]
+verify_jwt = false
+
+[functions.bd-manage]
+verify_jwt = false
+
+[functions.quick-support]
+verify_jwt = false
+
+[functions.secure-upload]
+verify_jwt = false
+
+[functions.support-chat]
+verify_jwt = false
+
+[functions.test-user-info]
+verify_jwt = false
+
+[functions.extract-svga-name]
+verify_jwt = false

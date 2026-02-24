@@ -208,6 +208,7 @@ const ReportPage = () => {
     setIsSubmitting(true);
 
     try {
+      // 1. Upload evidence to storage
       const fileExt = evidenceFile.name.split(".").pop();
       const fileName = `ban-reports/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const isVideo = evidenceFile.type.startsWith("video/");
@@ -222,6 +223,32 @@ const ReportPage = () => {
         .from("attachments")
         .getPublicUrl(fileName);
 
+      // 2. Submit to external API via edge function
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const submitRes = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/ban-report?action=submit-report`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${anonKey}`,
+            "apikey": anonKey,
+          },
+          body: JSON.stringify({
+            reporter_uuid: reporterGalaId,
+            reporter_name: galaUser?.name || reporterGalaId,
+            target_uuid: reportedUserId,
+            target_name: reportedUserId,
+            reason_type: banType === "other" ? customReason || "other" : (selectedBanType?.apiType || banType),
+            evidence_url: urlData.publicUrl,
+            evidence_type: isVideo ? "video" : "image",
+            description,
+          }),
+        }
+      );
+      const apiResult = await submitRes.json();
+      console.log("External API result:", apiResult);
       const { data, error } = await supabase
         .from("ban_reports")
         .insert({
@@ -236,8 +263,9 @@ const ReportPage = () => {
         .select()
         .single();
 
-      if (error) throw error;
-
+      if (!submitRes.ok) {
+        console.error("External API error:", apiResult);
+      }
       try {
         await notifyNewBanReport({
           id: data.id,
@@ -277,18 +305,39 @@ const ReportPage = () => {
     setSelectedReport(null);
 
     try {
-      const { data, error } = await supabase
-        .from("ban_reports")
-        .select("*")
-        .eq("reported_user_id", searchQuery.trim())
-        .eq("is_verified", true)
-        .order("created_at", { ascending: false });
+      // Use direct fetch with query params
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/ban-report?action=search-bans&uuid=${encodeURIComponent(searchQuery.trim())}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${anonKey}`,
+            "apikey": anonKey,
+          },
+        }
+      );
+      const apiData = await res.json();
 
-      if (error) throw error;
+      if (apiData?.data && Array.isArray(apiData.data)) {
+        setSearchResults(apiData.data as BanReport[]);
+        if (apiData.data.length === 0) {
+          toast.info("لا توجد بلاغات على هذا الآيدي");
+        }
+      } else {
+        // Fallback to local
+        const { data: localData, error: localError } = await supabase
+          .from("ban_reports")
+          .select("*")
+          .eq("reported_user_id", searchQuery.trim())
+          .eq("is_verified", true)
+          .order("created_at", { ascending: false });
 
-      setSearchResults((data || []) as unknown as BanReport[]);
-      if (!data?.length) {
-        toast.info("لا توجد بلاغات على هذا الآيدي");
+        if (localError) throw localError;
+        setSearchResults((localData || []) as unknown as BanReport[]);
+        if (!localData?.length) {
+          toast.info("لا توجد بلاغات على هذا الآيدي");
+        }
       }
     } catch (error) {
       console.error("Error:", error);
@@ -302,14 +351,32 @@ const ReportPage = () => {
     if (!reporterGalaId.trim()) return;
     setIsLoadingMyReports(true);
     try {
-      const { data, error } = await supabase
-        .from("ban_reports")
-        .select("*")
-        .eq("reporter_gala_id", reporterGalaId.trim())
-        .order("created_at", { ascending: false });
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/ban-report?action=my-reports&uuid=${encodeURIComponent(reporterGalaId.trim())}`,
+        {
+          headers: {
+            "Authorization": `Bearer ${anonKey}`,
+            "apikey": anonKey,
+          },
+        }
+      );
+      const apiData = await res.json();
 
-      if (error) throw error;
-      setMyReports((data || []) as unknown as BanReport[]);
+      if (apiData?.data && Array.isArray(apiData.data)) {
+        setMyReports(apiData.data as BanReport[]);
+      } else {
+        // Fallback to local
+        const { data, error } = await supabase
+          .from("ban_reports")
+          .select("*")
+          .eq("reporter_gala_id", reporterGalaId.trim())
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setMyReports((data || []) as unknown as BanReport[]);
+      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
