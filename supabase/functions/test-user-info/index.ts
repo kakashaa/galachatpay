@@ -28,6 +28,8 @@ serve(async (req) => {
 
   const results = await Promise.all([
     testEndpoint("agency-target-api", `${BASE}/agency-target-api.php?key=${KEY}&uuid=${uuid}&year=${year}&month=${month}`),
+    testEndpoint("bd-data-user-charges", `${BASE}/bd-data-api.php?key=${KEY}&action=user-charges&uuid=${uuid}&year=${year}&month=${month}`),
+    testEndpoint("top-chargers-api", `${BASE}/top-chargers-api.php?key=${KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${month}`),
   ]);
 
   return new Response(JSON.stringify(results, null, 2), {
