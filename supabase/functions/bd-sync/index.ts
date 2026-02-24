@@ -590,6 +590,10 @@ serve(async (req) => {
       }
     }
 
+    // BD-scoped dedup: track which diffs have been processed per BD in THIS sync cycle
+    // Prevents the batch API (which returns BD-aggregate data) from crediting all supporters
+    const bdCycleDiffs = new Map<string, Set<number>>();
+
     // Now process members sequentially (DB writes need ordering for commission safety)
     for (const member of members) {
       const bd = bdMap[member.bd_uuid];
@@ -671,44 +675,89 @@ serve(async (req) => {
         };
 
         if (chargeDiff > 0) {
+          // ── BD-wide in-memory dedup: prevent batch API from crediting all supporters ──
+          const bdKey = member.bd_uuid;
+          if (!bdCycleDiffs.has(bdKey)) bdCycleDiffs.set(bdKey, new Set());
+          const cycleSet = bdCycleDiffs.get(bdKey)!;
+
+          if (cycleSet.has(chargeDiff)) {
+            // Same diff already processed for another supporter in this BD during this sync
+            console.log(`[SYNC] supporter ${member.member_uuid}: DUPLICATE BD-aggregate diff ${chargeDiff}, skipping commission (already attributed in this cycle)`);
+            // Still update monthly_charges tracking but NO commission
+            await sb.from("bd_members").update({ monthly_charges: effectiveMonthlyCharges, last_daily_charges: effectiveMonthlyCharges }).eq("id", member.id);
+            synced++;
+            continue;
+          }
+
+          // Also check DB: any supporter in this BD got same source_amount recently?
           const { data: existingLog } = await sb.from("bd_commission_logs")
-            .select("id")
-            .eq("bd_uuid", member.bd_uuid).eq("member_uuid", member.member_uuid)
+            .select("id, member_uuid")
+            .eq("bd_uuid", member.bd_uuid)
             .eq("month", month).eq("source_amount", chargeDiff)
-            .gte("created_at", new Date(Date.now() - 2 * 60 * 1000).toISOString())
+            .gte("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString())
+            .limit(1)
             .maybeSingle();
 
-          if (!existingLog) {
-            const pct = bd.user_commission_pct || 2;
-            // Convert coins to USD first (7500 coins = $1), then take commission %
-            const chargeUSD = chargeDiff / 7500;
-            const commissionAmount = Math.round((chargeUSD * pct / 100) * 100) / 100;
-
-            updateObj.current_month_commission = (fresh?.current_month_commission || 0) + commissionAmount;
-            updateObj.total_commission = (fresh?.total_commission || 0) + commissionAmount;
-
-            await sb.from("bd_commission_logs").insert({
-              bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
-              member_type: "supporter", month,
-              source_amount: chargeDiff, commission_pct: pct, amount: commissionAmount,
-            });
-
-            supporterSourceMap.set(member.member_uuid, loggedSourceTotal + chargeDiff);
-
-            const { data: freshBd } = await sb.from("bd_commission_settings")
-              .select("current_month_earnings, total_earned").eq("bd_uuid", member.bd_uuid).maybeSingle();
-            await sb.from("bd_commission_settings").update({
-              current_month_earnings: (freshBd?.current_month_earnings || 0) + commissionAmount,
-              total_earned: (freshBd?.total_earned || 0) + commissionAmount,
-            }).eq("bd_uuid", member.bd_uuid);
-
-            await sb.from("notifications").insert({
-              title: "💰 عمولة جديدة",
-              body: `عمولة $${commissionAmount.toFixed(2)} من الداعم ${member.member_name} (${pct}% من ${chargeDiff.toLocaleString()} كونزه)`,
-              target: "user", user_uuid: member.bd_uuid,
-            });
-            commissionUpdates++;
+          if (existingLog) {
+            console.log(`[SYNC] supporter ${member.member_uuid}: diff ${chargeDiff} already logged for ${(existingLog as any).member_uuid} in DB, skipping`);
+            await sb.from("bd_members").update({ monthly_charges: effectiveMonthlyCharges, last_daily_charges: effectiveMonthlyCharges }).eq("id", member.id);
+            synced++;
+            continue;
           }
+
+          // Verify this supporter actually charged using individual API
+          let isActualCharger = true;
+          try {
+            const individualData = await fetchUserCharges(sb, member.member_uuid, true);
+            const monthTotal = toNum(individualData?.charges?.month?.total);
+            const recentCount = Array.isArray(individualData?.recent) ? individualData.recent.length : 0;
+            console.log(`[SYNC] supporter ${member.member_uuid}: individual API month.total=${monthTotal}, recent=${recentCount}`);
+            // If individual API shows 0 monthly charges and no recent activity, this supporter didn't charge
+            if (monthTotal === 0 && recentCount === 0) {
+              isActualCharger = false;
+              console.log(`[SYNC] supporter ${member.member_uuid}: individual API confirms NO charges, skipping commission`);
+            }
+          } catch (e) {
+            console.log(`[SYNC] supporter ${member.member_uuid}: individual API check failed, proceeding cautiously`);
+          }
+
+          if (!isActualCharger) {
+            await sb.from("bd_members").update({ monthly_charges: effectiveMonthlyCharges, last_daily_charges: effectiveMonthlyCharges }).eq("id", member.id);
+            synced++;
+            continue;
+          }
+
+          // Mark this diff as processed for this BD
+          cycleSet.add(chargeDiff);
+
+          const pct = bd.user_commission_pct || 2;
+          const chargeUSD = chargeDiff / 7500;
+          const commissionAmount = Math.round((chargeUSD * pct / 100) * 100) / 100;
+
+          updateObj.current_month_commission = (fresh?.current_month_commission || 0) + commissionAmount;
+          updateObj.total_commission = (fresh?.total_commission || 0) + commissionAmount;
+
+          await sb.from("bd_commission_logs").insert({
+            bd_uuid: member.bd_uuid, member_uuid: member.member_uuid,
+            member_type: "supporter", month,
+            source_amount: chargeDiff, commission_pct: pct, amount: commissionAmount,
+          });
+
+          supporterSourceMap.set(member.member_uuid, loggedSourceTotal + chargeDiff);
+
+          const { data: freshBd } = await sb.from("bd_commission_settings")
+            .select("current_month_earnings, total_earned").eq("bd_uuid", member.bd_uuid).maybeSingle();
+          await sb.from("bd_commission_settings").update({
+            current_month_earnings: (freshBd?.current_month_earnings || 0) + commissionAmount,
+            total_earned: (freshBd?.total_earned || 0) + commissionAmount,
+          }).eq("bd_uuid", member.bd_uuid);
+
+          await sb.from("notifications").insert({
+            title: "💰 عمولة جديدة",
+            body: `عمولة $${commissionAmount.toFixed(2)} من الداعم ${member.member_name} (${pct}% من ${chargeDiff.toLocaleString()} كونزه)`,
+            target: "user", user_uuid: member.bd_uuid,
+          });
+          commissionUpdates++;
         }
 
         await sb.from("bd_members").update(updateObj).eq("id", member.id);
