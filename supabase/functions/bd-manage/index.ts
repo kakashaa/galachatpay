@@ -848,8 +848,8 @@ serve(async (req) => {
 
         // Update cron schedule
         try {
-          // Remove existing cron jobs
-          await sb.rpc("execute_sql" as any, {} as any).throwOnError().then(() => {}).catch(() => {});
+          // We can't directly manage pg_cron from edge functions
+          // but we store the setting so the next sync uses it
           // We can't directly manage pg_cron from edge functions, 
           // but we store the setting so the next sync uses it
         } catch {}

@@ -53,69 +53,52 @@ async function fetchWithRetry(url: string, retries = 1): Promise<Response | null
   return null;
 }
 
-// ── API 1: batch monthly-charges (for ALL supporters at once) ──
-async function fetchBatchMonthlyCharges(
+// ── API 1: fetch monthly charges for ONE supporter individually ──
+async function fetchIndividualMonthlyCharges(
   sb: ReturnType<typeof supabaseAdmin>,
-  uuids: string[],
+  uuid: string,
   skipCache = false
-): Promise<Map<string, number>> {
-  const result = new Map<string, number>();
-  if (uuids.length === 0) return result;
-
-  // Check cache first for non-manual syncs
-  const uncachedUuids: string[] = [];
+): Promise<number | null> {
+  const cacheKey = `monthly_charges_${uuid}`;
   if (!skipCache) {
-    for (const uuid of uuids) {
-      const cached = await getCached(sb, `monthly_charges_${uuid}`);
-      if (cached !== null && typeof cached === 'number') {
-        result.set(uuid, cached);
-      } else {
-        uncachedUuids.push(uuid);
-      }
-    }
-  } else {
-    uncachedUuids.push(...uuids);
+    const cached = await getCached(sb, cacheKey);
+    if (cached !== null && typeof cached === 'number') return cached;
   }
 
-  if (uncachedUuids.length === 0) {
-    console.log(`[BATCH] all ${uuids.length} supporters served from cache`);
-    return result;
-  }
-
-  // Build batch request with year/month
   const now = new Date();
   const year = now.getUTCFullYear();
   const monthNum = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const url = `${TOP_CHARGERS_API_URL}?key=${BD_API_KEY}&action=top-chargers&uuids=${uncachedUuids.join(",")}&year=${year}&month=${monthNum}`;
+  // Call with SINGLE uuid to avoid batch API returning same value for all
+  const url = `${TOP_CHARGERS_API_URL}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthNum}`;
 
-  console.log(`[BATCH] fetching URL: ${url}`);
+  console.log(`[INDIVIDUAL] fetching charges for ${uuid}`);
   const res = await fetchWithRetry(url, 2);
   if (!res) {
-    console.error(`[BATCH] API request failed for ${uncachedUuids.length} uuids`);
-    return result;
+    console.error(`[INDIVIDUAL] API request failed for ${uuid}`);
+    return null;
   }
 
   try {
     const rawText = await res.text();
-    console.log(`[BATCH] raw response (first 300 chars): ${rawText.slice(0, 300)}`);
+    console.log(`[INDIVIDUAL] response for ${uuid} (first 200 chars): ${rawText.slice(0, 200)}`);
     const data = JSON.parse(rawText);
     if (data?.status === "success" && Array.isArray(data.data)) {
       for (const entry of data.data) {
-        const uuid = String(entry.uuid);
+        const entryUuid = String(entry.uuid);
         const total = Number(entry.total_charges) || 0;
-        result.set(uuid, total);
-        // Cache each result individually
-        await setCache(sb, `monthly_charges_${uuid}`, total);
+        if (entryUuid === uuid || data.data.length === 1) {
+          await setCache(sb, cacheKey, total);
+          console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total}`);
+          return total;
+        }
       }
-      console.log(`[BATCH] got charges for ${data.data.length} supporters`);
-    } else {
-      console.log(`[BATCH] unexpected response:`, JSON.stringify(data).slice(0, 200));
     }
+    console.log(`[INDIVIDUAL] ${uuid}: no matching entry in response`);
+    return null;
   } catch (e) {
-    console.error(`[BATCH] parse error:`, e);
+    console.error(`[INDIVIDUAL] parse error for ${uuid}:`, e);
+    return null;
   }
-
-  return result;
 }
 
 // ── API 2: agency-target (for agencies - uses total_user_salary) ──
@@ -427,13 +410,12 @@ serve(async (req) => {
     let commissionUpdates = 0;
     let infoUpdates = 0;
 
-    // ── Step 1: Batch-fetch ALL supporter charges in ONE API call ──
+    // ── Step 1: Identify supporter UUIDs ──
     const supporterUuids = members
       .filter((m: any) => m.member_type === "supporter")
       .map((m: any) => m.member_uuid);
 
-    const batchChargesMap = await fetchBatchMonthlyCharges(sb, supporterUuids, isManual);
-    console.log(`[SYNC] batch charges fetched: ${batchChargesMap.size}/${supporterUuids.length} supporters`);
+    console.log(`[SYNC] ${supporterUuids.length} supporters to process individually`);
 
     // Prefetch already-counted supporter source amounts for this month (for anti-rollback safety)
     const supporterSourceMap = new Map<string, number>();
@@ -468,9 +450,13 @@ serve(async (req) => {
           fetchUserInfo(sb, member.member_uuid).then(d => { result.userInfo = d; }).catch(() => {})
         );
 
-        // For supporters, use the batch result (already fetched)
+        // For supporters, fetch charges INDIVIDUALLY (not batch - batch API returns same value for all)
         if (member.member_type === "supporter") {
-          result.chargeData = batchChargesMap.get(member.member_uuid) ?? null;
+          tasks.push(
+            fetchIndividualMonthlyCharges(sb, member.member_uuid, isManual)
+              .then(d => { result.chargeData = d; })
+              .catch(() => {})
+          );
         } else if (member.member_type === "agency") {
           tasks.push(
             fetchAgencyTarget(sb, member.member_uuid, isManual).then(d => { result.agencyData = d; }).catch(() => {})
@@ -494,9 +480,10 @@ serve(async (req) => {
     // Build one-shot fallback map for all supporters (manual sync only)
     let recentFallbackByMember = new Map<string, number>();
     if (isManual && supporterUuids.length > 0) {
-      // Identify supporters where aggregate API returned 0 or stale data
+      // Identify supporters where individual API returned 0 or stale data
       const staleSupporters = supporterUuids.filter(uuid => {
-        const apiVal = batchChargesMap.get(uuid) ?? 0;
+        const prefetched = memberDataMap.get(uuid);
+        const apiVal = prefetched?.chargeData ?? 0;
         const dbVal = toNum(members.find((m: any) => m.member_uuid === uuid)?.monthly_charges);
         const loggedVal = supporterSourceMap.get(uuid) || 0;
         return apiVal <= Math.max(dbVal, loggedVal);
