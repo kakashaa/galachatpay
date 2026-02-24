@@ -43,6 +43,7 @@ const BDVerification = lazy(() => import("./pages/BDVerification"));
 const BDDashboard = lazy(() => import("./pages/BDDashboard"));
 const BDAddMember = lazy(() => import("./pages/BDAddMember"));
 const BDWithdraw = lazy(() => import("./pages/BDWithdraw"));
+const BanCheckPage = lazy(() => import("./pages/BanCheckPage"));
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,7 @@ const App = () => {
                   <Route path="/bd/dashboard" element={<BDDashboard />} />
                   <Route path="/bd/add-member" element={<BDAddMember />} />
                   <Route path="/bd/withdraw" element={<BDWithdraw />} />
+                  <Route path="/ban-check" element={<BanCheckPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
