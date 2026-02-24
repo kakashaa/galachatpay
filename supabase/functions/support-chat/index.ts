@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const API_BASE = "http://18.219.229.240/website/support-chat-api.php";
+const API_BASE = "https://hola-chat.com/support-chat-api.php";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
