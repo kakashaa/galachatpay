@@ -55,6 +55,7 @@ const BAN_TYPES: {
   icon: React.ReactNode;
   description: string;
   requiresVideo: boolean;
+  rewardRequiresVideo?: boolean;
   reward?: number;
   duration?: string;
   apiType: string;
@@ -65,8 +66,9 @@ const BAN_TYPES: {
     label: "ترويج",
     icon: <Megaphone className="w-6 h-6" />,
     description: "الترويج لتطبيق آخر",
-    requiresVideo: true,
+    requiresVideo: false,
     reward: 50000,
+    rewardRequiresVideo: true,
     duration: "دائم (حظر الجهاز)",
     apiType: "promotion",
   },
@@ -164,10 +166,7 @@ const ReportPage = () => {
     const isVideo = file.type.startsWith("video/");
     const isImage = file.type.startsWith("image/");
 
-    if (selectedBanType?.requiresVideo && !isVideo) {
-      toast.error("يجب رفع فيديو لهذا النوع من البلاغات");
-      return;
-    }
+    // No longer force video-only for any type
 
     if (!isVideo && !isImage) {
       toast.error("يجب رفع صورة أو فيديو");
@@ -237,7 +236,7 @@ const ReportPage = () => {
             reason_type: selectedBanType?.apiType || banType,
             evidence_url: urlData.publicUrl,
             evidence_type: isVideo ? "video" : "image",
-            description,
+            description: banType === "other" && customReason ? `${customReason}\n${description}` : description,
           }),
         }
       );
@@ -263,7 +262,7 @@ const ReportPage = () => {
             reporter_gala_id: reporterGalaId,
             reported_user_id: reportedUserId,
             ban_type: banType,
-            description,
+            description: banType === "other" && customReason ? `${customReason}\n${description}` : description,
             evidence_url: urlData.publicUrl,
             evidence_type: isVideo ? "video" : "image",
             reward_amount: selectedBanType?.reward || null,
@@ -718,11 +717,11 @@ const ReportPage = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">رفع {selectedBanType?.requiresVideo ? "فيديو" : "صورة أو فيديو"} الإثبات <span className="text-destructive">*</span></label>
+                    <label className="block text-sm font-medium">رفع صورة أو فيديو الإثبات <span className="text-destructive">*</span></label>
                     <p className="text-xs text-muted-foreground">الحد الأقصى 100MB</p>
-                    {selectedBanType?.requiresVideo && (
+                    {selectedBanType?.rewardRequiresVideo && (
                       <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-sm text-warning">
-                        <Video className="w-4 h-4 inline ml-2" />يجب رفع فيديو للحصول على المكافأة (50,000 كوينز)
+                        <Video className="w-4 h-4 inline ml-2" />يفضّل رفع فيديو للحصول على المكافأة (50,000 كوينز)
                       </div>
                     )}
                     {evidencePreview ? (
@@ -736,10 +735,10 @@ const ReportPage = () => {
                       </div>
                     ) : (
                       <label className="block border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-destructive/50 transition-colors">
-                        <input type="file" accept={selectedBanType?.requiresVideo ? "video/*" : "image/*,video/*"} onChange={handleFileChange} className="hidden" />
+                        <input type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" />
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                          {selectedBanType?.requiresVideo ? <Video className="w-10 h-10" /> : <Upload className="w-10 h-10" />}
-                          <span>اضغط لرفع {selectedBanType?.requiresVideo ? "الفيديو" : "الملف"}</span>
+                          <Upload className="w-10 h-10" />
+                          <span>اضغط لرفع صورة أو فيديو</span>
                           <span className="text-xs">الحد الأقصى 100MB</span>
                         </div>
                       </label>
