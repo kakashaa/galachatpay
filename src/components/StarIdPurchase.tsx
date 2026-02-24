@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { matchesPattern } from "@/utils/idPatternValidator";
+import { syncBdMemberIdChange } from "@/utils/bdMemberIdSync";
 
 /** ID patterns available for star purchase, with their star cost */
 const STAR_ID_OPTIONS = [
@@ -123,6 +124,8 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
 
       // Notifications
       if (isGift) {
+        // Sync BD member if recipient is a BD member
+        await syncBdMemberIdChange(recipientUuid.trim(), newId.trim(), "");
         // Notify recipient
         await supabase.from("notifications").insert([
           {
@@ -146,7 +149,8 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
           target: "user",
         });
       } else {
-        // Self purchase - update local user
+        // Self purchase - sync BD member and update local user
+        await syncBdMemberIdChange(user.uuid, newId.trim(), user.name);
         setUser({ ...user, uuid: newId.trim() });
         await supabase.from("notifications").insert({
           user_uuid: newId.trim(),
