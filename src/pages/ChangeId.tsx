@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
+import { syncBdMemberIdChange } from "@/utils/bdMemberIdSync";
 
 /** Allowed digit lengths per level range */
 const LEVEL_ALLOWED_LENGTHS: { min: number; max: number; lengths: number[] }[] = [
@@ -270,8 +271,11 @@ const ChangeId: React.FC = () => {
           target: "user",
         });
 
-        setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
-        setUser({ ...user, uuid: trimmedId });
+         // Sync BD member if applicable
+         await syncBdMemberIdChange(user.uuid, trimmedId, user.name);
+
+         setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
+         setUser({ ...user, uuid: trimmedId });
         setStatus("success");
      } catch { 
        setStatus("error"); 
@@ -375,6 +379,9 @@ const ChangeId: React.FC = () => {
           target: "user",
         },
       ]);
+
+      // Sync BD member if recipient is a BD member
+      await syncBdMemberIdChange(trimmedRecipient, trimmedId, "");
 
       setGiftCount(prev => prev + 1);
       setStatus("success");
