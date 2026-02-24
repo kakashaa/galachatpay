@@ -43,6 +43,8 @@ interface BanReport {
   evidence_type: string;
   created_at: string;
   is_verified: boolean;
+  is_rejected?: boolean;
+  status?: string;
   expires_at: string | null;
   reward_amount: number | null;
   reward_paid: boolean;
@@ -416,7 +418,15 @@ const ReportPage = () => {
   };
 
   const getStatusBadge = (report: BanReport) => {
-    if (report.is_verified) {
+    if (report.is_rejected || report.status === 'rejected') {
+      return (
+        <span className="flex items-center gap-1 bg-destructive/20 text-destructive px-2 py-1 rounded-full text-xs font-bold">
+          <AlertTriangle className="w-3 h-3" />
+          مرفوض
+        </span>
+      );
+    }
+    if (report.is_verified || report.status === 'verified') {
       return (
         <span className="flex items-center gap-1 bg-success/20 text-success px-2 py-1 rounded-full text-xs font-bold">
           <CheckCircle className="w-3 h-3" />
@@ -430,6 +440,17 @@ const ReportPage = () => {
         قيد المراجعة
       </span>
     );
+  };
+
+  const getBanDurationLabel = (report: BanReport) => {
+    if (report.expires_at) {
+      return { label: "⏰ مؤقت", className: "bg-warning/20 text-warning" };
+    }
+    const banTypeInfo = BAN_TYPES.find(t => t.value === report.ban_type || t.apiType === report.ban_type);
+    if (banTypeInfo?.apiDuration) {
+      return { label: `⏰ ${banTypeInfo.duration}`, className: "bg-warning/20 text-warning" };
+    }
+    return { label: "🔒 دائم", className: "bg-purple-500/20 text-purple-500" };
   };
 
   // Success view
@@ -783,9 +804,7 @@ const ReportPage = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="bg-destructive/20 text-destructive px-3 py-1 rounded-full text-sm font-bold">{getBanTypeLabel(report.ban_type)}</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${report.expires_at ? "bg-warning/20 text-warning" : "bg-purple-500/20 text-purple-500"}`}>
-                            {report.expires_at ? "⏰ مؤقت" : "🔒 دائم"}
-                          </span>
+                          {(() => { const dur = getBanDurationLabel(report); return <span className={`px-2 py-1 rounded-full text-xs font-bold ${dur.className}`}>{dur.label}</span>; })()}
                         </div>
                         <span className="text-xs text-muted-foreground">{new Date(report.created_at).toLocaleDateString("ar-EG")}</span>
                       </div>
@@ -855,7 +874,7 @@ const ReportPage = () => {
                 {evidenceLoadError && <div className="mt-3 text-sm text-muted-foreground bg-muted/40 border border-border rounded-lg p-3">{evidenceLoadError}</div>}
                 <div className="mt-4 space-y-2 bg-muted/30 rounded-lg p-4">
                   <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">نوع الحظر:</span><span className="font-bold text-destructive">{getBanTypeLabel(selectedReport.ban_type)}</span></div>
-                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">مدة الحظر:</span><span className="font-bold">{selectedReport.expires_at ? "مؤقت" : "دائم 🔒"}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">مدة الحظر:</span><span className="font-bold">{(() => { const dur = getBanDurationLabel(selectedReport); return selectedReport.expires_at ? "مؤقت ⏰" : dur.label; })()}</span></div>
                   {selectedReport.expires_at && (
                     <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">ينتهي في:</span><span className="font-bold text-warning">{new Date(selectedReport.expires_at).toLocaleString("ar-EG")}</span></div>
                   )}
