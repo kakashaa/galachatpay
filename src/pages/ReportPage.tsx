@@ -37,7 +37,7 @@ interface BanReport {
   id: string;
   reported_user_id: string;
   reporter_gala_id: string;
-  ban_type: BanType;
+  ban_type: string;
   description: string;
   evidence_url: string;
   evidence_type: string;
@@ -45,6 +45,7 @@ interface BanReport {
   is_verified: boolean;
   is_rejected?: boolean;
   status?: string;
+  duration_hours?: number | null;
   expires_at: string | null;
   reward_amount: number | null;
   reward_paid: boolean;
@@ -116,7 +117,130 @@ const BAN_TYPES: {
   },
 ];
 
+const VERIFIED_STATUSES = new Set([
+  "verified",
+  "approve",
+  "approved",
+  "accept",
+  "accepted",
+  "success",
+  "done",
+  "1",
+  "true",
+]);
 
+const REJECTED_STATUSES = new Set([
+  "rejected",
+  "reject",
+  "denied",
+  "declined",
+  "refused",
+  "2",
+  "-1",
+  "false",
+]);
+
+const toBoolean = (value: unknown): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return ["1", "true", "yes", "on"].includes(normalized);
+  }
+  return false;
+};
+
+const normalizeStatus = (raw: Record<string, unknown>): "verified" | "rejected" | "pending" => {
+  const statusCandidates = [
+    raw.status,
+    raw.review_status,
+    raw.result_status,
+    raw.result,
+    raw.state,
+  ];
+
+  for (const candidate of statusCandidates) {
+    if (candidate === null || candidate === undefined) continue;
+    const normalized = String(candidate).trim().toLowerCase();
+    if (REJECTED_STATUSES.has(normalized)) return "rejected";
+    if (VERIFIED_STATUSES.has(normalized)) return "verified";
+  }
+
+  if (
+    toBoolean(raw.is_rejected) ||
+    toBoolean(raw.rejected) ||
+    toBoolean(raw.is_denied)
+  ) {
+    return "rejected";
+  }
+
+  if (
+    toBoolean(raw.is_verified) ||
+    toBoolean(raw.verified) ||
+    toBoolean(raw.is_approved) ||
+    toBoolean(raw.approved)
+  ) {
+    return "verified";
+  }
+
+  return "pending";
+};
+
+const extractDurationHours = (raw: Record<string, unknown>): number | null => {
+  const candidates = [
+    raw.duration_hours,
+    raw.ban_duration_hours,
+    raw.duration,
+    raw.ban_duration,
+    raw.hours,
+    raw.ban_hours,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === "") continue;
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const normalizeBanType = (raw: Record<string, unknown>): string => {
+  return String(
+    raw.ban_type ?? raw.reason_type ?? raw.report_type ?? raw.violation_type ?? "other"
+  )
+    .trim()
+    .toLowerCase();
+};
+
+const normalizeReportFromApi = (raw: Record<string, unknown>): BanReport => {
+  const normalizedStatus = normalizeStatus(raw);
+  const rewardRaw = raw.reward_amount;
+
+  return {
+    id: String(raw.id ?? crypto.randomUUID()),
+    reported_user_id: String(raw.reported_user_id ?? raw.target_uuid ?? raw.target_id ?? ""),
+    reporter_gala_id: String(raw.reporter_gala_id ?? raw.reporter_uuid ?? raw.reporter_id ?? ""),
+    ban_type: normalizeBanType(raw),
+    description: String(raw.description ?? raw.reason ?? ""),
+    evidence_url: String(raw.evidence_url ?? raw.proof_url ?? raw.media_url ?? ""),
+    evidence_type: String(raw.evidence_type ?? raw.media_type ?? "image"),
+    created_at: String(raw.created_at ?? new Date().toISOString()),
+    is_verified: normalizedStatus === "verified",
+    is_rejected: normalizedStatus === "rejected",
+    status: normalizedStatus,
+    duration_hours: extractDurationHours(raw),
+    expires_at: raw.expires_at ? String(raw.expires_at) : raw.expire_at ? String(raw.expire_at) : null,
+    reward_amount:
+      rewardRaw === null || rewardRaw === undefined || rewardRaw === ""
+        ? null
+        : Number(rewardRaw),
+    reward_paid: toBoolean(raw.reward_paid),
+    admin_notes: raw.admin_notes ? String(raw.admin_notes) : null,
+  };
+};
 
 const ReportPage = () => {
   const navigate = useNavigate();
@@ -330,9 +454,22 @@ const ReportPage = () => {
       const apiData = await res.json();
 
       if (apiData?.data && Array.isArray(apiData.data)) {
-        setSearchResults(apiData.data as BanReport[]);
-        if (apiData.data.length === 0) {
-          toast.info("لا توجد بلاغات على هذا الآيدي");
+        const normalizedReports = apiData.data.map((item: Record<string, unknown>) =>
+          normalizeReportFromApi(item)
+        );
+
+        const activeBans = normalizedReports.filter(
+          (report) => report.is_verified && !report.is_rejected
+        );
+
+        setSearchResults(activeBans);
+
+        if (activeBans.length === 0) {
+          if (normalizedReports.some((report) => report.is_rejected)) {
+            toast.info("لا يوجد حظر فعّال: البلاغات على هذا الآيدي مرفوضة");
+          } else {
+            toast.info("لا توجد حالات حظر فعّالة على هذا الآيدي");
+          }
         }
       } else {
         // Fallback to local
@@ -344,9 +481,15 @@ const ReportPage = () => {
           .order("created_at", { ascending: false });
 
         if (localError) throw localError;
-        setSearchResults((localData || []) as unknown as BanReport[]);
-        if (!localData?.length) {
-          toast.info("لا توجد بلاغات على هذا الآيدي");
+
+        const normalizedLocal = (localData || []).map((item) =>
+          normalizeReportFromApi(item as unknown as Record<string, unknown>)
+        );
+
+        setSearchResults(normalizedLocal.filter((report) => report.is_verified && !report.is_rejected));
+
+        if (!normalizedLocal.length) {
+          toast.info("لا توجد حالات حظر فعّالة على هذا الآيدي");
         }
       }
     } catch (error) {
@@ -375,7 +518,10 @@ const ReportPage = () => {
       const apiData = await res.json();
 
       if (apiData?.data && Array.isArray(apiData.data)) {
-        setMyReports(apiData.data as BanReport[]);
+        const normalizedReports = apiData.data.map((item: Record<string, unknown>) =>
+          normalizeReportFromApi(item)
+        );
+        setMyReports(normalizedReports);
       } else {
         // Fallback to local
         const { data, error } = await supabase
@@ -385,7 +531,11 @@ const ReportPage = () => {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
-        setMyReports((data || []) as unknown as BanReport[]);
+        setMyReports(
+          (data || []).map((item) =>
+            normalizeReportFromApi(item as unknown as Record<string, unknown>)
+          )
+        );
       }
     } catch (error) {
       console.error("Error:", error);
@@ -413,12 +563,21 @@ const ReportPage = () => {
     setRequestId("");
   };
 
-  const getBanTypeLabel = (type: BanType) => {
-    return BAN_TYPES.find((t) => t.value === type)?.label || type;
+  const getBanTypeMeta = (type: string) => {
+    const normalizedType = String(type || "").trim().toLowerCase();
+    const aliasedType = normalizedType === "rules" ? "violation" : normalizedType;
+    return BAN_TYPES.find((t) => t.value === aliasedType || t.apiType === aliasedType);
+  };
+
+  const getBanTypeLabel = (type: string) => {
+    const typeMeta = getBanTypeMeta(type);
+    return typeMeta?.label || type || "غير محدد";
   };
 
   const getStatusBadge = (report: BanReport) => {
-    if (report.is_rejected || report.status === 'rejected') {
+    const normalizedStatus = normalizeStatus(report as unknown as Record<string, unknown>);
+
+    if (normalizedStatus === "rejected") {
       return (
         <span className="flex items-center gap-1 bg-destructive/20 text-destructive px-2 py-1 rounded-full text-xs font-bold">
           <AlertTriangle className="w-3 h-3" />
@@ -426,7 +585,8 @@ const ReportPage = () => {
         </span>
       );
     }
-    if (report.is_verified || report.status === 'verified') {
+
+    if (normalizedStatus === "verified") {
       return (
         <span className="flex items-center gap-1 bg-success/20 text-success px-2 py-1 rounded-full text-xs font-bold">
           <CheckCircle className="w-3 h-3" />
@@ -434,6 +594,7 @@ const ReportPage = () => {
         </span>
       );
     }
+
     return (
       <span className="flex items-center gap-1 bg-warning/20 text-warning px-2 py-1 rounded-full text-xs font-bold">
         <Clock className="w-3 h-3" />
@@ -443,14 +604,25 @@ const ReportPage = () => {
   };
 
   const getBanDurationLabel = (report: BanReport) => {
+    if (report.duration_hours && report.duration_hours > 0) {
+      return { label: `⏰ ${report.duration_hours} ساعة`, className: "bg-warning/20 text-warning" };
+    }
+
     if (report.expires_at) {
       return { label: "⏰ مؤقت", className: "bg-warning/20 text-warning" };
     }
-    const banTypeInfo = BAN_TYPES.find(t => t.value === report.ban_type || t.apiType === report.ban_type);
-    if (banTypeInfo?.apiDuration) {
-      return { label: `⏰ ${banTypeInfo.duration}`, className: "bg-warning/20 text-warning" };
+
+    const typeMeta = getBanTypeMeta(report.ban_type);
+    if (typeMeta?.apiDuration) {
+      return { label: `⏰ ${typeMeta.duration}`, className: "bg-warning/20 text-warning" };
     }
-    return { label: "🔒 دائم", className: "bg-purple-500/20 text-purple-500" };
+
+    const normalizedType = String(report.ban_type || "").toLowerCase();
+    if (normalizedType === "promotion") {
+      return { label: "🔒 دائم", className: "bg-purple-500/20 text-purple-500" };
+    }
+
+    return { label: "⏰ 24 ساعة", className: "bg-warning/20 text-warning" };
   };
 
   // Success view
