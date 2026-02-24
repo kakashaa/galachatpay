@@ -7,6 +7,8 @@ const TOP_CHARGERS_API_URL = "https://hola-chat.com/top-chargers-api.php";
 const AGENCY_TARGET_API_URL = "https://hola-chat.com/agency-target-api.php";
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MANUAL_FALLBACK_RETRY_DELAY_MS = 5000;
+const MANUAL_FALLBACK_MAX_RETRIES = 2;
 
 const supabaseAdmin = () =>
   createClient(
@@ -273,6 +275,12 @@ async function buildRecentFallbackMap(
   return fallbackByMember;
 }
 
+function mergeFallbackMaps(target: Map<string, number>, incoming: Map<string, number>) {
+  for (const [memberUuid, amount] of incoming.entries()) {
+    target.set(memberUuid, (target.get(memberUuid) || 0) + amount);
+  }
+}
+
 // ── API 5: host-salary (for hosts) ─────────────────────────────
 async function fetchHostSalary(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
   const cacheKey = `host_salary_${uuid}`;
@@ -498,9 +506,27 @@ serve(async (req) => {
         console.log(`[SYNC] ${staleSupporters.length}/${supporterUuids.length} supporters have stale API data, fetching fallback individually`);
         recentFallbackByMember = await buildRecentFallbackMap(sb, month, staleSupporters);
 
+        // Retry quickly for unresolved supporters to reduce "wait 5 minutes" scenarios
+        let unresolvedSupporters = staleSupporters.filter(uuid => !recentFallbackByMember.has(uuid));
+        for (let attempt = 1; attempt <= MANUAL_FALLBACK_MAX_RETRIES && unresolvedSupporters.length > 0; attempt++) {
+          console.log(
+            `[SYNC] fallback retry ${attempt}/${MANUAL_FALLBACK_MAX_RETRIES} in ${MANUAL_FALLBACK_RETRY_DELAY_MS}ms for ${unresolvedSupporters.length} supporters`
+          );
+          await new Promise((resolve) => setTimeout(resolve, MANUAL_FALLBACK_RETRY_DELAY_MS));
+
+          const retryMap = await buildRecentFallbackMap(sb, month, unresolvedSupporters);
+          if (retryMap.size > 0) {
+            mergeFallbackMaps(recentFallbackByMember, retryMap);
+          }
+
+          unresolvedSupporters = unresolvedSupporters.filter(uuid => !recentFallbackByMember.has(uuid));
+        }
+
         if (recentFallbackByMember.size > 0) {
           const totalRecovered = [...recentFallbackByMember.values()].reduce((sum, v) => sum + v, 0);
           console.log(`[SYNC] fallback recovered ${totalRecovered} coins for ${recentFallbackByMember.size} supporters`);
+        } else {
+          console.log("[SYNC] fallback did not find new charges yet (likely upstream propagation delay)");
         }
       }
     }
