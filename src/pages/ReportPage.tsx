@@ -234,7 +234,7 @@ const ReportPage = () => {
             reporter_name: galaUser?.name || reporterGalaId,
             target_uuid: reportedUserId,
             target_name: reportedUserId,
-            reason_type: banType === "other" ? customReason || "other" : (selectedBanType?.apiType || banType),
+            reason_type: selectedBanType?.apiType || banType,
             evidence_url: urlData.publicUrl,
             evidence_type: isVideo ? "video" : "image",
             description,
