@@ -241,32 +241,44 @@ const ReportPage = () => {
           }),
         }
       );
-      const apiResult = await submitRes.json();
-      console.log("External API result:", apiResult);
+      let apiResult: any = {};
+      try {
+        apiResult = await submitRes.json();
+        console.log("External API result:", apiResult);
+      } catch {
+        console.warn("Could not parse API response");
+      }
 
-      if (!submitRes.ok) {
+      // If duplicate from external API, still save locally and show success
+      const isDuplicate = !submitRes.ok && apiResult?.error?.includes?.("Duplicate");
+      if (!submitRes.ok && !isDuplicate) {
         console.error("External API error:", apiResult);
       }
 
-      const { data, error } = await supabase
-        .from("ban_reports")
-        .insert({
-          reporter_gala_id: reporterGalaId,
-          reported_user_id: reportedUserId,
-          ban_type: banType,
-          description,
-          evidence_url: urlData.publicUrl,
-          evidence_type: isVideo ? "video" : "image",
-          reward_amount: selectedBanType?.reward || null,
-        })
-        .select()
-        .single();
+      let recordId: string = crypto.randomUUID();
+      try {
+        const { data, error } = await supabase
+          .from("ban_reports")
+          .insert({
+            reporter_gala_id: reporterGalaId,
+            reported_user_id: reportedUserId,
+            ban_type: banType,
+            description,
+            evidence_url: urlData.publicUrl,
+            evidence_type: isVideo ? "video" : "image",
+            reward_amount: selectedBanType?.reward || null,
+          })
+          .select()
+          .single();
 
-      if (error) {
-        console.error("Local DB insert error:", error);
+        if (error) {
+          console.error("Local DB insert error:", error);
+        } else if (data?.id) {
+          recordId = data.id;
+        }
+      } catch (dbErr) {
+        console.error("DB insert exception:", dbErr);
       }
-
-      const recordId = data?.id || crypto.randomUUID();
 
       try {
         await notifyNewBanReport({
