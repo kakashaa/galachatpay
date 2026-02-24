@@ -51,10 +51,26 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // Parse JSON body and send as form-encoded POST data
+      let formBody = "";
+      try {
+        const jsonBody = JSON.parse(body);
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(jsonBody)) {
+          if (key.length <= 50 && String(value).length <= 2000) {
+            params.set(key, String(value));
+          }
+        }
+        formBody = params.toString();
+      } catch {
+        formBody = body;
+      }
+
       response = await fetch(targetUrl.toString(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formBody,
       });
     } else {
       response = await fetch(targetUrl.toString(), {

@@ -77,7 +77,7 @@ const BAN_TYPES: {
     description: "سلوك مخالف لآداب التطبيق",
     requiresVideo: false,
     duration: "24 ساعة",
-    apiType: "normal",
+    apiType: "behavior",
     apiDuration: 24,
   },
   {
@@ -87,7 +87,7 @@ const BAN_TYPES: {
     description: "شتم أو إساءة لفظية",
     requiresVideo: false,
     duration: "24 ساعة",
-    apiType: "normal",
+    apiType: "insult",
     apiDuration: 24,
   },
   {
@@ -97,7 +97,7 @@ const BAN_TYPES: {
     description: "مخالفة نظام وقوانين التطبيق",
     requiresVideo: false,
     duration: "24 ساعة",
-    apiType: "normal",
+    apiType: "rules",
     apiDuration: 24,
   },
   {
@@ -107,7 +107,7 @@ const BAN_TYPES: {
     description: "سبب آخر (حدد السبب)",
     requiresVideo: false,
     duration: "24 ساعة",
-    apiType: "normal",
+    apiType: "other",
     apiDuration: 24,
   },
 ];
