@@ -568,7 +568,7 @@ serve(async (req) => {
         }
       }
 
-      const { error: memberError } = await sb.from("bd_members").insert({
+      const { error: memberError } = await sb.from("bd_members").upsert({
         bd_uuid: invite.bd_uuid,
         member_uuid: invite.member_uuid,
         member_name: userName,
@@ -578,7 +578,7 @@ serve(async (req) => {
         last_daily_charges: initialDaily,
         type_user: userTypeNum,
         is_active: true,
-      });
+      }, { onConflict: "bd_uuid,member_uuid", ignoreDuplicates: false });
 
       if (memberError) return json({ error: memberError.message }, 500);
 
@@ -881,7 +881,7 @@ serve(async (req) => {
         console.log("BD API fetch skipped on admin_add_member (timeout ok):", e);
       }
 
-      const { error } = await sb.from("bd_members").insert({
+      const { error } = await sb.from("bd_members").upsert({
         bd_uuid,
         member_uuid,
         member_name: member_name || "",
@@ -890,7 +890,7 @@ serve(async (req) => {
         monthly_charges: initialMonthly,
         last_daily_charges: initialDaily,
         is_active: true,
-      });
+      }, { onConflict: "bd_uuid,member_uuid", ignoreDuplicates: false });
       if (error) return json({ error: error.message }, 500);
       return json({ success: true, initial_monthly: initialMonthly });
     }
