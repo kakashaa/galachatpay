@@ -82,6 +82,7 @@ async function fetchIndividualMonthlyCharges(
   const year = now.getUTCFullYear();
   const monthNum = String(now.getUTCMonth() + 1).padStart(2, "0");
 
+  // ── Try 1: top-chargers-api ──
   for (const baseUrl of TOP_CHARGERS_API_URLS) {
     const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthNum}`;
 
@@ -102,7 +103,7 @@ async function fetchIndividualMonthlyCharges(
           const total = Number(entry.total_charges) || 0;
           if (entryUuid === uuid || data.data.length === 1) {
             await setCache(sb, cacheKey, total);
-            console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total}`);
+            console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total} (top-chargers)`);
             return total;
           }
         }
@@ -112,7 +113,20 @@ async function fetchIndividualMonthlyCharges(
     }
   }
 
-  console.log(`[INDIVIDUAL] ${uuid}: no matching entry in any provider`);
+  // ── Try 2: user-charges API as fallback (bd-data-api.php) ──
+  console.log(`[INDIVIDUAL] ${uuid}: top-chargers failed, trying user-charges fallback`);
+  const userCharges = await fetchUserCharges(sb, uuid, true);
+  if (userCharges) {
+    const monthTotal = extractMonthChargesTotal(userCharges);
+    if (monthTotal > 0) {
+      await setCache(sb, cacheKey, monthTotal);
+      console.log(`[INDIVIDUAL] ${uuid}: total_charges=${monthTotal} (user-charges fallback)`);
+      return monthTotal;
+    }
+    console.log(`[INDIVIDUAL] ${uuid}: user-charges returned month=${JSON.stringify(userCharges?.charges?.month)}`);
+  }
+
+  console.log(`[INDIVIDUAL] ${uuid}: no data from any provider`);
   return null;
 }
 
