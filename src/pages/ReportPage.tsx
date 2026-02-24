@@ -243,6 +243,11 @@ const ReportPage = () => {
       );
       const apiResult = await submitRes.json();
       console.log("External API result:", apiResult);
+
+      if (!submitRes.ok) {
+        console.error("External API error:", apiResult);
+      }
+
       const { data, error } = await supabase
         .from("ban_reports")
         .insert({
@@ -257,12 +262,15 @@ const ReportPage = () => {
         .select()
         .single();
 
-      if (!submitRes.ok) {
-        console.error("External API error:", apiResult);
+      if (error) {
+        console.error("Local DB insert error:", error);
       }
+
+      const recordId = data?.id || crypto.randomUUID();
+
       try {
         await notifyNewBanReport({
-          id: data.id,
+          id: recordId,
           reporter_gala_id: reporterGalaId,
           reported_user_id: reportedUserId,
           ban_type: banType,
@@ -272,9 +280,9 @@ const ReportPage = () => {
         console.error("Webhook notification failed:", webhookError);
       }
 
-      saveTrackingCode(data.id, "ban_report", reporterGalaId);
+      saveTrackingCode(recordId, "ban_report", reporterGalaId);
 
-      setRequestId(data.id.substring(0, 8).toUpperCase());
+      setRequestId(recordId.substring(0, 8).toUpperCase());
       setIsSuccess(true);
 
       toast.success("✅ تم إرسال البلاغ بنجاح!\nسيتم مراجعته من الإدارة وتنفيذ الحظر بعد الموافقة", {
