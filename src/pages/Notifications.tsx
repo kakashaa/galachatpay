@@ -116,7 +116,7 @@ const Notifications: React.FC = () => {
   };
 
   return (
-    <MobileLayout showHeader headerTitle="الإشعارات" onBack={() => navigate("/dashboard")}>
+    <MobileLayout showHeader headerTitle="الإشعارات" onBack={() => navigate(-1 as any)}>
       <div className="px-4 py-4 space-y-2" dir="rtl">
         {loading ? (
           <div className="flex justify-center py-20">
