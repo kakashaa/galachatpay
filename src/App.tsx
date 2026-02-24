@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import FloatingSupportChat from "@/components/FloatingSupportChat";
 
 const Login = lazy(() => import("./pages/Login"));
 
@@ -108,7 +107,6 @@ const App = () => {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
-              <FloatingSupportChat />
             </BrowserRouter>
           </TooltipProvider>
         </AuthProvider>
