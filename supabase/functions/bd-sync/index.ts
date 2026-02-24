@@ -210,13 +210,20 @@ function extractInternalUserId(userInfo: any): string | null {
 }
 
 // ── Fallback: fetch user-charges for EACH supporter individually ──
+// FIXED: Use BD-scoped dedup key and attribute charges to the actual charger only
 async function buildRecentFallbackMap(
   sb: ReturnType<typeof supabaseAdmin>,
   month: string,
-  supporterUuids: string[]
+  supporterUuids: string[],
+  bdUuid?: string
 ): Promise<Map<string, number>> {
   const fallbackByMember = new Map<string, number>();
   if (supporterUuids.length === 0) return fallbackByMember;
+
+  // Build a set of supporter UUIDs for quick lookup
+  const supporterSet = new Set(supporterUuids);
+  // Global dedup: track charge IDs already processed across ALL supporters in this BD
+  const globalProcessedChargeIds = new Set<string>();
 
   // Fetch user-charges for each supporter in parallel (batches of 5)
   const FALLBACK_BATCH = 5;
@@ -246,16 +253,40 @@ async function buildRecentFallbackMap(
 
           if (!chargeId || chargeCoins <= 0) continue;
 
-          const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
+          // In-memory dedup: skip if this charge was already counted for another supporter
+          if (globalProcessedChargeIds.has(chargeId)) continue;
+
+          // Try to extract the actual charger UUID from the entry
+          const chargerField = String(
+            (entry as any)?.["معرف الشاحن"] ?? (entry as any)?.charger_id ?? ""
+          );
+          const actualChargerUuid = parseNumericId(chargerField);
+
+          // If we can identify the charger AND they are a registered supporter,
+          // only attribute this charge to that specific supporter
+          if (actualChargerUuid && supporterSet.size > 1) {
+            if (supporterSet.has(actualChargerUuid) && actualChargerUuid !== memberUuid) {
+              // This charge belongs to a different supporter, skip for this member
+              continue;
+            }
+            if (!supporterSet.has(actualChargerUuid) && actualChargerUuid !== memberUuid) {
+              // Charger is not a registered supporter — attribute to current member (the one whose API we called)
+            }
+          }
+
+          // BD-scoped dedup key (not member-scoped) to prevent same charge counting for multiple supporters
+          const scopeId = bdUuid || "global";
+          const dedupeKey = `bd_recent_charge_${month}_${scopeId}_${chargeId}`;
           const seen = await getCached(sb, dedupeKey);
           if (seen) continue;
 
+          globalProcessedChargeIds.add(chargeId);
           memberTotal += chargeCoins;
 
           await sb.from("edge_function_cache").upsert(
             {
               key: dedupeKey,
-              value: { processed: true, amount: chargeCoins },
+              value: { processed: true, amount: chargeCoins, attributed_to: memberUuid },
               expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
             },
             { onConflict: "key" }
@@ -492,6 +523,7 @@ serve(async (req) => {
     console.log(`[SYNC] pre-fetched data for ${memberDataMap.size} members`);
 
     // Build one-shot fallback map for all supporters (manual sync only)
+    // FIXED: Process per-BD to ensure BD-scoped dedup and correct charge attribution
     let recentFallbackByMember = new Map<string, number>();
     if (isManual && supporterUuids.length > 0) {
       // Identify supporters where aggregate API returned 0 or stale data
@@ -504,7 +536,22 @@ serve(async (req) => {
 
       if (staleSupporters.length > 0) {
         console.log(`[SYNC] ${staleSupporters.length}/${supporterUuids.length} supporters have stale API data, fetching fallback individually`);
-        recentFallbackByMember = await buildRecentFallbackMap(sb, month, staleSupporters);
+
+        // Group stale supporters by BD UUID for BD-scoped dedup
+        const staleSupportersByBd = new Map<string, string[]>();
+        for (const uuid of staleSupporters) {
+          const member = members.find((m: any) => m.member_uuid === uuid);
+          if (!member) continue;
+          const bdId = member.bd_uuid;
+          if (!staleSupportersByBd.has(bdId)) staleSupportersByBd.set(bdId, []);
+          staleSupportersByBd.get(bdId)!.push(uuid);
+        }
+
+        // Process each BD's supporters separately
+        for (const [bdId, bdStaleSupporters] of staleSupportersByBd.entries()) {
+          const bdFallback = await buildRecentFallbackMap(sb, month, bdStaleSupporters, bdId);
+          mergeFallbackMaps(recentFallbackByMember, bdFallback);
+        }
 
         // Retry quickly for unresolved supporters to reduce "wait 5 minutes" scenarios
         let unresolvedSupporters = staleSupporters.filter(uuid => !recentFallbackByMember.has(uuid));
@@ -514,9 +561,21 @@ serve(async (req) => {
           );
           await new Promise((resolve) => setTimeout(resolve, MANUAL_FALLBACK_RETRY_DELAY_MS));
 
-          const retryMap = await buildRecentFallbackMap(sb, month, unresolvedSupporters);
-          if (retryMap.size > 0) {
-            mergeFallbackMaps(recentFallbackByMember, retryMap);
+          // Retry also per-BD
+          const unresolvedByBd = new Map<string, string[]>();
+          for (const uuid of unresolvedSupporters) {
+            const member = members.find((m: any) => m.member_uuid === uuid);
+            if (!member) continue;
+            const bdId = member.bd_uuid;
+            if (!unresolvedByBd.has(bdId)) unresolvedByBd.set(bdId, []);
+            unresolvedByBd.get(bdId)!.push(uuid);
+          }
+
+          for (const [bdId, bdUnresolved] of unresolvedByBd.entries()) {
+            const retryMap = await buildRecentFallbackMap(sb, month, bdUnresolved, bdId);
+            if (retryMap.size > 0) {
+              mergeFallbackMaps(recentFallbackByMember, retryMap);
+            }
           }
 
           unresolvedSupporters = unresolvedSupporters.filter(uuid => !recentFallbackByMember.has(uuid));
