@@ -7,8 +7,8 @@ const TOP_CHARGERS_API_URL = "https://hola-chat.com/top-chargers-api.php";
 const AGENCY_TARGET_API_URL = "https://hola-chat.com/agency-target-api.php";
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const MANUAL_FALLBACK_RETRY_DELAY_MS = 5000;
-const MANUAL_FALLBACK_MAX_RETRIES = 2;
+const MANUAL_FALLBACK_RETRY_DELAY_MS = 8000;
+const MANUAL_FALLBACK_MAX_RETRIES = 3;
 
 const supabaseAdmin = () =>
   createClient(
