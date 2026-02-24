@@ -97,6 +97,42 @@ serve(async (req) => {
 
       if (bdExists) return json({ status: "approved", already: true });
 
+      // Device check: prevent same device from having multiple BD accounts
+      const { data: userDevice } = await sb
+        .from("user_devices")
+        .select("device_id")
+        .eq("user_uuid", user_uuid)
+        .maybeSingle();
+
+      if (userDevice?.device_id) {
+        // Find all users on this device
+        const { data: sameDeviceUsers } = await sb
+          .from("user_devices")
+          .select("user_uuid")
+          .eq("device_id", userDevice.device_id);
+
+        if (sameDeviceUsers && sameDeviceUsers.length > 0) {
+          const otherUuids = sameDeviceUsers
+            .map((d: any) => d.user_uuid)
+            .filter((u: string) => u !== user_uuid);
+
+          if (otherUuids.length > 0) {
+            // Check if any of these other users are active BDs
+            const { data: existingBDs } = await sb
+              .from("bd_commission_settings")
+              .select("bd_uuid, bd_name")
+              .in("bd_uuid", otherUuids)
+              .eq("is_active", true)
+              .eq("is_approved", true);
+
+            if (existingBDs && existingBDs.length > 0) {
+              console.log("[BD-REGISTER] Device conflict:", { device_id: userDevice.device_id, user_uuid, existing_bds: existingBDs.map((b: any) => b.bd_uuid) });
+              return json({ error: "⚠️ لا يمكن تسجيل أكثر من حساب بيدي على نفس الجهاز. يوجد بيدي آخر مسجل من هذا الجهاز." });
+            }
+          }
+        }
+      }
+
       // Auto-approve if level >= 10
       const level = user_level || 0;
       if (level >= 10) {
