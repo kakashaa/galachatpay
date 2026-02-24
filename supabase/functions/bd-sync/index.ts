@@ -366,16 +366,16 @@ serve(async (req) => {
       // ── Update member info ──
       try {
         const userInfo = prefetched.userInfo;
-        if (userInfo && userInfo.name) {
-          const newName = userInfo.name || member.member_name;
-          const newType = Number(userInfo.type_user) || member.type_user || 0;
-          if (newName !== member.member_name || newType !== (member.type_user || 0)) {
-            await sb.from("bd_members").update({
-              member_name: newName,
-              type_user: newType,
-            }).eq("id", member.id);
-            infoUpdates++;
-          }
+        // Extract name: try direct .name, then .user.اسم (Arabic API), then .user.name
+        const extractedName = userInfo?.name || userInfo?.user?.["اسم"] || userInfo?.user?.name || "";
+        const extractedType = Number(userInfo?.type_user ?? userInfo?.user?.["معرف"] ?? 0) || member.type_user || 0;
+        if (extractedName && extractedName !== member.member_name) {
+          await sb.from("bd_members").update({
+            member_name: extractedName,
+            type_user: extractedType,
+          }).eq("id", member.id);
+          infoUpdates++;
+          console.log(`[INFO] updated name for ${member.member_uuid}: "${member.member_name}" -> "${extractedName}"`);
         }
       } catch {}
 
