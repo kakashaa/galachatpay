@@ -163,6 +163,98 @@ async function fetchUserInfo(sb: ReturnType<typeof supabaseAdmin>, uuid: string)
   } catch { return null; }
 }
 
+// ── API 4.1: user-charges (fallback) ───────────────────────────
+async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string, skipCache = false) {
+  const cacheKey = `user_charges_${uuid}`;
+  if (!skipCache) {
+    const cached = await getCached(sb, cacheKey);
+    if (cached) return cached;
+  }
+
+  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
+  const res = await fetchWithRetry(url, 1);
+  if (!res) return null;
+  try {
+    const data = await res.json();
+    await setCache(sb, cacheKey, data);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function parseNumericId(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  const match = text.match(/\d+/);
+  return match ? match[0] : null;
+}
+
+function toNum(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, "").trim());
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function extractInternalUserId(userInfo: any): string | null {
+  return (
+    parseNumericId(userInfo?.user?.["معرف"]) ||
+    parseNumericId(userInfo?.user?.id) ||
+    parseNumericId(userInfo?.id) ||
+    null
+  );
+}
+
+async function getRecentChargeFallbackIncrease(
+  sb: ReturnType<typeof supabaseAdmin>,
+  memberUuid: string,
+  internalUserId: string | null,
+  month: string
+): Promise<number> {
+  if (!internalUserId) return 0;
+
+  const userCharges = await fetchUserCharges(sb, memberUuid, true);
+  if (!userCharges) return 0;
+
+  const recentList = Array.isArray(userCharges?.recent)
+    ? userCharges.recent
+    : Array.isArray(userCharges?.recent_charges)
+      ? userCharges.recent_charges
+      : [];
+
+  let extraCoins = 0;
+
+  for (const entry of recentList) {
+    const targetRef = (entry as any)?.["معرف المستخدم"] ?? (entry as any)?.user_id ?? (entry as any)?.target_user_id;
+    const targetId = parseNumericId(targetRef);
+    if (!targetId || targetId !== internalUserId) continue;
+
+    const chargeId = parseNumericId((entry as any)?.["معرف"] ?? (entry as any)?.id ?? (entry as any)?.charge_id);
+    const chargeCoins = toNum((entry as any)?.["الكوينز"] ?? (entry as any)?.coins ?? (entry as any)?.amount);
+
+    if (!chargeId || chargeCoins <= 0) continue;
+
+    const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
+    const seen = await getCached(sb, dedupeKey);
+    if (seen) continue;
+
+    extraCoins += chargeCoins;
+
+    await sb.from("edge_function_cache").upsert(
+      {
+        key: dedupeKey,
+        value: { processed: true, amount: chargeCoins },
+        expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      { onConflict: "key" }
+    );
+  }
+
+  return extraCoins;
+}
+
 // ── API 5: host-salary (for hosts) ─────────────────────────────
 async function fetchHostSalary(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
   const cacheKey = `host_salary_${uuid}`;
@@ -201,7 +293,7 @@ async function fetchBDProfit(sb: ReturnType<typeof supabaseAdmin>, bdId: string)
 // ── Helper: extract numeric from API field ─────────────────────
 function extractTotal(field: any): number {
   if (!field) return 0;
-  if (typeof field === 'object' && field.total !== undefined) return Number(field.total) || 0;
+  if (typeof field === "object" && field.total !== undefined) return Number(field.total) || 0;
   return Number(field) || 0;
 }
 
@@ -313,9 +405,26 @@ serve(async (req) => {
     const supporterUuids = members
       .filter((m: any) => m.member_type === "supporter")
       .map((m: any) => m.member_uuid);
-    
+
     const batchChargesMap = await fetchBatchMonthlyCharges(sb, supporterUuids, isManual);
     console.log(`[SYNC] batch charges fetched: ${batchChargesMap.size}/${supporterUuids.length} supporters`);
+
+    // Prefetch already-counted supporter source amounts for this month (for anti-rollback safety)
+    const supporterSourceMap = new Map<string, number>();
+    if (supporterUuids.length > 0) {
+      const { data: supporterLogs } = await sb
+        .from("bd_commission_logs")
+        .select("member_uuid, source_amount")
+        .eq("member_type", "supporter")
+        .eq("month", month)
+        .in("member_uuid", supporterUuids);
+
+      for (const row of supporterLogs || []) {
+        const memberUuid = String((row as any).member_uuid || "");
+        const sourceAmount = toNum((row as any).source_amount);
+        supporterSourceMap.set(memberUuid, (supporterSourceMap.get(memberUuid) || 0) + sourceAmount);
+      }
+    }
 
     // ── Step 2: Fetch user-info + agency/host data in parallel batches ──
     const BATCH_SIZE = 10;
@@ -400,12 +509,43 @@ serve(async (req) => {
         const { data: fresh } = await sb.from("bd_members")
           .select("monthly_charges, current_month_commission, total_commission")
           .eq("id", member.id).maybeSingle();
-        const previousMonthly = fresh?.monthly_charges || 0;
-        const chargeDiff = monthlyCharges - previousMonthly;
 
-        console.log(`[SYNC] supporter ${member.member_uuid}: total=${monthlyCharges}, prev=${previousMonthly}, diff=${chargeDiff}`);
+        const previousMonthly = toNum(fresh?.monthly_charges);
+        const loggedSourceTotal = supporterSourceMap.get(member.member_uuid) || 0;
+        const baselineMonthly = Math.max(previousMonthly, loggedSourceTotal);
 
-        const updateObj: Record<string, unknown> = { monthly_charges: monthlyCharges };
+        let effectiveMonthlyCharges = toNum(monthlyCharges);
+
+        // Safety: never rollback supporter monthly charges because upstream API may temporarily return 0
+        if (effectiveMonthlyCharges < baselineMonthly) {
+          console.log(`[SYNC] supporter ${member.member_uuid}: stale API value ${effectiveMonthlyCharges}, keeping baseline ${baselineMonthly}`);
+          effectiveMonthlyCharges = baselineMonthly;
+        }
+
+        // Manual-sync fallback: recover fresh charges from recent feed when aggregate API is delayed
+        if (isManual && effectiveMonthlyCharges <= baselineMonthly) {
+          const internalUserId = extractInternalUserId(prefetched.userInfo);
+          const fallbackIncrease = await getRecentChargeFallbackIncrease(
+            sb,
+            member.member_uuid,
+            internalUserId,
+            month
+          );
+
+          if (fallbackIncrease > 0) {
+            effectiveMonthlyCharges = baselineMonthly + fallbackIncrease;
+            console.log(`[SYNC] supporter ${member.member_uuid}: fallback +${fallbackIncrease}, total=${effectiveMonthlyCharges}`);
+          }
+        }
+
+        const chargeDiff = effectiveMonthlyCharges - baselineMonthly;
+
+        console.log(`[SYNC] supporter ${member.member_uuid}: api=${monthlyCharges}, baseline=${baselineMonthly}, total=${effectiveMonthlyCharges}, diff=${chargeDiff}`);
+
+        const updateObj: Record<string, unknown> = {
+          monthly_charges: effectiveMonthlyCharges,
+          last_daily_charges: effectiveMonthlyCharges,
+        };
 
         if (chargeDiff > 0) {
           const { data: existingLog } = await sb.from("bd_commission_logs")
@@ -429,6 +569,8 @@ serve(async (req) => {
               member_type: "supporter", month,
               source_amount: chargeDiff, commission_pct: pct, amount: commissionAmount,
             });
+
+            supporterSourceMap.set(member.member_uuid, loggedSourceTotal + chargeDiff);
 
             const { data: freshBd } = await sb.from("bd_commission_settings")
               .select("current_month_earnings, total_earned").eq("bd_uuid", member.bd_uuid).maybeSingle();
