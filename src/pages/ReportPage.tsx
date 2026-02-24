@@ -120,12 +120,12 @@ const ReportPage = () => {
   const { user: galaUser } = useAuth();
 
   const [viewMode, setViewMode] = useState<ViewMode>("menu");
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [requestId, setRequestId] = useState("");
 
-  const [reporterGalaId, setReporterGalaId] = useState("");
+  const reporterGalaId = galaUser?.uuid ? String(galaUser.uuid) : "";
 
   const [banType, setBanType] = useState<BanType | null>(null);
   const [customReason, setCustomReason] = useState("");
@@ -148,12 +148,6 @@ const ReportPage = () => {
   const [isResolvingEvidence] = useState(false);
   const [evidenceLoadError, setEvidenceLoadError] = useState<string | null>(null);
 
-  // Pre-fill reporter ID from auth
-  useEffect(() => {
-    if (galaUser?.uuid && !reporterGalaId) {
-      setReporterGalaId(String(galaUser.uuid));
-    }
-  }, [galaUser]);
 
   useEffect(() => {
     if (selectedReport?.evidence_url) {
@@ -392,7 +386,7 @@ const ReportPage = () => {
   };
 
   const resetForm = () => {
-    setCurrentStep(1);
+    setCurrentStep(2);
     setBanType(null);
     setCustomReason("");
     setReportedUserId("");
@@ -627,26 +621,16 @@ const ReportPage = () => {
 
               {/* Steps Progress */}
               <div className="flex items-center justify-center gap-2 mb-2">
-                {[1, 2, 3, 4, 5].map((step) => (
+                {[2, 3, 4, 5].map((step) => (
                   <div key={step} className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
                     currentStep > step ? "bg-success text-success-foreground" :
                     currentStep === step ? "bg-gradient-to-r from-destructive to-orange-500 text-white" :
                     "bg-muted text-muted-foreground"
                   }`}>
-                    {currentStep > step ? <CheckCircle2 className="w-4 h-4" /> : step}
+                    {currentStep > step ? <CheckCircle2 className="w-4 h-4" /> : step - 1}
                   </div>
                 ))}
               </div>
-
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  <h2 className="text-lg font-bold text-center">آيدي غلا لايف الخاص بك</h2>
-                  <Input type="text" inputMode="numeric" placeholder="أدخل آيدي غلا لايف الخاص بك" value={reporterGalaId} onChange={(e) => setReporterGalaId(e.target.value)} className="text-center text-lg h-14" />
-                  <Button className="w-full h-12 bg-gradient-to-r from-destructive to-orange-600" disabled={!reporterGalaId.trim()} onClick={() => setCurrentStep(2)}>
-                    التالي <ArrowLeft className="w-4 h-4 mr-2" />
-                  </Button>
-                </div>
-              )}
 
               {currentStep === 2 && (
                 <div className="space-y-4">
