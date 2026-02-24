@@ -27,7 +27,10 @@ serve(async (req) => {
   const month = body?.month || 2;
 
   const results = await Promise.all([
-    testEndpoint("agency-target-api", `${BASE}/agency-target-api.php?key=${KEY}&uuid=${uuid}&year=${year}&month=${month}`),
+    testEndpoint("user-charges", `${BASE}/bd-data-api.php?key=${KEY}&action=user-charges&uuid=${uuid}`),
+    testEndpoint("user-profile", `${BASE}/bd-data-api.php?key=${KEY}&action=user-profile&uuid=${uuid}`),
+    testEndpoint("host-stats", `${BASE}/bd-data-api.php?key=${KEY}&action=host-stats&uuid=${uuid}`),
+    testEndpoint("host-salary", `${BASE}/bd-data-api.php?key=${KEY}&action=host-salary&uuid=${uuid}&month=${month}&year=${year}`),
   ]);
 
   return new Response(JSON.stringify(results, null, 2), {
