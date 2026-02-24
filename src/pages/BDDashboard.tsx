@@ -29,20 +29,39 @@ const BDDashboard: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
 
-  const handleManualSync = async () => {
+  const syncRetryRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncRetryCountRef = React.useRef(0);
+  const MAX_SYNC_RETRIES = 2;
+  const SYNC_RETRY_DELAY = 30000; // 30 seconds
+
+  const handleManualSync = async (isAutoRetry = false) => {
     if (syncing || !user?.uuid) return;
     setSyncing(true);
+    if (!isAutoRetry) {
+      syncRetryCountRef.current = 0;
+      if (syncRetryRef.current) { clearTimeout(syncRetryRef.current); syncRetryRef.current = null; }
+    }
     try {
       const res = await supabase.functions.invoke("bd-sync", { body: { manual: true } });
       const result = res.data;
       if (result?.skipped) {
         toast.info("المزامنة قيد التنفيذ بالفعل، حاول بعد قليل");
       } else {
-        const synced = result?.synced || 0;
+        const synced = result?.synced_members || result?.synced || 0;
         const commissions = result?.commission_updates || 0;
-        toast.success(`✅ تم التحديث: ${synced} عضو، ${commissions} عمولة جديدة`);
         setLastSync(new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }));
         await loadData();
+
+        if (commissions > 0) {
+          toast.success(`✅ تم التحديث: ${synced} عضو، ${commissions} عمولة جديدة`);
+          syncRetryCountRef.current = 0;
+        } else if (syncRetryCountRef.current < MAX_SYNC_RETRIES) {
+          syncRetryCountRef.current++;
+          toast.info(`⏳ لم تظهر بيانات جديدة بعد، إعادة محاولة تلقائية بعد 30 ثانية (${syncRetryCountRef.current}/${MAX_SYNC_RETRIES})...`);
+          syncRetryRef.current = setTimeout(() => handleManualSync(true), SYNC_RETRY_DELAY);
+        } else {
+          toast.success(`✅ تم التحديث: ${synced} عضو`);
+        }
       }
     } catch {
       toast.error("فشل التحديث، حاول مرة أخرى");
@@ -50,6 +69,11 @@ const BDDashboard: React.FC = () => {
       setSyncing(false);
     }
   };
+
+  // Cleanup retry timer
+  useEffect(() => {
+    return () => { if (syncRetryRef.current) clearTimeout(syncRetryRef.current); };
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -307,7 +331,7 @@ const BDDashboard: React.FC = () => {
           </div>
           <div className="flex items-center gap-1">
             <button
-              onClick={handleManualSync}
+              onClick={() => handleManualSync()}
               disabled={syncing}
               className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
             >
