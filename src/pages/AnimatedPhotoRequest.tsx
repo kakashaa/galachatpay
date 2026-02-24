@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlayCircle, User, Shield, Send, CheckCircle, Star, Upload, Image } from "lucide-react";
+import { PlayCircle, User, Shield, Send, CheckCircle, Star, Upload, Image, Clock, XCircle } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ const AnimatedPhotoRequest: React.FC = () => {
   const [gifPreview, setGifPreview] = useState<string | null>(null);
   const [alreadyRequested, setAlreadyRequested] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [externalStatus, setExternalStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const durationConfig = getDurationConfig(authUser);
@@ -49,6 +50,32 @@ const AnimatedPhotoRequest: React.FC = () => {
     };
     check();
   }, [authUser?.uuid]);
+
+  // Poll external API for request status
+  useEffect(() => {
+    if (!submitted || !authUser?.uuid) return;
+    let active = true;
+    const poll = async () => {
+      try {
+        const { data } = await supabase.functions.invoke(
+          `gala-actions?action=request-status&user_uuid=${authUser.uuid}`
+        );
+        if (!active) return;
+        if (data?.ok && Array.isArray(data.data)) {
+          const req = data.data.find((r: any) => r.request_type === "animated_photo");
+          if (req && req.status !== "pending") {
+            setExternalStatus(req.status);
+            await supabase.from("animated_photo_requests")
+              .update({ status: req.status === "executed" ? "approved" : "rejected" } as any)
+              .eq("user_uuid", authUser.uuid);
+          }
+        }
+      } catch {}
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => { active = false; clearInterval(interval); };
+  }, [submitted, authUser?.uuid]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,7 +112,7 @@ const AnimatedPhotoRequest: React.FC = () => {
         gif_url: gifUrl,
         duration_label: durationConfig.label,
         max_level: maxLevel,
-        status: "approved",
+        status: "pending",
       } as any);
       if (dbError) {
         if (dbError.message?.includes("duplicate") || dbError.code === "23505") {
@@ -103,6 +130,7 @@ const AnimatedPhotoRequest: React.FC = () => {
           user_name: authUser.name,
           request_type: "animated_photo",
           details: { gif_url: gifUrl },
+          evidence_url: "",
         },
       });
 
@@ -198,18 +226,32 @@ const AnimatedPhotoRequest: React.FC = () => {
   }
 
   if (submitted) {
+    const isPending = !externalStatus || externalStatus === "pending";
+    const isExecuted = externalStatus === "executed";
+    const isRejected = externalStatus === "rejected";
     return (
       <MobileLayout showHeader headerTitle="صورة متحركة" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
-          <div className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center mb-6 css-scale-up">
-            <CheckCircle className="w-10 h-10 text-orange-400" />
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 css-scale-up ${
+            isExecuted ? "bg-emerald-500/20" : isRejected ? "bg-red-500/20" : "bg-yellow-500/20"
+          }`}>
+            {isExecuted ? <CheckCircle className="w-10 h-10 text-emerald-400" /> :
+             isRejected ? <XCircle className="w-10 h-10 text-red-400" /> :
+             <Clock className="w-10 h-10 text-yellow-400" />}
           </div>
           <div className="text-center css-fade-up-d3">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم رفع الطلب بنجاح ✅</h2>
-            <p className="text-sm text-muted-foreground mb-1">
-              سوف يتم تغيير الصورة خلال دقائق
-            </p>
-            <p className="text-xs text-muted-foreground/70">
+            <h2 className="text-lg font-bold text-foreground mb-2">
+              {isExecuted ? "تم تغيير الصورة بنجاح ✅" : isRejected ? "تم رفض الطلب ❌" : "تم إرسال الطلب ⏳"}
+            </h2>
+            {isExecuted && <p className="text-sm text-muted-foreground mb-1">تم تركيب الصورة المتحركة على حسابك</p>}
+            {isRejected && <p className="text-sm text-muted-foreground mb-1">يمكنك المحاولة مرة أخرى</p>}
+            {isPending && (
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <div className="w-4 h-4 border-2 border-yellow-400/30 border-t-yellow-400 rounded-full animate-spin" />
+                <p className="text-xs text-muted-foreground">جاري المراجعة من الإدارة...</p>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground/70 mt-2">
               مدة الصورة المتحركة: <span className="font-bold text-primary">{durationConfig?.label}</span>
             </p>
           </div>
