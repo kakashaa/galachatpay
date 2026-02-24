@@ -114,7 +114,7 @@ const BAN_TYPES: {
   },
 ];
 
-const MIN_DESCRIPTION_LENGTH = 20;
+
 
 const ReportPage = () => {
   const navigate = useNavigate();
@@ -184,17 +184,12 @@ const ReportPage = () => {
   };
 
   const canProceedToConfirmation = () => {
-    return evidenceFile && description.trim().length >= MIN_DESCRIPTION_LENGTH;
+    return !!evidenceFile;
   };
 
   const handleSubmit = async () => {
     if (!banType || !reportedUserId || !evidenceFile || !reporterGalaId) {
       toast.error("يرجى ملء جميع الحقول المطلوبة");
-      return;
-    }
-
-    if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
-      toast.error(`يجب أن يكون الوصف ${MIN_DESCRIPTION_LENGTH} حرف على الأقل`);
       return;
     }
 
@@ -704,16 +699,8 @@ const ReportPage = () => {
                 <div className="space-y-4">
                   <h2 className="text-lg font-bold text-center">شرح المخالفة والإثبات</h2>
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium">وصف المخالفة <span className="text-destructive">*</span></label>
-                    <Textarea placeholder={`اشرح المخالفة بالتفصيل (${MIN_DESCRIPTION_LENGTH} حرف على الأقل)`} value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[120px]" />
-                    <div className="flex justify-between text-xs">
-                      <span className={description.length < MIN_DESCRIPTION_LENGTH ? "text-destructive" : "text-success"}>
-                        {description.length} / {MIN_DESCRIPTION_LENGTH} حرف (الحد الأدنى)
-                      </span>
-                      {description.length < MIN_DESCRIPTION_LENGTH && (
-                        <span className="text-destructive">متبقي {MIN_DESCRIPTION_LENGTH - description.length} حرف</span>
-                      )}
-                    </div>
+                    <label className="block text-sm font-medium">وصف المخالفة <span className="text-xs text-muted-foreground">(اختياري)</span></label>
+                    <Textarea placeholder="أضف تفاصيل إضافية إن وجدت..." value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[80px]" />
                   </div>
 
                   <div className="space-y-2">
@@ -749,7 +736,7 @@ const ReportPage = () => {
                     التالي <ArrowLeft className="w-4 h-4 mr-2" />
                   </Button>
                   {!canProceedToConfirmation() && (
-                    <p className="text-xs text-center text-muted-foreground">يجب رفع الإثبات وكتابة وصف ({MIN_DESCRIPTION_LENGTH} حرف على الأقل) للمتابعة</p>
+                    <p className="text-xs text-center text-muted-foreground">يجب رفع صورة أو فيديو الإثبات للمتابعة</p>
                   )}
                 </div>
               )}
