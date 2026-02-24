@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/hmac.ts";
 
-const SALARY_API_URL = "https://hola-chat.com/salary-api.php";
+const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
 const SALARY_API_KEY = "ghala2026actions";
 
 serve(async (req) => {
