@@ -28,18 +28,39 @@ const BDDashboard: React.FC = () => {
   const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [syncRetryCount, setSyncRetryCount] = useState(0);
+  const [syncCountdown, setSyncCountdown] = useState(0);
 
   const syncRetryRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const syncRetryCountRef = React.useRef(0);
+  const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const retryCountRef = React.useRef(0);
   const MAX_SYNC_RETRIES = 2;
-  const SYNC_RETRY_DELAY = 30000; // 30 seconds
+  const SYNC_RETRY_DELAY = 30000;
+
+  const clearSyncTimers = () => {
+    if (syncRetryRef.current) { clearTimeout(syncRetryRef.current); syncRetryRef.current = null; }
+    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
+    setSyncCountdown(0);
+    setSyncRetryCount(0);
+    retryCountRef.current = 0;
+  };
+
+  const startCountdown = (seconds: number) => {
+    setSyncCountdown(seconds);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      setSyncCountdown(prev => {
+        if (prev <= 1) { if (countdownRef.current) clearInterval(countdownRef.current); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const handleManualSync = async (isAutoRetry = false) => {
     if (syncing || !user?.uuid) return;
     setSyncing(true);
     if (!isAutoRetry) {
-      syncRetryCountRef.current = 0;
-      if (syncRetryRef.current) { clearTimeout(syncRetryRef.current); syncRetryRef.current = null; }
+      clearSyncTimers();
     }
     try {
       const res = await supabase.functions.invoke("bd-sync", { body: { manual: true } });
@@ -54,25 +75,31 @@ const BDDashboard: React.FC = () => {
 
         if (commissions > 0) {
           toast.success(`✅ تم التحديث: ${synced} عضو، ${commissions} عمولة جديدة`);
-          syncRetryCountRef.current = 0;
-        } else if (syncRetryCountRef.current < MAX_SYNC_RETRIES) {
-          syncRetryCountRef.current++;
-          toast.info(`⏳ لم تظهر بيانات جديدة بعد، إعادة محاولة تلقائية بعد 30 ثانية (${syncRetryCountRef.current}/${MAX_SYNC_RETRIES})...`);
+          clearSyncTimers();
+        } else if (retryCountRef.current < MAX_SYNC_RETRIES) {
+          retryCountRef.current++;
+          setSyncRetryCount(retryCountRef.current);
+          startCountdown(SYNC_RETRY_DELAY / 1000);
           syncRetryRef.current = setTimeout(() => handleManualSync(true), SYNC_RETRY_DELAY);
         } else {
           toast.success(`✅ تم التحديث: ${synced} عضو`);
+          clearSyncTimers();
         }
       }
     } catch {
       toast.error("فشل التحديث، حاول مرة أخرى");
+      clearSyncTimers();
     } finally {
       setSyncing(false);
     }
   };
 
-  // Cleanup retry timer
+  // Cleanup timers
   useEffect(() => {
-    return () => { if (syncRetryRef.current) clearTimeout(syncRetryRef.current); };
+    return () => {
+      if (syncRetryRef.current) clearTimeout(syncRetryRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
   }, []);
 
   const loadData = useCallback(async () => {
@@ -346,9 +373,24 @@ const BDDashboard: React.FC = () => {
             </button>
           </div>
         </div>
-        {lastSync && (
-          <div className="text-center">
-            <span className="text-[9px] text-muted-foreground">آخر تحديث: {lastSync}</span>
+        {(lastSync || syncRetryCount > 0) && (
+          <div className="text-center space-y-1">
+            {lastSync && <span className="text-[9px] text-muted-foreground block">آخر تحديث: {lastSync}</span>}
+            {syncRetryCount > 0 && (
+              <div className="flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg py-1.5 px-3 animate-pulse">
+                <span className="material-symbols-outlined text-amber-400 text-sm animate-spin">autorenew</span>
+                <span className="text-[11px] font-bold text-amber-400">
+                  إعادة محاولة {syncRetryCount}/{MAX_SYNC_RETRIES}
+                  {syncCountdown > 0 && ` — ${syncCountdown}ث`}
+                </span>
+                <button
+                  onClick={() => clearSyncTimers()}
+                  className="text-[10px] text-amber-300/60 hover:text-amber-300 mr-1"
+                >
+                  إلغاء
+                </button>
+              </div>
+            )}
           </div>
         )}
         <div className="flex gap-2">
