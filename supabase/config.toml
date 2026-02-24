@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.extract-svga-name]
 verify_jwt = false
+
+[functions.wares-request]
+verify_jwt = false
+
+[functions.ban-check]
+verify_jwt = false
