@@ -438,7 +438,6 @@ const BDDashboard: React.FC = () => {
                 {[
                   { icon: 'diversity_3', color: 'text-blue-400', label: 'عمولة الداعمين', val: bd.user_commission_pct || 2 },
                   { icon: 'domain', color: 'text-purple-400', label: 'عمولة الوكالات', val: bd.agency_commission_pct || 5 },
-                  { icon: 'local_atm', color: 'text-emerald-400', label: 'عمولة المضيفين', val: bd.host_commission_pct || 3 },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center justify-between px-3 py-2.5">
                     <div className="flex items-center gap-1.5">
