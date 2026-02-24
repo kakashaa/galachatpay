@@ -2,9 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/hmac.ts";
 
-const BD_API_URL = "https://hola-chat.com/bd-data-api.php";
-const TOP_CHARGERS_API_URL = "https://hola-chat.com/top-chargers-api.php";
-const AGENCY_TARGET_API_URL = "https://hola-chat.com/agency-target-api.php";
+const BD_API_URLS = [
+  "https://hola-chat.com/bd-data-api.php",
+  "http://18.219.229.240/bd-data-api.php",
+];
+const TOP_CHARGERS_API_URLS = [
+  "https://hola-chat.com/top-chargers-api.php",
+  "http://18.219.229.240/top-chargers-api.php",
+];
+const AGENCY_TARGET_API_URLS = [
+  "https://hola-chat.com/agency-target-api.php",
+  "http://18.219.229.240/agency-target-api.php",
+];
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MANUAL_FALLBACK_RETRY_DELAY_MS = 8000;
@@ -53,6 +62,10 @@ async function fetchWithRetry(url: string, retries = 1): Promise<Response | null
   return null;
 }
 
+function isPageLoadFailedPayload(text: string): boolean {
+  return text.toLowerCase().includes("page load failed");
+}
+
 // ── API 1: fetch monthly charges for ONE supporter individually ──
 async function fetchIndividualMonthlyCharges(
   sb: ReturnType<typeof supabaseAdmin>,
@@ -62,43 +75,45 @@ async function fetchIndividualMonthlyCharges(
   const cacheKey = `monthly_charges_${uuid}`;
   if (!skipCache) {
     const cached = await getCached(sb, cacheKey);
-    if (cached !== null && typeof cached === 'number') return cached;
+    if (cached !== null && typeof cached === "number") return cached;
   }
 
   const now = new Date();
   const year = now.getUTCFullYear();
   const monthNum = String(now.getUTCMonth() + 1).padStart(2, "0");
-  // Call with SINGLE uuid to avoid batch API returning same value for all
-  const url = `${TOP_CHARGERS_API_URL}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthNum}`;
 
-  console.log(`[INDIVIDUAL] fetching charges for ${uuid}`);
-  const res = await fetchWithRetry(url, 2);
-  if (!res) {
-    console.error(`[INDIVIDUAL] API request failed for ${uuid}`);
-    return null;
-  }
+  for (const baseUrl of TOP_CHARGERS_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthNum}`;
 
-  try {
+    console.log(`[INDIVIDUAL] fetching charges for ${uuid} via ${baseUrl}`);
+    const res = await fetchWithRetry(url, 2);
+    if (!res) continue;
+
     const rawText = await res.text();
-    console.log(`[INDIVIDUAL] response for ${uuid} (first 200 chars): ${rawText.slice(0, 200)}`);
-    const data = JSON.parse(rawText);
-    if (data?.status === "success" && Array.isArray(data.data)) {
-      for (const entry of data.data) {
-        const entryUuid = String(entry.uuid);
-        const total = Number(entry.total_charges) || 0;
-        if (entryUuid === uuid || data.data.length === 1) {
-          await setCache(sb, cacheKey, total);
-          console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total}`);
-          return total;
+    console.log(`[INDIVIDUAL] response for ${uuid} via ${baseUrl} (first 200 chars): ${rawText.slice(0, 200)}`);
+
+    if (isPageLoadFailedPayload(rawText)) continue;
+
+    try {
+      const data = JSON.parse(rawText);
+      if (data?.status === "success" && Array.isArray(data.data)) {
+        for (const entry of data.data) {
+          const entryUuid = String(entry.uuid);
+          const total = Number(entry.total_charges) || 0;
+          if (entryUuid === uuid || data.data.length === 1) {
+            await setCache(sb, cacheKey, total);
+            console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total}`);
+            return total;
+          }
         }
       }
+    } catch (e) {
+      console.error(`[INDIVIDUAL] parse error for ${uuid} via ${baseUrl}:`, e);
     }
-    console.log(`[INDIVIDUAL] ${uuid}: no matching entry in response`);
-    return null;
-  } catch (e) {
-    console.error(`[INDIVIDUAL] parse error for ${uuid}:`, e);
-    return null;
   }
+
+  console.log(`[INDIVIDUAL] ${uuid}: no matching entry in any provider`);
+  return null;
 }
 
 // ── API 2: agency-target (for agencies - uses total_user_salary) ──
@@ -112,24 +127,34 @@ async function fetchAgencyTarget(sb: ReturnType<typeof supabaseAdmin>, uuid: str
   const now = new Date();
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth() + 1;
-  const url = `${AGENCY_TARGET_API_URL}?key=${BD_API_KEY}&uuid=${uuid}&year=${year}&month=${month}`;
-  console.log(`[API] agency-target URL: ${url}`);
-  const res = await fetchWithRetry(url, 2);
-  if (!res) return null;
-  try {
-    const data = await res.json();
-    console.log(`[API] agency-target response for ${uuid}:`, JSON.stringify(data).slice(0, 300));
-    if (data?.status === "success" || data?.data?.status === "success") {
-      const result = data?.data?.data || data?.data || data;
-      await setCache(sb, cacheKey, result);
-      return result;
+
+  for (const baseUrl of AGENCY_TARGET_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&uuid=${uuid}&year=${year}&month=${month}`;
+    console.log(`[API] agency-target URL: ${url}`);
+    const res = await fetchWithRetry(url, 2);
+    if (!res) continue;
+
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+
+      const data = JSON.parse(text);
+      console.log(`[API] agency-target response for ${uuid}:`, JSON.stringify(data).slice(0, 300));
+      if (data?.status === "success" || data?.data?.status === "success") {
+        const result = data?.data?.data || data?.data || data;
+        await setCache(sb, cacheKey, result);
+        return result;
+      }
+      if (data?.total_user_salary !== undefined) {
+        await setCache(sb, cacheKey, data);
+        return data;
+      }
+    } catch {
+      // continue to next base URL
     }
-    if (data?.total_user_salary !== undefined) {
-      await setCache(sb, cacheKey, data);
-      return data;
-    }
-    return null;
-  } catch { return null; }
+  }
+
+  return null;
 }
 
 // ── API 4: user-info ───────────────────────────────────────────
@@ -138,14 +163,21 @@ async function fetchUserInfo(sb: ReturnType<typeof supabaseAdmin>, uuid: string)
   const cached = await getCached(sb, cacheKey);
   if (cached) return cached;
 
-  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${uuid}`;
-  const res = await fetchWithRetry(url, 1); // fewer retries for non-critical
-  if (!res) return null;
-  try {
-    const data = await res.json();
-    await setCache(sb, cacheKey, data);
-    return data;
-  } catch { return null; }
+  for (const baseUrl of BD_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=user-info&uuid=${uuid}`;
+    const res = await fetchWithRetry(url, 1); // fewer retries for non-critical
+    if (!res) continue;
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+      const data = JSON.parse(text);
+      await setCache(sb, cacheKey, data);
+      return data;
+    } catch {
+      // continue
+    }
+  }
+  return null;
 }
 
 // ── API 4.1: user-charges (fallback) ───────────────────────────
@@ -156,16 +188,21 @@ async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: stri
     if (cached) return cached;
   }
 
-  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
-  const res = await fetchWithRetry(url, 1);
-  if (!res) return null;
-  try {
-    const data = await res.json();
-    await setCache(sb, cacheKey, data);
-    return data;
-  } catch {
-    return null;
+  for (const baseUrl of BD_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
+    const res = await fetchWithRetry(url, 1);
+    if (!res) continue;
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+      const data = JSON.parse(text);
+      await setCache(sb, cacheKey, data);
+      return data;
+    } catch {
+      // continue
+    }
   }
+  return null;
 }
 
 function parseNumericId(value: unknown): string | null {
@@ -192,62 +229,97 @@ function extractInternalUserId(userInfo: any): string | null {
   );
 }
 
+function extractMonthChargesTotal(userCharges: any): number {
+  const monthValue = userCharges?.charges?.month;
+  if (monthValue && typeof monthValue === "object") {
+    return toNum(monthValue.total ?? monthValue.count ?? 0);
+  }
+  return toNum(monthValue);
+}
+
+async function fetchBestUserChargesTotal(
+  sb: ReturnType<typeof supabaseAdmin>,
+  memberUuid: string,
+  internalUserId: string | null,
+  skipCache = true,
+): Promise<number> {
+  const candidates = [memberUuid, internalUserId]
+    .map((v) => String(v || "").trim())
+    .filter(Boolean);
+
+  let best = 0;
+  for (const candidate of candidates) {
+    const userCharges = await fetchUserCharges(sb, candidate, skipCache);
+    const total = extractMonthChargesTotal(userCharges);
+    if (total > best) best = total;
+  }
+
+  return best;
+}
+
 // ── Fallback: fetch user-charges for EACH supporter individually ──
 async function buildRecentFallbackMap(
   sb: ReturnType<typeof supabaseAdmin>,
   month: string,
-  supporterUuids: string[]
+  supporterRefs: Array<{ memberUuid: string; internalUserId: string | null }>
 ): Promise<Map<string, number>> {
   const fallbackByMember = new Map<string, number>();
-  if (supporterUuids.length === 0) return fallbackByMember;
+  if (supporterRefs.length === 0) return fallbackByMember;
 
   // Fetch user-charges for each supporter in parallel (batches of 5)
   const FALLBACK_BATCH = 5;
-  for (let i = 0; i < supporterUuids.length; i += FALLBACK_BATCH) {
-    const batch = supporterUuids.slice(i, i + FALLBACK_BATCH);
-    await Promise.all(batch.map(async (memberUuid) => {
+  for (let i = 0; i < supporterRefs.length; i += FALLBACK_BATCH) {
+    const batch = supporterRefs.slice(i, i + FALLBACK_BATCH);
+    await Promise.all(batch.map(async ({ memberUuid, internalUserId }) => {
       try {
-        const userCharges = await fetchUserCharges(sb, memberUuid, true);
-        if (!userCharges) return;
+        const candidates = [memberUuid, internalUserId]
+          .map((v) => String(v || "").trim())
+          .filter(Boolean);
 
-        const recentList = Array.isArray(userCharges?.recent)
-          ? userCharges.recent
-          : Array.isArray(userCharges?.recent_charges)
-            ? userCharges.recent_charges
-            : Array.isArray(userCharges?.data)
-              ? userCharges.data
-              : [];
+        for (const candidate of candidates) {
+          const userCharges = await fetchUserCharges(sb, candidate, true);
+          if (!userCharges) continue;
 
-        let memberTotal = 0;
-        for (const entry of recentList) {
-          const chargeId = parseNumericId(
-            (entry as any)?.["معرف"] ?? (entry as any)?.id ?? (entry as any)?.charge_id
-          );
-          const chargeCoins = toNum(
-            (entry as any)?.["الكوينز"] ?? (entry as any)?.coins ?? (entry as any)?.amount
-          );
+          const recentList = Array.isArray(userCharges?.recent)
+            ? userCharges.recent
+            : Array.isArray(userCharges?.recent_charges)
+              ? userCharges.recent_charges
+              : Array.isArray(userCharges?.data)
+                ? userCharges.data
+                : [];
 
-          if (!chargeId || chargeCoins <= 0) continue;
+          let memberTotal = 0;
+          for (const entry of recentList) {
+            const chargeId = parseNumericId(
+              (entry as any)?.["معرف"] ?? (entry as any)?.id ?? (entry as any)?.charge_id
+            );
+            const chargeCoins = toNum(
+              (entry as any)?.["الكوينز"] ?? (entry as any)?.coins ?? (entry as any)?.amount
+            );
 
-          const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
-          const seen = await getCached(sb, dedupeKey);
-          if (seen) continue;
+            if (!chargeId || chargeCoins <= 0) continue;
 
-          memberTotal += chargeCoins;
+            const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
+            const seen = await getCached(sb, dedupeKey);
+            if (seen) continue;
 
-          await sb.from("edge_function_cache").upsert(
-            {
-              key: dedupeKey,
-              value: { processed: true, amount: chargeCoins },
-              expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-            },
-            { onConflict: "key" }
-          );
-        }
+            memberTotal += chargeCoins;
 
-        if (memberTotal > 0) {
-          fallbackByMember.set(memberUuid, memberTotal);
-          console.log(`[FALLBACK] supporter ${memberUuid}: recovered ${memberTotal} coins from ${recentList.length} entries`);
+            await sb.from("edge_function_cache").upsert(
+              {
+                key: dedupeKey,
+                value: { processed: true, amount: chargeCoins },
+                expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+              },
+              { onConflict: "key" }
+            );
+          }
+
+          if (memberTotal > 0) {
+            fallbackByMember.set(memberUuid, (fallbackByMember.get(memberUuid) || 0) + memberTotal);
+            console.log(`[FALLBACK] supporter ${memberUuid}: recovered +${memberTotal} coins from ${recentList.length} entries`);
+            break;
+          }
         }
       } catch (e) {
         console.error(`[FALLBACK] error for ${memberUuid}:`, e);
@@ -270,15 +342,23 @@ async function fetchHostSalary(sb: ReturnType<typeof supabaseAdmin>, uuid: strin
   const cached = await getCached(sb, cacheKey);
   if (cached) return cached;
 
-  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=host-salary&uuid=${uuid}`;
-  const res = await fetchWithRetry(url);
-  if (!res) return null;
-  try {
-    const data = await res.json();
-    console.log(`[API] host-salary keys for ${uuid}: [${Object.keys(data || {}).join(", ")}]`);
-    await setCache(sb, cacheKey, data);
-    return data;
-  } catch { return null; }
+  for (const baseUrl of BD_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=host-salary&uuid=${uuid}`;
+    const res = await fetchWithRetry(url);
+    if (!res) continue;
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+      const data = JSON.parse(text);
+      console.log(`[API] host-salary keys for ${uuid}: [${Object.keys(data || {}).join(", ")}]`);
+      await setCache(sb, cacheKey, data);
+      return data;
+    } catch {
+      // continue
+    }
+  }
+
+  return null;
 }
 
 // ── API: BD profit ─────────────────────────────────────────────
@@ -287,16 +367,24 @@ async function fetchBDProfit(sb: ReturnType<typeof supabaseAdmin>, bdId: string)
   const cached = await getCached(sb, cacheKey);
   if (cached) return cached;
 
-  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=get_bd_profit&bd_id=${bdId}`;
-  const res = await fetchWithRetry(url);
-  if (!res) return null;
-  try {
-    const data = await res.json();
-    if (data.status === "success") {
-      await setCache(sb, cacheKey, data);
+  for (const baseUrl of BD_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=get_bd_profit&bd_id=${bdId}`;
+    const res = await fetchWithRetry(url);
+    if (!res) continue;
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+      const data = JSON.parse(text);
+      if (data.status === "success") {
+        await setCache(sb, cacheKey, data);
+      }
+      return data;
+    } catch {
+      // continue
     }
-    return data;
-  } catch { return null; }
+  }
+
+  return null;
 }
 
 // ── Helper: extract numeric from API field ─────────────────────
@@ -491,10 +579,19 @@ serve(async (req) => {
 
       if (staleSupporters.length > 0) {
         console.log(`[SYNC] ${staleSupporters.length}/${supporterUuids.length} supporters have stale API data, fetching fallback individually`);
-        recentFallbackByMember = await buildRecentFallbackMap(sb, month, staleSupporters);
+
+        const staleSupporterRefs = staleSupporters.map((memberUuid) => {
+          const prefetched = memberDataMap.get(memberUuid);
+          return {
+            memberUuid,
+            internalUserId: extractInternalUserId(prefetched?.userInfo),
+          };
+        });
+
+        recentFallbackByMember = await buildRecentFallbackMap(sb, month, staleSupporterRefs);
 
         // Retry quickly for unresolved supporters to reduce "wait 5 minutes" scenarios
-        let unresolvedSupporters = staleSupporters.filter(uuid => !recentFallbackByMember.has(uuid));
+        let unresolvedSupporters = staleSupporterRefs.filter(ref => !recentFallbackByMember.has(ref.memberUuid));
         for (let attempt = 1; attempt <= MANUAL_FALLBACK_MAX_RETRIES && unresolvedSupporters.length > 0; attempt++) {
           console.log(
             `[SYNC] fallback retry ${attempt}/${MANUAL_FALLBACK_MAX_RETRIES} in ${MANUAL_FALLBACK_RETRY_DELAY_MS}ms for ${unresolvedSupporters.length} supporters`
@@ -506,7 +603,7 @@ serve(async (req) => {
             mergeFallbackMaps(recentFallbackByMember, retryMap);
           }
 
-          unresolvedSupporters = unresolvedSupporters.filter(uuid => !recentFallbackByMember.has(uuid));
+          unresolvedSupporters = unresolvedSupporters.filter(ref => !recentFallbackByMember.has(ref.memberUuid));
         }
 
         if (recentFallbackByMember.size > 0) {
@@ -579,13 +676,19 @@ serve(async (req) => {
           effectiveMonthlyCharges = baselineMonthly;
         }
 
-        // Manual-sync fallback: recover fresh charges from recent feed when aggregate API is delayed
+        // Manual-sync fallback: recover fresh charges from alternative sources
         if (isManual && effectiveMonthlyCharges <= baselineMonthly) {
-          const fallbackIncrease = recentFallbackByMember.get(member.member_uuid) || 0;
+          const internalUserId = extractInternalUserId(prefetched.userInfo);
+          const bestChargesMonthTotal = await fetchBestUserChargesTotal(sb, member.member_uuid, internalUserId, true);
+          if (bestChargesMonthTotal > effectiveMonthlyCharges) {
+            effectiveMonthlyCharges = bestChargesMonthTotal;
+            console.log(`[SYNC] supporter ${member.member_uuid}: fallback charges.month total=${bestChargesMonthTotal}`);
+          }
 
+          const fallbackIncrease = recentFallbackByMember.get(member.member_uuid) || 0;
           if (fallbackIncrease > 0) {
-            effectiveMonthlyCharges = baselineMonthly + fallbackIncrease;
-            console.log(`[SYNC] supporter ${member.member_uuid}: fallback +${fallbackIncrease}, total=${effectiveMonthlyCharges}`);
+            effectiveMonthlyCharges = Math.max(effectiveMonthlyCharges, baselineMonthly + fallbackIncrease);
+            console.log(`[SYNC] supporter ${member.member_uuid}: fallback recent +${fallbackIncrease}, total=${effectiveMonthlyCharges}`);
           }
         }
 
