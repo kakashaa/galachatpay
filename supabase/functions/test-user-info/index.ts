@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/hmac.ts";
 
-const BASE = "http://18.219.229.240/website";
+const BASE = "https://hola-chat.com";
 const KEY = "ghala2026actions";
 
 async function testEndpoint(name: string, url: string): Promise<Record<string, unknown>> {
