@@ -417,8 +417,9 @@ serve(async (req) => {
 
           if (!existingLog) {
             const pct = bd.user_commission_pct || 2;
-            const commissionCoins = (chargeDiff * pct) / 100;
-            const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
+            // Convert coins to USD first (7500 coins = $1), then take commission %
+            const chargeUSD = chargeDiff / 7500;
+            const commissionAmount = Math.round((chargeUSD * pct / 100) * 100) / 100;
 
             updateObj.current_month_commission = (fresh?.current_month_commission || 0) + commissionAmount;
             updateObj.total_commission = (fresh?.total_commission || 0) + commissionAmount;
@@ -561,9 +562,10 @@ serve(async (req) => {
             .maybeSingle();
 
           if (!existingLog) {
-            const pct = bd.host_commission_pct || 3;
-            const commissionCoins = (salaryDiff * pct) / 100;
-            const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
+            const pct = bd.host_commission_pct || 0;
+            // Convert coins to USD first (7500 coins = $1), then take commission %
+            const salaryUSD = salaryDiff / 7500;
+            const commissionAmount = Math.round((salaryUSD * pct / 100) * 100) / 100;
 
             updateObj.current_month_commission = (fresh?.current_month_commission || 0) + commissionAmount;
             updateObj.total_commission = (fresh?.total_commission || 0) + commissionAmount;
