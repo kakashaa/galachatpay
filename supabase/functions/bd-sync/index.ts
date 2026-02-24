@@ -207,55 +207,67 @@ function extractInternalUserId(userInfo: any): string | null {
   );
 }
 
+// ── Fallback: fetch user-charges for EACH supporter individually ──
 async function buildRecentFallbackMap(
   sb: ReturnType<typeof supabaseAdmin>,
   month: string,
-  seedMemberUuid: string | null,
-  internalIdToMemberUuid: Map<string, string>
+  supporterUuids: string[]
 ): Promise<Map<string, number>> {
   const fallbackByMember = new Map<string, number>();
-  if (!seedMemberUuid || internalIdToMemberUuid.size === 0) return fallbackByMember;
+  if (supporterUuids.length === 0) return fallbackByMember;
 
-  const userCharges = await fetchUserCharges(sb, seedMemberUuid, true);
-  if (!userCharges) return fallbackByMember;
+  // Fetch user-charges for each supporter in parallel (batches of 5)
+  const FALLBACK_BATCH = 5;
+  for (let i = 0; i < supporterUuids.length; i += FALLBACK_BATCH) {
+    const batch = supporterUuids.slice(i, i + FALLBACK_BATCH);
+    await Promise.all(batch.map(async (memberUuid) => {
+      try {
+        const userCharges = await fetchUserCharges(sb, memberUuid, true);
+        if (!userCharges) return;
 
-  const recentList = Array.isArray(userCharges?.recent)
-    ? userCharges.recent
-    : Array.isArray(userCharges?.recent_charges)
-      ? userCharges.recent_charges
-      : [];
+        const recentList = Array.isArray(userCharges?.recent)
+          ? userCharges.recent
+          : Array.isArray(userCharges?.recent_charges)
+            ? userCharges.recent_charges
+            : Array.isArray(userCharges?.data)
+              ? userCharges.data
+              : [];
 
-  for (const entry of recentList) {
-    const targetRef = (entry as any)?.["معرف المستخدم"]
-      ?? (entry as any)?.user_id
-      ?? (entry as any)?.target_user_id
-      ?? (entry as any)?.target_id;
+        let memberTotal = 0;
+        for (const entry of recentList) {
+          const chargeId = parseNumericId(
+            (entry as any)?.["معرف"] ?? (entry as any)?.id ?? (entry as any)?.charge_id
+          );
+          const chargeCoins = toNum(
+            (entry as any)?.["الكوينز"] ?? (entry as any)?.coins ?? (entry as any)?.amount
+          );
 
-    const targetInternalId = parseNumericId(targetRef);
-    if (!targetInternalId) continue;
+          if (!chargeId || chargeCoins <= 0) continue;
 
-    const memberUuid = internalIdToMemberUuid.get(targetInternalId);
-    if (!memberUuid) continue;
+          const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
+          const seen = await getCached(sb, dedupeKey);
+          if (seen) continue;
 
-    const chargeId = parseNumericId((entry as any)?.["معرف"] ?? (entry as any)?.id ?? (entry as any)?.charge_id);
-    const chargeCoins = toNum((entry as any)?.["الكوينز"] ?? (entry as any)?.coins ?? (entry as any)?.amount);
+          memberTotal += chargeCoins;
 
-    if (!chargeId || chargeCoins <= 0) continue;
+          await sb.from("edge_function_cache").upsert(
+            {
+              key: dedupeKey,
+              value: { processed: true, amount: chargeCoins },
+              expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+            { onConflict: "key" }
+          );
+        }
 
-    const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
-    const seen = await getCached(sb, dedupeKey);
-    if (seen) continue;
-
-    fallbackByMember.set(memberUuid, (fallbackByMember.get(memberUuid) || 0) + chargeCoins);
-
-    await sb.from("edge_function_cache").upsert(
-      {
-        key: dedupeKey,
-        value: { processed: true, amount: chargeCoins },
-        expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      { onConflict: "key" }
-    );
+        if (memberTotal > 0) {
+          fallbackByMember.set(memberUuid, memberTotal);
+          console.log(`[FALLBACK] supporter ${memberUuid}: recovered ${memberTotal} coins from ${recentList.length} entries`);
+        }
+      } catch (e) {
+        console.error(`[FALLBACK] error for ${memberUuid}:`, e);
+      }
+    }));
   }
 
   return fallbackByMember;
@@ -474,26 +486,22 @@ serve(async (req) => {
     // Build one-shot fallback map for all supporters (manual sync only)
     let recentFallbackByMember = new Map<string, number>();
     if (isManual && supporterUuids.length > 0) {
-      const internalIdToMemberUuid = new Map<string, string>();
+      // Identify supporters where aggregate API returned 0 or stale data
+      const staleSupporters = supporterUuids.filter(uuid => {
+        const apiVal = batchChargesMap.get(uuid) ?? 0;
+        const dbVal = toNum(members.find((m: any) => m.member_uuid === uuid)?.monthly_charges);
+        const loggedVal = supporterSourceMap.get(uuid) || 0;
+        return apiVal <= Math.max(dbVal, loggedVal);
+      });
 
-      for (const supporterUuid of supporterUuids) {
-        const prefetched = memberDataMap.get(supporterUuid);
-        if (!prefetched?.userInfo) continue;
-        const internalUserId = extractInternalUserId(prefetched.userInfo);
-        if (!internalUserId) continue;
-        internalIdToMemberUuid.set(internalUserId, supporterUuid);
-      }
+      if (staleSupporters.length > 0) {
+        console.log(`[SYNC] ${staleSupporters.length}/${supporterUuids.length} supporters have stale API data, fetching fallback individually`);
+        recentFallbackByMember = await buildRecentFallbackMap(sb, month, staleSupporters);
 
-      recentFallbackByMember = await buildRecentFallbackMap(
-        sb,
-        month,
-        supporterUuids[0] || null,
-        internalIdToMemberUuid
-      );
-
-      if (recentFallbackByMember.size > 0) {
-        const totalRecovered = [...recentFallbackByMember.values()].reduce((sum, v) => sum + v, 0);
-        console.log(`[SYNC] fallback map recovered ${totalRecovered} coins for ${recentFallbackByMember.size} supporters`);
+        if (recentFallbackByMember.size > 0) {
+          const totalRecovered = [...recentFallbackByMember.values()].reduce((sum, v) => sum + v, 0);
+          console.log(`[SYNC] fallback recovered ${totalRecovered} coins for ${recentFallbackByMember.size} supporters`);
+        }
       }
     }
 
