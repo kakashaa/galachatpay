@@ -132,7 +132,7 @@ const AdminElementSettings: React.FC<Props> = ({ readOnly, adminUsername }) => {
             </div>
             <div className="flex items-center gap-2">
               {isToggling && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-              <span className={`text-[10px] font-bold ${isEnabled ? "text-emerald-400" : "text-destructive"}`}>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isEnabled ? "text-emerald-400 bg-emerald-400/10" : "text-destructive bg-destructive/10"}`}>
                 {isEnabled ? "مفعّل" : "موقف"}
               </span>
               <Switch
