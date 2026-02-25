@@ -8,6 +8,7 @@ interface ActiveBan {
   reason: string;
   created_at: string;
   banned_by: string;
+  banned_elements: string[] | null;
 }
 
 export function useBanCheck(userUuid: string | undefined) {
@@ -37,10 +38,9 @@ export function useBanCheck(userUuid: string | undefined) {
         return;
       }
 
-      // Check if any ban is still active (not expired)
       const now = new Date();
       const stillActive = bans.find((ban) => {
-        if (ban.duration_hours === 999999) return true; // permanent
+        if (ban.duration_hours === 999999) return true;
         const created = new Date(ban.created_at);
         const expiresAt = new Date(created.getTime() + ban.duration_hours * 60 * 60 * 1000);
         return expiresAt > now;
@@ -48,7 +48,11 @@ export function useBanCheck(userUuid: string | undefined) {
 
       if (stillActive) {
         setIsBanned(true);
-        setActiveBan(stillActive as ActiveBan);
+        setActiveBan({
+          ...stillActive,
+          reason: stillActive.reason || "",
+          banned_elements: (stillActive as any).banned_elements || null,
+        } as ActiveBan);
       } else {
         setIsBanned(false);
         setActiveBan(null);
@@ -62,12 +66,10 @@ export function useBanCheck(userUuid: string | undefined) {
 
   useEffect(() => {
     checkBan();
-    // Re-check every 60 seconds
     const interval = setInterval(checkBan, 60_000);
     return () => clearInterval(interval);
   }, [checkBan]);
 
-  // Listen to realtime changes
   useEffect(() => {
     if (!userUuid) return;
     const channel = supabase
@@ -107,5 +109,20 @@ export function useBanCheck(userUuid: string | undefined) {
     return `${hours} ساعة و ${minutes} دقيقة`;
   }, [activeBan]);
 
-  return { isBanned, activeBan, loading, checkBan, getRemainingTime };
+  // Check if a specific element is banned
+  const isElementBanned = useCallback((elementKey: string): boolean => {
+    if (!activeBan || !isBanned) return false;
+    // Full ban = everything banned
+    if (activeBan.ban_type === "full" || activeBan.ban_type === "promotion") return true;
+    // Element ban = check specific elements
+    if (activeBan.ban_type === "elements" && activeBan.banned_elements) {
+      return activeBan.banned_elements.includes(elementKey);
+    }
+    return false;
+  }, [activeBan, isBanned]);
+
+  // Full ban blocks entire app
+  const isFullBan = isBanned && activeBan && (activeBan.ban_type === "full" || activeBan.ban_type === "promotion");
+
+  return { isBanned, activeBan, loading, checkBan, getRemainingTime, isElementBanned, isFullBan };
 }

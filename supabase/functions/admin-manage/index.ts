@@ -243,28 +243,36 @@ Deno.serve(async (req) => {
         break;
       }
       case "manual_ban_user": {
-        const { target_uuid, ban_type, duration_hours, reason } = data;
+        const { target_uuid, ban_type, duration_hours, reason, banned_elements } = data;
         if (!target_uuid) throw new Error("UUID المستخدم مطلوب");
 
-        // Internal app ban - save to manual_bans table only
-        const { error: insertErr } = await supabase.from("manual_bans").insert({
+        const insertData: any = {
           target_uuid: String(target_uuid),
-          ban_type: ban_type || "normal",
+          ban_type: ban_type || "full",
           duration_hours: duration_hours || 24,
           reason: reason || "",
           banned_by: username || "",
-        });
+        };
+        if (ban_type === "elements" && Array.isArray(banned_elements) && banned_elements.length > 0) {
+          insertData.banned_elements = banned_elements;
+        }
+
+        const { error: insertErr } = await supabase.from("manual_bans").insert(insertData);
         if (insertErr) throw new Error("فشل حفظ الحظر: " + insertErr.message);
 
-        // Send notification to banned user
+        const elementLabels: Record<string, string> = { entries: "دخوليات", frames: "إطارات", gifts: "هدايا مخصصة", animated_photos: "صور متحركة", change_id: "تغيير آيدي", hairs: "تسريحات", vip: "VIP", salary: "رواتب" };
+        const banDesc = ban_type === "elements" && Array.isArray(banned_elements)
+          ? `تم حظرك من: ${banned_elements.map((e: string) => elementLabels[e] || e).join("، ")}`
+          : "تم حظرك من استخدام جميع عناصر التطبيق";
+
         await supabase.from("notifications").insert({
           user_uuid: String(target_uuid),
-          title: "🚫 تم حظرك من استخدام خدمات التطبيق",
-          body: `تم حظرك من استخدام جميع عناصر التطبيق. السبب: ${reason || "مخالفة"}. المدة: ${duration_hours === 999999 ? "أبدي" : (duration_hours || 24) + " ساعة"}`,
+          title: "🚫 تم حظرك",
+          body: `${banDesc}. السبب: ${reason || "مخالفة"}. المدة: ${duration_hours === 999999 ? "أبدي" : (duration_hours || 24) + " ساعة"}`,
           target: "personal",
         });
 
-        await logAudit({ target_uuid, ban_type, duration_hours, reason });
+        await logAudit({ target_uuid, ban_type, duration_hours, reason, banned_elements });
         result = { success: true };
         break;
       }
