@@ -236,6 +236,92 @@ function extractInternalUserId(userInfo: any): string | null {
   );
 }
 
+// ── API: user-charges (fallback source for supporters) ─────────
+async function fetchUserCharges(
+  sb: ReturnType<typeof supabaseAdmin>,
+  uuid: string,
+  skipCache = false
+): Promise<any | null> {
+  const cacheKey = `user_charges_${uuid}`;
+  if (!skipCache) {
+    const cached = await getCached(sb, cacheKey);
+    if (cached) return cached;
+  }
+
+  for (const baseUrl of BD_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
+    const res = await fetchWithRetry(url, 1);
+    if (!res) continue;
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+      const data = JSON.parse(text);
+      if (data) {
+        await setCache(sb, cacheKey, data);
+        return data;
+      }
+    } catch {
+      // continue
+    }
+  }
+  return null;
+}
+
+// ── Build recent fallback map (single call, applies to all supporters) ──
+async function buildRecentFallbackMap(
+  sb: ReturnType<typeof supabaseAdmin>,
+  month: string,
+  seedMemberUuid: string | null,
+  internalIdToMemberUuid: Map<string, string>
+): Promise<Map<string, number>> {
+  const fallbackByMember = new Map<string, number>();
+  if (!seedMemberUuid || internalIdToMemberUuid.size === 0) return fallbackByMember;
+
+  const userCharges = await fetchUserCharges(sb, seedMemberUuid, true);
+  if (!userCharges) return fallbackByMember;
+
+  const recentList = Array.isArray(userCharges?.recent)
+    ? userCharges.recent
+    : Array.isArray(userCharges?.recent_charges)
+      ? userCharges.recent_charges
+      : [];
+
+  for (const entry of recentList) {
+    const targetRef = (entry as any)?.["معرف المستخدم"]
+      ?? (entry as any)?.user_id
+      ?? (entry as any)?.target_user_id
+      ?? (entry as any)?.target_id;
+
+    const targetInternalId = parseNumericId(targetRef);
+    if (!targetInternalId) continue;
+
+    const memberUuid = internalIdToMemberUuid.get(targetInternalId);
+    if (!memberUuid) continue;
+
+    const chargeId = parseNumericId((entry as any)?.["معرف"] ?? (entry as any)?.id ?? (entry as any)?.charge_id);
+    const chargeCoins = toNum((entry as any)?.["الكوينز"] ?? (entry as any)?.coins ?? (entry as any)?.amount);
+
+    if (!chargeId || chargeCoins <= 0) continue;
+
+    const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
+    const seen = await getCached(sb, dedupeKey);
+    if (seen) continue;
+
+    fallbackByMember.set(memberUuid, (fallbackByMember.get(memberUuid) || 0) + chargeCoins);
+
+    await sb.from("edge_function_cache").upsert(
+      {
+        key: dedupeKey,
+        value: { processed: true, amount: chargeCoins },
+        expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      { onConflict: "key" }
+    );
+  }
+
+  return fallbackByMember;
+}
+
 // ── API 5: host-salary (for hosts) ─────────────────────────────
 async function fetchHostSalary(sb: ReturnType<typeof supabaseAdmin>, uuid: string) {
   const cacheKey = `host_salary_${uuid}`;
@@ -462,6 +548,32 @@ serve(async (req) => {
 
     console.log(`[SYNC] pre-fetched data for ${memberDataMap.size} members`);
 
+    // ── Step 3: Build fallback map for manual sync when aggregate API fails ──
+    let recentFallbackByMember = new Map<string, number>();
+    if (isManual && supporterUuids.length > 0) {
+      const internalIdToMemberUuid = new Map<string, string>();
+
+      for (const supporterUuid of supporterUuids) {
+        const prefetched = memberDataMap.get(supporterUuid);
+        if (!prefetched?.userInfo) continue;
+        const internalUserId = extractInternalUserId(prefetched.userInfo);
+        if (!internalUserId) continue;
+        internalIdToMemberUuid.set(internalUserId, supporterUuid);
+      }
+
+      recentFallbackByMember = await buildRecentFallbackMap(
+        sb,
+        month,
+        supporterUuids[0] || null,
+        internalIdToMemberUuid
+      );
+
+      if (recentFallbackByMember.size > 0) {
+        const totalRecovered = [...recentFallbackByMember.values()].reduce((sum, v) => sum + v, 0);
+        console.log(`[SYNC] fallback map recovered ${totalRecovered} coins for ${recentFallbackByMember.size} supporters`);
+      }
+    }
+
     // Now process members sequentially (DB writes need ordering for commission safety)
     for (const member of members) {
       const bd = bdMap[member.bd_uuid];
@@ -523,7 +635,16 @@ serve(async (req) => {
           effectiveMonthlyCharges = baselineMonthly;
         }
 
-        // Anti-rollback only - no complex fallback
+        // Manual-sync fallback: recover fresh charges from recent feed when aggregate API returns stale data
+        if (isManual && effectiveMonthlyCharges <= baselineMonthly) {
+          const fallbackIncrease = recentFallbackByMember.get(member.member_uuid) || 0;
+          if (fallbackIncrease > 0) {
+            effectiveMonthlyCharges = baselineMonthly + fallbackIncrease;
+            console.log(`[SYNC] supporter ${member.member_uuid}: fallback +${fallbackIncrease}, total=${effectiveMonthlyCharges}`);
+          }
+        }
+
+        // Anti-rollback only
 
         const chargeDiff = effectiveMonthlyCharges - baselineMonthly;
 
