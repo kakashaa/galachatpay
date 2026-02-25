@@ -787,10 +787,33 @@ serve(async (req) => {
             `💵 المبلغ: $${amount}\n` +
             `⏰ ${time}`;
 
+          // Get the withdrawal ID from the most recent insertion
+          const { data: latestW } = await sb.from("bd_withdrawals")
+            .select("id")
+            .eq("bd_uuid", bd_uuid)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const withdrawalId = latestW?.id || "unknown";
+
           await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+            body: JSON.stringify({
+              chat_id: CHAT_ID,
+              text: message,
+              parse_mode: "HTML",
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: "✅ قبول", callback_data: `bd_w_approve:${withdrawalId}:${target_uuid}:${coins}:${bd_uuid}` },
+                    { text: "❌ رفض", callback_data: `bd_w_reject:${withdrawalId}:${bd_uuid}:${amount}` },
+                  ],
+                ],
+              },
+            }),
           });
         }
       } catch (e) {
