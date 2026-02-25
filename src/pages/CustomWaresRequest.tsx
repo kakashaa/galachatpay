@@ -19,8 +19,7 @@ const WARE_TYPES = [
 const FILE_FORMATS = [
   { value: "mp4", label: "MP4 Video" },
   { value: "svga", label: "SVGA Animation" },
-  { value: "alpha", label: "Alpha Video (MP4)" },
-  { value: "webp", label: "WebP Image" },
+  { value: "alpha", label: "Alpha Video / WebP" },
 ];
 
 const ACCEPTED_EXTENSIONS = ".mp4,.svga,.webp,.png,.mov";
@@ -55,9 +54,8 @@ const CustomWaresRequest: React.FC = () => {
   const detectFormat = (filename: string) => {
     const ext = filename.split(".").pop()?.toLowerCase();
     if (ext === "svga") return "svga";
-    if (ext === "webp") return "webp";
+    if (ext === "webp" || ext === "png") return "alpha";
     if (ext === "mp4" || ext === "mov") return "mp4";
-    if (ext === "png") return "webp";
     return "mp4";
   };
 
