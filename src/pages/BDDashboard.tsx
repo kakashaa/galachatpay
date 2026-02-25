@@ -115,16 +115,14 @@ const BDDashboard: React.FC = () => {
     try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const now = new Date();
-      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01T00:00:00Z`;
+      
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 6);
       weekAgo.setHours(0, 0, 0, 0);
 
-      const [dashRes, todayLogsRes, monthLogsRes, weekLogsRes] = await Promise.all([
+      const [dashRes, todayLogsRes, weekLogsRes] = await Promise.all([
         supabase.functions.invoke("bd-manage", { body: { action: "get_dashboard", bd_uuid: user.uuid } }),
         supabase.from("bd_commission_logs").select("amount").eq("bd_uuid", user.uuid).gte("created_at", todayStart.toISOString()),
-        supabase.from("bd_commission_logs").select("amount, source_amount, member_type").eq("bd_uuid", user.uuid).gte("created_at", monthStart),
         supabase.from("bd_commission_logs").select("amount, created_at").eq("bd_uuid", user.uuid).gte("created_at", weekAgo.toISOString()).order("created_at", { ascending: true }),
       ]);
 
@@ -132,7 +130,8 @@ const BDDashboard: React.FC = () => {
       if (res?.bd) { setData(res); } else { navigate("/bd", { replace: true }); }
 
       setTodayProfit(todayLogsRes.data?.reduce((sum, log) => sum + (log.amount || 0), 0) || 0);
-      setMonthlyProfit(monthLogsRes.data?.reduce((sum, log) => sum + (log.amount || 0), 0) || 0);
+      // Use current_month_earnings from settings (admin-editable, authoritative source)
+      setMonthlyProfit(Number(res?.bd?.current_month_earnings || 0));
 
       const dayMap: Record<string, number> = {};
       for (let i = 0; i < 7; i++) {
