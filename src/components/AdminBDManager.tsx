@@ -572,24 +572,17 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                       setSavingStats(true);
                                       try {
                                         const origToday = todayEarnings[bd.bd_uuid] ?? 0;
-                                        const origMonth = Number(bd.current_month_earnings || 0);
-                                        const origTotal = Number(bd.total_earned || 0);
                                         const newToday = Number(editStatsValues.today) || 0;
                                         const newMonth = Number(editStatsValues.month) || 0;
                                         const newTotal = Number(editStatsValues.total) || 0;
                                         const diffToday = newToday - origToday;
-                                        const diffMonth = newMonth - origMonth;
-                                        const diffTotal = newTotal - origTotal;
-                                        const totalDiff = diffToday + diffMonth + diffTotal;
 
-                                        // Update bd_commission_settings
-                                        const newBalance = Math.max(0, Number(bd.available_balance || 0) + totalDiff);
+                                        // Update bd_commission_settings (without available_balance)
                                         await supabase
                                           .from("bd_commission_settings")
                                           .update({
                                             current_month_earnings: newMonth,
                                             total_earned: newTotal,
-                                            available_balance: newBalance,
                                             updated_at: new Date().toISOString(),
                                           })
                                           .eq("bd_uuid", bd.bd_uuid);
@@ -612,7 +605,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                           });
                                         }
 
-                                        toast.success(`تم التحديث | فارق الرصيد: ${totalDiff > 0 ? "+" : ""}${totalDiff.toFixed(2)}$`);
+                                        toast.success("تم التحديث بنجاح");
                                         setEditingStatsBd(null);
                                         loadData();
                                       } catch (err: any) {
@@ -927,7 +920,17 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                                     // Update local state
                                                     setAllMembers(prev => prev.map(mm => mm.id === m.id ? { ...mm, total_commission: newTotal, current_month_commission: newMonthComm } : mm));
                                                     setBds(prev => prev.map(b => b.bd_uuid === bd.bd_uuid ? { ...b, current_month_earnings: newBdMonth, total_earned: newBdTotal } : b));
-                                                    setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: (prev[bd.bd_uuid] ?? 0) + diff }));
+                                                    
+                                                    // Re-fetch today earnings from DB for accuracy
+                                                    const todayRefresh = new Date();
+                                                    todayRefresh.setHours(0, 0, 0, 0);
+                                                    const { data: refreshLogs } = await supabase
+                                                      .from("bd_commission_logs")
+                                                      .select("amount")
+                                                      .eq("bd_uuid", bd.bd_uuid)
+                                                      .gte("created_at", todayRefresh.toISOString());
+                                                    const refreshTotal = refreshLogs?.reduce((s: number, l: any) => s + (l.amount || 0), 0) || 0;
+                                                    setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: refreshTotal }));
                                                     
                                                     setEditingMemberAmount(null);
                                                     toast.success(`تم تعديل العمولة (${diff >= 0 ? "+" : ""}${diff.toFixed(2)}$)`);
