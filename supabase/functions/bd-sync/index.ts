@@ -4,15 +4,21 @@ import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URLS = [
   "https://hola-chat.com/bd-data-api.php",
+  "https://hola-chat.com/website/bd-data-api.php",
   "http://18.219.229.240/bd-data-api.php",
+  "http://18.219.229.240/website/bd-data-api.php",
 ];
 const TOP_CHARGERS_API_URLS = [
   "https://hola-chat.com/top-chargers-api.php",
+  "https://hola-chat.com/website/top-chargers-api.php",
   "http://18.219.229.240/top-chargers-api.php",
+  "http://18.219.229.240/website/top-chargers-api.php",
 ];
 const AGENCY_TARGET_API_URLS = [
   "https://hola-chat.com/agency-target-api.php",
+  "https://hola-chat.com/website/agency-target-api.php",
   "http://18.219.229.240/agency-target-api.php",
+  "http://18.219.229.240/website/agency-target-api.php",
 ];
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -47,12 +53,16 @@ async function setCache(sb: ReturnType<typeof supabaseAdmin>, key: string, value
   );
 }
 
-// ── Fetch with retry (60s timeout) ─────────────────────────────
+// ── Fetch with retry ────────────────────────────────────────────
 async function fetchWithRetry(url: string, retries = 1): Promise<Response | null> {
   for (let i = 0; i <= retries; i++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-      if (!res.ok) { await res.text(); return null; }
+      const res = await fetch(url, { signal: AbortSignal.timeout(25000) });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error(`[FETCH] ${url} failed with status ${res.status}: ${body.slice(0, 200)}`);
+        return null;
+      }
       return res;
     } catch (e) {
       console.error(`fetch attempt ${i + 1} failed for ${url}:`, e);
@@ -80,36 +90,51 @@ async function fetchIndividualMonthlyCharges(
 
   const now = new Date();
   const year = now.getUTCFullYear();
-  const monthNum = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const monthValue = now.getUTCMonth() + 1;
+  const monthCandidates = Array.from(new Set([
+    String(monthValue),
+    String(monthValue).padStart(2, "0"),
+  ]));
 
   // ── Try 1: top-chargers-api ──
-  for (const baseUrl of TOP_CHARGERS_API_URLS) {
-    const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthNum}`;
+  for (const monthNum of monthCandidates) {
+    for (const baseUrl of TOP_CHARGERS_API_URLS) {
+      const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthNum}`;
 
-    console.log(`[INDIVIDUAL] fetching charges for ${uuid} via ${baseUrl}`);
-    const res = await fetchWithRetry(url, 2);
-    if (!res) continue;
+      console.log(`[INDIVIDUAL] fetching charges for ${uuid} via ${baseUrl} (month=${monthNum})`);
+      const res = await fetchWithRetry(url, 2);
+      if (!res) continue;
 
-    const rawText = await res.text();
-    console.log(`[INDIVIDUAL] response for ${uuid} via ${baseUrl} (first 200 chars): ${rawText.slice(0, 200)}`);
+      const rawText = await res.text();
+      console.log(`[INDIVIDUAL] response for ${uuid} via ${baseUrl} (month=${monthNum}) (first 200 chars): ${rawText.slice(0, 200)}`);
 
-    if (isPageLoadFailedPayload(rawText)) continue;
+      if (isPageLoadFailedPayload(rawText)) continue;
 
-    try {
-      const data = JSON.parse(rawText);
-      if (data?.status === "success" && Array.isArray(data.data)) {
-        for (const entry of data.data) {
-          const entryUuid = String(entry.uuid);
-          const total = Number(entry.total_charges) || 0;
-          if (entryUuid === uuid || data.data.length === 1) {
-            await setCache(sb, cacheKey, total);
-            console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total} (top-chargers)`);
-            return total;
+      try {
+        const data = JSON.parse(rawText);
+        const rows = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.rows)
+            ? data.rows
+            : Array.isArray(data)
+              ? data
+              : [];
+
+        const isSuccess = data?.status === "success" || data?.ok === true || Array.isArray(data);
+        if (isSuccess && rows.length > 0) {
+          for (const entry of rows) {
+            const entryUuid = String(entry?.uuid ?? entry?.user_uuid ?? entry?.member_uuid ?? "").trim();
+            const total = toNum(entry?.total_charges ?? entry?.total ?? entry?.charges ?? entry?.month_total);
+            if (entryUuid === uuid || rows.length === 1) {
+              await setCache(sb, cacheKey, total);
+              console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total} (top-chargers, month=${monthNum})`);
+              return total;
+            }
           }
         }
+      } catch (e) {
+        console.error(`[INDIVIDUAL] parse error for ${uuid} via ${baseUrl} (month=${monthNum}):`, e);
       }
-    } catch (e) {
-      console.error(`[INDIVIDUAL] parse error for ${uuid} via ${baseUrl}:`, e);
     }
   }
 
@@ -185,7 +210,21 @@ async function fetchUserInfo(sb: ReturnType<typeof supabaseAdmin>, uuid: string)
       const text = await res.text();
       if (isPageLoadFailedPayload(text)) continue;
       const data = JSON.parse(text);
-      await setCache(sb, cacheKey, data);
+
+      const hasUsableIdentity = Boolean(
+        data?.name ||
+        data?.type_user ||
+        data?.user?.["معرف"] ||
+        data?.user?.id ||
+        data?.user?.name
+      );
+
+      if (data?.ok === true && hasUsableIdentity) {
+        await setCache(sb, cacheKey, data);
+      } else {
+        console.log(`[API] user-info for ${uuid} is not usable, skip cache`);
+      }
+
       return data;
     } catch {
       // continue
@@ -225,12 +264,33 @@ function parseNumericId(value: unknown): string | null {
   return match ? match[0] : null;
 }
 
+function normalizeNumericText(value: string): string {
+  return value
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[^\d.,+-]/g, "")
+    .replace(/\+/g, "")
+    .replace(/,/g, "")
+    .trim();
+}
+
 function toNum(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
+
   if (typeof value === "string") {
-    const parsed = Number(value.replace(/,/g, "").trim());
-    return Number.isFinite(parsed) ? parsed : 0;
+    const normalized = normalizeNumericText(value);
+    if (!normalized) return 0;
+
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) return parsed;
+
+    const matched = normalized.match(/-?\d+(?:\.\d+)?/);
+    return matched ? Number(matched[0]) || 0 : 0;
   }
+
+  if (value && typeof value === "object") {
+    return toNum((value as any).total ?? (value as any).count ?? 0);
+  }
+
   return 0;
 }
 
