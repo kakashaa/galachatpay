@@ -1228,6 +1228,9 @@ const AdminDashboardPage: React.FC = () => {
                             { key: "hairs", label: "💇 تسريحات" },
                             { key: "vip", label: "⭐ VIP" },
                             { key: "salary", label: "💰 رواتب" },
+                            { key: "quick_support", label: "🎧 دعم سريع" },
+                            { key: "works", label: "💼 works" },
+                            { key: "stars", label: "🌟 نجومي" },
                           ].map((el) => (
                             <button
                               key={el.key}
@@ -1312,7 +1315,7 @@ const AdminDashboardPage: React.FC = () => {
                             {ban.ban_type === "elements" && ban.banned_elements && ban.banned_elements.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {ban.banned_elements.map((el: string) => {
-                                  const labels: Record<string, string> = { entries: "دخوليات", frames: "إطارات", gifts: "هدايا", animated_photos: "صور متحركة", change_id: "تغيير آيدي", hairs: "تسريحات", vip: "VIP", salary: "رواتب" };
+                                  const labels: Record<string, string> = { entries: "دخوليات", frames: "إطارات", gifts: "هدايا", animated_photos: "صور متحركة", change_id: "تغيير آيدي", hairs: "تسريحات", vip: "VIP", salary: "رواتب", quick_support: "دعم سريع", works: "works", stars: "نجومي" };
                                   return <span key={el} className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive text-[10px] font-bold">{labels[el] || el}</span>;
                                 })}
                               </div>
