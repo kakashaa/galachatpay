@@ -95,12 +95,44 @@ const BDDashboard: React.FC = () => {
     }
   }, [user?.uuid, navigate]);
 
-  // Load data on mount, refresh every 30s
+  // Load data on mount, refresh every 30s, and listen for realtime commission changes
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
-  }, [loadData]);
+
+    // Realtime: refresh immediately when commission logs change for this BD
+    const channel = supabase
+      .channel('bd-dashboard-today')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bd_commission_logs',
+          filter: `bd_uuid=eq.${user?.uuid}`,
+        },
+        () => {
+          // Refetch today's profit immediately
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          supabase
+            .from("bd_commission_logs")
+            .select("amount")
+            .eq("bd_uuid", user?.uuid || "")
+            .gte("created_at", todayStart.toISOString())
+            .then(({ data: logs }) => {
+              const total = logs?.reduce((sum, log) => sum + (log.amount || 0), 0) || 0;
+              setTodayProfit(total);
+            });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [loadData, user?.uuid]);
 
   const copyReferralCode = () => {
     if (data?.bd?.referral_code) {
