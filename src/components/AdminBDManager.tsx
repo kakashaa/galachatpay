@@ -421,7 +421,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                       onClick={async () => {
                         const newExpanded = isExpanded ? null : bd.bd_uuid;
                         setExpandedBd(newExpanded);
-                        if (newExpanded && todayEarnings[bd.bd_uuid] === undefined) {
+                        if (newExpanded) {
                           const todayStart = new Date();
                           todayStart.setHours(0, 0, 0, 0);
                           const { data: logs } = await supabase
@@ -492,12 +492,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                                   <div className="bg-muted/30 rounded-lg p-2 space-y-1">
                                     <p className="text-muted-foreground">اليوم</p>
-                                    <Input
-                                      type="number" step="0.01" dir="ltr"
-                                      className="h-7 text-xs text-center font-bold"
-                                      value={editStatsValues.today}
-                                      onChange={(e) => setEditStatsValues(prev => ({ ...prev, today: e.target.value }))}
-                                    />
+                                    <p className="h-7 flex items-center justify-center text-xs font-bold text-emerald-400">${(todayEarnings[bd.bd_uuid] ?? 0).toFixed(2)}</p>
+                                    <p className="text-[9px] text-muted-foreground/60">تلقائي من الأعضاء</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2 space-y-1">
                                     <p className="text-muted-foreground">الشهر</p>
@@ -520,27 +516,16 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                 </div>
                                 {/* Show diffs */}
                                 {(() => {
-                                  const origToday = todayEarnings[bd.bd_uuid] ?? 0;
                                   const origMonth = Number(bd.current_month_earnings || 0);
                                   const origTotal = Number(bd.total_earned || 0);
-                                  const newToday = Number(editStatsValues.today) || 0;
                                   const newMonth = Number(editStatsValues.month) || 0;
                                   const newTotal = Number(editStatsValues.total) || 0;
-                                  const diffToday = newToday - origToday;
                                   const diffMonth = newMonth - origMonth;
                                   const diffTotal = newTotal - origTotal;
-                                  const totalDiff = diffToday + diffMonth + diffTotal;
-                                  const hasDiff = diffToday !== 0 || diffMonth !== 0 || diffTotal !== 0;
+                                  const totalDiff = diffMonth + diffTotal;
+                                  const hasDiff = diffMonth !== 0 || diffTotal !== 0;
                                   return hasDiff ? (
                                     <div className="bg-muted/20 rounded-lg p-2 text-[10px] space-y-1">
-                                      {diffToday !== 0 && (
-                                        <div className="flex justify-between">
-                                          <span>فارق اليوم:</span>
-                                          <span className={diffToday > 0 ? "text-emerald-400" : "text-red-400"}>
-                                            {diffToday > 0 ? "+" : ""}{diffToday.toFixed(2)}$
-                                          </span>
-                                        </div>
-                                      )}
                                       {diffMonth !== 0 && (
                                         <div className="flex justify-between">
                                           <span>فارق الشهر:</span>
@@ -571,13 +556,10 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                     onClick={async () => {
                                       setSavingStats(true);
                                       try {
-                                        const origToday = todayEarnings[bd.bd_uuid] ?? 0;
-                                        const newToday = Number(editStatsValues.today) || 0;
                                         const newMonth = Number(editStatsValues.month) || 0;
                                         const newTotal = Number(editStatsValues.total) || 0;
-                                        const diffToday = newToday - origToday;
 
-                                        // Update bd_commission_settings (without available_balance)
+                                        // Update bd_commission_settings (Today is read-only, derived from member logs)
                                         await supabase
                                           .from("bd_commission_settings")
                                           .update({
@@ -586,24 +568,6 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                             updated_at: new Date().toISOString(),
                                           })
                                           .eq("bd_uuid", bd.bd_uuid);
-
-                                        // Update local today earnings
-                                        setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: newToday }));
-
-                                        // Insert commission log only for today diff (for today's earnings tracking)
-                                        if (diffToday !== 0) {
-                                          const now = new Date();
-                                          const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-                                          await supabase.from("bd_commission_logs").insert({
-                                            bd_uuid: bd.bd_uuid,
-                                            member_uuid: "admin_manual",
-                                            member_type: "manual_adjustment",
-                                            month,
-                                            source_amount: 0,
-                                            amount: diffToday,
-                                            commission_pct: 0,
-                                          });
-                                        }
 
                                         toast.success("تم التحديث بنجاح");
                                         setEditingStatsBd(null);
