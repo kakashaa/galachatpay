@@ -138,7 +138,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
     try {
       await bdCall("admin_approve_registration", { request_id: id });
       toast.success("تمت الموافقة");
-      setRegistrations((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" } : r));
+      setRegistrations((prev) => prev.filter((r) => r.id !== id));
     } catch (err: any) { toast.error(err?.message || "فشل"); }
   };
 
@@ -146,7 +146,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
     try {
       await bdCall("admin_reject_registration", { request_id: id });
       toast.success("تم الرفض");
-      setRegistrations((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" } : r));
+      setRegistrations((prev) => prev.filter((r) => r.id !== id));
     } catch (err: any) { toast.error(err?.message || "فشل"); }
   };
 
