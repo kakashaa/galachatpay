@@ -597,45 +597,19 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                         // Update local today earnings
                                         setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: newToday }));
 
-                                        // Insert commission logs for all diffs so BD dashboard (which aggregates from logs) reflects changes
-                                        const now = new Date();
-                                        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-                                        const logsToInsert = [];
+                                        // Insert commission log only for today diff (for today's earnings tracking)
                                         if (diffToday !== 0) {
-                                          logsToInsert.push({
+                                          const now = new Date();
+                                          const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                                          await supabase.from("bd_commission_logs").insert({
                                             bd_uuid: bd.bd_uuid,
-                                            member_uuid: "admin_manual_today",
+                                            member_uuid: "admin_manual",
                                             member_type: "manual_adjustment",
                                             month,
                                             source_amount: 0,
                                             amount: diffToday,
                                             commission_pct: 0,
                                           });
-                                        }
-                                        if (diffMonth !== 0) {
-                                          logsToInsert.push({
-                                            bd_uuid: bd.bd_uuid,
-                                            member_uuid: "admin_manual_month",
-                                            member_type: "manual_adjustment",
-                                            month,
-                                            source_amount: 0,
-                                            amount: diffMonth,
-                                            commission_pct: 0,
-                                          });
-                                        }
-                                        if (diffTotal !== 0) {
-                                          logsToInsert.push({
-                                            bd_uuid: bd.bd_uuid,
-                                            member_uuid: "admin_manual_total",
-                                            member_type: "manual_adjustment",
-                                            month,
-                                            source_amount: 0,
-                                            amount: diffTotal,
-                                            commission_pct: 0,
-                                          });
-                                        }
-                                        if (logsToInsert.length > 0) {
-                                          await supabase.from("bd_commission_logs").insert(logsToInsert);
                                         }
 
                                         toast.success(`تم التحديث | فارق الرصيد: ${totalDiff > 0 ? "+" : ""}${totalDiff.toFixed(2)}$`);
