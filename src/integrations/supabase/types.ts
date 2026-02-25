@@ -489,6 +489,7 @@ export type Database = {
           bd_uuid: string
           created_at: string
           current_month_commission: number
+          custom_commission_pct: number | null
           id: string
           initial_charger_num: number
           is_active: boolean
@@ -506,6 +507,7 @@ export type Database = {
           bd_uuid: string
           created_at?: string
           current_month_commission?: number
+          custom_commission_pct?: number | null
           id?: string
           initial_charger_num?: number
           is_active?: boolean
@@ -523,6 +525,7 @@ export type Database = {
           bd_uuid?: string
           created_at?: string
           current_month_commission?: number
+          custom_commission_pct?: number | null
           id?: string
           initial_charger_num?: number
           is_active?: boolean

@@ -43,6 +43,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberType, setNewMemberType] = useState<"supporter" | "agency">("supporter");
   const [addMemberLoading, setAddMemberLoading] = useState(false);
+  const [editingMember, setEditingMember] = useState<string | null>(null);
+  const [editMemberCommission, setEditMemberCommission] = useState<string>("");
 
   // Withdrawals
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
@@ -614,24 +616,95 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                 <p className="text-[10px] text-muted-foreground text-center py-2">لا يوجد أعضاء</p>
                               ) : (
                                 <div className="space-y-1.5">
-                                  {members.map((m) => (
-                                    <div key={m.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                                      <div>
-                                        <p className="text-xs font-bold">{m.member_name || m.member_uuid}</p>
-                                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                          <span className={m.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}>
-                                            {m.member_type === "agency" ? "وكيل" : "داعم"}
-                                          </span>
-                                          <span>عمولة: ${Number(m.current_month_commission || 0).toFixed(2)}</span>
+                                  {members.map((m) => {
+                                    const isEditingMember = editingMember === m.id;
+                                    const defaultPct = m.member_type === "agency" ? bd.agency_commission_pct : bd.user_commission_pct;
+                                    const displayPct = m.custom_commission_pct != null ? m.custom_commission_pct : defaultPct;
+                                    return (
+                                      <div key={m.id} className="bg-muted/20 rounded-lg px-3 py-2 space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <p className="text-xs font-bold">{m.member_name || m.member_uuid}</p>
+                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                                              <span className={m.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}>
+                                                {m.member_type === "agency" ? "وكيل" : "داعم"}
+                                              </span>
+                                              <span>عمولة: ${Number(m.current_month_commission || 0).toFixed(2)}</span>
+                                              <span>({displayPct}%{m.custom_commission_pct != null ? " مخصص" : ""})</span>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            {!readOnly && (
+                                              <>
+                                                <button
+                                                  onClick={() => {
+                                                    if (isEditingMember) {
+                                                      setEditingMember(null);
+                                                    } else {
+                                                      setEditingMember(m.id);
+                                                      setEditMemberCommission(m.custom_commission_pct != null ? String(m.custom_commission_pct) : "");
+                                                    }
+                                                  }}
+                                                  className="p-1.5 rounded-lg hover:bg-primary/10"
+                                                >
+                                                  <Edit2 className="w-3.5 h-3.5 text-primary" />
+                                                </button>
+                                                <button onClick={() => removeMember(m.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
+                                                  <UserMinus className="w-3.5 h-3.5 text-destructive" />
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
                                         </div>
+                                        {isEditingMember && (
+                                          <div className="flex items-center gap-2 pt-1">
+                                            <Input
+                                              type="number"
+                                              step="0.1"
+                                              placeholder={`الافتراضي: ${defaultPct}%`}
+                                              value={editMemberCommission}
+                                              onChange={(e) => setEditMemberCommission(e.target.value)}
+                                              className="h-7 text-xs flex-1"
+                                              dir="ltr"
+                                            />
+                                            <Button
+                                              size="sm"
+                                              className="h-7 text-[10px] px-2"
+                                              onClick={async () => {
+                                                try {
+                                                  const val = editMemberCommission.trim() === "" ? null : Number(editMemberCommission);
+                                                  await supabase.from("bd_members").update({ custom_commission_pct: val }).eq("id", m.id);
+                                                  toast.success("تم تحديث العمولة");
+                                                  setEditingMember(null);
+                                                  // Update local state
+                                                  setAllMembers(prev => prev.map(mm => mm.id === m.id ? { ...mm, custom_commission_pct: val } : mm));
+                                                } catch { toast.error("فشل التحديث"); }
+                                              }}
+                                            >
+                                              <Save className="w-3 h-3" />
+                                            </Button>
+                                            {m.custom_commission_pct != null && (
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-7 text-[10px] px-2"
+                                                onClick={async () => {
+                                                  try {
+                                                    await supabase.from("bd_members").update({ custom_commission_pct: null }).eq("id", m.id);
+                                                    toast.success("تم إعادة العمولة للافتراضي");
+                                                    setEditingMember(null);
+                                                    setAllMembers(prev => prev.map(mm => mm.id === m.id ? { ...mm, custom_commission_pct: null } : mm));
+                                                  } catch { toast.error("فشل"); }
+                                                }}
+                                              >
+                                                <RotateCcw className="w-3 h-3" />
+                                              </Button>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
-                                      {!readOnly && (
-                                        <button onClick={() => removeMember(m.id)} className="p-1.5 rounded-lg hover:bg-destructive/10">
-                                          <UserMinus className="w-3.5 h-3.5 text-destructive" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>

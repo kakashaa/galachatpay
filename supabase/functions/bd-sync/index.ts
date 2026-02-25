@@ -434,7 +434,7 @@ serve(async (req) => {
     // Get all active BD members
     const { data: members } = await sb
       .from("bd_members")
-      .select("id, member_uuid, member_name, last_daily_charges, initial_charger_num, member_type, bd_uuid, monthly_charges, current_month_commission, total_commission, last_processed_diamonds, type_user")
+      .select("id, member_uuid, member_name, last_daily_charges, initial_charger_num, member_type, bd_uuid, monthly_charges, current_month_commission, total_commission, last_processed_diamonds, type_user, custom_commission_pct")
       .eq("is_active", true);
 
     if (!members || members.length === 0) {
@@ -664,7 +664,7 @@ serve(async (req) => {
             .maybeSingle();
 
           if (!existingLog) {
-            const pct = bd.user_commission_pct || 2;
+            const pct = member.custom_commission_pct != null ? member.custom_commission_pct : (bd.user_commission_pct || 2);
             // Convert coins to USD first (7500 coins = $1), then take commission %
             const chargeUSD = chargeDiff / 7500;
             const commissionAmount = Math.round((chargeUSD * pct / 100) * 100) / 100;
@@ -746,7 +746,7 @@ serve(async (req) => {
             .maybeSingle();
 
           if (!existingLog) {
-            const pct = bd.agency_commission_pct || 2;
+            const pct = member.custom_commission_pct != null ? member.custom_commission_pct : (bd.agency_commission_pct || 2);
             // Commission = pct% of total_host_salaries (already in USD)
             const commissionAmount = Math.round((salaryDiff * pct / 100) * 100) / 100;
 
@@ -812,7 +812,7 @@ serve(async (req) => {
             .maybeSingle();
 
           if (!existingLog) {
-            const pct = bd.host_commission_pct || 0;
+            const pct = member.custom_commission_pct != null ? member.custom_commission_pct : (bd.host_commission_pct || 0);
             // Convert coins to USD first (7500 coins = $1), then take commission %
             const salaryUSD = salaryDiff / 7500;
             const commissionAmount = Math.round((salaryUSD * pct / 100) * 100) / 100;
