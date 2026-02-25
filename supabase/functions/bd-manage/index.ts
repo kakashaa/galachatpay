@@ -808,8 +808,8 @@ serve(async (req) => {
               reply_markup: {
                 inline_keyboard: [
                   [
-                    { text: "✅ قبول", callback_data: `bd_w_approve:${withdrawalId}:${target_uuid}:${coins}:${bd_uuid}` },
-                    { text: "❌ رفض", callback_data: `bd_w_reject:${withdrawalId}:${bd_uuid}:${amount}` },
+                    { text: "✅ قبول", callback_data: `bwa:${withdrawalId}` },
+                    { text: "❌ رفض", callback_data: `bwr:${withdrawalId}` },
                   ],
                 ],
               },
