@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase,
-  Ban, Clock,
+  Ban, Clock, Construction,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
+import { useElementSettings } from "@/hooks/use-element-settings";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -53,9 +54,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { isElementBanned, activeBan, getRemainingTime } = useBanCheck(user?.uuid);
+  const { isElementEnabled } = useElementSettings();
   const [showLogin, setShowLogin] = useState(false);
   const [bdBanned, setBdBanned] = useState(false);
   const [banDialog, setBanDialog] = useState<{ open: boolean; elementKey: string }>({ open: false, elementKey: "" });
+  const [disabledDialog, setDisabledDialog] = useState<{ open: boolean; label: string }>({ open: false, label: "" });
 
   useEffect(() => {
     if (!user?.uuid) return;
@@ -81,6 +84,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
   const handleClick = (item: MenuItem) => {
     if (!isAuthenticated && !item.guestAllowed) {
       setShowLogin(true);
+      return;
+    }
+    // Check if element is disabled globally
+    if (item.banKey && !isElementEnabled(item.banKey)) {
+      setDisabledDialog({ open: true, label: item.label });
       return;
     }
     // Check element ban
@@ -159,6 +167,22 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
 
           <p className="text-[10px] text-muted-foreground">
             إذا كنت تعتقد أن هذا خطأ، تواصل مع الدعم الفني
+          </p>
+        </DialogContent>
+      </Dialog>
+
+      {/* Element Disabled Dialog */}
+      <Dialog open={disabledDialog.open} onOpenChange={(o) => setDisabledDialog({ ...disabledDialog, open: o })}>
+        <DialogContent className="max-w-xs text-center p-6 rounded-2xl border-border bg-background" dir="rtl">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-3">
+            <Construction className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-1">🚧 قيد التطوير</h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            <span className="font-bold text-foreground">{disabledDialog.label}</span> قيد التطوير حالياً
+          </p>
+          <p className="text-xs text-muted-foreground">
+            سوف يتوفر قريباً إن شاء الله
           </p>
         </DialogContent>
       </Dialog>
