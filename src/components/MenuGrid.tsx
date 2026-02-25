@@ -2,11 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
-  Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase, Lock,
+  Sparkles, PlayCircle, Frame, FileText, Sticker, Briefcase,
+  Ban, Clock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBanCheck } from "@/hooks/use-ban-check";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface MenuItem {
   icon: React.ElementType;
@@ -15,27 +18,44 @@ interface MenuItem {
   bg: string;
   iconColor: string;
   guestAllowed?: boolean;
+  banKey?: string;
 }
 
+const ELEMENT_LABELS: Record<string, string> = {
+  entries: "🎁 دخوليات",
+  frames: "🖼️ إطارات",
+  gifts: "🎀 هدايا مخصصة",
+  animated_photos: "📸 صور متحركة",
+  change_id: "🔄 تغيير آيدي",
+  hairs: "💇 تسريحات",
+  vip: "⭐ VIP",
+  salary: "💰 رواتب",
+  quick_support: "🎧 دعم سريع",
+  works: "💼 works",
+  stars: "🌟 نجومي",
+};
+
 const menuItems: MenuItem[] = [
-  { icon: Wallet, label: "سحب راتب", route: "/salary", bg: "rgba(34,197,94,0.12)", iconColor: "text-emerald-400" },
-  { icon: Headset, label: "دعم سريع", route: "/support", bg: "rgba(59,130,246,0.12)", iconColor: "text-blue-400" },
-  { icon: Fingerprint, label: "تغيير الآيدي", route: "/change-id", bg: "rgba(168,85,247,0.12)", iconColor: "text-purple-400" },
-  { icon: Crown, label: "طلب VIP", route: "/request-vip", bg: "rgba(234,179,8,0.12)", iconColor: "text-yellow-400" },
-  { icon: Gift, label: "هدية مخصصة", route: "/custom-gift", bg: "rgba(236,72,153,0.12)", iconColor: "text-pink-400" },
-  { icon: Sparkles, label: "دخولية", route: "/entry-request", bg: "rgba(6,182,212,0.12)", iconColor: "text-cyan-400", guestAllowed: true },
-  { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400" },
-  { icon: Frame, label: "إطار", route: "/frames", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400", guestAllowed: true },
-  { icon: Sticker, label: "شعرات", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400" },
-  { icon: Briefcase, label: "works", route: "/bd", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]" },
+  { icon: Wallet, label: "سحب راتب", route: "/salary", bg: "rgba(34,197,94,0.12)", iconColor: "text-emerald-400", banKey: "salary" },
+  { icon: Headset, label: "دعم سريع", route: "/support", bg: "rgba(59,130,246,0.12)", iconColor: "text-blue-400", banKey: "quick_support" },
+  { icon: Fingerprint, label: "تغيير الآيدي", route: "/change-id", bg: "rgba(168,85,247,0.12)", iconColor: "text-purple-400", banKey: "change_id" },
+  { icon: Crown, label: "طلب VIP", route: "/request-vip", bg: "rgba(234,179,8,0.12)", iconColor: "text-yellow-400", banKey: "vip" },
+  { icon: Gift, label: "هدية مخصصة", route: "/custom-gift", bg: "rgba(236,72,153,0.12)", iconColor: "text-pink-400", banKey: "gifts" },
+  { icon: Sparkles, label: "دخولية", route: "/entry-request", bg: "rgba(6,182,212,0.12)", iconColor: "text-cyan-400", guestAllowed: true, banKey: "entries" },
+  { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400", banKey: "animated_photos" },
+  { icon: Frame, label: "إطار", route: "/frames", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400", guestAllowed: true, banKey: "frames" },
+  { icon: Sticker, label: "شعرات", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400", banKey: "hairs" },
+  { icon: Briefcase, label: "works", route: "/bd", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]", banKey: "works" },
   { icon: FileText, label: "السياسة", route: "/policy", bg: "rgba(100,116,139,0.12)", iconColor: "text-slate-400", guestAllowed: true },
 ];
 
 const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
+  const { isElementBanned, activeBan, getRemainingTime } = useBanCheck(user?.uuid);
   const [showLogin, setShowLogin] = useState(false);
   const [bdBanned, setBdBanned] = useState(false);
+  const [banDialog, setBanDialog] = useState<{ open: boolean; elementKey: string }>({ open: false, elementKey: "" });
 
   useEffect(() => {
     if (!user?.uuid) return;
@@ -63,6 +83,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
       setShowLogin(true);
       return;
     }
+    // Check element ban
+    if (item.banKey && isElementBanned(item.banKey)) {
+      setBanDialog({ open: true, elementKey: item.banKey });
+      return;
+    }
     navigate(item.route);
   };
 
@@ -73,6 +98,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
           const Icon = item.icon;
           const isBdItem = item.route === "/bd";
           const showLock = isBdItem && bdBanned;
+          const isBanned = item.banKey ? isElementBanned(item.banKey) : false;
 
           return (
             <button
@@ -83,22 +109,22 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
               <div
                 className="relative w-12 h-12 rounded-[14px] flex items-center justify-center"
                 style={{
-                  background: showLock ? "rgba(239,68,68,0.12)" : item.bg,
-                  border: showLock ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                  background: showLock || isBanned ? "rgba(239,68,68,0.12)" : item.bg,
+                  border: showLock || isBanned ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(255,255,255,0.06)",
                 }}
               >
-                {showLock ? (
-                  <Lock className="w-5 h-5 text-red-400" />
+                {showLock || isBanned ? (
+                  <Ban className="w-5 h-5 text-red-400" />
                 ) : (
                   <Icon className={`w-5 h-5 ${item.iconColor}`} />
                 )}
-                {showLock && (
+                {(showLock || isBanned) && (
                   <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                     <span className="text-[8px] text-white font-bold">!</span>
                   </div>
                 )}
               </div>
-              <span className={`text-[9px] font-bold leading-tight text-center ${showLock ? "text-red-400" : "text-muted-foreground"}`}>
+              <span className={`text-[9px] font-bold leading-tight text-center ${showLock || isBanned ? "text-red-400" : "text-muted-foreground"}`}>
                 {item.label}
               </span>
             </button>
@@ -106,6 +132,37 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
         })}
         {extraButton}
       </div>
+
+      {/* Element Ban Dialog */}
+      <Dialog open={banDialog.open} onOpenChange={(o) => setBanDialog({ ...banDialog, open: o })}>
+        <DialogContent className="max-w-xs text-center p-6 rounded-2xl border-destructive/30 bg-background" dir="rtl">
+          <div className="mx-auto w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mb-3">
+            <Ban className="w-8 h-8 text-destructive" />
+          </div>
+          <h3 className="text-lg font-bold text-destructive mb-1">🚫 محظور</h3>
+          <p className="text-sm text-muted-foreground mb-3">
+            تم حظرك من استخدام <span className="font-bold text-foreground">{ELEMENT_LABELS[banDialog.elementKey] || banDialog.elementKey}</span>
+          </p>
+
+          {activeBan?.reason && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 mb-3">
+              <p className="text-[10px] text-muted-foreground mb-0.5">السبب</p>
+              <p className="text-sm font-medium text-foreground">{activeBan.reason}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-2 text-sm mb-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-muted-foreground">المدة المتبقية:</span>
+            <span className="font-bold text-foreground">{getRemainingTime()}</span>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground">
+            إذا كنت تعتقد أن هذا خطأ، تواصل مع الدعم الفني
+          </p>
+        </DialogContent>
+      </Dialog>
+
       <GuestLoginPrompt open={showLogin} onClose={() => setShowLogin(false)} />
     </>
   );
