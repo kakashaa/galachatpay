@@ -245,22 +245,24 @@ Deno.serve(async (req) => {
         const { target_uuid, ban_type, duration_hours, reason } = data;
         if (!target_uuid) throw new Error("UUID المستخدم مطلوب");
 
-        // Call external ban API
-        const ACTIONS_URL = Deno.env.get("GALA_ACTIONS_URL");
-        const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY");
-        if (!ACTIONS_URL || !ACTIONS_KEY) throw new Error("إعدادات API الحظر غير مكتملة");
+        // Call external ban API - uses dedicated ban endpoint
+        const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY") || "ghala2026actions";
+        const BAN_API_URL = "https://hola-chat.com/admin-actions.php";
+
+        const banUrl = new URL(BAN_API_URL);
+        banUrl.searchParams.set("key", ACTIONS_KEY);
+        banUrl.searchParams.set("action", "ban-user");
 
         const banBody = {
-          action: "ban-user",
-          key: ACTIONS_KEY,
           uuid: target_uuid,
           reason: reason || ban_type || "normal",
           ban_type: ban_type || "normal",
           duration: duration_hours || 24,
         };
+        console.log("Ban request URL:", banUrl.toString());
         console.log("Ban request body:", JSON.stringify(banBody));
 
-        const banResponse = await fetch(ACTIONS_URL, {
+        const banResponse = await fetch(banUrl.toString(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(banBody),
