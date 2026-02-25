@@ -32,6 +32,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   const [deletedMembers, setDeletedMembers] = useState<any[]>([]);
   const [bannedBds, setBannedBds] = useState<any[]>([]);
   const [expandedBd, setExpandedBd] = useState<string | null>(null);
+  const [todayEarnings, setTodayEarnings] = useState<Record<string, number>>({});
   const [bdSearchQuery, setBdSearchQuery] = useState("");
   const [editingBd, setEditingBd] = useState<string | null>(null);
   const [editBdData, setEditBdData] = useState<any>({});
@@ -408,7 +409,21 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                   <div key={bd.id} className={`bg-card border rounded-xl overflow-hidden ${!bd.is_active ? "opacity-50" : ""}`}>
                     {/* BD Header */}
                     <button
-                      onClick={() => setExpandedBd(isExpanded ? null : bd.bd_uuid)}
+                      onClick={async () => {
+                        const newExpanded = isExpanded ? null : bd.bd_uuid;
+                        setExpandedBd(newExpanded);
+                        if (newExpanded && todayEarnings[bd.bd_uuid] === undefined) {
+                          const todayStart = new Date();
+                          todayStart.setHours(0, 0, 0, 0);
+                          const { data: logs } = await supabase
+                            .from("bd_commission_logs")
+                            .select("amount")
+                            .eq("bd_uuid", bd.bd_uuid)
+                            .gte("created_at", todayStart.toISOString());
+                          const total = logs?.reduce((sum: number, l: any) => sum + (l.amount || 0), 0) || 0;
+                          setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: total }));
+                        }
+                      }}
                       className="w-full p-4 flex items-center justify-between text-right"
                     >
                       <div className="flex-1">
@@ -463,7 +478,11 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                         >
                           <div className="p-4 space-y-4">
                             {/* Stats */}
-                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">اليوم</p>
+                                <p className="font-bold text-emerald-400">${(todayEarnings[bd.bd_uuid] ?? 0).toFixed(2)}</p>
+                              </div>
                               <div className="bg-muted/30 rounded-lg p-2">
                                 <p className="text-muted-foreground">الشهر</p>
                                 <p className="font-bold text-primary">${Number(bd.current_month_earnings || 0).toFixed(2)}</p>
