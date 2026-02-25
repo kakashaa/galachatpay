@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_bd_commission_logs_unique_entry;
