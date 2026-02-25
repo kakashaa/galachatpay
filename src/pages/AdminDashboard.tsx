@@ -30,7 +30,7 @@ import AdminTopAgents from "@/components/AdminTopAgents";
 import AdminBDManager from "@/components/AdminBDManager";
 import AdminModeratorManager from "@/components/AdminModeratorManager";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | null;
 
 
 interface VideoTutorial {
@@ -214,6 +214,8 @@ const AdminDashboardPage: React.FC = () => {
    const [allFrameClaims, setAllFrameClaims] = useState<ClaimRecord[]>([]);
    const [allAnimatedPhotos, setAllAnimatedPhotos] = useState<AnimatedPhotoRequest[]>([]);
    const [allCustomGifts, setAllCustomGifts] = useState<any[]>([]);
+   const [customGiftFilter, setCustomGiftFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+   const [customGiftSearch, setCustomGiftSearch] = useState("");
    
    const [allQuickSupport, setAllQuickSupport] = useState<any[]>([]);
    const [allVipRequests, setAllVipRequests] = useState<any[]>([]);
@@ -332,6 +334,7 @@ const AdminDashboardPage: React.FC = () => {
       
       // Also update quick support requests for badge count
       setQuickSupportRequests(prev => prev.length ? prev : (quickSupport.data || []));
+      setAllCustomGifts(prev => prev.length ? prev : (customG.data || []));
       
       const pending = (salary.data?.filter(r => r.status === "pending").length || 0) + 
                       (reports.data?.filter(r => !r.is_verified).length || 0) +
@@ -398,6 +401,10 @@ const AdminDashboardPage: React.FC = () => {
         case "frames": setFrameItems(await adminCall("list_frames")); break;
         case "gifts": {
           setStarGifts(await adminCall("list_star_gifts") || []);
+          break;
+        }
+        case "custom_gifts": {
+          setAllCustomGifts(await adminCall("list_custom_gifts") || []);
           break;
         }
         case "all_requests": {
@@ -788,6 +795,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "frames", label: "إطارات", icon: <Frame className="w-7 h-7" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400" },
     { key: "hairs", label: "شعرات", icon: <Scissors className="w-7 h-7" />, color: "from-fuchsia-500/20 to-fuchsia-600/10 text-fuchsia-400" },
     { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400" },
+    { key: "custom_gifts", label: "هدايا مخصصة", icon: <Gift className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400", count: allCustomGifts.filter(g => g.status === "pending").length },
     { key: "salary", label: "رواتب", icon: <DollarSign className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
     
     { key: "videos", label: "فيديوهات", icon: <Video className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400" },
@@ -1939,6 +1947,75 @@ const AdminDashboardPage: React.FC = () => {
                     <p>وضع المشاهدة فقط - لا يمكنك منح نجوم</p>
                   </div>
                 )}
+              </motion.div>
+            )}
+
+            {/* Custom Gifts Tab */}
+            {activeTab === "custom_gifts" && (
+              <motion.div key="custom_gifts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {/* Filter Buttons */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { key: "all" as const, label: "الكل", count: allCustomGifts.length, color: "bg-muted/30" },
+                    { key: "approved" as const, label: "✅ مقبولة", count: allCustomGifts.filter(g => g.status === "approved").length, color: "bg-emerald-500/10 border-emerald-500/30" },
+                    { key: "pending" as const, label: "معلقة", count: allCustomGifts.filter(g => g.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
+                    { key: "rejected" as const, label: "مرفوضة", count: allCustomGifts.filter(g => g.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
+                  ].map(f => (
+                    <button key={f.key} onClick={() => setCustomGiftFilter(f.key)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${customGiftFilter === f.key ? "ring-2 ring-primary/50 " + f.color : "bg-card border-border/40"}`}>
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
+                {/* Search */}
+                <input value={customGiftSearch} onChange={e => setCustomGiftSearch(e.target.value)} placeholder="بحث بالاسم أو UUID..."
+                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border/40 text-sm" dir="rtl" />
+                {(() => {
+                  const filtered = allCustomGifts.filter(g => customGiftFilter === "all" || g.status === customGiftFilter);
+                  const searched = filtered.filter(g =>
+                    customGiftSearch === "" ||
+                    g.user_name?.toLowerCase().includes(customGiftSearch.toLowerCase()) ||
+                    g.user_uuid?.toLowerCase().includes(customGiftSearch.toLowerCase()) ||
+                    g.title?.toLowerCase().includes(customGiftSearch.toLowerCase())
+                  );
+                  return searched.length > 0 ? (
+                    <div className="space-y-2">
+                      {searched.map((gift: any) => (
+                        <div key={gift.id} className="bg-card border rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                gift.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
+                                gift.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
+                              }`}>
+                                {gift.status === "pending" ? "معلق" : gift.status === "approved" ? "مقبول" : "مرفوض"}
+                              </span>
+                              <span className="text-xs font-bold">{gift.user_name}</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">{new Date(gift.created_at).toLocaleDateString("ar-EG")}</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[11px]">
+                            <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono text-[10px]">{gift.user_uuid}</span></div>
+                            <div><span className="text-muted-foreground">العنوان:</span> {gift.title}</div>
+                            <div><span className="text-muted-foreground">المدة:</span> {gift.video_duration}ث</div>
+                            <div><span className="text-muted-foreground">لفل الشاحن:</span> {gift.charger_level_at_upload}</div>
+                          </div>
+                          {gift.video_url && (
+                            <a href={gift.video_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline mt-1 inline-block">عرض الفيديو</a>
+                          )}
+                          {gift.admin_note && (
+                            <p className="text-[10px] text-muted-foreground mt-1">ملاحظة: {gift.admin_note}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <Gift className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                      <p>لا توجد هدايا مخصصة</p>
+                    </div>
+                  );
+                })()}
               </motion.div>
             )}
 
