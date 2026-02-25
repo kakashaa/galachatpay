@@ -10,6 +10,9 @@ const ELEMENT_LABELS: Record<string, string> = {
   hairs: "💇 تسريحات",
   vip: "⭐ VIP",
   salary: "💰 رواتب",
+  quick_support: "🎧 دعم سريع",
+  works: "💼 works",
+  stars: "🌟 نجومي",
 };
 
 interface BanOverlayProps {
