@@ -1161,6 +1161,45 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_bans: {
+        Row: {
+          ban_type: string
+          banned_by: string
+          created_at: string
+          duration_hours: number
+          id: string
+          reason: string | null
+          status: string
+          target_uuid: string
+          unbanned_at: string | null
+          unbanned_by: string | null
+        }
+        Insert: {
+          ban_type?: string
+          banned_by?: string
+          created_at?: string
+          duration_hours?: number
+          id?: string
+          reason?: string | null
+          status?: string
+          target_uuid: string
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+        }
+        Update: {
+          ban_type?: string
+          banned_by?: string
+          created_at?: string
+          duration_hours?: number
+          id?: string
+          reason?: string | null
+          status?: string
+          target_uuid?: string
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string

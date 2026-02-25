@@ -171,6 +171,9 @@ const AdminDashboardPage: React.FC = () => {
 
   // Blocked accounts state
   const [blockedAccounts, setBlockedAccounts] = useState<BlockedAccount[]>([]);
+  const [manualBans, setManualBans] = useState<any[]>([]);
+  const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "normal", duration_hours: "24", reason: "" });
+  const [banLoading, setBanLoading] = useState(false);
 
   // Entry gifts state
   const [entryGifts, setEntryGifts] = useState<EntryGift[]>([]);
@@ -382,7 +385,15 @@ const AdminDashboardPage: React.FC = () => {
         case "videos": setVideos(await adminCall("list_videos")); break;
         case "salary": setSalaryRequests(await adminCall("list_salary_requests")); break;
         case "reports": setBanReports(await adminCall("list_ban_reports")); break;
-        case "blocks": setBlockedAccounts(await adminCall("list_blocked_accounts")); break;
+        case "blocks": {
+          const [blocked, bans] = await Promise.all([
+            adminCall("list_blocked_accounts"),
+            adminCall("list_manual_bans"),
+          ]);
+          setBlockedAccounts(blocked || []);
+          setManualBans(bans || []);
+          break;
+        }
         case "entries": setEntryGifts(await adminCall("list_entry_gifts")); break;
         case "frames": setFrameItems(await adminCall("list_frames")); break;
         case "gifts": {
@@ -1178,29 +1189,152 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Blocks Tab */}
             {activeTab === "blocks" && (
-              <motion.div key="blocks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-                {blockedAccounts.map((acc) => (
-                  <div key={acc.id} className="bg-card border rounded-xl p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-sm font-mono">{acc.target_uuid}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `محظور حتى ${new Date(acc.blocked_until).toLocaleDateString("ar-EG")}` : "غير محظور"}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${acc.is_permanently_blocked ? "bg-destructive/20 text-destructive" : "bg-yellow-500/20 text-yellow-500"}`}>
-                        {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
-                      </span>
+              <motion.div key="blocks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                {/* Ban Form */}
+                {canAct && (
+                  <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2"><ShieldBan className="w-4 h-4 text-destructive" /> حظر مستخدم</h3>
+                    <Input
+                      placeholder="UUID المستخدم"
+                      value={banForm.target_uuid}
+                      onChange={(e) => setBanForm(prev => ({ ...prev, target_uuid: e.target.value }))}
+                      className="font-mono text-sm"
+                      dir="ltr"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "promotion" }))}
+                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "promotion" ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}
+                      >
+                        حظر جهاز (ترويج)
+                      </button>
+                      <button
+                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "normal" }))}
+                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "normal" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                      >
+                        حظر عادي
+                      </button>
                     </div>
-                    <div className="text-xs text-muted-foreground">المحاولات: {acc.failed_attempts} | الحظر: {acc.block_count} مرة</div>
-                    {canAct && (acc.is_permanently_blocked || acc.blocked_until) && (
-                      <Button size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={() => unblockAccount(acc.target_uuid)}>
-                        <Unlock className="w-4 h-4 ml-1" />فك الحظر
-                      </Button>
-                    )}
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">مدة الحظر (بالساعات)</label>
+                      <Input
+                        type="number"
+                        placeholder="24"
+                        value={banForm.duration_hours}
+                        onChange={(e) => setBanForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                        min="1"
+                        dir="ltr"
+                      />
+                    </div>
+                    <Input
+                      placeholder="سبب الحظر (اختياري)"
+                      value={banForm.reason}
+                      onChange={(e) => setBanForm(prev => ({ ...prev, reason: e.target.value }))}
+                    />
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      disabled={banLoading || !banForm.target_uuid.trim()}
+                      onClick={async () => {
+                        setBanLoading(true);
+                        try {
+                          await adminCall("manual_ban_user", {
+                            target_uuid: banForm.target_uuid.trim(),
+                            ban_type: banForm.ban_type,
+                            duration_hours: parseInt(banForm.duration_hours) || 24,
+                            reason: banForm.reason.trim(),
+                          });
+                          toast.success("تم حظر المستخدم بنجاح");
+                          setBanForm({ target_uuid: "", ban_type: "normal", duration_hours: "24", reason: "" });
+                          loadData();
+                        } catch (err: any) {
+                          toast.error(err?.message || "فشل الحظر");
+                        } finally {
+                          setBanLoading(false);
+                        }
+                      }}
+                    >
+                      {banLoading ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <Ban className="w-4 h-4 ml-1" />}
+                      تنفيذ الحظر
+                    </Button>
                   </div>
-                ))}
-                {blockedAccounts.length === 0 && (
+                )}
+
+                {/* Manual Bans List */}
+                {manualBans.length > 0 && (
+                  <>
+                    <h3 className="text-sm font-bold text-foreground mt-4">عمليات الحظر ({manualBans.length})</h3>
+                    {manualBans.map((ban) => (
+                      <div key={ban.id} className="bg-card border border-border rounded-xl p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-sm font-mono" dir="ltr">{ban.target_uuid}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {ban.ban_type === "promotion" ? "حظر جهاز" : "حظر عادي"} • {ban.duration_hours} ساعة
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${ban.status === "active" ? "bg-destructive/20 text-destructive" : "bg-green-500/20 text-green-500"}`}>
+                            {ban.status === "active" ? "فعال" : "ملغي"}
+                          </span>
+                        </div>
+                        {ban.reason && <p className="text-xs text-muted-foreground">السبب: {ban.reason}</p>}
+                        <div className="text-[10px] text-muted-foreground">
+                          بواسطة: {ban.banned_by} • {new Date(ban.created_at).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                        {ban.unbanned_at && (
+                          <div className="text-[10px] text-green-500">
+                            تم فك الحظر بواسطة: {ban.unbanned_by} • {new Date(ban.unbanned_at).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        )}
+                        {canAct && ban.status === "active" && (
+                          <Button
+                            size="sm"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            onClick={async () => {
+                              try {
+                                await adminCall("unban_manual", { ban_id: ban.id });
+                                toast.success("تم فك الحظر");
+                                loadData();
+                              } catch { toast.error("فشل فك الحظر"); }
+                            }}
+                          >
+                            <Unlock className="w-4 h-4 ml-1" />فك الحظر
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Login blocked accounts */}
+                {blockedAccounts.length > 0 && (
+                  <>
+                    <h3 className="text-sm font-bold text-foreground mt-4">حسابات محظورة تسجيل دخول ({blockedAccounts.length})</h3>
+                    {blockedAccounts.map((acc) => (
+                      <div key={acc.id} className="bg-card border border-border rounded-xl p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-sm font-mono">{acc.target_uuid}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `محظور حتى ${new Date(acc.blocked_until).toLocaleDateString("ar-EG")}` : "غير محظور"}
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${acc.is_permanently_blocked ? "bg-destructive/20 text-destructive" : "bg-yellow-500/20 text-yellow-500"}`}>
+                            {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">المحاولات: {acc.failed_attempts} | الحظر: {acc.block_count} مرة</div>
+                        {canAct && (acc.is_permanently_blocked || acc.blocked_until) && (
+                          <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => unblockAccount(acc.target_uuid)}>
+                            <Unlock className="w-4 h-4 ml-1" />فك الحظر
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {blockedAccounts.length === 0 && manualBans.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground"><Ban className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد حسابات محظورة</p></div>
                 )}
               </motion.div>
