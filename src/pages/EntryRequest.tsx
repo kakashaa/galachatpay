@@ -157,18 +157,21 @@ const EntryRequest: React.FC = () => {
          .eq("id", starBalance.id);
        if (updateError) throw updateError;
 
-       // Send request to admin API
-       const { error: apiError } = await supabase.functions.invoke("gala-actions?action=submit-request", {
+       // Send request to wares-api.php via wares-request edge function
+       const ext = selectedGift.video_url.split(".").pop()?.toLowerCase() || "mp4";
+       const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
+       const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
+       const wareType = giftUsage === "room" ? "entry_room" : "entry_profile";
+       
+       const { error: apiError } = await supabase.functions.invoke("wares-request", {
          body: {
-           user_uuid: user.uuid,
+           action: "submit-request",
+           uuid: targetUuid,
            user_name: user.name,
-           request_type: "entry_effect",
-           details: { 
-             ware_id: selectedGift.id, 
-             description: selectedGift.title,
-             claim_type: claimType,
-             friend_uuid: claimType === "friend" ? friendUuid.trim() : undefined
-           },
+           ware_type: wareType,
+           image_type: imageType,
+           file_url: selectedGift.video_url,
+           days: 30,
          },
        });
        if (apiError) throw apiError;

@@ -118,6 +118,24 @@ const FramesRequest: React.FC = () => {
         .eq("id", starBalance.id);
       if (updateError) throw updateError;
 
+      // Send request to wares-api.php via wares-request edge function
+      const ext = selectedFrame.file_url.split(".").pop()?.toLowerCase() || "mp4";
+      const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
+      const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
+      
+      const { error: apiError } = await supabase.functions.invoke("wares-request", {
+        body: {
+          action: "submit-request",
+          uuid: targetUuid,
+          user_name: user.name,
+          ware_type: "frame",
+          image_type: imageType,
+          file_url: selectedFrame.file_url,
+          days: 30,
+        },
+      });
+      if (apiError) throw apiError;
+
       toast.success(claimType === "self" ? "تم لبس الإطار بنجاح!" : "تم إرسال الإطار لصديقك!");
       setShowClaimDialog(false);
       fetchStarBalance();
