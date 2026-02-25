@@ -721,7 +721,80 @@ serve(async (req) => {
         } catch (e) {
           console.error("Auto-send coins error:", e);
         }
+        // Send Telegram notification for auto withdrawal
+        try {
+          const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+          const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
+          if (BOT_TOKEN && CHAT_ID) {
+            let targetName = target_uuid;
+            try {
+              const uiUrl = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${target_uuid}`;
+              const uiRes2 = await fetch(uiUrl, { signal: AbortSignal.timeout(5000) });
+              if (uiRes2.ok) {
+                const uiData2 = await uiRes2.json();
+                targetName = uiData2?.user?.["الاسم"] || uiData2?.user?.name || uiData2?.name || target_uuid;
+              }
+            } catch { /* ignore */ }
+
+            const time = new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" });
+            const message =
+              `💸 <b>سحب BD تلقائي ✅</b>\n` +
+              `👤 اسم البيدي: ${bd_name || "-"}\n` +
+              `🆔 آيدي البيدي: ${bd_uuid}\n` +
+              `📛 اسم المستقبل: ${targetName}\n` +
+              `🎯 آيدي المستقبل: ${target_uuid}\n` +
+              `🪙 إجمالي الكوينزات: ${coins.toLocaleString()}\n` +
+              `💵 المبلغ: $${amount}\n` +
+              `⏰ ${time}`;
+
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+            });
+          }
+        } catch (e2) {
+          console.error("Telegram notify failed:", e2);
+        }
+
         return json({ success: true, message: `تم إرسال ${coins.toLocaleString()} كوينز بنجاح`, auto: true });
+      }
+
+      // Send Telegram notification for withdrawal
+      try {
+        const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+        const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
+        if (BOT_TOKEN && CHAT_ID) {
+          // Fetch target user name
+          let targetName = target_uuid;
+          try {
+            const uiUrl = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${target_uuid}`;
+            const uiRes = await fetch(uiUrl, { signal: AbortSignal.timeout(5000) });
+            if (uiRes.ok) {
+              const uiData = await uiRes.json();
+              targetName = uiData?.user?.["الاسم"] || uiData?.user?.name || uiData?.name || target_uuid;
+            }
+          } catch { /* ignore */ }
+
+          const time = new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" });
+          const message =
+            `💸 <b>طلب سحب BD</b>\n` +
+            `👤 اسم البيدي: ${bd_name || "-"}\n` +
+            `🆔 آيدي البيدي: ${bd_uuid}\n` +
+            `📛 اسم المستقبل: ${targetName}\n` +
+            `🎯 آيدي المستقبل: ${target_uuid}\n` +
+            `🪙 إجمالي الكوينزات: ${coins.toLocaleString()}\n` +
+            `💵 المبلغ: $${amount}\n` +
+            `⏰ ${time}`;
+
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+          });
+        }
+      } catch (e) {
+        console.error("Telegram notify failed:", e);
       }
 
       return json({ success: true, message: "تم رفع طلب السحب وسيتم مراجعته من المسؤول", auto: false });
