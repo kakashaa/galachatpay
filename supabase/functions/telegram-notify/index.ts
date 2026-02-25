@@ -145,13 +145,8 @@ function formatMessage(type: string, record: any): string | null {
       );
 
     case "bd_withdrawal":
-      if (record.status !== "pending") return null;
-      return (
-        `💸 <b>طلب سحب BD</b>\n` +
-        `👤 ${record.bd_name}\n` +
-        `💵 ${record.amount}$\n` +
-        `⏰ ${time}`
-      );
+      // Handled directly by bd-manage edge function with full details
+      return null;
 
     case "vip_request":
       return (
