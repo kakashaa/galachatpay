@@ -30,7 +30,7 @@ import AdminTopAgents from "@/components/AdminTopAgents";
 import AdminBDManager from "@/components/AdminBDManager";
 import AdminModeratorManager from "@/components/AdminModeratorManager";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "claims" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | null;
 
 
 interface VideoTutorial {
@@ -190,9 +190,6 @@ const AdminDashboardPage: React.FC = () => {
   const [editingFrame, setEditingFrame] = useState<string | null>(null);
   const [editFrameData, setEditFrameData] = useState<Partial<FrameItem>>({});
 
-  // Claims state
-  const [entryClaims, setEntryClaims] = useState<ClaimRecord[]>([]);
-  const [frameClaims, setFrameClaims] = useState<ClaimRecord[]>([]);
 
   // Star gifts state
   const [starGifts, setStarGifts] = useState<StarGiftLog[]>([]);
@@ -384,12 +381,6 @@ const AdminDashboardPage: React.FC = () => {
         case "blocks": setBlockedAccounts(await adminCall("list_blocked_accounts")); break;
         case "entries": setEntryGifts(await adminCall("list_entry_gifts")); break;
         case "frames": setFrameItems(await adminCall("list_frames")); break;
-        case "claims": {
-          const [ec, fc] = await Promise.all([adminCall("list_entry_claims"), adminCall("list_frame_claims")]);
-          setEntryClaims(ec || []);
-          setFrameClaims(fc || []);
-          break;
-        }
         case "gifts": {
           setStarGifts(await adminCall("list_star_gifts") || []);
           break;
@@ -779,7 +770,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "hairs", label: "شعرات", icon: <Scissors className="w-7 h-7" />, color: "from-fuchsia-500/20 to-fuchsia-600/10 text-fuchsia-400" },
     { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400" },
     { key: "salary", label: "رواتب", icon: <DollarSign className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
-    { key: "claims", label: "طلبات", icon: <ClipboardList className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: entryClaims.length + frameClaims.length },
+    
     { key: "videos", label: "فيديوهات", icon: <Video className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400" },
     { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400", count: banReports.filter(r => !r.is_verified).length },
     { key: "blocks", label: "محظورين", icon: <Ban className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
@@ -1290,62 +1281,6 @@ const AdminDashboardPage: React.FC = () => {
                 {frameItems.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground"><Frame className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد إطارات</p></div>
                 )}
-              </motion.div>
-            )}
-
-            {/* Claims Tab */}
-            {activeTab === "claims" && (
-              <motion.div key="claims" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                {/* Entry Claims */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-primary" /> طلبات الدخوليات ({entryClaims.length})
-                  </h3>
-                  {entryClaims.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">لا توجد طلبات دخوليات</p>}
-                  {entryClaims.map((claim) => (
-                    <div key={claim.id} className="bg-card border rounded-xl p-3 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
-                          <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar-EG")}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1 text-[11px]">
-                        <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{claim.user_uuid}</span></div>
-                        <div><span className="text-muted-foreground">الشهر:</span> {claim.claim_month}</div>
-                        <div><span className="text-muted-foreground">الاستخدام:</span> {claim.gift_usage === "profile" ? "ملف شخصي" : "روم"}</div>
-                        <div><span className="text-muted-foreground">لفل الشحن:</span> {claim.charger_level_at_claim}</div>
-                        {claim.friend_uuid && <div className="col-span-2"><span className="text-muted-foreground">UUID الصديق:</span> <span className="font-mono">{claim.friend_uuid}</span></div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Frame Claims */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Frame className="w-4 h-4 text-primary" /> طلبات الإطارات ({frameClaims.length})
-                  </h3>
-                  {frameClaims.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">لا توجد طلبات إطارات</p>}
-                  {frameClaims.map((claim) => (
-                    <div key={claim.id} className="bg-card border rounded-xl p-3 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-500">تم</span>
-                          <span className="text-xs font-bold">{claim.claim_type === "self" ? "لنفسه" : "لصديق"}</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{new Date(claim.created_at).toLocaleDateString("ar-EG")}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-1 text-[11px]">
-                        <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{claim.user_uuid}</span></div>
-                        <div><span className="text-muted-foreground">الشهر:</span> {claim.claim_month}</div>
-                        <div><span className="text-muted-foreground">لفل الشحن:</span> {claim.charger_level_at_claim}</div>
-                        {claim.friend_uuid && <div className="col-span-2"><span className="text-muted-foreground">UUID الصديق:</span> <span className="font-mono">{claim.friend_uuid}</span></div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </motion.div>
             )}
 
