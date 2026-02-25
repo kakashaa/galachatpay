@@ -48,6 +48,11 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   const [editingMemberAmount, setEditingMemberAmount] = useState<string | null>(null);
   const [editMemberTotalComm, setEditMemberTotalComm] = useState<string>("");
 
+  // Inline stats editing
+  const [editingStatsBd, setEditingStatsBd] = useState<string | null>(null);
+  const [editStatsValues, setEditStatsValues] = useState<{ today: string; month: string; total: string }>({ today: "", month: "", total: "" });
+  const [savingStats, setSavingStats] = useState(false);
+
   // Withdrawals
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [withdrawalFilter, setWithdrawalFilter] = useState<"all" | "pending" | "completed" | "rejected">("pending");
@@ -481,25 +486,215 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                           className="border-t"
                         >
                           <div className="p-4 space-y-4">
-                            {/* Stats */}
-                            <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                              <div className="bg-muted/30 rounded-lg p-2">
-                                <p className="text-muted-foreground">اليوم</p>
-                                <p className="font-bold text-emerald-400">${(todayEarnings[bd.bd_uuid] ?? 0).toFixed(2)}</p>
+                            {/* Stats - Inline Editable */}
+                            {editingStatsBd === bd.bd_uuid ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                                  <div className="bg-muted/30 rounded-lg p-2 space-y-1">
+                                    <p className="text-muted-foreground">اليوم</p>
+                                    <Input
+                                      type="number" step="0.01" dir="ltr"
+                                      className="h-7 text-xs text-center font-bold"
+                                      value={editStatsValues.today}
+                                      onChange={(e) => setEditStatsValues(prev => ({ ...prev, today: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div className="bg-muted/30 rounded-lg p-2 space-y-1">
+                                    <p className="text-muted-foreground">الشهر</p>
+                                    <Input
+                                      type="number" step="0.01" dir="ltr"
+                                      className="h-7 text-xs text-center font-bold"
+                                      value={editStatsValues.month}
+                                      onChange={(e) => setEditStatsValues(prev => ({ ...prev, month: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div className="bg-muted/30 rounded-lg p-2 space-y-1">
+                                    <p className="text-muted-foreground">الإجمالي</p>
+                                    <Input
+                                      type="number" step="0.01" dir="ltr"
+                                      className="h-7 text-xs text-center font-bold"
+                                      value={editStatsValues.total}
+                                      onChange={(e) => setEditStatsValues(prev => ({ ...prev, total: e.target.value }))}
+                                    />
+                                  </div>
+                                </div>
+                                {/* Show diffs */}
+                                {(() => {
+                                  const origToday = todayEarnings[bd.bd_uuid] ?? 0;
+                                  const origMonth = Number(bd.current_month_earnings || 0);
+                                  const origTotal = Number(bd.total_earned || 0);
+                                  const newToday = Number(editStatsValues.today) || 0;
+                                  const newMonth = Number(editStatsValues.month) || 0;
+                                  const newTotal = Number(editStatsValues.total) || 0;
+                                  const diffToday = newToday - origToday;
+                                  const diffMonth = newMonth - origMonth;
+                                  const diffTotal = newTotal - origTotal;
+                                  const totalDiff = diffToday + diffMonth + diffTotal;
+                                  const hasDiff = diffToday !== 0 || diffMonth !== 0 || diffTotal !== 0;
+                                  return hasDiff ? (
+                                    <div className="bg-muted/20 rounded-lg p-2 text-[10px] space-y-1">
+                                      {diffToday !== 0 && (
+                                        <div className="flex justify-between">
+                                          <span>فارق اليوم:</span>
+                                          <span className={diffToday > 0 ? "text-emerald-400" : "text-red-400"}>
+                                            {diffToday > 0 ? "+" : ""}{diffToday.toFixed(2)}$
+                                          </span>
+                                        </div>
+                                      )}
+                                      {diffMonth !== 0 && (
+                                        <div className="flex justify-between">
+                                          <span>فارق الشهر:</span>
+                                          <span className={diffMonth > 0 ? "text-emerald-400" : "text-red-400"}>
+                                            {diffMonth > 0 ? "+" : ""}{diffMonth.toFixed(2)}$
+                                          </span>
+                                        </div>
+                                      )}
+                                      {diffTotal !== 0 && (
+                                        <div className="flex justify-between">
+                                          <span>فارق الإجمالي:</span>
+                                          <span className={diffTotal > 0 ? "text-emerald-400" : "text-red-400"}>
+                                            {diffTotal > 0 ? "+" : ""}{diffTotal.toFixed(2)}$
+                                          </span>
+                                        </div>
+                                      )}
+                                      <div className="flex justify-between border-t border-border/30 pt-1 font-bold">
+                                        <span>إجمالي التعديل على الرصيد:</span>
+                                        <span className={totalDiff > 0 ? "text-emerald-400" : "text-red-400"}>
+                                          {totalDiff > 0 ? "+" : ""}{totalDiff.toFixed(2)}$
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : null;
+                                })()}
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={async () => {
+                                      setSavingStats(true);
+                                      try {
+                                        const origToday = todayEarnings[bd.bd_uuid] ?? 0;
+                                        const origMonth = Number(bd.current_month_earnings || 0);
+                                        const origTotal = Number(bd.total_earned || 0);
+                                        const newToday = Number(editStatsValues.today) || 0;
+                                        const newMonth = Number(editStatsValues.month) || 0;
+                                        const newTotal = Number(editStatsValues.total) || 0;
+                                        const diffToday = newToday - origToday;
+                                        const diffMonth = newMonth - origMonth;
+                                        const diffTotal = newTotal - origTotal;
+                                        const totalDiff = diffToday + diffMonth + diffTotal;
+
+                                        // Update bd_commission_settings
+                                        const newBalance = Math.max(0, Number(bd.available_balance || 0) + totalDiff);
+                                        await supabase
+                                          .from("bd_commission_settings")
+                                          .update({
+                                            current_month_earnings: newMonth,
+                                            total_earned: newTotal,
+                                            available_balance: newBalance,
+                                            updated_at: new Date().toISOString(),
+                                          })
+                                          .eq("bd_uuid", bd.bd_uuid);
+
+                                        // Update local today earnings
+                                        setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: newToday }));
+
+                                        // If today diff exists, insert a commission log for tracking
+                                        if (diffToday !== 0) {
+                                          const now = new Date();
+                                          const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                                          await supabase.from("bd_commission_logs").insert({
+                                            bd_uuid: bd.bd_uuid,
+                                            member_uuid: "admin_manual",
+                                            member_type: "manual_adjustment",
+                                            month,
+                                            source_amount: 0,
+                                            amount: diffToday,
+                                            commission_pct: 0,
+                                          });
+                                        }
+
+                                        toast.success(`تم التحديث | فارق الرصيد: ${totalDiff > 0 ? "+" : ""}${totalDiff.toFixed(2)}$`);
+                                        setEditingStatsBd(null);
+                                        loadData();
+                                      } catch (err: any) {
+                                        toast.error(err?.message || "فشل التحديث");
+                                      } finally {
+                                        setSavingStats(false);
+                                      }
+                                    }}
+                                    size="sm"
+                                    className="flex-1 text-xs"
+                                    disabled={savingStats}
+                                  >
+                                    {savingStats ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Save className="w-3 h-3 ml-1" />}
+                                    حفظ
+                                  </Button>
+                                  <Button onClick={() => setEditingStatsBd(null)} size="sm" variant="outline" className="flex-1 text-xs">
+                                    <X className="w-3 h-3 ml-1" />إلغاء
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="bg-muted/30 rounded-lg p-2">
-                                <p className="text-muted-foreground">الشهر</p>
-                                <p className="font-bold text-primary">${Number(bd.current_month_earnings || 0).toFixed(2)}</p>
+                            ) : (
+                              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!readOnly) {
+                                      setEditingStatsBd(bd.bd_uuid);
+                                      setEditStatsValues({
+                                        today: (todayEarnings[bd.bd_uuid] ?? 0).toFixed(2),
+                                        month: Number(bd.current_month_earnings || 0).toFixed(2),
+                                        total: Number(bd.total_earned || 0).toFixed(2),
+                                      });
+                                    }
+                                  }}
+                                  className="bg-muted/30 rounded-lg p-2 hover:bg-muted/50 transition-colors"
+                                >
+                                  <p className="text-muted-foreground">اليوم</p>
+                                  <p className="font-bold text-emerald-400">${(todayEarnings[bd.bd_uuid] ?? 0).toFixed(2)}</p>
+                                  {!readOnly && <Edit2 className="w-2.5 h-2.5 mx-auto mt-0.5 text-muted-foreground/50" />}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!readOnly) {
+                                      setEditingStatsBd(bd.bd_uuid);
+                                      setEditStatsValues({
+                                        today: (todayEarnings[bd.bd_uuid] ?? 0).toFixed(2),
+                                        month: Number(bd.current_month_earnings || 0).toFixed(2),
+                                        total: Number(bd.total_earned || 0).toFixed(2),
+                                      });
+                                    }
+                                  }}
+                                  className="bg-muted/30 rounded-lg p-2 hover:bg-muted/50 transition-colors"
+                                >
+                                  <p className="text-muted-foreground">الشهر</p>
+                                  <p className="font-bold text-primary">${Number(bd.current_month_earnings || 0).toFixed(2)}</p>
+                                  {!readOnly && <Edit2 className="w-2.5 h-2.5 mx-auto mt-0.5 text-muted-foreground/50" />}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!readOnly) {
+                                      setEditingStatsBd(bd.bd_uuid);
+                                      setEditStatsValues({
+                                        today: (todayEarnings[bd.bd_uuid] ?? 0).toFixed(2),
+                                        month: Number(bd.current_month_earnings || 0).toFixed(2),
+                                        total: Number(bd.total_earned || 0).toFixed(2),
+                                      });
+                                    }
+                                  }}
+                                  className="bg-muted/30 rounded-lg p-2 hover:bg-muted/50 transition-colors"
+                                >
+                                  <p className="text-muted-foreground">الإجمالي</p>
+                                  <p className="font-bold">${Number(bd.total_earned || 0).toFixed(2)}</p>
+                                  {!readOnly && <Edit2 className="w-2.5 h-2.5 mx-auto mt-0.5 text-muted-foreground/50" />}
+                                </button>
+                                <div className="bg-muted/30 rounded-lg p-2">
+                                  <p className="text-muted-foreground">نسب</p>
+                                  <p className="font-bold">{bd.user_commission_pct}% / {bd.agency_commission_pct}%</p>
+                                </div>
                               </div>
-                              <div className="bg-muted/30 rounded-lg p-2">
-                                <p className="text-muted-foreground">الإجمالي</p>
-                                <p className="font-bold">${Number(bd.total_earned || 0).toFixed(2)}</p>
-                              </div>
-                              <div className="bg-muted/30 rounded-lg p-2">
-                                <p className="text-muted-foreground">نسب</p>
-                                <p className="font-bold">{bd.user_commission_pct}% / {bd.agency_commission_pct}%</p>
-                              </div>
-                            </div>
+                            )}
 
                             {/* Monthly Goal Progress */}
                             {(() => {
