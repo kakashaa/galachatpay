@@ -418,16 +418,16 @@ const BDDashboard: React.FC = () => {
                   {(data?.withdrawals || []).slice(0, 5).map((w: any) => (
                     <div key={w.id} className="flex items-center justify-between px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <span className={`material-symbols-outlined text-sm ${w.status === 'completed' ? 'text-emerald-400' : w.status === 'rejected' ? 'text-red-400' : 'text-yellow-400'}`}>
-                          {w.status === 'completed' ? 'check_circle' : w.status === 'rejected' ? 'cancel' : 'pending'}
+                        <span className="material-symbols-outlined text-sm text-primary">
+                          schedule
                         </span>
                         <div>
                           <p className="text-[11px] font-medium text-foreground">${(w.amount || 0).toFixed(2)}</p>
                           <p className="text-[9px] text-muted-foreground">{new Date(w.created_at).toLocaleDateString('ar')}</p>
                         </div>
                       </div>
-                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${w.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : w.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
-                        {w.status === 'completed' ? 'مكتمل' : w.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                        محتمل من 1 دقيقة إلى 1 ساعة نزول الكوينزات إلى الحساب
                       </span>
                     </div>
                   ))}
