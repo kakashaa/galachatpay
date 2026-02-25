@@ -45,6 +45,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   const [addMemberLoading, setAddMemberLoading] = useState(false);
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editMemberCommission, setEditMemberCommission] = useState<string>("");
+  const [editingMemberAmount, setEditingMemberAmount] = useState<string | null>(null);
+  const [editMemberTotalComm, setEditMemberTotalComm] = useState<string>("");
 
   // Withdrawals
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
@@ -618,6 +620,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                 <div className="space-y-1.5">
                                   {members.map((m) => {
                                     const isEditingMember = editingMember === m.id;
+                                    const isEditingAmount = editingMemberAmount === m.id;
                                     const defaultPct = m.member_type === "agency" ? bd.agency_commission_pct : bd.user_commission_pct;
                                     const displayPct = m.custom_commission_pct != null ? m.custom_commission_pct : defaultPct;
                                     return (
@@ -629,7 +632,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                               <span className={m.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}>
                                                 {m.member_type === "agency" ? "وكيل" : "داعم"}
                                               </span>
-                                              <span>عمولة: ${Number(m.current_month_commission || 0).toFixed(2)}</span>
+                                              <span>الشهر: ${Number(m.current_month_commission || 0).toFixed(2)}</span>
+                                              <span>الإجمالي: ${Number(m.total_commission || 0).toFixed(2)}</span>
                                               <span>({displayPct}%{m.custom_commission_pct != null ? " مخصص" : ""})</span>
                                             </div>
                                           </div>
@@ -638,10 +642,26 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                               <>
                                                 <button
                                                   onClick={() => {
+                                                    if (isEditingAmount) {
+                                                      setEditingMemberAmount(null);
+                                                    } else {
+                                                      setEditingMemberAmount(m.id);
+                                                      setEditingMember(null);
+                                                      setEditMemberTotalComm(String(Number(m.total_commission || 0)));
+                                                    }
+                                                  }}
+                                                  className="p-1.5 rounded-lg hover:bg-green-500/10"
+                                                  title="تعديل العمولة المحققة"
+                                                >
+                                                  <DollarSign className="w-3.5 h-3.5 text-green-400" />
+                                                </button>
+                                                <button
+                                                  onClick={() => {
                                                     if (isEditingMember) {
                                                       setEditingMember(null);
                                                     } else {
                                                       setEditingMember(m.id);
+                                                      setEditingMemberAmount(null);
                                                       setEditMemberCommission(m.custom_commission_pct != null ? String(m.custom_commission_pct) : "");
                                                     }
                                                   }}
@@ -656,6 +676,85 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                             )}
                                           </div>
                                         </div>
+                                        {/* Edit commission amount */}
+                                        {isEditingAmount && (
+                                          <div className="bg-muted/30 rounded-lg p-2.5 space-y-2 border border-green-500/20">
+                                            <p className="text-[10px] text-green-400 font-bold">تعديل العمولة المحققة</p>
+                                            <div>
+                                              <label className="text-[10px] text-muted-foreground">إجمالي العمولة الكلية $</label>
+                                              <Input
+                                                type="number"
+                                                step="0.01"
+                                                value={editMemberTotalComm}
+                                                onChange={(e) => setEditMemberTotalComm(e.target.value)}
+                                                className="h-7 text-xs mt-0.5"
+                                                dir="ltr"
+                                              />
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <Button
+                                                size="sm"
+                                                className="h-7 text-[10px] px-3 flex-1 bg-green-600 hover:bg-green-700"
+                                                onClick={async () => {
+                                                  try {
+                                                    const newTotal = Number(editMemberTotalComm);
+                                                    const oldTotal = Number(m.total_commission || 0);
+                                                    const diff = newTotal - oldTotal;
+                                                    
+                                                    // Update member
+                                                    const newMonthComm = Math.max(0, Number(m.current_month_commission || 0) + diff);
+                                                    await supabase.from("bd_members").update({
+                                                      total_commission: newTotal,
+                                                      current_month_commission: newMonthComm,
+                                                    }).eq("id", m.id);
+                                                    
+                                                    // Update BD stats
+                                                    const newBdMonth = Math.max(0, Number(bd.current_month_earnings || 0) + diff);
+                                                    const newBdTotal = Math.max(0, Number(bd.total_earned || 0) + diff);
+                                                    const newBdBalance = Math.max(0, Number(bd.available_balance || 0) + diff);
+                                                    await supabase.from("bd_commission_settings").update({
+                                                      current_month_earnings: newBdMonth,
+                                                      total_earned: newBdTotal,
+                                                      available_balance: newBdBalance,
+                                                    }).eq("bd_uuid", bd.bd_uuid);
+                                                    
+                                                    // Add commission log for today
+                                                    const now = new Date();
+                                                    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                                                    await supabase.from("bd_commission_logs").insert({
+                                                      bd_uuid: bd.bd_uuid,
+                                                      member_uuid: m.member_uuid,
+                                                      member_type: m.member_type,
+                                                      amount: diff,
+                                                      source_amount: 0,
+                                                      commission_pct: Number(displayPct),
+                                                      month,
+                                                    });
+                                                    
+                                                    // Update local state
+                                                    setAllMembers(prev => prev.map(mm => mm.id === m.id ? { ...mm, total_commission: newTotal, current_month_commission: newMonthComm } : mm));
+                                                    setBds(prev => prev.map(b => b.bd_uuid === bd.bd_uuid ? { ...b, current_month_earnings: newBdMonth, total_earned: newBdTotal, available_balance: newBdBalance } : b));
+                                                    setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: (prev[bd.bd_uuid] ?? 0) + diff }));
+                                                    
+                                                    setEditingMemberAmount(null);
+                                                    toast.success(`تم تعديل العمولة (${diff >= 0 ? "+" : ""}${diff.toFixed(2)}$)`);
+                                                  } catch { toast.error("فشل التحديث"); }
+                                                }}
+                                              >
+                                                <Save className="w-3 h-3 ml-1" />حفظ
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 text-[10px] px-3"
+                                                onClick={() => setEditingMemberAmount(null)}
+                                              >
+                                                إلغاء
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {/* Edit commission percentage */}
                                         {isEditingMember && (
                                           <div className="flex items-center gap-2 pt-1">
                                             <Input
@@ -676,7 +775,6 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                                   await supabase.from("bd_members").update({ custom_commission_pct: val }).eq("id", m.id);
                                                   toast.success("تم تحديث العمولة");
                                                   setEditingMember(null);
-                                                  // Update local state
                                                   setAllMembers(prev => prev.map(mm => mm.id === m.id ? { ...mm, custom_commission_pct: val } : mm));
                                                 } catch { toast.error("فشل التحديث"); }
                                               }}
