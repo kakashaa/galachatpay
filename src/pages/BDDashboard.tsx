@@ -70,11 +70,19 @@ const BDDashboard: React.FC = () => {
       } else {
         const synced = result?.synced_members || result?.synced || 0;
         const commissions = result?.commission_updates || 0;
+        const infoUpdates = result?.info_updates || 0;
+        const profitSynced = result?.profit_synced || 0;
         setLastSync(new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }));
         await loadData();
 
+        const summaryParts = [`${synced} عضو`];
+        if (infoUpdates > 0) summaryParts.push(`${infoUpdates} عضو جديد`);
+        summaryParts.push(`${commissions} عمولة`);
+        if (profitSynced > 0) summaryParts.push(`${profitSynced} ربح BD`);
+        const summaryText = summaryParts.join('، ');
+
         if (commissions > 0) {
-          toast.success(`✅ تم التحديث: ${synced} عضو، ${commissions} عمولة جديدة`);
+          toast.success(`✅ تم التحديث: ${summaryText}`);
           clearSyncTimers();
         } else if (retryCountRef.current < MAX_SYNC_RETRIES) {
           retryCountRef.current++;
@@ -82,7 +90,7 @@ const BDDashboard: React.FC = () => {
           startCountdown(SYNC_RETRY_DELAY / 1000);
           syncRetryRef.current = setTimeout(() => handleManualSync(true), SYNC_RETRY_DELAY);
         } else {
-          toast.success(`✅ تم التحديث: ${synced} عضو`);
+          toast.success(`✅ تم التحديث: ${summaryText}`);
           clearSyncTimers();
         }
       }
