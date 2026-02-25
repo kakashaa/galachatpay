@@ -1206,7 +1206,7 @@ const AdminDashboardPage: React.FC = () => {
                         onClick={() => setBanForm(prev => ({ ...prev, ban_type: "promotion" }))}
                         className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "promotion" ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}
                       >
-                        حظر جهاز (ترويج)
+                        حظر جهاز
                       </button>
                       <button
                         onClick={() => setBanForm(prev => ({ ...prev, ban_type: "normal" }))}
