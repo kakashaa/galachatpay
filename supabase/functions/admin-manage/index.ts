@@ -231,6 +231,71 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Manual bans management
+      case "list_manual_bans": {
+        const { data: bans, error } = await supabase
+          .from("manual_bans")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        result = bans;
+        break;
+      }
+      case "manual_ban_user": {
+        const { target_uuid, ban_type, duration_hours, reason } = data;
+        if (!target_uuid) throw new Error("UUID المستخدم مطلوب");
+
+        // Call external ban API
+        const ACTIONS_URL = Deno.env.get("GALA_ACTIONS_URL");
+        const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY");
+        if (!ACTIONS_URL || !ACTIONS_KEY) throw new Error("إعدادات API الحظر غير مكتملة");
+
+        const targetUrl = new URL(ACTIONS_URL);
+        targetUrl.searchParams.set("key", ACTIONS_KEY);
+        targetUrl.searchParams.set("action", "ban-user");
+
+        const banResponse = await fetch(targetUrl.toString(), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            uuid: parseInt(target_uuid),
+            reason: reason || ban_type,
+            ban_type: ban_type || "normal",
+            duration: duration_hours || 24,
+          }),
+        });
+
+        const banText = await banResponse.text();
+        let banData;
+        try { banData = JSON.parse(banText); } catch { throw new Error("استجابة API غير صالحة"); }
+        if (!banResponse.ok) throw new Error(banData?.error || "فشل الحظر");
+
+        // Save to manual_bans table
+        const { error: insertErr } = await supabase.from("manual_bans").insert({
+          target_uuid: String(target_uuid),
+          ban_type: ban_type || "normal",
+          duration_hours: duration_hours || 24,
+          reason: reason || "",
+          banned_by: auth.username,
+        });
+        if (insertErr) console.error("Failed to save ban record:", insertErr);
+
+        result = { success: true, ban_result: banData };
+        break;
+      }
+      case "unban_manual": {
+        const { ban_id } = data;
+        if (!ban_id) throw new Error("معرف الحظر مطلوب");
+
+        const { error } = await supabase
+          .from("manual_bans")
+          .update({ status: "unbanned", unbanned_at: new Date().toISOString(), unbanned_by: auth.username })
+          .eq("id", ban_id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       // Entry gifts management
       case "list_entry_gifts": {
         const { data: entryGifts, error } = await supabase
