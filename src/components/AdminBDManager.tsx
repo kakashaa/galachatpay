@@ -333,8 +333,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
           {/* Registrations */}
           {subTab === "registrations" && (
             <div className="space-y-3">
-              {registrations.length === 0 && <p className="text-center text-muted-foreground py-10">لا توجد طلبات</p>}
-              {registrations.map((reg) => (
+              {registrations.filter((r) => r.status === "pending").length === 0 && <p className="text-center text-muted-foreground py-10">لا توجد طلبات معلقة</p>}
+              {registrations.filter((reg) => reg.status === "pending").map((reg) => (
                 <div key={reg.id} className="bg-card border rounded-xl p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
