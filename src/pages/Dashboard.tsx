@@ -20,7 +20,7 @@ const PULL_THRESHOLD = 80;
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated, refreshUser } = useAuth();
-  const { isBanned, activeBan, getRemainingTime } = useBanCheck(user?.uuid);
+  const { activeBan, getRemainingTime, isFullBan } = useBanCheck(user?.uuid);
   const [notifCount, setNotifCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -99,11 +99,12 @@ const Dashboard: React.FC = () => {
 
     return (
     <>
-      {isBanned && activeBan && (
+      {isFullBan && activeBan && (
         <BanOverlay
           reason={activeBan.reason}
           remainingTime={getRemainingTime()}
           banType={activeBan.ban_type}
+          bannedElements={activeBan.banned_elements || undefined}
         />
       )}
       <div

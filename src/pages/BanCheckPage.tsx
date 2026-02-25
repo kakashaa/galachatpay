@@ -239,17 +239,17 @@ const BanCheckPage = () => {
                   </div>
 
                   {/* Ban type badges */}
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_device_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                      📱 حظر جهاز
-                    </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_ip_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                      🌐 حظر IP
-                    </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_normal_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                      👤 حظر عادي
-                    </span>
-                  </div>
+                   <div className="flex flex-wrap gap-2 mt-4">
+                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_device_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                       🚫 حظر كامل
+                     </span>
+                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_ip_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                       🌐 حظر IP
+                     </span>
+                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_normal_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                       🧩 حظر عناصر
+                     </span>
+                   </div>
                 </div>
               ) : (
                 <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-5">

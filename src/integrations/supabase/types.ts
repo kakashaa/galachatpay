@@ -1165,6 +1165,7 @@ export type Database = {
         Row: {
           ban_type: string
           banned_by: string
+          banned_elements: string[] | null
           created_at: string
           duration_hours: number
           id: string
@@ -1177,6 +1178,7 @@ export type Database = {
         Insert: {
           ban_type?: string
           banned_by?: string
+          banned_elements?: string[] | null
           created_at?: string
           duration_hours?: number
           id?: string
@@ -1189,6 +1191,7 @@ export type Database = {
         Update: {
           ban_type?: string
           banned_by?: string
+          banned_elements?: string[] | null
           created_at?: string
           duration_hours?: number
           id?: string

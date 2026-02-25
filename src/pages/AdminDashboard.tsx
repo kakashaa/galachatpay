@@ -172,7 +172,7 @@ const AdminDashboardPage: React.FC = () => {
   // Blocked accounts state
   const [blockedAccounts, setBlockedAccounts] = useState<BlockedAccount[]>([]);
   const [manualBans, setManualBans] = useState<any[]>([]);
-  const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "normal", duration_hours: "24", reason: "" });
+  const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] as string[] });
   const [banLoading, setBanLoading] = useState(false);
 
   // Entry gifts state
@@ -1203,18 +1203,54 @@ const AdminDashboardPage: React.FC = () => {
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <button
-                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "promotion" }))}
-                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "promotion" ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}
+                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "full", banned_elements: [] }))}
+                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "full" ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}
                       >
-                        حظر جهاز
+                        🚫 حظر كامل
                       </button>
                       <button
-                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "normal" }))}
-                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "normal" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "elements", banned_elements: [] }))}
+                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "elements" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                       >
-                        حظر عادي
+                        🧩 حظر عناصر
                       </button>
                     </div>
+                    {banForm.ban_type === "elements" && (
+                      <div className="space-y-2">
+                        <label className="text-xs text-muted-foreground">اختر العناصر المراد حظرها:</label>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[
+                            { key: "entries", label: "🎁 دخوليات" },
+                            { key: "frames", label: "🖼️ إطارات" },
+                            { key: "gifts", label: "🎀 هدايا مخصصة" },
+                            { key: "animated_photos", label: "📸 صور متحركة" },
+                            { key: "change_id", label: "🔄 تغيير آيدي" },
+                            { key: "hairs", label: "💇 تسريحات" },
+                            { key: "vip", label: "⭐ VIP" },
+                            { key: "salary", label: "💰 رواتب" },
+                          ].map((el) => (
+                            <button
+                              key={el.key}
+                              onClick={() => {
+                                setBanForm(prev => ({
+                                  ...prev,
+                                  banned_elements: prev.banned_elements.includes(el.key)
+                                    ? prev.banned_elements.filter(e => e !== el.key)
+                                    : [...prev.banned_elements, el.key],
+                                }));
+                              }}
+                              className={`py-1.5 px-2 rounded-lg border text-[11px] font-bold transition-colors ${
+                                banForm.banned_elements.includes(el.key)
+                                  ? "border-destructive bg-destructive/10 text-destructive"
+                                  : "border-border text-muted-foreground"
+                              }`}
+                            >
+                              {el.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">مدة الحظر (بالساعات)</label>
                       <Input
@@ -1243,9 +1279,10 @@ const AdminDashboardPage: React.FC = () => {
                             ban_type: banForm.ban_type,
                             duration_hours: parseInt(banForm.duration_hours) || 24,
                             reason: banForm.reason.trim(),
+                            banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null,
                           });
                           toast.success("تم حظر المستخدم بنجاح");
-                          setBanForm({ target_uuid: "", ban_type: "normal", duration_hours: "24", reason: "" });
+                          setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
                           loadData();
                         } catch (err: any) {
                           toast.error(err?.message || "فشل الحظر");
@@ -1270,8 +1307,16 @@ const AdminDashboardPage: React.FC = () => {
                           <div>
                             <p className="font-bold text-sm font-mono" dir="ltr">{ban.target_uuid}</p>
                             <p className="text-xs text-muted-foreground">
-                              {ban.ban_type === "promotion" ? "حظر جهاز" : "حظر عادي"} • {ban.duration_hours} ساعة
+                              {ban.ban_type === "full" ? "🚫 حظر كامل" : ban.ban_type === "elements" ? "🧩 حظر عناصر" : ban.ban_type === "promotion" ? "حظر ترويج" : "حظر"} • {ban.duration_hours === 999999 ? "أبدي" : `${ban.duration_hours} ساعة`}
                             </p>
+                            {ban.ban_type === "elements" && ban.banned_elements && ban.banned_elements.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {ban.banned_elements.map((el: string) => {
+                                  const labels: Record<string, string> = { entries: "دخوليات", frames: "إطارات", gifts: "هدايا", animated_photos: "صور متحركة", change_id: "تغيير آيدي", hairs: "تسريحات", vip: "VIP", salary: "رواتب" };
+                                  return <span key={el} className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive text-[10px] font-bold">{labels[el] || el}</span>;
+                                })}
+                              </div>
+                            )}
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs font-bold ${ban.status === "active" ? "bg-destructive/20 text-destructive" : "bg-green-500/20 text-green-500"}`}>
                             {ban.status === "active" ? "فعال" : "ملغي"}
