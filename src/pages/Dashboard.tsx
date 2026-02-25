@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, Bell, LogIn, RefreshCw, ShieldBan } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBanCheck } from "@/hooks/use-ban-check";
+import BanOverlay from "@/components/BanOverlay";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { VideoStoryCircle } from "@/components/VideoStoryCircle";
 import UserProfileCard from "@/components/UserProfileCard";
@@ -18,6 +20,7 @@ const PULL_THRESHOLD = 80;
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated, refreshUser } = useAuth();
+  const { isBanned, activeBan, getRemainingTime } = useBanCheck(user?.uuid);
   const [notifCount, setNotifCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -96,6 +99,13 @@ const Dashboard: React.FC = () => {
 
     return (
     <>
+      {isBanned && activeBan && (
+        <BanOverlay
+          reason={activeBan.reason}
+          remainingTime={getRemainingTime()}
+          banType={activeBan.ban_type}
+        />
+      )}
       <div
         ref={scrollContainerRef}
         className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative" style={{ overflow: 'hidden auto' }}
