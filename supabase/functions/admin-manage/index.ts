@@ -254,21 +254,25 @@ Deno.serve(async (req) => {
         targetUrl.searchParams.set("key", ACTIONS_KEY);
         targetUrl.searchParams.set("action", "ban-user");
 
+        const banBody = {
+          uuid: target_uuid,
+          reason: reason || ban_type || "normal",
+          ban_type: ban_type || "normal",
+          duration: duration_hours || 24,
+        };
+        console.log("Ban request body:", JSON.stringify(banBody));
+
         const banResponse = await fetch(targetUrl.toString(), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            uuid: parseInt(target_uuid),
-            reason: reason || ban_type,
-            ban_type: ban_type || "normal",
-            duration: duration_hours || 24,
-          }),
+          body: JSON.stringify(banBody),
         });
 
         const banText = await banResponse.text();
+        console.log("Ban API response:", banResponse.status, banText.substring(0, 500));
         let banData;
-        try { banData = JSON.parse(banText); } catch { throw new Error("استجابة API غير صالحة"); }
-        if (!banResponse.ok) throw new Error(banData?.error || "فشل الحظر");
+        try { banData = JSON.parse(banText); } catch { throw new Error("استجابة API غير صالحة: " + banText.substring(0, 200)); }
+        if (!banResponse.ok) throw new Error(banData?.error || banData?.message || "فشل الحظر من API");
 
         // Save to manual_bans table
         const { error: insertErr } = await supabase.from("manual_bans").insert({
