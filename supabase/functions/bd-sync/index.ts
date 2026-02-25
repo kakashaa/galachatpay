@@ -4,26 +4,18 @@ import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URLS = [
   "https://hola-chat.com/bd-data-api.php",
-  "https://hola-chat.com/website/bd-data-api.php",
   "http://18.219.229.240/bd-data-api.php",
-  "http://18.219.229.240/website/bd-data-api.php",
 ];
 const TOP_CHARGERS_API_URLS = [
   "https://hola-chat.com/top-chargers-api.php",
-  "https://hola-chat.com/website/top-chargers-api.php",
   "http://18.219.229.240/top-chargers-api.php",
-  "http://18.219.229.240/website/top-chargers-api.php",
 ];
 const AGENCY_TARGET_API_URLS = [
   "https://hola-chat.com/agency-target-api.php",
-  "https://hola-chat.com/website/agency-target-api.php",
   "http://18.219.229.240/agency-target-api.php",
-  "http://18.219.229.240/website/agency-target-api.php",
 ];
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const MANUAL_FALLBACK_RETRY_DELAY_MS = 8000;
-const MANUAL_FALLBACK_MAX_RETRIES = 3;
 
 const supabaseAdmin = () =>
   createClient(
@@ -76,108 +68,8 @@ function isPageLoadFailedPayload(text: string): boolean {
   return text.toLowerCase().includes("page load failed");
 }
 
-// ── API 1a: fetch monthly charges for ALL supporters in BATCH ──
-async function fetchBatchMonthlyCharges(
-  sb: ReturnType<typeof supabaseAdmin>,
-  uuids: string[],
-  skipCache = false
-): Promise<Map<string, number>> {
-  const result = new Map<string, number>();
-  if (uuids.length === 0) return result;
-
-  const now = new Date();
-  const year = now.getUTCFullYear();
-  const monthValue = now.getUTCMonth() + 1;
-  const monthCandidates = Array.from(new Set([
-    String(monthValue),
-    String(monthValue).padStart(2, "0"),
-  ]));
-
-  const uuidStr = uuids.join(",");
-
-  for (const monthNum of monthCandidates) {
-    for (const baseUrl of TOP_CHARGERS_API_URLS) {
-      const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuidStr}&year=${year}&month=${monthNum}`;
-
-      console.log(`[BATCH] fetching charges for ${uuids.length} supporters via ${baseUrl} (month=${monthNum})`);
-      const res = await fetchWithRetry(url, 2);
-      if (!res) continue;
-
-      const rawText = await res.text();
-      console.log(`[BATCH] response (first 500 chars): ${rawText.slice(0, 500)}`);
-
-      if (isPageLoadFailedPayload(rawText)) continue;
-
-      try {
-        const data = JSON.parse(rawText);
-        const rows = Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data?.rows)
-            ? data.rows
-            : Array.isArray(data)
-              ? data
-              : [];
-
-        const isSuccess = data?.status === "success" || data?.ok === true || Array.isArray(data);
-        if (isSuccess && rows.length > 0) {
-          let hasNonZero = false;
-          for (const entry of rows) {
-            const entryUuid = String(entry?.uuid ?? entry?.user_uuid ?? entry?.member_uuid ?? "").trim();
-            const total = toNum(entry?.total_charges ?? entry?.total ?? entry?.charges ?? entry?.month_total);
-            if (entryUuid && uuids.includes(entryUuid)) {
-              result.set(entryUuid, total);
-              if (total > 0) hasNonZero = true;
-            }
-          }
-          // If batch returned valid data (at least some non-zero or all responded), use it
-          if (result.size > 0 && (hasNonZero || result.size === uuids.length)) {
-            console.log(`[BATCH] got data for ${result.size}/${uuids.length} supporters, hasNonZero=${hasNonZero}`);
-            // Cache individual values
-            for (const [uuid, total] of result.entries()) {
-              await setCache(sb, `monthly_charges_${uuid}`, total);
-            }
-            return result;
-          }
-          // All zero but we got responses - might be valid or stale, continue trying
-          if (result.size > 0 && !hasNonZero) {
-            console.log(`[BATCH] all ${result.size} values are 0 from ${baseUrl}, trying next source`);
-            result.clear();
-          }
-        }
-      } catch (e) {
-        console.error(`[BATCH] parse error via ${baseUrl}:`, e);
-      }
-    }
-    // If we got results from this month candidate, return
-    if (result.size > 0) return result;
-  }
-
-  // If batch returned all zeros from all sources, return them (they might be genuinely 0)
-  // Re-try the last working source one more time
-  const lastUrl = TOP_CHARGERS_API_URLS[TOP_CHARGERS_API_URLS.length - 1];
-  const lastMonth = monthCandidates[0];
-  const url = `${lastUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuidStr}&year=${year}&month=${lastMonth}`;
-  const res = await fetchWithRetry(url, 2);
-  if (res) {
-    try {
-      const data = JSON.parse(await res.text());
-      const rows = Array.isArray(data?.data) ? data.data : [];
-      for (const entry of rows) {
-        const entryUuid = String(entry?.uuid ?? "").trim();
-        const total = toNum(entry?.total_charges ?? entry?.total ?? 0);
-        if (entryUuid && uuids.includes(entryUuid)) {
-          result.set(entryUuid, total);
-        }
-      }
-    } catch {}
-  }
-
-  console.log(`[BATCH] final result: ${result.size}/${uuids.length} supporters resolved`);
-  return result;
-}
-
-// ── API 1b: fetch monthly charges for ONE supporter individually (fallback) ──
-async function fetchIndividualMonthlyCharges(
+// ── API 1: fetch monthly charges for ONE supporter ──
+async function fetchMonthlyCharges(
   sb: ReturnType<typeof supabaseAdmin>,
   uuid: string,
   skipCache = false
@@ -188,19 +80,36 @@ async function fetchIndividualMonthlyCharges(
     if (cached !== null && typeof cached === "number") return cached;
   }
 
-  // Try user-charges API as fallback (bd-data-api.php)
-  console.log(`[INDIVIDUAL] ${uuid}: trying user-charges fallback`);
-  const userCharges = await fetchUserCharges(sb, uuid, true);
-  if (userCharges) {
-    const monthTotal = extractMonthChargesTotal(userCharges);
-    if (monthTotal > 0) {
-      await setCache(sb, cacheKey, monthTotal);
-      console.log(`[INDIVIDUAL] ${uuid}: total_charges=${monthTotal} (user-charges fallback)`);
-      return monthTotal;
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth() + 1;
+
+  for (const baseUrl of TOP_CHARGERS_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${month}`;
+    console.log(`[API] fetching charges for ${uuid} via ${baseUrl}`);
+    const res = await fetchWithRetry(url, 2);
+    if (!res) continue;
+
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+      const data = JSON.parse(text);
+      const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+
+      for (const entry of rows) {
+        const entryUuid = String(entry?.uuid ?? entry?.user_uuid ?? "").trim();
+        if (entryUuid === uuid || rows.length === 1) {
+          const total = toNum(entry?.total_charges ?? entry?.total ?? 0);
+          await setCache(sb, cacheKey, total);
+          console.log(`[API] charges for ${uuid}: total_charges=${total}`);
+          return total;
+        }
+      }
+    } catch (e) {
+      console.error(`[API] parse error for ${uuid} via ${baseUrl}:`, e);
     }
   }
 
-  console.log(`[INDIVIDUAL] ${uuid}: no data from fallback`);
   return null;
 }
 
@@ -282,31 +191,6 @@ async function fetchUserInfo(sb: ReturnType<typeof supabaseAdmin>, uuid: string)
   return null;
 }
 
-// ── API 4.1: user-charges (fallback) ───────────────────────────
-async function fetchUserCharges(sb: ReturnType<typeof supabaseAdmin>, uuid: string, skipCache = false) {
-  const cacheKey = `user_charges_${uuid}`;
-  if (!skipCache) {
-    const cached = await getCached(sb, cacheKey);
-    if (cached) return cached;
-  }
-
-  for (const baseUrl of BD_API_URLS) {
-    const url = `${baseUrl}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
-    const res = await fetchWithRetry(url, 1);
-    if (!res) continue;
-    try {
-      const text = await res.text();
-      if (isPageLoadFailedPayload(text)) continue;
-      const data = JSON.parse(text);
-      await setCache(sb, cacheKey, data);
-      return data;
-    } catch {
-      // continue
-    }
-  }
-  return null;
-}
-
 function parseNumericId(value: unknown): string | null {
   const text = String(value ?? "").trim();
   const match = text.match(/\d+/);
@@ -350,113 +234,6 @@ function extractInternalUserId(userInfo: any): string | null {
     parseNumericId(userInfo?.id) ||
     null
   );
-}
-
-function extractMonthChargesTotal(userCharges: any): number {
-  const monthValue = userCharges?.charges?.month;
-  if (monthValue && typeof monthValue === "object") {
-    return toNum(monthValue.total ?? monthValue.count ?? 0);
-  }
-  return toNum(monthValue);
-}
-
-async function fetchBestUserChargesTotal(
-  sb: ReturnType<typeof supabaseAdmin>,
-  memberUuid: string,
-  internalUserId: string | null,
-  skipCache = true,
-): Promise<number> {
-  const candidates = [memberUuid, internalUserId]
-    .map((v) => String(v || "").trim())
-    .filter(Boolean);
-
-  let best = 0;
-  for (const candidate of candidates) {
-    const userCharges = await fetchUserCharges(sb, candidate, skipCache);
-    const total = extractMonthChargesTotal(userCharges);
-    if (total > best) best = total;
-  }
-
-  return best;
-}
-
-// ── Fallback: fetch user-charges for EACH supporter individually ──
-async function buildRecentFallbackMap(
-  sb: ReturnType<typeof supabaseAdmin>,
-  month: string,
-  supporterRefs: Array<{ memberUuid: string; internalUserId: string | null }>
-): Promise<Map<string, number>> {
-  const fallbackByMember = new Map<string, number>();
-  if (supporterRefs.length === 0) return fallbackByMember;
-
-  // Fetch user-charges for each supporter in parallel (batches of 5)
-  const FALLBACK_BATCH = 5;
-  for (let i = 0; i < supporterRefs.length; i += FALLBACK_BATCH) {
-    const batch = supporterRefs.slice(i, i + FALLBACK_BATCH);
-    await Promise.all(batch.map(async ({ memberUuid, internalUserId }) => {
-      try {
-        const candidates = [memberUuid, internalUserId]
-          .map((v) => String(v || "").trim())
-          .filter(Boolean);
-
-        for (const candidate of candidates) {
-          const userCharges = await fetchUserCharges(sb, candidate, true);
-          if (!userCharges) continue;
-
-          const recentList = Array.isArray(userCharges?.recent)
-            ? userCharges.recent
-            : Array.isArray(userCharges?.recent_charges)
-              ? userCharges.recent_charges
-              : Array.isArray(userCharges?.data)
-                ? userCharges.data
-                : [];
-
-          let memberTotal = 0;
-          for (const entry of recentList) {
-            const chargeId = parseNumericId(
-              (entry as any)?.["معرف"] ?? (entry as any)?.id ?? (entry as any)?.charge_id
-            );
-            const chargeCoins = toNum(
-              (entry as any)?.["الكوينز"] ?? (entry as any)?.coins ?? (entry as any)?.amount
-            );
-
-            if (!chargeId || chargeCoins <= 0) continue;
-
-            const dedupeKey = `bd_recent_charge_${month}_${memberUuid}_${chargeId}`;
-            const seen = await getCached(sb, dedupeKey);
-            if (seen) continue;
-
-            memberTotal += chargeCoins;
-
-            await sb.from("edge_function_cache").upsert(
-              {
-                key: dedupeKey,
-                value: { processed: true, amount: chargeCoins },
-                expires_at: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-              },
-              { onConflict: "key" }
-            );
-          }
-
-          if (memberTotal > 0) {
-            fallbackByMember.set(memberUuid, (fallbackByMember.get(memberUuid) || 0) + memberTotal);
-            console.log(`[FALLBACK] supporter ${memberUuid}: recovered +${memberTotal} coins from ${recentList.length} entries`);
-            break;
-          }
-        }
-      } catch (e) {
-        console.error(`[FALLBACK] error for ${memberUuid}:`, e);
-      }
-    }));
-  }
-
-  return fallbackByMember;
-}
-
-function mergeFallbackMaps(target: Map<string, number>, incoming: Map<string, number>) {
-  for (const [memberUuid, amount] of incoming.entries()) {
-    target.set(memberUuid, (target.get(memberUuid) || 0) + amount);
-  }
 }
 
 // ── API 5: host-salary (for hosts) ─────────────────────────────
@@ -645,26 +422,9 @@ serve(async (req) => {
       }
     }
 
-    // ── Step 2a: BATCH fetch charges for ALL supporters at once ──
-    const batchChargesMap = supporterUuids.length > 0
-      ? await fetchBatchMonthlyCharges(sb, supporterUuids, isManual)
-      : new Map<string, number>();
-
-    console.log(`[SYNC] batch returned data for ${batchChargesMap.size}/${supporterUuids.length} supporters`);
-
-    // ── Step 2b: For supporters NOT in batch, try individual fallback ──
-    const missingSupporters = supporterUuids.filter(uuid => !batchChargesMap.has(uuid));
-    if (missingSupporters.length > 0) {
-      console.log(`[SYNC] fetching ${missingSupporters.length} missing supporters individually`);
-      for (const uuid of missingSupporters) {
-        const val = await fetchIndividualMonthlyCharges(sb, uuid, isManual);
-        if (val !== null) batchChargesMap.set(uuid, val);
-      }
-    }
-
-    // ── Step 2c: Fetch user-info + agency/host data in parallel batches ──
+    // ── Step 2: Fetch all data in parallel batches (user-info + charges/agency/host) ──
     const BATCH_SIZE = 10;
-    const memberDataMap = new Map<string, { userInfo: any; chargeData: number | null; agencyData: any; hostData: any; salaryData: any }>();
+    const memberDataMap = new Map<string, { userInfo: any; chargeData: number | null; agencyData: any; hostData: any }>();
 
     for (let i = 0; i < members.length; i += BATCH_SIZE) {
       const batch = members.slice(i, i + BATCH_SIZE);
@@ -678,9 +438,11 @@ serve(async (req) => {
           fetchUserInfo(sb, member.member_uuid).then(d => { result.userInfo = d; }).catch(() => {})
         );
 
-        // For supporters, use the batch-fetched charge data
+        // For supporters, fetch charges individually
         if (member.member_type === "supporter") {
-          result.chargeData = batchChargesMap.get(member.member_uuid) ?? null;
+          tasks.push(
+            fetchMonthlyCharges(sb, member.member_uuid, isManual).then(d => { result.chargeData = d; }).catch(() => {})
+          );
         } else if (member.member_type === "agency") {
           tasks.push(
             fetchAgencyTarget(sb, member.member_uuid, isManual).then(d => { result.agencyData = d; }).catch(() => {})
@@ -692,7 +454,6 @@ serve(async (req) => {
         }
 
         await Promise.all(tasks);
-
         memberDataMap.set(member.member_uuid, result);
       });
 
@@ -700,56 +461,6 @@ serve(async (req) => {
     }
 
     console.log(`[SYNC] pre-fetched data for ${memberDataMap.size} members`);
-
-    // Build one-shot fallback map for all supporters (manual sync only)
-    let recentFallbackByMember = new Map<string, number>();
-    if (isManual && supporterUuids.length > 0) {
-      // Identify supporters where individual API returned 0 or stale data
-      const staleSupporters = supporterUuids.filter(uuid => {
-        const prefetched = memberDataMap.get(uuid);
-        const apiVal = prefetched?.chargeData ?? 0;
-        const dbVal = toNum(members.find((m: any) => m.member_uuid === uuid)?.monthly_charges);
-        const loggedVal = supporterSourceMap.get(uuid) || 0;
-        return apiVal <= Math.max(dbVal, loggedVal);
-      });
-
-      if (staleSupporters.length > 0) {
-        console.log(`[SYNC] ${staleSupporters.length}/${supporterUuids.length} supporters have stale API data, fetching fallback individually`);
-
-        const staleSupporterRefs = staleSupporters.map((memberUuid) => {
-          const prefetched = memberDataMap.get(memberUuid);
-          return {
-            memberUuid,
-            internalUserId: extractInternalUserId(prefetched?.userInfo),
-          };
-        });
-
-        recentFallbackByMember = await buildRecentFallbackMap(sb, month, staleSupporterRefs);
-
-        // Retry quickly for unresolved supporters to reduce "wait 5 minutes" scenarios
-        let unresolvedSupporters = staleSupporterRefs.filter(ref => !recentFallbackByMember.has(ref.memberUuid));
-        for (let attempt = 1; attempt <= MANUAL_FALLBACK_MAX_RETRIES && unresolvedSupporters.length > 0; attempt++) {
-          console.log(
-            `[SYNC] fallback retry ${attempt}/${MANUAL_FALLBACK_MAX_RETRIES} in ${MANUAL_FALLBACK_RETRY_DELAY_MS}ms for ${unresolvedSupporters.length} supporters`
-          );
-          await new Promise((resolve) => setTimeout(resolve, MANUAL_FALLBACK_RETRY_DELAY_MS));
-
-          const retryMap = await buildRecentFallbackMap(sb, month, unresolvedSupporters);
-          if (retryMap.size > 0) {
-            mergeFallbackMaps(recentFallbackByMember, retryMap);
-          }
-
-          unresolvedSupporters = unresolvedSupporters.filter(ref => !recentFallbackByMember.has(ref.memberUuid));
-        }
-
-        if (recentFallbackByMember.size > 0) {
-          const totalRecovered = [...recentFallbackByMember.values()].reduce((sum, v) => sum + v, 0);
-          console.log(`[SYNC] fallback recovered ${totalRecovered} coins for ${recentFallbackByMember.size} supporters`);
-        } else {
-          console.log("[SYNC] fallback did not find new charges yet (likely upstream propagation delay)");
-        }
-      }
-    }
 
     // Now process members sequentially (DB writes need ordering for commission safety)
     for (const member of members) {
@@ -812,21 +523,7 @@ serve(async (req) => {
           effectiveMonthlyCharges = baselineMonthly;
         }
 
-        // Manual-sync fallback: recover fresh charges from alternative sources
-        if (isManual && effectiveMonthlyCharges <= baselineMonthly) {
-          const internalUserId = extractInternalUserId(prefetched.userInfo);
-          const bestChargesMonthTotal = await fetchBestUserChargesTotal(sb, member.member_uuid, internalUserId, true);
-          if (bestChargesMonthTotal > effectiveMonthlyCharges) {
-            effectiveMonthlyCharges = bestChargesMonthTotal;
-            console.log(`[SYNC] supporter ${member.member_uuid}: fallback charges.month total=${bestChargesMonthTotal}`);
-          }
-
-          const fallbackIncrease = recentFallbackByMember.get(member.member_uuid) || 0;
-          if (fallbackIncrease > 0) {
-            effectiveMonthlyCharges = Math.max(effectiveMonthlyCharges, baselineMonthly + fallbackIncrease);
-            console.log(`[SYNC] supporter ${member.member_uuid}: fallback recent +${fallbackIncrease}, total=${effectiveMonthlyCharges}`);
-          }
-        }
+        // Anti-rollback only - no complex fallback
 
         const chargeDiff = effectiveMonthlyCharges - baselineMonthly;
 
