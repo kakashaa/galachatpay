@@ -246,45 +246,26 @@ Deno.serve(async (req) => {
         const { target_uuid, ban_type, duration_hours, reason } = data;
         if (!target_uuid) throw new Error("UUID المستخدم مطلوب");
 
-        // Call external ban API using HMAC-authenticated endpoint
-        const BASE_URL = Deno.env.get("GALA_API_BASE_URL") || "https://hola-chat.com/api/newWebsite";
-        const banEndpoint = "ban-user";
-        const banFullUrl = `${BASE_URL}/${banEndpoint}`;
-        const banSignPath = `api/newWebsite/${banEndpoint}`;
-        const banHeaders = await getGalaHeaders("POST", banSignPath);
-
-        const banBody = {
-          uuid: String(target_uuid),
-          reason: reason || ban_type || "normal",
-          ban_type: ban_type || "normal",
-          duration: duration_hours || 24,
-        };
-        console.log("Ban request URL:", banFullUrl);
-        console.log("Ban request body:", JSON.stringify(banBody));
-
-        const banResponse = await fetch(banFullUrl, {
-          method: "POST",
-          headers: banHeaders,
-          body: JSON.stringify(banBody),
-        });
-
-        const banText = await banResponse.text();
-        console.log("Ban API response:", banResponse.status, banText.substring(0, 500));
-        let banData;
-        try { banData = JSON.parse(banText); } catch { throw new Error("استجابة API غير صالحة: " + banText.substring(0, 200)); }
-        if (!banResponse.ok && !banData?.ok) throw new Error(banData?.error || banData?.message || "فشل الحظر من API");
-
-        // Save to manual_bans table
+        // Internal app ban - save to manual_bans table only
         const { error: insertErr } = await supabase.from("manual_bans").insert({
           target_uuid: String(target_uuid),
           ban_type: ban_type || "normal",
           duration_hours: duration_hours || 24,
           reason: reason || "",
-          banned_by: auth.username,
+          banned_by: username || "",
         });
-        if (insertErr) console.error("Failed to save ban record:", insertErr);
+        if (insertErr) throw new Error("فشل حفظ الحظر: " + insertErr.message);
 
-        result = { success: true, ban_result: banData };
+        // Send notification to banned user
+        await supabase.from("notifications").insert({
+          user_uuid: String(target_uuid),
+          title: "🚫 تم حظرك من استخدام خدمات التطبيق",
+          body: `تم حظرك من استخدام جميع عناصر التطبيق. السبب: ${reason || "مخالفة"}. المدة: ${duration_hours === 999999 ? "أبدي" : (duration_hours || 24) + " ساعة"}`,
+          target: "personal",
+        });
+
+        await logAudit({ target_uuid, ban_type, duration_hours, reason });
+        result = { success: true };
         break;
       }
       case "unban_manual": {
@@ -394,7 +375,7 @@ Deno.serve(async (req) => {
           .eq("id", id);
         if (error) throw error;
 
-        // If admin approved (verified) the report, execute the ban via API and notify reporter
+        // If admin approved (verified) the report, execute internal ban and notify reporter
         if (updateData.is_verified === true) {
           // Fetch the full report to get details
           const { data: report } = await supabase
@@ -404,29 +385,15 @@ Deno.serve(async (req) => {
             .single();
 
           if (report) {
-            // Execute ban via HMAC-authenticated API
-            try {
-              const BASE_URL = Deno.env.get("GALA_API_BASE_URL") || "https://hola-chat.com/api/newWebsite";
-              const banEndpoint = "ban-user";
-              const banFullUrl = `${BASE_URL}/${banEndpoint}`;
-              const banSignPath = `api/newWebsite/${banEndpoint}`;
-              const banHeaders = await getGalaHeaders("POST", banSignPath);
-              const banDuration = report.ban_type === "promotion" ? 999999 : 24;
-              const banApiType = report.ban_type === "promotion" ? "promotion" : "normal";
-              const apiResponse = await fetch(banFullUrl, {
-                method: "POST",
-                headers: banHeaders,
-                body: JSON.stringify({
-                  uuid: report.reported_user_id,
-                  duration: banDuration,
-                  reason: report.description || "مخالفة",
-                  ban_type: banApiType,
-                }),
-              });
-              console.log("Ban API response:", await apiResponse.text());
-            } catch (banErr) {
-              console.error("Ban API call failed:", banErr);
-            }
+            // Internal app ban - save to manual_bans table
+            const banDuration = report.ban_type === "promotion" ? 999999 : 24;
+            await supabase.from("manual_bans").insert({
+              target_uuid: report.reported_user_id,
+              ban_type: report.ban_type || "normal",
+              duration_hours: banDuration,
+              reason: report.description || "مخالفة - بلاغ مُوثق",
+              banned_by: username || "admin",
+            });
 
             // Notify the reporter
             await supabase.from("notifications").insert({
