@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getGalaHeaders } from "../_shared/hmac.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -245,26 +246,25 @@ Deno.serve(async (req) => {
         const { target_uuid, ban_type, duration_hours, reason } = data;
         if (!target_uuid) throw new Error("UUID المستخدم مطلوب");
 
-        // Call external ban API - uses dedicated ban endpoint
-        const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY") || "ghala2026actions";
-        const BAN_API_URL = "https://hola-chat.com/admin-actions.php";
-
-        const banUrl = new URL(BAN_API_URL);
-        banUrl.searchParams.set("key", ACTIONS_KEY);
-        banUrl.searchParams.set("action", "ban-user");
+        // Call external ban API using HMAC-authenticated endpoint
+        const BASE_URL = Deno.env.get("GALA_API_BASE_URL") || "https://hola-chat.com/api/newWebsite";
+        const banEndpoint = "ban-user";
+        const banFullUrl = `${BASE_URL}/${banEndpoint}`;
+        const banSignPath = `api/newWebsite/${banEndpoint}`;
+        const banHeaders = await getGalaHeaders("POST", banSignPath);
 
         const banBody = {
-          uuid: target_uuid,
+          uuid: String(target_uuid),
           reason: reason || ban_type || "normal",
           ban_type: ban_type || "normal",
           duration: duration_hours || 24,
         };
-        console.log("Ban request URL:", banUrl.toString());
+        console.log("Ban request URL:", banFullUrl);
         console.log("Ban request body:", JSON.stringify(banBody));
 
-        const banResponse = await fetch(banUrl.toString(), {
+        const banResponse = await fetch(banFullUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: banHeaders,
           body: JSON.stringify(banBody),
         });
 
@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
         console.log("Ban API response:", banResponse.status, banText.substring(0, 500));
         let banData;
         try { banData = JSON.parse(banText); } catch { throw new Error("استجابة API غير صالحة: " + banText.substring(0, 200)); }
-        if (!banResponse.ok) throw new Error(banData?.error || banData?.message || "فشل الحظر من API");
+        if (!banResponse.ok && !banData?.ok) throw new Error(banData?.error || banData?.message || "فشل الحظر من API");
 
         // Save to manual_bans table
         const { error: insertErr } = await supabase.from("manual_bans").insert({
@@ -404,27 +404,26 @@ Deno.serve(async (req) => {
             .single();
 
           if (report) {
-            // Execute ban via external API
+            // Execute ban via HMAC-authenticated API
             try {
-              const actionsUrl = Deno.env.get("GALA_ACTIONS_URL");
-              const actionsKey = Deno.env.get("GALA_ACTIONS_KEY");
-              if (actionsUrl && actionsKey) {
-                const banDuration = report.ban_type === "promotion" ? 999999 : 24;
-                const banApiType = report.ban_type === "promotion" ? "promotion" : "normal";
-                const apiResponse = await fetch(actionsUrl, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    action: "ban-user",
-                    key: actionsKey,
-                    uuid: report.reported_user_id,
-                    duration: banDuration,
-                    reason: report.description || "مخالفة",
-                    ban_type: banApiType,
-                  }),
-                });
-                console.log("Ban API response:", await apiResponse.text());
-              }
+              const BASE_URL = Deno.env.get("GALA_API_BASE_URL") || "https://hola-chat.com/api/newWebsite";
+              const banEndpoint = "ban-user";
+              const banFullUrl = `${BASE_URL}/${banEndpoint}`;
+              const banSignPath = `api/newWebsite/${banEndpoint}`;
+              const banHeaders = await getGalaHeaders("POST", banSignPath);
+              const banDuration = report.ban_type === "promotion" ? 999999 : 24;
+              const banApiType = report.ban_type === "promotion" ? "promotion" : "normal";
+              const apiResponse = await fetch(banFullUrl, {
+                method: "POST",
+                headers: banHeaders,
+                body: JSON.stringify({
+                  uuid: report.reported_user_id,
+                  duration: banDuration,
+                  reason: report.description || "مخالفة",
+                  ban_type: banApiType,
+                }),
+              });
+              console.log("Ban API response:", await apiResponse.text());
             } catch (banErr) {
               console.error("Ban API call failed:", banErr);
             }
@@ -798,21 +797,20 @@ Deno.serve(async (req) => {
         const { uuid, reason, ban_type, duration } = data;
         if (!uuid) throw new Error("UUID مطلوب");
 
-        const ACTIONS_URL = Deno.env.get("GALA_ACTIONS_URL");
-        const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY");
-        if (!ACTIONS_URL || !ACTIONS_KEY) throw new Error("إعدادات API الحظر غير مكتملة");
+        const BASE_URL2 = Deno.env.get("GALA_API_BASE_URL") || "https://hola-chat.com/api/newWebsite";
+        const banEndpoint2 = "ban-user";
+        const banFullUrl2 = `${BASE_URL2}/${banEndpoint2}`;
+        const banSignPath2 = `api/newWebsite/${banEndpoint2}`;
+        const banHeaders2 = await getGalaHeaders("POST", banSignPath2);
 
-        const targetUrl = new URL(ACTIONS_URL);
-        targetUrl.searchParams.set("key", ACTIONS_KEY);
-        targetUrl.searchParams.set("action", "ban-user");
-
-        const banResponse = await fetch(targetUrl.toString(), {
+        const banResponse = await fetch(banFullUrl2, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uuid, reason, ban_type, duration }),
+          headers: banHeaders2,
+          body: JSON.stringify({ uuid: String(uuid), reason, ban_type, duration }),
         });
 
         const banText = await banResponse.text();
+        console.log("ban_user API response:", banResponse.status, banText.substring(0, 500));
         let banData;
         try {
           banData = JSON.parse(banText);
@@ -820,7 +818,7 @@ Deno.serve(async (req) => {
           throw new Error("استجابة API غير صالحة: " + banText.substring(0, 200));
         }
 
-        if (!banResponse.ok) {
+        if (!banResponse.ok && !banData?.ok) {
           throw new Error(banData?.error || banData?.message || "فشل الحظر من API");
         }
 
