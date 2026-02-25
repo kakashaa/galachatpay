@@ -906,11 +906,9 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                                     // Update BD stats
                                                     const newBdMonth = Math.max(0, Number(bd.current_month_earnings || 0) + diff);
                                                     const newBdTotal = Math.max(0, Number(bd.total_earned || 0) + diff);
-                                                    const newBdBalance = Math.max(0, Number(bd.available_balance || 0) + diff);
                                                     await supabase.from("bd_commission_settings").update({
                                                       current_month_earnings: newBdMonth,
                                                       total_earned: newBdTotal,
-                                                      available_balance: newBdBalance,
                                                     }).eq("bd_uuid", bd.bd_uuid);
                                                     
                                                     // Add commission log for today
@@ -928,7 +926,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                                     
                                                     // Update local state
                                                     setAllMembers(prev => prev.map(mm => mm.id === m.id ? { ...mm, total_commission: newTotal, current_month_commission: newMonthComm } : mm));
-                                                    setBds(prev => prev.map(b => b.bd_uuid === bd.bd_uuid ? { ...b, current_month_earnings: newBdMonth, total_earned: newBdTotal, available_balance: newBdBalance } : b));
+                                                    setBds(prev => prev.map(b => b.bd_uuid === bd.bd_uuid ? { ...b, current_month_earnings: newBdMonth, total_earned: newBdTotal } : b));
                                                     setTodayEarnings(prev => ({ ...prev, [bd.bd_uuid]: (prev[bd.bd_uuid] ?? 0) + diff }));
                                                     
                                                     setEditingMemberAmount(null);
