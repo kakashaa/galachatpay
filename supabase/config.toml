@@ -56,3 +56,9 @@ verify_jwt = false
 
 [functions.ban-check]
 verify_jwt = false
+
+[functions.telegram-webhook]
+verify_jwt = false
+
+[functions.telegram-setup]
+verify_jwt = false
