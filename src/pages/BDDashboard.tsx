@@ -28,87 +28,31 @@ const BDDashboard: React.FC = () => {
   const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
-  const [syncRetryCount, setSyncRetryCount] = useState(0);
-  const [syncCountdown, setSyncCountdown] = useState(0);
 
-  const syncRetryRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const countdownRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
-  const retryCountRef = React.useRef(0);
-  const MAX_SYNC_RETRIES = 2;
-  const SYNC_RETRY_DELAY = 30000;
-
-  const clearSyncTimers = () => {
-    if (syncRetryRef.current) { clearTimeout(syncRetryRef.current); syncRetryRef.current = null; }
-    if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
-    setSyncCountdown(0);
-    setSyncRetryCount(0);
-    retryCountRef.current = 0;
-  };
-
-  const startCountdown = (seconds: number) => {
-    setSyncCountdown(seconds);
-    if (countdownRef.current) clearInterval(countdownRef.current);
-    countdownRef.current = setInterval(() => {
-      setSyncCountdown(prev => {
-        if (prev <= 1) { if (countdownRef.current) clearInterval(countdownRef.current); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
-  const handleManualSync = async (isAutoRetry = false) => {
+  const handleManualSync = async () => {
     if (syncing || !user?.uuid) return;
     setSyncing(true);
-    if (!isAutoRetry) {
-      clearSyncTimers();
-    }
     try {
       const res = await supabase.functions.invoke("bd-sync", { body: { manual: true } });
       const result = res.data;
       if (result?.skipped) {
         toast.info("المزامنة قيد التنفيذ بالفعل، حاول بعد قليل");
       } else {
-        const synced = result?.synced_members || result?.synced || 0;
-        const commissions = result?.commission_updates || 0;
         const infoUpdates = result?.info_updates || 0;
         const profitSynced = result?.profit_synced || 0;
         setLastSync(new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }));
         await loadData();
-
-        const summaryParts = [`${synced} عضو`];
-        if (infoUpdates > 0) summaryParts.push(`${infoUpdates} عضو جديد`);
-        summaryParts.push(`${commissions} عمولة`);
-        if (profitSynced > 0) summaryParts.push(`${profitSynced} ربح BD`);
-        const summaryText = summaryParts.join('، ');
-
-        if (commissions > 0) {
-          toast.success(`✅ تم التحديث: ${summaryText}`);
-          clearSyncTimers();
-        } else if (retryCountRef.current < MAX_SYNC_RETRIES) {
-          retryCountRef.current++;
-          setSyncRetryCount(retryCountRef.current);
-          startCountdown(SYNC_RETRY_DELAY / 1000);
-          syncRetryRef.current = setTimeout(() => handleManualSync(true), SYNC_RETRY_DELAY);
-        } else {
-          toast.success(`✅ تم التحديث: ${summaryText}`);
-          clearSyncTimers();
-        }
+        const parts: string[] = [];
+        if (infoUpdates > 0) parts.push(`${infoUpdates} تحديث معلومات`);
+        if (profitSynced > 0) parts.push(`${profitSynced} ربح BD`);
+        toast.success(`✅ تم التحديث${parts.length > 0 ? ': ' + parts.join('، ') : ''}`);
       }
     } catch {
       toast.error("فشل التحديث، حاول مرة أخرى");
-      clearSyncTimers();
     } finally {
       setSyncing(false);
     }
   };
-
-  // Cleanup timers
-  useEffect(() => {
-    return () => {
-      if (syncRetryRef.current) clearTimeout(syncRetryRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
-    };
-  }, []);
 
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -151,26 +95,11 @@ const BDDashboard: React.FC = () => {
     }
   }, [user?.uuid, navigate]);
 
-  // Auto-sync on mount (background, silent)
+  // Load data on mount, refresh every 30s
   useEffect(() => {
-    let mounted = true;
-    const autoSync = async () => {
-      try {
-        console.log("[BD] auto-sync on mount...");
-        await supabase.functions.invoke("bd-sync", { body: { manual: true } });
-        if (mounted) {
-          console.log("[BD] auto-sync done, reloading data");
-          await loadData();
-        }
-      } catch (e) {
-        console.error("[BD] auto-sync failed:", e);
-      }
-    };
-    // Load data immediately, then trigger sync in background
     loadData();
-    autoSync();
     const interval = setInterval(loadData, 30000);
-    return () => { mounted = false; clearInterval(interval); };
+    return () => clearInterval(interval);
   }, [loadData]);
 
   const copyReferralCode = () => {
@@ -380,24 +309,9 @@ const BDDashboard: React.FC = () => {
             </button>
           </div>
         </div>
-        {(lastSync || syncRetryCount > 0) && (
-          <div className="text-center space-y-1">
-            {lastSync && <span className="text-[9px] text-muted-foreground block">آخر تحديث: {lastSync}</span>}
-            {syncRetryCount > 0 && (
-              <div className="flex items-center justify-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg py-1.5 px-3 animate-pulse">
-                <span className="material-symbols-outlined text-amber-400 text-sm animate-spin">autorenew</span>
-                <span className="text-[11px] font-bold text-amber-400">
-                  إعادة محاولة {syncRetryCount}/{MAX_SYNC_RETRIES}
-                  {syncCountdown > 0 && ` — ${syncCountdown}ث`}
-                </span>
-                <button
-                  onClick={() => clearSyncTimers()}
-                  className="text-[10px] text-amber-300/60 hover:text-amber-300 mr-1"
-                >
-                  إلغاء
-                </button>
-              </div>
-            )}
+        {lastSync && (
+          <div className="text-center">
+            <span className="text-[9px] text-muted-foreground block">آخر تحديث: {lastSync}</span>
           </div>
         )}
         <div className="flex gap-2">
