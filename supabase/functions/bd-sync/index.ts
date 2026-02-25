@@ -84,6 +84,7 @@ async function fetchMonthlyCharges(
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth() + 1;
 
+  // Source 1: top-chargers-api (batch/aggregate)
   for (const baseUrl of TOP_CHARGERS_API_URLS) {
     const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${month}`;
     console.log(`[API] fetching charges for ${uuid} via ${baseUrl}`);
@@ -96,20 +97,51 @@ async function fetchMonthlyCharges(
       const data = JSON.parse(text);
       const rows = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
 
+      if (rows.length === 0) {
+        console.log(`[API] top-chargers for ${uuid} via ${baseUrl}: OK but empty rows`);
+        continue;
+      }
+
       for (const entry of rows) {
         const entryUuid = String(entry?.uuid ?? entry?.user_uuid ?? "").trim();
         if (entryUuid === uuid || rows.length === 1) {
           const total = toNum(entry?.total_charges ?? entry?.total ?? 0);
           await setCache(sb, cacheKey, total);
-          console.log(`[API] charges for ${uuid}: total_charges=${total}`);
+          console.log(`[API] charges for ${uuid}: total_charges=${total} (source: top-chargers)`);
           return total;
         }
       }
+      console.log(`[API] top-chargers for ${uuid}: OK but no UUID match in ${rows.length} rows`);
     } catch (e) {
       console.error(`[API] parse error for ${uuid} via ${baseUrl}:`, e);
     }
   }
 
+  // Source 2: user-charges (individual fallback)
+  console.log(`[API] top-chargers failed for ${uuid}, trying user-charges fallback`);
+  for (const baseUrl of BD_API_URLS) {
+    const url = `${baseUrl}?key=${BD_API_KEY}&action=user-charges&uuid=${uuid}`;
+    const res = await fetchWithRetry(url, 1);
+    if (!res) continue;
+    try {
+      const text = await res.text();
+      if (isPageLoadFailedPayload(text)) continue;
+      const data = JSON.parse(text);
+      if (data?.ok === true && data?.charges) {
+        const monthTotal = toNum(data.charges?.month?.total);
+        if (monthTotal > 0) {
+          await setCache(sb, cacheKey, monthTotal);
+          console.log(`[API] charges for ${uuid}: total=${monthTotal} (source: user-charges)`);
+          return monthTotal;
+        }
+        console.log(`[API] user-charges for ${uuid}: OK but month.total=0`);
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  console.log(`[API] all charge sources failed for ${uuid}`);
   return null;
 }
 
