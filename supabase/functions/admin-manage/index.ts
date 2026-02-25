@@ -250,11 +250,9 @@ Deno.serve(async (req) => {
         const ACTIONS_KEY = Deno.env.get("GALA_ACTIONS_KEY");
         if (!ACTIONS_URL || !ACTIONS_KEY) throw new Error("إعدادات API الحظر غير مكتملة");
 
-        const targetUrl = new URL(ACTIONS_URL);
-        targetUrl.searchParams.set("key", ACTIONS_KEY);
-        targetUrl.searchParams.set("action", "ban-user");
-
         const banBody = {
+          action: "ban-user",
+          key: ACTIONS_KEY,
           uuid: target_uuid,
           reason: reason || ban_type || "normal",
           ban_type: ban_type || "normal",
@@ -262,7 +260,7 @@ Deno.serve(async (req) => {
         };
         console.log("Ban request body:", JSON.stringify(banBody));
 
-        const banResponse = await fetch(targetUrl.toString(), {
+        const banResponse = await fetch(ACTIONS_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(banBody),
