@@ -76,17 +76,14 @@ function isPageLoadFailedPayload(text: string): boolean {
   return text.toLowerCase().includes("page load failed");
 }
 
-// ── API 1: fetch monthly charges for ONE supporter individually ──
-async function fetchIndividualMonthlyCharges(
+// ── API 1a: fetch monthly charges for ALL supporters in BATCH ──
+async function fetchBatchMonthlyCharges(
   sb: ReturnType<typeof supabaseAdmin>,
-  uuid: string,
+  uuids: string[],
   skipCache = false
-): Promise<number | null> {
-  const cacheKey = `monthly_charges_${uuid}`;
-  if (!skipCache) {
-    const cached = await getCached(sb, cacheKey);
-    if (cached !== null && typeof cached === "number") return cached;
-  }
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (uuids.length === 0) return result;
 
   const now = new Date();
   const year = now.getUTCFullYear();
@@ -96,17 +93,18 @@ async function fetchIndividualMonthlyCharges(
     String(monthValue).padStart(2, "0"),
   ]));
 
-  // ── Try 1: top-chargers-api ──
+  const uuidStr = uuids.join(",");
+
   for (const monthNum of monthCandidates) {
     for (const baseUrl of TOP_CHARGERS_API_URLS) {
-      const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuid}&year=${year}&month=${monthNum}`;
+      const url = `${baseUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuidStr}&year=${year}&month=${monthNum}`;
 
-      console.log(`[INDIVIDUAL] fetching charges for ${uuid} via ${baseUrl} (month=${monthNum})`);
+      console.log(`[BATCH] fetching charges for ${uuids.length} supporters via ${baseUrl} (month=${monthNum})`);
       const res = await fetchWithRetry(url, 2);
       if (!res) continue;
 
       const rawText = await res.text();
-      console.log(`[INDIVIDUAL] response for ${uuid} via ${baseUrl} (month=${monthNum}) (first 200 chars): ${rawText.slice(0, 200)}`);
+      console.log(`[BATCH] response (first 500 chars): ${rawText.slice(0, 500)}`);
 
       if (isPageLoadFailedPayload(rawText)) continue;
 
@@ -122,24 +120,76 @@ async function fetchIndividualMonthlyCharges(
 
         const isSuccess = data?.status === "success" || data?.ok === true || Array.isArray(data);
         if (isSuccess && rows.length > 0) {
+          let hasNonZero = false;
           for (const entry of rows) {
             const entryUuid = String(entry?.uuid ?? entry?.user_uuid ?? entry?.member_uuid ?? "").trim();
             const total = toNum(entry?.total_charges ?? entry?.total ?? entry?.charges ?? entry?.month_total);
-            if (entryUuid === uuid || rows.length === 1) {
-              await setCache(sb, cacheKey, total);
-              console.log(`[INDIVIDUAL] ${uuid}: total_charges=${total} (top-chargers, month=${monthNum})`);
-              return total;
+            if (entryUuid && uuids.includes(entryUuid)) {
+              result.set(entryUuid, total);
+              if (total > 0) hasNonZero = true;
             }
+          }
+          // If batch returned valid data (at least some non-zero or all responded), use it
+          if (result.size > 0 && (hasNonZero || result.size === uuids.length)) {
+            console.log(`[BATCH] got data for ${result.size}/${uuids.length} supporters, hasNonZero=${hasNonZero}`);
+            // Cache individual values
+            for (const [uuid, total] of result.entries()) {
+              await setCache(sb, `monthly_charges_${uuid}`, total);
+            }
+            return result;
+          }
+          // All zero but we got responses - might be valid or stale, continue trying
+          if (result.size > 0 && !hasNonZero) {
+            console.log(`[BATCH] all ${result.size} values are 0 from ${baseUrl}, trying next source`);
+            result.clear();
           }
         }
       } catch (e) {
-        console.error(`[INDIVIDUAL] parse error for ${uuid} via ${baseUrl} (month=${monthNum}):`, e);
+        console.error(`[BATCH] parse error via ${baseUrl}:`, e);
       }
     }
+    // If we got results from this month candidate, return
+    if (result.size > 0) return result;
   }
 
-  // ── Try 2: user-charges API as fallback (bd-data-api.php) ──
-  console.log(`[INDIVIDUAL] ${uuid}: top-chargers failed, trying user-charges fallback`);
+  // If batch returned all zeros from all sources, return them (they might be genuinely 0)
+  // Re-try the last working source one more time
+  const lastUrl = TOP_CHARGERS_API_URLS[TOP_CHARGERS_API_URLS.length - 1];
+  const lastMonth = monthCandidates[0];
+  const url = `${lastUrl}?key=${BD_API_KEY}&action=top-chargers&uuids=${uuidStr}&year=${year}&month=${lastMonth}`;
+  const res = await fetchWithRetry(url, 2);
+  if (res) {
+    try {
+      const data = JSON.parse(await res.text());
+      const rows = Array.isArray(data?.data) ? data.data : [];
+      for (const entry of rows) {
+        const entryUuid = String(entry?.uuid ?? "").trim();
+        const total = toNum(entry?.total_charges ?? entry?.total ?? 0);
+        if (entryUuid && uuids.includes(entryUuid)) {
+          result.set(entryUuid, total);
+        }
+      }
+    } catch {}
+  }
+
+  console.log(`[BATCH] final result: ${result.size}/${uuids.length} supporters resolved`);
+  return result;
+}
+
+// ── API 1b: fetch monthly charges for ONE supporter individually (fallback) ──
+async function fetchIndividualMonthlyCharges(
+  sb: ReturnType<typeof supabaseAdmin>,
+  uuid: string,
+  skipCache = false
+): Promise<number | null> {
+  const cacheKey = `monthly_charges_${uuid}`;
+  if (!skipCache) {
+    const cached = await getCached(sb, cacheKey);
+    if (cached !== null && typeof cached === "number") return cached;
+  }
+
+  // Try user-charges API as fallback (bd-data-api.php)
+  console.log(`[INDIVIDUAL] ${uuid}: trying user-charges fallback`);
   const userCharges = await fetchUserCharges(sb, uuid, true);
   if (userCharges) {
     const monthTotal = extractMonthChargesTotal(userCharges);
@@ -148,10 +198,9 @@ async function fetchIndividualMonthlyCharges(
       console.log(`[INDIVIDUAL] ${uuid}: total_charges=${monthTotal} (user-charges fallback)`);
       return monthTotal;
     }
-    console.log(`[INDIVIDUAL] ${uuid}: user-charges returned month=${JSON.stringify(userCharges?.charges?.month)}`);
   }
 
-  console.log(`[INDIVIDUAL] ${uuid}: no data from any provider`);
+  console.log(`[INDIVIDUAL] ${uuid}: no data from fallback`);
   return null;
 }
 
@@ -577,7 +626,7 @@ serve(async (req) => {
       .filter((m: any) => m.member_type === "supporter")
       .map((m: any) => m.member_uuid);
 
-    console.log(`[SYNC] ${supporterUuids.length} supporters to process individually`);
+    console.log(`[SYNC] ${supporterUuids.length} supporters to process via BATCH`);
 
     // Prefetch already-counted supporter source amounts for this month (for anti-rollback safety)
     const supporterSourceMap = new Map<string, number>();
@@ -596,7 +645,24 @@ serve(async (req) => {
       }
     }
 
-    // ── Step 2: Fetch user-info + agency/host data in parallel batches ──
+    // ── Step 2a: BATCH fetch charges for ALL supporters at once ──
+    const batchChargesMap = supporterUuids.length > 0
+      ? await fetchBatchMonthlyCharges(sb, supporterUuids, isManual)
+      : new Map<string, number>();
+
+    console.log(`[SYNC] batch returned data for ${batchChargesMap.size}/${supporterUuids.length} supporters`);
+
+    // ── Step 2b: For supporters NOT in batch, try individual fallback ──
+    const missingSupporters = supporterUuids.filter(uuid => !batchChargesMap.has(uuid));
+    if (missingSupporters.length > 0) {
+      console.log(`[SYNC] fetching ${missingSupporters.length} missing supporters individually`);
+      for (const uuid of missingSupporters) {
+        const val = await fetchIndividualMonthlyCharges(sb, uuid, isManual);
+        if (val !== null) batchChargesMap.set(uuid, val);
+      }
+    }
+
+    // ── Step 2c: Fetch user-info + agency/host data in parallel batches ──
     const BATCH_SIZE = 10;
     const memberDataMap = new Map<string, { userInfo: any; chargeData: number | null; agencyData: any; hostData: any; salaryData: any }>();
 
@@ -612,13 +678,9 @@ serve(async (req) => {
           fetchUserInfo(sb, member.member_uuid).then(d => { result.userInfo = d; }).catch(() => {})
         );
 
-        // For supporters, fetch charges INDIVIDUALLY (not batch - batch API returns same value for all)
+        // For supporters, use the batch-fetched charge data
         if (member.member_type === "supporter") {
-          tasks.push(
-            fetchIndividualMonthlyCharges(sb, member.member_uuid, isManual)
-              .then(d => { result.chargeData = d; })
-              .catch(() => {})
-          );
+          result.chargeData = batchChargesMap.get(member.member_uuid) ?? null;
         } else if (member.member_type === "agency") {
           tasks.push(
             fetchAgencyTarget(sb, member.member_uuid, isManual).then(d => { result.agencyData = d; }).catch(() => {})
