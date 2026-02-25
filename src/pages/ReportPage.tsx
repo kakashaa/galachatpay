@@ -250,8 +250,6 @@ const ReportPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("menu");
   const [currentStep, setCurrentStep] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [requestId, setRequestId] = useState("");
 
   const reporterGalaId = galaUser?.uuid ? String(galaUser.uuid) : "";
 
@@ -266,6 +264,9 @@ const ReportPage = () => {
   const [searchResults, setSearchResults] = useState<BanReport[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedReport, setSelectedReport] = useState<BanReport | null>(null);
+
+  // Confirmed reports shown inline
+  const [confirmedReports, setConfirmedReports] = useState<BanReport[]>([]);
 
   // My previous reports (inside report flow)
   const [showMyReports, setShowMyReports] = useState(false);
@@ -414,8 +415,29 @@ const ReportPage = () => {
 
       saveTrackingCode(recordId, "ban_report", reporterGalaId);
 
-      setRequestId(recordId.substring(0, 8).toUpperCase());
-      setIsSuccess(true);
+      // Add to confirmed reports list (shown inline)
+      const newReport: BanReport = {
+        id: recordId,
+        reported_user_id: reportedUserId,
+        reporter_gala_id: reporterGalaId,
+        ban_type: banType,
+        description: banType === "other" && customReason ? `${customReason}\n${description}` : description,
+        evidence_url: evidencePreview,
+        evidence_type: evidenceFile.type.startsWith("video/") ? "video" : "image",
+        created_at: new Date().toISOString(),
+        is_verified: false,
+        status: "pending",
+        duration_hours: selectedBanType?.apiDuration || null,
+        expires_at: null,
+        reward_amount: selectedBanType?.reward || null,
+        reward_paid: false,
+        admin_notes: null,
+      };
+      setConfirmedReports(prev => [newReport, ...prev]);
+
+      // Reset form but stay on same page
+      resetForm();
+      setViewMode("menu");
 
       toast.success("✅ تم إرسال البلاغ بنجاح!\nسيتم مراجعته من الإدارة وتنفيذ الحظر بعد الموافقة", {
         duration: 6000,
@@ -559,8 +581,6 @@ const ReportPage = () => {
     setDescription("");
     setEvidenceFile(null);
     setEvidencePreview("");
-    setIsSuccess(false);
-    setRequestId("");
   };
 
   const getBanTypeMeta = (type: string) => {
@@ -625,48 +645,7 @@ const ReportPage = () => {
     return { label: "⏰ 24 ساعة", className: "bg-warning/20 text-warning" };
   };
 
-  // Success view
-  if (isSuccess) {
-    return (
-      <div className="mobile-container bg-background flex flex-col">
-        <div className="flex-1 overflow-y-auto flex items-center justify-center p-6">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-center space-y-6 max-w-sm"
-          >
-            <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-10 h-10 text-success" />
-            </div>
-            <h1 className="text-2xl font-bold">تم إرسال البلاغ بنجاح!</h1>
-            <p className="text-muted-foreground">رقم البلاغ: #{requestId}</p>
-            <div className="bg-muted/50 border border-border rounded-xl p-4 text-sm text-muted-foreground">
-              <p>سيتم مراجعة البلاغ من الإدارة وتنفيذ الحظر بعد الموافقة. يمكنك متابعة حالة البلاغ من "طلباتي السابقة"</p>
-            </div>
-            {selectedBanType?.reward && (
-              <div className="bg-warning/10 border border-warning/30 rounded-xl p-4">
-                <div className="flex items-center justify-center gap-2 text-warning">
-                  <Gift className="w-5 h-5" />
-                  <span className="font-bold">مكافأة محتملة: {selectedBanType.reward.toLocaleString()} كوينز</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  سيتم مراجعة البلاغ وإضافة المكافأة في حال التحقق
-                </p>
-              </div>
-            )}
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => { resetForm(); setViewMode("menu"); }}>
-                العودة للقائمة
-              </Button>
-              <Button className="flex-1" onClick={resetForm}>
-                بلاغ جديد
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
+  // No separate success view - confirmed reports shown inline in menu
 
   return (
     <div className="mobile-container bg-background flex flex-col">
@@ -751,6 +730,56 @@ const ReportPage = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Confirmed Reports Section - Inline */}
+              {confirmedReports.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldBan className="w-5 h-5 text-destructive" />
+                    <h3 className="font-bold text-destructive">محظور ({confirmedReports.length})</h3>
+                  </div>
+                  {confirmedReports.map((report) => (
+                    <motion.div
+                      key={report.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-card border border-destructive/20 rounded-xl p-4 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="bg-destructive/20 text-destructive px-2 py-0.5 rounded-full text-xs font-bold">
+                            {getBanTypeLabel(report.ban_type)}
+                          </span>
+                          {getStatusBadge(report)}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(report.created_at).toLocaleDateString("ar-EG")}
+                        </span>
+                      </div>
+                      <div className="text-sm flex justify-between">
+                        <span className="text-muted-foreground">المُبلَّغ عنه:</span>
+                        <span className="font-bold">{report.reported_user_id}</span>
+                      </div>
+                      {report.description && (
+                        <p className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
+                          📝 {report.description}
+                        </p>
+                      )}
+                      {report.evidence_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          onClick={() => setSelectedReport(report)}
+                        >
+                          <Eye className="w-3 h-3 ml-1" />
+                          عرض الإثبات
+                        </Button>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
