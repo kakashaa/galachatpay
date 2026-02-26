@@ -496,7 +496,7 @@ serve(async (req) => {
     }
 
     if (action === "respond_invite") {
-      const { invitation_id, response: invResponse, user_uuid, password } = params;
+      const { invitation_id, response: invResponse, user_uuid, password, account_password } = params;
       if (!invitation_id || !invResponse) return json({ error: "بيانات ناقصة" }, 400);
 
       const { data: invite } = await sb
@@ -536,25 +536,48 @@ serve(async (req) => {
         invite.member_type === "agency" ? fetchAgencyTarget(invite.member_uuid, true) : Promise.resolve(null),
       ]);
 
+      // Fetch levels via Gala Login API (most accurate source)
+      let loginData: any = null;
+      if (account_password) {
+        try {
+          loginData = await loginGalaUser(invite.member_uuid, account_password);
+        } catch (e) {
+          console.error("[BD-INVITE] Login API failed for level check:", e);
+        }
+      }
+
+      if (!loginData) {
+        return json({ error: "تعذر التحقق من حسابك. تأكد من كلمة سر حسابك وحاول مرة أخرى." });
+      }
+
       const userData = acceptUserInfoRes?.user || acceptProfileData?.user || acceptChargeData?.user || null;
 
-      if (!userData && !acceptProfileData && !acceptChargeData) {
+      if (!userData && !acceptProfileData && !acceptChargeData && !loginData) {
         return json({ error: "تعذر جلب بيانات الحساب. حاول مرة أخرى." });
       }
 
-      const userName = userData?.["اسم"] || userData?.name || acceptChargeData?.name || invite.member_uuid;
-      const userTypeNum = acceptChargeData?.type_user ?? acceptChargeData?.user?.type_user ?? (parseInt(userData?.["نوع المستخدم"] || "0") || 0);
+      const userName = loginData?.name || userData?.["اسم"] || userData?.name || acceptChargeData?.name || invite.member_uuid;
+      const userTypeNum = loginData?.type_user ?? acceptChargeData?.type_user ?? acceptChargeData?.user?.type_user ?? (parseInt(userData?.["نوع المستخدم"] || "0") || 0);
 
       // ====== ACCEPT ELIGIBILITY CHECK ======
       const acceptAgencySalary = acceptAgencyData?.data?.agency_salary ?? 0;
       const acceptAgencyTotalSalary = acceptAgencyData?.data?.total_user_salary ?? 0;
       const acceptHasAgencyActivity = acceptAgencySalary > 0 || acceptAgencyTotalSalary > 0;
 
+      // Extract levels from login API (most accurate)
+      const loginLevel = loginData?.level || {};
       const acceptLvl = acceptChargeData?.level || {};
-      const acceptChargerLevel = acceptLvl.charger_level ?? acceptLvl.charger ?? acceptChargeData?.charger_num ?? 0;
-      const acceptSenderLevel = acceptLvl.sender_level ?? acceptLvl.sender ?? 0;
-      const acceptReceiverLevel = acceptLvl.receiver_level ?? acceptLvl.receiver ?? 0;
+      
+      const acceptChargerLevel = loginLevel.charger_level ?? acceptLvl.charger_level ?? acceptLvl.charger ?? acceptChargeData?.charger_num ?? 0;
+      const acceptSenderLevel = loginLevel.sender_level ?? acceptLvl.sender_level ?? acceptLvl.sender ?? 0;
+      const acceptReceiverLevel = loginLevel.receiver_level ?? acceptLvl.receiver_level ?? acceptLvl.receiver ?? 0;
       const hasNonZeroAcceptLevels = acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0;
+
+      console.log("[BD-INVITE] Raw data sources:", {
+        loginLevel: JSON.stringify(loginLevel),
+        chargeDataLevel: JSON.stringify(acceptLvl),
+        chargeDataKeys: acceptChargeData ? Object.keys(acceptChargeData) : "null",
+      });
 
       // Agency accept: reject only if any level > 0
       // Other member types: keep agency activity + levels checks
