@@ -59,6 +59,18 @@ async function fetchAgencyTarget(uuid: string, quick = false) {
 // Launch date: accounts created before this are rejected
 const LAUNCH_DATE = "2026-02-19T00:00:00Z";
 
+const extractAgencyId = (value: unknown): string => {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const match = raw.match(/\d+/);
+  return match?.[0] ?? "";
+};
+
+const hasValidAgencyId = (value: unknown): boolean => {
+  const agencyId = extractAgencyId(value);
+  return agencyId !== "" && agencyId !== "0";
+};
+
 async function loginGalaUser(uuid: string, password: string) {
   const BASE_URL = Deno.env.get("GALA_API_BASE_URL")!;
   const endpoint = "auth/login/uuid";
@@ -344,67 +356,62 @@ serve(async (req) => {
         return json({ error: "تعذر التحقق من بيانات العضو. حاول مرة أخرى." });
       }
 
-      // Check agency role if inviting as agency
+      // Check agency existence if inviting as agency (before sending invite)
       if (member_type === "agency") {
         const userObj = userInfoData?.user || userProfileData?.user || {};
-        const agencyId = userObj["معرف الوكالة"] ?? "";
-        const memberTypeUser = preCheckData?.type_user ?? preCheckData?.user?.type_user ?? userInfoData?.type_user ?? -1;
-        
-        console.log("[BD-INVITE] Agency check:", { agencyId: agencyId ? agencyId.substring(0, 50) : "", memberTypeUser });
-        
-        if (!agencyId || agencyId === "" || agencyId === "0") {
+        const agencyIdRaw = userObj["معرف الوكالة"] ?? "";
+        const agencyId = extractAgencyId(agencyIdRaw);
+        const hasAgency = hasValidAgencyId(agencyIdRaw);
+
+        console.log("[BD-INVITE] Agency check:", {
+          agencyIdRaw: String(agencyIdRaw).substring(0, 50),
+          agencyId,
+          hasAgency,
+        });
+
+        if (!hasAgency) {
           return json({ error: "⚠️ هذا المستخدم لسا ما عنده وكالة! لازم ينشئ وكالة أول قبل ما ترسل له دعوة كوكيل.", no_agency: true });
-        }
-        
-        if (memberTypeUser >= 0 && memberTypeUser < 2) {
-          return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
         }
       }
 
-      // ====== CRITICAL ELIGIBILITY CHECK ======
-      // Use MULTIPLE data sources to detect active/old accounts:
-      // 1. user-profile API → charges_count (number of charges the user has done)
-      // 2. agency-target-api → agency_salary / total_user_salary (agency activity)
-      // 3. user-charges API → charges aggregates (today/week/month)
-      // 4. Level fields (if available from any API)
-      
-      const profileChargesCount = userProfileData?.charges_count ?? 0;
-      
+      // ====== ELIGIBILITY CHECK ======
+      // Agency invites: only agency existence is checked before sending.
+      // Supporter invites: eligibility is checked before sending.
+      // Levels are checked again at accept flow.
+
       // Agency activity check
       const agencySalary = agencyTargetData?.data?.agency_salary ?? 0;
       const agencyTotalUserSalary = agencyTargetData?.data?.total_user_salary ?? 0;
       const hasAgencyActivity = agencySalary > 0 || agencyTotalUserSalary > 0;
-      
+
       // Level checks (from any available source)
       const lvl = preCheckData?.level || userInfoData?.level || {};
       const chargerLevel = lvl.charger_level ?? lvl.charger ?? preCheckData?.charger_num ?? userInfoData?.charger_num ?? 0;
       const senderLevel = lvl.sender_level ?? lvl.sender ?? 0;
       const receiverLevel = lvl.receiver_level ?? lvl.receiver ?? 0;
-      
-      // Charge aggregates
-      const recentCharges = preCheckData?.charges || {};
-      const hasChargeAggregates = (
-        (recentCharges.today?.count > 0 || recentCharges.today?.total > 0) ||
-        (recentCharges.week?.count > 0 || recentCharges.week?.total > 0) ||
-        (recentCharges.month?.count > 0 || recentCharges.month?.total > 0)
-      );
-      
-      // Only check levels - charges are NOT checked per policy
-      const isOldAccount = 
-        hasAgencyActivity ||           // Has agency salary/activity
-        chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0; // Has levels
-      
-      console.log("[BD-INVITE] Eligibility:", { 
-        profileChargesCount, hasAgencyActivity, agencySalary, agencyTotalUserSalary,
-        chargerLevel, senderLevel, receiverLevel, hasChargeAggregates, isOldAccount 
+      const hasNonZeroLevels = chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0;
+
+      const shouldEnforceInviteEligibility = member_type !== "agency";
+      const isOldAccount = shouldEnforceInviteEligibility && (hasAgencyActivity || hasNonZeroLevels);
+
+      console.log("[BD-INVITE] Eligibility:", {
+        member_type,
+        shouldEnforceInviteEligibility,
+        hasAgencyActivity,
+        agencySalary,
+        agencyTotalUserSalary,
+        chargerLevel,
+        senderLevel,
+        receiverLevel,
+        hasNonZeroLevels,
+        isOldAccount,
       });
 
       if (isOldAccount) {
         const detailParts: string[] = [];
         if (hasAgencyActivity) detailParts.push(`راتب وكالة: $${agencySalary}`);
-        if (chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0) detailParts.push(`مستويات: شحن ${chargerLevel} إرسال ${senderLevel} استقبال ${receiverLevel}`);
-        if (profileChargesCount > 0) detailParts.push("حساب نشط");
-        const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب نشط";
+        if (hasNonZeroLevels) detailParts.push(`مستويات: شحن ${chargerLevel} إرسال ${senderLevel} استقبال ${receiverLevel}`);
+        const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب غير مؤهل";
         
         // Log violation
         await sb.from("bd_violations").insert({
@@ -538,47 +545,59 @@ serve(async (req) => {
       const userName = userData?.["اسم"] || userData?.name || acceptChargeData?.name || invite.member_uuid;
       const userTypeNum = acceptChargeData?.type_user ?? acceptChargeData?.user?.type_user ?? (parseInt(userData?.["نوع المستخدم"] || "0") || 0);
 
-      // ====== ACCEPT ELIGIBILITY CHECK (same multi-source as invite) ======
-      const acceptProfileChargesCount = acceptProfileData?.charges_count ?? 0;
+      // ====== ACCEPT ELIGIBILITY CHECK ======
       const acceptAgencySalary = acceptAgencyData?.data?.agency_salary ?? 0;
       const acceptAgencyTotalSalary = acceptAgencyData?.data?.total_user_salary ?? 0;
       const acceptHasAgencyActivity = acceptAgencySalary > 0 || acceptAgencyTotalSalary > 0;
-      
+
       const acceptLvl = acceptChargeData?.level || {};
       const acceptChargerLevel = acceptLvl.charger_level ?? acceptLvl.charger ?? acceptChargeData?.charger_num ?? 0;
       const acceptSenderLevel = acceptLvl.sender_level ?? acceptLvl.sender ?? 0;
       const acceptReceiverLevel = acceptLvl.receiver_level ?? acceptLvl.receiver ?? 0;
-      
-      const acceptCharges = acceptChargeData?.charges || {};
-      const acceptHasChargeAggregates = (
-        (acceptCharges.today?.count > 0 || acceptCharges.today?.total > 0) ||
-        (acceptCharges.week?.count > 0 || acceptCharges.week?.total > 0) ||
-        (acceptCharges.month?.count > 0 || acceptCharges.month?.total > 0)
-      );
+      const hasNonZeroAcceptLevels = acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0;
 
-      // Only check levels - charges are NOT checked per policy
-      const isIneligible = 
-        acceptHasAgencyActivity ||
-        acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0;
-      
-      console.log("[BD-INVITE] Accept eligibility:", { 
-        acceptProfileChargesCount, acceptHasAgencyActivity, acceptAgencySalary, acceptAgencyTotalSalary,
-        acceptChargerLevel, acceptSenderLevel, acceptReceiverLevel, acceptHasChargeAggregates, isIneligible, userName, userTypeNum
+      // Agency accept: reject only if any level > 0
+      // Other member types: keep agency activity + levels checks
+      const isIneligible = invite.member_type === "agency"
+        ? hasNonZeroAcceptLevels
+        : (acceptHasAgencyActivity || hasNonZeroAcceptLevels);
+
+      console.log("[BD-INVITE] Accept eligibility:", {
+        member_type: invite.member_type,
+        acceptHasAgencyActivity,
+        acceptAgencySalary,
+        acceptAgencyTotalSalary,
+        acceptChargerLevel,
+        acceptSenderLevel,
+        acceptReceiverLevel,
+        hasNonZeroAcceptLevels,
+        isIneligible,
+        userName,
+        userTypeNum,
       });
 
       if (isIneligible) {
         const detailParts: string[] = [];
-        if (acceptHasAgencyActivity) detailParts.push(`راتب وكالة: $${acceptAgencySalary}`);
-        if (acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0) detailParts.push(`مستويات: شحن ${acceptChargerLevel} إرسال ${acceptSenderLevel} استقبال ${acceptReceiverLevel}`);
-        if (acceptProfileChargesCount > 0) detailParts.push("حساب نشط");
-        const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب نشط";
+        if (hasNonZeroAcceptLevels) detailParts.push(`مستويات: شحن ${acceptChargerLevel} إرسال ${acceptSenderLevel} استقبال ${acceptReceiverLevel}`);
+        if (invite.member_type !== "agency" && acceptHasAgencyActivity) detailParts.push(`راتب وكالة: $${acceptAgencySalary}`);
+
+        const details = detailParts.length > 0 ? detailParts.join("، ") : "الحساب غير مؤهل";
         const reason = `الحساب ${userName} غير مؤهل (${details})`;
+        const memberRejectBody = invite.member_type === "agency"
+          ? `لا يمكنك الانضمام كوكيل لأن جميع المستويات يجب أن تكون 0 (${details})`
+          : `لا يمكنك الانضمام: حسابك نشط بالفعل (${details})`;
+
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         await sb.from("notifications").insert([
           { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.bd_uuid },
-          { title: "❌ تعذر قبول الدعوة", body: `لا يمكنك الانضمام: حسابك نشط بالفعل (${details})`, target: "user", user_uuid: invite.member_uuid },
+          { title: "❌ تعذر قبول الدعوة", body: memberRejectBody, target: "user", user_uuid: invite.member_uuid },
         ]);
-        return json({ error: `لا يمكن قبول الدعوة. الحساب نشط بالفعل (${details}).`, dismissed: true });
+
+        const responseError = invite.member_type === "agency"
+          ? `لا يمكن قبول الدعوة كوكيل. جميع المستويات يجب أن تكون 0 (${details}).`
+          : `لا يمكن قبول الدعوة. الحساب نشط بالفعل (${details}).`;
+
+        return json({ error: responseError, dismissed: true });
       }
 
       // Check account creation date - must be after LAUNCH_DATE
@@ -618,15 +637,18 @@ serve(async (req) => {
       }
 
       // If member_type is "agency", verify the user actually has an agency
-      // Check both type_user AND the Arabic agency ID field from the API
       const agencyIdField = userData["معرف الوكالة"] || "";
-      const hasAgencyFromApi = agencyIdField && agencyIdField.toString().trim() !== "" && agencyIdField !== "0";
-      const hasAgencyFromType = userTypeNum >= 2;
-      
-      console.log("[BD-INVITE] Accept agency check:", { userTypeNum, agencyIdField: agencyIdField ? agencyIdField.substring(0, 50) : "", hasAgencyFromApi, hasAgencyFromType });
-      
-      if (invite.member_type === "agency" && !hasAgencyFromApi && !hasAgencyFromType) {
-        const reason = `العضو ${userName} لا يملك وكالة (نوع الحساب: ${userTypeNum})، لا يمكن إضافته كوكيل`;
+      const normalizedAgencyId = extractAgencyId(agencyIdField);
+      const hasAgencyFromApi = hasValidAgencyId(agencyIdField);
+
+      console.log("[BD-INVITE] Accept agency check:", {
+        agencyIdField: agencyIdField ? agencyIdField.substring(0, 50) : "",
+        normalizedAgencyId,
+        hasAgencyFromApi,
+      });
+
+      if (invite.member_type === "agency" && !hasAgencyFromApi) {
+        const reason = `العضو ${userName} لا يملك وكالة (معرف الوكالة غير صالح)، لا يمكن إضافته كوكيل`;
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         // Notify both BD and member
         await sb.from("notifications").insert([
