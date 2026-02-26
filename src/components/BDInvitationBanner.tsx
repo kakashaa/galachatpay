@@ -20,6 +20,7 @@ const BDInvitationBanner: React.FC = () => {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [password, setPassword] = useState("");
+  const [accountPassword, setAccountPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPasswordFor, setShowPasswordFor] = useState<string | null>(null);
 
@@ -56,6 +57,10 @@ const BDInvitationBanner: React.FC = () => {
       toast.error("يرجى إدخال كود الإحالة الخاص بالبيدي");
       return;
     }
+    if (response === "accept" && !accountPassword.trim()) {
+      toast.error("يرجى إدخال كلمة سر حسابك للتحقق من أهليتك");
+      return;
+    }
 
     setLoading(true);
     setRespondingId(inviteId);
@@ -67,6 +72,7 @@ const BDInvitationBanner: React.FC = () => {
           response,
           user_uuid: user?.uuid,
           password: response === "accept" ? password : undefined,
+          account_password: response === "accept" ? accountPassword : undefined,
         },
       });
 
@@ -86,12 +92,14 @@ const BDInvitationBanner: React.FC = () => {
           setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
           setShowPasswordFor(null);
           setPassword("");
+          setAccountPassword("");
         }
       } else {
         toast.success(data?.message || (response === "accept" ? "تم قبول الدعوة!" : "تم رفض الدعوة"));
         setInvitations((prev) => prev.filter((i) => i.id !== inviteId));
         setShowPasswordFor(null);
         setPassword("");
+        setAccountPassword("");
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "خطأ غير معروف";
@@ -128,14 +136,22 @@ const BDInvitationBanner: React.FC = () => {
 
             {showPasswordFor === inv.id ? (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">أدخل كود الإحالة الذي أعطاك إياه البيدي للتأكيد:</p>
+                <p className="text-xs text-muted-foreground">أدخل كود الإحالة وكلمة سر حسابك للتحقق:</p>
                 <Input
                   type="text"
-                  placeholder="أدخل كود الإحالة..."
+                  placeholder="كود الإحالة..."
                   value={password}
                   onChange={(e) => setPassword(e.target.value.toUpperCase())}
                   dir="ltr"
                   className="text-center font-mono tracking-widest"
+                />
+                <Input
+                  type="password"
+                  placeholder="كلمة سر حسابك في التطبيق..."
+                  value={accountPassword}
+                  onChange={(e) => setAccountPassword(e.target.value)}
+                  dir="ltr"
+                  className="text-center"
                 />
                 <div className="flex gap-2">
                   <Button
@@ -146,7 +162,7 @@ const BDInvitationBanner: React.FC = () => {
                   >
                     {loading && respondingId === inv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle className="w-4 h-4 ml-1" />تأكيد القبول</>}
                   </Button>
-                  <Button onClick={() => { setShowPasswordFor(null); setPassword(""); }} size="sm" variant="outline" className="flex-1">
+                  <Button onClick={() => { setShowPasswordFor(null); setPassword(""); setAccountPassword(""); }} size="sm" variant="outline" className="flex-1">
                     إلغاء
                   </Button>
                 </div>
