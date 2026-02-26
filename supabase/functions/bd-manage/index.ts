@@ -389,11 +389,10 @@ serve(async (req) => {
         (recentCharges.month?.count > 0 || recentCharges.month?.total > 0)
       );
       
+      // Only check levels - charges are NOT checked per policy
       const isOldAccount = 
-        profileChargesCount > 0 ||    // Has any charges in profile
         hasAgencyActivity ||           // Has agency salary/activity
-        chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0 || // Has levels
-        hasChargeAggregates;           // Has charge aggregates
+        chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0; // Has levels
       
       console.log("[BD-INVITE] Eligibility:", { 
         profileChargesCount, hasAgencyActivity, agencySalary, agencyTotalUserSalary,
@@ -557,11 +556,10 @@ serve(async (req) => {
         (acceptCharges.month?.count > 0 || acceptCharges.month?.total > 0)
       );
 
+      // Only check levels - charges are NOT checked per policy
       const isIneligible = 
-        acceptProfileChargesCount > 0 ||
         acceptHasAgencyActivity ||
-        acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0 ||
-        acceptHasChargeAggregates;
+        acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0;
       
       console.log("[BD-INVITE] Accept eligibility:", { 
         acceptProfileChargesCount, acceptHasAgencyActivity, acceptAgencySalary, acceptAgencyTotalSalary,
