@@ -569,8 +569,15 @@ serve(async (req) => {
         return json({ error: "هذا الحساب مسجل لدى بيدي آخر بالفعل", dismissed: true });
       }
 
-      // If member_type is "agency", verify the user actually has an agency (type_user >= 2)
-      if (invite.member_type === "agency" && userTypeNum < 2) {
+      // If member_type is "agency", verify the user actually has an agency
+      // Check both type_user AND the Arabic agency ID field from the API
+      const agencyIdField = userData["معرف الوكالة"] || "";
+      const hasAgencyFromApi = agencyIdField && agencyIdField.toString().trim() !== "" && agencyIdField !== "0";
+      const hasAgencyFromType = userTypeNum >= 2;
+      
+      console.log("[BD-INVITE] Accept agency check:", { userTypeNum, agencyIdField: agencyIdField ? agencyIdField.substring(0, 50) : "", hasAgencyFromApi, hasAgencyFromType });
+      
+      if (invite.member_type === "agency" && !hasAgencyFromApi && !hasAgencyFromType) {
         const reason = `العضو ${userName} لا يملك وكالة (نوع الحساب: ${userTypeNum})، لا يمكن إضافته كوكيل`;
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         // Notify both BD and member
