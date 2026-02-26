@@ -29,10 +29,10 @@ const BDVerification: React.FC = () => {
   const isEligible = highestLevel >= 10;
 
   useEffect(() => {
-    checkAndAutoRegister();
+    checkStatus();
   }, [user?.uuid]);
 
-  const checkAndAutoRegister = async () => {
+  const checkStatus = async () => {
     if (!user?.uuid) return;
     try {
       const { data } = await supabase.functions.invoke("bd-manage", {
@@ -56,32 +56,41 @@ const BDVerification: React.FC = () => {
         return;
       }
 
-      if (isEligible && responseData?.status !== "pending" && responseData?.status !== "rejected") {
-        setLoading(true);
-        const { data: regData } = await supabase.functions.invoke("bd-manage", {
-          body: {
-            action: "register",
-            user_uuid: user.uuid,
-            user_name: user.name,
-            user_level: highestLevel,
-          },
-        });
-        const regResponse = typeof regData === 'string' ? JSON.parse(regData) : regData;
-        if (regResponse?.status === "approved" || regResponse?.already) {
-          navigate("/bd/dashboard", { replace: true });
-          return;
-        }
-        if (regResponse?.error) {
-          toast.error(regResponse.error);
-        }
-        setLoading(false);
-      }
-
       setStatus(responseData?.status || "none");
       if (responseData?.request?.admin_note) setRejectionNote(responseData.request.admin_note);
     } catch {
       setStatus("none");
     }
+  };
+
+  const handleJoinRequest = async () => {
+    if (!user?.uuid) return;
+    setLoading(true);
+    try {
+      const { data: regData } = await supabase.functions.invoke("bd-manage", {
+        body: {
+          action: "register",
+          user_uuid: user.uuid,
+          user_name: user.name,
+          user_level: highestLevel,
+        },
+      });
+      const regResponse = typeof regData === 'string' ? JSON.parse(regData) : regData;
+      if (regResponse?.status === "approved" || regResponse?.already) {
+        navigate("/bd/dashboard", { replace: true });
+        return;
+      }
+      if (regResponse?.error) {
+        toast.error(regResponse.error);
+        setLoading(false);
+        return;
+      }
+      setStatus("pending");
+      toast.success("تم إرسال طلبك بنجاح! سيتم مراجعته من قبل الإدارة.");
+    } catch {
+      toast.error("حدث خطأ، حاول مرة أخرى");
+    }
+    setLoading(false);
   };
 
   if (!isEligible && status !== "banned") {
@@ -215,7 +224,7 @@ const BDVerification: React.FC = () => {
               </ul>
             </div>
 
-            <Button onClick={checkAndAutoRegister} disabled={loading} className="w-full h-12 text-base font-bold rounded-xl">
+            <Button onClick={handleJoinRequest} disabled={loading} className="w-full h-12 text-base font-bold rounded-xl">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "نعم، أوافق وأريد الانضمام"}
             </Button>
           </motion.div>
