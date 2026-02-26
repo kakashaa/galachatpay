@@ -172,6 +172,12 @@ const BDAddMember: React.FC = () => {
               </p>
             </div>
 
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
+              <p className="text-xs text-blue-400">
+                📱 <strong>ملاحظة مهمة:</strong> لا يمكن أن يكون الجهاز الواحد حساب بيدي وعضو ضمن بيدي آخر في نفس الوقت. يجب على كل جهاز اختيار أحدهما فقط.
+              </p>
+            </div>
+
             <Button
               onClick={() => setTermsAccepted(true)}
               className="w-full h-12 text-base font-bold rounded-xl"
