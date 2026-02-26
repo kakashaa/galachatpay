@@ -354,57 +354,12 @@ serve(async (req) => {
             }
           }
 
-          console.log(`[LOGIN-BD] uuid=${trimmedUuid} type=${bdMember.member_type} monthly=${liveMonthlyAmount} daily=${liveDailyAmount} prevMonthly=${bdMember.monthly_charges || 0}`);
+          console.log(`[LOGIN-BD] uuid=${trimmedUuid} type=${bdMember.member_type} monthly=${liveMonthlyAmount} daily=${liveDailyAmount} (commission=manual_only)`);
 
-          // Calculate charge diff and commissions from live data
-          const previousMonthly = bdMember.monthly_charges || 0;
-          const chargeDiff = liveMonthlyAmount > previousMonthly ? liveMonthlyAmount - previousMonthly : 0;
-          if (chargeDiff > 0) console.log(`[LOGIN-BD] chargeDiff=${chargeDiff} → commission will be calculated`);
-
+          // Only update charge tracking data - NO automatic commission calculation
+          // Commissions are managed exclusively by admin via the dashboard
           updateObj.last_daily_charges = liveDailyAmount || (d.level?.charger_num || 0);
           if (liveMonthlyAmount > 0) updateObj.monthly_charges = liveMonthlyAmount;
-
-          if (chargeDiff > 0) {
-            // Get BD commission settings
-            const { data: bdSettings } = await supabase
-              .from("bd_commission_settings")
-              .select("user_commission_pct, agency_commission_pct, current_month_earnings, total_earned")
-              .eq("bd_uuid", bdMember.bd_uuid)
-              .eq("is_active", true)
-              .maybeSingle();
-
-            if (bdSettings) {
-              let pct = 0;
-              if (bdMember.member_type === "supporter") pct = bdSettings.user_commission_pct || 2;
-              else if (bdMember.member_type === "agency") pct = bdSettings.agency_commission_pct || 5;
-
-              const commissionCoins = (chargeDiff * pct) / 100;
-              const commissionAmount = Math.round((commissionCoins / 8500) * 100) / 100;
-
-              updateObj.current_month_commission = (bdMember.current_month_commission || 0) + commissionAmount;
-              updateObj.total_commission = (bdMember.total_commission || 0) + commissionAmount;
-
-              // Log commission
-              const now2 = new Date();
-              const month = `${now2.getUTCFullYear()}-${String(now2.getUTCMonth() + 1).padStart(2, "0")}`;
-
-              await supabase.from("bd_commission_logs").insert({
-                bd_uuid: bdMember.bd_uuid,
-                member_uuid: trimmedUuid,
-                member_type: bdMember.member_type,
-                month,
-                source_amount: chargeDiff,
-                commission_pct: pct,
-                amount: commissionAmount,
-              });
-
-              // Update BD earnings
-              await supabase.from("bd_commission_settings").update({
-                current_month_earnings: (bdSettings.current_month_earnings || 0) + commissionAmount,
-                total_earned: (bdSettings.total_earned || 0) + commissionAmount,
-              }).eq("bd_uuid", bdMember.bd_uuid);
-            }
-          }
 
           await supabase.from("bd_members").update(updateObj).eq("id", bdMember.id);
         }
