@@ -93,6 +93,67 @@ async function loginGalaUser(uuid: string, password: string) {
   }
 }
 
+// Helper: Check if any user on the same device is a BD member (under another BD)
+async function checkDeviceIsBdMember(sb: any, userUuid: string): Promise<string | null> {
+  const { data: userDevice } = await sb
+    .from("user_devices")
+    .select("device_id")
+    .eq("user_uuid", userUuid)
+    .maybeSingle();
+  if (!userDevice?.device_id) return null;
+
+  const { data: sameDeviceUsers } = await sb
+    .from("user_devices")
+    .select("user_uuid")
+    .eq("device_id", userDevice.device_id);
+  if (!sameDeviceUsers || sameDeviceUsers.length === 0) return null;
+
+  const allUuids = sameDeviceUsers.map((d: any) => d.user_uuid);
+
+  // Check if any user on this device is an active BD member
+  const { data: existingMembers } = await sb
+    .from("bd_members")
+    .select("member_uuid, bd_uuid")
+    .in("member_uuid", allUuids)
+    .eq("is_active", true);
+
+  if (existingMembers && existingMembers.length > 0) {
+    return "member_exists"; // Device has a BD member
+  }
+  return null;
+}
+
+// Helper: Check if any user on the same device is a BD
+async function checkDeviceIsBd(sb: any, userUuid: string): Promise<string | null> {
+  const { data: userDevice } = await sb
+    .from("user_devices")
+    .select("device_id")
+    .eq("user_uuid", userUuid)
+    .maybeSingle();
+  if (!userDevice?.device_id) return null;
+
+  const { data: sameDeviceUsers } = await sb
+    .from("user_devices")
+    .select("user_uuid")
+    .eq("device_id", userDevice.device_id);
+  if (!sameDeviceUsers || sameDeviceUsers.length === 0) return null;
+
+  const allUuids = sameDeviceUsers.map((d: any) => d.user_uuid);
+
+  // Check if any user on this device is an active BD
+  const { data: existingBDs } = await sb
+    .from("bd_commission_settings")
+    .select("bd_uuid")
+    .in("bd_uuid", allUuids)
+    .eq("is_active", true)
+    .eq("is_approved", true);
+
+  if (existingBDs && existingBDs.length > 0) {
+    return "bd_exists"; // Device has a BD
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -160,6 +221,13 @@ serve(async (req) => {
             }
           }
         }
+      }
+
+      // Check if device already has a BD member (cannot be BD and member on same device)
+      const deviceMemberCheck = await checkDeviceIsBdMember(sb, user_uuid);
+      if (deviceMemberCheck === "member_exists") {
+        console.log("[BD-REGISTER] Device has BD member, blocking BD registration:", user_uuid);
+        return json({ error: "⚠️ لا يمكنك التسجيل كبيدي لأن هذا الجهاز مسجل عليه عضو ضمن بيدي آخر. يجب اختيار أحدهما فقط." });
       }
 
       // Auto-approve if level >= 10
@@ -330,6 +398,26 @@ serve(async (req) => {
 
       if (existingInvite) {
         return json({ error: "يوجد دعوة معلقة لهذا العضو بالفعل" });
+      }
+
+      // Check if member's device already has a BD (cannot be BD and member on same device)
+      const deviceBdCheck = await checkDeviceIsBd(sb, member_uuid);
+      if (deviceBdCheck === "bd_exists") {
+        console.log("[BD-INVITE] Member's device has BD, blocking invite:", member_uuid);
+        return json({ error: "⚠️ لا يمكن دعوة هذا العضو لأن جهازه مسجل عليه حساب بيدي. لا يمكن أن يكون الجهاز بيدي وعضو ضمن بيدي آخر في نفس الوقت." });
+      }
+
+      // Also check if the member is already a BD themselves
+      const { data: memberIsBd } = await sb
+        .from("bd_commission_settings")
+        .select("id")
+        .eq("bd_uuid", member_uuid)
+        .eq("is_active", true)
+        .eq("is_approved", true)
+        .maybeSingle();
+
+      if (memberIsBd) {
+        return json({ error: "⚠️ هذا المستخدم مسجل كبيدي بالفعل. لا يمكن أن يكون بيدي وعضو ضمن بيدي آخر في نفس الوقت." });
       }
 
       // Pre-validate: fetch user data from MULTIPLE sources for reliable checks
@@ -526,6 +614,27 @@ serve(async (req) => {
       
       if (!expectedCode || enteredCode !== expectedCode) {
         return json({ error: "كود الإحالة غير صحيح. تأكد من الكود الذي أعطاك إياه البيدي." });
+      }
+
+      // Check device exclusivity: member's device cannot have a BD on it
+      const acceptDeviceBdCheck = await checkDeviceIsBd(sb, invite.member_uuid);
+      if (acceptDeviceBdCheck === "bd_exists") {
+        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        return json({ error: "لا يمكن قبول الدعوة لأن جهازك مسجل عليه حساب بيدي. لا يمكن أن يكون الجهاز بيدي وعضو ضمن بيدي آخر.", dismissed: true });
+      }
+
+      // Check if the member is already a BD
+      const { data: acceptMemberIsBd } = await sb
+        .from("bd_commission_settings")
+        .select("id")
+        .eq("bd_uuid", invite.member_uuid)
+        .eq("is_active", true)
+        .eq("is_approved", true)
+        .maybeSingle();
+
+      if (acceptMemberIsBd) {
+        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        return json({ error: "لا يمكن قبول الدعوة لأنك مسجل كبيدي بالفعل. لا يمكن أن تكون بيدي وعضو ضمن بيدي آخر.", dismissed: true });
       }
 
       // Fetch user data from MULTIPLE sources for reliable accept validation
