@@ -16,11 +16,12 @@ interface BanInfo {
 const BDVerification: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved" | "rejected" | "banned" | "is_member">("loading");
+  const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved" | "rejected" | "banned" | "is_member" | "device_blocked">("loading");
   const [loading, setLoading] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
   const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
   const [memberBdName, setMemberBdName] = useState("");
+  
 
   const highestLevel = Math.max(
     user?.level?.charger_level || 0,
@@ -54,6 +55,32 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
         setMemberBdName(bdData?.bd_name || "بيدي");
         setStatus("is_member");
         return;
+      }
+
+      // Check device restriction - is another BD registered on this device?
+      const deviceId = localStorage.getItem("gala_device_id");
+      if (deviceId) {
+        const { data: deviceUsers } = await supabase
+          .from("user_devices")
+          .select("user_uuid")
+          .eq("device_id", deviceId);
+        
+        if (deviceUsers && deviceUsers.length > 0) {
+          const otherUuids = deviceUsers.map(d => d.user_uuid).filter(u => u !== user.uuid);
+          if (otherUuids.length > 0) {
+            // Check if any of these other users are active BDs
+            const { data: existingBds } = await supabase
+              .from("bd_commission_settings")
+              .select("bd_uuid, bd_name")
+              .in("bd_uuid", otherUuids)
+              .eq("is_active", true);
+            
+            if (existingBds && existingBds.length > 0) {
+              setStatus("device_blocked");
+              return;
+            }
+          }
+        }
       }
 
       const { data } = await supabase.functions.invoke("bd-manage", {
@@ -158,6 +185,22 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
             <p className="text-sm text-muted-foreground leading-relaxed px-4">
               حسابك مسجل كعضو ضمن فريق البيدي <span className="font-bold text-foreground">{memberBdName}</span>.
               <br />لا يمكنك التسجيل كبيدي مستقل وأنت عضو في فريق آخر.
+            </p>
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="mt-4 rounded-xl">
+              العودة للصفحة الرئيسية
+            </Button>
+          </motion.div>
+        )}
+
+        {status === "device_blocked" && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-5 py-10">
+            <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+              <Shield className="w-10 h-10 text-destructive" />
+            </div>
+            <h2 className="text-xl font-bold">الجهاز مسجل لبيدي آخر</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed px-4">
+              يوجد حساب بيدي آخر مسجل على هذا الجهاز.
+              <br />لا يمكن تسجيل أكثر من حساب بيدي واحد على نفس الجهاز.
             </p>
             <Button onClick={() => navigate("/dashboard")} variant="outline" className="mt-4 rounded-xl">
               العودة للصفحة الرئيسية
