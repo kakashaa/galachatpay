@@ -39,6 +39,23 @@ async function fetchUserCharges(uuid: string, quick = false) {
   try { return await res.json(); } catch { return null; }
 }
 
+async function fetchUserProfile(uuid: string, quick = false) {
+  const url = `${BD_API_URL}?key=${BD_API_KEY}&action=user-profile&uuid=${uuid}`;
+  const res = await fetchWithRetry(url, quick ? 0 : 2, quick ? 5000 : 15000);
+  if (!res) return null;
+  try { return await res.json(); } catch { return null; }
+}
+
+async function fetchAgencyTarget(uuid: string, quick = false) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const url = `https://hola-chat.com/agency-target-api.php?key=${BD_API_KEY}&uuid=${uuid}&year=${year}&month=${month}`;
+  const res = await fetchWithRetry(url, quick ? 0 : 2, quick ? 5000 : 15000);
+  if (!res) return null;
+  try { return await res.json(); } catch { return null; }
+}
+
 // Launch date: accounts created before this are rejected
 const LAUNCH_DATE = "2026-02-19T00:00:00Z";
 
@@ -303,73 +320,100 @@ serve(async (req) => {
         return json({ error: "يوجد دعوة معلقة لهذا العضو بالفعل" });
       }
 
-      // Pre-validate: fetch user data to check charger level
-      const preCheckData = await fetchUserCharges(member_uuid, true);
-      console.log("[BD-INVITE] preCheckData for", member_uuid, ":", JSON.stringify(preCheckData));
-      if (!preCheckData) {
-        return json({ error: "تعذر التحقق من بيانات العضو. حاول مرة أخرى." });
-      }
-
-      // Also try user-info API for more complete level data
+      // Pre-validate: fetch user data from MULTIPLE sources for reliable checks
+      const [preCheckData, userProfileData, agencyTargetData] = await Promise.all([
+        fetchUserCharges(member_uuid, true),
+        fetchUserProfile(member_uuid, true),
+        member_type === "agency" ? fetchAgencyTarget(member_uuid, true) : Promise.resolve(null),
+      ]);
+      
+      // Also try user-info API for agency ID check
       const userInfoUrl = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${member_uuid}`;
       let userInfoData: any = null;
       try {
         const uiRes = await fetch(userInfoUrl, { signal: AbortSignal.timeout(8000) });
         if (uiRes.ok) userInfoData = await uiRes.json();
       } catch { /* ignore */ }
+      
+      console.log("[BD-INVITE] preCheckData for", member_uuid, ":", JSON.stringify(preCheckData));
+      console.log("[BD-INVITE] userProfileData for", member_uuid, ":", JSON.stringify(userProfileData ? { charges_count: userProfileData.charges_count, ok: userProfileData.ok } : null));
+      console.log("[BD-INVITE] agencyTargetData for", member_uuid, ":", JSON.stringify(agencyTargetData ? { agency_salary: agencyTargetData.data?.agency_salary, total_user_salary: agencyTargetData.data?.total_user_salary } : null));
       console.log("[BD-INVITE] userInfoData for", member_uuid, ":", JSON.stringify(userInfoData));
+
+      if (!preCheckData && !userProfileData) {
+        return json({ error: "تعذر التحقق من بيانات العضو. حاول مرة أخرى." });
+      }
 
       // Check agency role if inviting as agency
       if (member_type === "agency") {
-        // The user-info API returns Arabic keys; check "معرف الوكالة" (agency ID)
-        const userObj = userInfoData?.user || {};
+        const userObj = userInfoData?.user || userProfileData?.user || {};
         const agencyId = userObj["معرف الوكالة"] ?? "";
-        const memberTypeUser = preCheckData.type_user ?? preCheckData.user?.type_user ?? userInfoData?.type_user ?? -1;
+        const memberTypeUser = preCheckData?.type_user ?? preCheckData?.user?.type_user ?? userInfoData?.type_user ?? -1;
         
-        console.log("[BD-INVITE] Agency check:", { agencyId, memberTypeUser, userObj });
+        console.log("[BD-INVITE] Agency check:", { agencyId: agencyId ? agencyId.substring(0, 50) : "", memberTypeUser });
         
-        // If agency ID is empty/falsy, user doesn't have an agency yet
         if (!agencyId || agencyId === "" || agencyId === "0") {
           return json({ error: "⚠️ هذا المستخدم لسا ما عنده وكالة! لازم ينشئ وكالة أول قبل ما ترسل له دعوة كوكيل.", no_agency: true });
         }
         
-        // Also check numeric type if available
         if (memberTypeUser >= 0 && memberTypeUser < 2) {
           return json({ error: "هذا الحساب لا يملك وكالة (نوع الحساب: مستخدم عادي أو مضيف). لا يمكن دعوته كوكيل." });
         }
       }
 
-      // CRITICAL: Check if account is old/active
-      // Check levels from API data
-      const lvl = preCheckData.level || userInfoData?.level || {};
-      const chargerLevel = lvl.charger_level ?? lvl.charger ?? preCheckData.charger_num ?? userInfoData?.charger_num ?? 0;
+      // ====== CRITICAL ELIGIBILITY CHECK ======
+      // Use MULTIPLE data sources to detect active/old accounts:
+      // 1. user-profile API → charges_count (number of charges the user has done)
+      // 2. agency-target-api → agency_salary / total_user_salary (agency activity)
+      // 3. user-charges API → charges aggregates (today/week/month)
+      // 4. Level fields (if available from any API)
+      
+      const profileChargesCount = userProfileData?.charges_count ?? 0;
+      
+      // Agency activity check
+      const agencySalary = agencyTargetData?.data?.agency_salary ?? 0;
+      const agencyTotalUserSalary = agencyTargetData?.data?.total_user_salary ?? 0;
+      const hasAgencyActivity = agencySalary > 0 || agencyTotalUserSalary > 0;
+      
+      // Level checks (from any available source)
+      const lvl = preCheckData?.level || userInfoData?.level || {};
+      const chargerLevel = lvl.charger_level ?? lvl.charger ?? preCheckData?.charger_num ?? userInfoData?.charger_num ?? 0;
       const senderLevel = lvl.sender_level ?? lvl.sender ?? 0;
       const receiverLevel = lvl.receiver_level ?? lvl.receiver ?? 0;
       
-      // Check charge activity using ONLY the aggregated counts (today/week/month)
-      // NOTE: The "recent" array from the API returns GLOBAL charges, NOT user-specific ones,
-      // so we must NOT use it as an indicator of account activity.
-      const recentCharges = preCheckData.charges || {};
-      const hasChargeActivity = (
+      // Charge aggregates
+      const recentCharges = preCheckData?.charges || {};
+      const hasChargeAggregates = (
         (recentCharges.today?.count > 0 || recentCharges.today?.total > 0) ||
         (recentCharges.week?.count > 0 || recentCharges.week?.total > 0) ||
         (recentCharges.month?.count > 0 || recentCharges.month?.total > 0)
       );
       
-      const isOldAccount = chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0 || hasChargeActivity;
-      console.log("[BD-INVITE] Check:", { chargerLevel, senderLevel, receiverLevel, hasChargeActivity, charges: recentCharges, isOldAccount });
+      const isOldAccount = 
+        profileChargesCount > 0 ||    // Has any charges in profile
+        hasAgencyActivity ||           // Has agency salary/activity
+        chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0 || // Has levels
+        hasChargeAggregates;           // Has charge aggregates
+      
+      console.log("[BD-INVITE] Eligibility:", { 
+        profileChargesCount, hasAgencyActivity, agencySalary, agencyTotalUserSalary,
+        chargerLevel, senderLevel, receiverLevel, hasChargeAggregates, isOldAccount 
+      });
 
       if (isOldAccount) {
-        const details = hasChargeActivity 
-          ? `حساب نشط (شحنات: يوم=${recentCharges.today?.count||0} أسبوع=${recentCharges.week?.count||0} شهر=${recentCharges.month?.count||0})`
-          : `شحن: ${chargerLevel}، إرسال: ${senderLevel}، استقبال: ${receiverLevel}`;
+        const detailParts: string[] = [];
+        if (profileChargesCount > 0) detailParts.push(`شحنات: ${profileChargesCount}`);
+        if (hasAgencyActivity) detailParts.push(`راتب وكالة: $${agencySalary}`);
+        if (chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0) detailParts.push(`مستويات: شحن ${chargerLevel} إرسال ${senderLevel} استقبال ${receiverLevel}`);
+        const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب نشط";
+        
         // Log violation
         await sb.from("bd_violations").insert({
           bd_uuid,
           bd_name: bd_name || "",
           violation_type: "ineligible_invite",
           member_uuid,
-          member_name: preCheckData.name || preCheckData.user?.name || member_uuid,
+          member_name: userProfileData?.user?.["اسم"] || preCheckData?.name || preCheckData?.user?.name || member_uuid,
           details: `محاولة دعوة حساب قديم (${details})`,
         });
 
@@ -478,72 +522,60 @@ serve(async (req) => {
         return json({ error: "كود الإحالة غير صحيح. تأكد من الكود الذي أعطاك إياه البيدي." });
       }
 
-      // Fetch user data via user-info API (instead of login)
-      const userInfoUrl2 = `${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${invite.member_uuid}`;
-      let userData: any = null;
-      try {
-        const uiRes = await fetch(userInfoUrl2, { signal: AbortSignal.timeout(10000) });
-        if (uiRes.ok) {
-          const uiData = await uiRes.json();
-          userData = uiData?.user || uiData;
-        }
-      } catch (e) {
-        console.error("user-info fetch error:", e);
-      }
+      // Fetch user data from MULTIPLE sources for reliable accept validation
+      const [acceptUserInfoRes, acceptProfileData, acceptChargeData, acceptAgencyData] = await Promise.all([
+        fetch(`${BD_API_URL}?key=${BD_API_KEY}&action=user-info&uuid=${invite.member_uuid}`, { signal: AbortSignal.timeout(10000) }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetchUserProfile(invite.member_uuid, true),
+        fetchUserCharges(invite.member_uuid, true),
+        invite.member_type === "agency" ? fetchAgencyTarget(invite.member_uuid, true) : Promise.resolve(null),
+      ]);
 
-      // Fallback: try login API if user-info failed
-      if (!userData) {
-        // We can't login without a real password, so try to build minimal data from precheck
-        const preData = await fetchUserCharges(invite.member_uuid, true);
-        if (preData) {
-          userData = {
-            name: preData.name || preData.user?.name || "",
-            type_user: preData.type_user ?? preData.user?.type_user ?? 0,
-            level: preData.level || {},
-            created_at: preData.created_at || preData.user?.created_at,
-          };
-        }
-      }
+      const userData = acceptUserInfoRes?.user || acceptProfileData?.user || acceptChargeData?.user || null;
 
-      if (!userData) {
+      if (!userData && !acceptProfileData && !acceptChargeData) {
         return json({ error: "تعذر جلب بيانات الحساب. حاول مرة أخرى." });
       }
 
-      // Validate account conditions - handle both English and Arabic API keys
-      const levelData = userData.level || {};
-      const receiverLevel = levelData.receiver_level || levelData.receiver || parseInt(userData["مستوى الاستقبال"] || "0") || 0;
-      const senderLevel = levelData.sender_level || levelData.sender || parseInt(userData["مستوى الارسال"] || "0") || 0;
-      const chargerLevel = levelData.charger_level || levelData.charger || parseInt(userData["مستوى الشحن"] || "0") || 0;
-      const userName = userData.name || userData["الاسم"] || invite.member_uuid;
-      const userTypeNum = (userData.type_user != null ? userData.type_user : (parseInt(userData["نوع المستخدم"] || "0") || 0));
+      const userName = userData?.["اسم"] || userData?.name || acceptChargeData?.name || invite.member_uuid;
+      const userTypeNum = acceptChargeData?.type_user ?? acceptChargeData?.user?.type_user ?? (parseInt(userData?.["نوع المستخدم"] || "0") || 0);
 
-      // ALSO fetch charge activity data (same as send flow) to catch active accounts
-      const acceptChargeData = await fetchUserCharges(invite.member_uuid, true);
-      const acceptChargerNum = acceptChargeData?.charger_num ?? acceptChargeData?.level?.charger_level ?? 0;
+      // ====== ACCEPT ELIGIBILITY CHECK (same multi-source as invite) ======
+      const acceptProfileChargesCount = acceptProfileData?.charges_count ?? 0;
+      const acceptAgencySalary = acceptAgencyData?.data?.agency_salary ?? 0;
+      const acceptAgencyTotalSalary = acceptAgencyData?.data?.total_user_salary ?? 0;
+      const acceptHasAgencyActivity = acceptAgencySalary > 0 || acceptAgencyTotalSalary > 0;
+      
+      const acceptLvl = acceptChargeData?.level || {};
+      const acceptChargerLevel = acceptLvl.charger_level ?? acceptLvl.charger ?? acceptChargeData?.charger_num ?? 0;
+      const acceptSenderLevel = acceptLvl.sender_level ?? acceptLvl.sender ?? 0;
+      const acceptReceiverLevel = acceptLvl.receiver_level ?? acceptLvl.receiver ?? 0;
+      
       const acceptCharges = acceptChargeData?.charges || {};
-      const acceptHasChargeActivity = (
+      const acceptHasChargeAggregates = (
         (acceptCharges.today?.count > 0 || acceptCharges.today?.total > 0) ||
         (acceptCharges.week?.count > 0 || acceptCharges.week?.total > 0) ||
         (acceptCharges.month?.count > 0 || acceptCharges.month?.total > 0)
       );
+
+      const isIneligible = 
+        acceptProfileChargesCount > 0 ||
+        acceptHasAgencyActivity ||
+        acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0 ||
+        acceptHasChargeAggregates;
       
-      console.log("[BD-INVITE] Accept validation:", { 
-        receiverLevel, senderLevel, chargerLevel, userName, userTypeNum,
-        acceptChargerNum, acceptHasChargeActivity, acceptCharges 
+      console.log("[BD-INVITE] Accept eligibility:", { 
+        acceptProfileChargesCount, acceptHasAgencyActivity, acceptAgencySalary, acceptAgencyTotalSalary,
+        acceptChargerLevel, acceptSenderLevel, acceptReceiverLevel, acceptHasChargeAggregates, isIneligible, userName, userTypeNum
       });
 
-      const isIneligible = receiverLevel > 0 || senderLevel > 0 || chargerLevel > 0 || acceptChargerNum > 0 || acceptHasChargeActivity;
-
       if (isIneligible) {
-        const details = acceptHasChargeActivity 
-          ? `حساب نشط (شحنات: يوم=${acceptCharges.today?.count||0} أسبوع=${acceptCharges.week?.count||0} شهر=${acceptCharges.month?.count||0})`
-          : acceptChargerNum > 0 
-            ? `شحنات: ${acceptChargerNum}`
-            : `مستويات: استقبال ${receiverLevel}، إرسال ${senderLevel}، شحن ${chargerLevel}`;
+        const detailParts: string[] = [];
+        if (acceptProfileChargesCount > 0) detailParts.push(`شحنات: ${acceptProfileChargesCount}`);
+        if (acceptHasAgencyActivity) detailParts.push(`راتب وكالة: $${acceptAgencySalary}`);
+        if (acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0) detailParts.push(`مستويات: شحن ${acceptChargerLevel} إرسال ${acceptSenderLevel} استقبال ${acceptReceiverLevel}`);
+        const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب نشط";
         const reason = `الحساب ${userName} غير مؤهل (${details})`;
-        // Delete the invitation since the account is not eligible
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
-        // Notify both BD and member about the rejection
         await sb.from("notifications").insert([
           { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.bd_uuid },
           { title: "❌ تعذر قبول الدعوة", body: `لا يمكنك الانضمام: حسابك نشط بالفعل (${details})`, target: "user", user_uuid: invite.member_uuid },
