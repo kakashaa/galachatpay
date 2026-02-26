@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Shield, Loader2, CheckCircle, XCircle, Clock, Briefcase, Lock } from "lucide-react";
+import { ArrowRight, Shield, Loader2, CheckCircle, XCircle, Clock, Briefcase, Lock, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,10 +16,11 @@ interface BanInfo {
 const BDVerification: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved" | "rejected" | "banned">("loading");
+const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved" | "rejected" | "banned" | "is_member">("loading");
   const [loading, setLoading] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
   const [banInfo, setBanInfo] = useState<BanInfo | null>(null);
+  const [memberBdName, setMemberBdName] = useState("");
 
   const highestLevel = Math.max(
     user?.level?.charger_level || 0,
@@ -35,6 +36,26 @@ const BDVerification: React.FC = () => {
   const checkStatus = async () => {
     if (!user?.uuid) return;
     try {
+      // Check if user is a member under another BD
+      const { data: memberData } = await supabase
+        .from("bd_members")
+        .select("bd_uuid, bd_uuid")
+        .eq("member_uuid", user.uuid)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (memberData) {
+        // Get BD name
+        const { data: bdData } = await supabase
+          .from("bd_commission_settings")
+          .select("bd_name")
+          .eq("bd_uuid", memberData.bd_uuid)
+          .maybeSingle();
+        setMemberBdName(bdData?.bd_name || "بيدي");
+        setStatus("is_member");
+        return;
+      }
+
       const { data } = await supabase.functions.invoke("bd-manage", {
         body: { action: "check_status", user_uuid: user.uuid },
       });
@@ -126,6 +147,22 @@ const BDVerification: React.FC = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
+        )}
+
+        {status === "is_member" && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-5 py-10">
+            <div className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto">
+              <Users className="w-10 h-10 text-blue-400" />
+            </div>
+            <h2 className="text-xl font-bold">أنت عضو في فريق بيدي</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed px-4">
+              حسابك مسجل كعضو ضمن فريق البيدي <span className="font-bold text-foreground">{memberBdName}</span>.
+              <br />لا يمكنك التسجيل كبيدي مستقل وأنت عضو في فريق آخر.
+            </p>
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="mt-4 rounded-xl">
+              العودة للصفحة الرئيسية
+            </Button>
+          </motion.div>
         )}
 
         {status === "banned" && banInfo && (
