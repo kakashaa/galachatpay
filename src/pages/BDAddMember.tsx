@@ -281,7 +281,7 @@ const BDAddMember: React.FC = () => {
                       <span className="bg-red-500/20 text-red-400 font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0">{i + 1}</span>
                       <div className="flex-1 min-w-0">
                         <span className="text-foreground font-mono">{v.member_uuid}</span>
-                        <span className="text-muted-foreground mr-1">- {v.details || "حساب قديم"}</span>
+                        <span className="text-muted-foreground mr-1">- {v.details || "حساب قديم ولايمكنك دعوته للانضمام"}</span>
                       </div>
                     </div>
                   ))}
