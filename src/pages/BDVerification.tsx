@@ -97,7 +97,7 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
         },
       });
       const regResponse = typeof regData === 'string' ? JSON.parse(regData) : regData;
-      if (regResponse?.status === "approved" || regResponse?.already) {
+      if (regResponse?.status === "approved") {
         navigate("/bd/dashboard", { replace: true });
         return;
       }
@@ -106,6 +106,7 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
         setLoading(false);
         return;
       }
+      // Pending or already pending
       setStatus("pending");
       toast.success("تم إرسال طلبك بنجاح! سيتم مراجعته من قبل الإدارة.");
     } catch {

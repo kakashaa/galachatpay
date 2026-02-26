@@ -230,34 +230,33 @@ serve(async (req) => {
         return json({ error: "⚠️ لا يمكنك التسجيل كبيدي لأن هذا الجهاز مسجل عليه عضو ضمن بيدي آخر. يجب اختيار أحدهما فقط." });
       }
 
-      // Auto-approve if level >= 10
+      // Send pending request to admin for approval
       const level = user_level || 0;
-      if (level >= 10) {
-        const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        await sb.from("bd_commission_settings").upsert({
-          bd_uuid: user_uuid,
-          bd_name: user_name || "",
-          is_approved: true,
-          is_active: true,
-          referral_code: referralCode,
-          user_commission_pct: 2,
-          agency_commission_pct: 5,
-          available_balance: 0,
-          total_earned: 0,
-          current_month_earnings: 0,
-        }, { onConflict: "bd_uuid" });
-
-        // Also mark any pending registration as approved
-        await sb.from("bd_registration_requests")
-          .update({ status: "approved" })
-          .eq("user_uuid", user_uuid)
-          .eq("status", "pending");
-
-        return json({ success: true, status: "approved", referral_code: referralCode });
+      if (level < 10) {
+        return json({ error: "المستوى غير كافي" }, 400);
       }
 
-      // Fallback: shouldn't reach here if UI enforces level >= 10
-      return json({ error: "المستوى غير كافي" }, 400);
+      // Check if there's already a pending request
+      const { data: existingReq } = await sb
+        .from("bd_registration_requests")
+        .select("id, status")
+        .eq("user_uuid", user_uuid)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (existingReq) {
+        return json({ status: "pending", already: true });
+      }
+
+      // Create pending registration request
+      await sb.from("bd_registration_requests").insert({
+        user_uuid,
+        user_name: user_name || "",
+        user_level: level,
+        status: "pending",
+      });
+
+      return json({ success: true, status: "pending" });
     }
 
     if (action === "check_status") {
