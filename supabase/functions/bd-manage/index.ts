@@ -516,21 +516,39 @@ serve(async (req) => {
       const chargerLevel = levelData.charger_level || levelData.charger || parseInt(userData["مستوى الشحن"] || "0") || 0;
       const userName = userData.name || userData["الاسم"] || invite.member_uuid;
       const userTypeNum = (userData.type_user != null ? userData.type_user : (parseInt(userData["نوع المستخدم"] || "0") || 0));
-      
-      console.log("[BD-INVITE] Accept validation:", { receiverLevel, senderLevel, chargerLevel, userName, userTypeNum });
 
-      if (receiverLevel > 0 || senderLevel > 0 || chargerLevel > 0) {
-        const reason = `الحساب ${userName} غير مؤهل (المستويات: استقبال ${receiverLevel}، إرسال ${senderLevel}، شحن ${chargerLevel})`;
+      // ALSO fetch charge activity data (same as send flow) to catch active accounts
+      const acceptChargeData = await fetchUserCharges(invite.member_uuid, true);
+      const acceptChargerNum = acceptChargeData?.charger_num ?? acceptChargeData?.level?.charger_level ?? 0;
+      const acceptCharges = acceptChargeData?.charges || {};
+      const acceptHasChargeActivity = (
+        (acceptCharges.today?.count > 0 || acceptCharges.today?.total > 0) ||
+        (acceptCharges.week?.count > 0 || acceptCharges.week?.total > 0) ||
+        (acceptCharges.month?.count > 0 || acceptCharges.month?.total > 0)
+      );
+      
+      console.log("[BD-INVITE] Accept validation:", { 
+        receiverLevel, senderLevel, chargerLevel, userName, userTypeNum,
+        acceptChargerNum, acceptHasChargeActivity, acceptCharges 
+      });
+
+      const isIneligible = receiverLevel > 0 || senderLevel > 0 || chargerLevel > 0 || acceptChargerNum > 0 || acceptHasChargeActivity;
+
+      if (isIneligible) {
+        const details = acceptHasChargeActivity 
+          ? `حساب نشط (شحنات: يوم=${acceptCharges.today?.count||0} أسبوع=${acceptCharges.week?.count||0} شهر=${acceptCharges.month?.count||0})`
+          : acceptChargerNum > 0 
+            ? `شحنات: ${acceptChargerNum}`
+            : `مستويات: استقبال ${receiverLevel}، إرسال ${senderLevel}، شحن ${chargerLevel}`;
+        const reason = `الحساب ${userName} غير مؤهل (${details})`;
         // Delete the invitation since the account is not eligible
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
-        // Notify the BD about the rejection reason
-        await sb.from("notifications").insert({
-          title: "❌ فشل انضمام عضو",
-          body: reason,
-          target: "user",
-          user_uuid: invite.bd_uuid,
-        });
-        return json({ error: "لا يمكن قبول الدعوة. يجب أن تكون جميع مستويات الحساب صفر.", dismissed: true });
+        // Notify both BD and member about the rejection
+        await sb.from("notifications").insert([
+          { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.bd_uuid },
+          { title: "❌ تعذر قبول الدعوة", body: `لا يمكنك الانضمام: حسابك نشط بالفعل (${details})`, target: "user", user_uuid: invite.member_uuid },
+        ]);
+        return json({ error: `لا يمكن قبول الدعوة. الحساب نشط بالفعل (${details}).`, dismissed: true });
       }
 
       // Check account creation date - must be after LAUNCH_DATE
