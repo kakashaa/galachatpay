@@ -402,9 +402,9 @@ serve(async (req) => {
 
       if (isOldAccount) {
         const detailParts: string[] = [];
-        if (profileChargesCount > 0) detailParts.push(`شحنات: ${profileChargesCount}`);
         if (hasAgencyActivity) detailParts.push(`راتب وكالة: $${agencySalary}`);
         if (chargerLevel > 0 || senderLevel > 0 || receiverLevel > 0) detailParts.push(`مستويات: شحن ${chargerLevel} إرسال ${senderLevel} استقبال ${receiverLevel}`);
+        if (profileChargesCount > 0) detailParts.push("حساب نشط");
         const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب نشط";
         
         // Log violation
@@ -570,9 +570,9 @@ serve(async (req) => {
 
       if (isIneligible) {
         const detailParts: string[] = [];
-        if (acceptProfileChargesCount > 0) detailParts.push(`شحنات: ${acceptProfileChargesCount}`);
         if (acceptHasAgencyActivity) detailParts.push(`راتب وكالة: $${acceptAgencySalary}`);
         if (acceptChargerLevel > 0 || acceptSenderLevel > 0 || acceptReceiverLevel > 0) detailParts.push(`مستويات: شحن ${acceptChargerLevel} إرسال ${acceptSenderLevel} استقبال ${acceptReceiverLevel}`);
+        if (acceptProfileChargesCount > 0) detailParts.push("حساب نشط");
         const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب نشط";
         const reason = `الحساب ${userName} غير مؤهل (${details})`;
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
