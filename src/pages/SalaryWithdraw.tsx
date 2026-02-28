@@ -60,7 +60,7 @@ const SalaryWithdraw: React.FC = () => {
   const [showMonthlyLocked, setShowMonthlyLocked] = useState(false);
   const [showInstantInstructions, setShowInstantInstructions] = useState(false);
   const [monthlyWithdrawEnabled, setMonthlyWithdrawEnabled] = useState(false);
-  const [_pendingCount, setPendingCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
   const [pendingLimitReached, setPendingLimitReached] = useState(false);
 
   // Star code redemption
@@ -407,6 +407,16 @@ const SalaryWithdraw: React.FC = () => {
             <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
             <p className="text-sm text-destructive whitespace-pre-line">{error}</p>
           </div>
+        )}
+
+        {/* Pending count info for agents */}
+        {!pendingLimitReached && pendingCount > 0 && user.type_user >= 2 && step === "select" && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-blue-400 shrink-0" />
+            <p className="text-sm text-blue-400">
+              لديك طلب معلق ({pendingCount}/2) — يمكنك تقديم طلب إضافي واحد
+            </p>
+          </motion.div>
         )}
 
         {/* Pending limit warning */}
