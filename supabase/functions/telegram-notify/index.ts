@@ -48,6 +48,30 @@ serve(async (req) => {
     const data = await res.json();
     console.log("Telegram response:", JSON.stringify(data));
 
+    // Send file attachment for custom_gift
+    if (type === "custom_gift" && record?.video_url) {
+      try {
+        const fileUrl = record.video_url;
+        const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+        const isVideo = ["mp4", "webm", "mov"].includes(ext);
+        const endpoint = isVideo ? "sendVideo" : "sendDocument";
+        const fieldName = isVideo ? "video" : "document";
+
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            [fieldName]: fileUrl,
+            caption: `📎 ملف الهدية المخصصة\n👤 ${record.user_name || "-"}\n📛 ${record.title || "-"}`,
+            parse_mode: "HTML",
+          }),
+        });
+      } catch (e) {
+        console.error("Failed to send custom gift file:", e);
+      }
+    }
+
     return new Response(JSON.stringify({ ok: data.ok }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
