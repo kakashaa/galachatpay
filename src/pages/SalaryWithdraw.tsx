@@ -60,6 +60,8 @@ const SalaryWithdraw: React.FC = () => {
   const [showMonthlyLocked, setShowMonthlyLocked] = useState(false);
   const [showInstantInstructions, setShowInstantInstructions] = useState(false);
   const [monthlyWithdrawEnabled, setMonthlyWithdrawEnabled] = useState(false);
+  const [_pendingCount, setPendingCount] = useState(0);
+  const [pendingLimitReached, setPendingLimitReached] = useState(false);
 
   // Star code redemption
   const [starCode, setStarCode] = useState("");
@@ -101,6 +103,24 @@ const SalaryWithdraw: React.FC = () => {
     };
     checkMonthlyEnabled();
   }, []);
+
+  // Check pending salary requests limit
+  useEffect(() => {
+    if (!user?.uuid) return;
+    const checkPendingLimit = async () => {
+      const { count } = await supabase
+        .from("salary_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("user_uuid", user.uuid)
+        .eq("status", "pending");
+      const pending = count || 0;
+      setPendingCount(pending);
+      // Agents (type_user >= 2) can have 2 pending, others only 1
+      const maxPending = (user.type_user >= 2) ? 2 : 1;
+      setPendingLimitReached(pending >= maxPending);
+    };
+    checkPendingLimit();
+  }, [user?.uuid, user?.type_user]);
 
   if (!user) {
     navigate("/");
@@ -389,8 +409,23 @@ const SalaryWithdraw: React.FC = () => {
           </div>
         )}
 
+        {/* Pending limit warning */}
+        {pendingLimitReached && step === "select" && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-500">
+              <p className="font-bold">تم الوصول للحد الأقصى من الطلبات المعلقة</p>
+              <p className="text-xs mt-1">
+                {user.type_user >= 2 
+                  ? "يمكنك تقديم طلبين كحد أقصى في نفس الوقت. انتظر معالجة أحد طلباتك الحالية."
+                  : "يمكنك تقديم طلب واحد فقط في نفس الوقت. انتظر معالجة طلبك الحالي."}
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── STEP 1: Select Withdraw Type ── */}
-        {step === "select" && (
+        {step === "select" && !pendingLimitReached && (
           <>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4 space-y-3">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
