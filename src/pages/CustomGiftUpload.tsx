@@ -159,6 +159,21 @@ const CustomGiftUpload: React.FC = () => {
       } as any);
       if (insertErr) throw insertErr;
 
+      // Send telegram notification directly (faster than db trigger)
+      try {
+        await supabase.functions.invoke("telegram-notify", {
+          body: {
+            type: "custom_gift",
+            record: {
+              user_name: user.name,
+              title: title.trim(),
+              video_url: videoUrl,
+              status: "pending",
+            },
+          },
+        });
+      } catch { /* silent - trigger is backup */ }
+
       setSubmitted(true);
     } catch (err: any) {
       toast.error(err?.message || "فشل الرفع");
