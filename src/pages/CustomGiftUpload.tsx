@@ -96,14 +96,27 @@ const CustomGiftUpload: React.FC = () => {
       return;
     }
     setVideoFile(file);
+    setVideoDuration(0);
     // Get video duration
     const video = document.createElement("video");
     video.preload = "metadata";
+    const objectUrl = URL.createObjectURL(file);
     video.onloadedmetadata = () => {
-      setVideoDuration(Math.round(video.duration));
-      URL.revokeObjectURL(video.src);
+      const dur = Math.round(video.duration);
+      setVideoDuration(dur > 0 ? dur : 1);
+      URL.revokeObjectURL(objectUrl);
     };
-    video.src = URL.createObjectURL(file);
+    video.onerror = () => {
+      // If metadata can't be read (non-standard format), allow upload with fallback duration
+      setVideoDuration(1);
+      URL.revokeObjectURL(objectUrl);
+    };
+    // Timeout fallback - if metadata doesn't load within 5 seconds, allow upload
+    setTimeout(() => {
+      setVideoDuration((prev) => (prev === 0 ? 1 : prev));
+      URL.revokeObjectURL(objectUrl);
+    }, 5000);
+    video.src = objectUrl;
   };
 
   const handleSubmit = async () => {
