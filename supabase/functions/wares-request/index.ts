@@ -56,11 +56,32 @@ serve(async (req) => {
               `🔢 رقم الطلب: #${data.request_id || "-"}\n` +
               `⏰ ${time}`;
 
+            // Send text message first
             await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
             });
+
+            // Send the file if file_url exists
+            const fileUrl = params.file_url;
+            if (fileUrl) {
+              const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+              const isVideo = ["mp4", "webm", "mov"].includes(ext);
+              const endpoint = isVideo ? "sendVideo" : "sendDocument";
+              const fieldName = isVideo ? "video" : "document";
+
+              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: CHAT_ID,
+                  [fieldName]: fileUrl,
+                  caption: `📎 ملف الطلب #${data.request_id || "-"}\n${typeLabels[params.ware_type] || params.ware_type} — ${params.user_name || params.uuid}`,
+                  parse_mode: "HTML",
+                }),
+              });
+            }
           }
         } catch (e) {
           console.error("Telegram notify failed:", e);
