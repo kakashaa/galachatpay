@@ -14,7 +14,6 @@ serve(async (req) => {
   try {
     const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
-    console.log("DEBUG CHAT_ID value:", JSON.stringify(CHAT_ID), "length:", CHAT_ID?.length);
 
     if (!BOT_TOKEN || !CHAT_ID) {
       console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
@@ -57,27 +56,17 @@ serve(async (req) => {
         const isVideo = ["mp4", "webm", "mov"].includes(ext);
         const endpoint = isVideo ? "sendVideo" : "sendDocument";
         const fieldName = isVideo ? "video" : "document";
-        const fileName = `gift_${record.user_name || "user"}.${ext || "mp4"}`;
 
-        // Download file first then upload as multipart
-        console.log("Downloading custom gift file:", fileUrl);
-        const fileRes = await fetch(fileUrl);
-        if (fileRes.ok) {
-          const fileBlob = await fileRes.blob();
-          const formData = new FormData();
-          formData.append("chat_id", CHAT_ID);
-          formData.append(fieldName, new File([fileBlob], fileName, { type: fileBlob.type }));
-          formData.append("caption", `📎 ملف الهدية المخصصة\n👤 ${record.user_name || "-"}\n📛 ${record.title || "-"}`);
-
-          const sendRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
-            method: "POST",
-            body: formData,
-          });
-          const sendData = await sendRes.json();
-          console.log("Telegram file send response:", JSON.stringify(sendData));
-        } else {
-          console.error("Failed to download file:", fileRes.status, await fileRes.text());
-        }
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            [fieldName]: fileUrl,
+            caption: `📎 ملف الهدية المخصصة\n👤 ${record.user_name || "-"}\n📛 ${record.title || "-"}`,
+            parse_mode: "HTML",
+          }),
+        });
       } catch (e) {
         console.error("Failed to send custom gift file:", e);
       }
