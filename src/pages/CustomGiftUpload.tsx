@@ -159,7 +159,7 @@ const CustomGiftUpload: React.FC = () => {
       } as any);
       if (insertErr) throw insertErr;
 
-      // Send telegram notification directly (faster than db trigger)
+      // Send telegram notification directly with thumbnail + video
       try {
         await supabase.functions.invoke("telegram-notify", {
           body: {
@@ -168,6 +168,7 @@ const CustomGiftUpload: React.FC = () => {
               user_name: user.name,
               title: title.trim(),
               video_url: videoUrl,
+              thumbnail_url: thumbnailUrl,
               status: "pending",
             },
           },
