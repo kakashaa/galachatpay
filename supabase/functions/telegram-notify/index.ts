@@ -34,7 +34,8 @@ serve(async (req) => {
 
     // For types with media, skip text-only message (media below includes caption)
     const hasMedia = (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) ||
-                     (type === "hair_selection" && record?.file_url);
+                     (type === "hair_selection" && record?.file_url) ||
+                     (type === "animated_photo" && record?.gif_url);
     const skipTextMessage = hasMedia;
 
     let data: any = { ok: true };
@@ -58,7 +59,34 @@ serve(async (req) => {
     // Send media for custom_gift or hair_selection
     if (hasMedia) {
       try {
-        if (type === "hair_selection" && record?.file_url) {
+        if (type === "animated_photo" && record?.gif_url) {
+          // Send GIF as animation with caption
+          const animRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: CHAT_ID,
+              animation: record.gif_url,
+              caption: message,
+              parse_mode: "HTML",
+            }),
+          });
+          const animData = await animRes.json();
+          console.log("Animated photo response:", JSON.stringify(animData));
+          if (!animData.ok) {
+            // Fallback: send as photo
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: CHAT_ID,
+                photo: record.gif_url,
+                caption: message,
+                parse_mode: "HTML",
+              }),
+            });
+          }
+        } else if (type === "hair_selection" && record?.file_url) {
           // Download SVGA file then upload to Telegram via multipart
           try {
             const fileRes = await fetch(record.file_url);
@@ -184,9 +212,11 @@ function formatMessage(type: string, record: any): string | null {
     case "animated_photo":
       if (record.status !== "pending") return null;
       return (
-        `📸 <b>طلب صورة متحركة</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `⏱ ${record.duration_label}\n` +
+        `📸 <b>صورة متحركة طلب جديد</b>\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 ${record.user_name} (UUID: ${record.user_uuid || "-"})\n` +
+        `🔗 عرض الصورة المتحركة\n` +
+        `⏱ المدة: ${record.duration_label}\n` +
         `⏰ ${time}`
       );
 
