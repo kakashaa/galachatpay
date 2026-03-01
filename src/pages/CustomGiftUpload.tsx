@@ -51,8 +51,10 @@ const CustomGiftUpload: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [videoUrl, setVideoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -120,42 +122,53 @@ const CustomGiftUpload: React.FC = () => {
     video.src = objectUrl;
   };
 
+  const hasVideo = videoFile || videoUrl.trim();
+  
+
   const handleSubmit = async () => {
-    if (!user?.uuid || !videoFile) return;
+    if (!user?.uuid || !hasVideo) return;
     if (!title.trim()) { toast.error("أدخل اسم الهدية"); return; }
-    if (videoDuration > maxDuration) {
+    if (videoFile && videoDuration > maxDuration) {
       toast.error(`مدة الفيديو ${videoDuration} ثانية تتجاوز الحد المسموح ${maxDuration} ثانية`);
       return;
     }
-    if (videoDuration === 0) {
+    if (videoFile && videoDuration === 0) {
       toast.error("انتظر حتى يتم تحميل معلومات الفيديو");
       return;
     }
 
     setUploading(true);
     try {
-      // Upload video via secure proxy
-      const { secureUpload } = await import("@/utils/secureUpload");
-      const ext = videoFile.name.split(".").pop();
-      const videoPath = `custom-gifts/${user.uuid}_${Date.now()}.${ext}`;
-      const videoUrl = await secureUpload({
-        file: videoFile,
-        bucket: "videos",
-        path: videoPath,
-        userUuid: user.uuid,
-      });
+      let finalVideoUrl: string;
+      let finalThumbnailUrl: string | null = null;
 
-      // Upload thumbnail if provided
-      let thumbnailUrl: string | null = null;
+      if (videoFile) {
+        // Upload video via secure proxy
+        const { secureUpload } = await import("@/utils/secureUpload");
+        const ext = videoFile.name.split(".").pop();
+        const videoPath = `custom-gifts/${user.uuid}_${Date.now()}.${ext}`;
+        finalVideoUrl = await secureUpload({
+          file: videoFile,
+          bucket: "videos",
+          path: videoPath,
+          userUuid: user.uuid,
+        });
+      } else {
+        finalVideoUrl = videoUrl.trim();
+      }
+
       if (thumbnailFile) {
+        const { secureUpload } = await import("@/utils/secureUpload");
         const thumbExt = thumbnailFile.name.split(".").pop();
         const thumbPath = `custom-gifts/thumb_${user.uuid}_${Date.now()}.${thumbExt}`;
-        thumbnailUrl = await secureUpload({
+        finalThumbnailUrl = await secureUpload({
           file: thumbnailFile,
           bucket: "attachments",
           path: thumbPath,
           userUuid: user.uuid,
         });
+      } else if (thumbnailUrl.trim()) {
+        finalThumbnailUrl = thumbnailUrl.trim();
       }
 
       // Insert record
@@ -164,9 +177,9 @@ const CustomGiftUpload: React.FC = () => {
         user_name: user.name,
         user_gala_id: String(user.id),
         title: title.trim(),
-        thumbnail_url: thumbnailUrl,
-        video_url: videoUrl,
-        video_duration: videoDuration,
+        thumbnail_url: finalThumbnailUrl,
+        video_url: finalVideoUrl,
+        video_duration: videoFile ? videoDuration : 0,
         charger_level_at_upload: chargerLevel,
         max_duration_allowed: maxDuration,
         status: "pending",
@@ -181,16 +194,16 @@ const CustomGiftUpload: React.FC = () => {
             user_name: user.name,
             request_type: "custom_gift",
             details: {
-              file_url: videoUrl,
-              image_url: thumbnailUrl || null,
+              file_url: finalVideoUrl,
+              image_url: finalThumbnailUrl || null,
               title: title.trim(),
-              video_duration: videoDuration,
-              thumbnail_url: thumbnailUrl,
+              video_duration: videoFile ? videoDuration : 0,
+              thumbnail_url: finalThumbnailUrl,
               phone_number: phoneNumber.trim() || null,
               charger_level: chargerLevel,
             },
-            evidence_url: videoUrl,
-            image_url: thumbnailUrl || null,
+            evidence_url: finalVideoUrl,
+            image_url: finalThumbnailUrl || null,
           },
         });
       } catch { /* silent - not critical */ }
@@ -203,8 +216,8 @@ const CustomGiftUpload: React.FC = () => {
             record: {
               user_name: user.name,
               title: title.trim(),
-              video_url: videoUrl,
-              thumbnail_url: thumbnailUrl,
+              video_url: finalVideoUrl,
+              thumbnail_url: finalThumbnailUrl,
               phone_number: phoneNumber.trim() || null,
               status: "pending",
             },
@@ -420,10 +433,26 @@ const CustomGiftUpload: React.FC = () => {
             type="file"
             accept="image/*"
             onChange={handleThumbnailChange}
-            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
+            disabled={!!thumbnailUrl.trim()}
+            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1 disabled:opacity-40"
+          />
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="h-px flex-1 bg-border/30" />
+            <span>أو أدخل رابط</span>
+            <span className="h-px flex-1 bg-border/30" />
+          </div>
+          <Input
+            value={thumbnailUrl}
+            onChange={(e) => { setThumbnailUrl(e.target.value); if (e.target.value.trim()) { setThumbnailFile(null); setThumbnailPreview(null); } }}
+            placeholder="https://example.com/image.png"
+            className="bg-muted/30 border-border/30 text-xs"
+            dir="ltr"
           />
           {thumbnailPreview && (
             <img src={thumbnailPreview} alt="preview" className="w-20 h-20 rounded-lg object-cover" />
+          )}
+          {!thumbnailPreview && thumbnailUrl.trim() && (
+            <img src={thumbnailUrl.trim()} alt="preview" className="w-20 h-20 rounded-lg object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
           )}
         </div>
 
@@ -440,7 +469,20 @@ const CustomGiftUpload: React.FC = () => {
             type="file"
             accept="video/mp4,video/webm"
             onChange={handleVideoChange}
-            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
+            disabled={!!videoUrl.trim()}
+            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1 disabled:opacity-40"
+          />
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="h-px flex-1 bg-border/30" />
+            <span>أو أدخل رابط</span>
+            <span className="h-px flex-1 bg-border/30" />
+          </div>
+          <Input
+            value={videoUrl}
+            onChange={(e) => { setVideoUrl(e.target.value); if (e.target.value.trim()) { setVideoFile(null); setVideoDuration(0); } }}
+            placeholder="https://example.com/video.mp4"
+            className="bg-muted/30 border-border/30 text-xs"
+            dir="ltr"
           />
           {videoFile && (
             <div className="flex items-center gap-2 text-xs">
@@ -459,7 +501,7 @@ const CustomGiftUpload: React.FC = () => {
         {/* Submit */}
         <Button
           onClick={handleSubmit}
-          disabled={uploading || !videoFile || !title.trim() || videoDuration > maxDuration}
+          disabled={uploading || !hasVideo || !title.trim() || (videoFile ? videoDuration > maxDuration : false)}
           className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base disabled:opacity-40 css-fade-up-d4"
         >
           {uploading ? (
