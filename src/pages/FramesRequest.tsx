@@ -136,6 +136,20 @@ const FramesRequest: React.FC = () => {
       });
       if (apiError) throw apiError;
 
+      // Send to gala-actions with file URL
+      try {
+        await supabase.functions.invoke("gala-actions?action=submit-request", {
+          body: {
+            user_uuid: user.uuid,
+            user_name: user.name,
+            request_type: "frame",
+            details: { file_url: selectedFrame.file_url, title: selectedFrame.title, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null },
+            evidence_url: selectedFrame.file_url,
+            image_url: selectedFrame.thumbnail_url || selectedFrame.file_url,
+          },
+        });
+      } catch { /* silent */ }
+
       toast.success(claimType === "self" ? "تم لبس الإطار بنجاح!" : "تم إرسال الإطار لصديقك!");
       setShowClaimDialog(false);
       fetchStarBalance();
