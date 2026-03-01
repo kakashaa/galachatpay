@@ -32,8 +32,10 @@ serve(async (req) => {
       });
     }
 
-    // For custom_gift with media, skip text-only message (media group below includes caption)
-    const skipTextMessage = type === "custom_gift" && (record?.thumbnail_url || record?.video_url);
+    // For types with media, skip text-only message (media below includes caption)
+    const hasMedia = (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) ||
+                     (type === "hair_selection" && record?.file_url);
+    const skipTextMessage = hasMedia;
 
     let data: any = { ok: true };
     if (!skipTextMessage) {
@@ -53,59 +55,70 @@ serve(async (req) => {
       console.log("Telegram response:", JSON.stringify(data));
     }
 
-    // Send media group for custom_gift (thumbnail + video in one message)
-    if (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) {
+    // Send media for custom_gift or hair_selection
+    if (hasMedia) {
       try {
-        const media: any[] = [];
-        const caption = message; // Use the full formatted message as caption
-
-        if (record.video_url) {
-          const ext = (record.video_url.split(".").pop() || "").toLowerCase().split("?")[0];
-          const isVideo = ["mp4", "webm", "mov"].includes(ext);
-          media.push({
-            type: isVideo ? "video" : "document",
-            media: record.video_url,
-            caption: caption,
-            parse_mode: "HTML",
-          });
-        }
-
-        if (record.thumbnail_url) {
-          media.push({
-            type: "photo",
-            media: record.thumbnail_url,
-          });
-        }
-
-        if (media.length > 1) {
-          // Use sendMediaGroup for multiple items
-          const groupRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: CHAT_ID, media }),
-          });
-          const groupData = await groupRes.json();
-          console.log("MediaGroup response:", JSON.stringify(groupData));
-        } else if (media.length === 1) {
-          // Single item - send directly
-          const item = media[0];
-          const endpoint = item.type === "video" ? "sendVideo" : item.type === "photo" ? "sendPhoto" : "sendDocument";
-          const fieldName = item.type === "video" ? "video" : item.type === "photo" ? "photo" : "document";
-          const singleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+        if (type === "hair_selection" && record?.file_url) {
+          // Send SVGA file as document with caption
+          const docRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               chat_id: CHAT_ID,
-              [fieldName]: item.media,
-              caption: caption,
+              document: record.file_url,
+              caption: message,
               parse_mode: "HTML",
             }),
           });
-          const singleData = await singleRes.json();
-          console.log("Single media response:", JSON.stringify(singleData));
+          const docData = await docRes.json();
+          console.log("Hair SVGA response:", JSON.stringify(docData));
+        } else if (type === "custom_gift") {
+          const media: any[] = [];
+          const caption = message;
+
+          if (record.video_url) {
+            const ext = (record.video_url.split(".").pop() || "").toLowerCase().split("?")[0];
+            const isVideo = ["mp4", "webm", "mov"].includes(ext);
+            media.push({
+              type: isVideo ? "video" : "document",
+              media: record.video_url,
+              caption: caption,
+              parse_mode: "HTML",
+            });
+          }
+
+          if (record.thumbnail_url) {
+            media.push({ type: "photo", media: record.thumbnail_url });
+          }
+
+          if (media.length > 1) {
+            const groupRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: CHAT_ID, media }),
+            });
+            const groupData = await groupRes.json();
+            console.log("MediaGroup response:", JSON.stringify(groupData));
+          } else if (media.length === 1) {
+            const item = media[0];
+            const endpoint = item.type === "video" ? "sendVideo" : item.type === "photo" ? "sendPhoto" : "sendDocument";
+            const fieldName = item.type === "video" ? "video" : item.type === "photo" ? "photo" : "document";
+            const singleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: CHAT_ID,
+                [fieldName]: item.media,
+                caption: caption,
+                parse_mode: "HTML",
+              }),
+            });
+            const singleData = await singleRes.json();
+            console.log("Single media response:", JSON.stringify(singleData));
+          }
         }
       } catch (e) {
-        console.error("Failed to send custom gift media:", e);
+        console.error("Failed to send media:", e);
       }
     }
 
@@ -184,6 +197,15 @@ function formatMessage(type: string, record: any): string | null {
         `🎁 <b>هدية مخصصة</b>\n` +
         `👤 ${record.user_name}\n` +
         `📛 ${record.title}\n` +
+        `⏰ ${time}`
+      );
+
+    case "hair_selection":
+      return (
+        `💇 <b>طلب شعار جديد</b>\n` +
+        `👤 ${record.user_name || "-"}\n` +
+        `📛 ${record.hair_title || "-"}\n` +
+        `⭐ التكلفة: ${record.star_cost || 0} نجمة\n` +
         `⏰ ${time}`
       );
 
