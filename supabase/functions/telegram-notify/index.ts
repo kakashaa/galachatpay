@@ -32,27 +32,32 @@ serve(async (req) => {
       });
     }
 
-    const res = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          text: message,
-          parse_mode: "HTML",
-        }),
-      }
-    );
+    // For custom_gift with media, skip text-only message (media group below includes caption)
+    const skipTextMessage = type === "custom_gift" && (record?.thumbnail_url || record?.video_url);
 
-    const data = await res.json();
-    console.log("Telegram response:", JSON.stringify(data));
+    let data: any = { ok: true };
+    if (!skipTextMessage) {
+      const res = await fetch(
+        `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            text: message,
+            parse_mode: "HTML",
+          }),
+        }
+      );
+      data = await res.json();
+      console.log("Telegram response:", JSON.stringify(data));
+    }
 
     // Send media group for custom_gift (thumbnail + video in one message)
     if (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) {
       try {
         const media: any[] = [];
-        const caption = `🎁 <b>هدية مخصصة</b>\n👤 ${record.user_name || "-"}\n📛 ${record.title || "-"}`;
+        const caption = message; // Use the full formatted message as caption
 
         if (record.video_url) {
           const ext = (record.video_url.split(".").pop() || "").toLowerCase().split("?")[0];
