@@ -182,6 +182,7 @@ const CustomGiftUpload: React.FC = () => {
             request_type: "custom_gift",
             details: {
               file_url: videoUrl,
+              image_url: thumbnailUrl || null,
               title: title.trim(),
               video_duration: videoDuration,
               thumbnail_url: thumbnailUrl,
@@ -189,6 +190,7 @@ const CustomGiftUpload: React.FC = () => {
               charger_level: chargerLevel,
             },
             evidence_url: videoUrl,
+            image_url: thumbnailUrl || null,
           },
         });
       } catch { /* silent - not critical */ }
