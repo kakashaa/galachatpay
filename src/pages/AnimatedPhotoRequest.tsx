@@ -14,10 +14,9 @@ import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 const getDurationConfig = (user: { level: { charger_level: number; sender_level: number; receiver_level: number } } | null) => {
   if (!user) return null;
   const maxLevel = Math.max(user.level.charger_level, user.level.sender_level, user.level.receiver_level);
-  if (maxLevel >= 50) return { days: 0, label: "مؤبدة (دائمة)", eligible: true };
-  if (maxLevel >= 40) return { days: 60, label: "60 يوم", eligible: true };
-  if (maxLevel >= 30) return { days: 30, label: "30 يوم", eligible: true };
-  return { days: 0, label: "غير مؤهل", eligible: false };
+  if (maxLevel >= 50) return { days: 0, label: "مؤبدة (دائمة)", eligible: true, maxPerMonth: 2 };
+  if (maxLevel >= 40) return { days: 30, label: "30 يوم", eligible: true, maxPerMonth: 1 };
+  return { days: 0, label: "غير مؤهل", eligible: false, maxPerMonth: 0 };
 };
 
 const AnimatedPhotoRequest: React.FC = () => {
@@ -40,12 +39,15 @@ const AnimatedPhotoRequest: React.FC = () => {
   useEffect(() => {
     if (!authUser?.uuid) { setChecking(false); return; }
     const check = async () => {
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
       const { data } = await supabase
         .from("animated_photo_requests")
-        .select("id")
+        .select("id, created_at")
         .eq("user_uuid", authUser.uuid)
-        .limit(1);
-      setAlreadyRequested((data?.length ?? 0) > 0);
+        .gte("created_at", `${currentMonth}-01T00:00:00Z`);
+      const count = data?.length ?? 0;
+      const maxAllowed = durationConfig?.maxPerMonth ?? 1;
+      setAlreadyRequested(count >= maxAllowed);
       setChecking(false);
     };
     check();
@@ -116,7 +118,7 @@ const AnimatedPhotoRequest: React.FC = () => {
       } as any);
       if (dbError) {
         if (dbError.message?.includes("duplicate") || dbError.code === "23505") {
-          toast.error("لقد أرسلت طلباً مسبقاً، مسموح مرة واحدة فقط");
+          toast.error(maxLevel >= 50 ? "وصلت للحد الأقصى (طلبين شهرياً)" : "مسموح لك بطلب واحد شهرياً فقط");
           setAlreadyRequested(true);
           return;
         }
@@ -185,7 +187,7 @@ const AnimatedPhotoRequest: React.FC = () => {
               أعلى لفل لديك: <span className="font-bold text-primary">{maxLevel}</span>
             </p>
             <p className="text-sm text-muted-foreground">
-              يجب أن يكون لديك لفل <span className="font-bold text-primary">30</span> على الأقل (شحن أو كاريزما أو دعم)
+              يجب أن يكون لديك لفل <span className="font-bold text-primary">40</span> على الأقل (شحن أو كاريزما أو دعم)
             </p>
           </div>
 
@@ -196,9 +198,8 @@ const AnimatedPhotoRequest: React.FC = () => {
             </h3>
             <div className="space-y-2 text-xs" dir="rtl">
               {[
-                { level: "30+", duration: "30 يوم" },
-                { level: "40+", duration: "60 يوم" },
-                { level: "50+", duration: "مؤبدة (دائمة)" },
+                { level: "40+", duration: "30 يوم", note: "مرة واحدة شهرياً" },
+                { level: "50+", duration: "مؤبدة (دائمة)", note: "مرتين شهرياً" },
               ].map((rule) => (
                 <div key={rule.level} className="flex items-center justify-between bg-muted/30 rounded-lg p-2.5">
                   <span className="text-muted-foreground">لفل {rule.level}</span>
@@ -216,7 +217,7 @@ const AnimatedPhotoRequest: React.FC = () => {
             <ul className="space-y-1.5 text-xs text-muted-foreground" dir="rtl">
               <li>• يجب أن تكون الصورة بصيغة GIF</li>
               <li>• الحد الأقصى للحجم 10 ميغابايت</li>
-              <li>• مسموح بطلب واحد فقط</li>
+              <li>• لفل 40: طلب واحد شهرياً | لفل 50+: طلبين شهرياً</li>
               <li>• أعلى لفل بين (الشحن، الكاريزما، الدعم) يحدد المدة</li>
             </ul>
           </div>
@@ -233,7 +234,9 @@ const AnimatedPhotoRequest: React.FC = () => {
             <Shield className="w-10 h-10 text-yellow-400" />
           </div>
           <h2 className="text-lg font-bold text-foreground mb-2">لقد أرسلت طلباً مسبقاً</h2>
-          <p className="text-sm text-muted-foreground text-center">مسموح لك بطلب صورة متحركة واحدة فقط</p>
+          <p className="text-sm text-muted-foreground text-center">
+            {maxLevel >= 50 ? "مسموح لك بطلبين فقط في الشهر" : "مسموح لك بطلب واحد فقط في الشهر"}
+          </p>
           <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">
             العودة للرئيسية
           </Button>
@@ -293,7 +296,7 @@ const AnimatedPhotoRequest: React.FC = () => {
             <PlayCircle className="w-8 h-8 text-orange-400" />
           </div>
           <h2 className="text-base font-black text-foreground">طلب صورة متحركة</h2>
-          <p className="text-xs text-muted-foreground text-center">ارفع صورة GIF متحركة لملفك الشخصي (مرة واحدة فقط)</p>
+          <p className="text-xs text-muted-foreground text-center">ارفع صورة GIF متحركة لملفك الشخصي {maxLevel >= 50 ? "(مرتين شهرياً)" : "(مرة واحدة شهرياً)"}</p>
         </div>
 
         {/* شروط الأهلية */}
@@ -315,9 +318,8 @@ const AnimatedPhotoRequest: React.FC = () => {
 
           <div className="space-y-2 text-xs" dir="rtl">
             {[
-              { level: "30+", duration: "30 يوم", highlight: maxLevel >= 30 && maxLevel < 40 },
-              { level: "40+", duration: "60 يوم", highlight: maxLevel >= 40 && maxLevel < 50 },
-              { level: "50+", duration: "مؤبدة (دائمة)", highlight: maxLevel >= 50 },
+              { level: "40+", duration: "30 يوم", note: "مرة واحدة شهرياً", highlight: maxLevel >= 40 && maxLevel < 50 },
+              { level: "50+", duration: "مؤبدة (دائمة)", note: "مرتين شهرياً", highlight: maxLevel >= 50 },
             ].map((rule) => (
               <div
                 key={rule.level}
@@ -331,9 +333,12 @@ const AnimatedPhotoRequest: React.FC = () => {
                     لفل {rule.level}
                   </span>
                 </div>
-                <span className={rule.highlight ? "font-bold text-foreground" : "text-muted-foreground"}>
-                  {rule.duration}
-                </span>
+                <div className="text-left">
+                  <span className={rule.highlight ? "font-bold text-foreground" : "text-muted-foreground"}>
+                    {rule.duration}
+                  </span>
+                  <p className="text-[10px] text-muted-foreground/70">{rule.note}</p>
+                </div>
               </div>
             ))}
         </div>
