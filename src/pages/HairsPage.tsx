@@ -170,6 +170,28 @@ const HairsPage: React.FC = () => {
         status: "pending",
       }));
       await supabase.from("hair_selections").insert(rows as any);
+
+      // Send Telegram notification for each new hair selection
+      for (const hairId of newSelections) {
+        const h = hairs.find(x => x.id === hairId);
+        if (h) {
+          try {
+            await supabase.functions.invoke("telegram-notify", {
+              body: {
+                type: "hair_selection",
+                record: {
+                  user_name: user.name || user.uuid,
+                  hair_title: h.title,
+                  file_url: h.file_url,
+                  star_cost: h.star_cost,
+                },
+              },
+            });
+          } catch (e) {
+            console.error("Telegram notify failed for hair:", e);
+          }
+        }
+      }
     }
 
     // Deduct stars if cost > 0
