@@ -173,6 +173,26 @@ const CustomGiftUpload: React.FC = () => {
       } as any);
       if (insertErr) throw insertErr;
 
+      // Send to external server via gala-actions with file URL
+      try {
+        await supabase.functions.invoke("gala-actions?action=submit-request", {
+          body: {
+            user_uuid: user.uuid,
+            user_name: user.name,
+            request_type: "custom_gift",
+            details: {
+              file_url: videoUrl,
+              title: title.trim(),
+              video_duration: videoDuration,
+              thumbnail_url: thumbnailUrl,
+              phone_number: phoneNumber.trim() || null,
+              charger_level: chargerLevel,
+            },
+            evidence_url: videoUrl,
+          },
+        });
+      } catch { /* silent - not critical */ }
+
       // Send telegram notification directly with thumbnail + video
       try {
         await supabase.functions.invoke("telegram-notify", {
