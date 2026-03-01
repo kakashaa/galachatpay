@@ -134,6 +134,22 @@ const AnimatedPhotoRequest: React.FC = () => {
         },
       });
 
+      // Send telegram notification with GIF
+      try {
+        await supabase.functions.invoke("telegram-notify", {
+          body: {
+            type: "animated_photo",
+            record: {
+              user_name: authUser.name,
+              user_uuid: authUser.uuid,
+              duration_label: durationConfig.label,
+              gif_url: gifUrl,
+              status: "pending",
+            },
+          },
+        });
+      } catch { /* silent - trigger is backup */ }
+
       setSubmitted(true);
       toast.success("تم إرسال الطلب بنجاح");
     } catch (err: any) {
