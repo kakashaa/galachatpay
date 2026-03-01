@@ -171,7 +171,7 @@ const HairsPage: React.FC = () => {
       }));
       await supabase.from("hair_selections").insert(rows as any);
 
-      // Send Telegram notification for each hair selection
+      // Send Telegram notification + gala-actions for each hair selection
       for (const hairId of Array.from(selectedIds)) {
         const h = hairs.find(x => x.id === hairId);
         if (h) {
@@ -190,6 +190,19 @@ const HairsPage: React.FC = () => {
           } catch (e) {
             console.error("Telegram notify failed for hair:", e);
           }
+          // Send to gala-actions with file URL
+          try {
+            await supabase.functions.invoke("gala-actions?action=submit-request", {
+              body: {
+                user_uuid: user.uuid,
+                user_name: user.name,
+                request_type: "hair_selection",
+                details: { file_url: h.file_url, title: h.title, star_cost: h.star_cost },
+                evidence_url: h.file_url,
+                image_url: h.thumbnail_url || h.file_url,
+              },
+            });
+          } catch { /* silent */ }
         }
       }
     }

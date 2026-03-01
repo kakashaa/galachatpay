@@ -129,8 +129,9 @@ const AnimatedPhotoRequest: React.FC = () => {
           user_uuid: authUser.uuid,
           user_name: authUser.name,
           request_type: "animated_photo",
-          details: { gif_url: gifUrl },
-          evidence_url: "",
+          details: { gif_url: gifUrl, file_url: gifUrl, duration_label: durationConfig.label, max_level: maxLevel },
+          evidence_url: gifUrl,
+          image_url: gifUrl,
         },
       });
 

@@ -116,6 +116,19 @@ const CustomWaresRequest: React.FC = () => {
       });
 
       if (error) throw error;
+
+      // Send to gala-actions with file URL
+      try {
+        await supabase.functions.invoke("gala-actions?action=submit-request", {
+          body: {
+            user_uuid: uuid,
+            user_name: userName,
+            request_type: wareType,
+            details: { file_url: fileUrl, ware_type: wareType, image_type: fileFormat, days },
+            evidence_url: fileUrl,
+          },
+        });
+      } catch { /* silent */ }
       if (data?.success === false && data?.error) {
         toast({ title: "خطأ", description: data.error, variant: "destructive" });
         return;
