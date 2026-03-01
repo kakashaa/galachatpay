@@ -53,7 +53,7 @@ serve(async (req) => {
       // 1. Send thumbnail image if exists
       if (record?.thumbnail_url) {
         try {
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          const photoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -63,6 +63,8 @@ serve(async (req) => {
               parse_mode: "HTML",
             }),
           });
+          const photoData = await photoRes.json();
+          console.log("Thumbnail response:", JSON.stringify(photoData));
         } catch (e) {
           console.error("Failed to send thumbnail:", e);
         }
@@ -77,7 +79,7 @@ serve(async (req) => {
           const endpoint = isVideo ? "sendVideo" : "sendDocument";
           const fieldName = isVideo ? "video" : "document";
 
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+          const videoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -87,6 +89,8 @@ serve(async (req) => {
               parse_mode: "HTML",
             }),
           });
+          const videoData = await videoRes.json();
+          console.log("Video/doc response:", JSON.stringify(videoData));
         } catch (e) {
           console.error("Failed to send custom gift file:", e);
         }
