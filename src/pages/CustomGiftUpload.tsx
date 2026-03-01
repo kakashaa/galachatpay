@@ -48,6 +48,7 @@ const CustomGiftUpload: React.FC = () => {
   const canUpload = chargerLevel >= 40;
 
   const [title, setTitle] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -182,6 +183,7 @@ const CustomGiftUpload: React.FC = () => {
               title: title.trim(),
               video_url: videoUrl,
               thumbnail_url: thumbnailUrl,
+              phone_number: phoneNumber.trim() || null,
               status: "pending",
             },
           },
@@ -368,6 +370,22 @@ const CustomGiftUpload: React.FC = () => {
             dir="rtl"
           />
           <p className="text-[10px] text-muted-foreground text-left">{title.length}/50</p>
+        </div>
+
+        {/* Phone number */}
+        <div className="glass-card p-4 space-y-3 css-fade-up-d1">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            رقم الهاتف
+          </h3>
+          <Input
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+]/g, "").slice(0, 20))}
+            placeholder="أدخل رقم هاتفك للتواصل"
+            className="bg-muted/30 border-border/30"
+            dir="ltr"
+            type="tel"
+          />
         </div>
 
         {/* Thumbnail */}

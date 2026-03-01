@@ -211,6 +211,7 @@ function formatMessage(type: string, record: any): string | null {
         `🎁 <b>هدية مخصصة</b>\n` +
         `👤 ${record.user_name}\n` +
         `📛 ${record.title}\n` +
+        (record.phone_number ? `📞 ${record.phone_number}\n` : '') +
         `⏰ ${time}`
       );
 
