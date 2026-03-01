@@ -196,7 +196,7 @@ const HairsPage: React.FC = () => {
               body: {
                 user_uuid: user.uuid,
                 user_name: user.name,
-                request_type: "hair_selection",
+                request_type: "hair",
                 details: { file_url: h.file_url, title: h.title, star_cost: h.star_cost },
                 evidence_url: h.file_url,
                 image_url: h.thumbnail_url || h.file_url,
