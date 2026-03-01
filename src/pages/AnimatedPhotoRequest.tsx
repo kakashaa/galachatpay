@@ -227,15 +227,24 @@ const AnimatedPhotoRequest: React.FC = () => {
   }
 
   if (alreadyRequested) {
+    const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+    const now = new Date();
+    const currentMonthName = monthNames[now.getUTCMonth()];
+    const nextMonthName = monthNames[(now.getUTCMonth() + 1) % 12];
     return (
       <MobileLayout showHeader headerTitle="صورة متحركة" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
           <div className="w-20 h-20 rounded-full bg-yellow-500/20 flex items-center justify-center mb-6">
             <Shield className="w-10 h-10 text-yellow-400" />
           </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">لقد أرسلت طلباً مسبقاً</h2>
-          <p className="text-sm text-muted-foreground text-center">
-            {maxLevel >= 50 ? "مسموح لك بطلبين فقط في الشهر" : "مسموح لك بطلب واحد فقط في الشهر"}
+          <h2 className="text-lg font-bold text-foreground mb-2">تم استخدام جميع الفرص هذا الشهر</h2>
+          <p className="text-sm text-muted-foreground text-center leading-relaxed">
+            {maxLevel >= 50
+              ? `لقد استخدمت طلبيك المتاحين لشهر ${currentMonthName}`
+              : `لقد استخدمت طلبك المتاح لشهر ${currentMonthName}`}
+          </p>
+          <p className="text-xs text-primary mt-2 font-bold">
+            انتظر شهر {nextMonthName} للطلب مجدداً 📅
           </p>
           <Button onClick={() => navigate("/dashboard")} className="mt-8 gold-gradient text-primary-foreground font-bold">
             العودة للرئيسية
