@@ -139,37 +139,41 @@ const CustomGiftUpload: React.FC = () => {
 
     setUploading(true);
     try {
-      let finalVideoUrl: string;
-      let finalThumbnailUrl: string | null = null;
+      let uploadedVideoUrl: string | null = null;
+      let uploadedThumbnailUrl: string | null = null;
 
+      // Upload video file if provided
       if (videoFile) {
-        // Upload video via secure proxy
         const { secureUpload } = await import("@/utils/secureUpload");
         const ext = videoFile.name.split(".").pop();
         const videoPath = `custom-gifts/${user.uuid}_${Date.now()}.${ext}`;
-        finalVideoUrl = await secureUpload({
+        uploadedVideoUrl = await secureUpload({
           file: videoFile,
           bucket: "videos",
           path: videoPath,
           userUuid: user.uuid,
         });
-      } else {
-        finalVideoUrl = videoUrl.trim();
       }
 
+      // Upload thumbnail file if provided
       if (thumbnailFile) {
         const { secureUpload } = await import("@/utils/secureUpload");
         const thumbExt = thumbnailFile.name.split(".").pop();
         const thumbPath = `custom-gifts/thumb_${user.uuid}_${Date.now()}.${thumbExt}`;
-        finalThumbnailUrl = await secureUpload({
+        uploadedThumbnailUrl = await secureUpload({
           file: thumbnailFile,
           bucket: "attachments",
           path: thumbPath,
           userUuid: user.uuid,
         });
-      } else if (thumbnailUrl.trim()) {
-        finalThumbnailUrl = thumbnailUrl.trim();
       }
+
+      // Use uploaded file URL as primary, fall back to manual URL
+      const finalVideoUrl = uploadedVideoUrl || videoUrl.trim();
+      const finalThumbnailUrl = uploadedThumbnailUrl || thumbnailUrl.trim() || null;
+      // Keep both URLs if both were provided
+      const extraVideoUrl = videoUrl.trim() && uploadedVideoUrl ? videoUrl.trim() : null;
+      const extraThumbnailUrl = thumbnailUrl.trim() && uploadedThumbnailUrl ? thumbnailUrl.trim() : null;
 
       // Insert record
       const { error: insertErr } = await supabase.from("custom_gifts").insert({
@@ -201,6 +205,8 @@ const CustomGiftUpload: React.FC = () => {
               thumbnail_url: finalThumbnailUrl,
               phone_number: phoneNumber.trim() || null,
               charger_level: chargerLevel,
+              extra_video_url: extraVideoUrl,
+              extra_image_url: extraThumbnailUrl,
             },
             evidence_url: finalVideoUrl,
             image_url: finalThumbnailUrl || null,
@@ -433,17 +439,16 @@ const CustomGiftUpload: React.FC = () => {
             type="file"
             accept="image/*"
             onChange={handleThumbnailChange}
-            disabled={!!thumbnailUrl.trim()}
-            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1 disabled:opacity-40"
+            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
           />
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="h-px flex-1 bg-border/30" />
-            <span>أو أدخل رابط</span>
+            <span>+ رابط إضافي</span>
             <span className="h-px flex-1 bg-border/30" />
           </div>
           <Input
             value={thumbnailUrl}
-            onChange={(e) => { setThumbnailUrl(e.target.value); if (e.target.value.trim()) { setThumbnailFile(null); setThumbnailPreview(null); } }}
+            onChange={(e) => setThumbnailUrl(e.target.value)}
             placeholder="https://example.com/image.png"
             className="bg-muted/30 border-border/30 text-xs"
             dir="ltr"
@@ -469,17 +474,16 @@ const CustomGiftUpload: React.FC = () => {
             type="file"
             accept="video/mp4,video/webm"
             onChange={handleVideoChange}
-            disabled={!!videoUrl.trim()}
-            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1 disabled:opacity-40"
+            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
           />
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="h-px flex-1 bg-border/30" />
-            <span>أو أدخل رابط</span>
+            <span>+ رابط إضافي</span>
             <span className="h-px flex-1 bg-border/30" />
           </div>
           <Input
             value={videoUrl}
-            onChange={(e) => { setVideoUrl(e.target.value); if (e.target.value.trim()) { setVideoFile(null); setVideoDuration(0); } }}
+            onChange={(e) => setVideoUrl(e.target.value)}
             placeholder="https://example.com/video.mp4"
             className="bg-muted/30 border-border/30 text-xs"
             dir="ltr"
