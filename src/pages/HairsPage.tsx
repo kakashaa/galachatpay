@@ -171,8 +171,8 @@ const HairsPage: React.FC = () => {
       }));
       await supabase.from("hair_selections").insert(rows as any);
 
-      // Send Telegram notification for each new hair selection
-      for (const hairId of newSelections) {
+      // Send Telegram notification for each hair selection
+      for (const hairId of Array.from(selectedIds)) {
         const h = hairs.find(x => x.id === hairId);
         if (h) {
           try {
