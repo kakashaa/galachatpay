@@ -59,19 +59,33 @@ serve(async (req) => {
     if (hasMedia) {
       try {
         if (type === "hair_selection" && record?.file_url) {
-          // Send SVGA file as document with caption
-          const docRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: CHAT_ID,
-              document: record.file_url,
-              caption: message,
-              parse_mode: "HTML",
-            }),
-          });
-          const docData = await docRes.json();
-          console.log("Hair SVGA response:", JSON.stringify(docData));
+          // Download SVGA file then upload to Telegram via multipart
+          try {
+            const fileRes = await fetch(record.file_url);
+            const fileBlob = await fileRes.blob();
+            const fileName = record.hair_title ? `${record.hair_title}.svga` : "hair.svga";
+
+            const formData = new FormData();
+            formData.append("chat_id", CHAT_ID);
+            formData.append("document", fileBlob, fileName);
+            formData.append("caption", message!);
+            formData.append("parse_mode", "HTML");
+
+            const docRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+              method: "POST",
+              body: formData,
+            });
+            const docData = await docRes.json();
+            console.log("Hair SVGA response:", JSON.stringify(docData));
+          } catch (dlErr) {
+            console.error("Failed to download/upload SVGA:", dlErr);
+            // Fallback: send text only
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: CHAT_ID, text: message + `\n📎 ${record.file_url}`, parse_mode: "HTML" }),
+            });
+          }
         } else if (type === "custom_gift") {
           const media: any[] = [];
           const caption = message;
