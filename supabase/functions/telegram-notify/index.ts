@@ -48,52 +48,59 @@ serve(async (req) => {
     const data = await res.json();
     console.log("Telegram response:", JSON.stringify(data));
 
-    // Send file attachments for custom_gift (thumbnail + video)
-    if (type === "custom_gift") {
-      // 1. Send thumbnail image if exists
-      if (record?.thumbnail_url) {
-        try {
-          const photoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: CHAT_ID,
-              photo: record.thumbnail_url,
-              caption: `🖼 صورة الهدية المخصصة\n👤 ${record.user_name || "-"}\n📛 ${record.title || "-"}`,
-              parse_mode: "HTML",
-            }),
-          });
-          const photoData = await photoRes.json();
-          console.log("Thumbnail response:", JSON.stringify(photoData));
-        } catch (e) {
-          console.error("Failed to send thumbnail:", e);
-        }
-      }
+    // Send media group for custom_gift (thumbnail + video in one message)
+    if (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) {
+      try {
+        const media: any[] = [];
+        const caption = `🎁 <b>هدية مخصصة</b>\n👤 ${record.user_name || "-"}\n📛 ${record.title || "-"}`;
 
-      // 2. Send video/document file
-      if (record?.video_url) {
-        try {
-          const fileUrl = record.video_url;
-          const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+        if (record.video_url) {
+          const ext = (record.video_url.split(".").pop() || "").toLowerCase().split("?")[0];
           const isVideo = ["mp4", "webm", "mov"].includes(ext);
-          const endpoint = isVideo ? "sendVideo" : "sendDocument";
-          const fieldName = isVideo ? "video" : "document";
+          media.push({
+            type: isVideo ? "video" : "document",
+            media: record.video_url,
+            caption: caption,
+            parse_mode: "HTML",
+          });
+        }
 
-          const videoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+        if (record.thumbnail_url) {
+          media.push({
+            type: "photo",
+            media: record.thumbnail_url,
+          });
+        }
+
+        if (media.length > 1) {
+          // Use sendMediaGroup for multiple items
+          const groupRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: CHAT_ID, media }),
+          });
+          const groupData = await groupRes.json();
+          console.log("MediaGroup response:", JSON.stringify(groupData));
+        } else if (media.length === 1) {
+          // Single item - send directly
+          const item = media[0];
+          const endpoint = item.type === "video" ? "sendVideo" : item.type === "photo" ? "sendPhoto" : "sendDocument";
+          const fieldName = item.type === "video" ? "video" : item.type === "photo" ? "photo" : "document";
+          const singleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               chat_id: CHAT_ID,
-              [fieldName]: fileUrl,
-              caption: `📎 ملف الهدية المخصصة\n👤 ${record.user_name || "-"}\n📛 ${record.title || "-"}`,
+              [fieldName]: item.media,
+              caption: caption,
               parse_mode: "HTML",
             }),
           });
-          const videoData = await videoRes.json();
-          console.log("Video/doc response:", JSON.stringify(videoData));
-        } catch (e) {
-          console.error("Failed to send custom gift file:", e);
+          const singleData = await singleRes.json();
+          console.log("Single media response:", JSON.stringify(singleData));
         }
+      } catch (e) {
+        console.error("Failed to send custom gift media:", e);
       }
     }
 
