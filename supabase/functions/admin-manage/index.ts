@@ -650,11 +650,13 @@ Deno.serve(async (req) => {
         
         const currentMonth = new Date().toISOString().slice(0, 7);
         
+        // Use current_month filter to avoid .single() error when multiple months exist
         const { data: existing } = await supabase
           .from("user_star_balance")
           .select("*")
           .eq("user_uuid", target_uuid)
-          .single();
+          .eq("current_month", currentMonth)
+          .maybeSingle();
         
         if (existing) {
           const { error } = await supabase
@@ -663,7 +665,8 @@ Deno.serve(async (req) => {
               total_stars: existing.total_stars + amount,
               monthly_stars: existing.monthly_stars + amount,
             })
-            .eq("user_uuid", target_uuid);
+            .eq("user_uuid", target_uuid)
+            .eq("current_month", currentMonth);
           if (error) throw error;
         } else {
           const { error } = await supabase
