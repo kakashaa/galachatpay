@@ -192,6 +192,7 @@ export const VideoStoryCircle = () => {
         .from('video_tutorials')
         .select('id,title,description,video_url,thumbnail_url')
         .eq('is_active', true)
+        .eq('is_deleted', false)
         .order('display_order', { ascending: true })
         .limit(10);
 
