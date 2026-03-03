@@ -150,6 +150,8 @@ const AdminDashboardPage: React.FC = () => {
   // Videos state
   const [videos, setVideos] = useState<VideoTutorial[]>([]);
   const [editingVideo, setEditingVideo] = useState<string | null>(null);
+  const [editVideoData, setEditVideoData] = useState<{ title: string; description: string }>({ title: "", description: "" });
+  const [editVideoFile, setEditVideoFile] = useState<File | null>(null);
   const [newVideo, setNewVideo] = useState({ title: "", description: "", thumbnail_url: "" });
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(false);
@@ -515,6 +517,22 @@ const AdminDashboardPage: React.FC = () => {
   const updateVideo = async (video: VideoTutorial) => {
     try { await adminCall("update_video", video); toast.success("تم التحديث"); setEditingVideo(null); loadData(); }
     catch { toast.error("فشل التحديث"); }
+  };
+
+  const saveVideoEdit = async (video: VideoTutorial) => {
+    try {
+      setUploadProgress(true);
+      const updates: any = { id: video.id, title: editVideoData.title || video.title, description: editVideoData.description || null };
+      if (editVideoFile) {
+        if (editVideoFile.size > 100 * 1024 * 1024) { toast.error("حجم الفيديو يجب أن لا يتجاوز 100MB"); return; }
+        updates.video_url = await uploadFile(editVideoFile);
+      }
+      await adminCall("update_video", updates);
+      toast.success("تم تعديل الفيديو");
+      setEditingVideo(null); setEditVideoFile(null);
+      loadData();
+    } catch (err: any) { toast.error(err?.message || "فشل التعديل"); }
+    finally { setUploadProgress(false); }
   };
 
   const deleteVideo = async (id: string) => {
@@ -1029,19 +1047,39 @@ const AdminDashboardPage: React.FC = () => {
                 )}
                 {videos.map((video) => (
                   <div key={video.id} className={`bg-card border rounded-xl p-4 space-y-2 ${!video.is_active ? "opacity-50" : ""}`}>
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm">{video.title}</h3>
-                      <div className="flex items-center gap-1">
-                        {canAct && <>
-                          <button onClick={() => toggleVideoActive(video)} className="p-1.5 rounded-lg hover:bg-muted">
-                            {video.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-                          </button>
-                          <button onClick={() => deleteVideo(video.id)} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-4 h-4 text-destructive" /></button>
-                        </>}
+                    {editingVideo === video.id ? (
+                      <div className="space-y-3">
+                        <Input placeholder="عنوان الفيديو" value={editVideoData.title} onChange={(e) => setEditVideoData({ ...editVideoData, title: e.target.value })} />
+                        <Input placeholder="وصف (اختياري)" value={editVideoData.description} onChange={(e) => setEditVideoData({ ...editVideoData, description: e.target.value })} />
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">استبدال الفيديو (اختياري)</label>
+                          <input type="file" accept="video/*" onChange={(e) => setEditVideoFile(e.target.files?.[0] || null)} className="w-full text-xs file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:bg-primary/10 file:text-primary" />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={() => saveVideoEdit(video)} disabled={uploadProgress} size="sm" className="flex-1">
+                            {uploadProgress ? <><Loader2 className="w-3 h-3 ml-1 animate-spin" />جاري الحفظ...</> : <><Save className="w-3 h-3 ml-1" />حفظ</>}
+                          </Button>
+                          <Button onClick={() => { setEditingVideo(null); setEditVideoFile(null); }} variant="outline" size="sm">إلغاء</Button>
+                        </div>
                       </div>
-                    </div>
-                    {video.description && <p className="text-xs text-muted-foreground">{video.description}</p>}
-                    <p className="text-xs text-muted-foreground font-mono truncate" dir="ltr">{video.video_url}</p>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-sm">{video.title}</h3>
+                          <div className="flex items-center gap-1">
+                            {canAct && <>
+                              <button onClick={() => { setEditingVideo(video.id); setEditVideoData({ title: video.title, description: video.description || "" }); setEditVideoFile(null); }} className="p-1.5 rounded-lg hover:bg-muted"><Edit2 className="w-4 h-4 text-primary" /></button>
+                              <button onClick={() => toggleVideoActive(video)} className="p-1.5 rounded-lg hover:bg-muted">
+                                {video.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                              </button>
+                              <button onClick={() => deleteVideo(video.id)} className="p-1.5 rounded-lg hover:bg-destructive/10"><Trash2 className="w-4 h-4 text-destructive" /></button>
+                            </>}
+                          </div>
+                        </div>
+                        {video.description && <p className="text-xs text-muted-foreground">{video.description}</p>}
+                        <p className="text-xs text-muted-foreground font-mono truncate" dir="ltr">{video.video_url}</p>
+                      </>
+                    )}
                   </div>
                 ))}
                 {videos.length === 0 && (
