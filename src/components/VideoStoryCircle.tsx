@@ -229,7 +229,8 @@ export const VideoStoryCircle = () => {
       {/* Stories Row */}
       <div className="flex gap-3 overflow-x-auto pb-1.5 px-1 scrollbar-hide z-10" dir="rtl">
         {displayVideos.map((video, index) => (
-          <div key={video.id} className="flex flex-col items-center gap-1 flex-shrink-0">
+          <div key={video.id} className="flex flex-col items-center gap-0.5 flex-shrink-0">
+            <span className="text-[8px] font-bold text-primary/80">شرح</span>
             <button onClick={() => openVideo(index)} className="relative group">
               <div className="w-12 h-12 rounded-full p-[2px] bg-gradient-to-tr from-primary via-accent to-primary">
                 <div className="w-full h-full rounded-full bg-background p-[1.5px]">
@@ -250,9 +251,11 @@ export const VideoStoryCircle = () => {
                 <Play className="w-2 h-2 text-primary-foreground fill-current" />
               </div>
             </button>
-            <span className="text-[9px] font-medium text-foreground text-center max-w-[48px] line-clamp-1">
-              {video.title}
-            </span>
+            <div className="w-[52px] overflow-hidden mt-0.5">
+              <span className={`text-[9px] font-medium text-foreground text-center block whitespace-nowrap ${video.title.length > 6 ? 'animate-marquee' : ''}`}>
+                {video.title}
+              </span>
+            </div>
           </div>
         ))}
       </div>
