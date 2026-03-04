@@ -373,15 +373,23 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const uploadFile = async (file: File) => {
-    const formData = new FormData();
-    formData.append("session_token", adminSessionToken!);
-    formData.append("username", adminUsername!);
-    formData.append("file", file);
-    const { data: uploadResult, error: uploadError } = await supabase.functions.invoke("admin-upload-video", {
-      body: formData,
-    });
-    if (uploadError || !uploadResult?.url) throw new Error(uploadResult?.error || "فشل الرفع");
-    return uploadResult.url;
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const isVideo = ["mp4", "webm", "mov", "avi"].includes(ext);
+    const isAsset = ext === "svga";
+    const bucket = isVideo ? "videos" : "attachments";
+    const fileName = `${crypto.randomUUID()}.${ext}`;
+    
+    const defaultContentType = isAsset ? "application/octet-stream" : isVideo ? "video/mp4" : file.type || "application/octet-stream";
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
+      .upload(fileName, file, {
+        contentType: file.type || defaultContentType,
+        upsert: false,
+      });
+    if (uploadError) throw new Error("فشل الرفع: " + uploadError.message);
+    
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return urlData.publicUrl;
   };
 
   const loadData = async () => {
