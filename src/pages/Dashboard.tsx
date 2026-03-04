@@ -8,6 +8,7 @@ import { useBanCheck } from "@/hooks/use-ban-check";
 import BanOverlay from "@/components/BanOverlay";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { VideoStoryCircle } from "@/components/VideoStoryCircle";
+import BannerCarousel from "@/components/BannerCarousel";
 import UserProfileCard from "@/components/UserProfileCard";
 import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
@@ -174,6 +175,7 @@ const Dashboard: React.FC = () => {
         <main className="relative z-10 px-3">
           <BDInvitationBanner />
           <MarqueeBanner />
+          <BannerCarousel />
           <VideoStoryCircle />
           <div className="mt-3" />
           
