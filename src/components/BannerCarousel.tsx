@@ -33,7 +33,7 @@ const BannerCarousel: React.FC = () => {
   if (banners.length === 0) return null;
 
   return (
-    <div className="mb-3 rounded-xl overflow-hidden relative" style={{ aspectRatio: "16/7" }}>
+    <div className="mb-3 rounded-xl overflow-hidden relative" style={{ height: 200, maxWidth: 700 }}>
       {banners.map((banner, idx) => (
         <img
           key={banner.id}
