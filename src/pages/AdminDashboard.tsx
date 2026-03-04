@@ -30,9 +30,10 @@ import AdminTopAgents from "@/components/AdminTopAgents";
 import AdminBDManager from "@/components/AdminBDManager";
 import AdminModeratorManager from "@/components/AdminModeratorManager";
 import AdminElementSettings from "@/components/AdminElementSettings";
-import { Settings } from "lucide-react";
+import AdminBannerManager from "@/components/AdminBannerManager";
+import { Settings, ImageIcon } from "lucide-react";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | null;
 
 
 interface VideoTutorial {
@@ -839,6 +840,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400" },
     { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-7 h-7" />, color: "from-slate-500/20 to-slate-600/10 text-slate-400" },
+    { key: "banners", label: "بنرات", icon: <ImageIcon className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400" },
     ...((adminRole === "super_admin" || adminRole === "admin") ? [
       { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400" },
     ] : []),
@@ -2180,6 +2182,11 @@ const AdminDashboardPage: React.FC = () => {
             {/* Element Settings Tab */}
             {activeTab === "element_settings" && (
               <AdminElementSettings readOnly={isModeratorRole && isTabViewOnly("element_settings")} adminUsername={adminUsername || ""} />
+            )}
+
+            {/* Banners Tab */}
+            {activeTab === "banners" && (
+              <AdminBannerManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("banners")} />
             )}
 
             {/* Moderators Management Tab */}
