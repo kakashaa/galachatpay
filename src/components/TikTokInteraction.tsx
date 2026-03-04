@@ -70,7 +70,13 @@ const TikTokInteraction: React.FC<TikTokInteractionProps> = ({ itemType, itemId 
 
   const toggleLike = async () => {
     if (!user) { toast.error("سجل دخولك أولاً"); return; }
-    if (likes.liked) {
+    const wasLiked = likes.liked;
+    // Optimistic update
+    setLikes(prev => ({
+      count: wasLiked ? prev.count - 1 : prev.count + 1,
+      liked: !wasLiked,
+    }));
+    if (wasLiked) {
       await (supabase.from("item_likes").delete() as any)
         .eq("item_type", itemType)
         .eq("item_id", itemId)
@@ -84,7 +90,6 @@ const TikTokInteraction: React.FC<TikTokInteractionProps> = ({ itemType, itemId 
         user_uuid: user.uuid,
       } as any);
     }
-    fetchData();
   };
 
   const handleSend = async () => {
