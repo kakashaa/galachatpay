@@ -141,11 +141,13 @@ const TikTokPlayer = ({
           </motion.div>
         </AnimatePresence>
 
-        {/* TikTok interaction buttons (likes/comments) */}
-        <TikTokInteraction
-          itemType="entry_gift"
-          itemId={currentVideo.id}
-        />
+        {/* TikTok interaction buttons (likes/comments) - stop propagation to prevent nav */}
+        <div onClick={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
+          <TikTokInteraction
+            itemType="entry_gift"
+            itemId={currentVideo.id}
+          />
+        </div>
 
         {/* Video info overlay at bottom */}
         <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pb-6" dir="rtl">
