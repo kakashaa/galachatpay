@@ -26,7 +26,7 @@ const BannerCarousel: React.FC = () => {
     if (banners.length <= 1) return;
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % banners.length);
-    }, 3000);
+    }, 8000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
