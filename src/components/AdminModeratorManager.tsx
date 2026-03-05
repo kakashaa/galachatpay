@@ -43,6 +43,9 @@ const ALL_PERMISSIONS: { key: string; label: string; icon: React.ReactNode }[] =
   { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-4 h-4" /> },
   { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-4 h-4" /> },
   { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-4 h-4" /> },
+  { key: "custom_gifts", label: "هدايا مخصصة", icon: <Gift className="w-4 h-4" /> },
+  { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-4 h-4" /> },
+  { key: "banners", label: "بنرات", icon: <ClipboardList className="w-4 h-4" /> },
 ];
 
 // Helper: check if a permission key is enabled (either "key" or "key:view")
