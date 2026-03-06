@@ -195,6 +195,7 @@ const SupportTicketsEmbed: React.FC = () => {
         attachment_url: attachUrl,
       } as any);
       await supabase.from("support_tickets").update({ status: "open", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
+      supabase.functions.invoke("telegram-notify", { body: { type: "ticket_reply", record: { user_name: user.name, ticket_id: selectedTicket.id, subject: selectedTicket.subject, message: replyText.trim() || "مرفق", attachment_url: attachUrl } } }).catch(() => {});
       setReplyText("");
       clearAttachment();
     } catch { toast.error("فشل إرسال الرد"); setUploadingAttachment(false); }
