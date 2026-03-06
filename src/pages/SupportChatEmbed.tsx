@@ -293,7 +293,7 @@ const SupportChatEmbed: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col" dir="rtl">
+    <div className="flex-1 flex flex-col min-h-0" dir="rtl">
       {/* Bot status bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-card/50 border-b border-border/20">
         <div className="flex items-center gap-2">
@@ -311,7 +311,7 @@ const SupportChatEmbed: React.FC = () => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0 px-3 py-4 space-y-3">
         {messages.map((msg) => (
           <div key={msg.id}>
             <div className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
@@ -372,7 +372,7 @@ const SupportChatEmbed: React.FC = () => {
       </div>
 
       {/* Input */}
-      <div className="sticky bottom-0 z-40 px-3 pb-3 pt-2 bg-background/80 backdrop-blur-xl border-t border-border/20">
+      <div className="shrink-0 px-3 pb-3 pt-2 bg-background/80 backdrop-blur-xl border-t border-border/20">
         <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex items-center gap-2 bg-card/95 backdrop-blur-xl border border-border/40 rounded-2xl px-3 py-2">
           <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} placeholder={waitingFor === "room_id" ? "اكتب آيدي الغرفة..." : waitingFor?.startsWith("tech_desc") ? "اوصف المشكلة..." : "اكتب رسالتك..."} className="flex-1 bg-transparent text-foreground text-sm placeholder:text-muted-foreground outline-none" dir="rtl" />
           <button type="submit" disabled={!input.trim()} className="w-9 h-9 rounded-full bg-primary flex items-center justify-center disabled:opacity-40 transition-opacity active:scale-90">
