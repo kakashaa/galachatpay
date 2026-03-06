@@ -158,6 +158,10 @@ const SupportTickets: React.FC = () => {
           sender_name: user.name,
           message: description.trim(),
         });
+        // Send Telegram notification
+        supabase.functions.invoke("telegram-notify", {
+          body: { type: "support_ticket", record: inserted },
+        }).catch(() => {});
       }
 
       toast.success("تم رفع التذكرة بنجاح");
