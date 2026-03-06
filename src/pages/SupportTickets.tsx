@@ -55,6 +55,9 @@ const SupportTickets: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [ticketFile, setTicketFile] = useState<File | null>(null);
+  const [ticketFilePreview, setTicketFilePreview] = useState<string | null>(null);
+  const ticketFileInputRef = useRef<HTMLInputElement>(null);
 
   // Conversation view
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -138,10 +141,38 @@ const SupportTickets: React.FC = () => {
     await loadReplies(ticket.id);
   };
 
+  const handleTicketFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error("الحد الأقصى 10 ميغابايت"); return; }
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!["jpg","jpeg","png","gif","webp","pdf","mp4"].includes(ext)) { toast.error("نوع الملف غير مدعوم"); return; }
+    setTicketFile(file);
+    if (file.type.startsWith("image/")) {
+      setTicketFilePreview(URL.createObjectURL(file));
+    } else {
+      setTicketFilePreview(null);
+    }
+  };
+
+  const clearTicketFile = () => {
+    setTicketFile(null);
+    setTicketFilePreview(null);
+    if (ticketFileInputRef.current) ticketFileInputRef.current.value = "";
+  };
+
   const handleSubmit = async () => {
     if (!user || !subject || !description.trim()) return;
     setSubmitting(true);
     try {
+      let ticketAttachUrl: string | null = null;
+      if (ticketFile) {
+        const ts = Date.now();
+        const ext = ticketFile.name.split(".").pop()?.toLowerCase() || "jpg";
+        const path = `tickets/${user.id}/new-${ts}.${ext}`;
+        ticketAttachUrl = await secureUpload({ file: ticketFile, bucket: "attachments", path, userUuid: user.id.toString() });
+      }
+
       const { data: inserted, error } = await supabase.from("support_tickets").insert({
         user_uuid: user.id.toString(),
         user_name: user.name,
@@ -150,17 +181,18 @@ const SupportTickets: React.FC = () => {
       }).select().single();
       if (error) throw error;
 
-      // Also insert the initial message as a reply
+      // Also insert the initial message as a reply (with attachment if any)
       if (inserted) {
         await supabase.from("ticket_replies").insert({
           ticket_id: inserted.id,
           sender_type: "user",
           sender_name: user.name,
           message: description.trim(),
-        });
+          attachment_url: ticketAttachUrl,
+        } as any);
         // Send Telegram notification
         supabase.functions.invoke("telegram-notify", {
-          body: { type: "support_ticket", record: inserted },
+          body: { type: "support_ticket", record: { ...inserted, attachment_url: ticketAttachUrl } },
         }).catch(() => {});
       }
 
@@ -168,6 +200,7 @@ const SupportTickets: React.FC = () => {
       setShowForm(false);
       setSubject("");
       setDescription("");
+      clearTicketFile();
       loadTickets();
     } catch {
       toast.error("فشل إرسال التذكرة");
@@ -437,6 +470,35 @@ const SupportTickets: React.FC = () => {
                 className="w-full p-3 bg-muted/20 rounded-xl text-foreground placeholder:text-muted-foreground border border-border/30 focus:border-primary outline-none text-sm resize-none"
               />
               <p className="text-[10px] text-muted-foreground text-left" dir="ltr">{description.length}/1000</p>
+            </div>
+
+            {/* Attachment for new ticket */}
+            <div className="space-y-2" dir="rtl">
+              <label className="text-xs font-bold text-muted-foreground">مرفق (اختياري)</label>
+              <input type="file" ref={ticketFileInputRef} onChange={handleTicketFileSelect} accept="image/*,.pdf,.mp4" className="hidden" />
+              {ticketFile ? (
+                <div className="flex items-center gap-2 bg-muted/20 rounded-lg p-2">
+                  {ticketFilePreview ? (
+                    <img src={ticketFilePreview} alt="مرفق" className="w-12 h-12 rounded-lg object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Paperclip className="w-5 h-5 text-primary" />
+                    </div>
+                  )}
+                  <span className="text-xs text-foreground flex-1 truncate">{ticketFile.name}</span>
+                  <button onClick={clearTicketFile} className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
+                    <X className="w-3 h-3 text-destructive" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => ticketFileInputRef.current?.click()}
+                  className="w-full h-11 rounded-xl border border-dashed border-border/40 bg-muted/10 flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                >
+                  <Paperclip className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">إرفاق صورة أو ملف</span>
+                </button>
+              )}
             </div>
 
             <button
