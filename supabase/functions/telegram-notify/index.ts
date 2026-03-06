@@ -313,8 +313,8 @@ function formatMessage(type: string, record: any): string | null {
         `💬 <b>رد جديد على تذكرة</b>\n` +
         `👤 ${record.user_name}\n` +
         `📋 ${record.subject}\n` +
-        `📝 ${record.message?.substring(0, 200) || "-"}\n` +
-        (record.attachment_url ? `📎 مرفق\n` : '') +
+        `📝 ${record.message?.substring(0, 300) || "-"}\n` +
+        (record.attachment_url ? `📎 <a href="${record.attachment_url}">مرفق</a>\n` : '') +
         `⏰ ${time}`
       );
 
