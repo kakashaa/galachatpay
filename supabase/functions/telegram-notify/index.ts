@@ -89,26 +89,41 @@ serve(async (req) => {
     if (hasMedia) {
       try {
         if ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url) {
-          // Send attachment as photo or document
           const attachUrl = record.attachment_url;
           const ext = (attachUrl.split(".").pop() || "").toLowerCase().split("?")[0];
           const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+          const captionText = message + (type === "support_ticket" ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>" : "");
+          const replyMarkup = (type === "support_ticket" && record?.id) ? { reply_markup: JSON.stringify({ inline_keyboard: [[{ text: "❌ إغلاق التذكرة", callback_data: `tc:${record.id}` }]] }) } : {};
+          
+          let mediaRes;
           if (isImage) {
-            const photoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: message, parse_mode: "HTML" }),
+              body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: captionText, parse_mode: "HTML", ...replyMarkup }),
             });
-            const photoData = await photoRes.json();
-            console.log("Ticket attachment photo response:", JSON.stringify(photoData));
           } else {
-            const docRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+            mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: message, parse_mode: "HTML" }),
+              body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: captionText, parse_mode: "HTML", ...replyMarkup }),
             });
-            const docData = await docRes.json();
-            console.log("Ticket attachment doc response:", JSON.stringify(docData));
+          }
+          const mediaData = await mediaRes.json();
+          console.log("Ticket media response:", JSON.stringify(mediaData));
+          
+          // Cache message mapping for reply tracking
+          if (type === "support_ticket" && mediaData.ok && mediaData.result?.message_id && record?.id) {
+            try {
+              const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+              await sb.from("edge_function_cache").upsert({
+                key: `tg_msg_ticket:${mediaData.result.message_id}:${CHAT_ID}`,
+                value: { ticket_id: record.id, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
+                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              });
+            } catch (e) {
+              console.error("Failed to cache media message mapping:", e);
+            }
           }
         } else if (type === "animated_photo" && record?.gif_url) {
           // Send GIF as animation with caption
