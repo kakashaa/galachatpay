@@ -262,6 +262,7 @@ const AdminDashboardPage: React.FC = () => {
   const [ticketReplyLoading, setTicketReplyLoading] = useState(false);
   const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
   const [chatReplyInput, setChatReplyInput] = useState("");
+  const [ticketFilter, setTicketFilter] = useState("all");
 
   // Quick support state
   const [quickSupportRequests, setQuickSupportRequests] = useState<any[]>([]);
