@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_telegram_support_tickets ON public.support_tickets;
