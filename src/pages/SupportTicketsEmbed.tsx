@@ -54,7 +54,9 @@ const SupportTicketsEmbed: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
+  const [ticketFile, setTicketFile] = useState<File | null>(null);
+  const [ticketFilePreview, setTicketFilePreview] = useState<string | null>(null);
+  const ticketFileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [replies, setReplies] = useState<TicketReply[]>([]);
   const [replyText, setReplyText] = useState("");
