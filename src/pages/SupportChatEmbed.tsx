@@ -293,7 +293,7 @@ const SupportChatEmbed: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col" dir="rtl">
+    <div className="flex-1 flex flex-col min-h-0" dir="rtl">
       {/* Bot status bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-card/50 border-b border-border/20">
         <div className="flex items-center gap-2">
