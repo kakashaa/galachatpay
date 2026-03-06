@@ -25,6 +25,8 @@ serve(async (req) => {
     }
 
     const { type, record } = await req.json();
+    console.log(`[telegram-notify] type=${type}, record keys=${Object.keys(record || {}).join(",")}`);
+    
     const message = formatMessage(type, record);
 
     if (!message) {
@@ -33,15 +35,19 @@ serve(async (req) => {
       });
     }
 
-    // For types with media, skip text-only message (media below includes caption)
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Determine if we have media to send
     const hasMedia = (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) ||
                      (type === "hair_selection" && record?.file_url) ||
                      (type === "animated_photo" && record?.gif_url) ||
                      ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url);
-    const skipTextMessage = hasMedia;
 
     // Build inline keyboard for support tickets
-    const inlineKeyboard = (type === "support_ticket" && record?.id) ? {
+    const ticketButtons = (type === "support_ticket" && record?.id) ? {
       reply_markup: JSON.stringify({
         inline_keyboard: [[
           { text: "❌ إغلاق التذكرة", callback_data: `tc:${record.id}` }
@@ -49,188 +55,165 @@ serve(async (req) => {
       })
     } : {};
 
+    const replyHint = (type === "support_ticket") 
+      ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>" 
+      : "";
+
     let data: any = { ok: true };
-    if (!skipTextMessage) {
-      const res = await fetch(
-        `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-        {
+
+    // ===== SUPPORT TICKET / TICKET REPLY with attachment =====
+    if ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url) {
+      const attachUrl = record.attachment_url;
+      const ext = (attachUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+      const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+      const captionText = message + replyHint;
+
+      let mediaRes;
+      if (isImage) {
+        mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: message + (type === "support_ticket" ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>" : ""),
-            parse_mode: "HTML",
-            ...inlineKeyboard,
-          }),
+          body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: captionText, parse_mode: "HTML", ...ticketButtons }),
+        });
+      } else {
+        mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: captionText, parse_mode: "HTML", ...ticketButtons }),
+        });
+      }
+      data = await mediaRes.json();
+      console.log("Ticket media response:", JSON.stringify(data));
+
+      // Cache message mapping for reply tracking
+      if (data.ok && data.result?.message_id && record?.id) {
+        const ticketId = type === "support_ticket" ? record.id : record.ticket_id;
+        if (ticketId) {
+          try {
+            await sb.from("edge_function_cache").upsert({
+              key: `tg_msg_ticket:${data.result.message_id}:${CHAT_ID}`,
+              value: { ticket_id: ticketId, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
+              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            });
+          } catch (e) {
+            console.error("Failed to cache message mapping:", e);
+          }
         }
-      );
+      }
+
+    // ===== SUPPORT TICKET / TICKET REPLY without attachment =====
+    } else if (type === "support_ticket" || type === "ticket_reply") {
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: message + replyHint,
+          parse_mode: "HTML",
+          ...ticketButtons,
+        }),
+      });
+      data = await res.json();
+      console.log("Telegram text response:", JSON.stringify(data));
+
+      // Cache for reply tracking
+      if (data.ok && data.result?.message_id) {
+        const ticketId = type === "support_ticket" ? record.id : record.ticket_id;
+        if (ticketId) {
+          try {
+            await sb.from("edge_function_cache").upsert({
+              key: `tg_msg_ticket:${data.result.message_id}:${CHAT_ID}`,
+              value: { ticket_id: ticketId, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
+              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            });
+          } catch (e) {
+            console.error("Failed to cache message mapping:", e);
+          }
+        }
+      }
+
+    // ===== ANIMATED PHOTO =====
+    } else if (type === "animated_photo" && record?.gif_url) {
+      const animRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: CHAT_ID, animation: record.gif_url, caption: message, parse_mode: "HTML" }),
+      });
+      const animData = await animRes.json();
+      console.log("Animated photo response:", JSON.stringify(animData));
+      if (!animData.ok) {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, photo: record.gif_url, caption: message, parse_mode: "HTML" }),
+        });
+      }
+
+    // ===== HAIR SELECTION (SVGA) =====
+    } else if (type === "hair_selection" && record?.file_url) {
+      try {
+        const fileRes = await fetch(record.file_url);
+        const fileBlob = await fileRes.blob();
+        const fileName = record.hair_title ? `${record.hair_title}.svga` : "hair.svga";
+        const formData = new FormData();
+        formData.append("chat_id", CHAT_ID);
+        formData.append("document", fileBlob, fileName);
+        formData.append("caption", message!);
+        formData.append("parse_mode", "HTML");
+        const docRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: "POST", body: formData });
+        const docData = await docRes.json();
+        console.log("Hair SVGA response:", JSON.stringify(docData));
+      } catch (dlErr) {
+        console.error("Failed to download/upload SVGA:", dlErr);
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, text: message + `\n📎 ${record.file_url}`, parse_mode: "HTML" }),
+        });
+      }
+
+    // ===== CUSTOM GIFT =====
+    } else if (type === "custom_gift" && (record?.video_url || record?.thumbnail_url)) {
+      const media: any[] = [];
+      if (record.video_url) {
+        const ext = (record.video_url.split(".").pop() || "").toLowerCase().split("?")[0];
+        const isVideo = ["mp4", "webm", "mov"].includes(ext);
+        media.push({ type: isVideo ? "video" : "document", media: record.video_url, caption: message, parse_mode: "HTML" });
+      }
+      if (record.thumbnail_url) {
+        media.push({ type: "photo", media: record.thumbnail_url, ...(media.length === 0 ? { caption: message, parse_mode: "HTML" } : {}) });
+      }
+      if (media.length > 1) {
+        const groupRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, media }),
+        });
+        console.log("MediaGroup response:", JSON.stringify(await groupRes.json()));
+      } else if (media.length === 1) {
+        const item = media[0];
+        const endpoint = item.type === "video" ? "sendVideo" : item.type === "photo" ? "sendPhoto" : "sendDocument";
+        const fieldName = item.type === "video" ? "video" : item.type === "photo" ? "photo" : "document";
+        const singleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, [fieldName]: item.media, caption: message, parse_mode: "HTML" }),
+        });
+        console.log("Single media response:", JSON.stringify(await singleRes.json()));
+      }
+
+    // ===== ALL OTHER TYPES (text only) =====
+    } else {
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+      });
       data = await res.json();
       console.log("Telegram response:", JSON.stringify(data));
-
-      // Store message_id → ticket_id mapping for reply tracking
-      if (type === "support_ticket" && data.ok && data.result?.message_id && record?.id) {
-        try {
-          const sb = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-          );
-          await sb.from("edge_function_cache").upsert({
-            key: `tg_msg_ticket:${data.result.message_id}:${CHAT_ID}`,
-            value: { ticket_id: record.id, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
-            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          });
-        } catch (e) {
-          console.error("Failed to cache message mapping:", e);
-        }
-      }
     }
 
-    // Send media for custom_gift or hair_selection
-    if (hasMedia) {
-      try {
-        if ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url) {
-          const attachUrl = record.attachment_url;
-          const ext = (attachUrl.split(".").pop() || "").toLowerCase().split("?")[0];
-          const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-          const captionText = message + (type === "support_ticket" ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>" : "");
-          const replyMarkup = (type === "support_ticket" && record?.id) ? { reply_markup: JSON.stringify({ inline_keyboard: [[{ text: "❌ إغلاق التذكرة", callback_data: `tc:${record.id}` }]] }) } : {};
-          
-          let mediaRes;
-          if (isImage) {
-            mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: captionText, parse_mode: "HTML", ...replyMarkup }),
-            });
-          } else {
-            mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: captionText, parse_mode: "HTML", ...replyMarkup }),
-            });
-          }
-          const mediaData = await mediaRes.json();
-          console.log("Ticket media response:", JSON.stringify(mediaData));
-          
-          // Cache message mapping for reply tracking
-          if (type === "support_ticket" && mediaData.ok && mediaData.result?.message_id && record?.id) {
-            try {
-              const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-              await sb.from("edge_function_cache").upsert({
-                key: `tg_msg_ticket:${mediaData.result.message_id}:${CHAT_ID}`,
-                value: { ticket_id: record.id, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
-                expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              });
-            } catch (e) {
-              console.error("Failed to cache media message mapping:", e);
-            }
-          }
-        } else if (type === "animated_photo" && record?.gif_url) {
-          // Send GIF as animation with caption
-          const animRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: CHAT_ID,
-              animation: record.gif_url,
-              caption: message,
-              parse_mode: "HTML",
-            }),
-          });
-          const animData = await animRes.json();
-          console.log("Animated photo response:", JSON.stringify(animData));
-          if (!animData.ok) {
-            // Fallback: send as photo
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: CHAT_ID,
-                photo: record.gif_url,
-                caption: message,
-                parse_mode: "HTML",
-              }),
-            });
-          }
-        } else if (type === "hair_selection" && record?.file_url) {
-          // Download SVGA file then upload to Telegram via multipart
-          try {
-            const fileRes = await fetch(record.file_url);
-            const fileBlob = await fileRes.blob();
-            const fileName = record.hair_title ? `${record.hair_title}.svga` : "hair.svga";
-
-            const formData = new FormData();
-            formData.append("chat_id", CHAT_ID);
-            formData.append("document", fileBlob, fileName);
-            formData.append("caption", message!);
-            formData.append("parse_mode", "HTML");
-
-            const docRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
-              method: "POST",
-              body: formData,
-            });
-            const docData = await docRes.json();
-            console.log("Hair SVGA response:", JSON.stringify(docData));
-          } catch (dlErr) {
-            console.error("Failed to download/upload SVGA:", dlErr);
-            // Fallback: send text only
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: CHAT_ID, text: message + `\n📎 ${record.file_url}`, parse_mode: "HTML" }),
-            });
-          }
-        } else if (type === "custom_gift") {
-          const media: any[] = [];
-          const caption = message;
-
-          if (record.video_url) {
-            const ext = (record.video_url.split(".").pop() || "").toLowerCase().split("?")[0];
-            const isVideo = ["mp4", "webm", "mov"].includes(ext);
-            media.push({
-              type: isVideo ? "video" : "document",
-              media: record.video_url,
-              caption: caption,
-              parse_mode: "HTML",
-            });
-          }
-
-          if (record.thumbnail_url) {
-            media.push({ type: "photo", media: record.thumbnail_url });
-          }
-
-          if (media.length > 1) {
-            const groupRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: CHAT_ID, media }),
-            });
-            const groupData = await groupRes.json();
-            console.log("MediaGroup response:", JSON.stringify(groupData));
-          } else if (media.length === 1) {
-            const item = media[0];
-            const endpoint = item.type === "video" ? "sendVideo" : item.type === "photo" ? "sendPhoto" : "sendDocument";
-            const fieldName = item.type === "video" ? "video" : item.type === "photo" ? "photo" : "document";
-            const singleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: CHAT_ID,
-                [fieldName]: item.media,
-                caption: caption,
-                parse_mode: "HTML",
-              }),
-            });
-            const singleData = await singleRes.json();
-            console.log("Single media response:", JSON.stringify(singleData));
-          }
-        }
-      } catch (e) {
-        console.error("Failed to send media:", e);
-      }
-    }
-
-    return new Response(JSON.stringify({ ok: data.ok }), {
+    return new Response(JSON.stringify({ ok: data.ok ?? true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
@@ -245,14 +228,41 @@ serve(async (req) => {
 function formatMessage(type: string, record: any): string | null {
   const time = new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" });
 
+  const subjectLabel = (sub: string) => {
+    const map: Record<string, string> = {
+      tech: "مشكلة تقنية", balance: "رصيد/شحن", account: "حساب",
+      gifts: "هدايا", voice: "صوت/غرف", report: "بلاغ", inquiry: "استفسار",
+    };
+    return map[sub] || sub;
+  };
+
   switch (type) {
     case "support_ticket":
       return (
-        `🎫 <b>تكت دعم جديد</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `📋 ${record.subject}\n` +
-        `📝 ${record.description?.substring(0, 200) || "-"}\n` +
-        (record.attachment_url ? `📎 <a href="${record.attachment_url}">مرفق</a>\n` : '') +
+        `🎫 <b>تذكرة دعم جديدة</b>\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name || "-"}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid || "-"}</code>\n` +
+        `📋 <b>الموضوع:</b> ${subjectLabel(record.subject)}\n` +
+        `🏷 <b>النوع:</b> ${record.ticket_type || "أخرى"}\n` +
+        `🔴 <b>الأولوية:</b> ${record.priority || "عادي"}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `📝 <b>الوصف:</b>\n${record.description?.substring(0, 500) || "-"}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        (record.attachment_url ? `📎 <b>مرفق:</b> <a href="${record.attachment_url}">عرض المرفق</a>\n` : `📎 <b>مرفق:</b> لا يوجد\n`) +
+        `⏰ ${time}`
+      );
+
+    case "ticket_reply":
+      return (
+        `💬 <b>رد جديد على تذكرة</b>\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المرسل:</b> ${record.user_name || "-"}\n` +
+        `📋 <b>الموضوع:</b> ${subjectLabel(record.subject)}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `📝 <b>الرسالة:</b>\n${record.message?.substring(0, 500) || "-"}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        (record.attachment_url ? `📎 <b>مرفق:</b> <a href="${record.attachment_url}">عرض المرفق</a>\n` : '') +
         `⏰ ${time}`
       );
 
@@ -260,8 +270,9 @@ function formatMessage(type: string, record: any): string | null {
       if (record.status !== "waiting") return null;
       return (
         `💬 <b>طلب شات VIP</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `⭐ VIP ${record.vip_level}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name}\n` +
+        `⭐ <b>المستوى:</b> VIP ${record.vip_level}\n` +
         `⏰ ${time}`
       );
 
@@ -269,64 +280,85 @@ function formatMessage(type: string, record: any): string | null {
       if (record.status !== "pending") return null;
       return (
         `💰 <b>طلب سحب راتب</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `💵 ${record.amount_usd}$\n` +
-        `🏦 ${record.payment_method}\n` +
-        `🌍 ${record.recipient_country}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid || "-"}</code>\n` +
+        `💵 <b>المبلغ:</b> ${record.amount_usd}$\n` +
+        `🏦 <b>طريقة الدفع:</b> ${record.payment_method}\n` +
+        `📋 <b>تفاصيل الدفع:</b> ${record.payment_details || "-"}\n` +
+        `👤 <b>اسم المستلم:</b> ${record.recipient_name || "-"}\n` +
+        `🌍 <b>الدولة:</b> ${record.recipient_country}\n` +
+        (record.user_phone ? `📞 <b>الهاتف:</b> ${record.user_phone}\n` : '') +
+        `📌 <b>النوع:</b> ${record.request_type || "-"}\n` +
         `⏰ ${time}`
       );
 
     case "animated_photo":
       if (record.status !== "pending") return null;
       return (
-        `📸 <b>صورة متحركة طلب جديد</b>\n` +
+        `📸 <b>طلب صورة متحركة</b>\n` +
         `━━━━━━━━━━━━━━━\n` +
-        `👤 ${record.user_name} (UUID: ${record.user_uuid || "-"})\n` +
-        `🔗 عرض الصورة المتحركة\n` +
-        `⏱ المدة: ${record.duration_label}\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid || "-"}</code>\n` +
+        `⏱ <b>المدة:</b> ${record.duration_label}\n` +
+        `📊 <b>أعلى مستوى:</b> ${record.max_level || 0}\n` +
+        (record.description ? `📝 <b>الوصف:</b> ${record.description.substring(0, 200)}\n` : '') +
         `⏰ ${time}`
       );
 
     case "quick_support":
       if (record.status !== "pending") return null;
       const typeMap: Record<string, string> = {
-        admin_presence: "حضور إداري",
-        report: "بلاغ",
-        complaint: "شكوى",
-        contact: "طلب تواصل",
+        admin_presence: "حضور إداري", report: "بلاغ", complaint: "شكوى", contact: "طلب تواصل",
       };
       return (
         `⚡ <b>دعم سريع: ${typeMap[record.request_type] || record.request_type}</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `📝 ${record.description?.substring(0, 100) || "-"}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid || "-"}</code>\n` +
+        (record.room_code ? `🏠 <b>كود الغرفة:</b> ${record.room_code}\n` : '') +
+        `📝 <b>الوصف:</b> ${record.description?.substring(0, 200) || "-"}\n` +
+        (record.phone_number ? `📞 <b>الهاتف:</b> ${record.phone_number}\n` : '') +
+        (record.attachment_url ? `📎 <a href="${record.attachment_url}">مرفق</a>\n` : '') +
         `⏰ ${time}`
       );
 
     case "custom_gift":
       if (record.status !== "pending") return null;
       return (
-        `🎁 <b>هدية مخصصة</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `📛 ${record.title}\n` +
-        (record.phone_number ? `📞 ${record.phone_number}\n` : '') +
+        `🎁 <b>طلب هدية مخصصة</b>\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid || "-"}</code>\n` +
+        (record.user_gala_id ? `🔖 <b>Gala ID:</b> ${record.user_gala_id}\n` : '') +
+        `📛 <b>الاسم:</b> ${record.title}\n` +
+        `⏱ <b>مدة الفيديو:</b> ${record.video_duration || 0} ثانية\n` +
+        `📊 <b>مستوى الشاحن:</b> ${record.charger_level_at_upload || 0}\n` +
+        (record.phone_number ? `📞 <b>الهاتف:</b> ${record.phone_number}\n` : '') +
         `⏰ ${time}`
       );
 
     case "hair_selection":
       return (
         `💇 <b>طلب شعار جديد</b>\n` +
-        `👤 ${record.user_name || "-"}\n` +
-        `📛 ${record.hair_title || "-"}\n` +
-        `⭐ التكلفة: ${record.star_cost || 0} نجمة\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name || "-"}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid || "-"}</code>\n` +
+        `📛 <b>الشعار:</b> ${record.hair_title || "-"}\n` +
+        `⭐ <b>التكلفة:</b> ${record.star_cost || 0} نجمة\n` +
         `⏰ ${time}`
       );
 
     case "ban_report":
       return (
         `🚫 <b>بلاغ حظر جديد</b>\n` +
-        `👤 المبلّغ: ${record.reporter_gala_id}\n` +
-        `🎯 المبلّغ عنه: ${record.reported_user_id}\n` +
-        `📋 النوع: ${record.ban_type}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المبلّغ:</b> ${record.reporter_gala_id}\n` +
+        `🎯 <b>المبلّغ عنه:</b> ${record.reported_user_id}\n` +
+        `📋 <b>النوع:</b> ${record.ban_type}\n` +
+        `📝 <b>الوصف:</b> ${record.description?.substring(0, 200) || "-"}\n` +
+        `📎 <b>نوع الدليل:</b> ${record.evidence_type || "صورة"}\n` +
+        (record.evidence_url ? `🔗 <a href="${record.evidence_url}">عرض الدليل</a>\n` : '') +
         `⏰ ${time}`
       );
 
@@ -334,30 +366,25 @@ function formatMessage(type: string, record: any): string | null {
       if (record.status !== "pending") return null;
       return (
         `📋 <b>طلب تسجيل BD</b>\n` +
-        `👤 ${record.user_name} (${record.user_uuid})\n` +
-        `📊 المستوى: ${record.user_level}\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid}</code>\n` +
+        `📊 <b>المستوى:</b> ${record.user_level}\n` +
         `⏰ ${time}`
       );
 
     case "bd_withdrawal":
-      // Handled directly by bd-manage edge function with full details
       return null;
 
     case "vip_request":
       return (
         `👑 <b>طلب VIP</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `⭐ المستوى: VIP ${record.vip_level}\n` +
-        `⏰ ${time}`
-      );
-
-    case "ticket_reply":
-      return (
-        `💬 <b>رد جديد على تذكرة</b>\n` +
-        `👤 ${record.user_name}\n` +
-        `📋 ${record.subject}\n` +
-        `📝 ${record.message?.substring(0, 300) || "-"}\n` +
-        (record.attachment_url ? `📎 <a href="${record.attachment_url}">مرفق</a>\n` : '') +
+        `━━━━━━━━━━━━━━━\n` +
+        `👤 <b>المستخدم:</b> ${record.user_name}\n` +
+        `🆔 <b>UUID:</b> <code>${record.user_uuid || "-"}</code>\n` +
+        `⭐ <b>المستوى:</b> VIP ${record.vip_level}\n` +
+        (record.recipient_uuid ? `🎁 <b>للمستلم:</b> <code>${record.recipient_uuid}</code>\n` : '') +
+        `📅 <b>الشهر:</b> ${record.request_month || "-"}\n` +
         `⏰ ${time}`
       );
 
