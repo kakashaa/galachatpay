@@ -202,6 +202,17 @@ const SupportTicketsEmbed: React.FC = () => {
     setSendingReply(false);
   };
 
+  const handleCloseByUser = async () => {
+    if (!selectedTicket) return;
+    try {
+      await supabase.from("support_tickets").update({ status: "closed", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
+      await supabase.from("ticket_replies").insert({ ticket_id: selectedTicket.id, sender_type: "user", sender_name: user?.name || "", message: "✅ تم إنهاء التذكرة من قبل المستخدم" } as any);
+      setSelectedTicket(prev => prev ? { ...prev, status: "closed" } : prev);
+      toast.success("تم إنهاء التذكرة بنجاح");
+      loadTickets();
+    } catch { toast.error("فشل إنهاء التذكرة"); }
+  };
+
   const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -296,10 +307,14 @@ const SupportTicketsEmbed: React.FC = () => {
                 {(sendingReply || uploadingAttachment) ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" />}
               </button>
             </div>
+            {/* Close ticket button for user */}
+            <button onClick={handleCloseByUser} className="w-full py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 text-emerald-400 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+              <CheckCircle className="w-3.5 h-3.5" /> تم حل المشكلة — إنهاء التذكرة
+            </button>
           </div>
         ) : (
           <div className="px-4 py-3 border-t border-border/10 bg-card/50 text-center">
-            <p className="text-xs text-muted-foreground">تم إغلاق هذه التذكرة</p>
+            <p className="text-xs text-muted-foreground">✅ تم إنهاء هذه التذكرة</p>
           </div>
         )}
       </div>
