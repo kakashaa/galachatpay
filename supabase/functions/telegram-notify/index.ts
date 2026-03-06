@@ -185,7 +185,8 @@ function formatMessage(type: string, record: any): string | null {
         `🎫 <b>تكت دعم جديد</b>\n` +
         `👤 ${record.user_name}\n` +
         `📋 ${record.subject}\n` +
-        `📝 ${record.description?.substring(0, 100) || "-"}\n` +
+        `📝 ${record.description?.substring(0, 200) || "-"}\n` +
+        (record.attachment_url ? `📎 <a href="${record.attachment_url}">مرفق</a>\n` : '') +
         `⏰ ${time}`
       );
 
