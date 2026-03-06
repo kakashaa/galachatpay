@@ -35,7 +35,8 @@ serve(async (req) => {
     // For types with media, skip text-only message (media below includes caption)
     const hasMedia = (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) ||
                      (type === "hair_selection" && record?.file_url) ||
-                     (type === "animated_photo" && record?.gif_url);
+                     (type === "animated_photo" && record?.gif_url) ||
+                     ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url);
     const skipTextMessage = hasMedia;
 
     let data: any = { ok: true };
@@ -59,7 +60,29 @@ serve(async (req) => {
     // Send media for custom_gift or hair_selection
     if (hasMedia) {
       try {
-        if (type === "animated_photo" && record?.gif_url) {
+        if ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url) {
+          // Send attachment as photo or document
+          const attachUrl = record.attachment_url;
+          const ext = (attachUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+          const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+          if (isImage) {
+            const photoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: message, parse_mode: "HTML" }),
+            });
+            const photoData = await photoRes.json();
+            console.log("Ticket attachment photo response:", JSON.stringify(photoData));
+          } else {
+            const docRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: message, parse_mode: "HTML" }),
+            });
+            const docData = await docRes.json();
+            console.log("Ticket attachment doc response:", JSON.stringify(docData));
+          }
+        } else if (type === "animated_photo" && record?.gif_url) {
           // Send GIF as animation with caption
           const animRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
             method: "POST",
@@ -185,7 +208,8 @@ function formatMessage(type: string, record: any): string | null {
         `🎫 <b>تكت دعم جديد</b>\n` +
         `👤 ${record.user_name}\n` +
         `📋 ${record.subject}\n` +
-        `📝 ${record.description?.substring(0, 100) || "-"}\n` +
+        `📝 ${record.description?.substring(0, 200) || "-"}\n` +
+        (record.attachment_url ? `📎 <a href="${record.attachment_url}">مرفق</a>\n` : '') +
         `⏰ ${time}`
       );
 
@@ -289,8 +313,8 @@ function formatMessage(type: string, record: any): string | null {
         `💬 <b>رد جديد على تذكرة</b>\n` +
         `👤 ${record.user_name}\n` +
         `📋 ${record.subject}\n` +
-        `📝 ${record.message?.substring(0, 200) || "-"}\n` +
-        (record.attachment_url ? `📎 مرفق\n` : '') +
+        `📝 ${record.message?.substring(0, 300) || "-"}\n` +
+        (record.attachment_url ? `📎 <a href="${record.attachment_url}">مرفق</a>\n` : '') +
         `⏰ ${time}`
       );
 
