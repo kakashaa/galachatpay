@@ -158,6 +158,10 @@ const SupportTickets: React.FC = () => {
           sender_name: user.name,
           message: description.trim(),
         });
+        // Send Telegram notification
+        supabase.functions.invoke("telegram-notify", {
+          body: { type: "support_ticket", record: inserted },
+        }).catch(() => {});
       }
 
       toast.success("تم رفع التذكرة بنجاح");
@@ -215,6 +219,19 @@ const SupportTickets: React.FC = () => {
         status: "open",
         updated_at: new Date().toISOString(),
       }).eq("id", selectedTicket.id);
+      // Send Telegram notification for user reply
+      supabase.functions.invoke("telegram-notify", {
+        body: {
+          type: "ticket_reply",
+          record: {
+            user_name: user.name,
+            ticket_id: selectedTicket.id,
+            subject: selectedTicket.subject,
+            message: replyText.trim() || "مرفق",
+            attachment_url: attachUrl,
+          },
+        },
+      }).catch(() => {});
       setReplyText("");
       clearAttachment();
     } catch {
