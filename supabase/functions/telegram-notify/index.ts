@@ -284,6 +284,16 @@ function formatMessage(type: string, record: any): string | null {
         `⏰ ${time}`
       );
 
+    case "ticket_reply":
+      return (
+        `💬 <b>رد جديد على تذكرة</b>\n` +
+        `👤 ${record.user_name}\n` +
+        `📋 ${record.subject}\n` +
+        `📝 ${record.message?.substring(0, 200) || "-"}\n` +
+        (record.attachment_url ? `📎 مرفق\n` : '') +
+        `⏰ ${time}`
+      );
+
     default:
       return (
         `📌 <b>حدث جديد: ${type}</b>\n` +
