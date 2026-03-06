@@ -39,6 +39,15 @@ serve(async (req) => {
                      ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url);
     const skipTextMessage = hasMedia;
 
+    // Build inline keyboard for support tickets
+    const inlineKeyboard = (type === "support_ticket" && record?.id) ? {
+      reply_markup: JSON.stringify({
+        inline_keyboard: [[
+          { text: "❌ إغلاق التذكرة", callback_data: `tc:${record.id}` }
+        ]]
+      })
+    } : {};
+
     let data: any = { ok: true };
     if (!skipTextMessage) {
       const res = await fetch(
@@ -48,13 +57,31 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: CHAT_ID,
-            text: message,
+            text: message + (type === "support_ticket" ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>" : ""),
             parse_mode: "HTML",
+            ...inlineKeyboard,
           }),
         }
       );
       data = await res.json();
       console.log("Telegram response:", JSON.stringify(data));
+
+      // Store message_id → ticket_id mapping for reply tracking
+      if (type === "support_ticket" && data.ok && data.result?.message_id && record?.id) {
+        try {
+          const sb = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+          );
+          await sb.from("edge_function_cache").upsert({
+            key: `tg_msg_ticket:${data.result.message_id}:${CHAT_ID}`,
+            value: { ticket_id: record.id, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          });
+        } catch (e) {
+          console.error("Failed to cache message mapping:", e);
+        }
+      }
     }
 
     // Send media for custom_gift or hair_selection
