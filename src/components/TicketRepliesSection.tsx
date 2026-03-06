@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Send, Paperclip, CheckCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { secureUpload } from "@/utils/secureUpload";
+
 
 interface TicketReply {
   id: string;
