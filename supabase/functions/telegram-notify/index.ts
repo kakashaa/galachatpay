@@ -35,7 +35,8 @@ serve(async (req) => {
     // For types with media, skip text-only message (media below includes caption)
     const hasMedia = (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) ||
                      (type === "hair_selection" && record?.file_url) ||
-                     (type === "animated_photo" && record?.gif_url);
+                     (type === "animated_photo" && record?.gif_url) ||
+                     ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url);
     const skipTextMessage = hasMedia;
 
     let data: any = { ok: true };
