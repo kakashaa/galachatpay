@@ -2264,6 +2264,69 @@ const AdminDashboardPage: React.FC = () => {
 
 
 
+            {/* Support Tickets Tab */}
+            {activeTab === "support_tickets" && (
+              <motion.div key="support_tickets" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                {/* Filter */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { key: "all", label: "الكل", count: supportTickets.length },
+                    { key: "open", label: "مفتوحة", count: supportTickets.filter((t: any) => t.status === "open").length },
+                    { key: "replied", label: "تم الرد", count: supportTickets.filter((t: any) => t.status === "replied").length },
+                    { key: "closed", label: "مغلقة", count: supportTickets.filter((t: any) => t.status === "closed").length },
+                  ].map(f => (
+                    <button key={f.key} onClick={() => setTicketFilter(f.key)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${ticketFilter === f.key ? "ring-2 ring-primary/50 bg-primary/10 border-primary" : "bg-card border-border/40"}`}>
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
+                {supportTickets
+                  .filter((t: any) => ticketFilter === "all" || t.status === ticketFilter)
+                  .length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>لا توجد تذاكر</p>
+                  </div>
+                ) : supportTickets
+                  .filter((t: any) => ticketFilter === "all" || t.status === ticketFilter)
+                  .map((ticket: any) => (
+                  <div key={ticket.id} className="bg-card border rounded-xl overflow-hidden">
+                    <button onClick={() => setExpandedTicket(expandedTicket === ticket.id ? null : ticket.id)} className="w-full p-4 flex items-center justify-between text-right">
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          ticket.status === "open" ? "bg-amber-500/20 text-amber-500" :
+                          ticket.status === "replied" ? "bg-emerald-500/20 text-emerald-500" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {ticket.status === "open" ? "مفتوح" : ticket.status === "replied" ? "تم الرد" : "مغلق"}
+                        </span>
+                        <div>
+                          <p className="font-bold text-sm">{ticket.user_name}</p>
+                          <p className="text-xs text-muted-foreground">{ticket.subject}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">{new Date(ticket.created_at).toLocaleDateString("ar-EG")}</span>
+                        {expandedTicket === ticket.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                    </button>
+                    {expandedTicket === ticket.id && (
+                      <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                        <div className="text-xs space-y-1">
+                          <p><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{ticket.user_uuid}</span></p>
+                          <p><span className="text-muted-foreground">الوصف:</span> {ticket.description}</p>
+                          <p><span className="text-muted-foreground">التاريخ:</span> {new Date(ticket.created_at).toLocaleString("ar-EG")}</p>
+                        </div>
+                        {/* Replies */}
+                        <TicketRepliesSection ticket={ticket} canAct={canAct} adminUsername={adminUsername} onUpdate={() => loadData()} />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
             {/* Quick Support Tab */}
             {activeTab === "quick_support" && (
               <motion.div key="quick_support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
