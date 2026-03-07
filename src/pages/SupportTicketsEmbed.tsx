@@ -162,7 +162,7 @@ const SupportTicketsEmbed: React.FC = () => {
   const loadTickets = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase.from("support_tickets").select("*").eq("user_uuid", user.id.toString()).order("created_at", { ascending: false });
+    const { data } = await supabase.from("support_tickets").select("*").eq("user_uuid", user.uuid).order("created_at", { ascending: false });
     if (data) setTickets(data as any);
     setLoading(false);
   };
