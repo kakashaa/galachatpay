@@ -201,6 +201,58 @@ serve(async (req) => {
         return ok();
       }
 
+      // ===== BAN REPORT approve/reject =====
+      if (data.startsWith("ban_ok_") || data.startsWith("ban_no_")) {
+        const isApprove = data.startsWith("ban_ok_");
+        const reportId = data.substring(7); // remove "ban_ok_" or "ban_no_"
+        const chatId = cb.message.chat.id;
+
+        try {
+          const BAN_API = "https://hola-chat.com/ban-report-api.php";
+          const API_KEY = "ghala2026actions";
+          const newAction = isApprove ? "approve-report" : "reject-report";
+
+          const formData = new URLSearchParams();
+          formData.append("action", newAction);
+          formData.append("report_id", reportId);
+
+          const apiRes = await fetch(`${BAN_API}?key=${API_KEY}&action=${newAction}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          });
+          const result = await apiRes.text();
+          console.log(`[telegram-webhook] Ban ${newAction} result:`, result.substring(0, 300));
+
+          // Update the Telegram message to show the result
+          const statusEmoji = isApprove ? "✅" : "❌";
+          const statusText = isApprove ? "تم قبول الحظر" : "تم رفض البلاغ";
+          const originalText = cb.message.caption || cb.message.text || "";
+
+          if (cb.message.caption) {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageCaption`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: cb.message.message_id,
+                caption: originalText + `\n\n${statusEmoji} <b>${statusText}</b> ${statusEmoji}`,
+                parse_mode: "HTML",
+              }),
+            });
+          } else {
+            await editMessage(BOT_TOKEN, chatId, cb.message.message_id,
+              originalText + `\n\n${statusEmoji} <b>${statusText}</b> ${statusEmoji}`);
+          }
+
+          await answerCallback(BOT_TOKEN, cb.id, `${statusEmoji} ${statusText} - بلاغ #${reportId}`);
+        } catch (e) {
+          console.error("[telegram-webhook] Ban approve/reject error:", e);
+          await answerCallback(BOT_TOKEN, cb.id, "❌ فشل تحديث البلاغ");
+        }
+        return ok();
+      }
+
       // ===== WARES REQUEST approve/reject (entry, frame, etc.) =====
       if (data.startsWith("req_ok_") || data.startsWith("req_no_")) {
         const isApprove = data.startsWith("req_ok_");
