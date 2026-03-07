@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     // Cache topic→chat_key mapping for Telegram reply bridging
-    if (action === "start" && data?.ok && data?.chat?.tg_topic_id) {
+    if ((action === "start" || action === "status") && data?.ok && data?.chat?.tg_topic_id) {
       const topicId = data.chat.tg_topic_id;
       const chatKey = data.chat.chat_key || params.chat_key;
       const userName = data.chat.user_name || params.user_name || "";
