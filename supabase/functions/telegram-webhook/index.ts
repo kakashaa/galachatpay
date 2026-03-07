@@ -39,17 +39,13 @@ serve(async (req) => {
           return ok();
         }
 
+        // Delete all replies for this ticket
+        await sb.from("ticket_replies").delete().eq("ticket_id", ticketId);
+
         await sb.from("support_tickets").update({
           status: "closed",
           updated_at: new Date().toISOString(),
         }).eq("id", ticketId);
-
-        await sb.from("ticket_replies").insert({
-          ticket_id: ticketId,
-          sender_type: "admin",
-          sender_name: "الإدارة (تلجرام)",
-          message: "✅ تم إغلاق التذكرة من قبل الإدارة",
-        });
 
         await sb.from("notifications").insert({
           user_uuid: ticket.user_uuid,

@@ -137,6 +137,8 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
 
   const handleCloseTicket = async () => {
     try {
+      // Delete all replies for this ticket
+      await supabase.from("ticket_replies").delete().eq("ticket_id", ticket.id);
       await supabase.from("support_tickets").update({
         status: "closed",
         updated_at: new Date().toISOString(),
@@ -147,6 +149,7 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
         body: `تم إنهاء تذكرة "${ticket.subject}". شكراً لتواصلك.`,
         target: "personal",
       });
+      setReplies([]);
       toast.success("تم إغلاق التذكرة");
       onUpdate();
     } catch {

@@ -281,8 +281,10 @@ const SupportTicketsEmbed: React.FC = () => {
   const handleCloseByUser = async () => {
     if (!selectedTicket) return;
     try {
+      // Delete all replies for this ticket
+      await supabase.from("ticket_replies").delete().eq("ticket_id", selectedTicket.id);
       await supabase.from("support_tickets").update({ status: "closed", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
-      await supabase.from("ticket_replies").insert({ ticket_id: selectedTicket.id, sender_type: "user", sender_name: user?.name || "", message: "✅ تم إنهاء التذكرة من قبل المستخدم" } as any);
+      setReplies([]);
       setSelectedTicket(prev => prev ? { ...prev, status: "closed" } : prev);
       toast.success("تم إنهاء التذكرة بنجاح");
       loadTickets();
