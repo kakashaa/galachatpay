@@ -98,7 +98,10 @@ const SupportTickets: React.FC = () => {
       }, (payload) => {
         const newReply = payload.new as TicketReply;
         if (selectedTicket && newReply.ticket_id === selectedTicket.id) {
-          setReplies((prev) => [...prev, newReply]);
+          setReplies((prev) => {
+            if (prev.some((r) => r.id === newReply.id)) return prev;
+            return [...prev, newReply];
+          });
           if (newReply.sender_type === "admin") {
             toast.success("رد جديد من فريق الدعم!");
           }
