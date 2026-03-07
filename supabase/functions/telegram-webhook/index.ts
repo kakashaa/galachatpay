@@ -346,8 +346,7 @@ serve(async (req) => {
       if (data.startsWith("end_chat_")) {
         const chatKey = data.substring(9); // remove "end_chat_"
         const chatId = cb.message.chat.id;
-        const topicId = cb.message?.message_thread_id;
-        console.log(`[telegram-webhook] Ending live chat: ${chatKey}, topic: ${topicId}`);
+        console.log(`[telegram-webhook] Ending live chat: ${chatKey}`);
 
         try {
           // 1) End the chat via hola-chat API
@@ -364,50 +363,10 @@ serve(async (req) => {
           const result = await apiRes.text();
           console.log(`[telegram-webhook] End chat response:`, result.substring(0, 200));
 
-          // 2) Delete the forum topic entirely (this removes ALL messages inside it)
-          if (topicId) {
-            // Try deleteForumTopic first - it deletes the topic AND all messages inside
-            const delTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteForumTopic`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
-            });
-            const delTopicResult = await delTopicRes.json();
-            console.log(`[telegram-webhook] deleteForumTopic result:`, JSON.stringify(delTopicResult));
+          // Delete the button message
+          await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
 
-            if (!delTopicResult.ok) {
-              console.log(`[telegram-webhook] deleteForumTopic failed, trying closeForumTopic...`);
-              // Fallback: close topic then delete messages manually
-              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/closeForumTopic`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
-              });
-
-              // Delete the button message at least
-              await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
-            }
-
-            // Clean up all cached messages for this topic
-            const { data: cachedMsgs } = await sb
-              .from("edge_function_cache")
-              .select("key")
-              .like("key", `live_chat_msg:${topicId}:%`);
-
-            if (cachedMsgs && cachedMsgs.length > 0) {
-              for (const c of cachedMsgs) {
-                await sb.from("edge_function_cache").delete().eq("key", c.key);
-              }
-            }
-
-            // Clean up topic cache
-            await sb.from("edge_function_cache").delete().eq("key", `live_chat_topic:${topicId}`);
-          } else {
-            // No topic, just delete the button message
-            await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
-          }
-
-          // 5) Notify the user (extract uuid from chat_key: normal_UUID_timestamp)
+          // Notify the user (extract uuid from chat_key: normal_UUID_timestamp)
           const keyParts = chatKey.split("_");
           if (keyParts.length >= 2) {
             const userUuid = keyParts[1];
@@ -419,7 +378,7 @@ serve(async (req) => {
             });
           }
 
-          await answerCallback(BOT_TOKEN, cb.id, "✅ تم إنهاء وحذف المحادثة بنجاح");
+          await answerCallback(BOT_TOKEN, cb.id, "✅ تم إنهاء المحادثة بنجاح");
         } catch (e) {
           console.error("[telegram-webhook] End chat error:", e);
           await answerCallback(BOT_TOKEN, cb.id, "❌ فشل إنهاء المحادثة");
