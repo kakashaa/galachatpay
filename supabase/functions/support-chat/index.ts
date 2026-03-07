@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,6 +63,26 @@ serve(async (req) => {
       data = JSON.parse(rawText);
     } catch {
       data = { ok: false, error: "Invalid API response", raw: rawText.substring(0, 200) };
+    }
+
+    // Cache tg_topic_id → chat_key mapping for Telegram webhook forwarding
+    if (action === "status" && data?.ok && data?.chat?.tg_topic_id && params.chat_key) {
+      try {
+        const sb = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const topicId = data.chat.tg_topic_id;
+        const cacheKey = `live_chat_topic:${topicId}`;
+        await sb.from("edge_function_cache").upsert({
+          key: cacheKey,
+          value: { chat_key: params.chat_key, user_name: data.chat.user_name || "" },
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        }, { onConflict: "key" });
+        console.log(`[support-chat] Cached topic ${topicId} → ${params.chat_key}`);
+      } catch (e) {
+        console.error("[support-chat] Cache error:", e);
+      }
     }
 
     return new Response(JSON.stringify(data), {
