@@ -214,7 +214,7 @@ serve(async (req) => {
 
           const formData = new URLSearchParams();
           formData.append("action", newAction);
-          formData.append("report_id", reportId);
+          formData.append("id", reportId);
 
           const apiRes = await fetch(`${BAN_API}?key=${API_KEY}&action=${newAction}`, {
             method: "POST",
