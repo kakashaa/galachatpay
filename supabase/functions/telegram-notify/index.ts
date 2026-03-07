@@ -114,6 +114,12 @@ serve(async (req) => {
               value: { ticket_id: ticketId, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
               expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             });
+            // Reverse cache: ticket_id -> message_id for cleanup on close
+            await sb.from("edge_function_cache").upsert({
+              key: `ticket_tg_msg:${ticketId}`,
+              value: { message_id: data.result.message_id, chat_id: CHAT_ID },
+              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            });
           } catch (e) {
             console.error("Failed to cache message mapping:", e);
           }
