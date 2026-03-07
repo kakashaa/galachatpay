@@ -40,14 +40,26 @@ const LiveSupportChat: React.FC<Props> = ({
   const lastMsgIdRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch messages directly from external API via edge function
-  const fetchMessages = useCallback(async () => {
+  // Combined poll: fetches messages + status in one call via edge function
+  const poll = useCallback(async () => {
     try {
       const result = await supabase.functions.invoke("support-chat", {
-        body: { action: "messages", chat_key: chatKey, after_id: lastMsgIdRef.current },
+        body: { action: "poll", chat_key: chatKey, after_id: lastMsgIdRef.current },
       });
       const data = result.data;
-      if (data?.ok && data?.messages?.length) {
+      if (!data?.ok) return;
+
+      // Update status
+      const newStatus = data.status || "active";
+      setChatStatus(newStatus);
+      if (data.queue_position) setQueuePos(data.queue_position);
+      if (data.ended || newStatus === "ended" || newStatus === "closed") {
+        setEnded(true);
+        onEnded?.();
+      }
+
+      // Update messages
+      if (data.messages?.length) {
         const newMsgs: Message[] = data.messages.map((m: any) => ({
           id: m.id,
           sender_type: m.sender_type,
@@ -56,25 +68,24 @@ const LiveSupportChat: React.FC<Props> = ({
           attachment_url: m.attachment_url || null,
           created_at: m.created_at,
         }));
-        const maxId = Math.max(...newMsgs.map(m => m.id));
+        const maxId = Math.max(...newMsgs.map((m: Message) => m.id));
         if (maxId > lastMsgIdRef.current) lastMsgIdRef.current = maxId;
 
         setMessages(prev => {
-          // Merge: add only new IDs, replace temp messages
           const existingIds = new Set(prev.filter(p => typeof p.id === "number").map(p => p.id));
-          const brandNew = newMsgs.filter(m => !existingIds.has(m.id));
+          const brandNew = newMsgs.filter((m: Message) => !existingIds.has(m.id));
           if (brandNew.length === 0) return prev;
 
-          // Remove temp messages that match new real messages
+          // Remove optimistic messages that match real ones
           const cleaned = prev.filter(p => {
             if (typeof p.id === "number") return true;
-            return !brandNew.some(r =>
+            return !brandNew.some((r: Message) =>
               r.sender_type === p.sender_type &&
               (r.message === p.message || (r.attachment_url && r.attachment_url === p.attachment_url))
             );
           });
 
-          // Check system messages for end signal
+          // Check for system end messages and admin replies
           for (const m of brandNew) {
             if (m.sender_type === "system" && m.message.includes("إنهاء")) {
               setEnded(true);
@@ -90,42 +101,19 @@ const LiveSupportChat: React.FC<Props> = ({
           );
         });
       }
+
       if (!initialLoaded) setInitialLoaded(true);
     } catch {
       if (!initialLoaded) setInitialLoaded(true);
     }
   }, [chatKey, onEnded, initialLoaded]);
 
-  // Poll status from external API
-  const pollStatus = useCallback(async () => {
-    try {
-      const result = await supabase.functions.invoke("support-chat", {
-        body: { action: "status", chat_key: chatKey },
-      });
-      const data = result.data;
-      if (data?.ok) {
-        const chat = data.chat;
-        const newStatus = chat?.status || data.status || "active";
-        setChatStatus(newStatus);
-        if (data.queue_position) setQueuePos(data.queue_position);
-        if ((newStatus === "ended" || newStatus === "closed") && chat?.ended_at) {
-          setEnded(true);
-          onEnded?.();
-        }
-      }
-    } catch { /* silent */ }
-  }, [chatKey, onEnded]);
-
-  // Start polling every 2 seconds
+  // Start polling every 3 seconds
   useEffect(() => {
-    fetchMessages();
-    pollStatus();
-    pollRef.current = setInterval(() => {
-      fetchMessages();
-      pollStatus();
-    }, 2000);
+    poll();
+    pollRef.current = setInterval(poll, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchMessages, pollStatus]);
+  }, [poll]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -137,14 +125,11 @@ const LiveSupportChat: React.FC<Props> = ({
     try {
       const ext = file.name.split(".").pop() || "jpg";
       const path = `support-chat/${chatKey}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("attachments")
-        .upload(path, file, { contentType: file.type });
+      const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
       return urlData.publicUrl;
-    } catch (e) {
-      console.error("[LiveSupportChat] Upload error:", e);
+    } catch {
       toast.error("فشل رفع الصورة");
       return null;
     }
@@ -153,14 +138,8 @@ const LiveSupportChat: React.FC<Props> = ({
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("يرجى اختيار صورة فقط");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("الحد الأقصى 5 ميجابايت");
-      return;
-    }
+    if (!file.type.startsWith("image/")) { toast.error("يرجى اختيار صورة فقط"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("الحد الأقصى 5 ميجابايت"); return; }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -183,7 +162,7 @@ const LiveSupportChat: React.FC<Props> = ({
       clearImage();
     }
 
-    // Optimistic: add message to UI immediately with temp id
+    // Optimistic UI
     const tempId = `temp-${Date.now()}` as any;
     const optimisticMsg: Message = {
       id: tempId,
@@ -228,9 +207,7 @@ const LiveSupportChat: React.FC<Props> = ({
   const formatTime = (d: string) => {
     try {
       return new Date(d).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
-    } catch {
-      return "";
-    }
+    } catch { return ""; }
   };
 
   const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(url);
@@ -260,9 +237,7 @@ const LiveSupportChat: React.FC<Props> = ({
       <AnimatePresence>
         {chatStatus === "waiting" && queuePos > 0 && !ended && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-center gap-2"
           >
             <Users className="w-4 h-4 text-amber-400" />
@@ -287,8 +262,7 @@ const LiveSupportChat: React.FC<Props> = ({
           return (
             <div key={msg.id} className={`flex ${msg.sender_type === "user" ? "justify-end" : "justify-start"}`}>
               <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                 className={`max-w-[80%] rounded-2xl p-3 ${
                   msg.sender_type === "user"
                     ? "bg-primary/15 border border-primary/25 rounded-tr-md"
@@ -298,20 +272,13 @@ const LiveSupportChat: React.FC<Props> = ({
                 {msg.sender_type === "admin" && (
                   <p className="text-[10px] font-bold text-emerald-400 mb-1">{msg.sender_name || "فريق الدعم"}</p>
                 )}
-                {/* Attachment image */}
                 {msg.attachment_url && isImageUrl(msg.attachment_url) && (
                   <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
-                    <img
-                      src={msg.attachment_url}
-                      alt="مرفق"
-                      className="rounded-lg max-h-48 w-auto object-cover border border-border/20"
-                      loading="lazy"
-                    />
+                    <img src={msg.attachment_url} alt="مرفق" className="rounded-lg max-h-48 w-auto object-cover border border-border/20" loading="lazy" />
                   </a>
                 )}
                 {msg.attachment_url && !isImageUrl(msg.attachment_url) && (
-                  <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-primary underline block mb-1">📎 مرفق</a>
+                  <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline block mb-1">📎 مرفق</a>
                 )}
                 {msg.message && msg.message !== "📷 صورة" && (
                   <p className="text-xs text-foreground whitespace-pre-line">{msg.message}</p>
@@ -348,17 +315,12 @@ const LiveSupportChat: React.FC<Props> = ({
       <AnimatePresence>
         {imagePreview && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="px-4 py-2 border-t border-border/10 bg-card/50"
           >
             <div className="relative inline-block">
               <img src={imagePreview} alt="preview" className="h-20 rounded-lg border border-border/30 object-cover" />
-              <button
-                onClick={clearImage}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center"
-              >
+              <button onClick={clearImage} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center">
                 <X className="w-3 h-3 text-destructive-foreground" />
               </button>
             </div>
@@ -370,18 +332,8 @@ const LiveSupportChat: React.FC<Props> = ({
       {!ended && (
         <div className="px-4 py-2 border-t border-border/10 bg-card/50">
           <div className="flex gap-2 items-center">
-            <input
-              type="file"
-              accept="image/*"
-              ref={fileInputRef}
-              onChange={handleImageSelect}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending}
-              className="w-10 h-10 rounded-xl bg-muted/20 border border-border/30 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
-            >
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()} disabled={sending} className="w-10 h-10 rounded-xl bg-muted/20 border border-border/30 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors disabled:opacity-40">
               <ImagePlus className="w-4 h-4" />
             </button>
             <input
@@ -391,11 +343,7 @@ const LiveSupportChat: React.FC<Props> = ({
               placeholder="اكتب رسالتك..."
               className="flex-1 h-10 px-3 bg-muted/20 rounded-xl text-foreground placeholder:text-muted-foreground border border-border/30 focus:border-primary outline-none text-sm"
             />
-            <button
-              onClick={handleSend}
-              disabled={(!input.trim() && !imageFile) || sending}
-              className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
-            >
+            <button onClick={handleSend} disabled={(!input.trim() && !imageFile) || sending} className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform">
               {sending ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" />}
             </button>
           </div>
