@@ -244,7 +244,7 @@ const SupportTickets: React.FC = () => {
       }
 
       const { data: inserted, error } = await supabase.from("support_tickets").insert({
-        user_uuid: user.id.toString(),
+        user_uuid: user.uuid,
         user_name: user.name,
         subject,
         description: description.trim(),
