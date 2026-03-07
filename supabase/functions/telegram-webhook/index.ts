@@ -54,10 +54,8 @@ serve(async (req) => {
           target: "personal",
         });
 
-        // Update Telegram message
-        const originalText = cb.message?.text || cb.message?.caption || "";
-        await editMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id,
-          originalText + "\n\n✅ <b>تم إغلاق التذكرة</b>");
+        // Delete the Telegram message completely
+        await deleteMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id);
 
         await answerCallback(BOT_TOKEN, cb.id, "✅ تم إغلاق التذكرة بنجاح");
         return ok();
@@ -272,6 +270,17 @@ async function sendMessage(token: string, chatId: number, text: string, replyToI
       text,
       parse_mode: "HTML",
       ...(replyToId ? { reply_to_message_id: replyToId } : {}),
+    }),
+  });
+}
+
+async function deleteMessage(token: string, chatId: number, messageId: number) {
+  await fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
     }),
   });
 }
