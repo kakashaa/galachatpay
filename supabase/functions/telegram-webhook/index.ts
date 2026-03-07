@@ -54,10 +54,8 @@ serve(async (req) => {
           target: "personal",
         });
 
-        // Update Telegram message
-        const originalText = cb.message?.text || cb.message?.caption || "";
-        await editMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id,
-          originalText + "\n\n✅ <b>تم إغلاق التذكرة</b>");
+        // Delete the Telegram message completely
+        await deleteMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id);
 
         await answerCallback(BOT_TOKEN, cb.id, "✅ تم إغلاق التذكرة بنجاح");
         return ok();
