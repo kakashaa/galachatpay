@@ -84,7 +84,15 @@ const SupportTicketsEmbed: React.FC = () => {
         if (updated.user_uuid === user.id.toString()) {
           setTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
           if (selectedTicketRef.current?.id === updated.id) {
-            setSelectedTicket((prev) => prev ? { ...prev, ...updated } : prev);
+            // If ticket was closed (e.g. from Telegram), kick user back to list
+            if (updated.status === "closed" && selectedTicketRef.current.status !== "closed") {
+              setReplies([]);
+              setSelectedTicket(null);
+              toast.info("✅ تم إغلاق هذه التذكرة من قبل فريق الدعم");
+              loadTickets();
+            } else {
+              setSelectedTicket((prev) => prev ? { ...prev, ...updated } : prev);
+            }
           }
         }
       })
