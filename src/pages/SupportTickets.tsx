@@ -316,10 +316,7 @@ const SupportTickets: React.FC = () => {
         attachment_url: attachUrl,
       };
       
-      // Track in ref so polling won't remove it
-      localMessagesRef.current = [...localMessagesRef.current, localReply];
-      
-      // Show immediately
+      // Show immediately in UI
       setReplies((prev) => [...prev, localReply]);
       
       // Clear input
@@ -339,7 +336,6 @@ const SupportTickets: React.FC = () => {
         console.error("Reply insert error:", insertErr);
         toast.error("فشل إرسال الرد");
         // Remove local message on failure
-        localMessagesRef.current = localMessagesRef.current.filter((m) => m.id !== localReply.id);
         setReplies((prev) => prev.filter((r) => r.id !== localReply.id));
       }
 
