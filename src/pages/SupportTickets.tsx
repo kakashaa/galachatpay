@@ -96,7 +96,7 @@ const SupportTickets: React.FC = () => {
         table: "support_tickets",
       }, (payload) => {
         const updated = payload.new as any;
-        if (updated.user_uuid === user.id.toString()) {
+        if (updated.user_uuid === user.uuid) {
           setTickets((prev) =>
             prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
           );
