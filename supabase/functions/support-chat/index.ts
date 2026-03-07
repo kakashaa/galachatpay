@@ -65,7 +65,26 @@ serve(async (req) => {
       data = { ok: false, error: "Invalid API response", raw: rawText.substring(0, 200) };
     }
 
-    // Topic caching removed — live chat no longer uses dedicated forum topics
+    // Cache topic→chat_key mapping for Telegram reply bridging
+    if ((action === "start" || action === "status") && data?.ok && data?.chat?.tg_topic_id) {
+      const topicId = data.chat.tg_topic_id;
+      const chatKey = data.chat.chat_key || params.chat_key;
+      const userName = data.chat.user_name || params.user_name || "";
+      const userUuid = data.chat.user_uuid || params.user_uuid || "";
+      
+      const sb = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      
+      await sb.from("edge_function_cache").upsert({
+        key: `live_chat_topic:${topicId}`,
+        value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid },
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }, { onConflict: "key" });
+      
+      console.log(`[support-chat] Cached topic ${topicId} → ${chatKey}`);
+    }
 
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
