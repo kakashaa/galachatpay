@@ -1,0 +1,1 @@
+CREATE POLICY "Anyone can delete ticket replies" ON public.ticket_replies FOR DELETE USING (true);
