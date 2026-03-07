@@ -74,8 +74,9 @@ const SupportTickets: React.FC = () => {
   const selectedTicketRef = useRef<Ticket | null>(null);
   selectedTicketRef.current = selectedTicket;
   
-  // Track local optimistic messages that haven't been confirmed by DB yet
-  const localMessagesRef = useRef<TicketReply[]>([]);
+  // Replies ref to always have fresh state
+  const repliesRef = useRef<TicketReply[]>([]);
+  repliesRef.current = replies;
 
   // Load tickets on mount
   useEffect(() => {
