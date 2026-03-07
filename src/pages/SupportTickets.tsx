@@ -239,8 +239,8 @@ const SupportTickets: React.FC = () => {
       if (ticketFile) {
         const ts = Date.now();
         const ext = ticketFile.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `tickets/${user.id}/new-${ts}.${ext}`;
-        ticketAttachUrl = await secureUpload({ file: ticketFile, bucket: "attachments", path, userUuid: user.id.toString() });
+        const path = `tickets/${user.uuid}/new-${ts}.${ext}`;
+        ticketAttachUrl = await secureUpload({ file: ticketFile, bucket: "attachments", path, userUuid: user.uuid });
       }
 
       const { data: inserted, error } = await supabase.from("support_tickets").insert({
