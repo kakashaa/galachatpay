@@ -341,13 +341,11 @@ const SupportTickets: React.FC = () => {
             user_name: user.name,
             ticket_id: selectedTicket.id,
             subject: selectedTicket.subject,
-            message: replyText.trim() || "مرفق",
+            message: msgText,
             attachment_url: attachUrl,
           },
         },
       }).catch(() => {});
-      setReplyText("");
-      clearAttachment();
     } catch {
       toast.error("فشل إرسال الرد");
       setUploadingAttachment(false);
