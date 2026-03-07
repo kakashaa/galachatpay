@@ -81,7 +81,7 @@ const SupportTicketsEmbed: React.FC = () => {
       .channel("tickets-user-embed")
       .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, (payload) => {
         const updated = payload.new as any;
-        if (updated.user_uuid === user.id.toString()) {
+        if (updated.user_uuid === user.uuid) {
           setTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
           if (selectedTicketRef.current?.id === updated.id) {
             // If ticket was closed (e.g. from Telegram), kick user back to list
@@ -162,7 +162,7 @@ const SupportTicketsEmbed: React.FC = () => {
   const loadTickets = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase.from("support_tickets").select("*").eq("user_uuid", user.id.toString()).order("created_at", { ascending: false });
+    const { data } = await supabase.from("support_tickets").select("*").eq("user_uuid", user.uuid).order("created_at", { ascending: false });
     if (data) setTickets(data as any);
     setLoading(false);
   };
@@ -201,10 +201,10 @@ const SupportTicketsEmbed: React.FC = () => {
       if (ticketFile) {
         const ts = Date.now();
         const ext = ticketFile.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `tickets/${user.id}/new-${ts}.${ext}`;
-        ticketAttachUrl = await secureUpload({ file: ticketFile, bucket: "attachments", path, userUuid: user.id.toString() });
+        const path = `tickets/${user.uuid}/new-${ts}.${ext}`;
+        ticketAttachUrl = await secureUpload({ file: ticketFile, bucket: "attachments", path, userUuid: user.uuid });
       }
-      const { data: inserted, error } = await supabase.from("support_tickets").insert({ user_uuid: user.id.toString(), user_name: user.name, subject, description: description.trim() }).select().single();
+      const { data: inserted, error } = await supabase.from("support_tickets").insert({ user_uuid: user.uuid, user_name: user.name, subject, description: description.trim() }).select().single();
       if (error) throw error;
       if (inserted) {
         await supabase.from("ticket_replies").insert({ ticket_id: inserted.id, sender_type: "user", sender_name: user.name, message: description.trim(), attachment_url: ticketAttachUrl } as any);
@@ -245,8 +245,8 @@ const SupportTicketsEmbed: React.FC = () => {
         setUploadingAttachment(true);
         const ts = Date.now();
         const ext = attachmentFile.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `tickets/${user.id}/${selectedTicket.id}/${ts}.${ext}`;
-        attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.id.toString() });
+        const path = `tickets/${user.uuid}/${selectedTicket.id}/${ts}.${ext}`;
+        attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.uuid });
         setUploadingAttachment(false);
       }
       const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
