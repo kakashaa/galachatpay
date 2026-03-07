@@ -144,7 +144,7 @@ serve(async (req) => {
     // ===== SUPPORT TICKET: Create a dedicated Forum Topic =====
     if (type === "support_ticket" && record?.id) {
       const ticketId = record.id;
-      const topicName = `🎫 ${record.subject || "تذكرة"} - ${record.user_name || "مستخدم"}`;
+      const topicName = `🎫 تذكرة: ${record.subject || "بدون عنوان"} - ${record.user_name || "مستخدم"}`;
 
       try {
         // Create a new Forum Topic
