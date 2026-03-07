@@ -400,8 +400,9 @@ serve(async (req) => {
               }
             }
 
-            // Clean up topic cache
+            // Clean up topic + key caches
             await sb.from("edge_function_cache").delete().eq("key", `live_chat_topic:${topicId}`);
+            await sb.from("edge_function_cache").delete().eq("key", `live_chat_key:${chatKey}`);
           } else {
             // No topic, just delete the button message
             await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
