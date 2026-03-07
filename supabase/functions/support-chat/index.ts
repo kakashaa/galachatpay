@@ -25,6 +25,11 @@ serve(async (req) => {
       );
     }
 
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     // GET actions: messages, status, queue
     const getActions = ["messages", "status", "queue"];
     let apiRes: Response;
@@ -65,13 +70,78 @@ serve(async (req) => {
       data = { ok: false, error: "Invalid API response", raw: rawText.substring(0, 200) };
     }
 
-    // Cache tg_topic_id → chat_key mapping for Telegram webhook forwarding
+    // ===== Create Telegram Forum Topic when a new chat starts =====
+    if (action === "start" && data?.ok && data?.chat_key) {
+      try {
+        const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+        const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")?.match(/^-?\d+$/)
+          ? Deno.env.get("TELEGRAM_CHAT_ID")!
+          : "-1003556311692";
+
+        if (BOT_TOKEN && CHAT_ID) {
+          const chatKey = data.chat_key;
+          const userName = params.user_name || "مستخدم";
+          const userUuid = params.user_uuid || "";
+          const chatType = params.chat_type || "normal";
+          const typeLabel = chatType === "quick" ? "⚡ دعم سريع" : "💬 محادثة مباشرة";
+          const topicName = `${typeLabel} - ${userName}`;
+
+          // Create Forum Topic
+          const createTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createForumTopic`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: parseInt(CHAT_ID),
+              name: topicName.substring(0, 128),
+              icon_color: chatType === "quick" ? 16766720 : 7322096, // gold for quick, blue for normal
+            }),
+          });
+          const topicResult = await createTopicRes.json();
+          console.log(`[support-chat] createForumTopic result:`, JSON.stringify(topicResult));
+
+          if (topicResult.ok && topicResult.result?.message_thread_id) {
+            const topicId = topicResult.result.message_thread_id;
+
+            // Send initial message in the topic with end button
+            const msgText = `${typeLabel}\n━━━━━━━━━━━━━━━\n👤 المستخدم: ${userName}\n🆔 UUID: ${userUuid}\n🔑 مفتاح: ${chatKey}\n━━━━━━━━━━━━━━━\n⏰ ${new Date().toLocaleString("ar-EG", { timeZone: "Asia/Riyadh" })}\n\n💡 للرد: اكتب ردك مباشرة في هذا الموضوع`;
+
+            const sendRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: parseInt(CHAT_ID),
+                message_thread_id: topicId,
+                text: msgText,
+                parse_mode: "HTML",
+                reply_markup: {
+                  inline_keyboard: [[
+                    { text: "❌ إنهاء المحادثة", callback_data: `end_chat_${chatKey}` },
+                  ]],
+                },
+              }),
+            });
+            const sendResult = await sendRes.json();
+            console.log(`[support-chat] Topic message sent:`, JSON.stringify(sendResult).substring(0, 200));
+
+            // Cache topic_id → chat_key mapping for webhook forwarding
+            const cacheKey = `live_chat_topic:${topicId}`;
+            await sb.from("edge_function_cache").upsert({
+              key: cacheKey,
+              value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid },
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            }, { onConflict: "key" });
+
+            console.log(`[support-chat] Cached topic ${topicId} → ${chatKey}`);
+          }
+        }
+      } catch (e) {
+        console.error("[support-chat] Telegram topic creation error:", e);
+      }
+    }
+
+    // Cache tg_topic_id → chat_key mapping for Telegram webhook forwarding (from status polling)
     if (action === "status" && data?.ok && data?.chat?.tg_topic_id && params.chat_key) {
       try {
-        const sb = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
         const topicId = data.chat.tg_topic_id;
         const cacheKey = `live_chat_topic:${topicId}`;
         await sb.from("edge_function_cache").upsert({
