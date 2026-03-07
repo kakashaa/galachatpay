@@ -241,17 +241,39 @@ const SupportTicketsEmbed: React.FC = () => {
         attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.id.toString() });
         setUploadingAttachment(false);
       }
-      await supabase.from("ticket_replies").insert({
+      const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
+      
+      // Optimistic UI: show message immediately
+      const localReply: TicketReply = {
+        id: `local-${Date.now()}`,
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
-        message: replyText.trim() || (attachmentFile ? "مرفق" : ""),
+        message: msgText,
+        is_read: false,
+        created_at: new Date().toISOString(),
         attachment_url: attachUrl,
-      } as any);
-      await supabase.from("support_tickets").update({ status: "open", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
-      supabase.functions.invoke("telegram-notify", { body: { type: "ticket_reply", record: { user_name: user.name, ticket_id: selectedTicket.id, subject: selectedTicket.subject, message: replyText.trim() || "مرفق", attachment_url: attachUrl } } }).catch(() => {});
+      };
+      setReplies((prev) => [...prev, localReply]);
       setReplyText("");
       clearAttachment();
+
+      // Insert to DB
+      const { error: insertErr } = await supabase.from("ticket_replies").insert({
+        ticket_id: selectedTicket.id,
+        sender_type: "user",
+        sender_name: user.name,
+        message: msgText,
+        attachment_url: attachUrl,
+      } as any);
+      
+      if (insertErr) {
+        toast.error("فشل إرسال الرد");
+        setReplies((prev) => prev.filter((r) => r.id !== localReply.id));
+      }
+
+      await supabase.from("support_tickets").update({ status: "open", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
+      supabase.functions.invoke("telegram-notify", { body: { type: "ticket_reply", record: { user_name: user.name, ticket_id: selectedTicket.id, subject: selectedTicket.subject, message: msgText, attachment_url: attachUrl } } }).catch(() => {});
     } catch { toast.error("فشل إرسال الرد"); setUploadingAttachment(false); }
     setSendingReply(false);
   };
