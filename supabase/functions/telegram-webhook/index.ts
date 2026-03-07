@@ -24,6 +24,9 @@ serve(async (req) => {
       // ===== TICKET CLOSE from Telegram =====
       if (data.startsWith("tc:")) {
         const ticketId = data.substring(3);
+        const chatId = cb.message.chat.id;
+        const topicId = cb.message?.message_thread_id;
+
         const { data: ticket } = await sb
           .from("support_tickets")
           .select("id, status, user_uuid, subject")
@@ -54,37 +57,48 @@ serve(async (req) => {
           target: "personal",
         });
 
-        // Delete the original ticket message from Telegram
-        await deleteMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id);
+        // Try to delete the entire Forum Topic (which removes all messages inside)
+        if (topicId) {
+          const delTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteForumTopic`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+          });
+          const delTopicResult = await delTopicRes.json();
+          console.log(`[telegram-webhook] deleteForumTopic result:`, JSON.stringify(delTopicResult));
 
-        // Also delete all cached reply messages from Telegram for this ticket
-        const { data: cachedMsgs } = await sb
-          .from("edge_function_cache")
-          .select("key, value")
-          .like("key", "tg_msg_ticket:%")
-          .filter("value->>ticket_id", "eq", ticketId);
-
-        if (cachedMsgs && cachedMsgs.length > 0) {
-          for (const cached of cachedMsgs) {
-            try {
-              const msgId = parseInt(cached.key.split(":")[1]);
-              const chatId = cached.key.split(":")[2];
-              if (msgId && chatId) {
-                await deleteMessage(BOT_TOKEN, parseInt(chatId), msgId);
-              }
-            } catch (e) {
-              console.error("Failed to delete cached msg:", e);
-            }
+          if (!delTopicResult.ok) {
+            // Fallback: close the topic and delete the button message
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/closeForumTopic`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+            });
+            await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
           }
-          // Clean up cache entries
-          const keys = cachedMsgs.map((c: any) => c.key);
-          for (const k of keys) {
-            await sb.from("edge_function_cache").delete().eq("key", k);
-          }
+        } else {
+          // No topic (old-style single message), just delete it
+          await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
         }
 
-        // Clean up reverse cache
+        // Clean up all caches for this ticket
+        await sb.from("edge_function_cache").delete().eq("key", `ticket_topic:${ticketId}`);
+        if (topicId) {
+          await sb.from("edge_function_cache").delete().eq("key", `ticket_topic_reverse:${topicId}`);
+        }
         await sb.from("edge_function_cache").delete().eq("key", `ticket_tg_msg:${ticketId}`);
+
+        // Clean old-style message caches
+        const { data: cachedMsgs } = await sb
+          .from("edge_function_cache")
+          .select("key")
+          .like("key", "tg_msg_ticket:%")
+          .filter("value->>ticket_id", "eq", ticketId);
+        if (cachedMsgs && cachedMsgs.length > 0) {
+          for (const c of cachedMsgs) {
+            await sb.from("edge_function_cache").delete().eq("key", c.key);
+          }
+        }
 
         await answerCallback(BOT_TOKEN, cb.id, "✅ تم إغلاق وحذف التذكرة بنجاح");
         return ok();
@@ -343,7 +357,64 @@ serve(async (req) => {
         }
       }
 
-      // 2) Check if message is in a live chat topic → forward to hola-chat API
+      // 2) Check if message is in a ticket topic → save reply to DB
+      if (topicId) {
+        const { data: ticketTopicCache } = await sb
+          .from("edge_function_cache")
+          .select("value")
+          .eq("key", `ticket_topic_reverse:${topicId}`)
+          .maybeSingle();
+
+        if (ticketTopicCache?.value) {
+          const { ticket_id, user_uuid, subject } = ticketTopicCache.value as any;
+
+          // Check ticket exists and not closed
+          const { data: ticket } = await sb
+            .from("support_tickets")
+            .select("id, status")
+            .eq("id", ticket_id)
+            .maybeSingle();
+
+          if (!ticket) {
+            await sendMessage(BOT_TOKEN, chatId, "❌ التذكرة غير موجودة", update.message.message_id);
+            return ok();
+          }
+          if (ticket.status === "closed") {
+            await sendMessage(BOT_TOKEN, chatId, "⚠️ التذكرة مغلقة مسبقاً", update.message.message_id);
+            return ok();
+          }
+
+          // Save reply
+          await sb.from("ticket_replies").insert({
+            ticket_id,
+            sender_type: "admin",
+            sender_name: `${adminName} (تلجرام)`,
+            message: adminText,
+          });
+
+          // Update ticket status
+          await sb.from("support_tickets").update({
+            status: "replied",
+            admin_reply: adminText,
+            admin_username: `${adminName} (تلجرام)`,
+            replied_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }).eq("id", ticket_id);
+
+          // Notify user
+          await sb.from("notifications").insert({
+            user_uuid,
+            title: "💬 رد على تذكرتك",
+            body: `تم الرد على تذكرة "${subject}" من فريق الدعم.`,
+            target: "personal",
+          });
+
+          await sendMessage(BOT_TOKEN, chatId, `✅ تم إرسال ردك على تذكرة "${subject}"`, update.message.message_id);
+          return ok();
+        }
+      }
+
+      // 3) Check if message is in a live chat topic → forward to hola-chat API
       if (topicId) {
         const { data: liveChatCache } = await sb
           .from("edge_function_cache")

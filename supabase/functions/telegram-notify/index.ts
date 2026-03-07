@@ -48,19 +48,56 @@ serve(async (req) => {
 
     const { type, record } = await req.json();
 
-    // ===== Handle ticket_closed: edit Telegram message =====
-    if (type === "ticket_closed" && record?.ticket_id) {
-      const sb2 = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-      // Find and delete ALL cached Telegram messages for this ticket
-      const { data: cachedMsgs } = await sb2
+    // ===== Handle ticket_closed: delete the entire Forum Topic =====
+    if (type === "ticket_closed" && record?.ticket_id) {
+      const ticketId = record.ticket_id;
+
+      // Look up the topic for this ticket
+      const { data: topicCache } = await sb
+        .from("edge_function_cache")
+        .select("value")
+        .eq("key", `ticket_topic:${ticketId}`)
+        .maybeSingle();
+
+      if (topicCache?.value) {
+        const { topic_id, chat_id } = topicCache.value as any;
+        try {
+          // Delete the entire forum topic (removes ALL messages inside it)
+          const delRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteForumTopic`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: parseInt(chat_id), message_thread_id: topic_id }),
+          });
+          const delResult = await delRes.json();
+          console.log(`[telegram-notify] deleteForumTopic result:`, JSON.stringify(delResult));
+
+          if (!delResult.ok) {
+            // Fallback: close the topic
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/closeForumTopic`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: parseInt(chat_id), message_thread_id: topic_id }),
+            });
+          }
+        } catch (e) {
+          console.error("Failed to delete forum topic:", e);
+        }
+
+        // Clean up cache
+        await sb.from("edge_function_cache").delete().eq("key", `ticket_topic:${ticketId}`);
+      }
+
+      // Also clean up old-style caches (backward compat)
+      const { data: cachedMsgs } = await sb
         .from("edge_function_cache")
         .select("key, value")
         .like("key", "tg_msg_ticket:%")
-        .filter("value->>ticket_id", "eq", record.ticket_id);
+        .filter("value->>ticket_id", "eq", ticketId);
 
       if (cachedMsgs && cachedMsgs.length > 0) {
         for (const cached of cachedMsgs) {
@@ -78,32 +115,11 @@ serve(async (req) => {
             console.error("Failed to delete msg:", e);
           }
         }
-        // Clean up cache entries
         for (const c of cachedMsgs) {
-          await sb2.from("edge_function_cache").delete().eq("key", c.key);
+          await sb.from("edge_function_cache").delete().eq("key", c.key);
         }
       }
-
-      // Also try reverse cache for the main ticket message
-      const { data: reverseCache } = await sb2
-        .from("edge_function_cache")
-        .select("value")
-        .eq("key", `ticket_tg_msg:${record.ticket_id}`)
-        .maybeSingle();
-
-      if (reverseCache?.value) {
-        const { message_id, chat_id } = reverseCache.value as any;
-        try {
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: parseInt(chat_id), message_id }),
-          });
-        } catch (e) {
-          console.error("Failed to delete main ticket msg:", e);
-        }
-        await sb2.from("edge_function_cache").delete().eq("key", `ticket_tg_msg:${record.ticket_id}`);
-      }
+      await sb.from("edge_function_cache").delete().eq("key", `ticket_tg_msg:${ticketId}`);
 
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -123,109 +139,154 @@ serve(async (req) => {
       });
     }
 
-    const sb = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // Build inline keyboard for support tickets
-    const ticketButtons = (type === "support_ticket" && record?.id) ? {
-      reply_markup: JSON.stringify({
-        inline_keyboard: [[
-          { text: "❌ إغلاق التذكرة", callback_data: `tc:${record.id}` }
-        ]]
-      })
-    } : {};
-
-    const replyHint = (type === "support_ticket")
-      ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>"
-      : "";
-
     let data: any = { ok: true };
 
-    // ===== SUPPORT TICKET / TICKET REPLY with attachment =====
-    if ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url) {
-      const attachUrl = record.attachment_url;
-      const ext = (attachUrl.split(".").pop() || "").toLowerCase().split("?")[0];
-      const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
-      const captionText = message + replyHint;
+    // ===== SUPPORT TICKET: Create a dedicated Forum Topic =====
+    if (type === "support_ticket" && record?.id) {
+      const ticketId = record.id;
+      const topicName = `🎫 ${record.subject || "تذكرة"} - ${record.user_name || "مستخدم"}`;
 
-      let mediaRes;
-      if (isImage) {
-        mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      try {
+        // Create a new Forum Topic
+        const createTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createForumTopic`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: captionText, parse_mode: "HTML", ...threadParam, ...ticketButtons }),
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            name: topicName.substring(0, 128), // Telegram limit
+            icon_color: 7322096, // Red-ish color for tickets
+          }),
         });
+        const topicData = await createTopicRes.json();
+        console.log(`[telegram-notify] createForumTopic result:`, JSON.stringify(topicData));
+
+        if (topicData.ok && topicData.result?.message_thread_id) {
+          const topicId = topicData.result.message_thread_id;
+          const topicThreadParam = { message_thread_id: topicId };
+
+          // Build close button
+          const ticketButtons = {
+            reply_markup: JSON.stringify({
+              inline_keyboard: [[
+                { text: "❌ إغلاق التذكرة", callback_data: `tc:${ticketId}` }
+              ]]
+            })
+          };
+
+          const replyHint = "\n\n💡 <i>للرد: اكتب ردك مباشرة في هذه المحادثة</i>";
+
+          // Send the ticket message inside the topic
+          if (record.attachment_url) {
+            const attachUrl = record.attachment_url;
+            const ext = (attachUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+            const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+            const captionText = message + replyHint;
+
+            if (isImage) {
+              const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: captionText, parse_mode: "HTML", ...topicThreadParam, ...ticketButtons }),
+              });
+              data = await res.json();
+            } else {
+              const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: captionText, parse_mode: "HTML", ...topicThreadParam, ...ticketButtons }),
+              });
+              data = await res.json();
+            }
+          } else {
+            const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: CHAT_ID, text: message + replyHint, parse_mode: "HTML", ...topicThreadParam, ...ticketButtons }),
+            });
+            data = await res.json();
+          }
+
+          console.log("Ticket topic message response:", JSON.stringify(data));
+
+          // Cache: ticket_id -> topic mapping
+          await sb.from("edge_function_cache").upsert({
+            key: `ticket_topic:${ticketId}`,
+            value: { topic_id: topicId, chat_id: CHAT_ID, ticket_id: ticketId, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          });
+
+          // Cache: topic_id -> ticket mapping (for webhook reply detection)
+          await sb.from("edge_function_cache").upsert({
+            key: `ticket_topic_reverse:${topicId}`,
+            value: { ticket_id: ticketId, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          });
+
+        } else {
+          // Fallback: send as regular message to the fixed thread
+          console.error("Failed to create forum topic, falling back to fixed thread");
+          const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML", ...threadParam }),
+          });
+          data = await res.json();
+        }
+      } catch (e) {
+        console.error("Error creating ticket topic:", e);
+        // Fallback
+        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML", ...threadParam }),
+        });
+        data = await res.json();
+      }
+
+    // ===== TICKET REPLY: Send inside the ticket's Forum Topic =====
+    } else if (type === "ticket_reply" && record?.ticket_id) {
+      const ticketId = record.ticket_id;
+
+      // Look up the topic for this ticket
+      const { data: topicCache } = await sb
+        .from("edge_function_cache")
+        .select("value")
+        .eq("key", `ticket_topic:${ticketId}`)
+        .maybeSingle();
+
+      const targetThreadParam = topicCache?.value
+        ? { message_thread_id: (topicCache.value as any).topic_id }
+        : threadParam; // fallback to fixed thread
+
+      if (record.attachment_url) {
+        const attachUrl = record.attachment_url;
+        const ext = (attachUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+        const isImage = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+
+        if (isImage) {
+          const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: message, parse_mode: "HTML", ...targetThreadParam }),
+          });
+          data = await res.json();
+        } else {
+          const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: message, parse_mode: "HTML", ...targetThreadParam }),
+          });
+          data = await res.json();
+        }
       } else {
-        mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: captionText, parse_mode: "HTML", ...threadParam, ...ticketButtons }),
+          body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML", ...targetThreadParam }),
         });
+        data = await res.json();
       }
-      data = await mediaRes.json();
-      console.log("Ticket media response:", JSON.stringify(data));
-
-      // Cache message mapping for reply tracking
-      if (data.ok && data.result?.message_id && record?.id) {
-        const ticketId = type === "support_ticket" ? record.id : record.ticket_id;
-        if (ticketId) {
-          try {
-            await sb.from("edge_function_cache").upsert({
-              key: `tg_msg_ticket:${data.result.message_id}:${CHAT_ID}`,
-              value: { ticket_id: ticketId, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            });
-            // Reverse cache: ticket_id -> message_id for cleanup on close
-            await sb.from("edge_function_cache").upsert({
-              key: `ticket_tg_msg:${ticketId}`,
-              value: { message_id: data.result.message_id, chat_id: CHAT_ID },
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            });
-          } catch (e) {
-            console.error("Failed to cache message mapping:", e);
-          }
-        }
-      }
-
-    // ===== SUPPORT TICKET / TICKET REPLY without attachment =====
-    } else if (type === "support_ticket" || type === "ticket_reply") {
-      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          text: message + replyHint,
-          parse_mode: "HTML",
-          ...threadParam,
-          ...ticketButtons,
-        }),
-      });
-      data = await res.json();
-      console.log("Telegram text response:", JSON.stringify(data));
-
-      // Cache for reply tracking
-      if (data.ok && data.result?.message_id) {
-        const ticketId = type === "support_ticket" ? record.id : record.ticket_id;
-        if (ticketId) {
-          try {
-            await sb.from("edge_function_cache").upsert({
-              key: `tg_msg_ticket:${data.result.message_id}:${CHAT_ID}`,
-              value: { ticket_id: ticketId, user_uuid: record.user_uuid, user_name: record.user_name, subject: record.subject },
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            });
-            // Reverse cache: ticket_id -> message_id for cleanup on close
-            await sb.from("edge_function_cache").upsert({
-              key: `ticket_tg_msg:${ticketId}`,
-              value: { message_id: data.result.message_id, chat_id: CHAT_ID },
-              expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            });
-          } catch (e) {
-            console.error("Failed to cache message mapping:", e);
-          }
-        }
-      }
+      console.log("Ticket reply response:", JSON.stringify(data));
 
     // ===== ANIMATED PHOTO =====
     } else if (type === "animated_photo" && record?.gif_url) {
