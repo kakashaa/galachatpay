@@ -187,6 +187,43 @@ serve(async (req) => {
         return ok();
       }
 
+      // ===== LIVE CHAT END from Telegram =====
+      if (data.startsWith("end_chat_")) {
+        const chatKey = data.substring(9); // remove "end_chat_"
+        console.log(`[telegram-webhook] Ending live chat: ${chatKey}`);
+
+        try {
+          const API_BASE = "https://hola-chat.com/support-chat-api.php";
+          const formData = new URLSearchParams();
+          formData.append("action", "end");
+          formData.append("chat_key", chatKey);
+
+          const apiRes = await fetch(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          });
+          const result = await apiRes.text();
+          console.log(`[telegram-webhook] End chat response:`, result.substring(0, 200));
+
+          // Clean up the topic cache
+          const topicId = cb.message?.message_thread_id;
+          if (topicId) {
+            await sb.from("edge_function_cache").delete().eq("key", `live_chat_topic:${topicId}`);
+          }
+
+          // Edit the message to show it's ended
+          await editMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id,
+            "✅ تم إنهاء المحادثة بنجاح");
+
+          await answerCallback(BOT_TOKEN, cb.id, "✅ تم إنهاء المحادثة");
+        } catch (e) {
+          console.error("[telegram-webhook] End chat error:", e);
+          await answerCallback(BOT_TOKEN, cb.id, "❌ فشل إنهاء المحادثة");
+        }
+        return ok();
+      }
+
       await answerCallback(BOT_TOKEN, cb.id, "⚠️ إجراء غير معروف");
       return ok();
     }
