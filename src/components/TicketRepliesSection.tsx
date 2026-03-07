@@ -149,6 +149,8 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
         body: `تم إنهاء تذكرة "${ticket.subject}". شكراً لتواصلك.`,
         target: "personal",
       });
+      // Notify Telegram to update/edit the ticket message
+      supabase.functions.invoke("telegram-notify", { body: { type: "ticket_closed", record: { ticket_id: ticket.id, subject: ticket.subject, user_name: ticket.user_name } } }).catch(() => {});
       setReplies([]);
       toast.success("تم إغلاق التذكرة");
       onUpdate();
