@@ -24,6 +24,9 @@ serve(async (req) => {
       // ===== TICKET CLOSE from Telegram =====
       if (data.startsWith("tc:")) {
         const ticketId = data.substring(3);
+        const chatId = cb.message.chat.id;
+        const topicId = cb.message?.message_thread_id;
+
         const { data: ticket } = await sb
           .from("support_tickets")
           .select("id, status, user_uuid, subject")
@@ -54,37 +57,48 @@ serve(async (req) => {
           target: "personal",
         });
 
-        // Delete the original ticket message from Telegram
-        await deleteMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id);
+        // Try to delete the entire Forum Topic (which removes all messages inside)
+        if (topicId) {
+          const delTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteForumTopic`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+          });
+          const delTopicResult = await delTopicRes.json();
+          console.log(`[telegram-webhook] deleteForumTopic result:`, JSON.stringify(delTopicResult));
 
-        // Also delete all cached reply messages from Telegram for this ticket
-        const { data: cachedMsgs } = await sb
-          .from("edge_function_cache")
-          .select("key, value")
-          .like("key", "tg_msg_ticket:%")
-          .filter("value->>ticket_id", "eq", ticketId);
-
-        if (cachedMsgs && cachedMsgs.length > 0) {
-          for (const cached of cachedMsgs) {
-            try {
-              const msgId = parseInt(cached.key.split(":")[1]);
-              const chatId = cached.key.split(":")[2];
-              if (msgId && chatId) {
-                await deleteMessage(BOT_TOKEN, parseInt(chatId), msgId);
-              }
-            } catch (e) {
-              console.error("Failed to delete cached msg:", e);
-            }
+          if (!delTopicResult.ok) {
+            // Fallback: close the topic and delete the button message
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/closeForumTopic`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+            });
+            await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
           }
-          // Clean up cache entries
-          const keys = cachedMsgs.map((c: any) => c.key);
-          for (const k of keys) {
-            await sb.from("edge_function_cache").delete().eq("key", k);
-          }
+        } else {
+          // No topic (old-style single message), just delete it
+          await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
         }
 
-        // Clean up reverse cache
+        // Clean up all caches for this ticket
+        await sb.from("edge_function_cache").delete().eq("key", `ticket_topic:${ticketId}`);
+        if (topicId) {
+          await sb.from("edge_function_cache").delete().eq("key", `ticket_topic_reverse:${topicId}`);
+        }
         await sb.from("edge_function_cache").delete().eq("key", `ticket_tg_msg:${ticketId}`);
+
+        // Clean old-style message caches
+        const { data: cachedMsgs } = await sb
+          .from("edge_function_cache")
+          .select("key")
+          .like("key", "tg_msg_ticket:%")
+          .filter("value->>ticket_id", "eq", ticketId);
+        if (cachedMsgs && cachedMsgs.length > 0) {
+          for (const c of cachedMsgs) {
+            await sb.from("edge_function_cache").delete().eq("key", c.key);
+          }
+        }
 
         await answerCallback(BOT_TOKEN, cb.id, "✅ تم إغلاق وحذف التذكرة بنجاح");
         return ok();
