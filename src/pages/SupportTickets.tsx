@@ -130,26 +130,25 @@ const SupportTickets: React.FC = () => {
       })
       .subscribe();
 
-    // Polling fallback every 5s to catch any missed realtime events
+    // Polling fallback every 3s to catch any missed realtime events
     const pollInterval = setInterval(async () => {
       if (!selectedTicketRef.current) return;
+      console.log("[TICKET-POLL] Polling...");
       const { data } = await supabase
         .from("ticket_replies")
         .select("*")
         .eq("ticket_id", selectedTicketRef.current.id)
         .order("created_at", { ascending: true });
       if (data) {
+        console.log("[TICKET-POLL] Got", data.length, "replies from DB");
         setReplies((prev) => {
-          const merged = [...prev];
-          for (const msg of data as any[]) {
-            if (!merged.some((r) => r.id === msg.id)) {
-              merged.push(msg);
-            }
-          }
-          if (merged.length !== prev.length) {
-            return merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-          }
-          return prev;
+          // Keep local-only messages (optimistic) + merge DB data
+          const dbIds = new Set((data as any[]).map((r: any) => r.id));
+          const localOnly = prev.filter((r) => !dbIds.has(r.id));
+          const merged = [...(data as any[]), ...localOnly].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          return merged;
         });
       }
     }, 3000);
@@ -305,21 +304,29 @@ const SupportTickets: React.FC = () => {
       };
       
       // Show message immediately (optimistic)
-      setReplies((prev) => [...prev, localReply]);
+      console.log("[TICKET-CHAT] Adding local reply optimistically:", localReply.id, localReply.message);
+      setReplies((prev) => {
+        console.log("[TICKET-CHAT] Previous replies count:", prev.length);
+        const next = [...prev, localReply];
+        console.log("[TICKET-CHAT] New replies count:", next.length);
+        return next;
+      });
       
-      // Then insert to DB
-      const { data: insertedReply } = await supabase.from("ticket_replies").insert({
+      // Clear input immediately so user sees feedback
+      setReplyText("");
+      clearAttachment();
+      
+      // Then insert to DB (don't await - fire and forget for speed)
+      supabase.from("ticket_replies").insert({
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
         message: msgText,
         attachment_url: attachUrl,
-      } as any).select().single();
-      
-      // Replace local message with DB version if available
-      if (insertedReply) {
-        setReplies((prev) => prev.map((r) => r.id === localReply.id ? (insertedReply as any) : r));
-      }
+      } as any).then(({ error }) => {
+        if (error) console.error("[TICKET-CHAT] Insert error:", error);
+        else console.log("[TICKET-CHAT] Insert success");
+      });
       
       await supabase.from("support_tickets").update({
         status: "open",
@@ -333,13 +340,11 @@ const SupportTickets: React.FC = () => {
             user_name: user.name,
             ticket_id: selectedTicket.id,
             subject: selectedTicket.subject,
-            message: replyText.trim() || "مرفق",
+            message: msgText,
             attachment_url: attachUrl,
           },
         },
       }).catch(() => {});
-      setReplyText("");
-      clearAttachment();
     } catch {
       toast.error("فشل إرسال الرد");
       setUploadingAttachment(false);
