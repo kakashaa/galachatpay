@@ -30,6 +30,47 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // ===== Combined poll action: fetches messages + status in one call =====
+    if (action === "poll") {
+      const chatKey = params.chat_key;
+      const afterId = params.after_id || 0;
+
+      // Fetch messages and status in parallel
+      const msgParams = new URLSearchParams({
+        action: "messages",
+        chat_key: chatKey,
+        after_id: String(afterId),
+      });
+      const statusParams = new URLSearchParams({
+        action: "status",
+        chat_key: chatKey,
+      });
+
+      const [msgRes, statusRes] = await Promise.all([
+        fetch(`${API_BASE}?${msgParams.toString()}`),
+        fetch(`${API_BASE}?${statusParams.toString()}`),
+      ]);
+
+      const [msgText, statusText] = await Promise.all([
+        msgRes.text(),
+        statusRes.text(),
+      ]);
+
+      let msgData, statusData;
+      try { msgData = JSON.parse(msgText); } catch { msgData = { ok: false }; }
+      try { statusData = JSON.parse(statusText); } catch { statusData = { ok: false }; }
+
+      return new Response(JSON.stringify({
+        ok: true,
+        messages: msgData?.messages || [],
+        status: statusData?.chat?.status || statusData?.status || "active",
+        queue_position: statusData?.queue_position || 0,
+        ended: statusData?.chat?.ended_at ? true : false,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // GET actions: messages, status, queue
     const getActions = ["messages", "status", "queue"];
     let apiRes: Response;
@@ -84,18 +125,14 @@ serve(async (req) => {
           const userUuid = params.user_uuid || "";
           const chatType = params.chat_type || "normal";
 
-          // Check if a topic already exists for this chat_key to prevent duplicates
+          // Check if a topic already exists for this exact chat_key using precise lookup
           const { data: existingCache } = await sb
             .from("edge_function_cache")
-            .select("value")
-            .like("key", "live_chat_topic:%")
-            .limit(100);
+            .select("key, value")
+            .eq("key", `live_chat_key:${chatKey}`)
+            .maybeSingle();
 
-          const alreadyHasTopic = existingCache?.some(
-            (row: any) => row.value?.chat_key === chatKey
-          );
-
-          if (!alreadyHasTopic) {
+          if (!existingCache) {
             const typeLabel = chatType === "quick" ? "⚡ دعم سريع" : "💬 محادثة مباشرة";
             const topicName = `${typeLabel} - ${userName}`;
 
@@ -136,15 +173,22 @@ serve(async (req) => {
               const sendResult = await sendRes.json();
               console.log(`[support-chat] Topic message sent:`, JSON.stringify(sendResult).substring(0, 200));
 
-              // Cache topic_id → chat_key mapping for webhook forwarding
-              const cacheKey = `live_chat_topic:${topicId}`;
-              await sb.from("edge_function_cache").upsert({
-                key: cacheKey,
-                value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid },
-                expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-              }, { onConflict: "key" });
+              // Cache both mappings: topic→chat_key AND chat_key→topic (for dedup)
+              const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+              await Promise.all([
+                sb.from("edge_function_cache").upsert({
+                  key: `live_chat_topic:${topicId}`,
+                  value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid },
+                  expires_at: expiry,
+                }, { onConflict: "key" }),
+                sb.from("edge_function_cache").upsert({
+                  key: `live_chat_key:${chatKey}`,
+                  value: { topic_id: topicId, user_name: userName },
+                  expires_at: expiry,
+                }, { onConflict: "key" }),
+              ]);
 
-              console.log(`[support-chat] Cached topic ${topicId} → ${chatKey}`);
+              console.log(`[support-chat] Cached topic ${topicId} ↔ ${chatKey}`);
             }
           } else {
             console.log(`[support-chat] Topic already exists for chat_key=${chatKey}, skipping creation`);
@@ -152,22 +196,6 @@ serve(async (req) => {
         }
       } catch (e) {
         console.error("[support-chat] Telegram topic creation error:", e);
-      }
-    }
-
-    // Cache tg_topic_id → chat_key mapping for Telegram webhook forwarding (from status polling)
-    if (action === "status" && data?.ok && data?.chat?.tg_topic_id && params.chat_key) {
-      try {
-        const topicId = data.chat.tg_topic_id;
-        const cacheKey = `live_chat_topic:${topicId}`;
-        await sb.from("edge_function_cache").upsert({
-          key: cacheKey,
-          value: { chat_key: params.chat_key, user_name: data.chat.user_name || "" },
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        }, { onConflict: "key" });
-        console.log(`[support-chat] Cached topic ${topicId} → ${params.chat_key}`);
-      } catch (e) {
-        console.error("[support-chat] Cache error:", e);
       }
     }
 
