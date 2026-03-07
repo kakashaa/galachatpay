@@ -514,7 +514,43 @@ serve(async (req) => {
         }
       }
 
-      // Live chat topic forwarding removed — no longer using dedicated forum topics
+      // 3) Check if message is in a live chat topic → forward to hola-chat API
+      if (topicId) {
+        const { data: liveChatCache } = await sb
+          .from("edge_function_cache")
+          .select("value")
+          .eq("key", `live_chat_topic:${topicId}`)
+          .maybeSingle();
+
+        if (liveChatCache?.value) {
+          const { chat_key, user_uuid: chatUserUuid } = liveChatCache.value as any;
+          console.log(`[telegram-webhook] Forwarding admin reply to live chat: ${chat_key}`);
+
+          try {
+            const API_BASE = "https://hola-chat.com/support-chat-api.php";
+            const formData = new URLSearchParams();
+            formData.append("action", "send");
+            formData.append("chat_key", chat_key);
+            formData.append("message", adminText);
+            formData.append("sender_type", "admin");
+            formData.append("sender_name", adminName);
+
+            const apiRes = await fetch(API_BASE, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: formData.toString(),
+            });
+            const result = await apiRes.text();
+            console.log(`[telegram-webhook] Forward result:`, result.substring(0, 200));
+
+            await sendMessage(BOT_TOKEN, chatId, "✅ تم إرسال ردك للمستخدم", update.message.message_id);
+          } catch (e) {
+            console.error("[telegram-webhook] Forward to live chat error:", e);
+            await sendMessage(BOT_TOKEN, chatId, "❌ فشل إرسال الرد للمستخدم", update.message.message_id);
+          }
+          return ok();
+        }
+      }
     }
 
     return ok();
