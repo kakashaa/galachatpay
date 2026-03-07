@@ -191,7 +191,7 @@ const SupportTickets: React.FC = () => {
     const { data } = await supabase
       .from("support_tickets")
       .select("*")
-      .eq("user_uuid", user.id.toString())
+      .eq("user_uuid", user.uuid)
       .order("created_at", { ascending: false });
     if (data) setTickets(data as any);
     setLoading(false);
