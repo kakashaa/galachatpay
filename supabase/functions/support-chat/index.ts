@@ -30,33 +30,22 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // ===== Combined poll action: fetches messages + status in one call =====
+    // ===== Combined poll: messages + status in one edge function call =====
     if (action === "poll") {
       const chatKey = params.chat_key;
       const afterId = params.after_id || 0;
 
-      // Fetch messages and status in parallel
-      const msgParams = new URLSearchParams({
-        action: "messages",
-        chat_key: chatKey,
-        after_id: String(afterId),
-      });
-      const statusParams = new URLSearchParams({
-        action: "status",
-        chat_key: chatKey,
-      });
+      const msgQP = new URLSearchParams({ action: "messages", chat_key: chatKey, after_id: String(afterId) });
+      const statusQP = new URLSearchParams({ action: "status", chat_key: chatKey });
 
       const [msgRes, statusRes] = await Promise.all([
-        fetch(`${API_BASE}?${msgParams.toString()}`),
-        fetch(`${API_BASE}?${statusParams.toString()}`),
+        fetch(`${API_BASE}?${msgQP}`),
+        fetch(`${API_BASE}?${statusQP}`),
       ]);
 
-      const [msgText, statusText] = await Promise.all([
-        msgRes.text(),
-        statusRes.text(),
-      ]);
+      const [msgText, statusText] = await Promise.all([msgRes.text(), statusRes.text()]);
 
-      let msgData, statusData;
+      let msgData: any, statusData: any;
       try { msgData = JSON.parse(msgText); } catch { msgData = { ok: false }; }
       try { statusData = JSON.parse(statusText); } catch { statusData = { ok: false }; }
 
@@ -65,13 +54,11 @@ serve(async (req) => {
         messages: msgData?.messages || [],
         status: statusData?.chat?.status || statusData?.status || "active",
         queue_position: statusData?.queue_position || 0,
-        ended: statusData?.chat?.ended_at ? true : false,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+        ended: !!(statusData?.chat?.ended_at),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // GET actions: messages, status, queue
+    // ===== GET actions: messages, status, queue =====
     const getActions = ["messages", "status", "queue"];
     let apiRes: Response;
 
@@ -81,19 +68,14 @@ serve(async (req) => {
       for (const [k, v] of Object.entries(params)) {
         if (v !== undefined && v !== null) qp.append(k, String(v));
       }
-      const url = `${API_BASE}?${qp.toString()}`;
-      console.log(`[support-chat] GET ${url}`);
-      apiRes = await fetch(url);
+      apiRes = await fetch(`${API_BASE}?${qp}`);
     } else {
-      // POST actions: start, send, end
-      console.log(`[support-chat] POST action=${action}`);
-      
+      // ===== POST actions: start, send, end =====
       const formData = new URLSearchParams();
       formData.append("action", action);
       for (const [k, v] of Object.entries(params)) {
         if (v !== undefined && v !== null) formData.append(k, String(v));
       }
-      
       apiRes = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -102,16 +84,10 @@ serve(async (req) => {
     }
 
     const rawText = await apiRes.text();
-    console.log(`[support-chat] Response for action="${action}":`, rawText.substring(0, 500));
+    let data: any;
+    try { data = JSON.parse(rawText); } catch { data = { ok: false, error: "Invalid API response" }; }
 
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      data = { ok: false, error: "Invalid API response", raw: rawText.substring(0, 200) };
-    }
-
-    // ===== Create Telegram Forum Topic when a new chat starts =====
+    // ===== Create Telegram Topic on new chat =====
     if (action === "start" && data?.ok && data?.chat_key) {
       try {
         const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -125,77 +101,54 @@ serve(async (req) => {
           const userUuid = params.user_uuid || "";
           const chatType = params.chat_type || "normal";
 
-          // Check if a topic already exists for this exact chat_key using precise lookup
-          const { data: existingCache } = await sb
+          // Deduplicate: check if topic already exists for this chat_key
+          const { data: existing } = await sb
             .from("edge_function_cache")
-            .select("key, value")
+            .select("key")
             .eq("key", `live_chat_key:${chatKey}`)
             .maybeSingle();
 
-          if (!existingCache) {
+          if (!existing) {
             const typeLabel = chatType === "quick" ? "⚡ دعم سريع" : "💬 محادثة مباشرة";
-            const topicName = `${typeLabel} - ${userName}`;
 
-            // Create Forum Topic
-            const createTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createForumTopic`, {
+            const topicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createForumTopic`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 chat_id: parseInt(CHAT_ID),
-                name: topicName.substring(0, 128),
+                name: `${typeLabel} - ${userName}`.substring(0, 128),
                 icon_color: chatType === "quick" ? 16766720 : 7322096,
               }),
             });
-            const topicResult = await createTopicRes.json();
-            console.log(`[support-chat] createForumTopic result:`, JSON.stringify(topicResult));
+            const topicResult = await topicRes.json();
 
             if (topicResult.ok && topicResult.result?.message_thread_id) {
               const topicId = topicResult.result.message_thread_id;
 
-              // Send initial message in the topic with end button
-              const msgText = `${typeLabel}\n━━━━━━━━━━━━━━━\n👤 المستخدم: ${userName}\n🆔 UUID: ${userUuid}\n🔑 مفتاح: ${chatKey}\n━━━━━━━━━━━━━━━\n⏰ ${new Date().toLocaleString("ar-EG", { timeZone: "Asia/Riyadh" })}\n\n💡 للرد: اكتب ردك مباشرة في هذا الموضوع`;
-
-              const sendRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              // Send welcome message with end button
+              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   chat_id: parseInt(CHAT_ID),
                   message_thread_id: topicId,
-                  text: msgText,
+                  text: `${typeLabel}\n━━━━━━━━━━━━━━━\n👤 ${userName}\n🆔 ${userUuid}\n🔑 ${chatKey}\n━━━━━━━━━━━━━━━\n⏰ ${new Date().toLocaleString("ar-EG", { timeZone: "Asia/Riyadh" })}\n\n💡 للرد: اكتب ردك مباشرة في هذا الموضوع`,
                   parse_mode: "HTML",
-                  reply_markup: {
-                    inline_keyboard: [[
-                      { text: "❌ إنهاء المحادثة", callback_data: `end_chat_${chatKey}` },
-                    ]],
-                  },
+                  reply_markup: { inline_keyboard: [[{ text: "❌ إنهاء المحادثة", callback_data: `end_chat_${chatKey}` }]] },
                 }),
               });
-              const sendResult = await sendRes.json();
-              console.log(`[support-chat] Topic message sent:`, JSON.stringify(sendResult).substring(0, 200));
 
-              // Cache both mappings: topic→chat_key AND chat_key→topic (for dedup)
+              // Cache both directions
               const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
               await Promise.all([
-                sb.from("edge_function_cache").upsert({
-                  key: `live_chat_topic:${topicId}`,
-                  value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid },
-                  expires_at: expiry,
-                }, { onConflict: "key" }),
-                sb.from("edge_function_cache").upsert({
-                  key: `live_chat_key:${chatKey}`,
-                  value: { topic_id: topicId, user_name: userName },
-                  expires_at: expiry,
-                }, { onConflict: "key" }),
+                sb.from("edge_function_cache").upsert({ key: `live_chat_topic:${topicId}`, value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid }, expires_at: expiry }, { onConflict: "key" }),
+                sb.from("edge_function_cache").upsert({ key: `live_chat_key:${chatKey}`, value: { topic_id: topicId, user_name: userName }, expires_at: expiry }, { onConflict: "key" }),
               ]);
-
-              console.log(`[support-chat] Cached topic ${topicId} ↔ ${chatKey}`);
             }
-          } else {
-            console.log(`[support-chat] Topic already exists for chat_key=${chatKey}, skipping creation`);
           }
         }
       } catch (e) {
-        console.error("[support-chat] Telegram topic creation error:", e);
+        console.error("[support-chat] Telegram topic error:", e);
       }
     }
 
