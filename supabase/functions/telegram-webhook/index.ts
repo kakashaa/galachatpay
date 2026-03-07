@@ -191,67 +191,109 @@ serve(async (req) => {
       return ok();
     }
 
-    // ===== HANDLE TEXT REPLIES to ticket messages =====
-    if (update.message?.reply_to_message && update.message?.text) {
-      const replyToMsgId = update.message.reply_to_message.message_id;
+    // ===== HANDLE TEXT MESSAGES (ticket replies + live chat forwarding) =====
+    if (update.message?.text) {
       const chatId = update.message.chat.id;
       const adminText = update.message.text;
       const adminName = update.message.from?.first_name || "الإدارة";
+      const topicId = update.message.message_thread_id;
 
-      // Look up the ticket from cache
-      const { data: cached } = await sb
-        .from("edge_function_cache")
-        .select("value")
-        .eq("key", `tg_msg_ticket:${replyToMsgId}:${chatId}`)
-        .maybeSingle();
+      // 1) Check if it's a reply to a specific ticket message
+      if (update.message.reply_to_message) {
+        const replyToMsgId = update.message.reply_to_message.message_id;
 
-      if (cached?.value) {
-        const { ticket_id, user_uuid, subject } = cached.value as any;
-
-        // Check ticket exists and not closed
-        const { data: ticket } = await sb
-          .from("support_tickets")
-          .select("id, status")
-          .eq("id", ticket_id)
+        const { data: cached } = await sb
+          .from("edge_function_cache")
+          .select("value")
+          .eq("key", `tg_msg_ticket:${replyToMsgId}:${chatId}`)
           .maybeSingle();
 
-        if (!ticket) {
-          await sendMessage(BOT_TOKEN, chatId, "❌ التذكرة غير موجودة", update.message.message_id);
+        if (cached?.value) {
+          const { ticket_id, user_uuid, subject } = cached.value as any;
+
+          // Check ticket exists and not closed
+          const { data: ticket } = await sb
+            .from("support_tickets")
+            .select("id, status")
+            .eq("id", ticket_id)
+            .maybeSingle();
+
+          if (!ticket) {
+            await sendMessage(BOT_TOKEN, chatId, "❌ التذكرة غير موجودة", update.message.message_id);
+            return ok();
+          }
+          if (ticket.status === "closed") {
+            await sendMessage(BOT_TOKEN, chatId, "⚠️ التذكرة مغلقة مسبقاً", update.message.message_id);
+            return ok();
+          }
+
+          // Save reply
+          await sb.from("ticket_replies").insert({
+            ticket_id,
+            sender_type: "admin",
+            sender_name: `${adminName} (تلجرام)`,
+            message: adminText,
+          });
+
+          // Update ticket status
+          await sb.from("support_tickets").update({
+            status: "replied",
+            admin_reply: adminText,
+            admin_username: `${adminName} (تلجرام)`,
+            replied_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }).eq("id", ticket_id);
+
+          // Notify user
+          await sb.from("notifications").insert({
+            user_uuid,
+            title: "💬 رد على تذكرتك",
+            body: `تم الرد على تذكرة "${subject}" من فريق الدعم.`,
+            target: "personal",
+          });
+
+          // Confirm to admin
+          await sendMessage(BOT_TOKEN, chatId, `✅ تم إرسال ردك على تذكرة "${subject}"`, update.message.message_id);
           return ok();
         }
-        if (ticket.status === "closed") {
-          await sendMessage(BOT_TOKEN, chatId, "⚠️ التذكرة مغلقة مسبقاً", update.message.message_id);
+      }
+
+      // 2) Check if message is in a live chat topic → forward to hola-chat API
+      if (topicId) {
+        const { data: liveChatCache } = await sb
+          .from("edge_function_cache")
+          .select("value")
+          .eq("key", `live_chat_topic:${topicId}`)
+          .maybeSingle();
+
+        if (liveChatCache?.value) {
+          const { chat_key } = liveChatCache.value as any;
+          console.log(`[telegram-webhook] Forwarding admin reply to live chat: topic=${topicId}, chat_key=${chat_key}`);
+
+          try {
+            const API_BASE = "https://hola-chat.com/support-chat-api.php";
+            const formData = new URLSearchParams();
+            formData.append("action", "send");
+            formData.append("chat_key", chat_key);
+            formData.append("message", adminText);
+            formData.append("sender_type", "admin");
+            formData.append("sender_name", adminName);
+
+            const apiRes = await fetch(API_BASE, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: formData.toString(),
+            });
+            const result = await apiRes.text();
+            console.log(`[telegram-webhook] hola-chat API response:`, result.substring(0, 200));
+
+            await sendMessage(BOT_TOKEN, chatId, `✅ تم إرسال ردك للمستخدم`, update.message.message_id);
+          } catch (e) {
+            console.error("[telegram-webhook] Failed to forward to hola-chat:", e);
+            await sendMessage(BOT_TOKEN, chatId, `❌ فشل إرسال الرد`, update.message.message_id);
+          }
           return ok();
         }
-
-        // Save reply
-        await sb.from("ticket_replies").insert({
-          ticket_id,
-          sender_type: "admin",
-          sender_name: `${adminName} (تلجرام)`,
-          message: adminText,
-        });
-
-        // Update ticket status
-        await sb.from("support_tickets").update({
-          status: "replied",
-          admin_reply: adminText,
-          admin_username: `${adminName} (تلجرام)`,
-          replied_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }).eq("id", ticket_id);
-
-        // Notify user
-        await sb.from("notifications").insert({
-          user_uuid,
-          title: "💬 رد على تذكرتك",
-          body: `تم الرد على تذكرة "${subject}" من فريق الدعم.`,
-          target: "personal",
-        });
-
-        // Confirm to admin
-        await sendMessage(BOT_TOKEN, chatId, `✅ تم إرسال ردك على تذكرة "${subject}"`, update.message.message_id);
-        return ok();
       }
     }
 
