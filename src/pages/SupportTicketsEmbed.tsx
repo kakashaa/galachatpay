@@ -204,7 +204,7 @@ const SupportTicketsEmbed: React.FC = () => {
         const path = `tickets/${user.uuid}/new-${ts}.${ext}`;
         ticketAttachUrl = await secureUpload({ file: ticketFile, bucket: "attachments", path, userUuid: user.uuid });
       }
-      const { data: inserted, error } = await supabase.from("support_tickets").insert({ user_uuid: user.id.toString(), user_name: user.name, subject, description: description.trim() }).select().single();
+      const { data: inserted, error } = await supabase.from("support_tickets").insert({ user_uuid: user.uuid, user_name: user.name, subject, description: description.trim() }).select().single();
       if (error) throw error;
       if (inserted) {
         await supabase.from("ticket_replies").insert({ ticket_id: inserted.id, sender_type: "user", sender_name: user.name, message: description.trim(), attachment_url: ticketAttachUrl } as any);
