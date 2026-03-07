@@ -152,7 +152,7 @@ const SupportTickets: React.FC = () => {
           return prev;
         });
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       supabase.removeChannel(channel);
