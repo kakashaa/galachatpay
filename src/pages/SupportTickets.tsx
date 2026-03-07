@@ -116,6 +116,7 @@ const SupportTickets: React.FC = () => {
 
     const ticketId = selectedTicket.id;
 
+    // Simple approach: just refetch all replies when realtime fires
     const channel = supabase
       .channel(`ticket-replies-${ticketId}`)
       .on("postgres_changes", {
@@ -125,21 +126,15 @@ const SupportTickets: React.FC = () => {
         filter: `ticket_id=eq.${ticketId}`,
       }, (payload) => {
         const newReply = payload.new as TicketReply;
-        // Remove matching local optimistic message and add the real one
-        localMessagesRef.current = localMessagesRef.current.filter(
-          (m) => m.message !== newReply.message || m.sender_type !== newReply.sender_type
-        );
+        // Add to state if not already there
         setReplies((prev) => {
-          // Remove any local optimistic version, add real one
-          const withoutLocal = prev.filter((r) => {
-            if (r.id === newReply.id) return false;
-            // Remove optimistic match
-            const isLocalMatch = localMessagesRef.current.length === 0 && 
-              r.sender_type === newReply.sender_type && r.message === newReply.message;
-            return !isLocalMatch;
+          if (prev.some((r) => r.id === newReply.id)) return prev;
+          // Remove any local optimistic version with same content
+          const cleaned = prev.filter((r) => {
+            if (!r.id.startsWith("local-")) return true;
+            return !(r.sender_type === newReply.sender_type && r.message === newReply.message);
           });
-          if (withoutLocal.some((r) => r.id === newReply.id)) return withoutLocal;
-          return [...withoutLocal, newReply];
+          return [...cleaned, newReply];
         });
         if (newReply.sender_type === "admin") {
           toast.success("رد جديد من فريق الدعم!");
@@ -148,7 +143,7 @@ const SupportTickets: React.FC = () => {
       })
       .subscribe();
 
-    // Polling fallback every 3s
+    // Polling fallback every 2s - simple: fetch and merge with local msgs
     const pollInterval = setInterval(async () => {
       if (selectedTicketRef.current?.id !== ticketId) return;
       const { data } = await supabase
@@ -157,19 +152,19 @@ const SupportTickets: React.FC = () => {
         .eq("ticket_id", ticketId)
         .order("created_at", { ascending: true });
       if (data) {
-        // Merge: DB data + any remaining local optimistic messages
         const dbData = data as TicketReply[];
-        const dbMessages = new Set(dbData.map((r) => `${r.sender_type}:${r.message}`));
-        // Remove confirmed local messages
-        localMessagesRef.current = localMessagesRef.current.filter(
-          (m) => !dbMessages.has(`${m.sender_type}:${m.message}`)
+        const dbIds = new Set(dbData.map((r) => r.id));
+        const dbContent = new Set(dbData.map((r) => `${r.sender_type}:${r.message}`));
+        // Keep local messages that DB doesn't have yet (by content match)
+        const localOnly = repliesRef.current.filter(
+          (r) => r.id.startsWith("local-") && !dbContent.has(`${r.sender_type}:${r.message}`)
         );
-        const merged = [...dbData, ...localMessagesRef.current].sort(
+        const merged = [...dbData, ...localOnly].sort(
           (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         setReplies(merged);
       }
-    }, 3000);
+    }, 2000);
 
     return () => {
       supabase.removeChannel(channel);
