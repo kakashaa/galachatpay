@@ -153,7 +153,7 @@ const SupportTickets: React.FC = () => {
         .order("created_at", { ascending: true });
       if (data) {
         const dbData = data as TicketReply[];
-        const dbIds = new Set(dbData.map((r) => r.id));
+        const _dbIds = new Set(dbData.map((r) => r.id));
         const dbContent = new Set(dbData.map((r) => `${r.sender_type}:${r.message}`));
         // Keep local messages that DB doesn't have yet (by content match)
         const localOnly = repliesRef.current.filter(
