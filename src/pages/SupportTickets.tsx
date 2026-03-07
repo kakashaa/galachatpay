@@ -101,7 +101,13 @@ const SupportTickets: React.FC = () => {
             prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
           );
           if (selectedTicketRef.current?.id === updated.id) {
-            setSelectedTicket((prev) => prev ? { ...prev, ...updated } : prev);
+            if (updated.status === "closed") {
+              toast.info("✅ تم إغلاق هذه التذكرة من قبل الإدارة");
+              setSelectedTicket(null);
+              setReplies([]);
+            } else {
+              setSelectedTicket((prev) => prev ? { ...prev, ...updated } : prev);
+            }
           }
         }
       })
