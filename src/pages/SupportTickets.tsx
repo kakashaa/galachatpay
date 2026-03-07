@@ -98,7 +98,10 @@ const SupportTickets: React.FC = () => {
       }, (payload) => {
         const newReply = payload.new as TicketReply;
         if (selectedTicket && newReply.ticket_id === selectedTicket.id) {
-          setReplies((prev) => [...prev, newReply]);
+          setReplies((prev) => {
+            if (prev.some((r) => r.id === newReply.id)) return prev;
+            return [...prev, newReply];
+          });
           if (newReply.sender_type === "admin") {
             toast.success("رد جديد من فريق الدعم!");
           }
@@ -241,13 +244,23 @@ const SupportTickets: React.FC = () => {
         attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.id.toString() });
         setUploadingAttachment(false);
       }
-      await supabase.from("ticket_replies").insert({
+      const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
+      const { data: insertedReply } = await supabase.from("ticket_replies").insert({
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
-        message: replyText.trim() || (attachmentFile ? "مرفق" : ""),
+        message: msgText,
         attachment_url: attachUrl,
-      } as any);
+      } as any).select().single();
+      
+      // Optimistic update - add to replies immediately
+      if (insertedReply) {
+        setReplies((prev) => {
+          if (prev.some((r) => r.id === (insertedReply as any).id)) return prev;
+          return [...prev, insertedReply as any];
+        });
+      }
+      
       await supabase.from("support_tickets").update({
         status: "open",
         updated_at: new Date().toISOString(),
