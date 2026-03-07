@@ -273,3 +273,14 @@ async function sendMessage(token: string, chatId: number, text: string, replyToI
     }),
   });
 }
+
+async function deleteMessage(token: string, chatId: number, messageId: number) {
+  await fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+    }),
+  });
+}
