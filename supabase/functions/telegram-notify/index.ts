@@ -30,8 +30,8 @@ serve(async (req) => {
     // Route tickets to dedicated group, everything else to default
     const isTicketType = type === "support_ticket" || type === "ticket_reply";
     const CHAT_ID = (isTicketType && TICKETS_CHAT_ID) ? TICKETS_CHAT_ID : DEFAULT_CHAT_ID;
-    console.log(`[telegram-notify] type=${type}, record keys=${Object.keys(record || {}).join(",")}`);
-    
+    console.log(`[telegram-notify] type=${type}, isTicket=${isTicketType}, CHAT_ID=${CHAT_ID}, TICKETS_CHAT_ID=${TICKETS_CHAT_ID}, DEFAULT_CHAT_ID=${DEFAULT_CHAT_ID}`);
+
     const message = formatMessage(type, record);
 
     if (!message) {
