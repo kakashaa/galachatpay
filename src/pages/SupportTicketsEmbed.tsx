@@ -66,7 +66,14 @@ const SupportTicketsEmbed: React.FC = () => {
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Refs for fresh state in closures
+  const selectedTicketRef = useRef<Ticket | null>(null);
+  selectedTicketRef.current = selectedTicket;
+  const repliesRef = useRef<TicketReply[]>([]);
+  repliesRef.current = replies;
 
+  // Load tickets on mount + realtime for ticket updates
   useEffect(() => {
     if (!user) return;
     loadTickets();
@@ -76,21 +83,68 @@ const SupportTicketsEmbed: React.FC = () => {
         const updated = payload.new as any;
         if (updated.user_uuid === user.id.toString()) {
           setTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
-          if (selectedTicket?.id === updated.id) {
+          if (selectedTicketRef.current?.id === updated.id) {
             setSelectedTicket((prev) => prev ? { ...prev, ...updated } : prev);
           }
         }
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "ticket_replies" }, (payload) => {
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  // Separate realtime + polling for replies
+  useEffect(() => {
+    if (!user || !selectedTicket) return;
+    const ticketId = selectedTicket.id;
+
+    const channel = supabase
+      .channel(`embed-ticket-replies-${ticketId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "ticket_replies",
+        filter: `ticket_id=eq.${ticketId}`,
+      }, (payload) => {
         const newReply = payload.new as TicketReply;
-        if (selectedTicket && newReply.ticket_id === selectedTicket.id) {
-          setReplies((prev) => [...prev, newReply]);
-          if (newReply.sender_type === "admin") toast.success("رد جديد من فريق الدعم!");
-        }
+        setReplies((prev) => {
+          if (prev.some((r) => r.id === newReply.id)) return prev;
+          // Remove local optimistic version
+          const cleaned = prev.filter((r) => {
+            if (!r.id.startsWith("local-")) return true;
+            return !(r.sender_type === newReply.sender_type && r.message === newReply.message);
+          });
+          return [...cleaned, newReply];
+        });
+        if (newReply.sender_type === "admin") toast.success("رد جديد من فريق الدعم!");
         loadTickets();
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    // Polling fallback every 2s
+    const pollInterval = setInterval(async () => {
+      if (selectedTicketRef.current?.id !== ticketId) return;
+      const { data } = await supabase
+        .from("ticket_replies")
+        .select("*")
+        .eq("ticket_id", ticketId)
+        .order("created_at", { ascending: true });
+      if (data) {
+        const dbData = data as TicketReply[];
+        const dbContent = new Set(dbData.map((r) => `${r.sender_type}:${r.message}`));
+        const localOnly = repliesRef.current.filter(
+          (r) => r.id.startsWith("local-") && !dbContent.has(`${r.sender_type}:${r.message}`)
+        );
+        const merged = [...dbData, ...localOnly].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        setReplies(merged);
+      }
+    }, 2000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, [user, selectedTicket?.id]);
 
   useEffect(() => {
@@ -187,17 +241,39 @@ const SupportTicketsEmbed: React.FC = () => {
         attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.id.toString() });
         setUploadingAttachment(false);
       }
-      await supabase.from("ticket_replies").insert({
+      const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
+      
+      // Optimistic UI: show message immediately
+      const localReply: TicketReply = {
+        id: `local-${Date.now()}`,
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
-        message: replyText.trim() || (attachmentFile ? "مرفق" : ""),
+        message: msgText,
+        is_read: false,
+        created_at: new Date().toISOString(),
         attachment_url: attachUrl,
-      } as any);
-      await supabase.from("support_tickets").update({ status: "open", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
-      supabase.functions.invoke("telegram-notify", { body: { type: "ticket_reply", record: { user_name: user.name, ticket_id: selectedTicket.id, subject: selectedTicket.subject, message: replyText.trim() || "مرفق", attachment_url: attachUrl } } }).catch(() => {});
+      };
+      setReplies((prev) => [...prev, localReply]);
       setReplyText("");
       clearAttachment();
+
+      // Insert to DB
+      const { error: insertErr } = await supabase.from("ticket_replies").insert({
+        ticket_id: selectedTicket.id,
+        sender_type: "user",
+        sender_name: user.name,
+        message: msgText,
+        attachment_url: attachUrl,
+      } as any);
+      
+      if (insertErr) {
+        toast.error("فشل إرسال الرد");
+        setReplies((prev) => prev.filter((r) => r.id !== localReply.id));
+      }
+
+      await supabase.from("support_tickets").update({ status: "open", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
+      supabase.functions.invoke("telegram-notify", { body: { type: "ticket_reply", record: { user_name: user.name, ticket_id: selectedTicket.id, subject: selectedTicket.subject, message: msgText, attachment_url: attachUrl } } }).catch(() => {});
     } catch { toast.error("فشل إرسال الرد"); setUploadingAttachment(false); }
     setSendingReply(false);
   };
