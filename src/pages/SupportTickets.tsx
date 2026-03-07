@@ -59,6 +59,17 @@ const SupportTickets: React.FC = () => {
   const [ticketFilePreview, setTicketFilePreview] = useState<string | null>(null);
   const ticketFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Conversation view
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [replies, setReplies] = useState<TicketReply[]>([]);
+  const [replyText, setReplyText] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Use ref to avoid stale closure in realtime handler
   const selectedTicketRef = useRef<Ticket | null>(null);
   selectedTicketRef.current = selectedTicket;
