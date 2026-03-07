@@ -201,6 +201,61 @@ serve(async (req) => {
         return ok();
       }
 
+      // ===== WARES REQUEST approve/reject (entry, frame, etc.) =====
+      if (data.startsWith("req_ok_") || data.startsWith("req_no_")) {
+        const isApprove = data.startsWith("req_ok_");
+        const requestId = data.substring(isApprove ? 7 : 7); // remove "req_ok_" or "req_no_"
+        const chatId = cb.message.chat.id;
+
+        try {
+          const WARES_API = "https://hola-chat.com/wares-api.php";
+          const API_KEY = "ghala2026actions";
+          const newStatus = isApprove ? "approved" : "rejected";
+
+          const formData = new URLSearchParams();
+          formData.append("action", "update-status");
+          formData.append("request_id", requestId);
+          formData.append("status", newStatus);
+
+          const apiRes = await fetch(`${WARES_API}?key=${API_KEY}&action=update-status`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          });
+          const result = await apiRes.text();
+          console.log(`[telegram-webhook] Wares update-status result:`, result.substring(0, 300));
+
+          // Update the Telegram message to show the result
+          const statusEmoji = isApprove ? "✅" : "❌";
+          const statusText = isApprove ? "تم القبول" : "تم الرفض";
+          const originalText = cb.message.caption || cb.message.text || "";
+          
+          if (cb.message.caption) {
+            // Message with media (video/photo) - edit caption
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageCaption`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                message_id: cb.message.message_id,
+                caption: originalText + `\n\n${statusEmoji} <b>${statusText}</b> ${statusEmoji}`,
+                parse_mode: "HTML",
+              }),
+            });
+          } else {
+            // Text-only message
+            await editMessage(BOT_TOKEN, chatId, cb.message.message_id,
+              originalText + `\n\n${statusEmoji} <b>${statusText}</b> ${statusEmoji}`);
+          }
+
+          await answerCallback(BOT_TOKEN, cb.id, `${statusEmoji} ${statusText} - طلب #${requestId}`);
+        } catch (e) {
+          console.error("[telegram-webhook] Wares approve/reject error:", e);
+          await answerCallback(BOT_TOKEN, cb.id, "❌ فشل تحديث الطلب");
+        }
+        return ok();
+      }
+
       // ===== LIVE CHAT END from Telegram =====
       if (data.startsWith("end_chat_")) {
         const chatKey = data.substring(9); // remove "end_chat_"
