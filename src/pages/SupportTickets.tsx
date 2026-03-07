@@ -70,9 +70,12 @@ const SupportTickets: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use ref to avoid stale closure in realtime handler
+  // Use ref to avoid stale closure in realtime/polling handlers
   const selectedTicketRef = useRef<Ticket | null>(null);
   selectedTicketRef.current = selectedTicket;
+  
+  // Track local optimistic messages that haven't been confirmed by DB yet
+  const localMessagesRef = useRef<TicketReply[]>([]);
 
   // Load tickets on mount
   useEffect(() => {
