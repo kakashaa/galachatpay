@@ -14,9 +14,10 @@ serve(async (req) => {
 
   try {
     const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
+    const DEFAULT_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
+    const TICKETS_CHAT_ID = Deno.env.get("TELEGRAM_TICKETS_CHAT_ID");
 
-    if (!BOT_TOKEN || !CHAT_ID) {
+    if (!BOT_TOKEN || !DEFAULT_CHAT_ID) {
       console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
       return new Response(JSON.stringify({ error: "Missing config" }), {
         status: 500,
@@ -25,6 +26,10 @@ serve(async (req) => {
     }
 
     const { type, record } = await req.json();
+
+    // Route tickets to dedicated group, everything else to default
+    const isTicketType = type === "support_ticket" || type === "ticket_reply";
+    const CHAT_ID = (isTicketType && TICKETS_CHAT_ID) ? TICKETS_CHAT_ID : DEFAULT_CHAT_ID;
     console.log(`[telegram-notify] type=${type}, record keys=${Object.keys(record || {}).join(",")}`);
     
     const message = formatMessage(type, record);
