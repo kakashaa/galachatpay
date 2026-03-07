@@ -307,8 +307,8 @@ const SupportTickets: React.FC = () => {
         setUploadingAttachment(true);
         const ts = Date.now();
         const ext = attachmentFile.name.split(".").pop()?.toLowerCase() || "jpg";
-        const path = `tickets/${user.id}/${selectedTicket.id}/${ts}.${ext}`;
-        attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.id.toString() });
+        const path = `tickets/${user.uuid}/${selectedTicket.id}/${ts}.${ext}`;
+        attachUrl = await secureUpload({ file: attachmentFile, bucket: "attachments", path, userUuid: user.uuid });
         setUploadingAttachment(false);
       }
       const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
