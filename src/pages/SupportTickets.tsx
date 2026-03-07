@@ -102,7 +102,10 @@ const SupportTickets: React.FC = () => {
           );
           if (selectedTicketRef.current?.id === updated.id) {
             if (updated.status === "closed") {
-              toast.info("✅ تم إغلاق هذه التذكرة من قبل الإدارة");
+              toast("✅ تم إنهاء التذكرة", {
+                description: "إذا تبقى لديك طلب، اضغط رجوع وأعد طلبك من جديد.",
+                duration: 6000,
+              });
               setSelectedTicket(null);
               setReplies([]);
             } else {
