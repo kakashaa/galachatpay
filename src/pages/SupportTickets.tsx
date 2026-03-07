@@ -308,9 +308,9 @@ const SupportTickets: React.FC = () => {
       }
       const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
       
-      // Create local message object for immediate display
+      // Create local message for immediate display
       const localReply: TicketReply = {
-        id: crypto.randomUUID(),
+        id: `local-${Date.now()}`,
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
@@ -320,31 +320,33 @@ const SupportTickets: React.FC = () => {
         attachment_url: attachUrl,
       };
       
-      // Show message immediately (optimistic)
-      console.log("[TICKET-CHAT] Adding local reply optimistically:", localReply.id, localReply.message);
-      setReplies((prev) => {
-        console.log("[TICKET-CHAT] Previous replies count:", prev.length);
-        const next = [...prev, localReply];
-        console.log("[TICKET-CHAT] New replies count:", next.length);
-        return next;
-      });
+      // Track in ref so polling won't remove it
+      localMessagesRef.current = [...localMessagesRef.current, localReply];
       
-      // Clear input immediately so user sees feedback
+      // Show immediately
+      setReplies((prev) => [...prev, localReply]);
+      
+      // Clear input
       setReplyText("");
       clearAttachment();
       
-      // Then insert to DB (don't await - fire and forget for speed)
-      supabase.from("ticket_replies").insert({
+      // Insert to DB
+      const { error: insertErr } = await supabase.from("ticket_replies").insert({
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
         message: msgText,
         attachment_url: attachUrl,
-      } as any).then(({ error }) => {
-        if (error) console.error("[TICKET-CHAT] Insert error:", error);
-        else console.log("[TICKET-CHAT] Insert success");
-      });
+      } as any);
       
+      if (insertErr) {
+        console.error("Reply insert error:", insertErr);
+        toast.error("فشل إرسال الرد");
+        // Remove local message on failure
+        localMessagesRef.current = localMessagesRef.current.filter((m) => m.id !== localReply.id);
+        setReplies((prev) => prev.filter((r) => r.id !== localReply.id));
+      }
+
       await supabase.from("support_tickets").update({
         status: "open",
         updated_at: new Date().toISOString(),
