@@ -7,6 +7,26 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Topic thread IDs for the main forum group
+const TOPIC_THREAD_IDS: Record<string, number> = {
+  salary_request: 982,
+  bd_commission: 983,
+  ban_report: 984,
+  vip_request: 985,
+  id_change: 986,
+  bd_registration: 987,
+  custom_gift: 988,
+  entry_effect: 989,
+  frame: 990,
+  animated_photo: 991,
+  hair_selection: 992,
+  star_cashout: 993,
+  support_ticket: 1847,
+  ticket_reply: 1847,
+  quick_support: 1890,
+  vip_chat: 1892,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -14,15 +34,11 @@ serve(async (req) => {
 
   try {
     const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    // Use env vars with hardcoded fallbacks for chat IDs
-    const DEFAULT_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")?.match(/^-?\d+$/) 
-      ? Deno.env.get("TELEGRAM_CHAT_ID")! 
+    const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")?.match(/^-?\d+$/)
+      ? Deno.env.get("TELEGRAM_CHAT_ID")!
       : "-1003556311692";
-    const TICKETS_CHAT_ID = Deno.env.get("TELEGRAM_TICKETS_CHAT_ID")?.match(/^-?\d+$/)
-      ? Deno.env.get("TELEGRAM_TICKETS_CHAT_ID")!
-      : "-1003862204467";
 
-    if (!BOT_TOKEN || !DEFAULT_CHAT_ID) {
+    if (!BOT_TOKEN || !CHAT_ID) {
       console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
       return new Response(JSON.stringify({ error: "Missing config" }), {
         status: 500,
@@ -31,11 +47,10 @@ serve(async (req) => {
     }
 
     const { type, record } = await req.json();
+    const threadId = TOPIC_THREAD_IDS[type];
+    const threadParam = threadId ? { message_thread_id: threadId } : {};
 
-    // Route tickets to dedicated group, everything else to default
-    const isTicketType = type === "support_ticket" || type === "ticket_reply";
-    const CHAT_ID = isTicketType ? TICKETS_CHAT_ID : DEFAULT_CHAT_ID;
-    console.log(`[telegram-notify] type=${type}, CHAT_ID=${CHAT_ID}`);
+    console.log(`[telegram-notify] type=${type}, CHAT_ID=${CHAT_ID}, thread=${threadId || "general"}`);
 
     const message = formatMessage(type, record);
 
@@ -50,12 +65,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Determine if we have media to send
-    const hasMedia = (type === "custom_gift" && (record?.thumbnail_url || record?.video_url)) ||
-                     (type === "hair_selection" && record?.file_url) ||
-                     (type === "animated_photo" && record?.gif_url) ||
-                     ((type === "support_ticket" || type === "ticket_reply") && record?.attachment_url);
-
     // Build inline keyboard for support tickets
     const ticketButtons = (type === "support_ticket" && record?.id) ? {
       reply_markup: JSON.stringify({
@@ -65,8 +74,8 @@ serve(async (req) => {
       })
     } : {};
 
-    const replyHint = (type === "support_ticket") 
-      ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>" 
+    const replyHint = (type === "support_ticket")
+      ? "\n\n💡 <i>للرد: اعمل Reply على هذه الرسالة واكتب ردك</i>"
       : "";
 
     let data: any = { ok: true };
@@ -83,13 +92,13 @@ serve(async (req) => {
         mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: captionText, parse_mode: "HTML", ...ticketButtons }),
+          body: JSON.stringify({ chat_id: CHAT_ID, photo: attachUrl, caption: captionText, parse_mode: "HTML", ...threadParam, ...ticketButtons }),
         });
       } else {
         mediaRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: captionText, parse_mode: "HTML", ...ticketButtons }),
+          body: JSON.stringify({ chat_id: CHAT_ID, document: attachUrl, caption: captionText, parse_mode: "HTML", ...threadParam, ...ticketButtons }),
         });
       }
       data = await mediaRes.json();
@@ -120,6 +129,7 @@ serve(async (req) => {
           chat_id: CHAT_ID,
           text: message + replyHint,
           parse_mode: "HTML",
+          ...threadParam,
           ...ticketButtons,
         }),
       });
@@ -147,7 +157,7 @@ serve(async (req) => {
       const animRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendAnimation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: CHAT_ID, animation: record.gif_url, caption: message, parse_mode: "HTML" }),
+        body: JSON.stringify({ chat_id: CHAT_ID, animation: record.gif_url, caption: message, parse_mode: "HTML", ...threadParam }),
       });
       const animData = await animRes.json();
       console.log("Animated photo response:", JSON.stringify(animData));
@@ -155,7 +165,7 @@ serve(async (req) => {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, photo: record.gif_url, caption: message, parse_mode: "HTML" }),
+          body: JSON.stringify({ chat_id: CHAT_ID, photo: record.gif_url, caption: message, parse_mode: "HTML", ...threadParam }),
         });
       }
 
@@ -167,6 +177,7 @@ serve(async (req) => {
         const fileName = record.hair_title ? `${record.hair_title}.svga` : "hair.svga";
         const formData = new FormData();
         formData.append("chat_id", CHAT_ID);
+        if (threadId) formData.append("message_thread_id", String(threadId));
         formData.append("document", fileBlob, fileName);
         formData.append("caption", message!);
         formData.append("parse_mode", "HTML");
@@ -178,7 +189,7 @@ serve(async (req) => {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, text: message + `\n📎 ${record.file_url}`, parse_mode: "HTML" }),
+          body: JSON.stringify({ chat_id: CHAT_ID, text: message + `\n📎 ${record.file_url}`, parse_mode: "HTML", ...threadParam }),
         });
       }
 
@@ -197,7 +208,7 @@ serve(async (req) => {
         const groupRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMediaGroup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, media }),
+          body: JSON.stringify({ chat_id: CHAT_ID, media, ...threadParam }),
         });
         console.log("MediaGroup response:", JSON.stringify(await groupRes.json()));
       } else if (media.length === 1) {
@@ -207,7 +218,7 @@ serve(async (req) => {
         const singleRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: CHAT_ID, [fieldName]: item.media, caption: message, parse_mode: "HTML" }),
+          body: JSON.stringify({ chat_id: CHAT_ID, [fieldName]: item.media, caption: message, parse_mode: "HTML", ...threadParam }),
         });
         console.log("Single media response:", JSON.stringify(await singleRes.json()));
       }
@@ -217,7 +228,7 @@ serve(async (req) => {
       const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
+        body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML", ...threadParam }),
       });
       data = await res.json();
       console.log("Telegram response:", JSON.stringify(data));
