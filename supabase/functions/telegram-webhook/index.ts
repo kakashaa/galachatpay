@@ -224,6 +224,40 @@ serve(async (req) => {
           const result = await apiRes.text();
           console.log(`[telegram-webhook] Ban ${newAction} result:`, result.substring(0, 300));
 
+          // Update local ban_reports table
+          try {
+            const apiResult = JSON.parse(result);
+            if (apiResult.ok && apiResult.data?.target_uuid) {
+              const targetUuid = apiResult.data.target_uuid;
+              if (isApprove) {
+                // Mark the most recent pending report for this user as verified
+                const { data: pendingReport } = await sb
+                  .from("ban_reports")
+                  .select("id")
+                  .eq("reported_user_id", targetUuid)
+                  .eq("is_verified", false)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                if (pendingReport) {
+                  await sb.from("ban_reports").update({ is_verified: true }).eq("id", pendingReport.id);
+                  console.log(`[telegram-webhook] Updated local ban_report ${pendingReport.id} to verified`);
+                }
+
+                // Send notification to reported user
+                await sb.from("notifications").insert({
+                  user_uuid: targetUuid,
+                  title: "🚫 تم حظرك",
+                  body: "تم حظر حسابك بناءً على بلاغ مُعتمد. راجع قسم فحص الحظر للتفاصيل.",
+                  target: "personal",
+                });
+              }
+            }
+          } catch (parseErr) {
+            console.error("[telegram-webhook] Failed to update local DB:", parseErr);
+          }
+
           // Update the Telegram message to show the result
           const statusEmoji = isApprove ? "✅" : "❌";
           const statusText = isApprove ? "تم قبول الحظر" : "تم رفض البلاغ";
