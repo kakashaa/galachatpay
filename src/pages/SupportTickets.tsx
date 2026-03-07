@@ -130,26 +130,25 @@ const SupportTickets: React.FC = () => {
       })
       .subscribe();
 
-    // Polling fallback every 5s to catch any missed realtime events
+    // Polling fallback every 3s to catch any missed realtime events
     const pollInterval = setInterval(async () => {
       if (!selectedTicketRef.current) return;
+      console.log("[TICKET-POLL] Polling...");
       const { data } = await supabase
         .from("ticket_replies")
         .select("*")
         .eq("ticket_id", selectedTicketRef.current.id)
         .order("created_at", { ascending: true });
       if (data) {
+        console.log("[TICKET-POLL] Got", data.length, "replies from DB");
         setReplies((prev) => {
-          const merged = [...prev];
-          for (const msg of data as any[]) {
-            if (!merged.some((r) => r.id === msg.id)) {
-              merged.push(msg);
-            }
-          }
-          if (merged.length !== prev.length) {
-            return merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-          }
-          return prev;
+          // Keep local-only messages (optimistic) + merge DB data
+          const dbIds = new Set((data as any[]).map((r: any) => r.id));
+          const localOnly = prev.filter((r) => !dbIds.has(r.id));
+          const merged = [...(data as any[]), ...localOnly].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          return merged;
         });
       }
     }, 3000);
