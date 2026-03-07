@@ -284,6 +284,8 @@ const SupportTicketsEmbed: React.FC = () => {
       // Delete all replies for this ticket
       await supabase.from("ticket_replies").delete().eq("ticket_id", selectedTicket.id);
       await supabase.from("support_tickets").update({ status: "closed", updated_at: new Date().toISOString() }).eq("id", selectedTicket.id);
+      // Notify Telegram to update/edit the ticket message
+      supabase.functions.invoke("telegram-notify", { body: { type: "ticket_closed", record: { ticket_id: selectedTicket.id, subject: selectedTicket.subject, user_name: user?.name } } }).catch(() => {});
       setReplies([]);
       setSelectedTicket(prev => prev ? { ...prev, status: "closed" } : prev);
       toast.success("تم إنهاء التذكرة بنجاح");
