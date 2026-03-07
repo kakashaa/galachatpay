@@ -54,46 +54,57 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
-      const { data: cached } = await sb2
+
+      // Find and delete ALL cached Telegram messages for this ticket
+      const { data: cachedMsgs } = await sb2
+        .from("edge_function_cache")
+        .select("key, value")
+        .like("key", "tg_msg_ticket:%")
+        .filter("value->>ticket_id", "eq", record.ticket_id);
+
+      if (cachedMsgs && cachedMsgs.length > 0) {
+        for (const cached of cachedMsgs) {
+          try {
+            const msgId = parseInt(cached.key.split(":")[1]);
+            const chatId = cached.key.split(":")[2];
+            if (msgId && chatId) {
+              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: parseInt(chatId), message_id: msgId }),
+              });
+            }
+          } catch (e) {
+            console.error("Failed to delete msg:", e);
+          }
+        }
+        // Clean up cache entries
+        for (const c of cachedMsgs) {
+          await sb2.from("edge_function_cache").delete().eq("key", c.key);
+        }
+      }
+
+      // Also try reverse cache for the main ticket message
+      const { data: reverseCache } = await sb2
         .from("edge_function_cache")
         .select("value")
         .eq("key", `ticket_tg_msg:${record.ticket_id}`)
         .maybeSingle();
 
-      if (cached?.value) {
-        const { message_id, chat_id } = cached.value as any;
-        // Edit the original message to show closed status
+      if (reverseCache?.value) {
+        const { message_id, chat_id } = reverseCache.value as any;
         try {
-          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: chat_id,
-              message_id: message_id,
-              text: `✅ <b>تم إغلاق التذكرة</b>\n\n🎫 التذكرة: ${record.subject || "—"}\n👤 ${record.user_name || "—"}\n\n<i>تم الإغلاق من التطبيق</i>`,
-              parse_mode: "HTML",
-            }),
+            body: JSON.stringify({ chat_id: parseInt(chat_id), message_id }),
           });
         } catch (e) {
-          // If editMessageText fails (e.g. media message), try editMessageCaption
-          try {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageCaption`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: chat_id,
-                message_id: message_id,
-                caption: `✅ <b>تم إغلاق التذكرة</b>\n\n🎫 التذكرة: ${record.subject || "—"}\n👤 ${record.user_name || "—"}\n\n<i>تم الإغلاق من التطبيق</i>`,
-                parse_mode: "HTML",
-              }),
-            });
-          } catch (e2) {
-            console.error("Failed to edit caption:", e2);
-          }
+          console.error("Failed to delete main ticket msg:", e);
         }
-        // Clean up cache
         await sb2.from("edge_function_cache").delete().eq("key", `ticket_tg_msg:${record.ticket_id}`);
       }
+
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
