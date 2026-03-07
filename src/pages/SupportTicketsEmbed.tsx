@@ -81,7 +81,7 @@ const SupportTicketsEmbed: React.FC = () => {
       .channel("tickets-user-embed")
       .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, (payload) => {
         const updated = payload.new as any;
-        if (updated.user_uuid === user.id.toString()) {
+        if (updated.user_uuid === user.uuid) {
           setTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
           if (selectedTicketRef.current?.id === updated.id) {
             // If ticket was closed (e.g. from Telegram), kick user back to list
