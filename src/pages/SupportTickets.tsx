@@ -305,21 +305,29 @@ const SupportTickets: React.FC = () => {
       };
       
       // Show message immediately (optimistic)
-      setReplies((prev) => [...prev, localReply]);
+      console.log("[TICKET-CHAT] Adding local reply optimistically:", localReply.id, localReply.message);
+      setReplies((prev) => {
+        console.log("[TICKET-CHAT] Previous replies count:", prev.length);
+        const next = [...prev, localReply];
+        console.log("[TICKET-CHAT] New replies count:", next.length);
+        return next;
+      });
       
-      // Then insert to DB
-      const { data: insertedReply } = await supabase.from("ticket_replies").insert({
+      // Clear input immediately so user sees feedback
+      setReplyText("");
+      clearAttachment();
+      
+      // Then insert to DB (don't await - fire and forget for speed)
+      supabase.from("ticket_replies").insert({
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
         message: msgText,
         attachment_url: attachUrl,
-      } as any).select().single();
-      
-      // Replace local message with DB version if available
-      if (insertedReply) {
-        setReplies((prev) => prev.map((r) => r.id === localReply.id ? (insertedReply as any) : r));
-      }
+      } as any).then(({ error }) => {
+        if (error) console.error("[TICKET-CHAT] Insert error:", error);
+        else console.log("[TICKET-CHAT] Insert success");
+      });
       
       await supabase.from("support_tickets").update({
         status: "open",
