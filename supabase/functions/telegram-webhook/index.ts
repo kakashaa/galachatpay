@@ -209,29 +209,37 @@ serve(async (req) => {
           const result = await apiRes.text();
           console.log(`[telegram-webhook] End chat response:`, result.substring(0, 200));
 
-          // 2) Delete the button message from Telegram
-          await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
-
-          // 3) Delete all messages in this topic (cached reply messages)
+          // 2) Delete the forum topic entirely (this removes ALL messages inside it)
           if (topicId) {
-            // Delete all cached messages for this live chat topic
+            // Try deleteForumTopic first - it deletes the topic AND all messages inside
+            const delTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteForumTopic`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+            });
+            const delTopicResult = await delTopicRes.json();
+            console.log(`[telegram-webhook] deleteForumTopic result:`, JSON.stringify(delTopicResult));
+
+            if (!delTopicResult.ok) {
+              console.log(`[telegram-webhook] deleteForumTopic failed, trying closeForumTopic...`);
+              // Fallback: close topic then delete messages manually
+              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/closeForumTopic`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+              });
+
+              // Delete the button message at least
+              await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
+            }
+
+            // Clean up all cached messages for this topic
             const { data: cachedMsgs } = await sb
               .from("edge_function_cache")
-              .select("key, value")
+              .select("key")
               .like("key", `live_chat_msg:${topicId}:%`);
 
             if (cachedMsgs && cachedMsgs.length > 0) {
-              for (const cached of cachedMsgs) {
-                try {
-                  const parts = cached.key.split(":");
-                  const msgId = parseInt(parts[2]);
-                  if (msgId) {
-                    await deleteMessage(BOT_TOKEN, chatId, msgId);
-                  }
-                } catch (e) {
-                  console.error("Failed to delete cached live chat msg:", e);
-                }
-              }
               for (const c of cachedMsgs) {
                 await sb.from("edge_function_cache").delete().eq("key", c.key);
               }
@@ -239,27 +247,9 @@ serve(async (req) => {
 
             // Clean up topic cache
             await sb.from("edge_function_cache").delete().eq("key", `live_chat_topic:${topicId}`);
-
-            // 4) Try to delete/close the forum topic itself
-            try {
-              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteForumTopic`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
-              });
-            } catch (e) {
-              console.error("Failed to delete forum topic:", e);
-              // Fallback: try to close the topic
-              try {
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/closeForumTopic`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
-                });
-              } catch (e2) {
-                console.error("Failed to close forum topic:", e2);
-              }
-            }
+          } else {
+            // No topic, just delete the button message
+            await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
           }
 
           // 5) Notify the user (extract uuid from chat_key: normal_UUID_timestamp)
