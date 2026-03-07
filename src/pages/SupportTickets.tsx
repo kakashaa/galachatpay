@@ -291,6 +291,23 @@ const SupportTickets: React.FC = () => {
         setUploadingAttachment(false);
       }
       const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
+      
+      // Create local message object for immediate display
+      const localReply: TicketReply = {
+        id: crypto.randomUUID(),
+        ticket_id: selectedTicket.id,
+        sender_type: "user",
+        sender_name: user.name,
+        message: msgText,
+        is_read: false,
+        created_at: new Date().toISOString(),
+        attachment_url: attachUrl,
+      };
+      
+      // Show message immediately (optimistic)
+      setReplies((prev) => [...prev, localReply]);
+      
+      // Then insert to DB
       const { data: insertedReply } = await supabase.from("ticket_replies").insert({
         ticket_id: selectedTicket.id,
         sender_type: "user",
@@ -299,12 +316,9 @@ const SupportTickets: React.FC = () => {
         attachment_url: attachUrl,
       } as any).select().single();
       
-      // Optimistic update - add to replies immediately
+      // Replace local message with DB version if available
       if (insertedReply) {
-        setReplies((prev) => {
-          if (prev.some((r) => r.id === (insertedReply as any).id)) return prev;
-          return [...prev, insertedReply as any];
-        });
+        setReplies((prev) => prev.map((r) => r.id === localReply.id ? (insertedReply as any) : r));
       }
       
       await supabase.from("support_tickets").update({
