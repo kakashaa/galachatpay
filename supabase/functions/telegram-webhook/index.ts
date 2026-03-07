@@ -190,9 +190,12 @@ serve(async (req) => {
       // ===== LIVE CHAT END from Telegram =====
       if (data.startsWith("end_chat_")) {
         const chatKey = data.substring(9); // remove "end_chat_"
-        console.log(`[telegram-webhook] Ending live chat: ${chatKey}`);
+        const chatId = cb.message.chat.id;
+        const topicId = cb.message?.message_thread_id;
+        console.log(`[telegram-webhook] Ending live chat: ${chatKey}, topic: ${topicId}`);
 
         try {
+          // 1) End the chat via hola-chat API
           const API_BASE = "https://hola-chat.com/support-chat-api.php";
           const formData = new URLSearchParams();
           formData.append("action", "end");
@@ -206,17 +209,72 @@ serve(async (req) => {
           const result = await apiRes.text();
           console.log(`[telegram-webhook] End chat response:`, result.substring(0, 200));
 
-          // Clean up the topic cache
-          const topicId = cb.message?.message_thread_id;
+          // 2) Delete the button message from Telegram
+          await deleteMessage(BOT_TOKEN, chatId, cb.message.message_id);
+
+          // 3) Delete all messages in this topic (cached reply messages)
           if (topicId) {
+            // Delete all cached messages for this live chat topic
+            const { data: cachedMsgs } = await sb
+              .from("edge_function_cache")
+              .select("key, value")
+              .like("key", `live_chat_msg:${topicId}:%`);
+
+            if (cachedMsgs && cachedMsgs.length > 0) {
+              for (const cached of cachedMsgs) {
+                try {
+                  const parts = cached.key.split(":");
+                  const msgId = parseInt(parts[2]);
+                  if (msgId) {
+                    await deleteMessage(BOT_TOKEN, chatId, msgId);
+                  }
+                } catch (e) {
+                  console.error("Failed to delete cached live chat msg:", e);
+                }
+              }
+              for (const c of cachedMsgs) {
+                await sb.from("edge_function_cache").delete().eq("key", c.key);
+              }
+            }
+
+            // Clean up topic cache
             await sb.from("edge_function_cache").delete().eq("key", `live_chat_topic:${topicId}`);
+
+            // 4) Try to delete/close the forum topic itself
+            try {
+              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/deleteForumTopic`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+              });
+            } catch (e) {
+              console.error("Failed to delete forum topic:", e);
+              // Fallback: try to close the topic
+              try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/closeForumTopic`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ chat_id: chatId, message_thread_id: topicId }),
+                });
+              } catch (e2) {
+                console.error("Failed to close forum topic:", e2);
+              }
+            }
           }
 
-          // Edit the message to show it's ended
-          await editMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id,
-            "✅ تم إنهاء المحادثة بنجاح");
+          // 5) Notify the user (extract uuid from chat_key: normal_UUID_timestamp)
+          const keyParts = chatKey.split("_");
+          if (keyParts.length >= 2) {
+            const userUuid = keyParts[1];
+            await sb.from("notifications").insert({
+              user_uuid: userUuid,
+              title: "✅ تم إنهاء المحادثة",
+              body: "تم إنهاء محادثتك المباشرة من قبل فريق الدعم. شكراً لتواصلك.",
+              target: "personal",
+            });
+          }
 
-          await answerCallback(BOT_TOKEN, cb.id, "✅ تم إنهاء المحادثة");
+          await answerCallback(BOT_TOKEN, cb.id, "✅ تم إنهاء وحذف المحادثة بنجاح");
         } catch (e) {
           console.error("[telegram-webhook] End chat error:", e);
           await answerCallback(BOT_TOKEN, cb.id, "❌ فشل إنهاء المحادثة");
