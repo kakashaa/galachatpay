@@ -14,8 +14,13 @@ serve(async (req) => {
 
   try {
     const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const DEFAULT_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
-    const TICKETS_CHAT_ID = Deno.env.get("TELEGRAM_TICKETS_CHAT_ID");
+    // Use env vars with hardcoded fallbacks for chat IDs
+    const DEFAULT_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID")?.match(/^-?\d+$/) 
+      ? Deno.env.get("TELEGRAM_CHAT_ID")! 
+      : "-1003556311692";
+    const TICKETS_CHAT_ID = Deno.env.get("TELEGRAM_TICKETS_CHAT_ID")?.match(/^-?\d+$/)
+      ? Deno.env.get("TELEGRAM_TICKETS_CHAT_ID")!
+      : "-1003862204467";
 
     if (!BOT_TOKEN || !DEFAULT_CHAT_ID) {
       console.error("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID");
@@ -29,8 +34,8 @@ serve(async (req) => {
 
     // Route tickets to dedicated group, everything else to default
     const isTicketType = type === "support_ticket" || type === "ticket_reply";
-    const CHAT_ID = (isTicketType && TICKETS_CHAT_ID) ? TICKETS_CHAT_ID : DEFAULT_CHAT_ID;
-    console.log(`[telegram-notify] type=${type}, isTicket=${isTicketType}, CHAT_ID=${CHAT_ID}, TICKETS_CHAT_ID=${TICKETS_CHAT_ID}, DEFAULT_CHAT_ID=${DEFAULT_CHAT_ID}`);
+    const CHAT_ID = isTicketType ? TICKETS_CHAT_ID : DEFAULT_CHAT_ID;
+    console.log(`[telegram-notify] type=${type}, CHAT_ID=${CHAT_ID}`);
 
     const message = formatMessage(type, record);
 
