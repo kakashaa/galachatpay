@@ -100,7 +100,7 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
         user_uuid: friendUuid.trim(),
         title: "نجوم مهداة 🎁",
         body: `تم إهداؤك ${giftAmount} نجمة من ${user.name}`,
-        target: "all",
+        target: "user",
       });
 
       toast.success(`تم إهداء ${giftAmount} نجمة لصديقك بنجاح! ⭐`);
