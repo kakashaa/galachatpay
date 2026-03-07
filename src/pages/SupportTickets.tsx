@@ -59,23 +59,22 @@ const SupportTickets: React.FC = () => {
   const [ticketFilePreview, setTicketFilePreview] = useState<string | null>(null);
   const ticketFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Conversation view
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [replies, setReplies] = useState<TicketReply[]>([]);
-  const [replyText, setReplyText] = useState("");
-  const [sendingReply, setSendingReply] = useState(false);
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
-  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
-  const [uploadingAttachment, setUploadingAttachment] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Use ref to avoid stale closure in realtime handler
+  const selectedTicketRef = useRef<Ticket | null>(null);
+  selectedTicketRef.current = selectedTicket;
 
+  // Load tickets on mount
   useEffect(() => {
     if (!user) return;
     loadTickets();
+  }, [user]);
+
+  // Realtime subscription for ticket updates
+  useEffect(() => {
+    if (!user) return;
 
     const channel = supabase
-      .channel("tickets-user")
+      .channel("tickets-user-main")
       .on("postgres_changes", {
         event: "*",
         schema: "public",
@@ -86,32 +85,68 @@ const SupportTickets: React.FC = () => {
           setTickets((prev) =>
             prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
           );
-          if (selectedTicket?.id === updated.id) {
+          if (selectedTicketRef.current?.id === updated.id) {
             setSelectedTicket((prev) => prev ? { ...prev, ...updated } : prev);
           }
         }
       })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  // Separate realtime subscription for replies (uses ref to avoid stale closure)
+  useEffect(() => {
+    if (!user || !selectedTicket) return;
+
+    const channel = supabase
+      .channel(`ticket-replies-${selectedTicket.id}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",
         table: "ticket_replies",
+        filter: `ticket_id=eq.${selectedTicket.id}`,
       }, (payload) => {
         const newReply = payload.new as TicketReply;
-        if (selectedTicket && newReply.ticket_id === selectedTicket.id) {
-          setReplies((prev) => {
-            if (prev.some((r) => r.id === newReply.id)) return prev;
-            return [...prev, newReply];
-          });
-          if (newReply.sender_type === "admin") {
-            toast.success("رد جديد من فريق الدعم!");
-          }
+        setReplies((prev) => {
+          if (prev.some((r) => r.id === newReply.id)) return prev;
+          return [...prev, newReply];
+        });
+        if (newReply.sender_type === "admin") {
+          toast.success("رد جديد من فريق الدعم!");
         }
-        // Refresh tickets list to update status badges
         loadTickets();
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Polling fallback every 5s to catch any missed realtime events
+    const pollInterval = setInterval(async () => {
+      if (!selectedTicketRef.current) return;
+      const { data } = await supabase
+        .from("ticket_replies")
+        .select("*")
+        .eq("ticket_id", selectedTicketRef.current.id)
+        .order("created_at", { ascending: true });
+      if (data) {
+        setReplies((prev) => {
+          const merged = [...prev];
+          for (const msg of data as any[]) {
+            if (!merged.some((r) => r.id === msg.id)) {
+              merged.push(msg);
+            }
+          }
+          if (merged.length !== prev.length) {
+            return merged.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          }
+          return prev;
+        });
+      }
+    }, 5000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, [user, selectedTicket?.id]);
 
   useEffect(() => {
