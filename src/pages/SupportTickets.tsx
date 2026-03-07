@@ -70,9 +70,12 @@ const SupportTickets: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Use ref to avoid stale closure in realtime handler
+  // Use ref to avoid stale closure in realtime/polling handlers
   const selectedTicketRef = useRef<Ticket | null>(null);
   selectedTicketRef.current = selectedTicket;
+  
+  // Track local optimistic messages that haven't been confirmed by DB yet
+  const localMessagesRef = useRef<TicketReply[]>([]);
 
   // Load tickets on mount
   useEffect(() => {
@@ -106,22 +109,36 @@ const SupportTickets: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  // Separate realtime subscription for replies (uses ref to avoid stale closure)
+  // Separate realtime subscription for replies + polling fallback
   useEffect(() => {
     if (!user || !selectedTicket) return;
 
+    const ticketId = selectedTicket.id;
+
     const channel = supabase
-      .channel(`ticket-replies-${selectedTicket.id}`)
+      .channel(`ticket-replies-${ticketId}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",
         table: "ticket_replies",
-        filter: `ticket_id=eq.${selectedTicket.id}`,
+        filter: `ticket_id=eq.${ticketId}`,
       }, (payload) => {
         const newReply = payload.new as TicketReply;
+        // Remove matching local optimistic message and add the real one
+        localMessagesRef.current = localMessagesRef.current.filter(
+          (m) => m.message !== newReply.message || m.sender_type !== newReply.sender_type
+        );
         setReplies((prev) => {
-          if (prev.some((r) => r.id === newReply.id)) return prev;
-          return [...prev, newReply];
+          // Remove any local optimistic version, add real one
+          const withoutLocal = prev.filter((r) => {
+            if (r.id === newReply.id) return false;
+            // Remove optimistic match
+            const isLocalMatch = localMessagesRef.current.length === 0 && 
+              r.sender_type === newReply.sender_type && r.message === newReply.message;
+            return !isLocalMatch;
+          });
+          if (withoutLocal.some((r) => r.id === newReply.id)) return withoutLocal;
+          return [...withoutLocal, newReply];
         });
         if (newReply.sender_type === "admin") {
           toast.success("رد جديد من فريق الدعم!");
@@ -130,26 +147,26 @@ const SupportTickets: React.FC = () => {
       })
       .subscribe();
 
-    // Polling fallback every 3s to catch any missed realtime events
+    // Polling fallback every 3s
     const pollInterval = setInterval(async () => {
-      if (!selectedTicketRef.current) return;
-      console.log("[TICKET-POLL] Polling...");
+      if (selectedTicketRef.current?.id !== ticketId) return;
       const { data } = await supabase
         .from("ticket_replies")
         .select("*")
-        .eq("ticket_id", selectedTicketRef.current.id)
+        .eq("ticket_id", ticketId)
         .order("created_at", { ascending: true });
       if (data) {
-        console.log("[TICKET-POLL] Got", data.length, "replies from DB");
-        setReplies((prev) => {
-          // Keep local-only messages (optimistic) + merge DB data
-          const dbIds = new Set((data as any[]).map((r: any) => r.id));
-          const localOnly = prev.filter((r) => !dbIds.has(r.id));
-          const merged = [...(data as any[]), ...localOnly].sort(
-            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-          return merged;
-        });
+        // Merge: DB data + any remaining local optimistic messages
+        const dbData = data as TicketReply[];
+        const dbMessages = new Set(dbData.map((r) => `${r.sender_type}:${r.message}`));
+        // Remove confirmed local messages
+        localMessagesRef.current = localMessagesRef.current.filter(
+          (m) => !dbMessages.has(`${m.sender_type}:${m.message}`)
+        );
+        const merged = [...dbData, ...localMessagesRef.current].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        setReplies(merged);
       }
     }, 3000);
 
@@ -291,9 +308,9 @@ const SupportTickets: React.FC = () => {
       }
       const msgText = replyText.trim() || (attachmentFile ? "مرفق" : "");
       
-      // Create local message object for immediate display
+      // Create local message for immediate display
       const localReply: TicketReply = {
-        id: crypto.randomUUID(),
+        id: `local-${Date.now()}`,
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
@@ -303,31 +320,33 @@ const SupportTickets: React.FC = () => {
         attachment_url: attachUrl,
       };
       
-      // Show message immediately (optimistic)
-      console.log("[TICKET-CHAT] Adding local reply optimistically:", localReply.id, localReply.message);
-      setReplies((prev) => {
-        console.log("[TICKET-CHAT] Previous replies count:", prev.length);
-        const next = [...prev, localReply];
-        console.log("[TICKET-CHAT] New replies count:", next.length);
-        return next;
-      });
+      // Track in ref so polling won't remove it
+      localMessagesRef.current = [...localMessagesRef.current, localReply];
       
-      // Clear input immediately so user sees feedback
+      // Show immediately
+      setReplies((prev) => [...prev, localReply]);
+      
+      // Clear input
       setReplyText("");
       clearAttachment();
       
-      // Then insert to DB (don't await - fire and forget for speed)
-      supabase.from("ticket_replies").insert({
+      // Insert to DB
+      const { error: insertErr } = await supabase.from("ticket_replies").insert({
         ticket_id: selectedTicket.id,
         sender_type: "user",
         sender_name: user.name,
         message: msgText,
         attachment_url: attachUrl,
-      } as any).then(({ error }) => {
-        if (error) console.error("[TICKET-CHAT] Insert error:", error);
-        else console.log("[TICKET-CHAT] Insert success");
-      });
+      } as any);
       
+      if (insertErr) {
+        console.error("Reply insert error:", insertErr);
+        toast.error("فشل إرسال الرد");
+        // Remove local message on failure
+        localMessagesRef.current = localMessagesRef.current.filter((m) => m.id !== localReply.id);
+        setReplies((prev) => prev.filter((r) => r.id !== localReply.id));
+      }
+
       await supabase.from("support_tickets").update({
         status: "open",
         updated_at: new Date().toISOString(),
