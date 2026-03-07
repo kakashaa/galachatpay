@@ -477,7 +477,7 @@ const SupportTicketsEmbed: React.FC = () => {
             const StatusIcon = config.icon;
             const hasUnreadReply = ticket.status === "replied";
             return (
-              <button key={ticket.id} onClick={() => openTicket(ticket)} className="w-full glass-card p-3 flex items-center justify-between active:scale-[0.98] transition-transform">
+              <div key={ticket.id} onClick={() => ticket.status !== "closed" ? openTicket(ticket) : null} className={`w-full glass-card p-3 flex items-center justify-between transition-transform ${ticket.status === "closed" ? "opacity-50 cursor-not-allowed" : "active:scale-[0.98] cursor-pointer"}`}>
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${config.color} relative`}>
                     <StatusIcon className="w-4 h-4" />
@@ -485,14 +485,14 @@ const SupportTicketsEmbed: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0 text-right">
                     <p className="text-xs font-bold text-foreground truncate">{ticket.subject}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{ticket.admin_reply ? "تم الرد — اضغط للعرض" : "بانتظار الرد..."}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{ticket.status === "closed" ? "✅ تم إغلاق التذكرة" : ticket.admin_reply ? "تم الرد — اضغط للعرض" : "بانتظار الرد..."}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mr-2">
                   <span className="text-[9px] text-muted-foreground">{formatDate(ticket.created_at)}</span>
-                  <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                  {ticket.status !== "closed" && <ChevronLeft className="w-4 h-4 text-muted-foreground" />}
                 </div>
-              </button>
+              </div>
             );
           })}
         </div>
