@@ -54,12 +54,39 @@ serve(async (req) => {
           target: "personal",
         });
 
-        // Update Telegram message
-        const originalText = cb.message?.text || cb.message?.caption || "";
-        await editMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id,
-          originalText + "\n\n✅ <b>تم إغلاق التذكرة</b>");
+        // Delete the original ticket message from Telegram
+        await deleteMessage(BOT_TOKEN, cb.message.chat.id, cb.message.message_id);
 
-        await answerCallback(BOT_TOKEN, cb.id, "✅ تم إغلاق التذكرة بنجاح");
+        // Also delete all cached reply messages from Telegram for this ticket
+        const { data: cachedMsgs } = await sb
+          .from("edge_function_cache")
+          .select("key, value")
+          .like("key", "tg_msg_ticket:%")
+          .filter("value->>ticket_id", "eq", ticketId);
+
+        if (cachedMsgs && cachedMsgs.length > 0) {
+          for (const cached of cachedMsgs) {
+            try {
+              const msgId = parseInt(cached.key.split(":")[1]);
+              const chatId = cached.key.split(":")[2];
+              if (msgId && chatId) {
+                await deleteMessage(BOT_TOKEN, parseInt(chatId), msgId);
+              }
+            } catch (e) {
+              console.error("Failed to delete cached msg:", e);
+            }
+          }
+          // Clean up cache entries
+          const keys = cachedMsgs.map((c: any) => c.key);
+          for (const k of keys) {
+            await sb.from("edge_function_cache").delete().eq("key", k);
+          }
+        }
+
+        // Clean up reverse cache
+        await sb.from("edge_function_cache").delete().eq("key", `ticket_tg_msg:${ticketId}`);
+
+        await answerCallback(BOT_TOKEN, cb.id, "✅ تم إغلاق وحذف التذكرة بنجاح");
         return ok();
       }
 
