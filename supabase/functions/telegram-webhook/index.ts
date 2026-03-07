@@ -357,7 +357,64 @@ serve(async (req) => {
         }
       }
 
-      // 2) Check if message is in a live chat topic → forward to hola-chat API
+      // 2) Check if message is in a ticket topic → save reply to DB
+      if (topicId) {
+        const { data: ticketTopicCache } = await sb
+          .from("edge_function_cache")
+          .select("value")
+          .eq("key", `ticket_topic_reverse:${topicId}`)
+          .maybeSingle();
+
+        if (ticketTopicCache?.value) {
+          const { ticket_id, user_uuid, subject } = ticketTopicCache.value as any;
+
+          // Check ticket exists and not closed
+          const { data: ticket } = await sb
+            .from("support_tickets")
+            .select("id, status")
+            .eq("id", ticket_id)
+            .maybeSingle();
+
+          if (!ticket) {
+            await sendMessage(BOT_TOKEN, chatId, "❌ التذكرة غير موجودة", update.message.message_id);
+            return ok();
+          }
+          if (ticket.status === "closed") {
+            await sendMessage(BOT_TOKEN, chatId, "⚠️ التذكرة مغلقة مسبقاً", update.message.message_id);
+            return ok();
+          }
+
+          // Save reply
+          await sb.from("ticket_replies").insert({
+            ticket_id,
+            sender_type: "admin",
+            sender_name: `${adminName} (تلجرام)`,
+            message: adminText,
+          });
+
+          // Update ticket status
+          await sb.from("support_tickets").update({
+            status: "replied",
+            admin_reply: adminText,
+            admin_username: `${adminName} (تلجرام)`,
+            replied_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }).eq("id", ticket_id);
+
+          // Notify user
+          await sb.from("notifications").insert({
+            user_uuid,
+            title: "💬 رد على تذكرتك",
+            body: `تم الرد على تذكرة "${subject}" من فريق الدعم.`,
+            target: "personal",
+          });
+
+          await sendMessage(BOT_TOKEN, chatId, `✅ تم إرسال ردك على تذكرة "${subject}"`, update.message.message_id);
+          return ok();
+        }
+      }
+
+      // 3) Check if message is in a live chat topic → forward to hola-chat API
       if (topicId) {
         const { data: liveChatCache } = await sb
           .from("edge_function_cache")
