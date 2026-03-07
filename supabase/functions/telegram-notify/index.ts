@@ -47,6 +47,58 @@ serve(async (req) => {
     }
 
     const { type, record } = await req.json();
+
+    // ===== Handle ticket_closed: edit Telegram message =====
+    if (type === "ticket_closed" && record?.ticket_id) {
+      const sb2 = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data: cached } = await sb2
+        .from("edge_function_cache")
+        .select("value")
+        .eq("key", `ticket_tg_msg:${record.ticket_id}`)
+        .maybeSingle();
+
+      if (cached?.value) {
+        const { message_id, chat_id } = cached.value as any;
+        // Edit the original message to show closed status
+        try {
+          await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chat_id,
+              message_id: message_id,
+              text: `✅ <b>تم إغلاق التذكرة</b>\n\n🎫 التذكرة: ${record.subject || "—"}\n👤 ${record.user_name || "—"}\n\n<i>تم الإغلاق من التطبيق</i>`,
+              parse_mode: "HTML",
+            }),
+          });
+        } catch (e) {
+          // If editMessageText fails (e.g. media message), try editMessageCaption
+          try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageCaption`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chat_id,
+                message_id: message_id,
+                caption: `✅ <b>تم إغلاق التذكرة</b>\n\n🎫 التذكرة: ${record.subject || "—"}\n👤 ${record.user_name || "—"}\n\n<i>تم الإغلاق من التطبيق</i>`,
+                parse_mode: "HTML",
+              }),
+            });
+          } catch (e2) {
+            console.error("Failed to edit caption:", e2);
+          }
+        }
+        // Clean up cache
+        await sb2.from("edge_function_cache").delete().eq("key", `ticket_tg_msg:${record.ticket_id}`);
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const threadId = TOPIC_THREAD_IDS[type];
     const threadParam = threadId ? { message_thread_id: threadId } : {};
 
