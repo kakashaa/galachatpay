@@ -83,55 +83,71 @@ serve(async (req) => {
           const userName = params.user_name || "مستخدم";
           const userUuid = params.user_uuid || "";
           const chatType = params.chat_type || "normal";
-          const typeLabel = chatType === "quick" ? "⚡ دعم سريع" : "💬 محادثة مباشرة";
-          const topicName = `${typeLabel} - ${userName}`;
 
-          // Create Forum Topic
-          const createTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createForumTopic`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: parseInt(CHAT_ID),
-              name: topicName.substring(0, 128),
-              icon_color: chatType === "quick" ? 16766720 : 7322096, // gold for quick, blue for normal
-            }),
-          });
-          const topicResult = await createTopicRes.json();
-          console.log(`[support-chat] createForumTopic result:`, JSON.stringify(topicResult));
+          // Check if a topic already exists for this chat_key to prevent duplicates
+          const { data: existingCache } = await sb
+            .from("edge_function_cache")
+            .select("value")
+            .like("key", "live_chat_topic:%")
+            .limit(100);
 
-          if (topicResult.ok && topicResult.result?.message_thread_id) {
-            const topicId = topicResult.result.message_thread_id;
+          const alreadyHasTopic = existingCache?.some(
+            (row: any) => row.value?.chat_key === chatKey
+          );
 
-            // Send initial message in the topic with end button
-            const msgText = `${typeLabel}\n━━━━━━━━━━━━━━━\n👤 المستخدم: ${userName}\n🆔 UUID: ${userUuid}\n🔑 مفتاح: ${chatKey}\n━━━━━━━━━━━━━━━\n⏰ ${new Date().toLocaleString("ar-EG", { timeZone: "Asia/Riyadh" })}\n\n💡 للرد: اكتب ردك مباشرة في هذا الموضوع`;
+          if (!alreadyHasTopic) {
+            const typeLabel = chatType === "quick" ? "⚡ دعم سريع" : "💬 محادثة مباشرة";
+            const topicName = `${typeLabel} - ${userName}`;
 
-            const sendRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            // Create Forum Topic
+            const createTopicRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/createForumTopic`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 chat_id: parseInt(CHAT_ID),
-                message_thread_id: topicId,
-                text: msgText,
-                parse_mode: "HTML",
-                reply_markup: {
-                  inline_keyboard: [[
-                    { text: "❌ إنهاء المحادثة", callback_data: `end_chat_${chatKey}` },
-                  ]],
-                },
+                name: topicName.substring(0, 128),
+                icon_color: chatType === "quick" ? 16766720 : 7322096,
               }),
             });
-            const sendResult = await sendRes.json();
-            console.log(`[support-chat] Topic message sent:`, JSON.stringify(sendResult).substring(0, 200));
+            const topicResult = await createTopicRes.json();
+            console.log(`[support-chat] createForumTopic result:`, JSON.stringify(topicResult));
 
-            // Cache topic_id → chat_key mapping for webhook forwarding
-            const cacheKey = `live_chat_topic:${topicId}`;
-            await sb.from("edge_function_cache").upsert({
-              key: cacheKey,
-              value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid },
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            }, { onConflict: "key" });
+            if (topicResult.ok && topicResult.result?.message_thread_id) {
+              const topicId = topicResult.result.message_thread_id;
 
-            console.log(`[support-chat] Cached topic ${topicId} → ${chatKey}`);
+              // Send initial message in the topic with end button
+              const msgText = `${typeLabel}\n━━━━━━━━━━━━━━━\n👤 المستخدم: ${userName}\n🆔 UUID: ${userUuid}\n🔑 مفتاح: ${chatKey}\n━━━━━━━━━━━━━━━\n⏰ ${new Date().toLocaleString("ar-EG", { timeZone: "Asia/Riyadh" })}\n\n💡 للرد: اكتب ردك مباشرة في هذا الموضوع`;
+
+              const sendRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: parseInt(CHAT_ID),
+                  message_thread_id: topicId,
+                  text: msgText,
+                  parse_mode: "HTML",
+                  reply_markup: {
+                    inline_keyboard: [[
+                      { text: "❌ إنهاء المحادثة", callback_data: `end_chat_${chatKey}` },
+                    ]],
+                  },
+                }),
+              });
+              const sendResult = await sendRes.json();
+              console.log(`[support-chat] Topic message sent:`, JSON.stringify(sendResult).substring(0, 200));
+
+              // Cache topic_id → chat_key mapping for webhook forwarding
+              const cacheKey = `live_chat_topic:${topicId}`;
+              await sb.from("edge_function_cache").upsert({
+                key: cacheKey,
+                value: { chat_key: chatKey, user_name: userName, user_uuid: userUuid },
+                expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              }, { onConflict: "key" });
+
+              console.log(`[support-chat] Cached topic ${topicId} → ${chatKey}`);
+            }
+          } else {
+            console.log(`[support-chat] Topic already exists for chat_key=${chatKey}, skipping creation`);
           }
         }
       } catch (e) {
