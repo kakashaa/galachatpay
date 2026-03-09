@@ -780,7 +780,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                         <div className="flex items-center justify-between">
                                           <div>
                                             <p className="text-xs font-bold">{m.member_name || m.member_uuid}</p>
-                                            <p className="text-[10px] text-muted-foreground font-mono">ID: {m.member_uuid}</p>
+                                            <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">ID: {m.member_uuid} <button onClick={() => { navigator.clipboard.writeText(m.member_uuid); toast.success("تم نسخ ID"); }} className="hover:text-primary"><Copy className="w-3 h-3" /></button></p>
                                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                                               <span className={m.member_type === "agency" ? "text-amber-400" : "text-emerald-400"}>
                                                 {m.member_type === "agency" ? "وكيل" : "داعم"}
