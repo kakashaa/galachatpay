@@ -2535,7 +2535,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Quick Support Tab */}
             {activeTab === "quick_support" && (
-              <motion.div key="quick_support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="quick_support" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {quickSupportRequests.length === 0 ? (
                   <p className="text-center py-10 text-muted-foreground">لا توجد طلبات دعم سريع</p>
                 ) : quickSupportRequests.map((req: any) => {
