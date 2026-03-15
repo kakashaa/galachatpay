@@ -37,6 +37,7 @@ import { Settings, ImageIcon } from "lucide-react";
 import TicketRepliesSection from "@/components/TicketRepliesSection";
 import AdminAgencyManager from "@/components/AdminAgencyManager";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
+import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | null;
 
@@ -179,7 +180,7 @@ const AdminDashboardPage: React.FC = () => {
   const [approveReceiptFile, setApproveReceiptFile] = useState<File | null>(null);
   const [salaryActionLoading, setSalaryActionLoading] = useState(false);
   const [salaryFilter, setSalaryFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
-  const [salarySubTab, setSalarySubTab] = useState<"requests" | "withdraw">("requests");
+  const [salarySubTab, setSalarySubTab] = useState<"requests" | "withdraw" | "charge">("requests");
   const [rejectImageFile, setRejectImageFile] = useState<File | null>(null);
   const [isFinalRejection, setIsFinalRejection] = useState(false);
   const [animatedPhotoAction, setAnimatedPhotoAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
@@ -1295,18 +1296,24 @@ const AdminDashboardPage: React.FC = () => {
             {activeTab === "salary" && (
               <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Sub-tabs */}
-                <div className="flex gap-2 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
+                <div className="flex gap-1 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
                   <button
                     onClick={() => setSalarySubTab("requests")}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${salarySubTab === "requests" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "requests" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
                   >
                     طلبات الرواتب
                   </button>
                   <button
                     onClick={() => setSalarySubTab("withdraw")}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${salarySubTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
                   >
                     سحب الرواتب
+                  </button>
+                  <button
+                    onClick={() => setSalarySubTab("charge")}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "charge" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  >
+                    شحن الراتب
                   </button>
                 </div>
 
@@ -1417,6 +1424,10 @@ const AdminDashboardPage: React.FC = () => {
 
                 {salarySubTab === "withdraw" && (
                   <AdminSalaryWithdrawManager canAct={canAct} />
+                )}
+
+                {salarySubTab === "charge" && (
+                  <AdminSalaryChargeManager canAct={canAct} />
                 )}
               </motion.div>
             )}
