@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, TrendingUp, Wallet, Gem } from "lucide-react";
+import { ArrowRight, TrendingUp, Wallet, Gem, Zap, Calculator, Users, Clock } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 import { BANK_LABELS } from "@/lib/constants";
@@ -12,6 +12,16 @@ interface WeeklyItem {
   day: string;
   total: number;
   count: number;
+}
+
+interface Transaction {
+  uuid?: string;
+  user_uuid?: string;
+  user_name?: string;
+  amount_usd: number;
+  bank?: string;
+  created_at?: string;
+  date?: string;
 }
 
 interface StatsData {
@@ -28,26 +38,72 @@ interface StatsData {
   today_count: number;
   by_bank: Record<string, number>;
   weekly: WeeklyItem[];
+  recent_transactions?: Transaction[];
+}
+
+interface DashboardData {
+  recent_transactions?: Transaction[];
+}
+
+// Animated counter hook
+function useCountUp(target: number, duration = 1200) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (target === 0) { setValue(0); return; }
+    let start = 0;
+    const startTime = performance.now();
+    const step = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(start + (target - start) * eased);
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration]);
+  return value;
 }
 
 const AgentStats: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useAgentAuth();
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch(`${AGENT_API}?action=agent_stats&token=${token}`);
-      const data = await res.json();
-      if (data.success) {
-        setStats(data);
+      const [statsRes, dashRes] = await Promise.all([
+        fetch(`${AGENT_API}?action=agent_stats&token=${token}`),
+        fetch(`${AGENT_API}?action=agent_dashboard&token=${token}`),
+      ]);
+      const statsData = await statsRes.json();
+      const dashData: DashboardData = await dashRes.json();
+
+      if (statsData.success) {
+        setStats(statsData);
+        // Merge transactions from both sources
+        const txs = statsData.recent_transactions || dashData.recent_transactions || [];
+        setTransactions(txs);
       }
     } catch { /* silent */ }
     setLoading(false);
   }, [token]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  // Computed highlights
+  const highlights = useMemo(() => {
+    if (!stats) return null;
+    const weekly = stats.weekly || [];
+    const bestDay = weekly.length ? weekly.reduce((b, d) => d.total > b.total ? d : b, weekly[0]) : null;
+    const biggestCharge = transactions.length ? transactions.reduce((b, tx) => (tx.amount_usd || 0) > (b.amount_usd || 0) ? tx : b, transactions[0]) : null;
+    const totalCount = weekly.reduce((s, w) => s + (w.count || 0), 0);
+    const totalUsd = stats.total_charged_usd || 0;
+    const avgCharge = totalCount > 0 ? totalUsd / totalCount : 0;
+    const uniqueUsers = new Set(transactions.map(tx => tx.user_uuid || tx.uuid)).size;
+
+    return { bestDay, biggestCharge, avgCharge, uniqueUsers };
+  }, [stats, transactions]);
 
   if (loading) {
     return (
@@ -58,8 +114,8 @@ const AgentStats: React.FC = () => {
   }
 
   const maxBank = stats?.by_bank ? Math.max(...Object.values(stats.by_bank), 1) : 1;
-  const weeklyTotals = stats?.weekly?.map(w => w.total) || [];
-  const maxWeekly = weeklyTotals.length ? Math.max(...weeklyTotals, 1) : 1;
+  const weekly = stats?.weekly || [];
+  const maxWeekly = weekly.length ? Math.max(...weekly.map(w => w.total), 1) : 1;
 
   return (
     <>
@@ -74,7 +130,7 @@ const AgentStats: React.FC = () => {
 
         <div className="px-4 space-y-4">
           {/* Agency Summary */}
-          <div className="glass-card rounded-2xl p-4 space-y-3">
+          <div className="glass-card rounded-2xl p-4 space-y-3 animate-fade-in">
             <div className="flex items-center gap-2 mb-2">
               <Wallet className="w-5 h-5 text-amber-400" />
               <span className="text-sm font-bold text-amber-400">ملخص الوكالة</span>
@@ -112,16 +168,50 @@ const AgentStats: React.FC = () => {
             </div>
             <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-l from-amber-400 to-amber-500 rounded-full transition-all duration-700"
+                className="h-full bg-gradient-to-l from-amber-400 to-amber-500 rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${stats?.consumption_percent || 0}%` }}
               />
             </div>
             <p className="text-[10px] text-muted-foreground text-center">نسبة الاستهلاك: {stats?.consumption_percent || 0}%</p>
           </div>
 
+          {/* Highlight Stats */}
+          {highlights && (
+            <div className="grid grid-cols-2 gap-3">
+              <HighlightCard
+                icon={<TrendingUp className="w-4 h-4 text-amber-400" />}
+                label="أكثر يوم شحناً"
+                value={highlights.bestDay ? `$${highlights.bestDay.total.toFixed(2)}` : "$0"}
+                sub={highlights.bestDay?.day || "—"}
+                delay={0}
+              />
+              <HighlightCard
+                icon={<Zap className="w-4 h-4 text-amber-400" />}
+                label="أكثر شحنة"
+                value={highlights.biggestCharge ? `$${highlights.biggestCharge.amount_usd.toFixed(2)}` : "$0"}
+                sub={highlights.biggestCharge ? `UUID: ${(highlights.biggestCharge.user_uuid || highlights.biggestCharge.uuid || "—").toString().slice(-6)}` : "—"}
+                delay={1}
+              />
+              <HighlightCard
+                icon={<Calculator className="w-4 h-4 text-amber-400" />}
+                label="متوسط الشحنة"
+                value={`$${highlights.avgCharge.toFixed(2)}`}
+                sub="لكل عملية"
+                delay={2}
+              />
+              <HighlightCard
+                icon={<Users className="w-4 h-4 text-amber-400" />}
+                label="عدد المستخدمين"
+                value={String(highlights.uniqueUsers)}
+                sub="مستخدم فريد"
+                delay={3}
+              />
+            </div>
+          )}
+
           {/* Bonus/Tier Card */}
           {stats?.tier && (
-            <div className="glass-card rounded-2xl p-4">
+            <div className="glass-card rounded-2xl p-4 animate-fade-in" style={{ animationDelay: "200ms" }}>
               <div className="flex items-center gap-2 mb-2">
                 <Gem className="w-5 h-5 text-amber-400" />
                 <span className="text-sm font-bold text-amber-400">نسبة الوكالة</span>
@@ -140,7 +230,7 @@ const AgentStats: React.FC = () => {
           )}
 
           {/* By Bank */}
-          <div className="glass-card rounded-2xl p-4">
+          <div className="glass-card rounded-2xl p-4 animate-fade-in" style={{ animationDelay: "300ms" }}>
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-5 h-5 text-amber-400" />
               <span className="text-sm font-bold text-amber-400">توزيع حسب البنك</span>
@@ -157,7 +247,7 @@ const AgentStats: React.FC = () => {
                         <span className="text-xs text-muted-foreground">{label}</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-l from-amber-400 to-amber-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-gradient-to-l from-amber-400 to-amber-500 rounded-full transition-all duration-1000 ease-out" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -168,20 +258,83 @@ const AgentStats: React.FC = () => {
             )}
           </div>
 
-          {/* Weekly Chart */}
-          {stats?.weekly && stats.weekly.length > 0 && (
-            <div className="glass-card rounded-2xl p-4">
-              <p className="text-sm font-bold text-amber-400 mb-3">شحنات الأسبوع</p>
-              <div className="flex items-end gap-2 h-24">
-                {stats.weekly.map((w, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+          {/* Improved Weekly Chart */}
+          {weekly.length > 0 && (
+            <div className="glass-card rounded-2xl p-4 animate-fade-in" style={{ animationDelay: "400ms" }}>
+              <p className="text-sm font-bold text-amber-400 mb-4">شحنات الأسبوع</p>
+              <div className="space-y-2.5">
+                {weekly.map((w, i) => {
+                  const pct = maxWeekly > 0 ? (w.total / maxWeekly) * 100 : 0;
+                  const isBest = w.total === maxWeekly && w.total > 0;
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className={`text-[11px] w-14 text-left font-medium ${isBest ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                        {w.day || "—"}
+                      </span>
+                      <div className="flex-1 bg-white/5 h-5 rounded-lg overflow-hidden relative">
+                        <div
+                          className={`h-full rounded-lg transition-all ease-out ${isBest ? 'bg-gradient-to-l from-amber-400 to-amber-500' : 'bg-white/10'}`}
+                          style={{
+                            width: `${pct}%`,
+                            minWidth: w.total > 0 ? '8px' : '0px',
+                            transitionDuration: `${800 + i * 100}ms`,
+                            transitionDelay: `${i * 80}ms`,
+                          }}
+                        />
+                      </div>
+                      <span className={`text-xs font-bold w-16 text-left tabular-nums ${isBest ? 'text-amber-400' : 'text-muted-foreground'}`} dir="ltr">
+                        ${w.total.toFixed(2)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Transactions */}
+          {transactions.length > 0 && (
+            <div className="glass-card rounded-2xl p-4 animate-fade-in" style={{ animationDelay: "500ms" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-5 h-5 text-amber-400" />
+                <span className="text-sm font-bold text-amber-400">آخر الشحنات</span>
+              </div>
+              <div className="space-y-2">
+                {transactions.slice(0, 10).map((tx, i) => {
+                  const name = tx.user_name || "مستخدم";
+                  const uid = (tx.user_uuid || tx.uuid || "").toString().slice(-6);
+                  const dateStr = tx.created_at || tx.date || "";
+                  let formattedDate = "";
+                  if (dateStr) {
+                    try {
+                      const d = new Date(dateStr);
+                      formattedDate = d.toLocaleDateString("ar-EG", { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
+                    } catch { formattedDate = dateStr; }
+                  }
+                  return (
                     <div
-                      className="w-full bg-gradient-to-t from-amber-500 to-amber-400 rounded-t-lg transition-all duration-500"
-                      style={{ height: `${(w.total / maxWeekly) * 100}%`, minHeight: w.total > 0 ? 4 : 0 }}
-                    />
-                    <span className="text-[8px] text-muted-foreground">{w.day || ""}</span>
-                  </div>
-                ))}
+                      key={i}
+                      className="bg-white/[0.03] border border-white/5 rounded-xl p-3 hover:border-white/10 transition-colors"
+                      style={{ animationDelay: `${600 + i * 60}ms` }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 font-bold text-xs border border-amber-500/10">
+                            {name.charAt(0)?.toUpperCase() || "?"}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">{name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono">#{uid}</p>
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-sm font-black text-green-400" dir="ltr">${(tx.amount_usd || 0).toFixed(2)}</p>
+                          {formattedDate && <p className="text-[9px] text-muted-foreground">{formattedDate}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -191,5 +344,19 @@ const AgentStats: React.FC = () => {
     </>
   );
 };
+
+// Highlight card component
+function HighlightCard({ icon, label, value, sub, delay }: { icon: React.ReactNode; label: string; value: string; sub: string; delay: number }) {
+  return (
+    <div
+      className="glass-card rounded-2xl p-3.5 animate-fade-in"
+      style={{ animationDelay: `${100 + delay * 80}ms` }}
+    >
+      <div className="flex items-center gap-1.5 mb-2">{icon}<span className="text-[10px] text-muted-foreground">{label}</span></div>
+      <p className="text-lg font-black text-foreground" dir="ltr">{value}</p>
+      <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
+    </div>
+  );
+}
 
 export default AgentStats;
