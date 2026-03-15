@@ -32,6 +32,7 @@ import AdminModeratorManager from "@/components/AdminModeratorManager";
 import AdminElementSettings from "@/components/AdminElementSettings";
 import AdminBannerManager from "@/components/AdminBannerManager";
 import { Settings, ImageIcon } from "lucide-react";
+// Settings imported twice - use SettingsIcon from above
 import TicketRepliesSection from "@/components/TicketRepliesSection";
 import AdminAgencyManager from "@/components/AdminAgencyManager";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
