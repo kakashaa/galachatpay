@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import {
   Loader2, ArrowLeftRight, PieChart, FileText,
-  Calendar, ImageIcon, AlertTriangle, Wallet,
-  X, Globe,
+  Calendar, ImageIcon, AlertTriangle,
+  X, Globe, Search, Landmark, User, Coins,
+  Clock, CheckCircle2, Receipt,
 } from "lucide-react";
 import {
   Dialog, DialogContent,
@@ -50,28 +51,36 @@ interface AgencyDetailsSheetProps {
 
 type SubTab = "transactions" | "distribution" | "summary";
 
-const BANK_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  "الراجحي": { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
-  "جيب": { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
-  "كريمي": { bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20" },
-  "Zelle": { bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/20" },
-  "Cash App": { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/20" },
-  "حساب الوكيل": { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-slate-500/20" },
+const BANK_NAMES: Record<string, string> = {
+  rajhi: "الراجحي", jeep: "جيب", kareem: "كريم",
+  zelle: "Zelle", cashapp: "Cash App", agent: "حساب الوكيل", other: "أخرى",
 };
 
-const COUNTRY_LABELS: Record<string, string> = {
-  "السعودية": "SA",
-  "اليمن": "YE",
-  "أمريكا": "US",
-  "مصر": "EG",
-  "العراق": "IQ",
+const COUNTRY_NAMES: Record<string, string> = {
+  sa: "السعودية", ye: "اليمن", us: "أمريكا", agent: "الوكيل", other: "أخرى",
 };
 
+const BANK_COLORS: Record<string, { bg: string; text: string; border: string; bar: string }> = {
+  rajhi: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", bar: "bg-emerald-500" },
+  jeep: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", bar: "bg-blue-500" },
+  kareem: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/20", bar: "bg-purple-500" },
+  zelle: { bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20", bar: "bg-violet-500" },
+  cashapp: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/20", bar: "bg-green-500" },
+  agent: { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-slate-500/20", bar: "bg-slate-500" },
+  other: { bg: "bg-muted/10", text: "text-muted-foreground", border: "border-border/20", bar: "bg-muted-foreground" },
+};
+
+const getBankColorByKey = (key: string) => BANK_COLORS[key] || BANK_COLORS.other;
+
+// Legacy support for matching Arabic bank names in transactions
 const getBankColor = (bank: string) => {
-  for (const [key, val] of Object.entries(BANK_COLORS)) {
-    if (bank?.includes(key)) return val;
-  }
-  return { bg: "bg-muted/10", text: "text-muted-foreground", border: "border-border/20" };
+  if (bank?.includes("الراجحي")) return BANK_COLORS.rajhi;
+  if (bank?.includes("جيب")) return BANK_COLORS.jeep;
+  if (bank?.includes("كريم")) return BANK_COLORS.kareem;
+  if (bank?.includes("Zelle")) return BANK_COLORS.zelle;
+  if (bank?.includes("Cash")) return BANK_COLORS.cashapp;
+  if (bank?.includes("وكيل") || bank?.includes("agent")) return BANK_COLORS.agent;
+  return BANK_COLORS.other;
 };
 
 const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, onClose }) => {
@@ -83,11 +92,18 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
   const [byBank, setByBank] = useState<Record<string, { total_usd: number; count: number }>>({});
   const [byCountry, setByCountry] = useState<Record<string, { total_usd: number; count: number }>>({});
   const [dateFilter, setDateFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [bankFilter, setBankFilter] = useState("all");
+  const [countryFilter, setCountryFilter] = useState("all");
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && agency) {
       setSubTab("transactions");
+      setSearchQuery("");
+      setBankFilter("all");
+      setCountryFilter("all");
+      setDateFilter("");
       fetchTransactions();
     }
   }, [open, agency]);
@@ -113,6 +129,34 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
     }
   };
 
+  // Client-side filtering
+  const filteredTxns = useMemo(() => {
+    let list = transactions;
+    if (dateFilter) list = list.filter(t => t.created_at?.startsWith(dateFilter));
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(t =>
+        t.user_name?.toLowerCase().includes(q) ||
+        t.user_uuid?.includes(q) ||
+        t.txn_code?.toLowerCase().includes(q)
+      );
+    }
+    if (bankFilter !== "all") {
+      const bankName = BANK_NAMES[bankFilter] || bankFilter;
+      list = list.filter(t => t.bank?.includes(bankName) || t.bank === bankFilter);
+    }
+    if (countryFilter !== "all") {
+      const countryName = COUNTRY_NAMES[countryFilter] || countryFilter;
+      list = list.filter(t => t.country?.includes(countryName) || t.country === countryFilter);
+    }
+    return list;
+  }, [transactions, dateFilter, searchQuery, bankFilter, countryFilter]);
+
+  const filteredTotal = useMemo(() =>
+    filteredTxns.reduce((sum, t) => sum + (t.amount_usd || 0), 0),
+    [filteredTxns]
+  );
+
   if (!agency) return null;
 
   const isActive = agency.status === "active";
@@ -123,14 +167,12 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
     ? Math.min(100, Math.round((totalCharged / agency.original_balance) * 100))
     : 0;
   const remainingPct = 100 - consumptionPct;
-
-  // Theft alert: if API total_usd significantly exceeds what balance was deducted
   const expectedDeductionUSD = totalCharged / 8500;
   const hasDiscrepancy = totalUsd > 0 && Math.abs(totalUsd - expectedDeductionUSD) > 5;
 
-  const filteredTxns = dateFilter
-    ? transactions.filter(t => t.created_at?.startsWith(dateFilter))
-    : transactions;
+  // Distribution totals for percentage bars
+  const bankTotal = Object.values(byBank).reduce((s, b) => s + (b.total_usd || 0), 0);
+  const countryTotal = Object.values(byCountry).reduce((s, c) => s + (c.total_usd || 0), 0);
 
   const tabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
     { key: "transactions", label: "العمليات", icon: <ArrowLeftRight className="w-3.5 h-3.5" /> },
@@ -170,7 +212,9 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                   <span className="text-[10px] text-muted-foreground">الرصيد المتبقي</span>
                   <span className="text-sm font-bold text-amber-400 font-mono">${balanceUSD}</span>
                 </div>
-                <p className="text-lg font-black text-amber-400 font-mono text-right">{agency.balance?.toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">كوينز</span></p>
+                <p className="text-lg font-black text-amber-400 font-mono text-right">
+                  {agency.balance?.toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">كوينز</span>
+                </p>
               </div>
 
               {/* Sub-tabs */}
@@ -201,18 +245,61 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                   {/* ===== Transactions Tab ===== */}
                   {subTab === "transactions" && (
                     <motion.div key="txns" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-                      {/* Date filter */}
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <input
-                          type="date"
-                          value={dateFilter}
-                          onChange={e => setDateFilter(e.target.value)}
-                          className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 text-xs text-foreground"
-                        />
-                        {dateFilter && (
-                          <button onClick={() => setDateFilter("")} className="text-[10px] text-amber-400 hover:underline">
-                            مسح
+                      {/* Search + Filters */}
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <input
+                            type="text"
+                            placeholder="بحث (UUID أو اسم)..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-2.5 pr-10 pl-3 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-amber-500/30 transition-colors"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Calendar className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                            <input
+                              type="date"
+                              value={dateFilter}
+                              onChange={e => setDateFilter(e.target.value)}
+                              className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 pr-8 text-[11px] text-foreground focus:outline-none focus:border-amber-500/30 transition-colors"
+                            />
+                          </div>
+                          <div className="relative flex-1">
+                            <Landmark className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                            <select
+                              value={bankFilter}
+                              onChange={e => setBankFilter(e.target.value)}
+                              className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 pr-8 text-[11px] text-foreground appearance-none focus:outline-none focus:border-amber-500/30 transition-colors"
+                            >
+                              <option value="all" className="bg-[#12141f]">الكل</option>
+                              {Object.entries(BANK_NAMES).map(([k, v]) => (
+                                <option key={k} value={k} className="bg-[#12141f]">{v}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="relative flex-1">
+                            <Globe className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                            <select
+                              value={countryFilter}
+                              onChange={e => setCountryFilter(e.target.value)}
+                              className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 pr-8 text-[11px] text-foreground appearance-none focus:outline-none focus:border-amber-500/30 transition-colors"
+                            >
+                              <option value="all" className="bg-[#12141f]">الكل</option>
+                              {Object.entries(COUNTRY_NAMES).map(([k, v]) => (
+                                <option key={k} value={k} className="bg-[#12141f]">{v}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        {(dateFilter || searchQuery || bankFilter !== "all" || countryFilter !== "all") && (
+                          <button
+                            onClick={() => { setDateFilter(""); setSearchQuery(""); setBankFilter("all"); setCountryFilter("all"); }}
+                            className="text-[10px] text-amber-400 hover:underline"
+                          >
+                            مسح الفلاتر
                           </button>
                         )}
                       </div>
@@ -225,125 +312,176 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                           <p className="text-sm text-muted-foreground">لا توجد عمليات</p>
                         </div>
                       ) : (
-                        filteredTxns.map((txn, i) => {
-                          const bankColor = getBankColor(txn.bank || "");
-                          return (
-                            <motion.div
-                              key={txn.id || i}
-                              initial={{ opacity: 0, y: 12 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: i * 0.04, duration: 0.3 }}
-                              className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-4 space-y-2.5 hover:border-white/10 transition-colors"
-                            >
-                              {/* TXN code + status */}
-                              <div className="flex items-center justify-between">
-                                <span className="font-mono text-[10px] text-muted-foreground">{txn.txn_code || `TXN-${txn.id?.slice(-8)}`}</span>
-                                <span className="flex items-center gap-1 text-[10px] text-emerald-400">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                  ناجحة
-                                </span>
-                              </div>
-
-                              {/* User */}
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-xs font-bold text-foreground">{txn.user_name || "مستخدم"}</p>
-                                  <p className="text-[9px] font-mono text-muted-foreground">{txn.user_uuid}</p>
+                        <>
+                          {filteredTxns.map((txn, i) => {
+                            const bankColor = getBankColor(txn.bank || "");
+                            return (
+                              <motion.div
+                                key={txn.id || i}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.03, duration: 0.3 }}
+                                className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 space-y-2.5 hover:border-white/10 transition-colors"
+                              >
+                                {/* TXN code + amount */}
+                                <div className="flex items-center justify-between">
+                                  <span className="font-mono text-[10px] text-muted-foreground">{txn.txn_code || `TXN-${txn.id?.slice(-8)}`}</span>
+                                  <span className="text-sm font-black text-amber-400 font-mono tabular-nums">${txn.amount_usd?.toFixed(2)}</span>
                                 </div>
-                                <div className="text-left">
-                                  <p className="text-sm font-black text-amber-400 font-mono">{txn.amount_coins?.toLocaleString()}</p>
-                                  <p className="text-[10px] text-muted-foreground font-mono">${txn.amount_usd?.toFixed(2)}</p>
+
+                                {/* User info */}
+                                <div className="flex items-center gap-1.5">
+                                  <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-xs font-bold text-foreground">{txn.user_name || "مستخدم"}</span>
+                                  <span className="text-[9px] font-mono text-muted-foreground">({txn.user_uuid})</span>
                                 </div>
-                              </div>
 
-                              {/* Bank + Date */}
-                              <div className="flex items-center justify-between">
-                                <span className={`text-[10px] px-2 py-1 rounded-lg ${bankColor.bg} ${bankColor.text} border ${bankColor.border} font-bold`}>
-                                  {txn.bank}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground font-mono">
-                                  {txn.created_at ? new Date(txn.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"}
-                                </span>
-                              </div>
+                                {/* Coins */}
+                                <div className="flex items-center gap-1.5">
+                                  <Coins className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                                  <span className="text-[11px] text-foreground font-mono tabular-nums">{txn.amount_coins?.toLocaleString()} كوينز</span>
+                                </div>
 
-                              {/* Receipt button */}
-                              {txn.receipt_path && (
-                                <button
-                                  onClick={() => setReceiptPreview(`${RECEIPT_BASE}${txn.receipt_path}`)}
-                                  className="flex items-center gap-1.5 text-[10px] text-amber-400 hover:text-amber-300 transition-colors"
-                                >
-                                  <ImageIcon className="w-3 h-3" />
-                                  عرض الإيصال
-                                </button>
-                              )}
-                            </motion.div>
-                          );
-                        })
+                                {/* Bank + Country */}
+                                <div className="flex items-center gap-1.5">
+                                  <Landmark className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-lg ${bankColor.bg} ${bankColor.text} border ${bankColor.border} font-bold`}>
+                                    {txn.bank}
+                                  </span>
+                                  {txn.country && (
+                                    <>
+                                      <span className="text-muted-foreground/30">—</span>
+                                      <span className="text-[10px] text-muted-foreground">{txn.country}</span>
+                                    </>
+                                  )}
+                                </div>
+
+                                {/* Date */}
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-[10px] text-muted-foreground font-mono">
+                                    {txn.created_at ? new Date(txn.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                                  </span>
+                                </div>
+
+                                {/* Status */}
+                                <div className="flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                                  <span className="text-[10px] text-emerald-400">ناجحة</span>
+                                </div>
+
+                                {/* Receipt button */}
+                                {txn.receipt_path && (
+                                  <button
+                                    onClick={() => setReceiptPreview(`${RECEIPT_BASE}${txn.receipt_path}`)}
+                                    className="flex items-center gap-1.5 text-[10px] text-amber-400 hover:text-amber-300 transition-colors mt-1"
+                                  >
+                                    <ImageIcon className="w-3 h-3" />
+                                    عرض الإيصال
+                                  </button>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+
+                          {/* Footer total */}
+                          <div className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Receipt className="w-4 h-4 text-amber-400" />
+                              <span className="text-xs text-muted-foreground">إجمالي العمليات</span>
+                            </div>
+                            <div className="text-left">
+                              <span className="text-sm font-black text-foreground font-mono tabular-nums">{filteredTxns.length} عملية</span>
+                              <span className="text-xs text-muted-foreground font-mono ml-2">(${filteredTotal.toFixed(2)})</span>
+                            </div>
+                          </div>
+                        </>
                       )}
                     </motion.div>
                   )}
 
                   {/* ===== Distribution Tab ===== */}
                   {subTab === "distribution" && (
-                    <motion.div key="dist" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <motion.div key="dist" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
                       {/* By Bank */}
                       <div>
                         <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
-                          <Wallet className="w-4 h-4 text-amber-400" />
+                          <Landmark className="w-4 h-4 text-amber-400" />
                           حسب البنك
                         </h3>
-                        <div className="space-y-2">
-                          {Object.entries(byBank).length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-6">لا توجد بيانات</p>
-                          ) : (
-                            Object.entries(byBank).map(([bank, info], i) => {
-                              const bankColor = getBankColor(bank);
+                        {Object.entries(byBank).length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-6">لا توجد بيانات</p>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(byBank).map(([bankKey, info], i) => {
+                              const color = getBankColorByKey(bankKey);
+                              const pct = bankTotal > 0 ? Math.round((info.total_usd / bankTotal) * 100) : 0;
                               return (
                                 <motion.div
-                                  key={bank}
-                                  initial={{ opacity: 0, x: -12 }}
-                                  animate={{ opacity: 1, x: 0 }}
+                                  key={bankKey}
+                                  initial={{ opacity: 0, y: 12 }}
+                                  animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: i * 0.06, duration: 0.35 }}
-                                  className={`${bankColor.bg} border ${bankColor.border} rounded-2xl p-4 flex items-center justify-between`}
+                                  className={`${color.bg} border ${color.border} rounded-2xl p-3.5 space-y-2`}
                                 >
-                                  <div>
-                                    <p className={`text-sm font-bold ${bankColor.text}`}>{bank}</p>
-                                    <p className="text-[10px] text-muted-foreground">{info.count} عملية</p>
+                                  <Landmark className={`w-5 h-5 ${color.text}`} />
+                                  <p className={`text-xs font-bold ${color.text}`}>{BANK_NAMES[bankKey] || bankKey}</p>
+                                  <p className={`text-base font-black font-mono tabular-nums ${color.text}`}>${info.total_usd?.toFixed(2)}</p>
+                                  <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
+                                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${pct}%` }}
+                                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 + i * 0.06 }}
+                                      className={`h-full rounded-full ${color.bar}`}
+                                    />
                                   </div>
-                                  <span className={`text-lg font-black font-mono ${bankColor.text}`}>${info.total_usd?.toFixed(2)}</span>
+                                  <p className="text-[9px] text-muted-foreground text-left font-mono">{pct}%</p>
                                 </motion.div>
                               );
-                            })
-                          )}
-                        </div>
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* By Country */}
                       <div>
                         <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
-                          <PieChart className="w-4 h-4 text-blue-400" />
+                          <Globe className="w-4 h-4 text-blue-400" />
                           حسب الدولة
                         </h3>
-                        <div className="grid grid-cols-2 gap-2">
-                          {Object.entries(byCountry).length === 0 ? (
-                            <p className="text-xs text-muted-foreground text-center py-6 col-span-2">لا توجد بيانات</p>
-                          ) : (
-                            Object.entries(byCountry).map(([country, info], i) => (
-                              <motion.div
-                                key={country}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: i * 0.06, duration: 0.3 }}
-                                className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-4 text-center"
-                              >
-                                <Globe className="w-6 h-6 text-amber-400" />
-                                <p className="text-xs font-bold text-foreground mt-1">{country}</p>
-                                <p className="text-base font-black text-amber-400 font-mono mt-1">${info.total_usd?.toFixed(2)}</p>
-                                <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
-                              </motion.div>
-                            ))
-                          )}
-                        </div>
+                        {Object.entries(byCountry).length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-6 col-span-2">لا توجد بيانات</p>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(byCountry).map(([countryKey, info], i) => {
+                              const pct = countryTotal > 0 ? Math.round((info.total_usd / countryTotal) * 100) : 0;
+                              return (
+                                <motion.div
+                                  key={countryKey}
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ delay: i * 0.06, duration: 0.3 }}
+                                  className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-3.5 space-y-2"
+                                >
+                                  <Globe className="w-5 h-5 text-blue-400" />
+                                  <p className="text-xs font-bold text-foreground">{COUNTRY_NAMES[countryKey] || countryKey}</p>
+                                  <p className="text-base font-black text-amber-400 font-mono tabular-nums">${info.total_usd?.toFixed(2)}</p>
+                                  <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
+                                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${pct}%` }}
+                                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 + i * 0.06 }}
+                                      className="h-full rounded-full bg-blue-500"
+                                    />
+                                  </div>
+                                  <p className="text-[9px] text-muted-foreground text-left font-mono">{pct}%</p>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -351,7 +489,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                   {/* ===== Summary Tab ===== */}
                   {subTab === "summary" && (
                     <motion.div key="summary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                      {/* Discrepancy alert */}
                       {hasDiscrepancy && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
@@ -368,7 +505,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                         </motion.div>
                       )}
 
-                      {/* Stats cards */}
                       <div className="space-y-3">
                         {[
                           { label: "الرصيد الأصلي", value: agency.original_balance?.toLocaleString(), sub: `$${(agency.original_balance / 8500).toFixed(2)}`, color: "text-blue-400" },
@@ -381,11 +517,11 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.07, duration: 0.35 }}
-                            className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-4 flex items-center justify-between"
+                            className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 flex items-center justify-between"
                           >
                             <span className="text-xs text-muted-foreground">{item.label}</span>
                             <div className="text-left">
-                              <p className={`text-base font-black font-mono ${item.color}`}>{item.value} <span className="text-[9px] text-muted-foreground font-normal">كوينز</span></p>
+                              <p className={`text-base font-black font-mono tabular-nums ${item.color}`}>{item.value} <span className="text-[9px] text-muted-foreground font-normal">كوينز</span></p>
                               <p className="text-[10px] text-muted-foreground font-mono">{item.sub}</p>
                             </div>
                           </motion.div>
@@ -393,10 +529,10 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                       </div>
 
                       {/* Consumption progress */}
-                      <div className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-4 space-y-3">
+                      <div className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-muted-foreground">نسبة الاستهلاك</span>
-                          <span className="text-sm font-bold text-amber-400 font-mono">{consumptionPct}%</span>
+                          <span className="text-sm font-bold text-amber-400 font-mono tabular-nums">{consumptionPct}%</span>
                         </div>
                         <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
                           <motion.div
