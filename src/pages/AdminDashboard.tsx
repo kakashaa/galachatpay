@@ -2144,7 +2144,7 @@ const AdminDashboardPage: React.FC = () => {
                             photo.status === "pending" ? "bg-yellow-500/20 text-yellow-500" :
                             photo.status === "approved" ? "bg-emerald-500/20 text-emerald-500" : "bg-destructive/20 text-destructive"
                           }`}>
-                            {photo.status === "pending" ? "معلق" : photo.status === "approved" ? "✅ موافق تلقائياً" : "مرفوض"}
+                            {photo.status === "pending" ? "معلق" : photo.status === "approved" ? "موافق تلقائياً" : "مرفوض"}
                           </span>
                           <div>
                             <p className="font-bold text-sm">{photo.user_name}</p>
