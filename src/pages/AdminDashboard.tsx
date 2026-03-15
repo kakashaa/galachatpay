@@ -2377,7 +2377,9 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* TOP Agents Tab */}
             {activeTab === "top_agents" && (
-              <AdminTopAgents readOnly={isModeratorRole && isTabViewOnly("top_agents")} />
+              <motion.div key="top_agents" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminTopAgents readOnly={isModeratorRole && isTabViewOnly("top_agents")} />
+              </motion.div>
             )}
 
             {/* BD Management Tab */}
