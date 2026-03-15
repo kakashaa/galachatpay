@@ -617,6 +617,68 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
         open={!!detailsAgency}
         onClose={() => setDetailsAgency(null)}
       />
+
+      {/* Edit Agency Sheet */}
+      <Sheet open={!!editAgency} onOpenChange={() => setEditAgency(null)}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/5">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <Pencil className="w-5 h-5 text-orange-400" /> تعديل بيانات الوكالة
+            </SheetTitle>
+          </SheetHeader>
+          {editAgency && (
+            <div className="space-y-4 pt-4">
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-xs">
+                <p className="text-muted-foreground mb-0.5">اسم المستخدم (لا يتغير)</p>
+                <p className="text-sm font-bold text-foreground font-mono">@{editAgency.username}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">اسم الوكيل</label>
+                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="الاسم الجديد" className="bg-white/5 border-white/10 rounded-xl" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">رقم الواتساب</label>
+                <Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                  placeholder="+967..." dir="ltr" className="bg-white/5 border-white/10 rounded-xl" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">إعادة تعيين كلمة المرور</label>
+                <Input value={editForm.new_password} onChange={e => setEditForm({ ...editForm, new_password: e.target.value })}
+                  placeholder="كلمة مرور جديدة" type="password" dir="ltr" className="bg-white/5 border-white/10 rounded-xl" />
+                {editForm.new_password && (
+                  <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> الوكيل سيضطر لتغييرها عند الدخول
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">نقل الوكالة لشخص آخر</label>
+                <Input value={editForm.transfer_to_uuid} onChange={e => setEditForm({ ...editForm, transfer_to_uuid: e.target.value })}
+                  placeholder="UUID الشخص الجديد" dir="ltr" className="bg-white/5 border-white/10 rounded-xl" />
+                {editForm.transfer_to_uuid && (
+                  <p className="text-[10px] text-red-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> سيتم نقل كل البيانات والرصيد للشخص الجديد
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditAgency(null)}
+                  className="flex-1 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all duration-200">إلغاء</button>
+                <Button onClick={handleEditAgency} disabled={editLoading}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all">
+                  {editLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4 ml-1.5" /> حفظ التعديلات</>}
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
