@@ -212,28 +212,18 @@ const SalaryWithdraw: React.FC = () => {
 
   // Salary type choice for agency owners
   const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
-  const [choiceLoading, setChoiceLoading] = useState(false);
-  const [hostSalaryAmount, setHostSalaryAmount] = useState<number | null>(null);
-  const [agencySalaryAmount, setAgencySalaryAmount] = useState<number | null>(null);
-  const [agencySalaryName, setAgencySalaryName] = useState("");
+  const [allData, setAllData] = useState<SalaryCheckAllResult | null>(null);
   const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
   const [alreadyWithdrawn, setAlreadyWithdrawn] = useState(0);
 
   const token = localStorage.getItem("gala_session_key") || "";
   const hasFetchedRef = useRef(false);
 
-  // Check if user is an agency owner (type_user 2, 4, 6)
-  const isAgencyOwner = user ? [2, 4, 6].includes(user.type_user) : false;
-
   useEffect(() => {
     if (!user) { navigate("/"); return; }
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    if (isAgencyOwner) {
-      fetchBothSalaries();
-    } else {
-      checkSalary();
-    }
+    fetchAllSalaries();
   }, [user?.uuid]);
 
   const fetchBothSalaries = async () => {
