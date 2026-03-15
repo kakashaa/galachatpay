@@ -59,10 +59,6 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   // Toggle loading
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
 
-  // Details
-  const [detailsTarget, setDetailsTarget] = useState<string | null>(null);
-  const [detailsData, setDetailsData] = useState<any>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const adminToken = sessionStorage.getItem("admin_session_token");
 
