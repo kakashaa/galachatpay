@@ -1412,7 +1412,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Reports Tab */}
             {activeTab === "reports" && (
-              <motion.div key="reports" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="reports" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {banReports.map((report) => (
                   <div key={report.id} className="bg-card border rounded-xl overflow-hidden">
                     <button onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)} className="w-full p-4 flex items-center justify-between text-right">
