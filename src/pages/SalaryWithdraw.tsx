@@ -737,6 +737,7 @@ const SalaryWithdraw: React.FC = () => {
         {step === 1 && (
           <SalaryRequestsHistory
             userUuid={user.uuid}
+            onWithdrawnCalculated={(amt) => setAlreadyWithdrawn(amt)}
             onResubmit={(req) => {
               if (req.country) setSelectedCountry(req.country);
               if (req.bank) setSelectedBank(req.bank);
