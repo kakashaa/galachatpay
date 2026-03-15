@@ -125,7 +125,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const tier = getSelectedTier(createForm.tier);
       const isCustom = !tier;
       const coins = isCustom ? parseInt(createForm.custom_coins) || 0 : tier!.coins;
-      const bonusPercent = isCustom ? 0 : tier!.bonus;
+      const bonusPercent = isCustom ? 0 : tier!.bonusPercent;
 
       const res = await fetch(`${ADMIN_API}?action=agency_create`, {
         method: "POST",
