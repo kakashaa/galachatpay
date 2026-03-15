@@ -258,7 +258,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const countrySummary = useMemo(() => {
     const map: Record<string, { count: number; amount: number }> = {};
     filtered.forEach(r => {
-      const c = r.country || "أخرى";
+      const c = COUNTRY_LABELS[r.country] || r.country || "أخرى";
       if (!map[c]) map[c] = { count: 0, amount: 0 };
       map[c].count++;
       map[c].amount += r.amount;
