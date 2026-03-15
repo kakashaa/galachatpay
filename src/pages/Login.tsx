@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Fingerprint, Timer, Ban, Trash2, ChevronRight } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Wallet, Timer, Ban, Trash2, ChevronRight } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -426,6 +426,13 @@ const Login: React.FC = () => {
           >
             <PulsingHelpIcon size={16} />
             <span className="border-b border-transparent group-hover:border-primary pb-0.5">تعليمات تسجيل الدخول</span>
+          </button>
+          <button
+            onClick={() => navigate("/login/agent")}
+            className="text-amber-400/60 hover:text-amber-400 transition-colors text-xs flex items-center justify-center gap-1.5 mx-auto"
+          >
+            <Wallet className="w-3 h-3" />
+            <span>دخول وكيل شحن</span>
           </button>
           <button
             onClick={() => navigate("/admin")}

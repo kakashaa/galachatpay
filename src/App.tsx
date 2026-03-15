@@ -47,6 +47,14 @@ const BanCheckPage = lazy(() => import("./pages/BanCheckPage"));
 const CustomWaresRequest = lazy(() => import("./pages/CustomWaresRequest"));
 const MyWaresRequests = lazy(() => import("./pages/MyWaresRequests"));
 
+// Agent pages
+const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
+const AgentSetup = lazy(() => import("./pages/agent/AgentSetup"));
+const AgentDashboard = lazy(() => import("./pages/agent/AgentDashboard"));
+const AgentCharge = lazy(() => import("./pages/agent/AgentCharge"));
+const AgentHistory = lazy(() => import("./pages/agent/AgentHistory"));
+const AgentStats = lazy(() => import("./pages/agent/AgentStats"));
+
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
@@ -110,6 +118,12 @@ const App = () => {
                   <Route path="/ban-check" element={<BanCheckPage />} />
                   <Route path="/custom-wares" element={<CustomWaresRequest />} />
                   <Route path="/my-wares-requests" element={<MyWaresRequests />} />
+                  <Route path="/login/agent" element={<AgentLogin />} />
+                  <Route path="/agent/setup" element={<AgentSetup />} />
+                  <Route path="/agent" element={<AgentDashboard />} />
+                  <Route path="/agent/charge" element={<AgentCharge />} />
+                  <Route path="/agent/history" element={<AgentHistory />} />
+                  <Route path="/agent/stats" element={<AgentStats />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
