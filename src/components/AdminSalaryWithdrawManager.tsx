@@ -249,23 +249,28 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const totalAmount = filtered.reduce((s, r) => s + r.amount, 0);
 
   return (
-    <div className="space-y-4 print-area" dir="rtl">
+    <div className="space-y-5 print-area" dir="rtl">
       {/* ===== 1. STAT CARDS (clickable) ===== */}
       <div className="grid grid-cols-4 gap-2">
         {[
-          { key: "all" as const, icon: <FileText className="w-4 h-4" />, label: "📋 الكل", count: stats.total, amount: stats.total_amount ?? (stats.delivered_amount + stats.pending_amount + (stats.rejected_amount || 0)), color: "text-foreground", border: "border-border" },
-          { key: "pending" as const, icon: <Clock className="w-4 h-4" />, label: "⏳ معلقة", count: stats.pending, amount: stats.pending_amount, color: "text-amber-400", border: "border-amber-500/20" },
-          { key: "delivered" as const, icon: <CheckCircle className="w-4 h-4" />, label: "✅ مسلّمة", count: stats.delivered, amount: stats.delivered_amount, color: "text-emerald-400", border: "border-emerald-500/20" },
-          { key: "rejected" as const, icon: <XCircle className="w-4 h-4" />, label: "❌ مرفوضة", count: stats.rejected, amount: stats.rejected_amount || 0, color: "text-red-400", border: "border-red-500/20" },
-        ].map(card => (
-          <button key={card.key} onClick={() => setFilter(card.key)}
-            className={`relative rounded-xl p-2.5 text-center transition-all border ${card.border} ${
-              filter === card.key ? "ring-2 ring-primary/50 bg-primary/5 scale-[1.02]" : "bg-card hover:bg-muted/20"
+          { key: "all" as const, label: "📋 الكل", count: stats.total, amount: stats.total_amount ?? (stats.delivered_amount + stats.pending_amount + (stats.rejected_amount || 0)), color: "text-foreground", border: "border-border", bg: "bg-card" },
+          { key: "pending" as const, label: "⏳ معلقة", count: stats.pending, amount: stats.pending_amount, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
+          { key: "delivered" as const, label: "✅ مسلّمة", count: stats.delivered, amount: stats.delivered_amount, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
+          { key: "rejected" as const, label: "❌ مرفوضة", count: stats.rejected, amount: stats.rejected_amount || 0, color: "text-red-400", border: "border-red-500/20", bg: "bg-red-500/5" },
+        ].map((card, i) => (
+          <motion.button
+            key={card.key}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.07, duration: 0.3 }}
+            onClick={() => setFilter(card.key)}
+            className={`relative rounded-2xl p-2.5 text-center transition-all border ${card.border} ${card.bg} ${
+              filter === card.key ? "ring-2 ring-primary/50 scale-[1.03]" : "hover:bg-muted/20"
             }`}>
             <p className="text-[9px] text-muted-foreground mb-0.5">{card.label}</p>
             <p className={`text-lg font-black ${card.color}`}>{card.count}</p>
             <p className={`text-[10px] font-bold ${card.color} opacity-80`}>${card.amount?.toLocaleString()}</p>
-          </button>
+          </motion.button>
         ))}
       </div>
 
