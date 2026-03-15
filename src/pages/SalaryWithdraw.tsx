@@ -209,7 +209,7 @@ const SalaryWithdraw: React.FC = () => {
   const [agencySalaryAmount, setAgencySalaryAmount] = useState<number | null>(null);
   const [agencySalaryName, setAgencySalaryName] = useState("");
   const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [alreadyWithdrawn, setAlreadyWithdrawn] = useState(0);
 
   const token = localStorage.getItem("gala_session_key") || "";
   const hasFetchedRef = useRef(false);
