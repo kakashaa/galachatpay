@@ -32,6 +32,13 @@ interface SalaryCheckResult {
   withdraw_open?: boolean;
 }
 
+interface AgencySalaryResult {
+  success?: boolean;
+  has_salary: boolean;
+  amount?: number;
+  agency_name?: string;
+}
+
 interface VerifyResult {
   verified: boolean;
   transaction_id?: string;
