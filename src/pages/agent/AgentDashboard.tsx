@@ -10,6 +10,7 @@ interface DashboardData {
   agency_id: string;
   name: string;
   balance: number;
+  original_balance: number;
   balance_usd: number;
   today_charges: number;
   today_count: number;
