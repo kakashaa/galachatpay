@@ -2476,6 +2476,13 @@ const AdminDashboardPage: React.FC = () => {
                 )}
               </motion.div>
             )}
+
+            {/* Agencies Tab */}
+            {activeTab === "agencies" && (
+              <motion.div key="agencies" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AdminAgencyManager canAct={canAct} />
+              </motion.div>
+            )}
           </AnimatePresence>
         )}
         </div>
