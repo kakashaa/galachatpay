@@ -521,6 +521,13 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                     </button>
                     <div className="w-px bg-white/5" />
                     <button
+                      onClick={() => openEditSheet(agency)}
+                      className="flex-1 py-3 text-[11px] font-bold text-orange-400 hover:bg-orange-500/5 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> تعديل
+                    </button>
+                    <div className="w-px bg-white/5" />
+                    <button
                       onClick={() => setDetailsAgency(agency)}
                       className="flex-1 py-3 text-[11px] font-bold text-violet-400 hover:bg-violet-500/5 transition-colors flex items-center justify-center gap-1.5"
                     >
