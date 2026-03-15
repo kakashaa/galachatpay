@@ -4,7 +4,7 @@ import {
   DollarSign, CheckCircle, XCircle, Clock, Search, Upload,
   Loader2, FileText, Image, Printer, Building2,
   ChevronDown, ChevronUp, Eye, Phone, User, Hash, CalendarDays,
-  MessageSquare, CreditCard,
+  MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,11 +58,11 @@ interface Props {
 }
 
 const COUNTRIES = [
-  { value: "all", label: "🌍 الكل" },
-  { value: "SA", label: "🇸🇦 السعودية" },
-  { value: "YE", label: "🇾🇪 اليمن" },
-  { value: "US", label: "🇺🇸 أمريكا" },
-  { value: "other", label: "🌐 أخرى" },
+  { value: "all", label: "الكل" },
+  { value: "SA", label: "السعودية" },
+  { value: "YE", label: "اليمن" },
+  { value: "US", label: "أمريكا" },
+  { value: "other", label: "أخرى" },
 ];
 
 const BANKS = [
@@ -91,10 +91,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [amountMax, setAmountMax] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Detail view
   const [detailReq, setDetailReq] = useState<WithdrawRequest | null>(null);
-
-  // Action sheets
   const [approveSheet, setApproveSheet] = useState<WithdrawRequest | null>(null);
   const [rejectSheet, setRejectSheet] = useState<WithdrawRequest | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -104,8 +101,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [rejectImage, setRejectImage] = useState<File | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  const token = sessionStorage.getItem("admin_session_token") || "";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -121,7 +116,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     } finally {
       setLoading(false);
     }
-  }, [token, selectedMonth]);
+  }, [selectedMonth]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -146,7 +141,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("✅ تم قبول الطلب وإرسال الإشعار");
+        toast.success("تم قبول الطلب وإرسال الإشعار");
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
         fetchData();
       } else toast.error(data.error || "فشل في قبول الطلب");
@@ -166,45 +161,38 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success("❌ تم رفض الطلب وإرسال الإشعار");
+        toast.success("تم رفض الطلب وإرسال الإشعار");
         setRejectSheet(null); setRejectReason(""); setRejectImage(null);
         fetchData();
       } else toast.error(data.error || "فشل في رفض الطلب");
     } catch { toast.error("حدث خطأ"); } finally { setActionLoading(false); }
   };
 
-  // Advanced filtering
   const filtered = useMemo(() => {
     return requests.filter(r => {
-      // Status filter
       if (filter !== "all" && r.status !== filter) return false;
-      // Search
       if (search) {
         const q = search.toLowerCase();
         if (!(r.user_name?.toLowerCase().includes(q) || r.user_uuid?.includes(q) || r.request_code?.toLowerCase().includes(q) || r.account_name?.toLowerCase().includes(q)))
           return false;
       }
-      // Bank
       if (bankFilter !== "all") {
         if (bankFilter === "other") {
           const known = ["الراجحي", "جيب", "كريمي", "Zelle", "Cash App"];
           if (known.some(b => r.bank?.includes(b))) return false;
         } else if (!r.bank?.includes(bankFilter)) return false;
       }
-      // Country
       if (countryFilter !== "all") {
         if (countryFilter === "other") {
           if (["SA", "السعودية", "YE", "اليمن", "US", "أمريكا"].some(c => r.country?.includes(c))) return false;
-        } else if (!r.country?.includes(countryFilter) && !r.country?.includes(COUNTRIES.find(c => c.value === countryFilter)?.label.slice(3) || "")) return false;
+        } else if (!r.country?.includes(countryFilter) && !r.country?.includes(COUNTRIES.find(c => c.value === countryFilter)?.label || "")) return false;
       }
-      // Amount range
       if (amountMin && r.amount < parseFloat(amountMin)) return false;
       if (amountMax && r.amount > parseFloat(amountMax)) return false;
       return true;
     });
   }, [requests, filter, search, bankFilter, countryFilter, amountMin, amountMax]);
 
-  // Country distribution for summary
   const countrySummary = useMemo(() => {
     const map: Record<string, { count: number; amount: number }> = {};
     filtered.forEach(r => {
@@ -223,13 +211,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   })();
 
   const handlePrint = () => window.print();
-
-  const countryFlag = (c: string) => {
-    if (c?.includes("سعود") || c?.includes("SA")) return "🇸🇦";
-    if (c?.includes("يمن") || c?.includes("YE")) return "🇾🇪";
-    if (c?.includes("أمريك") || c?.includes("US")) return "🇺🇸";
-    return "🌍";
-  };
 
   const statusConfig: Record<string, { label: string; textClass: string; bgClass: string; icon: React.ReactNode }> = {
     pending: { label: "قيد المراجعة", textClass: "text-amber-400", bgClass: "bg-amber-500/10", icon: <Clock className="w-3 h-3" /> },
@@ -250,59 +231,58 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
   return (
     <div className="space-y-5 print-area" dir="rtl">
-      {/* ===== 1. STAT CARDS (clickable) ===== */}
+      {/* ===== 1. STAT CARDS ===== */}
       <div className="grid grid-cols-4 gap-2">
         {[
-          { key: "all" as const, label: "📋 الكل", count: stats.total, amount: stats.total_amount ?? (stats.delivered_amount + stats.pending_amount + (stats.rejected_amount || 0)), color: "text-foreground", border: "border-border", bg: "bg-card" },
-          { key: "pending" as const, label: "⏳ معلقة", count: stats.pending, amount: stats.pending_amount, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
-          { key: "delivered" as const, label: "✅ مسلّمة", count: stats.delivered, amount: stats.delivered_amount, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
-          { key: "rejected" as const, label: "❌ مرفوضة", count: stats.rejected, amount: stats.rejected_amount || 0, color: "text-red-400", border: "border-red-500/20", bg: "bg-red-500/5" },
+          { key: "all" as const, label: "الكل", icon: <ClipboardList className="w-4 h-4" />, count: stats.total, amount: stats.total_amount ?? (stats.delivered_amount + stats.pending_amount + (stats.rejected_amount || 0)), color: "text-foreground", border: "border-white/5", bg: "bg-card/50" },
+          { key: "pending" as const, label: "معلقة", icon: <Clock className="w-4 h-4" />, count: stats.pending, amount: stats.pending_amount, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
+          { key: "delivered" as const, label: "مسلّمة", icon: <CheckCircle className="w-4 h-4" />, count: stats.delivered, amount: stats.delivered_amount, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
+          { key: "rejected" as const, label: "مرفوضة", icon: <XCircle className="w-4 h-4" />, count: stats.rejected, amount: stats.rejected_amount || 0, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5" },
         ].map((card, i) => (
           <motion.button
             key={card.key}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: i * 0.07, duration: 0.3 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05, duration: 0.4, ease: "easeOut" }}
             onClick={() => setFilter(card.key)}
-            className={`relative rounded-2xl p-2.5 text-center transition-all border ${card.border} ${card.bg} ${
-              filter === card.key ? "ring-2 ring-primary/50 scale-[1.03]" : "hover:bg-muted/20"
+            className={`relative rounded-2xl p-2.5 text-center transition-all duration-300 border backdrop-blur-sm ${card.border} ${card.bg} ${
+              filter === card.key ? "ring-1 ring-primary/40 scale-[1.02]" : "hover:border-white/10"
             }`}>
-            <p className="text-[9px] text-muted-foreground mb-0.5">{card.label}</p>
-            <p className={`text-lg font-black ${card.color}`}>{card.count}</p>
-            <p className={`text-[10px] font-bold ${card.color} opacity-80`}>${card.amount?.toLocaleString()}</p>
+            <div className={`${card.color} mb-1 flex justify-center`}>{card.icon}</div>
+            <p className="text-[9px] text-muted-foreground">{card.label}</p>
+            <p className={`text-lg font-bold font-mono tabular-nums ${card.color}`}>{card.count}</p>
+            <p className={`text-[10px] font-semibold font-mono tabular-nums ${card.color} opacity-70`}>${card.amount?.toLocaleString()}</p>
           </motion.button>
         ))}
       </div>
 
       {/* ===== 2. FILTERS ===== */}
       <div className="space-y-2 no-print">
-        {/* Row 1: Search + Month */}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="بحث: UUID، اسم، كود الطلب..."
-              className="bg-muted/20 border-border/30 pr-9 text-xs h-9" dir="rtl" />
+              className="bg-white/5 border-white/10 pr-9 text-xs h-9 rounded-xl" dir="rtl" />
           </div>
           <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-            className="bg-muted/20 border-border/30 w-[130px] text-xs h-9" dir="ltr" />
+            className="bg-white/5 border-white/10 w-[130px] text-xs h-9 rounded-xl" dir="ltr" />
         </div>
-        {/* Row 2: Bank, Country, Amount range, PDF */}
         <div className="flex gap-1.5 flex-wrap">
           <select value={bankFilter} onChange={e => setBankFilter(e.target.value)}
-            className="bg-muted/20 border border-border/30 rounded-lg text-[10px] px-2 h-8 text-foreground flex-1 min-w-[70px]">
-            <option value="all">🏦 البنك</option>
+            className="bg-white/5 border border-white/10 rounded-xl text-[10px] px-2 h-8 text-foreground flex-1 min-w-[70px]">
+            <option value="all">البنك</option>
             {BANKS.filter(b => b.value !== "all").map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
           </select>
           <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
-            className="bg-muted/20 border border-border/30 rounded-lg text-[10px] px-2 h-8 text-foreground flex-1 min-w-[70px]">
+            className="bg-white/5 border border-white/10 rounded-xl text-[10px] px-2 h-8 text-foreground flex-1 min-w-[70px]">
             {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
           <Input type="number" placeholder="من $" value={amountMin} onChange={e => setAmountMin(e.target.value)}
-            className="bg-muted/20 border-border/30 w-[60px] text-[10px] h-8 px-1.5" dir="ltr" />
+            className="bg-white/5 border-white/10 w-[60px] text-[10px] h-8 px-1.5 rounded-xl" dir="ltr" />
           <Input type="number" placeholder="إلى $" value={amountMax} onChange={e => setAmountMax(e.target.value)}
-            className="bg-muted/20 border-border/30 w-[60px] text-[10px] h-8 px-1.5" dir="ltr" />
-          <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 px-2 border-border/30">
+            className="bg-white/5 border-white/10 w-[60px] text-[10px] h-8 px-1.5 rounded-xl" dir="ltr" />
+          <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 px-2 border-white/10 rounded-xl hover:bg-white/5">
             <Printer className="w-3.5 h-3.5" />
           </Button>
         </div>
@@ -310,27 +290,34 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
       {/* ===== 3. REQUESTS LIST ===== */}
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-card/50 border border-white/5 rounded-2xl p-5 animate-pulse">
+              <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-white/5 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-30" />
           <p className="text-sm text-muted-foreground">لا توجد طلبات {filter !== "all" ? statusConfig[filter]?.label : ""}</p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map((req, i) => (
             <motion.div key={req.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04, duration: 0.35, ease: "easeOut" as const }}
-              className="bg-[#1c1e2e] border border-white/10 rounded-2xl overflow-hidden hover:border-emerald-500/20 transition-colors">
-              {/* Card header */}
+              transition={{ delay: i * 0.04, duration: 0.35, ease: "easeOut" }}
+              whileHover={{ borderColor: "rgba(255,255,255,0.1)" }}
+              className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden transition-all duration-300">
               <button onClick={() => setExpanded(expanded === req.id ? null : req.id)}
-                className="w-full flex items-center justify-between p-3 text-right">
+                className="w-full flex items-center justify-between p-3.5 text-right">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    req.status === "delivered" ? "bg-emerald-500/10" : req.status === "rejected" ? "bg-red-500/10" : "bg-amber-500/10"
+                    req.status === "delivered" ? "bg-emerald-500/10" : req.status === "rejected" ? "bg-rose-500/10" : "bg-amber-500/10"
                   }`}>
                     <DollarSign className={`w-5 h-5 ${
-                      req.status === "delivered" ? "text-emerald-400" : req.status === "rejected" ? "text-red-400" : "text-amber-400"
+                      req.status === "delivered" ? "text-emerald-400" : req.status === "rejected" ? "text-rose-400" : "text-amber-400"
                     }`} />
                   </div>
                   <div className="min-w-0 space-y-0.5">
@@ -338,28 +325,26 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                       <span className="text-[11px] font-mono text-primary font-bold">{req.request_code}</span>
                       {statusBadge(req.status)}
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      👤 {req.user_name} ({req.user_uuid})
+                    <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                      <User className="w-3 h-3 inline shrink-0" /> {req.user_name}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                   <div className="text-left">
-                    <p className="text-sm font-black text-foreground">${req.amount?.toLocaleString()}</p>
-                    <p className="text-[9px] text-muted-foreground">{countryFlag(req.country)} {req.bank}</p>
+                    <p className="text-sm font-bold font-mono tabular-nums text-foreground">${req.amount?.toLocaleString()}</p>
+                    <p className="text-[9px] text-muted-foreground">{req.bank}</p>
                   </div>
                   {expanded === req.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                 </div>
               </button>
 
-              {/* Expanded */}
               <AnimatePresence>
                 {expanded === req.id && (
                   <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-                    <div className="px-3 pb-3 space-y-2 border-t border-border/20 pt-3">
-                      {/* Detail grid */}
+                    <div className="px-3.5 pb-3.5 space-y-2 border-t border-white/5 pt-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${req.bank} — ${req.country}`} flag={countryFlag(req.country)} />
+                        <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${req.bank} — ${req.country}`} />
                         <DetailCell icon={<User className="w-3 h-3" />} label="المستلم" value={req.account_name} />
                         <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={req.account_number} dir="ltr" />
                         <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={req.whatsapp} dir="ltr" />
@@ -367,7 +352,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                       <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={new Date(req.created_at).toLocaleString("ar")} />
                       {req.notes && <DetailCell icon={<MessageSquare className="w-3 h-3" />} label="ملاحظات" value={req.notes} />}
 
-                      {/* Receipt / rejection info */}
                       {req.receipt_image && (
                         <button onClick={() => setImagePreview(`${RECEIPT_BASE}${req.receipt_image}`)}
                           className="flex items-center gap-2 text-xs text-primary hover:underline">
@@ -375,29 +359,29 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         </button>
                       )}
                       {req.admin_note && (
-                        <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-2 text-xs">
-                          <span className="text-red-400 text-[10px] font-bold block mb-0.5">❌ سبب الرفض</span>
+                        <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5 text-xs">
+                          <span className="text-rose-400 text-[10px] font-bold flex items-center gap-1 mb-0.5">
+                            <XCircle className="w-3 h-3" /> سبب الرفض
+                          </span>
                           <p className="text-foreground">{req.admin_note}</p>
                         </div>
                       )}
 
-                      {/* View details button */}
                       <Button variant="ghost" size="sm" onClick={() => setDetailReq(req)}
-                        className="w-full text-xs text-muted-foreground hover:text-primary h-8">
+                        className="w-full text-xs text-muted-foreground hover:text-primary h-8 rounded-xl">
                         <Eye className="w-3.5 h-3.5 ml-1" /> عرض التفاصيل الكاملة
                       </Button>
 
-                      {/* Action buttons */}
                       {canAct && req.status === "pending" && (
                         <div className="flex gap-2 pt-1">
                           <Button onClick={() => { setApproveSheet(req); setReceiptFile(null); setReceiptPreview(""); setApproveNote(""); }}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-10 rounded-xl">
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
                             <CheckCircle className="w-4 h-4 ml-1.5" /> قبول + إيصال
                           </Button>
-                          <Button onClick={() => { setRejectSheet(req); setRejectReason(""); setRejectImage(null); }}
-                            variant="outline" className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 font-bold text-xs h-10 rounded-xl">
-                            <XCircle className="w-4 h-4 ml-1.5" /> رفض + سبب
-                          </Button>
+                          <button onClick={() => { setRejectSheet(req); setRejectReason(""); setRejectImage(null); }}
+                            className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                            <XCircle className="w-4 h-4" /> رفض + سبب
+                          </button>
                         </div>
                       )}
                     </div>
@@ -411,81 +395,85 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
       {/* ===== 5. MONTHLY SUMMARY ===== */}
       {!loading && filtered.length > 0 && (
-        <div className="bg-[#1c1e2e] border border-white/10 rounded-2xl p-4 space-y-3">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            📊 ملخص شهر {monthLabel}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 space-y-3">
+          <h3 className="text-sm font-bold text-foreground tracking-tight flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" /> ملخص شهر {monthLabel}
           </h3>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-muted/20 rounded-xl p-2">
+            <div className="bg-white/[0.03] rounded-xl p-2.5">
               <p className="text-[10px] text-muted-foreground">إجمالي</p>
-              <p className="text-sm font-black text-foreground">{filtered.length} طلب</p>
-              <p className="text-[10px] font-bold text-primary">${totalAmount.toLocaleString()}</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-foreground">{filtered.length}</p>
+              <p className="text-[10px] font-semibold font-mono text-primary">${totalAmount.toLocaleString()}</p>
             </div>
-            <div className="bg-emerald-500/5 rounded-xl p-2">
-              <p className="text-[10px] text-emerald-400">✅ مسلّمة</p>
-              <p className="text-sm font-black text-emerald-400">{filtered.filter(r => r.status === "delivered").length}</p>
-              <p className="text-[10px] font-bold text-emerald-400/70">${filtered.filter(r => r.status === "delivered").reduce((s, r) => s + r.amount, 0).toLocaleString()}</p>
+            <div className="bg-emerald-500/5 rounded-xl p-2.5">
+              <p className="text-[10px] text-emerald-400 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> مسلّمة</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-emerald-400">{filtered.filter(r => r.status === "delivered").length}</p>
+              <p className="text-[10px] font-semibold font-mono text-emerald-400/70">${filtered.filter(r => r.status === "delivered").reduce((s, r) => s + r.amount, 0).toLocaleString()}</p>
             </div>
-            <div className="bg-amber-500/5 rounded-xl p-2">
-              <p className="text-[10px] text-amber-400">⏳ معلقة</p>
-              <p className="text-sm font-black text-amber-400">{filtered.filter(r => r.status === "pending").length}</p>
-              <p className="text-[10px] font-bold text-amber-400/70">${filtered.filter(r => r.status === "pending").reduce((s, r) => s + r.amount, 0).toLocaleString()}</p>
+            <div className="bg-amber-500/5 rounded-xl p-2.5">
+              <p className="text-[10px] text-amber-400 flex items-center justify-center gap-1"><Clock className="w-3 h-3" /> معلقة</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-amber-400">{filtered.filter(r => r.status === "pending").length}</p>
+              <p className="text-[10px] font-semibold font-mono text-amber-400/70">${filtered.filter(r => r.status === "pending").reduce((s, r) => s + r.amount, 0).toLocaleString()}</p>
             </div>
           </div>
-          {/* Country distribution */}
           {countrySummary.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-[10px] text-muted-foreground font-bold">التوزيع حسب الدولة:</p>
               {countrySummary.map(([country, data]) => (
-                <div key={country} className="flex items-center justify-between bg-muted/10 rounded-lg px-3 py-1.5 text-xs">
-                  <span className="text-foreground">{countryFlag(country)} {country}</span>
-                  <span className="text-muted-foreground">{data.count} طلب — <strong className="text-primary">${data.amount.toLocaleString()}</strong></span>
+                <div key={country} className="flex items-center justify-between bg-white/[0.03] rounded-xl px-3 py-2 text-xs">
+                  <span className="text-foreground">{country}</span>
+                  <span className="text-muted-foreground font-mono tabular-nums">{data.count} طلب — <strong className="text-primary">${data.amount.toLocaleString()}</strong></span>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* ===== APPROVE SHEET ===== */}
       <Sheet open={!!approveSheet} onOpenChange={() => setApproveSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto" dir="rtl">
-          <SheetHeader className="pb-3 border-b border-border/20">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/5">
             <SheetTitle className="flex items-center gap-2 text-base">
               <CheckCircle className="w-5 h-5 text-emerald-400" /> تأكيد تسليم الراتب
             </SheetTitle>
           </SheetHeader>
           <div className="space-y-4 pt-4">
             {approveSheet && (
-              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 space-y-1 text-xs">
-                <p>👤 <strong>{approveSheet.user_name}</strong> — <strong className="text-primary">${approveSheet.amount}</strong></p>
-                <p>🏦 {approveSheet.bank} — {approveSheet.account_number}</p>
-                <p>📱 {approveSheet.whatsapp}</p>
+              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 space-y-1.5 text-xs">
+                <p className="flex items-center gap-1.5"><User className="w-3 h-3 text-emerald-400" /> <strong>{approveSheet.user_name}</strong> — <strong className="text-primary">${approveSheet.amount}</strong></p>
+                <p className="flex items-center gap-1.5"><Building2 className="w-3 h-3 text-emerald-400" /> {approveSheet.bank} — {approveSheet.account_number}</p>
+                <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-emerald-400" /> {approveSheet.whatsapp}</p>
               </div>
             )}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">📎 ارفع صورة إيصال التحويل *</label>
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Upload className="w-3.5 h-3.5 text-muted-foreground" /> ارفع صورة إيصال التحويل *
+              </label>
               <label className="flex items-center justify-center gap-3 p-5 border-2 border-dashed border-emerald-500/20 rounded-2xl cursor-pointer hover:bg-emerald-500/5 transition-colors">
                 <Upload className="w-6 h-6 text-emerald-400" />
-                <span className="text-xs text-muted-foreground">{receiptFile ? receiptFile.name : "📷 اضغط لرفع صورة"}</span>
+                <span className="text-xs text-muted-foreground">{receiptFile ? receiptFile.name : "اضغط لرفع صورة"}</span>
                 <input type="file" accept="image/*" className="hidden"
                   onChange={e => {
                     const f = e.target.files?.[0];
                     if (f) { setReceiptFile(f); setReceiptPreview(URL.createObjectURL(f)); }
                   }} />
               </label>
-              {receiptPreview && <img src={receiptPreview} alt="receipt" className="w-full h-40 object-cover rounded-xl border border-border/20" />}
+              {receiptPreview && <img src={receiptPreview} alt="receipt" className="w-full h-40 object-cover rounded-xl border border-white/5" />}
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">📝 ملاحظات (اختياري)</label>
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" /> ملاحظات (اختياري)
+              </label>
               <Textarea value={approveNote} onChange={e => setApproveNote(e.target.value)}
-                placeholder="ملاحظات إضافية..." className="bg-muted/20 border-border/30 min-h-[60px] rounded-xl" />
+                placeholder="ملاحظات إضافية..." className="bg-white/5 border-white/10 min-h-[60px] rounded-xl" />
             </div>
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setApproveSheet(null)} className="flex-1 h-12 rounded-xl">إلغاء</Button>
+              <button onClick={() => setApproveSheet(null)} className="flex-1 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all duration-200">إلغاء</button>
               <Button onClick={handleApprove} disabled={actionLoading || !receiptFile}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl disabled:opacity-40">
-                {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "✅ تأكيد التسليم"}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all">
+                {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle className="w-4 h-4 ml-1.5" /> تأكيد التسليم</>}
               </Button>
             </div>
           </div>
@@ -494,40 +482,47 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
       {/* ===== REJECT SHEET ===== */}
       <Sheet open={!!rejectSheet} onOpenChange={() => setRejectSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto" dir="rtl">
-          <SheetHeader className="pb-3 border-b border-border/20">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/5">
             <SheetTitle className="flex items-center gap-2 text-base">
-              <XCircle className="w-5 h-5 text-red-400" /> رفض طلب السحب
+              <XCircle className="w-5 h-5 text-rose-400" /> رفض طلب السحب
             </SheetTitle>
           </SheetHeader>
           <div className="space-y-4 pt-4">
             {rejectSheet && (
-              <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-3 text-xs space-y-1">
-                <p>👤 <strong>{rejectSheet.user_name}</strong> — <strong className="text-primary">${rejectSheet.amount}</strong></p>
-                <p>📋 {rejectSheet.request_code}</p>
+              <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-3 text-xs space-y-1.5">
+                <p className="flex items-center gap-1.5"><User className="w-3 h-3 text-rose-400" /> <strong>{rejectSheet.user_name}</strong> — <strong className="text-primary">${rejectSheet.amount}</strong></p>
+                <p className="flex items-center gap-1.5"><Hash className="w-3 h-3 text-rose-400" /> {rejectSheet.request_code}</p>
               </div>
             )}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">📝 سبب الرفض (إجباري) *</label>
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" /> سبب الرفض (إجباري) *
+              </label>
               <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
-                placeholder="مثال: اسم المستلم غير مطابق..." className="bg-muted/20 border-border/30 min-h-[80px] rounded-xl" />
+                placeholder="مثال: اسم المستلم غير مطابق..." className="bg-white/5 border-white/10 min-h-[80px] rounded-xl" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">📎 صورة توضيحية (اختياري)</label>
-              <label className="flex items-center justify-center gap-3 p-4 border border-dashed border-red-500/20 rounded-2xl cursor-pointer hover:bg-red-500/5">
-                <Image className="w-5 h-5 text-red-400" />
+              <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Image className="w-3.5 h-3.5 text-muted-foreground" /> صورة توضيحية (اختياري)
+              </label>
+              <label className="flex items-center justify-center gap-3 p-4 border border-dashed border-rose-500/20 rounded-2xl cursor-pointer hover:bg-rose-500/5 transition-colors">
+                <Image className="w-5 h-5 text-rose-400" />
                 <span className="text-[10px] text-muted-foreground">{rejectImage ? rejectImage.name : "رفع صورة"}</span>
                 <input type="file" accept="image/*" className="hidden"
                   onChange={e => { if (e.target.files?.[0]) setRejectImage(e.target.files[0]); }} />
               </label>
             </div>
-            <p className="text-[10px] text-amber-400 bg-amber-500/5 rounded-lg p-2">⚠️ سيتم إرجاع المبلغ لحساب المستخدم تلقائياً</p>
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-2.5 flex items-center gap-2 text-[10px] text-amber-400">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              سيتم إرجاع المبلغ لحساب المستخدم تلقائياً
+            </div>
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setRejectSheet(null)} className="flex-1 h-12 rounded-xl">إلغاء</Button>
-              <Button onClick={handleReject} disabled={actionLoading || !rejectReason.trim()}
-                variant="destructive" className="flex-1 font-bold h-12 rounded-xl disabled:opacity-40">
-                {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "❌ تأكيد الرفض"}
-              </Button>
+              <button onClick={() => setRejectSheet(null)} className="flex-1 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all duration-200">إلغاء</button>
+              <button onClick={handleReject} disabled={actionLoading || !rejectReason.trim()}
+                className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-sm">
+                {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><XCircle className="w-4 h-4" /> تأكيد الرفض</>}
+              </button>
             </div>
           </div>
         </SheetContent>
@@ -535,7 +530,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
       {/* ===== DETAIL DIALOG ===== */}
       <Dialog open={!!detailReq} onOpenChange={() => setDetailReq(null)}>
-        <DialogContent className="max-w-[420px] rounded-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
+        <DialogContent className="max-w-[420px] rounded-2xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-sm flex items-center gap-2">
               <Hash className="w-4 h-4 text-primary" /> تفاصيل الطلب {detailReq?.request_code}
@@ -545,11 +540,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             <div className="space-y-3 text-xs">
               <div className="flex items-center justify-between">
                 {statusBadge(detailReq.status)}
-                <span className="text-lg font-black text-primary">${detailReq.amount}</span>
+                <span className="text-lg font-bold font-mono tabular-nums text-primary">${detailReq.amount}</span>
               </div>
               <div className="space-y-2">
                 <DetailCell icon={<User className="w-3 h-3" />} label="المستخدم" value={`${detailReq.user_name} (${detailReq.user_uuid})`} />
-                <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${detailReq.bank} — ${detailReq.country}`} flag={countryFlag(detailReq.country)} />
+                <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${detailReq.bank} — ${detailReq.country}`} />
                 <DetailCell icon={<User className="w-3 h-3" />} label="اسم المستلم" value={detailReq.account_name} />
                 <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
                 <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
@@ -560,8 +555,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 {detailReq.rejected_at && <DetailCell icon={<XCircle className="w-3 h-3" />} label="تاريخ الرفض" value={new Date(detailReq.rejected_at).toLocaleString("ar")} />}
                 {detailReq.rejected_by && <DetailCell icon={<User className="w-3 h-3" />} label="رفض بواسطة" value={detailReq.rejected_by} />}
                 {detailReq.admin_note && (
-                  <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-2.5">
-                    <span className="text-red-400 text-[10px] font-bold block mb-0.5">سبب الرفض</span>
+                  <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5">
+                    <span className="text-rose-400 text-[10px] font-bold flex items-center gap-1 mb-0.5">
+                      <XCircle className="w-3 h-3" /> سبب الرفض
+                    </span>
                     <p className="text-foreground">{detailReq.admin_note}</p>
                   </div>
                 )}
@@ -570,7 +567,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 <div className="space-y-1.5">
                   <p className="text-[10px] text-muted-foreground font-bold">إيصال التحويل:</p>
                   <img src={`${RECEIPT_BASE}${detailReq.receipt_image}`} alt="receipt"
-                    className="w-full rounded-xl border border-border/20 cursor-pointer hover:opacity-80 transition-opacity"
+                    className="w-full rounded-xl border border-white/5 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={() => setImagePreview(`${RECEIPT_BASE}${detailReq.receipt_image}`)} />
                 </div>
               )}
@@ -581,12 +578,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
       {/* ===== IMAGE PREVIEW ===== */}
       <Dialog open={!!imagePreview} onOpenChange={() => setImagePreview(null)}>
-        <DialogContent className="max-w-[90vw] max-h-[90vh] p-1 rounded-2xl bg-black/90">
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-1 rounded-2xl bg-black/90 border-white/5">
           {imagePreview && <img src={imagePreview} alt="preview" className="w-full h-full object-contain rounded-xl" />}
         </DialogContent>
       </Dialog>
 
-      {/* Print styles */}
       <style>{`
         @media print {
           nav, button, .no-print, header, footer { display: none !important; }
@@ -598,11 +594,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   );
 };
 
-// Reusable detail cell
-const DetailCell: React.FC<{ icon: React.ReactNode; label: string; value: string; dir?: string; flag?: string }> = ({ icon, label, value, dir, flag }) => (
-  <div className="bg-muted/15 rounded-lg p-2 text-xs">
+const DetailCell: React.FC<{ icon: React.ReactNode; label: string; value: string; dir?: string }> = ({ icon, label, value, dir }) => (
+  <div className="bg-white/[0.03] rounded-xl p-2.5 text-xs">
     <span className="text-muted-foreground text-[10px] flex items-center gap-1 mb-0.5">{icon} {label}</span>
-    <span className="font-bold text-foreground" dir={dir}>{flag && `${flag} `}{value}</span>
+    <span className="font-bold text-foreground" dir={dir}>{value}</span>
   </div>
 );
 

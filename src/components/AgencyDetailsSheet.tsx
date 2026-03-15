@@ -59,12 +59,12 @@ const BANK_COLORS: Record<string, { bg: string; text: string; border: string }> 
   "حساب الوكيل": { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-slate-500/20" },
 };
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  "السعودية": "🇸🇦",
-  "اليمن": "🇾🇪",
-  "أمريكا": "🇺🇸",
-  "مصر": "🇪🇬",
-  "العراق": "🇮🇶",
+const COUNTRY_LABELS: Record<string, string> = {
+  "السعودية": "SA",
+  "اليمن": "YE",
+  "أمريكا": "US",
+  "مصر": "EG",
+  "العراق": "IQ",
 };
 
 const getBankColor = (bank: string) => {

@@ -1029,7 +1029,14 @@ const AdminDashboardPage: React.FC = () => {
       {activeTab && (
         <div className="max-w-2xl mx-auto p-4">
         {loading ? (
-          <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+          <div className="space-y-3 py-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-card/50 border border-white/5 rounded-2xl p-5 animate-pulse">
+                <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
+                <div className="h-3 bg-white/5 rounded w-2/3" />
+              </div>
+            ))}
+          </div>
         ) : (
           <AnimatePresence mode="wait">
             {/* Videos Tab */}
