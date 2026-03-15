@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, TrendingUp, Wallet, Gem, Zap, Calculator, Users, Clock } from "lucide-react";
+import { ArrowRight, TrendingUp, Wallet, Gem, Zap, Calculator, Users, Clock, Lock } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 import { BANK_LABELS } from "@/lib/constants";
