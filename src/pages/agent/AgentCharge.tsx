@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { toast } from "sonner";
 
-import { COUNTRIES, COINS_PER_DOLLAR, BANK_LABELS, COUNTRY_LABELS, getBankCountry } from "@/lib/constants";
+import { COUNTRIES, COINS_PER_DOLLAR } from "@/lib/constants";
 
 const AGENT_API = "https://galachat.site/project-z/api.php";
 const COINS_PER_USD = COINS_PER_DOLLAR;
