@@ -620,9 +620,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           {detailReq && (
             <div className="space-y-3 text-xs">
               <div className="flex items-center gap-3">
-                <img src={detailReq.avatar || avatarMale} alt={detailReq.user_name}
-                  className="w-12 h-12 rounded-xl object-cover border border-white/10"
-                  onError={(e) => { (e.target as HTMLImageElement).src = avatarMale; }} />
+                <AvatarCircle src={detailReq.avatar} name={detailReq.user_name || detailReq.account_name} size="w-12 h-12" />
                 <div className="flex-1">
                   <p className="text-sm font-bold text-foreground">{detailReq.user_name}</p>
                   <p className="text-[10px] text-muted-foreground font-mono">UUID: {detailReq.user_uuid}</p>
