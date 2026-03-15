@@ -1197,7 +1197,7 @@ const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-4 overflow-hidden">
       {loading ? (
         <div className="space-y-3 py-4">
           {[...Array(4)].map((_, i) => (
@@ -1208,7 +1208,7 @@ const AdminDashboardPage: React.FC = () => {
           ))}
         </div>
       ) : (
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" custom={tabDirection}>
 
             {/* Videos Tab */}
             {activeTab === "videos" && (
