@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Fingerprint, Timer, Ban, Trash2, ChevronRight } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Wallet, Timer, Ban, Trash2, ChevronRight } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
