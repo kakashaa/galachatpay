@@ -129,20 +129,68 @@ const AgentCharge: React.FC = () => {
   if (chargeResult) {
     return (
       <div className="mobile-container flex flex-col items-center justify-center px-6 bg-background">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 w-full max-w-sm">
           {chargeResult.success ? (
             <>
-              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-                <Check className="w-10 h-10 text-green-400" />
-              </div>
-              <h2 className="text-xl font-black text-green-400">تم الشحن بنجاح! ✅</h2>
-              <p className="text-muted-foreground">{chargeResult.message}</p>
-              {chargeResult.transaction_id && <p className="text-xs text-muted-foreground" dir="ltr">#{chargeResult.transaction_id}</p>}
-              <div className="flex gap-3 mt-6">
+              {/* Animated success icon */}
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto border-2 border-green-500/30"
+              >
+                <motion.div
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
+                >
+                  <Check className="w-12 h-12 text-green-400" />
+                </motion.div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <h2 className="text-xl font-black text-green-400">تم الشحن بنجاح! ✅</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  تم شحن <span className="font-bold text-foreground">{parseInt(coins).toLocaleString()}</span> كوينز لـ <span className="font-bold text-foreground">{userName}</span>
+                </p>
+              </motion.div>
+
+              {/* Transaction details card */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="glass-card rounded-2xl p-4 border border-green-500/20 space-y-2 text-sm"
+                dir="rtl"
+              >
+                {chargeResult.transaction_id && (
+                  <div className="flex justify-between"><span className="text-muted-foreground">رقم العملية</span><span className="font-mono text-xs" dir="ltr">{chargeResult.transaction_id}</span></div>
+                )}
+                <div className="flex justify-between"><span className="text-muted-foreground">المبلغ</span><span className="font-bold text-amber-400" dir="ltr">${usdAmount.toFixed(2)}</span></div>
+                {chargeResult.new_balance !== undefined && (
+                  <div className="flex justify-between"><span className="text-muted-foreground">الرصيد المتبقي</span><span className="font-mono font-bold">{chargeResult.new_balance.toLocaleString()} كوينز</span></div>
+                )}
+              </motion.div>
+
+              {/* Countdown */}
+              {cooldown > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center"
+                >
+                  <div className="w-16 h-16 mx-auto rounded-full border-2 border-amber-500/30 flex items-center justify-center">
+                    <span className="text-2xl font-black text-amber-400">{cooldown}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">ثانية قبل الشحن التالي</p>
+                </motion.div>
+              )}
+
+              <div className="flex gap-3 mt-4">
                 <button
                   onClick={() => { if (cooldown > 0) { toast.info(`انتظر ${cooldown} ثانية`); return; } setChargeResult(null); setStep(1); setUuid(""); setUserName(""); setCoins(""); setSelectedPayment(""); setReceiptConfirmed(false); setReceiptImage(""); setReceiptPreview(""); setNotes(""); setConfirmAmount(""); }}
                   disabled={cooldown > 0}
-                  className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold disabled:opacity-60"
+                  className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold disabled:opacity-40 transition-opacity"
                 >
                   {cooldown > 0 ? `شحن جديد (${cooldown})` : "شحن جديد"}
                 </button>
@@ -153,9 +201,14 @@ const AgentCharge: React.FC = () => {
             </>
           ) : (
             <>
-              <div className="w-20 h-20 bg-destructive/20 rounded-full flex items-center justify-center mx-auto">
-                <X className="w-10 h-10 text-destructive" />
-              </div>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                className="w-24 h-24 bg-destructive/20 rounded-full flex items-center justify-center mx-auto border-2 border-destructive/30"
+              >
+                <X className="w-12 h-12 text-destructive" />
+              </motion.div>
               <h2 className="text-xl font-black text-destructive">فشل الشحن ❌</h2>
               <p className="text-muted-foreground">{chargeResult.message}</p>
               <button onClick={() => setChargeResult(null)} className="h-12 px-8 rounded-2xl bg-white/5 border border-white/10 text-foreground font-bold mt-4">
