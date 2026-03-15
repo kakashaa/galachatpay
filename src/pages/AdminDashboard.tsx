@@ -153,7 +153,12 @@ const AdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(null);
   const [activeSection, setActiveSection] = useState<"requests" | "products" | "finance" | "settings" | null>(null);
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
-  const tabIndexRef = React.useRef<number>(0);
+
+  const tabSlideVariants = {
+    enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
+  };
   const [loading, setLoading] = useState(false);
 
   // Videos state
