@@ -6,8 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, Plus, X, Save, Search,
   Snowflake, Play, DollarSign, Phone, Clock,
-  ChevronDown, ChevronUp, Receipt, Wallet, Eye,
+  ChevronDown, ChevronUp, Receipt, Wallet, Eye, Pencil, AlertTriangle,
 } from "lucide-react";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import AgencyDetailsSheet from "./AgencyDetailsSheet";
 
 const ADMIN_API = "https://galachat.site/project-z/api.php";
