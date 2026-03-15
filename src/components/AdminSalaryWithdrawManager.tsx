@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DollarSign, CheckCircle, XCircle, Clock, Search, Upload,
-  Loader2, FileText, Image, Printer, Globe, Building2,
+  Loader2, FileText, Image, Printer, Building2,
   ChevronDown, ChevronUp, Eye, Phone, User, Hash, CalendarDays,
   MessageSquare, CreditCard,
 } from "lucide-react";
