@@ -127,90 +127,90 @@ const UserProfileCard: React.FC = () => {
   ];
 
   return (
-    <div className="mb-3 animate-fade-in">
-      <div className="rounded-3xl p-5 relative overflow-hidden border border-white/5"
+    <div className="mb-2 animate-fade-in">
+      <div className="rounded-2xl p-3.5 relative overflow-hidden border border-white/5"
         style={{ background: "linear-gradient(145deg, rgba(18,18,26,1), rgba(26,26,46,1))" }}>
 
         {/* Top Row: Avatar + Name + VIP */}
-        <div className="flex items-center gap-4 mb-5" dir="rtl">
+        <div className="flex items-center gap-3 mb-3" dir="rtl">
           <div className="relative flex-shrink-0">
             <img
               src={avatarSrc}
               alt={user.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-white/10"
+              className="w-12 h-12 rounded-xl object-cover border border-white/10"
               loading="lazy"
               onError={(e) => {
                 e.currentTarget.src = user.profile?.gender === 2 ? avatarFemale : avatarMale;
               }}
             />
-            <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-background" />
+            <div className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-background" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h2 className="text-lg font-bold text-foreground truncate">{user.name}</h2>
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+              <h2 className="text-sm font-bold text-foreground truncate">{user.name}</h2>
               {hasVip && (() => {
                 const vipLevel = (user.vip as any).vip_level || (user.vip as any).level || Object.values(user.vip)[0];
                 if (!vipLevel || vipLevel === 0) return null;
                 return (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-px rounded-full text-[9px] font-bold"
                     style={{
                       background: "rgba(234,179,8,0.15)",
                       border: "1px solid rgba(234,179,8,0.3)",
                     }}>
-                    <Crown className="w-3 h-3 text-yellow-400" />
+                    <Crown className="w-2.5 h-2.5 text-yellow-400" />
                     <span className="text-yellow-300">VIP {vipLevel}</span>
                   </span>
                 );
               })()}
-              <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${badgeStyle}`}>
+              <div className={`px-1.5 py-px rounded-full text-[9px] font-bold ${badgeStyle}`}>
                 {typeLabel}
               </div>
             </div>
-            <button onClick={copyId} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-              <span className="text-xs font-mono">UUID: {user.uuid}</span>
-              <Copy className="w-3 h-3" />
+            <button onClick={copyId} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+              <span className="text-[10px] font-mono">UUID: {user.uuid}</span>
+              <Copy className="w-2.5 h-2.5" />
             </button>
           </div>
         </div>
 
         {/* 3 Cards: Coins + Diamonds + Salary */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-white/5 rounded-2xl p-3 text-center">
-            <p className="text-lg font-bold font-mono text-yellow-400">
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="bg-white/5 rounded-xl p-2 text-center">
+            <p className="text-sm font-bold font-mono text-yellow-400">
               {(user.my_store.coins || 0).toLocaleString()}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">كوينز 💰</p>
+            <p className="text-[9px] text-muted-foreground">كوينز 💰</p>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3 text-center">
-            <p className="text-lg font-bold font-mono text-blue-400">
+          <div className="bg-white/5 rounded-xl p-2 text-center">
+            <p className="text-sm font-bold font-mono text-blue-400">
               {user.my_store.diamonds >= 1000000
                 ? `${(user.my_store.diamonds / 1000000).toFixed(1)}M`
                 : user.my_store.diamonds.toLocaleString()}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">ماسات 💎</p>
+            <p className="text-[9px] text-muted-foreground">ماسات 💎</p>
           </div>
-          <div className="bg-white/5 rounded-2xl p-3 text-center">
-            <p className="text-lg font-bold font-mono text-emerald-400">
+          <div className="bg-white/5 rounded-xl p-2 text-center">
+            <p className="text-sm font-bold font-mono text-emerald-400">
               {salaryLoading ? "..." : `$${salaryDisplay}`}
             </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">الراتب 💵</p>
+            <p className="text-[9px] text-muted-foreground">الراتب 💵</p>
           </div>
         </div>
 
         {/* Levels */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-3">
           {[
             { icon: Zap, level: user.level.charger_level, from: "#22c55e", label: "شحن" },
             { icon: Diamond, level: user.level.receiver_level, from: "#ec4899", label: "استقبال" },
             { icon: Gift, level: user.level.sender_level, from: "#eab308", label: "إرسال" },
           ].map((l, i) => (
-            <div key={i} className="flex flex-col items-center gap-1">
-              <div className="flex items-center gap-1">
-                <l.icon className="w-3.5 h-3.5" style={{ color: l.from }} />
-                <span className="text-sm font-bold text-foreground">{l.level}</span>
+            <div key={i} className="flex flex-col items-center gap-0.5">
+              <div className="flex items-center gap-0.5">
+                <l.icon className="w-3 h-3" style={{ color: l.from }} />
+                <span className="text-xs font-bold text-foreground">{l.level}</span>
               </div>
-              <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+              <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-1000"
                   style={{
@@ -219,63 +219,63 @@ const UserProfileCard: React.FC = () => {
                   }}
                 />
               </div>
-              <span className="text-[10px] text-muted-foreground font-semibold">{l.label}</span>
+              <span className="text-[9px] text-muted-foreground font-semibold">{l.label}</span>
             </div>
           ))}
         </div>
 
         {/* ⭐ Star Banner */}
-        <div className="rounded-2xl p-3 relative overflow-hidden"
+        <div className="rounded-xl p-2.5 relative overflow-hidden"
           style={{
             background: "linear-gradient(135deg, rgba(234,179,8,0.12), rgba(45,212,191,0.08), rgba(168,85,247,0.06))",
             border: "1px solid rgba(234,179,8,0.18)",
           }}>
           <div className="flex items-center justify-between gap-2" dir="rtl">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #eab308, #f59e0b)", boxShadow: "0 0 10px rgba(234,179,8,0.35)" }}>
-                <Sparkles className="w-4 h-4 text-white" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #eab308, #f59e0b)", boxShadow: "0 0 8px rgba(234,179,8,0.35)" }}>
+                <Sparkles className="w-3.5 h-3.5 text-white" />
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground leading-none">نجومي</p>
-                <p className="text-xl font-black text-yellow-400 leading-tight">{totalStars}</p>
+                <p className="text-[9px] text-muted-foreground leading-none">نجومي</p>
+                <p className="text-lg font-black text-yellow-400 leading-tight">{totalStars}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => handleOpenWallet("main")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold active:scale-95 transition-transform"
+                className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[9px] font-bold active:scale-95 transition-transform"
                 style={{ background: "rgba(234,179,8,0.2)", border: "1px solid rgba(234,179,8,0.3)" }}>
-                <Gift className="w-3 h-3 text-yellow-400" />
+                <Gift className="w-2.5 h-2.5 text-yellow-400" />
                 <span className="text-yellow-300">إهداء</span>
               </button>
               <button
                 onClick={() => handleOpenWallet("cashout")}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold active:scale-95 transition-transform"
+                className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[9px] font-bold active:scale-95 transition-transform"
                 style={{ background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.25)" }}>
-                <DollarSign className="w-3 h-3 text-emerald-400" />
+                <DollarSign className="w-2.5 h-2.5 text-emerald-400" />
                 <span className="text-emerald-300">كاش</span>
               </button>
               <button
                 onClick={() => setShowTutorial(true)}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold active:scale-95 transition-transform"
+                className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[9px] font-bold active:scale-95 transition-transform"
                 style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <PulsingHelpIcon size={12} />
+                <PulsingHelpIcon size={10} />
                 <span className="text-destructive font-bold">الشروط</span>
               </button>
             </div>
           </div>
 
           {/* ID Rewards Row */}
-          <div className="flex gap-1.5 mt-2" dir="rtl">
+          <div className="flex gap-1 mt-1.5" dir="rtl">
             {idRewards.map((r, i) => (
               <div
                 key={i}
-                className={`flex-1 rounded-lg py-1 px-1 text-center ${totalStars >= r.stars ? 'opacity-100' : 'opacity-40'}`}
+                className={`flex-1 rounded-md py-0.5 px-0.5 text-center ${totalStars >= r.stars ? 'opacity-100' : 'opacity-40'}`}
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <p className="text-[8px] text-foreground font-bold">{r.stars}⭐</p>
-                <p className="text-[10px] font-black text-foreground font-mono">{r.format}</p>
+                <p className="text-[7px] text-foreground font-bold">{r.stars}⭐</p>
+                <p className="text-[9px] font-black text-foreground font-mono">{r.format}</p>
               </div>
             ))}
           </div>
