@@ -34,6 +34,14 @@ interface SalaryCheckResult {
   withdraw_open?: boolean;
 }
 
+interface SalaryCheckAllResult {
+  is_agency_owner: boolean;
+  host_salary: { salary: number; deduction: number; net: number; has_salary: boolean; is_suspicious?: boolean; suspicious_amount?: number };
+  agency_salary: { amount: number; agency_name: string; has_salary: boolean };
+  withdrawals: { count: number; max: number; total_withdrawn: number; remaining_host: number; remaining_agency: number; can_withdraw: boolean };
+  withdraw_open?: boolean;
+}
+
 interface VerifyResult {
   verified: boolean;
   transaction_id?: string;
