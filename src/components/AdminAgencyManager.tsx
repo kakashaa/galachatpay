@@ -28,13 +28,13 @@ interface Agency {
   last_login: string;
 }
 
-const TIERS = [
-  { label: "$1,000", coins: 8500000, bonus: 10 },
-  { label: "$3,000", coins: 25500000, bonus: 12 },
-  { label: "$5,000", coins: 42500000, bonus: 15 },
-  { label: "$10,000", coins: 85000000, bonus: 18 },
-  { label: "$15,000", coins: 127500000, bonus: 18.7 },
-  { label: "$20,000", coins: 170000000, bonus: 20 },
+const AGENCY_TIERS = [
+  { id: "1000",  label: "$1,000",  usd: 1000,  coins: 8500000,   bonusPercent: 10,   bonusUsd: 100,   bonusCoins: 850000,    total: 9350000 },
+  { id: "3000",  label: "$3,000",  usd: 3000,  coins: 25500000,  bonusPercent: 12,   bonusUsd: 360,   bonusCoins: 3060000,   total: 28560000 },
+  { id: "5000",  label: "$5,000",  usd: 5000,  coins: 42500000,  bonusPercent: 15,   bonusUsd: 750,   bonusCoins: 6375000,   total: 48875000 },
+  { id: "10000", label: "$10,000", usd: 10000, coins: 85000000,  bonusPercent: 18,   bonusUsd: 1800,  bonusCoins: 15300000,  total: 100300000 },
+  { id: "15000", label: "$15,000", usd: 15000, coins: 127500000, bonusPercent: 18.7, bonusUsd: 2800,  bonusCoins: 23800000,  total: 151300000 },
+  { id: "20000", label: "$20,000", usd: 20000, coins: 170000000, bonusPercent: 20,   bonusUsd: 4000,  bonusCoins: 34000000,  total: 204000000 },
 ];
 
 interface AdminAgencyManagerProps {
@@ -113,7 +113,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     a.agency_id?.includes(search)
   );
 
-  const getSelectedTier = (tierLabel: string) => TIERS.find(t => t.label === tierLabel);
+  const getSelectedTier = (tierLabel: string) => AGENCY_TIERS.find(t => t.label === tierLabel);
 
   const handleCreate = async () => {
     if (!createForm.name || !createForm.username || !createForm.agency_id) {
@@ -125,7 +125,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const tier = getSelectedTier(createForm.tier);
       const isCustom = !tier;
       const coins = isCustom ? parseInt(createForm.custom_coins) || 0 : tier!.coins;
-      const bonusPercent = isCustom ? 0 : tier!.bonus;
+      const bonusPercent = isCustom ? 0 : tier!.bonusPercent;
 
       const res = await fetch(`${ADMIN_API}?action=agency_create`, {
         method: "POST",
@@ -161,7 +161,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     setAddBalanceLoading(true);
     try {
       const tier = getSelectedTier(addBalanceTier);
-      const coins = tier ? tier.coins + Math.floor(tier.coins * tier.bonus / 100) : parseInt(addBalanceCustom) || 0;
+      const coins = tier ? tier.total : parseInt(addBalanceCustom) || 0;
       if (coins <= 0) { toast.error("أدخل كمية صحيحة"); return; }
 
       const res = await fetch(`${ADMIN_API}?action=agency_add_balance`, {
@@ -315,20 +315,51 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
             <Input placeholder="رقم الواتساب" value={createForm.phone} onChange={e => setCreateForm({ ...createForm, phone: e.target.value })} dir="ltr" className="bg-muted/20 border-border/30" />
 
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">الفئة</label>
-              <select
-                value={createForm.tier}
-                onChange={e => setCreateForm({ ...createForm, tier: e.target.value })}
-                className="w-full bg-muted/20 border border-border/30 rounded-xl p-2.5 text-sm text-foreground"
+              <label className="text-xs text-muted-foreground mb-2 block">اختر الفئة</label>
+              {/* Tier Table */}
+              <div className="overflow-x-auto mb-3">
+                <table className="w-full text-[10px] border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">المبلغ</th>
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">الكوينز</th>
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">بونص</th>
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {AGENCY_TIERS.map(t => (
+                      <tr
+                        key={t.id}
+                        onClick={() => setCreateForm({ ...createForm, tier: t.label })}
+                        className={`cursor-pointer border-b border-white/5 transition-colors ${
+                          createForm.tier === t.label
+                            ? "bg-amber-500/10 border-amber-500/20"
+                            : "hover:bg-white/[0.03]"
+                        }`}
+                      >
+                        <td className={`py-2 px-1 font-bold ${createForm.tier === t.label ? "text-amber-400" : "text-foreground"}`}>{t.label}</td>
+                        <td className="py-2 px-1 font-mono text-muted-foreground">{(t.coins / 1e6).toFixed(1)}M</td>
+                        <td className="py-2 px-1 font-mono text-emerald-400">{t.bonusPercent}% (${t.bonusUsd})</td>
+                        <td className="py-2 px-1 font-mono font-bold text-foreground">{(t.total / 1e6).toFixed(1)}M</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                onClick={() => setCreateForm({ ...createForm, tier: "custom" })}
+                className={`w-full text-xs py-2 rounded-xl border transition-colors ${
+                  createForm.tier === "custom"
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                    : "border-white/10 text-muted-foreground hover:border-white/20"
+                }`}
               >
-                {TIERS.map(t => (
-                  <option key={t.label} value={t.label}>{t.label} — بونص {t.bonus}%</option>
-                ))}
-                <option value="custom">مخصص</option>
-              </select>
+                مخصص
+              </button>
             </div>
 
-            {createForm.tier === "custom" ? (
+            {createForm.tier === "custom" && (
               <Input
                 placeholder="عدد الكوينز"
                 type="number"
@@ -337,23 +368,6 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                 dir="ltr"
                 className="bg-muted/20 border-border/30"
               />
-            ) : (
-              <div className="bg-muted/10 rounded-xl p-3 border border-border/20">
-                {(() => {
-                  const t = getSelectedTier(createForm.tier);
-                  if (!t) return null;
-                  const bonus = Math.floor(t.coins * t.bonus / 100);
-                  const total = t.coins + bonus;
-                  return (
-                    <div className="text-xs space-y-1">
-                      <div className="flex justify-between"><span className="text-muted-foreground">أساسي:</span><span className="font-mono">{t.coins.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-emerald-400">+{bonus.toLocaleString()}</span></div>
-                      <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{total.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">≈</span><span className="font-mono text-muted-foreground">${(total / 8500).toFixed(2)}</span></div>
-                    </div>
-                  );
-                })()}
-              </div>
             )}
 
             <Button
@@ -554,8 +568,8 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                           onChange={e => setAddBalanceTier(e.target.value)}
                           className="w-full bg-muted/20 border border-border/30 rounded-xl p-2.5 text-sm text-foreground"
                         >
-                          {TIERS.map(t => (
-                            <option key={t.label} value={t.label}>{t.label} — بونص {t.bonus}%</option>
+                          {AGENCY_TIERS.map(t => (
+                            <option key={t.label} value={t.label}>{t.label} — بونص {t.bonusPercent}%</option>
                           ))}
                           <option value="custom">مخصص</option>
                         </select>
@@ -574,13 +588,11 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                             {(() => {
                               const t = getSelectedTier(addBalanceTier);
                               if (!t) return null;
-                              const bonus = Math.floor(t.coins * t.bonus / 100);
-                              const total = t.coins + bonus;
                               return (
                                 <div className="space-y-1">
                                   <div className="flex justify-between"><span className="text-muted-foreground">أساسي:</span><span className="font-mono">{t.coins.toLocaleString()}</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-emerald-400">+{bonus.toLocaleString()}</span></div>
-                                  <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{total.toLocaleString()}</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonusPercent}%):</span><span className="font-mono text-emerald-400">+{t.bonusCoins.toLocaleString()}</span></div>
+                                  <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{t.total.toLocaleString()}</span></div>
                                 </div>
                               );
                             })()}
