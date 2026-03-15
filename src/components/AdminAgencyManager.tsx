@@ -315,46 +315,49 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
             <Input placeholder="رقم الواتساب" value={createForm.phone} onChange={e => setCreateForm({ ...createForm, phone: e.target.value })} dir="ltr" className="bg-muted/20 border-border/30" />
 
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">الفئة</label>
-              <select
-                value={createForm.tier}
-                onChange={e => setCreateForm({ ...createForm, tier: e.target.value })}
-                className="w-full bg-muted/20 border border-border/30 rounded-xl p-2.5 text-sm text-foreground"
-              >
-                {TIERS.map(t => (
-                  <option key={t.label} value={t.label}>{t.label} — بونص {t.bonus}%</option>
-                ))}
-                <option value="custom">مخصص</option>
-              </select>
-            </div>
-
-            {createForm.tier === "custom" ? (
-              <Input
-                placeholder="عدد الكوينز"
-                type="number"
-                value={createForm.custom_coins}
-                onChange={e => setCreateForm({ ...createForm, custom_coins: e.target.value })}
-                dir="ltr"
-                className="bg-muted/20 border-border/30"
-              />
-            ) : (
-              <div className="bg-muted/10 rounded-xl p-3 border border-border/20">
-                {(() => {
-                  const t = getSelectedTier(createForm.tier);
-                  if (!t) return null;
-                  const bonus = Math.floor(t.coins * t.bonus / 100);
-                  const total = t.coins + bonus;
-                  return (
-                    <div className="text-xs space-y-1">
-                      <div className="flex justify-between"><span className="text-muted-foreground">أساسي:</span><span className="font-mono">{t.coins.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-emerald-400">+{bonus.toLocaleString()}</span></div>
-                      <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{total.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">≈</span><span className="font-mono text-muted-foreground">${(total / 8500).toFixed(2)}</span></div>
-                    </div>
-                  );
-                })()}
+              <label className="text-xs text-muted-foreground mb-2 block">اختر الفئة</label>
+              {/* Tier Table */}
+              <div className="overflow-x-auto mb-3">
+                <table className="w-full text-[10px] border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">المبلغ</th>
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">الكوينز</th>
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">بونص</th>
+                      <th className="py-1.5 px-1 text-right text-muted-foreground font-normal">الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {AGENCY_TIERS.map(t => (
+                      <tr
+                        key={t.id}
+                        onClick={() => setCreateForm({ ...createForm, tier: t.label })}
+                        className={`cursor-pointer border-b border-white/5 transition-colors ${
+                          createForm.tier === t.label
+                            ? "bg-amber-500/10 border-amber-500/20"
+                            : "hover:bg-white/[0.03]"
+                        }`}
+                      >
+                        <td className={`py-2 px-1 font-bold ${createForm.tier === t.label ? "text-amber-400" : "text-foreground"}`}>{t.label}</td>
+                        <td className="py-2 px-1 font-mono text-muted-foreground">{(t.coins / 1e6).toFixed(1)}M</td>
+                        <td className="py-2 px-1 font-mono text-emerald-400">{t.bonusPercent}% (${t.bonusUsd})</td>
+                        <td className="py-2 px-1 font-mono font-bold text-foreground">{(t.total / 1e6).toFixed(1)}M</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
+              <button
+                onClick={() => setCreateForm({ ...createForm, tier: "custom" })}
+                className={`w-full text-xs py-2 rounded-xl border transition-colors ${
+                  createForm.tier === "custom"
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                    : "border-white/10 text-muted-foreground hover:border-white/20"
+                }`}
+              >
+                مخصص
+              </button>
+            </div>
 
             <Button
               onClick={handleCreate}
