@@ -231,7 +231,7 @@ const UserProfileCard: React.FC = () => {
               </div>
             </div>
             <button onClick={copyId} className="flex items-center gap-1 text-muted-foreground mb-1">
-              <span className="text-[9px] font-mono">ID: {user.uuid}</span>
+              <span className="text-[9px] font-mono">UUID: {user.uuid}</span>
               <Copy className="w-2.5 h-2.5" />
             </button>
             
