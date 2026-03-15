@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowLeft, User, AlertCircle, Check, Camera, X, Wallet, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, User, AlertCircle, Check, Camera, X, Wallet, Loader2, Landmark } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { toast } from "sonner";
