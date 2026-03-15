@@ -1217,7 +1217,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Videos Tab */}
             {activeTab === "videos" && (
-              <motion.div key="videos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="videos" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct && <Button onClick={() => setShowAddVideo(!showAddVideo)} className="w-full" variant={showAddVideo ? "outline" : "default"}>
                   {showAddVideo ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة فيديو</>}
                 </Button>}
