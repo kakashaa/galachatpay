@@ -1098,7 +1098,13 @@ const AdminDashboardPage: React.FC = () => {
                 return (
                   <button
                     key={tabKey}
-                    onClick={() => setActiveTab(tabKey)}
+                    onClick={() => {
+                      const sectionTabs = currentSectionDef?.tabs || [];
+                      const oldIdx = sectionTabs.indexOf(activeTab as any);
+                      const newIdx = sectionTabs.indexOf(tabKey);
+                      setTabDirection(newIdx >= oldIdx ? 1 : -1);
+                      setActiveTab(tabKey);
+                    }}
                     className={cn(
                       "relative flex flex-col items-center gap-1 min-w-[56px] px-3 py-2 rounded-2xl text-[10px] font-medium whitespace-nowrap transition-all duration-200",
                       isActive
