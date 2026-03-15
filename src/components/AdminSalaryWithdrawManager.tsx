@@ -114,7 +114,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "salary_withdraw_approve",
-          token,
+          admin_key: "ghala2026owner",
           request_id: approveModal.id,
           receipt_image: receiptBase64,
           notes: approveNote,
@@ -153,7 +153,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "salary_withdraw_reject",
-          token,
+          admin_key: "ghala2026owner",
           request_id: rejectModal.id,
           reason: rejectReason,
           image: imageBase64,
