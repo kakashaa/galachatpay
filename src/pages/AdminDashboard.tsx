@@ -2681,7 +2681,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Agencies Tab */}
             {activeTab === "agencies" && (
-              <motion.div key="agencies" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div key="agencies" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
                 <AdminAgencyManager canAct={canAct} />
               </motion.div>
             )}
