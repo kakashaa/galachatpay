@@ -274,6 +274,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const statusConfig: Record<string, { label: string; textClass: string; bgClass: string; icon: React.ReactNode }> = {
     pending: { label: "قيد المراجعة", textClass: "text-amber-400", bgClass: "bg-amber-500/10", icon: <Clock className="w-3 h-3" /> },
     delivered: { label: "تم التسليم", textClass: "text-emerald-400", bgClass: "bg-emerald-500/10", icon: <CheckCircle className="w-3 h-3" /> },
+    approved: { label: "تم التسليم", textClass: "text-emerald-400", bgClass: "bg-emerald-500/10", icon: <CheckCircle className="w-3 h-3" /> },
     rejected: { label: "مرفوض", textClass: "text-red-400", bgClass: "bg-red-500/10", icon: <XCircle className="w-3 h-3" /> },
   };
 
