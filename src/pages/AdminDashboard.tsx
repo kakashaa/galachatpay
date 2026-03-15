@@ -1765,7 +1765,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* All Requests Tab */}
             {activeTab === "all_requests" && (
-              <motion.div key="all_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="all_requests" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {/* Sub-tab Navigation */}
                 <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
                   {([
