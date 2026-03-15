@@ -36,7 +36,7 @@ import TicketRepliesSection from "@/components/TicketRepliesSection";
 import AdminAgencyManager from "@/components/AdminAgencyManager";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
 
-type Tab = "videos" | "salary" | "salary_withdraw" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | null;
 
 
 interface VideoTutorial {
@@ -169,6 +169,7 @@ const AdminDashboardPage: React.FC = () => {
   const [approveReceiptFile, setApproveReceiptFile] = useState<File | null>(null);
   const [salaryActionLoading, setSalaryActionLoading] = useState(false);
   const [salaryFilter, setSalaryFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [salarySubTab, setSalarySubTab] = useState<"requests" | "withdraw">("requests");
   const [rejectImageFile, setRejectImageFile] = useState<File | null>(null);
   const [isFinalRejection, setIsFinalRejection] = useState(false);
   const [animatedPhotoAction, setAnimatedPhotoAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
@@ -855,7 +856,6 @@ const AdminDashboardPage: React.FC = () => {
     { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-7 h-7" />, color: "from-slate-500/20 to-slate-600/10 text-slate-400" },
     { key: "banners", label: "بنرات", icon: <ImageIcon className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400" },
     { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
-    { key: "salary_withdraw", label: "سحب الرواتب", icon: <Banknote className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400" },
     ...((adminRole === "super_admin" || adminRole === "admin") ? [
       { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400" },
     ] : []),
@@ -1116,105 +1116,129 @@ const AdminDashboardPage: React.FC = () => {
             {/* Salary Tab */}
             {activeTab === "salary" && (
               <motion.div key="salary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-                {/* Filter Buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  {[
-                    { key: "all" as const, label: "الكل", count: salaryRequests.length, color: "bg-muted/30" },
-                    { key: "pending" as const, label: "معلقة", count: salaryRequests.filter(r => r.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
-                    { key: "approved" as const, label: "مقبولة", count: salaryRequests.filter(r => r.status === "approved").length, color: "bg-green-500/10 border-green-500/30" },
-                    { key: "rejected" as const, label: "مرفوضة", count: salaryRequests.filter(r => r.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
-                  ].map(f => (
-                    <button
-                      key={f.key}
-                      onClick={() => setSalaryFilter(f.key)}
-                      className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
-                        salaryFilter === f.key
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : f.color + " border"
-                      }`}
-                    >
-                      {f.label}
-                      <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
-                    </button>
-                  ))}
+                {/* Sub-tabs */}
+                <div className="flex gap-2 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
+                  <button
+                    onClick={() => setSalarySubTab("requests")}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${salarySubTab === "requests" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                  >
+                    طلبات الرواتب
+                  </button>
+                  <button
+                    onClick={() => setSalarySubTab("withdraw")}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${salarySubTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                  >
+                    سحب الرواتب
+                  </button>
                 </div>
-                {salaryRequests
-                  .filter(req => salaryFilter === "all" || req.status === salaryFilter)
-                  .map((req) => (
-                  <div key={req.id} className="bg-card border rounded-xl overflow-hidden">
-                    <button onClick={() => setExpandedSalary(expandedSalary === req.id ? null : req.id)} className="w-full p-4 flex items-center justify-between text-right">
-                      <div className="flex items-center gap-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${req.status === "pending" ? "bg-yellow-500/20 text-yellow-500" : req.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"}`}>
-                          {req.status === "pending" ? "معلق" : req.status === "approved" ? "مقبول" : "مرفوض"}
-                        </span>
-                        <div>
-                          <p className="font-bold text-sm">{req.user_name}</p>
-                          <p className="text-xs text-muted-foreground">${req.amount_usd} - {req.payment_method}</p>
-                        </div>
+
+                {salarySubTab === "requests" && (
+                  <div className="space-y-3">
+                    {/* Filter Buttons */}
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { key: "all" as const, label: "الكل", count: salaryRequests.length, color: "bg-muted/30" },
+                        { key: "pending" as const, label: "معلقة", count: salaryRequests.filter(r => r.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
+                        { key: "approved" as const, label: "مقبولة", count: salaryRequests.filter(r => r.status === "approved").length, color: "bg-green-500/10 border-green-500/30" },
+                        { key: "rejected" as const, label: "مرفوضة", count: salaryRequests.filter(r => r.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
+                      ].map(f => (
+                        <button
+                          key={f.key}
+                          onClick={() => setSalaryFilter(f.key)}
+                          className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
+                            salaryFilter === f.key
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : f.color + " border"
+                          }`}
+                        >
+                          {f.label}
+                          <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {salaryRequests
+                      .filter(req => salaryFilter === "all" || req.status === salaryFilter)
+                      .map((req) => (
+                      <div key={req.id} className="bg-card border rounded-xl overflow-hidden">
+                        <button onClick={() => setExpandedSalary(expandedSalary === req.id ? null : req.id)} className="w-full p-4 flex items-center justify-between text-right">
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${req.status === "pending" ? "bg-yellow-500/20 text-yellow-500" : req.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"}`}>
+                              {req.status === "pending" ? "معلق" : req.status === "approved" ? "مقبول" : "مرفوض"}
+                            </span>
+                            <div>
+                              <p className="font-bold text-sm">{req.user_name}</p>
+                              <p className="text-xs text-muted-foreground">${req.amount_usd} - {req.payment_method}</p>
+                            </div>
+                          </div>
+                          {expandedSalary === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedSalary === req.id && (
+                          <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{req.user_uuid}</span></div>
+                              <div><span className="text-muted-foreground">النوع:</span> {req.request_type}</div>
+                              <div><span className="text-muted-foreground">المستلم:</span> {req.recipient_name}</div>
+                              <div><span className="text-muted-foreground">البلد:</span> {req.recipient_country}</div>
+                              <div className="col-span-2"><span className="text-muted-foreground">التفاصيل:</span> {req.payment_details}</div>
+                              <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</div>
+                            </div>
+                            {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
+                              <div className="flex gap-2">
+                                <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
+                                  <CheckCircle className="w-4 h-4 ml-1" />قبول
+                                </Button>
+                                <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setSalaryAction({ id: req.id, type: "reject" }); setRejectReason(""); }}>
+                                  <XCircle className="w-4 h-4 ml-1" />رفض
+                                </Button>
+                              </div>
+                            )}
+                            {salaryAction?.id === req.id && salaryAction.type === "approve" && (
+                              <div className="space-y-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl">
+                                <p className="text-xs font-bold text-green-500">رفع صورة إيصال التحويل</p>
+                                <input type="file" accept="image/*" onChange={(e) => setApproveReceiptFile(e.target.files?.[0] || null)}
+                                  className="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-green-600 file:text-white bg-muted/20 border border-border/30 rounded-lg p-1" />
+                                {approveReceiptFile && <p className="text-[10px] text-muted-foreground">{approveReceiptFile.name}</p>}
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={salaryActionLoading} onClick={() => handleApproveWithReceipt(req.id)}>
+                                    {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" />تأكيد القبول</>}
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)}>إلغاء</Button>
+                                </div>
+                              </div>
+                            )}
+                            {salaryAction?.id === req.id && salaryAction.type === "reject" && (
+                              <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
+                                <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
+                                <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
+                                <div className="space-y-1">
+                                  <label className="text-xs text-muted-foreground">صورة توضيحية (اختياري)</label>
+                                  <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
+                                    className="w-full text-sm file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:bg-destructive/10 file:text-destructive bg-muted/20 border border-border/30 rounded-lg p-1" />
+                                </div>
+                                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                  <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
+                                  <span className="text-destructive font-bold">⛔ رفض نهائي (لا يمكن للمستخدم التعديل)</span>
+                                </label>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)}>
+                                    {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => { setSalaryAction(null); setRejectImageFile(null); setIsFinalRejection(false); }}>إلغاء</Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {expandedSalary === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                    {expandedSalary === req.id && (
-                      <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{req.user_uuid}</span></div>
-                          <div><span className="text-muted-foreground">النوع:</span> {req.request_type}</div>
-                          <div><span className="text-muted-foreground">المستلم:</span> {req.recipient_name}</div>
-                          <div><span className="text-muted-foreground">البلد:</span> {req.recipient_country}</div>
-                          <div className="col-span-2"><span className="text-muted-foreground">التفاصيل:</span> {req.payment_details}</div>
-                          <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</div>
-                        </div>
-                        {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
-                          <div className="flex gap-2">
-                            <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
-                              <CheckCircle className="w-4 h-4 ml-1" />قبول
-                            </Button>
-                            <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setSalaryAction({ id: req.id, type: "reject" }); setRejectReason(""); }}>
-                              <XCircle className="w-4 h-4 ml-1" />رفض
-                            </Button>
-                          </div>
-                        )}
-                        {salaryAction?.id === req.id && salaryAction.type === "approve" && (
-                          <div className="space-y-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl">
-                            <p className="text-xs font-bold text-green-500">رفع صورة إيصال التحويل</p>
-                            <input type="file" accept="image/*" onChange={(e) => setApproveReceiptFile(e.target.files?.[0] || null)}
-                              className="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-green-600 file:text-white bg-muted/20 border border-border/30 rounded-lg p-1" />
-                            {approveReceiptFile && <p className="text-[10px] text-muted-foreground">{approveReceiptFile.name}</p>}
-                            <div className="flex gap-2">
-                              <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={salaryActionLoading} onClick={() => handleApproveWithReceipt(req.id)}>
-                                {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" />تأكيد القبول</>}
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)}>إلغاء</Button>
-                            </div>
-                          </div>
-                        )}
-                        {salaryAction?.id === req.id && salaryAction.type === "reject" && (
-                          <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
-                            <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
-                            <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
-                            <div className="space-y-1">
-                              <label className="text-xs text-muted-foreground">صورة توضيحية (اختياري)</label>
-                              <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
-                                className="w-full text-sm file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:bg-destructive/10 file:text-destructive bg-muted/20 border border-border/30 rounded-lg p-1" />
-                            </div>
-                            <label className="flex items-center gap-2 text-xs cursor-pointer">
-                              <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
-                              <span className="text-destructive font-bold">⛔ رفض نهائي (لا يمكن للمستخدم التعديل)</span>
-                            </label>
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)}>
-                                {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => { setSalaryAction(null); setRejectImageFile(null); setIsFinalRejection(false); }}>إلغاء</Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                    ))}
+                    {salaryRequests.length === 0 && (
+                      <div className="text-center py-10 text-muted-foreground"><DollarSign className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد طلبات رواتب</p></div>
                     )}
                   </div>
-                ))}
-                {salaryRequests.length === 0 && (
-                  <div className="text-center py-10 text-muted-foreground"><DollarSign className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد طلبات رواتب</p></div>
+                )}
+
+                {salarySubTab === "withdraw" && (
+                  <AdminSalaryWithdrawManager canAct={canAct} />
                 )}
               </motion.div>
             )}
@@ -2492,13 +2516,6 @@ const AdminDashboardPage: React.FC = () => {
             {activeTab === "agencies" && (
               <motion.div key="agencies" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <AdminAgencyManager canAct={canAct} />
-              </motion.div>
-            )}
-
-            {/* Salary Withdraw Tab */}
-            {activeTab === "salary_withdraw" && (
-              <motion.div key="salary_withdraw" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <AdminSalaryWithdrawManager canAct={canAct} />
               </motion.div>
             )}
           </AnimatePresence>
