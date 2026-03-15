@@ -18,7 +18,22 @@ import {
 } from "@/components/ui/sheet";
 import { BANK_LABELS, COUNTRY_LABELS } from "@/lib/constants";
 import { getAvatarUrl } from "@/lib/utils";
-import avatarMale from "@/assets/avatar-male.png";
+
+const AvatarCircle = ({ src, name, size = "w-10 h-10" }: { src?: string; name: string; size?: string }) => {
+  const [failed, setFailed] = React.useState(false);
+  const initial = name?.charAt(0) || "?";
+  if (!src || failed) {
+    return (
+      <div className={`${size} rounded-xl bg-primary/20 border border-white/10 flex items-center justify-center shrink-0`}>
+        <span className="text-sm font-bold text-primary">{initial}</span>
+      </div>
+    );
+  }
+  return (
+    <img src={src} alt={name} className={`${size} rounded-xl object-cover shrink-0 border border-white/10`}
+      onError={() => setFailed(true)} />
+  );
+};
 
 const API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
