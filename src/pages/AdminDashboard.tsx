@@ -2621,7 +2621,9 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Hairs Tab */}
             {activeTab === "hairs" && (
-              <AdminHairManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("hairs")} />
+              <motion.div key="hairs" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminHairManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("hairs")} />
+              </motion.div>
             )}
 
             {/* Audit Log Tab - Super Admin Only */}
