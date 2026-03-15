@@ -33,6 +33,7 @@ import AdminElementSettings from "@/components/AdminElementSettings";
 import AdminBannerManager from "@/components/AdminBannerManager";
 import { Settings, ImageIcon } from "lucide-react";
 import TicketRepliesSection from "@/components/TicketRepliesSection";
+import AdminAgencyManager from "@/components/AdminAgencyManager";
 
 type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | null;
 
