@@ -81,24 +81,33 @@ const UserProfileCard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.uuid]);
 
-  // Fetch salary from project-z API
+  // Fetch salary using salary_check_all — show remaining only
   useEffect(() => {
     if (!user?.uuid) return;
     let cancelled = false;
     setSalaryLoading(true);
     
-    fetch(`https://galachat.site/project-z/api.php?action=salary_check&uuid=${user.uuid}`)
+    fetch(`https://galachat.site/project-z/api.php?action=salary_check_all&uuid=${user.uuid}`)
       .then(res => res.json())
       .then(data => {
         if (cancelled) return;
-        if (data.has_salary) {
-          setSalaryData({ salary: data.salary, deduction: data.deduction, net: data.net });
+        const hostNet = data.host_salary?.net || 0;
+        const agencyAmount = data.agency_salary?.amount || 0;
+        const canWithdraw = data.withdrawals?.can_withdraw || false;
+        const totalWithdrawn = data.withdrawals?.total_withdrawn || 0;
+        
+        let remaining = 0;
+        if (canWithdraw) {
+          remaining = Math.max(hostNet, agencyAmount) - totalWithdrawn;
+          remaining = Math.max(0, remaining);
         }
+        setSalaryDisplay(remaining);
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setSalaryLoading(false); });
     
     return () => { cancelled = true; };
+  }, [user?.uuid]);
   }, [user?.uuid]);
 
   const handleOpenWallet = (view: "main" | "cashout") => {
