@@ -1655,7 +1655,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Entries Tab */}
             {activeTab === "entries" && (
-              <motion.div key="entries" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="entries" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct && <Button onClick={() => setShowAddEntry(!showAddEntry)} className="w-full" variant={showAddEntry ? "outline" : "default"}>
                   {showAddEntry ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة دخولية</>}
                 </Button>}
