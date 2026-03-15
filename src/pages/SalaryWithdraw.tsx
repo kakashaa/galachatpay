@@ -453,70 +453,84 @@ const SalaryWithdraw: React.FC = () => {
           )}
 
           {/* Agency card */}
-          <motion.button
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            onClick={() => canW && as_.has_salary && handleChooseSalaryType("agency")}
-            disabled={!canW || !as_.has_salary}
-            className={cn(
-              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
-              canW && as_.has_salary
-                ? "border-amber-500/20 hover:border-amber-500/40 active:scale-[0.98]"
-                : "border-border/10 opacity-60"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-                <Landmark className="w-6 h-6 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">راتب الوكالة{as_.agency_name ? ` — ${as_.agency_name}` : ""}</p>
-                {as_.has_salary ? (
-                  <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-amber-400" dir="ltr">${w.remaining_agency.toFixed(2)}</span></p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب وكالة</p>
+          {(() => {
+            const agencyAmount = as_.amount || 0;
+            const agencyWithdrawn = w.count >= 1; // first withdrawal covers agency salary
+            return (
+              <motion.button
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                onClick={() => canW && as_.has_salary && !agencyWithdrawn && handleChooseSalaryType("agency")}
+                disabled={!canW || !as_.has_salary || agencyWithdrawn}
+                className={cn(
+                  "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
+                  canW && as_.has_salary && !agencyWithdrawn
+                    ? "border-amber-500/20 hover:border-amber-500/40 active:scale-[0.98]"
+                    : "border-border/10 opacity-60"
                 )}
-              </div>
-            </div>
-            {as_.has_salary && (
-              <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
-                <span className="text-xs text-muted-foreground">الراتب الكامل</span>
-                <span className="text-lg font-black text-amber-400" dir="ltr">${as_.amount.toFixed(2)}</span>
-              </div>
-            )}
-          </motion.button>
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                    <Landmark className="w-6 h-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">راتب الوكالة{as_.agency_name ? ` — ${as_.agency_name}` : ""}</p>
+                    {!as_.has_salary ? (
+                      <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب وكالة</p>
+                    ) : agencyWithdrawn ? (
+                      <p className="text-[11px] text-emerald-400 font-bold">✅ تم الصرف</p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">متاح للسحب</p>
+                    )}
+                  </div>
+                </div>
+                {as_.has_salary && (
+                  <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
+                    <span className="text-xs text-muted-foreground">{agencyWithdrawn ? "تم صرف" : "المبلغ المتاح"}</span>
+                    <span className="text-lg font-black text-amber-400" dir="ltr">${agencyAmount.toFixed(2)}</span>
+                  </div>
+                )}
+              </motion.button>
+            );
+          })()}
 
           {/* Host card */}
-          <motion.button
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            onClick={() => canW && hs.has_salary && handleChooseSalaryType("host")}
-            disabled={!canW || !hs.has_salary}
-            className={cn(
-              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
-              canW && hs.has_salary
-                ? "border-emerald-500/20 hover:border-emerald-500/40 active:scale-[0.98]"
-                : "border-border/10 opacity-60"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                <User className="w-6 h-6 text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">راتبي كمضيف</p>
-                {hs.has_salary ? (
-                  <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-emerald-400" dir="ltr">${w.remaining_host.toFixed(2)}</span></p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب</p>
+          {(() => {
+            const hostNet = hs.net || 0;
+            const hasHostSalary = hs.has_salary && hostNet > 0;
+            return (
+              <motion.button
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                onClick={() => canW && hasHostSalary && handleChooseSalaryType("host")}
+                disabled={!canW || !hasHostSalary}
+                className={cn(
+                  "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
+                  canW && hasHostSalary
+                    ? "border-emerald-500/20 hover:border-emerald-500/40 active:scale-[0.98]"
+                    : "border-border/10 opacity-60"
                 )}
-              </div>
-            </div>
-            {hs.has_salary && (
-              <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
-                <span className="text-xs text-muted-foreground">الصافي</span>
-                <span className="text-lg font-black text-emerald-400" dir="ltr">${hs.net.toFixed(2)}</span>
-              </div>
-            )}
-          </motion.button>
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                    <User className="w-6 h-6 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">راتبي كمضيف</p>
+                    {hasHostSalary ? (
+                      <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-emerald-400" dir="ltr">${hostNet.toFixed(2)}</span></p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب — <span dir="ltr">$0.00</span></p>
+                    )}
+                  </div>
+                </div>
+                {hasHostSalary && (
+                  <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
+                    <span className="text-xs text-muted-foreground">الصافي</span>
+                    <span className="text-lg font-black text-emerald-400" dir="ltr">${hostNet.toFixed(2)}</span>
+                  </div>
+                )}
+              </motion.button>
+            );
+          })()}
 
           {/* Always show previous requests */}
           <SalaryRequestsHistory userUuid={user.uuid} />
