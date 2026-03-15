@@ -1425,6 +1425,10 @@ const AdminDashboardPage: React.FC = () => {
                 {salarySubTab === "withdraw" && (
                   <AdminSalaryWithdrawManager canAct={canAct} />
                 )}
+
+                {salarySubTab === "charge" && (
+                  <AdminSalaryChargeManager canAct={canAct} />
+                )}
               </motion.div>
             )}
 
