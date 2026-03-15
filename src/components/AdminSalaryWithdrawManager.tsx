@@ -18,7 +18,22 @@ import {
 } from "@/components/ui/sheet";
 import { BANK_LABELS, COUNTRY_LABELS } from "@/lib/constants";
 import { getAvatarUrl } from "@/lib/utils";
-import avatarMale from "@/assets/avatar-male.png";
+
+const AvatarCircle = ({ src, name, size = "w-10 h-10" }: { src?: string; name: string; size?: string }) => {
+  const [failed, setFailed] = React.useState(false);
+  const initial = name?.charAt(0) || "?";
+  if (!src || failed) {
+    return (
+      <div className={`${size} rounded-xl bg-primary/20 border border-white/10 flex items-center justify-center shrink-0`}>
+        <span className="text-sm font-bold text-primary">{initial}</span>
+      </div>
+    );
+  }
+  return (
+    <img src={src} alt={name} className={`${size} rounded-xl object-cover shrink-0 border border-white/10`}
+      onError={() => setFailed(true)} />
+  );
+};
 
 const API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
@@ -136,16 +151,19 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         }));
         const enriched = await enrichWithAvatars(rawRequests);
         setRequests(enriched);
-        // Map stats: API uses "delivered" count for approved
+        // Compute amounts from actual request data (API stats may not include amounts)
+        const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
+        const pendingReqs = rawRequests.filter(r => r.status === "pending");
+        const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
         const apiStats = data.stats || {};
         setStats({
-          total: apiStats.total || 0,
-          delivered: apiStats.delivered || 0,
-          delivered_amount: apiStats.delivered_amount || (apiStats.delivered ? apiStats.total_amount - (apiStats.pending_amount || 0) : 0),
-          pending: apiStats.pending || 0,
-          pending_amount: apiStats.pending_amount || 0,
-          rejected: apiStats.rejected || 0,
-          rejected_amount: apiStats.rejected_amount || 0,
+          total: apiStats.total || rawRequests.length,
+          delivered: apiStats.delivered || deliveredReqs.length,
+          delivered_amount: deliveredReqs.reduce((s, r) => s + (r.amount || 0), 0),
+          pending: apiStats.pending || pendingReqs.length,
+          pending_amount: pendingReqs.reduce((s, r) => s + (r.amount || 0), 0),
+          rejected: apiStats.rejected || rejectedReqs.length,
+          rejected_amount: rejectedReqs.reduce((s, r) => s + (r.amount || 0), 0),
         });
       }
     } catch {
@@ -255,7 +273,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const countrySummary = useMemo(() => {
     const map: Record<string, { count: number; amount: number }> = {};
     filtered.forEach(r => {
-      const c = r.country || "أخرى";
+      const c = COUNTRY_LABELS[r.country] || r.country || "أخرى";
       if (!map[c]) map[c] = { count: 0, amount: 0 };
       map[c].count++;
       map[c].amount += r.amount;
@@ -373,12 +391,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
               <button onClick={() => setExpanded(expanded === req.id ? null : req.id)}
                 className="w-full flex items-center justify-between p-3.5 text-right">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <img
-                    src={req.avatar || avatarMale}
-                    alt={req.user_name}
-                    className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/10"
-                    onError={(e) => { (e.target as HTMLImageElement).src = avatarMale; }}
-                  />
+                  <AvatarCircle src={req.avatar} name={req.user_name || req.account_name} />
                   <div className="min-w-0 space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-foreground">{req.user_name}</span>
@@ -607,9 +620,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           {detailReq && (
             <div className="space-y-3 text-xs">
               <div className="flex items-center gap-3">
-                <img src={detailReq.avatar || avatarMale} alt={detailReq.user_name}
-                  className="w-12 h-12 rounded-xl object-cover border border-white/10"
-                  onError={(e) => { (e.target as HTMLImageElement).src = avatarMale; }} />
+                <AvatarCircle src={detailReq.avatar} name={detailReq.user_name || detailReq.account_name} size="w-12 h-12" />
                 <div className="flex-1">
                   <p className="text-sm font-bold text-foreground">{detailReq.user_name}</p>
                   <p className="text-[10px] text-muted-foreground font-mono">UUID: {detailReq.user_uuid}</p>
