@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sheet";
 import {
   Loader2, ArrowLeftRight, PieChart, FileText,
-  Calendar, ImageIcon, AlertTriangle, Wallet,
+  Calendar, ImageIcon, AlertTriangle,
   X, Globe, Search, Landmark, User, Coins,
   Clock, CheckCircle2, Receipt,
 } from "lucide-react";
