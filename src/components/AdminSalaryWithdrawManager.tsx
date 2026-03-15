@@ -338,27 +338,31 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
               <button onClick={() => setExpanded(expanded === req.id ? null : req.id)}
                 className="w-full flex items-center justify-between p-3.5 text-right">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    req.status === "delivered" ? "bg-emerald-500/10" : req.status === "rejected" ? "bg-rose-500/10" : "bg-amber-500/10"
-                  }`}>
-                    <DollarSign className={`w-5 h-5 ${
-                      req.status === "delivered" ? "text-emerald-400" : req.status === "rejected" ? "text-rose-400" : "text-amber-400"
-                    }`} />
-                  </div>
+                  <img
+                    src={req.avatar || avatarMale}
+                    alt={req.user_name}
+                    className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/10"
+                    onError={(e) => { (e.target as HTMLImageElement).src = avatarMale; }}
+                  />
                   <div className="min-w-0 space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-mono text-primary font-bold">{req.request_code}</span>
+                      <span className="text-xs font-bold text-foreground">{req.user_name}</span>
                       {statusBadge(req.status)}
                     </div>
-                    <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
-                      <User className="w-3 h-3 inline shrink-0" /> {req.user_name}
+                    <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1.5">
+                      <Hash className="w-3 h-3 inline shrink-0" /> UUID: {req.user_uuid}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {req.request_code} · {BANK_LABELS[req.bank] || req.bank} — {COUNTRY_LABELS[req.country] || req.country}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 mr-2">
                   <div className="text-left">
                     <p className="text-sm font-bold font-mono tabular-nums text-foreground">${req.amount?.toLocaleString()}</p>
-                    <p className="text-[9px] text-muted-foreground">{req.bank}</p>
+                    <p className={`text-[9px] flex items-center gap-0.5 ${req.transfer_verified ? "text-emerald-400" : "text-amber-400"}`}>
+                      {req.transfer_verified ? <><CheckCircle className="w-2.5 h-2.5" /> تم التحقق</> : <><Clock className="w-2.5 h-2.5" /> إيصال</>}
+                    </p>
                   </div>
                   {expanded === req.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                 </div>
@@ -369,12 +373,16 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                   <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
                     <div className="px-3.5 pb-3.5 space-y-2 border-t border-white/5 pt-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${req.bank} — ${req.country}`} />
+                        <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${BANK_LABELS[req.bank] || req.bank} — ${COUNTRY_LABELS[req.country] || req.country}`} />
                         <DetailCell icon={<User className="w-3 h-3" />} label="المستلم" value={req.account_name} />
                         <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={req.account_number} dir="ltr" />
                         <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={req.whatsapp} dir="ltr" />
                       </div>
                       <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={new Date(req.created_at).toLocaleString("ar")} />
+                      <DetailCell icon={<Hash className="w-3 h-3" />} label="رقم الطلب" value={req.request_code} />
+                      <div className={`flex items-center gap-2 rounded-xl p-2.5 text-xs font-bold ${req.transfer_verified ? "bg-emerald-500/5 text-emerald-400" : "bg-amber-500/5 text-amber-400"}`}>
+                        {req.transfer_verified ? <><CheckCircle className="w-3.5 h-3.5" /> تم التحقق من التحويل</> : <><Clock className="w-3.5 h-3.5" /> لم يتم التحقق — مرفق إيصال</>}
+                      </div>
                       {req.notes && <DetailCell icon={<MessageSquare className="w-3 h-3" />} label="ملاحظات" value={req.notes} />}
 
                       {req.receipt_image && (
