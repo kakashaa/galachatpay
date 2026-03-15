@@ -4,7 +4,7 @@ import {
   CheckCircle, XCircle, Clock, Search, Upload,
   Loader2, FileText, Image, Printer, Building2,
   ChevronDown, ChevronUp, Eye, Phone, User, Hash, CalendarDays,
-  MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3,
+  MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
