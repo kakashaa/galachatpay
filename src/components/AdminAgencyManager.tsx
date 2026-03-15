@@ -161,7 +161,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     setAddBalanceLoading(true);
     try {
       const tier = getSelectedTier(addBalanceTier);
-      const coins = tier ? tier.coins + Math.floor(tier.coins * tier.bonus / 100) : parseInt(addBalanceCustom) || 0;
+      const coins = tier ? tier.total : parseInt(addBalanceCustom) || 0;
       if (coins <= 0) { toast.error("أدخل كمية صحيحة"); return; }
 
       const res = await fetch(`${ADMIN_API}?action=agency_add_balance`, {
