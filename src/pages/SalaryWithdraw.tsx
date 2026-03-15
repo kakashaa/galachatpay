@@ -37,6 +37,10 @@ interface VerifyResult {
   verified: boolean;
   transaction_id?: string;
   message?: string;
+  amount_coins?: number;
+  amount_usd?: number;
+  transferred_usd?: number;
+  approved_amount?: number;
 }
 
 interface SalaryBank {
