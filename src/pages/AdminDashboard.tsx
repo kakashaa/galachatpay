@@ -2114,7 +2114,7 @@ const AdminDashboardPage: React.FC = () => {
 
 
             {activeTab === "notifications" && (
-              <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="notifications" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct ? (
                   <div className="bg-card border rounded-xl p-4 space-y-3">
                     <h3 className="font-bold text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />إرسال إشعار عام لجميع المستخدمين</h3>
