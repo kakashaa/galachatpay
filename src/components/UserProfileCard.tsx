@@ -52,7 +52,7 @@ const UserProfileCard: React.FC = () => {
   const [starWalletView, setStarWalletView] = useState<"main" | "cashout">("main");
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalStars, setTotalStars] = useState(0);
-  const [salaryData, setSalaryData] = useState<{ salary: number; deduction: number; net: number } | null>(null);
+  const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
@@ -81,19 +81,27 @@ const UserProfileCard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.uuid]);
 
-  // Fetch salary from project-z API
+  // Fetch salary using salary_check_all — show remaining only
   useEffect(() => {
     if (!user?.uuid) return;
     let cancelled = false;
     setSalaryLoading(true);
     
-    fetch(`https://galachat.site/project-z/api.php?action=salary_check&uuid=${user.uuid}`)
+    fetch(`https://galachat.site/project-z/api.php?action=salary_check_all&uuid=${user.uuid}`)
       .then(res => res.json())
       .then(data => {
         if (cancelled) return;
-        if (data.has_salary) {
-          setSalaryData({ salary: data.salary, deduction: data.deduction, net: data.net });
+        const hostNet = data.host_salary?.net || 0;
+        const agencyAmount = data.agency_salary?.amount || 0;
+        const canWithdraw = data.withdrawals?.can_withdraw || false;
+        const totalWithdrawn = data.withdrawals?.total_withdrawn || 0;
+        
+        let remaining = 0;
+        if (canWithdraw) {
+          remaining = Math.max(hostNet, agencyAmount) - totalWithdrawn;
+          remaining = Math.max(0, remaining);
         }
+        setSalaryDisplay(remaining);
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setSalaryLoading(false); });
@@ -115,7 +123,7 @@ const UserProfileCard: React.FC = () => {
   const userAvatar = getAvatarUrl(user.profile?.image || "");
   const avatarSrc = userAvatar || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
 
-  const salaryDisplay = salaryData?.net ?? (user as any)?.agency_salary?.amount_usd ?? 0;
+  
 
   const copyId = () => navigator.clipboard.writeText(user.uuid);
 
