@@ -12,12 +12,23 @@ interface VideoTutorial {
   thumbnail_url: string | null;
 }
 
-// Lightweight placeholder instead of extracting video frames (was causing heavy loading)
-const VideoThumbnail = ({ alt: _alt }: { src: string; alt: string }) => {
+// Mini autoplay video preview inside the story circle
+const VideoPreview = ({ src }: { src: string }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    // Attempt autoplay; browsers may block but muted should work
+    videoRef.current?.play().catch(() => {});
+  }, [src]);
   return (
-    <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
-      <Play className="w-4 h-4 text-primary" />
-    </div>
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      className="w-full h-full object-cover rounded-full"
+    />
   );
 };
 
