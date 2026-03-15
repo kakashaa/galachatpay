@@ -127,6 +127,28 @@ const SALARY_COUNTRIES: SalaryCountry[] = [
   },
 ];
 
+const COUNTRY_FLAGS: Record<string, string> = {
+  ye: "🇾🇪", sa: "🇸🇦", qa: "🇶🇦", om: "🇴🇲", ae: "🇦🇪",
+  kw: "🇰🇼", bh: "🇧🇭", dz: "🇩🇿", ma: "🇲🇦", eg: "🇪🇬",
+  tn: "🇹🇳", us: "🇺🇸", intl: "🌍",
+};
+
+const BANK_ICONS: Record<string, { icon: string; color: string }> = {
+  jeeppay: { icon: "🟢", color: "from-green-600/20 to-green-700/10 border-green-500/20" },
+  kuraimi: { icon: "🔵", color: "from-blue-600/20 to-blue-700/10 border-blue-500/20" },
+  najm: { icon: "⭐", color: "from-yellow-600/20 to-yellow-700/10 border-yellow-500/20" },
+  rajhi: { icon: "🏦", color: "from-emerald-600/20 to-emerald-700/10 border-emerald-500/20" },
+  ahli: { icon: "🏛", color: "from-teal-600/20 to-teal-700/10 border-teal-500/20" },
+  stcpay: { icon: "📱", color: "from-purple-600/20 to-purple-700/10 border-purple-500/20" },
+  zelle: { icon: "⚡", color: "from-violet-600/20 to-violet-700/10 border-violet-500/20" },
+  cashapp: { icon: "💵", color: "from-green-500/20 to-green-600/10 border-green-400/20" },
+  chime: { icon: "🔔", color: "from-cyan-600/20 to-cyan-700/10 border-cyan-500/20" },
+  applepay: { icon: "🍎", color: "from-gray-600/20 to-gray-700/10 border-gray-500/20" },
+  usdt: { icon: "₮", color: "from-green-600/20 to-green-700/10 border-green-500/20" },
+  western_union: { icon: "🌐", color: "from-yellow-600/20 to-yellow-700/10 border-yellow-500/20" },
+  moneygram: { icon: "💸", color: "from-orange-600/20 to-orange-700/10 border-orange-500/20" },
+};
+
 const countryCodes = [
   { code: "+967", flag: "🇾🇪" }, { code: "+966", flag: "🇸🇦" },
   { code: "+1", flag: "🇺🇸" }, { code: "+20", flag: "🇪🇬" },
