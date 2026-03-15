@@ -62,6 +62,10 @@ interface WithdrawRequest {
   transfer_verified?: boolean;
   screenshot?: string;
   avatar?: string;
+  reference_id?: string;
+  transferred_usd?: number;
+  approved_amount?: number;
+  salary_type?: string;
 }
 
 interface Stats {
