@@ -274,46 +274,46 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   ];
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="space-y-2.5" dir="rtl">
 
       {/* ═══════ 1. STAT CARDS — 2×2 + 2×1 ═══════ */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "إجمالي الطلبات", value: stats.total, icon: <Wallet className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
-          { label: "تم التحويل", value: stats.delivered, icon: <CheckCircle className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
-          { label: "مرفوض", value: stats.rejected, icon: <XCircle className="w-5 h-5" />, color: "text-rose-400", bg: "bg-rose-500/5", border: "border-rose-500/10" },
-          { label: "قيد الانتظار", value: stats.pending, icon: <Clock className="w-5 h-5" />, color: "text-amber-400", bg: "bg-amber-500/5", border: "border-amber-500/10" },
+          { label: "إجمالي الطلبات", value: stats.total, icon: <Wallet className="w-4 h-4" />, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
+          { label: "تم التحويل", value: stats.delivered, icon: <CheckCircle className="w-4 h-4" />, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
+          { label: "مرفوض", value: stats.rejected, icon: <XCircle className="w-4 h-4" />, color: "text-rose-400", bg: "bg-rose-500/5", border: "border-rose-500/10" },
+          { label: "قيد الانتظار", value: stats.pending, icon: <Clock className="w-4 h-4" />, color: "text-amber-400", bg: "bg-amber-500/5", border: "border-amber-500/10" },
         ].map((card, i) => (
           <motion.div
             key={card.label}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.4 }}
-            className={`rounded-2xl p-4 border ${card.border} ${card.bg} backdrop-blur-sm`}
+            transition={{ delay: i * 0.05, duration: 0.35 }}
+            className={`rounded-xl p-3 border ${card.border} ${card.bg}`}
           >
-            <div className={`${card.color} mb-2`}>{card.icon}</div>
-            <p className="text-[11px] text-muted-foreground mb-1">{card.label}</p>
-            <p className={`text-2xl font-bold font-mono tabular-nums ${card.color}`}>{card.value}</p>
+            <div className={`${card.color} mb-1`}>{card.icon}</div>
+            <p className="text-[10px] text-muted-foreground mb-0.5">{card.label}</p>
+            <p className={`text-xl font-bold font-mono tabular-nums ${card.color}`}>{card.value}</p>
           </motion.div>
         ))}
       </div>
 
       {/* Amount cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "مبلغ الانتظار", value: stats.pending_amount, icon: <TrendingUp className="w-5 h-5" />, color: "text-amber-400", bg: "bg-amber-500/5", border: "border-amber-500/10" },
-          { label: "مبلغ التحويل", value: stats.delivered_amount, icon: <TrendingUp className="w-5 h-5" />, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
+          { label: "مبلغ الانتظار", value: stats.pending_amount, icon: <TrendingUp className="w-4 h-4" />, color: "text-amber-400", bg: "bg-amber-500/5", border: "border-amber-500/10" },
+          { label: "مبلغ التحويل", value: stats.delivered_amount, icon: <TrendingUp className="w-4 h-4" />, color: "text-emerald-400", bg: "bg-emerald-500/5", border: "border-emerald-500/10" },
         ].map((card, i) => (
           <motion.div
             key={card.label}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 + i * 0.06, duration: 0.4 }}
-            className={`rounded-2xl p-4 border ${card.border} ${card.bg} backdrop-blur-sm`}
+            transition={{ delay: 0.2 + i * 0.05, duration: 0.35 }}
+            className={`rounded-xl p-3 border ${card.border} ${card.bg}`}
           >
-            <div className={`${card.color} mb-2`}>{card.icon}</div>
-            <p className="text-[11px] text-muted-foreground mb-1">{card.label}</p>
-            <p className={`text-2xl font-bold font-mono tabular-nums ${card.color}`}>${card.value.toLocaleString()}</p>
+            <div className={`${card.color} mb-1`}>{card.icon}</div>
+            <p className="text-[10px] text-muted-foreground mb-0.5">{card.label}</p>
+            <p className={`text-xl font-bold font-mono tabular-nums ${card.color}`}>${card.value.toLocaleString()}</p>
           </motion.div>
         ))}
       </div>
