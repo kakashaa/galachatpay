@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User } from "lucide-react";
 
 const AdminLogin: React.FC = () => {
@@ -18,13 +19,11 @@ const AdminLogin: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("https://galachat.site/admin-panel-api.php?action=login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
+      const { data, error: fnError } = await supabase.functions.invoke("admin-manage", {
+        body: { username: username.trim().toLowerCase(), password, action: "auth_check", data: {} },
       });
-      const data = await res.json();
-      if (!data.success) {
+      if (fnError) throw fnError;
+      if (!data?.success) {
         setError("بيانات الدخول غير صحيحة");
         setLoading(false);
         return;
@@ -56,7 +55,6 @@ const AdminLogin: React.FC = () => {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4 css-fade-up-d2">
-          {/* Username */}
           <div className="relative">
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
               <User className="w-5 h-5" />
@@ -72,7 +70,6 @@ const AdminLogin: React.FC = () => {
             />
           </div>
 
-          {/* Password */}
           <div className="relative">
             <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
               <Lock className="w-5 h-5" />
