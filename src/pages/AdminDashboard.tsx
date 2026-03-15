@@ -2403,7 +2403,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Trash Tab - Super Admin Only */}
             {activeTab === "trash" && adminRole === "super_admin" && (
-              <motion.div key="trash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+              <motion.div key="trash" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
                 {/* Trash sections */}
                 {[
                   { key: "videos", label: "فيديوهات محذوفة", items: trashData.videos, table: "video_tutorials" },
