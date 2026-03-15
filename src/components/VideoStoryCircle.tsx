@@ -12,12 +12,23 @@ interface VideoTutorial {
   thumbnail_url: string | null;
 }
 
-// Lightweight placeholder instead of extracting video frames (was causing heavy loading)
-const VideoThumbnail = ({ alt: _alt }: { src: string; alt: string }) => {
+// Mini autoplay video preview inside the story circle
+const VideoPreview = ({ src }: { src: string }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    // Attempt autoplay; browsers may block but muted should work
+    videoRef.current?.play().catch(() => {});
+  }, [src]);
   return (
-    <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
-      <Play className="w-4 h-4 text-primary" />
-    </div>
+    <video
+      ref={videoRef}
+      src={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      className="w-full h-full object-cover rounded-full"
+    />
   );
 };
 
@@ -234,26 +245,27 @@ export const VideoStoryCircle = () => {
           <div key={video.id} className="flex flex-col items-center gap-0.5 flex-shrink-0">
             <span className="text-[8px] font-bold text-primary/80">شرح</span>
             <button onClick={() => openVideo(index)} className="relative group">
-              <div className="w-12 h-12 rounded-full p-[2px] bg-gradient-to-tr from-primary via-accent to-primary">
+              <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-primary via-accent to-primary">
                 <div className="w-full h-full rounded-full bg-background p-[1.5px]">
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden">
                     {video.thumbnail_url ? (
                       <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover rounded-full" />
                     ) : video.video_url ? (
-                      <VideoThumbnail src={video.video_url} alt={video.title} />
+                      <VideoPreview src={video.video_url} />
                     ) : (
                       <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
                         <Play className="w-4 h-4 text-primary" />
                       </div>
                     )}
+                    {/* Play overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
+                      <Play className="w-4 h-4 text-white fill-white" />
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-background">
-                <Play className="w-2 h-2 text-primary-foreground fill-current" />
-              </div>
             </button>
-            <div className="w-[52px] overflow-hidden mt-0.5">
+            <div className="w-[60px] overflow-hidden mt-0.5">
               <span className={`text-[9px] font-medium text-foreground text-center block whitespace-nowrap ${video.title.length > 6 ? 'animate-marquee' : ''}`}>
                 {video.title}
               </span>
