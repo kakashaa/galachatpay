@@ -1088,7 +1088,7 @@ const AdminDashboardPage: React.FC = () => {
         <div className="max-w-2xl mx-auto">
           {/* Tab chips */}
           <div className="px-4 pt-3 pb-2">
-            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {(currentSectionDef?.tabs || []).map(tabKey => {
                 const tabDef = tabs.find(t => t.key === tabKey);
                 if (!tabDef) return null;
@@ -1096,22 +1096,96 @@ const AdminDashboardPage: React.FC = () => {
                   <button
                     key={tabKey}
                     onClick={() => setActiveTab(tabKey)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200",
                       activeTab === tabKey
-                        ? "bg-primary text-primary-foreground shadow-md"
-                        : "bg-card/50 text-muted-foreground hover:bg-card border border-white/5"
-                    }`}
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                    )}
                   >
                     {tabDef.icon}
                     {tabDef.label}
                     {tabDef.count && tabDef.count > 0 && (
-                      <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] flex items-center justify-center">{tabDef.count}</span>
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                        activeTab === tabKey ? "bg-white/20" : "bg-rose-500/80 text-white"
+                      )}>
+                        {tabDef.count}
+                      </span>
                     )}
                   </button>
                 );
               })}
             </div>
           </div>
+
+          {/* Section Stats Cards */}
+          {activeSection === "requests" && (
+            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
+              {[
+                { label: "معلقة", value: stats.pending, icon: Clock, gradient: "from-amber-500/10 to-amber-600/5", border: "border-amber-500/20", iconColor: "text-amber-400" },
+                { label: "مقبولة اليوم", value: stats.approved, icon: CheckCircle, gradient: "from-emerald-500/10 to-emerald-600/5", border: "border-emerald-500/20", iconColor: "text-emerald-400" },
+                { label: "مرفوضة اليوم", value: stats.rejected, icon: XCircle, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
+                >
+                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
+                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {activeSection === "products" && (
+            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
+              {[
+                { label: "إجمالي", value: entryGifts.length + frameItems.length + videos.length, icon: Package, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
+                { label: "نشطة", value: entryGifts.filter(g => g.is_active).length + frameItems.filter(f => f.is_active).length + videos.filter(v => v.is_active).length, icon: CheckCircle, gradient: "from-emerald-500/10 to-emerald-600/5", border: "border-emerald-500/20", iconColor: "text-emerald-400" },
+                { label: "معطلة", value: entryGifts.filter(g => !g.is_active).length + frameItems.filter(f => !f.is_active).length + videos.filter(v => !v.is_active).length, icon: Ban, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
+                >
+                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
+                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {activeSection === "settings" && (
+            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
+              {[
+                { label: "محظورين", value: blockedAccounts.length + manualBans.filter(b => b.status === "active").length, icon: ShieldBan, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+                { label: "مسؤولين", value: (adminRole === "super_admin" || adminRole === "admin") ? "—" : "—", icon: Users, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
+                { label: "إشعارات", value: "—", icon: Bell, gradient: "from-violet-500/10 to-violet-600/5", border: "border-violet-500/20", iconColor: "text-violet-400" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
+                >
+                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
+                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
           <div className="px-4 pb-4">
       {loading ? (
         <div className="space-y-3 py-4">
