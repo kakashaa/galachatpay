@@ -270,18 +270,39 @@ const SalaryWithdraw: React.FC = () => {
   if (checkResult?.is_suspicious) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mb-4">
-            <Shield className="w-8 h-8 text-destructive" />
-          </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">⚠️ تنبيه أمان</h2>
-          <p className="text-sm text-muted-foreground mb-2">
-            يوجد مبلغ <strong className="text-foreground">${checkResult.suspicious_amount}</strong> غير مدعوم
-          </p>
-          <p className="text-xs text-muted-foreground mb-6">يرجى التواصل مع خدمة العملاء</p>
-          <div className="flex gap-3">
-            <Button onClick={() => navigate("/support")} variant="outline" className="border-border/30 font-bold">الدعم</Button>
-            <Button onClick={() => navigate("/dashboard")} className="gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
+        <div className="px-5 py-16">
+          <div className="max-w-md mx-auto rounded-2xl bg-rose-500/5 border border-rose-500/20 p-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-5">
+              <ShieldAlert className="w-8 h-8 text-destructive" />
+            </div>
+
+            <h2 className="text-2xl font-black text-foreground mb-4">لا يمكن سحب الراتب</h2>
+
+            <p className="text-base font-semibold text-foreground leading-8 mb-2">
+              يوجد مبلغ <span className="text-destructive">${checkResult.suspicious_amount || 0}</span> غير مدعوم مضاف
+              لراتبك بشكل يدوي.
+            </p>
+            <p className="text-sm text-muted-foreground leading-7 mb-8">
+              هذا المبلغ يحتاج مراجعة من خدمة العملاء قبل السحب.
+              <br />
+              يرجى التواصل مع الدعم الفني لحل هذه المشكلة.
+            </p>
+
+            <div className="space-y-3">
+              <Button
+                onClick={() => navigate("/quick-support")}
+                className="w-full gold-gradient text-primary-foreground font-bold h-12"
+              >
+                تواصل مع خدمة العملاء
+              </Button>
+              <Button
+                onClick={() => navigate("/dashboard")}
+                variant="outline"
+                className="w-full h-12 border-border/30 font-bold"
+              >
+                الرجوع
+              </Button>
+            </div>
           </div>
         </div>
       </MobileLayout>
