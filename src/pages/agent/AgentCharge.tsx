@@ -5,17 +5,27 @@ import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { toast } from "sonner";
 
-import { COUNTRIES, COINS_PER_DOLLAR } from "@/lib/constants";
+import { COINS_PER_DOLLAR } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 const AGENT_API = "https://galachat.site/project-z/api.php";
 const COINS_PER_USD = COINS_PER_DOLLAR;
 
-// Build flat payment methods from COUNTRIES + agent option
-const paymentMethods = [
-  ...COUNTRIES.flatMap(c =>
-    c.banks.map(b => ({ id: b.id, label: b.label, country: c.name, countryId: c.id }))
-  ),
-  { id: "agent", label: "حساب الوكيل", country: "الفلوس عندي", countryId: "agent" },
+const AGENT_PAYMENT_METHODS = [
+  { id: "rajhi", label: "بنك الراجحي", country: "السعودية", color: "from-emerald-600/20 to-emerald-700/10 border-emerald-500/20" },
+  { id: "sa_other", label: "حوالة أخرى", country: "السعودية", color: "from-emerald-500/10 to-emerald-600/10 border-emerald-400/20" },
+  { id: "jeeppay", label: "جيب (JeepPay)", country: "اليمن", color: "from-blue-600/20 to-blue-700/10 border-blue-500/20" },
+  { id: "kuraimi", label: "كريمي", country: "اليمن", color: "from-blue-500/20 to-blue-600/10 border-blue-400/20" },
+  { id: "ye_other", label: "حوالة أخرى", country: "اليمن", color: "from-blue-400/10 to-blue-500/10 border-blue-300/20" },
+  { id: "cashapp", label: "Cash App", country: "أمريكا", color: "from-green-600/20 to-green-700/10 border-green-500/20" },
+  { id: "zelle", label: "Zelle", country: "أمريكا", color: "from-violet-600/20 to-violet-700/10 border-violet-500/20" },
+  { id: "agent", label: "حساب الوكيل", country: "الفلوس عندي", color: "from-gray-600/20 to-gray-700/10 border-gray-500/20" },
+];
+
+const COUNTRY_GROUPS = [
+  { name: "السعودية", ids: ["rajhi", "sa_other"] },
+  { name: "اليمن", ids: ["jeeppay", "kuraimi", "ye_other"] },
+  { name: "أمريكا", ids: ["cashapp", "zelle"] },
 ];
 
 const AgentCharge: React.FC = () => {
@@ -95,7 +105,7 @@ const AgentCharge: React.FC = () => {
           uuid: uuid.trim(),
           coins: parseInt(coins),
           payment_method: selectedPayment,
-          payment_country: paymentMethods.find(p => p.id === selectedPayment)?.countryId || "other",
+          payment_country: AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.country || "other",
           receipt_confirmed: receiptConfirmed,
           receipt_image: receiptImage || null,
           notes: notes || null,
@@ -315,21 +325,51 @@ const AgentCharge: React.FC = () => {
         {step === 2 && (
           <div className="space-y-4">
             <h2 className="text-sm font-bold text-foreground text-right mb-2">وين وصلت الفلوس؟</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {paymentMethods.map((pm) => (
-                <button
-                  key={pm.id}
-                  onClick={() => setSelectedPayment(pm.id)}
-                  className={`glass-card rounded-2xl p-4 text-center transition-all active:scale-95 ${
-                    selectedPayment === pm.id ? "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30" : "border-white/10"
-                  }`}
-                >
-                  <Landmark className="w-6 h-6 text-amber-400 mx-auto mb-1" />
-                  <p className="text-sm font-bold text-foreground">{pm.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{pm.country}</p>
-                  {selectedPayment === pm.id && <Check className="w-4 h-4 text-amber-400 mx-auto mt-1" />}
-                </button>
-              ))}
+            
+            {COUNTRY_GROUPS.map((group) => (
+              <div key={group.name}>
+                <p className="text-xs font-bold text-muted-foreground mb-2 text-right">{group.name}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {group.ids.map(id => {
+                    const pm = AGENT_PAYMENT_METHODS.find(m => m.id === id)!;
+                    return (
+                      <button
+                        key={pm.id}
+                        onClick={() => setSelectedPayment(pm.id)}
+                        className={cn(
+                          "rounded-xl p-4 text-center border transition-all bg-gradient-to-br",
+                          pm.color,
+                          selectedPayment === pm.id
+                            ? "ring-2 ring-amber-500/50 scale-[0.98]"
+                            : "hover:scale-[1.02]"
+                        )}
+                      >
+                        <Landmark className="w-6 h-6 mx-auto mb-2 text-amber-400" />
+                        <p className="text-sm font-semibold text-foreground">{pm.label}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{pm.country}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Agent account - separate */}
+            <div className="border-t border-white/10 pt-3">
+              <button
+                onClick={() => setSelectedPayment("agent")}
+                className={cn(
+                  "w-full rounded-xl p-4 text-center border transition-all bg-gradient-to-br",
+                  "from-gray-600/20 to-gray-700/10 border-gray-500/20",
+                  selectedPayment === "agent"
+                    ? "ring-2 ring-amber-500/50 scale-[0.98]"
+                    : "hover:scale-[1.02]"
+                )}
+              >
+                <Landmark className="w-6 h-6 mx-auto mb-2 text-amber-400" />
+                <p className="text-sm font-semibold text-foreground">حساب الوكيل</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">الفلوس عندي</p>
+              </button>
             </div>
 
             {selectedPayment && (
@@ -412,7 +452,7 @@ const AgentCharge: React.FC = () => {
                 <div className="flex justify-between"><span className="text-muted-foreground">👤 المستخدم</span><span className="font-bold text-foreground">{userName} ({uuid})</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">💰 الكوينز</span><span className="font-bold text-foreground" dir="ltr">{parseInt(coins).toLocaleString()}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">💵 المبلغ</span><span className="font-bold text-amber-400" dir="ltr">${usdAmount.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">🏦 الدفع</span><span className="font-bold text-foreground">{paymentMethods.find(p => p.id === selectedPayment)?.label}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">🏦 الدفع</span><span className="font-bold text-foreground">{AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.label}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">📎 الإيصال</span><span className="font-bold">{receiptImage ? "✅ مرفق" : "❌ غير مرفق"}</span></div>
               </div>
             </div>
