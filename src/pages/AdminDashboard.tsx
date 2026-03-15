@@ -825,44 +825,85 @@ const AdminDashboardPage: React.FC = () => {
     </div>
   );
 
+  // Section definitions
+  type SectionKey = "requests" | "products" | "finance" | "settings";
+  const SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[] }[] = [
+    {
+      id: "requests", title: "استقبال الطلبات", description: "طلبات المستخدمين",
+      icon: <ClipboardList className="w-10 h-10" />, gradient: "from-blue-500/15 to-blue-600/5", iconColor: "text-blue-400",
+      tabs: ["all_requests", "id_changes", "support_tickets", "support_chats", "quick_support", "reports"],
+    },
+    {
+      id: "products", title: "إدارة المنتجات", description: "إضافة وتعديل",
+      icon: <Palette className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
+      tabs: ["entries", "frames", "hairs", "custom_gifts", "gifts", "animated_photos", "videos", "banners", "admin_stars"],
+    },
+    {
+      id: "finance", title: "المالية والوكالات", description: "وكالات + رواتب",
+      icon: <Wallet className="w-10 h-10" />, gradient: "from-amber-500/15 to-amber-600/5", iconColor: "text-amber-400",
+      tabs: ["agencies", "salary", "top_agents", "bd_management"],
+    },
+    {
+      id: "settings", title: "الإعدادات والنظام", description: "محظورين + سجلات",
+      icon: <Settings className="w-10 h-10" />, gradient: "from-slate-500/15 to-slate-600/5", iconColor: "text-slate-400",
+      tabs: ["blocks", "notifications", "element_settings",
+        ...(adminRole === "super_admin" || adminRole === "admin" ? ["moderators" as Exclude<Tab, null>] : []),
+        ...(adminRole === "super_admin" ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
+      ],
+    },
+  ];
+
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
-    { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
-    { key: "entries", label: "دخوليات", icon: <Sparkles className="w-7 h-7" />, color: "from-purple-500/20 to-purple-600/10 text-purple-400" },
-    { key: "frames", label: "إطارات", icon: <Frame className="w-7 h-7" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400" },
-    { key: "hairs", label: "شعرات", icon: <Scissors className="w-7 h-7" />, color: "from-fuchsia-500/20 to-fuchsia-600/10 text-fuchsia-400" },
-    { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400" },
-    { key: "custom_gifts", label: "هدايا مخصصة", icon: <Gift className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400", count: allCustomGifts.filter(g => g.status === "pending").length },
-    { key: "salary", label: "رواتب", icon: <DollarSign className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
-    
-    { key: "videos", label: "فيديوهات", icon: <Video className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400" },
-    { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400", count: banReports.filter(r => !r.is_verified).length },
-    { key: "blocks", label: "محظورين", icon: <Ban className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
-    { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
-    { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
-    { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
-    { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
-    { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
-    { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
-    { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: idChanges.length },
-    { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
-    { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400" },
-    { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-7 h-7" />, color: "from-slate-500/20 to-slate-600/10 text-slate-400" },
-    { key: "banners", label: "بنرات", icon: <ImageIcon className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400" },
-    { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
+    { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-4 h-4" />, color: "text-blue-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
+    { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" />, color: "text-purple-400" },
+    { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" />, color: "text-blue-400" },
+    { key: "hairs", label: "شعرات", icon: <Scissors className="w-4 h-4" />, color: "text-fuchsia-400" },
+    { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-4 h-4" />, color: "text-yellow-400" },
+    { key: "custom_gifts", label: "هدايا مخصصة", icon: <Gift className="w-4 h-4" />, color: "text-pink-400", count: allCustomGifts.filter(g => g.status === "pending").length },
+    { key: "salary", label: "رواتب", icon: <DollarSign className="w-4 h-4" />, color: "text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
+    { key: "videos", label: "فيديوهات", icon: <Video className="w-4 h-4" />, color: "text-pink-400" },
+    { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-4 h-4" />, color: "text-red-400", count: banReports.filter(r => !r.is_verified).length },
+    { key: "blocks", label: "محظورين", icon: <Ban className="w-4 h-4" />, color: "text-rose-400" },
+    { key: "notifications", label: "إشعارات", icon: <Bell className="w-4 h-4" />, color: "text-cyan-400" },
+    { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-4 h-4" />, color: "text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
+    { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-4 h-4" />, color: "text-amber-400" },
+    { key: "support_tickets", label: "تذاكر الدعم", icon: <MessageSquare className="w-4 h-4" />, color: "text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
+    { key: "support_chats", label: "شات VIP", icon: <Headset className="w-4 h-4" />, color: "text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
+    { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-4 h-4" />, color: "text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
+    { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-4 h-4" />, color: "text-indigo-400", count: idChanges.length },
+    { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-4 h-4" />, color: "text-amber-400" },
+    { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-4 h-4" />, color: "text-red-400" },
+    { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-4 h-4" />, color: "text-slate-400" },
+    { key: "banners", label: "بنرات", icon: <ImageIcon className="w-4 h-4" />, color: "text-teal-400" },
+    { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-4 h-4" />, color: "text-amber-400" },
     ...((adminRole === "super_admin" || adminRole === "admin") ? [
-      { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400" },
+      { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-4 h-4" />, color: "text-emerald-400" },
     ] : []),
     ...(adminRole === "super_admin" ? [
-      { key: "trash" as Exclude<Tab, null>, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
-      { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
+      { key: "trash" as Exclude<Tab, null>, label: "المحذوفات", icon: <Trash2 className="w-4 h-4" />, color: "text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
+      { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-4 h-4" />, color: "text-violet-400" },
     ] : []),
   ];
-  // Check if moderator has access (full "key" or view-only "key:view")
   const hasTabAccess = (key: string) => adminPermissions.includes(key) || adminPermissions.includes(`${key}:view`);
   const isTabViewOnly = (key: string) => adminPermissions.includes(`${key}:view`) && !adminPermissions.includes(key);
   const tabs = isModeratorRole ? allTabs.filter(t => hasTabAccess(t.key)) : allTabs;
-  // Helper: can the current user perform actions on the active tab?
   const canAct = !isModeratorRole || (activeTab ? !isTabViewOnly(activeTab) : true);
+
+  // Get current section's tabs for chip navigation
+  const currentSectionDef = SECTIONS.find(s => s.id === activeSection);
+  const currentSectionTabs = currentSectionDef
+    ? tabs.filter(t => currentSectionDef.tabs.includes(t.key))
+    : [];
+
+  // Calculate pending count per section for badges
+  const getSectionBadge = (sectionId: SectionKey) => {
+    const section = SECTIONS.find(s => s.id === sectionId);
+    if (!section) return 0;
+    return section.tabs.reduce((sum, tabKey) => {
+      const tab = allTabs.find(t => t.key === tabKey);
+      return sum + (tab?.count || 0);
+    }, 0);
+  };
 
   // Reusable item card for entries/frames with edit
   const renderMediaCard = (
