@@ -317,11 +317,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           <p className="text-sm text-muted-foreground">لا توجد طلبات {filter !== "all" ? statusConfig[filter]?.label : ""}</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {filtered.map((req, i) => (
-            <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
-              className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+            <motion.div key={req.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, duration: 0.35, ease: "easeOut" as const }}
+              className="bg-[#1c1e2e] border border-white/10 rounded-2xl overflow-hidden hover:border-emerald-500/20 transition-colors">
               {/* Card header */}
               <button onClick={() => setExpanded(expanded === req.id ? null : req.id)}
                 className="w-full flex items-center justify-between p-3 text-right">
