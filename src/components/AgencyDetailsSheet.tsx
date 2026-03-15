@@ -369,88 +369,77 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                   )}
 
                   {/* ===== Distribution Tab ===== */}
-                  {subTab === "distribution" && (
-                    <motion.div key="dist" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-                      <div>
-                        <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
-                          <Landmark className="w-4 h-4 text-amber-400" />
-                          حسب البنك
-                        </h3>
-                        {Object.entries(byBank).length === 0 ? (
-                          <p className="text-xs text-muted-foreground text-center py-6">لا توجد بيانات</p>
-                        ) : (
-                          <div className="grid grid-cols-2 gap-2">
-                            {Object.entries(byBank).map(([bankKey, info], i) => {
-                              const color = getBankColorByKey(bankKey);
-                              const pct = bankTotal > 0 ? Math.round((info.total_usd / bankTotal) * 100) : 0;
-                              return (
-                                <motion.div
-                                  key={bankKey}
-                                  initial={{ opacity: 0, y: 12 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: i * 0.06, duration: 0.35 }}
-                                  className={`${color.bg} border ${color.border} rounded-2xl p-3.5 space-y-2`}
-                                >
-                                  <Landmark className={`w-5 h-5 ${color.text}`} />
-                                  <p className={`text-xs font-bold ${color.text}`}>{resolveBankLabel(bankKey)}</p>
-                                  <p className={`text-base font-black font-mono tabular-nums ${color.text}`}>${info.total_usd?.toFixed(2)}</p>
-                                  <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
-                                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                    <motion.div
-                                      initial={{ width: 0 }}
-                                      animate={{ width: `${pct}%` }}
-                                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 + i * 0.06 }}
-                                      className={`h-full rounded-full ${color.bar}`}
-                                    />
-                                  </div>
-                                  <p className="text-[9px] text-muted-foreground text-left font-mono">{pct}%</p>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                  {subTab === "distribution" && (() => {
+                    // Group banks under countries
+                    const grouped: Record<string, { total: number; count: number; banks: Record<string, { usd: number; count: number }> }> = {};
+                    for (const [bankKey, info] of Object.entries(byBank)) {
+                      const country = COUNTRIES.find(c => c.banks.some(b => b.id === bankKey));
+                      const countryId = country?.id || (bankKey === "agent" ? "agent" : "other");
+                      if (!grouped[countryId]) grouped[countryId] = { total: 0, count: 0, banks: {} };
+                      grouped[countryId].total += info.total_usd || 0;
+                      grouped[countryId].count += info.count || 0;
+                      grouped[countryId].banks[bankKey] = { usd: info.total_usd || 0, count: info.count || 0 };
+                    }
+                    const grandTotal = Object.values(grouped).reduce((s, g) => s + g.total, 0);
 
-                      <div>
-                        <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-blue-400" />
-                          حسب الدولة
-                        </h3>
-                        {Object.entries(byCountry).length === 0 ? (
-                          <p className="text-xs text-muted-foreground text-center py-6 col-span-2">لا توجد بيانات</p>
+                    const COUNTRY_COLORS: Record<string, { gradient: string; border: string; bar: string; text: string }> = {
+                      sa: { gradient: "from-emerald-500/10", border: "border-emerald-500/20", bar: "bg-emerald-500", text: "text-emerald-400" },
+                      ye: { gradient: "from-blue-500/10", border: "border-blue-500/20", bar: "bg-blue-500", text: "text-blue-400" },
+                      us: { gradient: "from-violet-500/10", border: "border-violet-500/20", bar: "bg-violet-500", text: "text-violet-400" },
+                      agent: { gradient: "from-slate-500/10", border: "border-slate-500/20", bar: "bg-slate-500", text: "text-slate-400" },
+                      other: { gradient: "from-slate-500/10", border: "border-slate-500/20", bar: "bg-slate-400", text: "text-slate-400" },
+                    };
+
+                    return (
+                      <motion.div key="dist" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+                        {Object.keys(grouped).length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-10">لا توجد بيانات</p>
                         ) : (
-                          <div className="grid grid-cols-2 gap-2">
-                            {Object.entries(byCountry).map(([countryKey, info], i) => {
-                              const pct = countryTotal > 0 ? Math.round((info.total_usd / countryTotal) * 100) : 0;
+                          Object.entries(grouped)
+                            .sort((a, b) => b[1].total - a[1].total)
+                            .map(([countryId, data], i) => {
+                              const colors = COUNTRY_COLORS[countryId] || COUNTRY_COLORS.other;
+                              const pct = grandTotal > 0 ? Math.round((data.total / grandTotal) * 100) : 0;
+                              const sortedBanks = Object.entries(data.banks).sort((a, b) => b[1].usd - a[1].usd);
                               return (
                                 <motion.div
-                                  key={countryKey}
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: i * 0.06, duration: 0.3 }}
-                                  className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-3.5 space-y-2"
+                                  key={countryId}
+                                  initial={{ opacity: 0, y: 16 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: i * 0.08, duration: 0.4 }}
+                                  className={`bg-gradient-to-br ${colors.gradient} to-transparent border ${colors.border} rounded-2xl p-4 space-y-3`}
                                 >
-                                  <Globe className="w-5 h-5 text-blue-400" />
-                                  <p className="text-xs font-bold text-foreground">{resolveCountryLabel(countryKey)}</p>
-                                  <p className="text-base font-black text-amber-400 font-mono tabular-nums">${info.total_usd?.toFixed(2)}</p>
-                                  <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
+                                  <div className="flex items-center justify-between">
+                                    <h4 className={`text-sm font-bold ${colors.text}`}>{COUNTRY_LABELS[countryId] || countryId}</h4>
+                                    <span className="text-[10px] text-muted-foreground">{data.count} عملية</span>
+                                  </div>
+                                  <p className="text-2xl font-black font-mono tabular-nums text-foreground">${data.total.toFixed(2)}</p>
                                   <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                                     <motion.div
                                       initial={{ width: 0 }}
                                       animate={{ width: `${pct}%` }}
-                                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 + i * 0.06 }}
-                                      className="h-full rounded-full bg-blue-500"
+                                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 + i * 0.08 }}
+                                      className={`h-full rounded-full ${colors.bar}`}
                                     />
                                   </div>
-                                  <p className="text-[9px] text-muted-foreground text-left font-mono">{pct}%</p>
+                                  <p className="text-[9px] text-muted-foreground font-mono">{pct}%</p>
+                                  {sortedBanks.length > 0 && (
+                                    <div className="pt-2 border-t border-white/5 space-y-1.5">
+                                      {sortedBanks.map(([bankId, bankData]) => (
+                                        <div key={bankId} className="flex items-center justify-between text-xs">
+                                          <span className="text-muted-foreground">{resolveBankLabel(bankId)}</span>
+                                          <span className="font-mono font-bold text-foreground">${bankData.usd.toFixed(2)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </motion.div>
                               );
-                            })}
-                          </div>
+                            })
                         )}
-                      </div>
-                    </motion.div>
-                  )}
+                      </motion.div>
+                    );
+                  })()}
 
                   {/* ===== Summary Tab ===== */}
                   {subTab === "summary" && (
