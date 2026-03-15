@@ -733,41 +733,18 @@ const SalaryWithdraw: React.FC = () => {
           </div>
         )}
 
-        {/* Toggle: History button + content */}
+        {/* Always-visible history on step 1 */}
         {step === 1 && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-1.5 text-xs text-primary font-bold"
-            >
-              <History className="w-3.5 h-3.5" />
-              {showHistory ? "إخفاء الطلبات السابقة" : "طلباتي السابقة"}
-            </button>
-
-            <AnimatePresence>
-              {showHistory && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <SalaryRequestsHistory
-                    userUuid={user.uuid}
-                    onResubmit={(req) => {
-                      // Pre-fill data from rejected request
-                      if (req.country) setSelectedCountry(req.country);
-                      if (req.bank) setSelectedBank(req.bank);
-                      if (req.account_name) setRecipientName(req.account_name);
-                      if (req.account_number) setAccountNumber(req.account_number);
-                      setShowHistory(false);
-                      setStep(3);
-                    }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <SalaryRequestsHistory
+            userUuid={user.uuid}
+            onResubmit={(req) => {
+              if (req.country) setSelectedCountry(req.country);
+              if (req.bank) setSelectedBank(req.bank);
+              if (req.account_name) setRecipientName(req.account_name);
+              if (req.account_number) setAccountNumber(req.account_number);
+              setStep(3);
+            }}
+          />
         )}
 
         {step === 1 && <SalaryHistory userUuid={user.uuid} />}
