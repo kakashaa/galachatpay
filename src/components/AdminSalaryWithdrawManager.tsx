@@ -16,6 +16,7 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { BANK_LABELS, COUNTRY_LABELS } from "@/lib/constants";
 
 const API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
@@ -59,20 +60,12 @@ interface Props {
 
 const COUNTRIES = [
   { value: "all", label: "الكل" },
-  { value: "SA", label: "السعودية" },
-  { value: "YE", label: "اليمن" },
-  { value: "US", label: "أمريكا" },
-  { value: "other", label: "أخرى" },
+  ...Object.entries(COUNTRY_LABELS).map(([k, v]) => ({ value: k, label: v })),
 ];
 
 const BANKS = [
   { value: "all", label: "الكل" },
-  { value: "الراجحي", label: "الراجحي" },
-  { value: "جيب", label: "جيب" },
-  { value: "كريمي", label: "كريمي" },
-  { value: "Zelle", label: "Zelle" },
-  { value: "Cash App", label: "Cash App" },
-  { value: "other", label: "أخرى" },
+  ...Object.entries(BANK_LABELS).map(([k, v]) => ({ value: k, label: v })),
 ];
 
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
@@ -177,15 +170,14 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           return false;
       }
       if (bankFilter !== "all") {
-        if (bankFilter === "other") {
-          const known = ["الراجحي", "جيب", "كريمي", "Zelle", "Cash App"];
-          if (known.some(b => r.bank?.includes(b))) return false;
-        } else if (!r.bank?.includes(bankFilter)) return false;
+        const bankLabel = BANK_LABELS[bankFilter] || bankFilter;
+        if (!r.bank?.includes(bankFilter) && !r.bank?.includes(bankLabel)) return false;
       }
       if (countryFilter !== "all") {
+        const countryLabel = COUNTRY_LABELS[countryFilter] || countryFilter;
         if (countryFilter === "other") {
-          if (["SA", "السعودية", "YE", "اليمن", "US", "أمريكا"].some(c => r.country?.includes(c))) return false;
-        } else if (!r.country?.includes(countryFilter) && !r.country?.includes(COUNTRIES.find(c => c.value === countryFilter)?.label || "")) return false;
+          if (["sa", "SA", "السعودية", "ye", "YE", "اليمن", "us", "US", "أمريكا"].some(c => r.country?.includes(c))) return false;
+        } else if (!r.country?.includes(countryFilter) && !r.country?.includes(countryLabel)) return false;
       }
       if (amountMin && r.amount < parseFloat(amountMin)) return false;
       if (amountMax && r.amount > parseFloat(amountMax)) return false;

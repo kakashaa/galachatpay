@@ -1,23 +1,22 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ArrowLeft, User, AlertCircle, Check, Camera, X, Wallet, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, User, AlertCircle, Check, Camera, X, Wallet, Loader2, Landmark } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { toast } from "sonner";
 
+import { COUNTRIES, COINS_PER_DOLLAR } from "@/lib/constants";
+
 const AGENT_API = "https://galachat.site/project-z/api.php";
-const COINS_PER_USD = 8500;
+const COINS_PER_USD = COINS_PER_DOLLAR;
 
+// Build flat payment methods from COUNTRIES + agent option
 const paymentMethods = [
-  { id: "rajhi", label: "الراجحي", flag: "🇸🇦", desc: "السعودية" },
-  { id: "jeep", label: "جيب", flag: "🇾🇪", desc: "اليمن" },
-  { id: "kareem", label: "كريم", flag: "🇾🇪", desc: "اليمن" },
-  { id: "zelle", label: "Zelle", flag: "🇺🇸", desc: "أمريكا" },
-  { id: "cashapp", label: "Cash App", flag: "🇺🇸", desc: "أمريكا" },
-  { id: "agent", label: "حساب الوكيل", flag: "💼", desc: "الفلوس عندي" },
+  ...COUNTRIES.flatMap(c =>
+    c.banks.map(b => ({ id: b.id, label: b.label, country: c.name, countryId: c.id }))
+  ),
+  { id: "agent", label: "حساب الوكيل", country: "الفلوس عندي", countryId: "agent" },
 ];
-
-const countryMap: Record<string, string> = { rajhi: "sa", jeep: "ye", kareem: "ye", zelle: "us", cashapp: "us", agent: "agent" };
 
 const AgentCharge: React.FC = () => {
   const navigate = useNavigate();
@@ -96,7 +95,7 @@ const AgentCharge: React.FC = () => {
           uuid: uuid.trim(),
           coins: parseInt(coins),
           payment_method: selectedPayment,
-          payment_country: countryMap[selectedPayment] || "other",
+          payment_country: paymentMethods.find(p => p.id === selectedPayment)?.countryId || "other",
           receipt_confirmed: receiptConfirmed,
           receipt_image: receiptImage || null,
           notes: notes || null,
@@ -325,9 +324,9 @@ const AgentCharge: React.FC = () => {
                     selectedPayment === pm.id ? "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30" : "border-white/10"
                   }`}
                 >
-                  <span className="text-2xl block mb-1">{pm.flag}</span>
+                  <Landmark className="w-6 h-6 text-amber-400 mx-auto mb-1" />
                   <p className="text-sm font-bold text-foreground">{pm.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{pm.desc}</p>
+                  <p className="text-[10px] text-muted-foreground">{pm.country}</p>
                   {selectedPayment === pm.id && <Check className="w-4 h-4 text-amber-400 mx-auto mt-1" />}
                 </button>
               ))}

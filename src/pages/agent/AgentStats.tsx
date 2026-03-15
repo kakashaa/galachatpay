@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, TrendingUp, Wallet, Gem } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
+import { BANK_LABELS } from "@/lib/constants";
 
 const AGENT_API = "https://galachat.site/project-z/api.php";
 
@@ -28,15 +29,6 @@ interface StatsData {
   by_bank: Record<string, number>;
   weekly: WeeklyItem[];
 }
-
-const bankLabels: Record<string, { label: string; flag: string }> = {
-  rajhi: { label: "الراجحي", flag: "🇸🇦" },
-  jeep: { label: "جيب", flag: "🇾🇪" },
-  kareem: { label: "كريم", flag: "🇾🇪" },
-  zelle: { label: "Zelle", flag: "🇺🇸" },
-  cashapp: { label: "Cash App", flag: "🇺🇸" },
-  agent: { label: "حساب الوكيل", flag: "💼" },
-};
 
 const AgentStats: React.FC = () => {
   const navigate = useNavigate();
@@ -156,13 +148,13 @@ const AgentStats: React.FC = () => {
             {stats?.by_bank && Object.keys(stats.by_bank).length > 0 ? (
               <div className="space-y-3">
                 {Object.entries(stats.by_bank).map(([bank, amount]) => {
-                  const info = bankLabels[bank] || { label: bank, flag: "💳" };
+                  const label = BANK_LABELS[bank] || bank;
                   const pct = (amount / maxBank) * 100;
                   return (
                     <div key={bank}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-foreground" dir="ltr">${amount.toLocaleString()}</span>
-                        <span className="text-xs text-muted-foreground">{info.flag} {info.label}</span>
+                        <span className="text-xs text-muted-foreground">{label}</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
                         <div className="h-full bg-gradient-to-l from-amber-400 to-amber-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
