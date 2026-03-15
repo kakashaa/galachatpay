@@ -427,40 +427,75 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── Salary Type Choice Screen ──
-  if (isAgencyOwner && !salaryType && hostSalaryAmount !== null && agencySalaryAmount !== null) {
+  // ── Salary Type Choice Screen (agency owner) ──
+  if (allData?.is_agency_owner && !salaryType) {
+    const hs = allData.host_salary;
+    const as_ = allData.agency_salary;
+    const w = allData.withdrawals;
+    const canW = w.can_withdraw;
+
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="px-5 py-8 space-y-6">
+        <div className="px-5 py-6 space-y-5">
           <div className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-1">أي راتب تريد سحبه؟</h2>
-            <p className="text-xs text-muted-foreground">اختر نوع الراتب الذي تريد سحبه</p>
+            <h2 className="text-lg font-bold text-foreground mb-1">اختر نوع الراتب</h2>
+            <p className="text-xs text-muted-foreground">سحبت {w.count} من {w.max} هذا الشهر</p>
           </div>
 
+          {/* Can't withdraw banner */}
+          {!canW && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center space-y-2">
+              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
+              <p className="text-sm font-bold text-foreground">✅ تم صرف جميع الرواتب لهذا الشهر</p>
+              <p className="text-xs text-muted-foreground">سحبت: {w.count} من {w.max}</p>
+            </motion.div>
+          )}
+
+          {/* Agency card */}
           <motion.button
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            onClick={() => handleChooseSalaryType("agency")}
-            className="w-full text-right glass-card rounded-2xl p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98] space-y-3"
+            onClick={() => canW && as_.has_salary && handleChooseSalaryType("agency")}
+            disabled={!canW || !as_.has_salary}
+            className={cn(
+              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
+              canW && as_.has_salary
+                ? "border-amber-500/20 hover:border-amber-500/40 active:scale-[0.98]"
+                : "border-border/10 opacity-60"
+            )}
           >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
                 <Landmark className="w-6 h-6 text-amber-400" />
               </div>
               <div>
-                <p className="text-sm font-bold text-foreground">راتب الوكالة</p>
-                <p className="text-[11px] text-muted-foreground">نسبتك من أرباح الوكالة{agencySalaryName ? ` — ${agencySalaryName}` : ""}</p>
+                <p className="text-sm font-bold text-foreground">راتب الوكالة{as_.agency_name ? ` — ${as_.agency_name}` : ""}</p>
+                {as_.has_salary ? (
+                  <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-amber-400" dir="ltr">${w.remaining_agency.toFixed(2)}</span></p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب وكالة</p>
+                )}
               </div>
             </div>
-            <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
-              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
-              <span className="text-xl font-black text-amber-400" dir="ltr">${agencySalaryAmount.toFixed(2)}</span>
-            </div>
+            {as_.has_salary && (
+              <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
+                <span className="text-xs text-muted-foreground">الراتب الكامل</span>
+                <span className="text-lg font-black text-amber-400" dir="ltr">${as_.amount.toFixed(2)}</span>
+              </div>
+            )}
           </motion.button>
 
+          {/* Host card */}
           <motion.button
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            onClick={() => handleChooseSalaryType("host")}
-            className="w-full text-right glass-card rounded-2xl p-5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-[0.98] space-y-3"
+            onClick={() => canW && hs.has_salary && handleChooseSalaryType("host")}
+            disabled={!canW || !hs.has_salary}
+            className={cn(
+              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
+              canW && hs.has_salary
+                ? "border-emerald-500/20 hover:border-emerald-500/40 active:scale-[0.98]"
+                : "border-border/10 opacity-60"
+            )}
           >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
@@ -468,14 +503,23 @@ const SalaryWithdraw: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-bold text-foreground">راتبي كمضيف</p>
-                <p className="text-[11px] text-muted-foreground">راتبك الشخصي من الاستضافة</p>
+                {hs.has_salary ? (
+                  <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-emerald-400" dir="ltr">${w.remaining_host.toFixed(2)}</span></p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب</p>
+                )}
               </div>
             </div>
-            <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
-              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
-              <span className="text-xl font-black text-emerald-400" dir="ltr">${hostSalaryAmount.toFixed(2)}</span>
-            </div>
+            {hs.has_salary && (
+              <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
+                <span className="text-xs text-muted-foreground">الصافي</span>
+                <span className="text-lg font-black text-emerald-400" dir="ltr">${hs.net.toFixed(2)}</span>
+              </div>
+            )}
           </motion.button>
+
+          {/* Always show previous requests */}
+          <SalaryRequestsHistory userUuid={user.uuid} />
         </div>
       </MobileLayout>
     );
