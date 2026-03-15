@@ -10,7 +10,7 @@ import {
   Loader2, Eye, EyeOff, Upload, Wallet,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift, Users,
-  ArrowRight, Bell, ScrollText, Hash, Crown,
+  ArrowRight, Bell, ScrollText, Hash, Crown, Banknote,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,8 +34,9 @@ import AdminBannerManager from "@/components/AdminBannerManager";
 import { Settings, ImageIcon } from "lucide-react";
 import TicketRepliesSection from "@/components/TicketRepliesSection";
 import AdminAgencyManager from "@/components/AdminAgencyManager";
+import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | null;
+type Tab = "videos" | "salary" | "salary_withdraw" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | null;
 
 
 interface VideoTutorial {
@@ -845,6 +846,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-7 h-7" />, color: "from-slate-500/20 to-slate-600/10 text-slate-400" },
     { key: "banners", label: "بنرات", icon: <ImageIcon className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400" },
     { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
+    { key: "salary_withdraw", label: "سحب الرواتب", icon: <Banknote className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400" },
     ...((adminRole === "super_admin" || adminRole === "admin") ? [
       { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400" },
     ] : []),
@@ -2481,6 +2483,13 @@ const AdminDashboardPage: React.FC = () => {
             {activeTab === "agencies" && (
               <motion.div key="agencies" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <AdminAgencyManager canAct={canAct} />
+              </motion.div>
+            )}
+
+            {/* Salary Withdraw Tab */}
+            {activeTab === "salary_withdraw" && (
+              <motion.div key="salary_withdraw" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AdminSalaryWithdrawManager canAct={canAct} />
               </motion.div>
             )}
           </AnimatePresence>
