@@ -129,7 +129,7 @@ const AgentDashboard: React.FC = () => {
             </div>
             <div className="glass-card rounded-2xl p-3 text-center">
               <Clock className="w-4 h-4 text-purple-400 mx-auto mb-1" />
-              <p className="text-sm font-bold text-foreground">{data?.last_charge_time || "--:--"}</p>
+              <p className="text-sm font-bold text-foreground">{data?.last_charge ? data.last_charge.split(" ")[1]?.slice(0, 5) : "لا يوجد"}</p>
               <p className="text-[9px] text-muted-foreground">آخر شحنة</p>
             </div>
           </div>
