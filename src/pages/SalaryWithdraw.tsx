@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe, CreditCard,
   UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
-  Loader2, Ban, Clock, Copy, Camera,
+  Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ interface SalaryCheckResult {
   max_withdrawals?: number;
   withdraw_open?: boolean;
 }
+
 
 interface VerifyResult {
   verified: boolean;
@@ -125,12 +126,111 @@ const SalaryWithdraw: React.FC = () => {
   const [submitResult, setSubmitResult] = useState<{ success: boolean; request_id?: string; message?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Salary type choice for agency owners
+  const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
+  const [choiceLoading, setChoiceLoading] = useState(false);
+  const [hostSalaryAmount, setHostSalaryAmount] = useState<number | null>(null);
+  const [agencySalaryAmount, setAgencySalaryAmount] = useState<number | null>(null);
+  const [agencySalaryName, setAgencySalaryName] = useState("");
+  const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
+
   const token = localStorage.getItem("gala_session_key") || "";
+
+  // Check if user is an agency owner (type_user 2, 4, 6)
+  const isAgencyOwner = user ? [2, 4, 6].includes(user.type_user) : false;
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
-    checkSalary();
+    if (isAgencyOwner) {
+      // Fetch both salary types
+      fetchBothSalaries();
+    } else {
+      checkSalary();
+    }
   }, [user]);
+
+  const fetchBothSalaries = async () => {
+    setChoiceLoading(true);
+    try {
+      const [hostRes, agencyRes] = await Promise.all([
+        fetch(`${API}?action=salary_check&token=${token}&uuid=${user!.uuid}`),
+        fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`),
+      ]);
+      const hostData = await hostRes.json();
+      const agencyData = await agencyRes.json();
+
+      const hasHost = hostData.success && hostData.has_salary;
+      const hasAgency = agencyData.has_salary;
+
+      if (hasHost) setHostSalaryAmount(hostData.net || 0);
+      if (hasAgency) {
+        setAgencySalaryAmount(agencyData.amount || 0);
+        setAgencySalaryName(agencyData.agency_name || "");
+      }
+
+      if (!hasHost && !hasAgency) {
+        setNoSalaryAtAll(true);
+      } else if (hasHost && !hasAgency) {
+        // Only host salary — go directly
+        setSalaryType("host");
+        setCheckResult(hostData);
+        if (!hostData.is_suspicious && hostData.withdraw_open !== false &&
+            (hostData.withdrawals_this_month || 0) < (hostData.max_withdrawals || 1)) {
+          setStep(1);
+        }
+      } else if (!hasHost && hasAgency) {
+        // Only agency salary — go directly
+        setSalaryType("agency");
+        // Will need to re-check with agency endpoint
+        await checkAgencySalary();
+      }
+      // else: both available — show choice screen
+    } catch {
+      setError("فشل الاتصال بالخادم");
+    } finally {
+      setChoiceLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleChooseSalaryType = async (type: "host" | "agency") => {
+    setSalaryType(type);
+    setLoading(true);
+    if (type === "host") {
+      await checkSalary();
+    } else {
+      await checkAgencySalary();
+    }
+  };
+
+  const checkAgencySalary = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`);
+      const data = await res.json();
+      if (data.has_salary) {
+        setCheckResult({
+          success: true,
+          has_salary: true,
+          salary: data.amount || 0,
+          deduction: 0,
+          net: data.amount || 0,
+          user_type: "agent",
+          withdraw_open: true,
+          withdrawals_this_month: 0,
+          max_withdrawals: 1,
+        });
+        setStep(1);
+      } else {
+        setCheckResult({ success: true, has_salary: false, reason: "no_agency_salary" });
+      }
+    } catch {
+      setError("فشل الاتصال بالخادم");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const checkSalary = async () => {
     setLoading(true);
@@ -208,10 +308,11 @@ const SalaryWithdraw: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "salary_withdraw",
+          action: salaryType === "agency" ? "agency_salary_withdraw" : "salary_withdraw",
           token,
           uuid: user.uuid,
           amount: checkResult?.net || 0,
+          salary_type: salaryType || "host",
           country: selectedCountry,
           bank: selectedBank,
           account_name: recipientName,
@@ -236,8 +337,8 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  // ── STEP 0: Loading ──
-  if (loading) {
+  // ── Choice Loading ──
+  if (choiceLoading || loading) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -248,19 +349,115 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
+  // ── No Salary At All (for agency owners who have neither) ──
+  if (noSalaryAtAll) {
+    return (
+      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+          <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
+            <Frown className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-3">للأسف ليس لديك أي راتب</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+            لم يتم العثور على راتب مستحق لحسابك هذا الشهر.
+            <br />
+            إذا كنت تعتقد أن هذا خطأ، تواصل مع خدمة العملاء.
+          </p>
+          <div className="space-y-3 w-full max-w-xs">
+            <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">
+              تواصل مع الدعم
+            </Button>
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
+              الرجوع
+            </Button>
+          </div>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // ── Salary Type Choice Screen (for agency owners with both salaries) ──
+  if (isAgencyOwner && !salaryType && hostSalaryAmount !== null && agencySalaryAmount !== null) {
+    return (
+      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+        <div className="px-5 py-8 space-y-6">
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-foreground mb-1">أي راتب تريد سحبه؟</h2>
+            <p className="text-xs text-muted-foreground">اختر نوع الراتب الذي تريد سحبه</p>
+          </div>
+
+          {/* Agency Salary Card */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            onClick={() => handleChooseSalaryType("agency")}
+            className="w-full text-right glass-card rounded-2xl p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98] space-y-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                <Landmark className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">راتب الوكالة</p>
+                <p className="text-[11px] text-muted-foreground">نسبتك من أرباح الوكالة{agencySalaryName ? ` — ${agencySalaryName}` : ""}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
+              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
+              <span className="text-xl font-black text-amber-400" dir="ltr">${agencySalaryAmount.toFixed(2)}</span>
+            </div>
+          </motion.button>
+
+          {/* Host Salary Card */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            onClick={() => handleChooseSalaryType("host")}
+            className="w-full text-right glass-card rounded-2xl p-5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-[0.98] space-y-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                <User className="w-6 h-6 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">راتبي كمضيف</p>
+                <p className="text-[11px] text-muted-foreground">راتبك الشخصي من الاستضافة</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
+              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
+              <span className="text-xl font-black text-emerald-400" dir="ltr">${hostSalaryAmount.toFixed(2)}</span>
+            </div>
+          </motion.button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   // No salary
   if (checkResult && !checkResult.has_salary) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
-            <AlertCircle className="w-8 h-8 text-amber-400" />
+          <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
+            <Frown className="w-10 h-10 text-muted-foreground" />
           </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">لا يوجد راتب</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            {checkResult.reason === "not_in_agency" ? "أنت لست مسجل في وكالة" : "ليس لديك راتب هذا الشهر"}
+          <h2 className="text-xl font-bold text-foreground mb-3">للأسف ليس لديك أي راتب</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+            {checkResult.reason === "not_in_agency" ? "أنت لست مسجل في وكالة" : "لم يتم العثور على راتب مستحق لحسابك هذا الشهر."}
+            <br />
+            إذا كنت تعتقد أن هذا خطأ، تواصل مع خدمة العملاء.
           </p>
-          <Button onClick={() => navigate("/dashboard")} className="gold-gradient text-primary-foreground font-bold px-8">الرئيسية</Button>
+          <div className="space-y-3 w-full max-w-xs">
+            <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">
+              تواصل مع الدعم
+            </Button>
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
+              الرجوع
+            </Button>
+          </div>
         </div>
       </MobileLayout>
     );
