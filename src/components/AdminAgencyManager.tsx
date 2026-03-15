@@ -359,6 +359,17 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
               </button>
             </div>
 
+            {createForm.tier === "custom" && (
+              <Input
+                placeholder="عدد الكوينز"
+                type="number"
+                value={createForm.custom_coins}
+                onChange={e => setCreateForm({ ...createForm, custom_coins: e.target.value })}
+                dir="ltr"
+                className="bg-muted/20 border-border/30"
+              />
+            )}
+
             <Button
               onClick={handleCreate}
               disabled={createLoading}
