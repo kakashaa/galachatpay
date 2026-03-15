@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -19,22 +18,23 @@ const AdminLogin: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("admin-manage", {
-        body: { username: username.trim().toLowerCase(), password, action: "auth_check", data: {} },
+      const res = await fetch("https://galachat.site/admin-panel-api.php?action=login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
       });
-      if (fnError || !data?.data) {
+      const data = await res.json();
+      if (!data.success) {
         setError("بيانات الدخول غير صحيحة");
         setLoading(false);
         return;
       }
-      // Store only username and role - never store passwords
-      sessionStorage.setItem("admin_username", username.trim());
-      sessionStorage.setItem("admin_role", data.data.role);
-      if (data.data.permissions) {
-        sessionStorage.setItem("admin_permissions", JSON.stringify(data.data.permissions));
+      sessionStorage.setItem("admin_username", data.username || username.trim());
+      sessionStorage.setItem("admin_role", data.role || "admin");
+      if (data.permissions) {
+        sessionStorage.setItem("admin_permissions", JSON.stringify(data.permissions));
       }
-      // Generate a session token from the function response
-      sessionStorage.setItem("admin_session_token", data.data.session_token || Date.now().toString());
+      sessionStorage.setItem("admin_session_token", data.token || Date.now().toString());
       navigate("/admin/dashboard", { replace: true });
     } catch {
       setError("حدث خطأ. حاول مرة أخرى.");

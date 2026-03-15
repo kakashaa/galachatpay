@@ -369,12 +369,21 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const adminCall = async (action: string, data: any = {}) => {
-    const { data: result, error } = await supabase.functions.invoke("admin-manage", {
-      body: { username: adminUsername, session_token: adminSessionToken, action, data },
-    });
-    if (error) throw error;
+    const token = adminSessionToken;
+    if (Object.keys(data).length > 0) {
+      const res = await fetch(`https://galachat.site/admin-panel-api.php?action=${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, token }),
+      });
+      const result = await res.json();
+      if (result?.error) throw new Error(result.error);
+      return result?.data ?? result;
+    }
+    const res = await fetch(`https://galachat.site/admin-panel-api.php?action=${action}&token=${token}`);
+    const result = await res.json();
     if (result?.error) throw new Error(result.error);
-    return result?.data;
+    return result?.data ?? result;
   };
 
   const uploadFile = async (file: File) => {
