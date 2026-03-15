@@ -5,17 +5,27 @@ import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { toast } from "sonner";
 
-import { COUNTRIES, COINS_PER_DOLLAR } from "@/lib/constants";
+import { COINS_PER_DOLLAR } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 const AGENT_API = "https://galachat.site/project-z/api.php";
 const COINS_PER_USD = COINS_PER_DOLLAR;
 
-// Build flat payment methods from COUNTRIES + agent option
-const paymentMethods = [
-  ...COUNTRIES.flatMap(c =>
-    c.banks.map(b => ({ id: b.id, label: b.label, country: c.name, countryId: c.id }))
-  ),
-  { id: "agent", label: "حساب الوكيل", country: "الفلوس عندي", countryId: "agent" },
+const AGENT_PAYMENT_METHODS = [
+  { id: "rajhi", label: "بنك الراجحي", country: "السعودية", color: "from-emerald-600/20 to-emerald-700/10 border-emerald-500/20" },
+  { id: "sa_other", label: "حوالة أخرى", country: "السعودية", color: "from-emerald-500/10 to-emerald-600/10 border-emerald-400/20" },
+  { id: "jeeppay", label: "جيب (JeepPay)", country: "اليمن", color: "from-blue-600/20 to-blue-700/10 border-blue-500/20" },
+  { id: "kuraimi", label: "كريمي", country: "اليمن", color: "from-blue-500/20 to-blue-600/10 border-blue-400/20" },
+  { id: "ye_other", label: "حوالة أخرى", country: "اليمن", color: "from-blue-400/10 to-blue-500/10 border-blue-300/20" },
+  { id: "cashapp", label: "Cash App", country: "أمريكا", color: "from-green-600/20 to-green-700/10 border-green-500/20" },
+  { id: "zelle", label: "Zelle", country: "أمريكا", color: "from-violet-600/20 to-violet-700/10 border-violet-500/20" },
+  { id: "agent", label: "حساب الوكيل", country: "الفلوس عندي", color: "from-gray-600/20 to-gray-700/10 border-gray-500/20" },
+];
+
+const COUNTRY_GROUPS = [
+  { name: "السعودية", ids: ["rajhi", "sa_other"] },
+  { name: "اليمن", ids: ["jeeppay", "kuraimi", "ye_other"] },
+  { name: "أمريكا", ids: ["cashapp", "zelle"] },
 ];
 
 const AgentCharge: React.FC = () => {
