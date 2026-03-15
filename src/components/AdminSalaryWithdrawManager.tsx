@@ -152,6 +152,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           screenshot: r.screenshot || "",
           approved_at: r.approved_at || null,
           rejected_at: r.rejected_at || null,
+          reference_id: r.reference_id || null,
+          transferred_usd: r.transferred_usd || null,
+          approved_amount: r.approved_amount || null,
+          salary_type: r.salary_type || "host",
         }));
         const enriched = await enrichWithAvatars(rawRequests);
         setRequests(enriched);
