@@ -259,7 +259,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                               {/* Bank + Date */}
                               <div className="flex items-center justify-between">
                                 <span className={`text-[10px] px-2 py-1 rounded-lg ${bankColor.bg} ${bankColor.text} border ${bankColor.border} font-bold`}>
-                                  {COUNTRY_FLAGS[txn.country] || ""} {txn.bank}
+                                  {txn.bank}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground font-mono">
                                   {txn.created_at ? new Date(txn.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"}
