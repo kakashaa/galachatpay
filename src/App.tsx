@@ -47,6 +47,14 @@ const BanCheckPage = lazy(() => import("./pages/BanCheckPage"));
 const CustomWaresRequest = lazy(() => import("./pages/CustomWaresRequest"));
 const MyWaresRequests = lazy(() => import("./pages/MyWaresRequests"));
 
+// Agent pages
+const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
+const AgentSetup = lazy(() => import("./pages/agent/AgentSetup"));
+const AgentDashboard = lazy(() => import("./pages/agent/AgentDashboard"));
+const AgentCharge = lazy(() => import("./pages/agent/AgentCharge"));
+const AgentHistory = lazy(() => import("./pages/agent/AgentHistory"));
+const AgentStats = lazy(() => import("./pages/agent/AgentStats"));
+
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
