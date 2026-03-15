@@ -1,10 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Wallet, TrendingUp, Hash, Clock, RefreshCw } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
+import { BANK_LABELS } from "@/lib/constants";
 
 const AGENT_API = "https://galachat.site/project-z/api.php";
+
+interface Transaction {
+  id: string;
+  user_name: string;
+  uuid?: string;
+  user_uuid?: string;
+  amount_usd: number;
+  coins: number;
+  bank: string;
+  time: string;
+  avatar?: string;
+}
 
 interface DashboardData {
   agency_id: string;
@@ -16,14 +30,7 @@ interface DashboardData {
   today_count: number;
   last_charge: string;
   bonus_percent: number;
-  recent_transactions: Array<{
-    id: string;
-    user_name: string;
-    amount_usd: number;
-    coins: number;
-    bank: string;
-    time: string;
-  }>;
+  recent_transactions: Transaction[];
 }
 
 const AgentDashboard: React.FC = () => {
@@ -32,6 +39,7 @@ const AgentDashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [animatedBalance, setAnimatedBalance] = useState(0);
+  const [enrichedTxs, setEnrichedTxs] = useState<Transaction[]>([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -39,6 +47,19 @@ const AgentDashboard: React.FC = () => {
       const json = await res.json();
       if (json.success) {
         setData(json);
+        // Enrich transactions with avatars
+        const txs: Transaction[] = (json.recent_transactions || []).slice(0, 5);
+        setEnrichedTxs(txs);
+        // Fetch avatars in background
+        Promise.all(
+          txs.map(async (tx) => {
+            try {
+              const r = await fetch(`${AGENT_API}?action=agent_lookup_user&token=${token}&uuid=${tx.uuid || tx.user_uuid}`);
+              const d = await r.json();
+              return { ...tx, avatar: d.avatar || "" };
+            } catch { return { ...tx, avatar: "" }; }
+          })
+        ).then(setEnrichedTxs);
       }
     } catch { /* silent */ }
     setLoading(false);
@@ -93,7 +114,11 @@ const AgentDashboard: React.FC = () => {
 
         <main className="px-4 space-y-4">
           {/* Balance Card */}
-          <div className="glass-card rounded-3xl p-5 border border-amber-500/20">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card rounded-3xl p-5 border border-amber-500/20"
+          >
             <div className="flex items-center gap-2 mb-3">
               <Wallet className="w-5 h-5 text-amber-400" />
               <span className="text-sm font-bold text-amber-400">رصيد الوكالة</span>
@@ -107,16 +132,50 @@ const AgentDashboard: React.FC = () => {
               )}
             </div>
             <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-2">
-              <div
-                className={`h-full bg-gradient-to-l ${barColor} rounded-full transition-all duration-1000`}
-                style={{ width: `${balancePercent}%` }}
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${balancePercent}%` }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+                className={`h-full bg-gradient-to-l ${barColor} rounded-full`}
               />
             </div>
             <p className="text-[10px] text-muted-foreground text-center mt-1">{Math.round(balancePercent)}% متبقي</p>
-          </div>
+          </motion.div>
+
+          {/* Wallet Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-2xl p-4"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Wallet className="w-5 h-5 text-amber-400" />
+              <h3 className="text-sm font-bold text-amber-400">محفظة الوكيل</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-black/20 rounded-xl p-2">
+                <p className="text-lg font-bold font-mono text-foreground" dir="ltr">${data?.today_charges || 0}</p>
+                <p className="text-[9px] text-muted-foreground">شحنات اليوم</p>
+              </div>
+              <div className="bg-black/20 rounded-xl p-2">
+                <p className="text-lg font-bold font-mono text-foreground">{data?.today_count || 0}</p>
+                <p className="text-[9px] text-muted-foreground">عدد العمليات</p>
+              </div>
+              <div className="bg-black/20 rounded-xl p-2">
+                <p className="text-lg font-bold font-mono text-foreground">{data?.bonus_percent || 0}%</p>
+                <p className="text-[9px] text-muted-foreground">نسبة البونص</p>
+              </div>
+            </div>
+          </motion.div>
 
           {/* Today Stats */}
-          <div className="grid grid-cols-3 gap-3">
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="grid grid-cols-3 gap-3"
+          >
             <div className="glass-card rounded-2xl p-3 text-center">
               <TrendingUp className="w-4 h-4 text-green-400 mx-auto mb-1" />
               <p className="text-lg font-black text-foreground" dir="ltr">${data?.today_charges || 0}</p>
@@ -132,16 +191,19 @@ const AgentDashboard: React.FC = () => {
               <p className="text-sm font-bold text-foreground">{data?.last_charge ? data.last_charge.split(" ")[1]?.slice(0, 5) : "لا يوجد"}</p>
               <p className="text-[9px] text-muted-foreground">آخر شحنة</p>
             </div>
-          </div>
+          </motion.div>
 
           {/* Charge Button */}
-          <button
+          <motion.button
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
             onClick={() => navigate("/agent/charge")}
             className="w-full h-16 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-xl shadow-lg shadow-amber-500/25 active:scale-[0.97] transition-all animate-pulse-glow flex items-center justify-center gap-3"
           >
             <Wallet className="w-6 h-6" />
             شحن جديد
-          </button>
+          </motion.button>
 
           {/* Recent Transactions */}
           <div>
@@ -149,23 +211,42 @@ const AgentDashboard: React.FC = () => {
               <button onClick={() => navigate("/agent/history")} className="text-xs text-amber-400 font-bold">عرض الكل</button>
               <h3 className="text-sm font-bold text-foreground">آخر العمليات</h3>
             </div>
-            {(!data?.recent_transactions || data.recent_transactions.length === 0) ? (
+            {enrichedTxs.length === 0 ? (
               <div className="glass-card rounded-2xl p-6 text-center">
                 <p className="text-sm text-muted-foreground">لا توجد عمليات حتى الآن</p>
               </div>
             ) : (
               <div className="space-y-2">
-                {data.recent_transactions.slice(0, 5).map((tx) => (
-                  <div key={tx.id} className="glass-card rounded-2xl p-3 flex items-center justify-between">
-                    <div className="text-left" dir="ltr">
-                      <p className="text-sm font-bold text-green-400">${tx.amount_usd}</p>
-                      <p className="text-[10px] text-muted-foreground">{tx.time}</p>
+                {enrichedTxs.map((tx, i) => (
+                  <motion.div
+                    key={tx.id || i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 + i * 0.05 }}
+                    className="bg-white/5 rounded-xl p-3 flex items-center gap-3"
+                  >
+                    {tx.avatar ? (
+                      <img
+                        src={tx.avatar}
+                        className="w-10 h-10 rounded-full object-cover border border-white/10"
+                        alt=""
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/10 flex items-center justify-center text-amber-400 font-bold text-sm">
+                        {tx.user_name?.charAt(0)?.toUpperCase() || "?"}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{tx.user_name}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">UUID: {tx.uuid || tx.user_uuid || "—"}</p>
+                      <p className="text-[10px] text-muted-foreground">{BANK_LABELS[tx.bank] || tx.bank} · {tx.time}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-foreground">{tx.user_name}</p>
-                      <p className="text-[10px] text-muted-foreground">{tx.bank}</p>
+                    <div className="text-left shrink-0">
+                      <p className="text-sm font-bold font-mono text-amber-400" dir="ltr">${tx.amount_usd}</p>
+                      {tx.coins > 0 && <p className="text-[9px] text-muted-foreground font-mono">{tx.coins.toLocaleString()} كوينز</p>}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
