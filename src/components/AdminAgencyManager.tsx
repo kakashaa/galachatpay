@@ -113,7 +113,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     a.agency_id?.includes(search)
   );
 
-  const getSelectedTier = (tierLabel: string) => TIERS.find(t => t.label === tierLabel);
+  const getSelectedTier = (tierLabel: string) => AGENCY_TIERS.find(t => t.label === tierLabel);
 
   const handleCreate = async () => {
     if (!createForm.name || !createForm.username || !createForm.agency_id) {
