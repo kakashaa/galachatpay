@@ -2580,7 +2580,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* ID Changes Tab */}
             {activeTab === "id_changes" && (
-              <motion.div key="id_changes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="id_changes" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {idChanges.length === 0 ? (
                   <div className="text-center py-10 text-muted-foreground">
                     <Hash className="w-10 h-10 mx-auto mb-2 opacity-50" />
