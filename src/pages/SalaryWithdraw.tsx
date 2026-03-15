@@ -440,14 +440,23 @@ const SalaryWithdraw: React.FC = () => {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
-            <AlertCircle className="w-8 h-8 text-amber-400" />
+          <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
+            <Frown className="w-10 h-10 text-muted-foreground" />
           </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">لا يوجد راتب</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            {checkResult.reason === "not_in_agency" ? "أنت لست مسجل في وكالة" : "ليس لديك راتب هذا الشهر"}
+          <h2 className="text-xl font-bold text-foreground mb-3">للأسف ليس لديك أي راتب</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+            {checkResult.reason === "not_in_agency" ? "أنت لست مسجل في وكالة" : "لم يتم العثور على راتب مستحق لحسابك هذا الشهر."}
+            <br />
+            إذا كنت تعتقد أن هذا خطأ، تواصل مع خدمة العملاء.
           </p>
-          <Button onClick={() => navigate("/dashboard")} className="gold-gradient text-primary-foreground font-bold px-8">الرئيسية</Button>
+          <div className="space-y-3 w-full max-w-xs">
+            <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">
+              تواصل مع الدعم
+            </Button>
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
+              الرجوع
+            </Button>
+          </div>
         </div>
       </MobileLayout>
     );
