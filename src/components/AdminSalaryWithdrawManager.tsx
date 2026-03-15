@@ -391,12 +391,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
               <button onClick={() => setExpanded(expanded === req.id ? null : req.id)}
                 className="w-full flex items-center justify-between p-3.5 text-right">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <img
-                    src={req.avatar || avatarMale}
-                    alt={req.user_name}
-                    className="w-10 h-10 rounded-xl object-cover shrink-0 border border-white/10"
-                    onError={(e) => { (e.target as HTMLImageElement).src = avatarMale; }}
-                  />
+                  <AvatarCircle src={req.avatar} name={req.user_name || req.account_name} />
                   <div className="min-w-0 space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-foreground">{req.user_name}</span>
