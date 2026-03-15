@@ -6,8 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Loader2, Plus, X, Save, Search,
   Snowflake, Play, DollarSign, Phone, Clock,
-  ChevronDown, ChevronUp, Receipt, Wallet, Eye,
+  ChevronDown, ChevronUp, Receipt, Wallet, Eye, Pencil, AlertTriangle,
 } from "lucide-react";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import AgencyDetailsSheet from "./AgencyDetailsSheet";
 
 const ADMIN_API = "https://galachat.site/project-z/api.php";
@@ -71,6 +74,11 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
 
   // Toggle loading
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
+
+  // Edit agency
+  const [editAgency, setEditAgency] = useState<Agency | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", new_password: "", transfer_to_uuid: "" });
+  const [editLoading, setEditLoading] = useState(false);
 
   const adminToken = sessionStorage.getItem("admin_session_token");
 
@@ -196,6 +204,43 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     } finally {
       setToggleLoading(null);
     }
+  };
+
+  const handleEditAgency = async () => {
+    if (!editAgency) return;
+    const body: Record<string, string> = { admin_key: "ghala2026owner", username: editAgency.username };
+    if (editForm.name.trim()) body.name = editForm.name.trim();
+    if (editForm.phone.trim()) body.phone = editForm.phone.trim();
+    if (editForm.new_password.trim()) body.new_password = editForm.new_password.trim();
+    if (editForm.transfer_to_uuid.trim()) body.transfer_to_uuid = editForm.transfer_to_uuid.trim();
+
+    if (Object.keys(body).length <= 2) { toast.error("لم يتم تعديل أي بيانات"); return; }
+
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${ADMIN_API}?action=agency_update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("تم تحديث بيانات الوكالة");
+        setEditAgency(null);
+        fetchAgencies();
+      } else {
+        toast.error(data.message || data.error || "فشل التحديث");
+      }
+    } catch {
+      toast.error("خطأ في الاتصال");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const openEditSheet = (agency: Agency) => {
+    setEditForm({ name: agency.name, phone: agency.phone || "", new_password: "", transfer_to_uuid: "" });
+    setEditAgency(agency);
   };
 
   if (loading) {
@@ -476,6 +521,13 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                     </button>
                     <div className="w-px bg-white/5" />
                     <button
+                      onClick={() => openEditSheet(agency)}
+                      className="flex-1 py-3 text-[11px] font-bold text-orange-400 hover:bg-orange-500/5 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> تعديل
+                    </button>
+                    <div className="w-px bg-white/5" />
+                    <button
                       onClick={() => setDetailsAgency(agency)}
                       className="flex-1 py-3 text-[11px] font-bold text-violet-400 hover:bg-violet-500/5 transition-colors flex items-center justify-center gap-1.5"
                     >
@@ -565,6 +617,68 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
         open={!!detailsAgency}
         onClose={() => setDetailsAgency(null)}
       />
+
+      {/* Edit Agency Sheet */}
+      <Sheet open={!!editAgency} onOpenChange={() => setEditAgency(null)}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/5">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <Pencil className="w-5 h-5 text-orange-400" /> تعديل بيانات الوكالة
+            </SheetTitle>
+          </SheetHeader>
+          {editAgency && (
+            <div className="space-y-4 pt-4">
+              <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 text-xs">
+                <p className="text-muted-foreground mb-0.5">اسم المستخدم (لا يتغير)</p>
+                <p className="text-sm font-bold text-foreground font-mono">@{editAgency.username}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">اسم الوكيل</label>
+                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="الاسم الجديد" className="bg-white/5 border-white/10 rounded-xl" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">رقم الواتساب</label>
+                <Input value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                  placeholder="+967..." dir="ltr" className="bg-white/5 border-white/10 rounded-xl" />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">إعادة تعيين كلمة المرور</label>
+                <Input value={editForm.new_password} onChange={e => setEditForm({ ...editForm, new_password: e.target.value })}
+                  placeholder="كلمة مرور جديدة" type="password" dir="ltr" className="bg-white/5 border-white/10 rounded-xl" />
+                {editForm.new_password && (
+                  <p className="text-[10px] text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> الوكيل سيضطر لتغييرها عند الدخول
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">نقل الوكالة لشخص آخر</label>
+                <Input value={editForm.transfer_to_uuid} onChange={e => setEditForm({ ...editForm, transfer_to_uuid: e.target.value })}
+                  placeholder="UUID الشخص الجديد" dir="ltr" className="bg-white/5 border-white/10 rounded-xl" />
+                {editForm.transfer_to_uuid && (
+                  <p className="text-[10px] text-red-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> سيتم نقل كل البيانات والرصيد للشخص الجديد
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditAgency(null)}
+                  className="flex-1 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all duration-200">إلغاء</button>
+                <Button onClick={handleEditAgency} disabled={editLoading}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all">
+                  {editLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-4 h-4 ml-1.5" /> حفظ التعديلات</>}
+                </Button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
