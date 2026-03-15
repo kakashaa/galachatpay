@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 import SalaryHistory from "@/components/SalaryHistory";
+import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 

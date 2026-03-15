@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, Clock, XCircle, ChevronLeft, Loader2, FileText, ExternalLink } from "lucide-react";
+import { motion } from "framer-motion";
+import { CheckCircle, Clock, XCircle, ChevronLeft, Loader2, FileText } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { formatDateAr } from "@/utils/dateFormat";
