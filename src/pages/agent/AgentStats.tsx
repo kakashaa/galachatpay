@@ -225,7 +225,59 @@ const AgentStats: React.FC = () => {
                   <p className="text-xs text-muted-foreground">البونص</p>
                   <p className="text-sm font-black text-green-400">{stats.bonus_percent || 0}%</p>
                 </div>
+                {stats.bonus_usd > 0 && (
+                  <>
+                    <div>
+                      <p className="text-xs text-muted-foreground">بونص $</p>
+                      <p className="text-sm font-black text-emerald-400" dir="ltr">${stats.bonus_usd.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">بونص كوينز</p>
+                      <p className="text-sm font-black text-emerald-400" dir="ltr">{(stats.bonus_coins || 0).toLocaleString()}</p>
+                    </div>
+                  </>
+                )}
+                {stats.total_with_bonus > 0 && (
+                  <div className="col-span-2 border-t border-white/5 pt-2 mt-1">
+                    <p className="text-xs text-muted-foreground">الإجمالي مع البونص</p>
+                    <p className="text-base font-black text-amber-400" dir="ltr">{stats.total_with_bonus.toLocaleString()} كوينز</p>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+
+          {/* Frozen Balance */}
+          {(stats?.total_frozen_coins ?? 0) > 0 && (
+            <div className="glass-card rounded-2xl p-4 animate-fade-in border border-blue-500/20" style={{ animationDelay: "250ms" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Lock className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-bold text-blue-400">الرصيد المجمد</span>
+              </div>
+              <div className="text-center mb-3">
+                <p className="text-2xl font-black text-blue-400" dir="ltr">{(stats?.total_frozen_coins || 0).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground" dir="ltr">= ${((stats?.total_frozen_coins || 0) / 8500).toFixed(2)}</p>
+              </div>
+              {stats?.frozen_agencies && stats.frozen_agencies.length > 0 && (
+                <div className="space-y-2">
+                  {stats.frozen_agencies.map((fa, i) => (
+                    <div key={i} className="bg-white/[0.03] border border-white/5 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-foreground">وكالة #{fa.agency_number}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-bold">{fa.tier}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-[10px] text-muted-foreground">
+                        <div>الإجمالي: <span className="text-foreground font-mono">{(fa.total_coins / 1e6).toFixed(1)}M</span></div>
+                        <div>مشحون: <span className="text-foreground font-mono">{(fa.charged_coins / 1e6).toFixed(1)}M</span></div>
+                        <div>متبقي: <span className="text-blue-400 font-mono font-bold">{(fa.remaining_coins / 1e6).toFixed(1)}M</span></div>
+                      </div>
+                      {fa.start_date && (
+                        <p className="text-[9px] text-muted-foreground mt-1">{fa.start_date} → {fa.end_date || "—"}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
