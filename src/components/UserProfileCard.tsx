@@ -108,7 +108,6 @@ const UserProfileCard: React.FC = () => {
     
     return () => { cancelled = true; };
   }, [user?.uuid]);
-  }, [user?.uuid]);
 
   const handleOpenWallet = (view: "main" | "cashout") => {
     setStarWalletView(view);
