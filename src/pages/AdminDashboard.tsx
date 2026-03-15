@@ -153,16 +153,7 @@ const AdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(null);
   const [activeSection, setActiveSection] = useState<"requests" | "products" | "finance" | "settings" | null>(null);
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
-  const prevTabRef = React.useRef<Tab>(null);
-
-  const handleTabSwitch = (newTab: Exclude<Tab, null>) => {
-    const sectionTabs = currentSectionDef?.tabs || [];
-    const oldIdx = sectionTabs.indexOf(activeTab as any);
-    const newIdx = sectionTabs.indexOf(newTab);
-    setTabDirection(newIdx >= oldIdx ? 1 : -1);
-    prevTabRef.current = activeTab;
-    setActiveTab(newTab);
-  };
+  const tabIndexRef = React.useRef<number>(0);
   const [loading, setLoading] = useState(false);
 
   // Videos state
