@@ -41,6 +41,9 @@ interface VerifyResult {
   amount_usd?: number;
   transferred_usd?: number;
   approved_amount?: number;
+  already_used?: boolean;
+  reference_id?: string;
+  wrong_amount?: boolean;
 }
 
 interface SalaryBank {
