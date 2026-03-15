@@ -568,8 +568,8 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                           onChange={e => setAddBalanceTier(e.target.value)}
                           className="w-full bg-muted/20 border border-border/30 rounded-xl p-2.5 text-sm text-foreground"
                         >
-                          {TIERS.map(t => (
-                            <option key={t.label} value={t.label}>{t.label} — بونص {t.bonus}%</option>
+                          {AGENCY_TIERS.map(t => (
+                            <option key={t.label} value={t.label}>{t.label} — بونص {t.bonusPercent}%</option>
                           ))}
                           <option value="custom">مخصص</option>
                         </select>
@@ -588,13 +588,11 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                             {(() => {
                               const t = getSelectedTier(addBalanceTier);
                               if (!t) return null;
-                              const bonus = Math.floor(t.coins * t.bonus / 100);
-                              const total = t.coins + bonus;
                               return (
                                 <div className="space-y-1">
                                   <div className="flex justify-between"><span className="text-muted-foreground">أساسي:</span><span className="font-mono">{t.coins.toLocaleString()}</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-emerald-400">+{bonus.toLocaleString()}</span></div>
-                                  <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{total.toLocaleString()}</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonusPercent}%):</span><span className="font-mono text-emerald-400">+{t.bonusCoins.toLocaleString()}</span></div>
+                                  <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{t.total.toLocaleString()}</span></div>
                                 </div>
                               );
                             })()}
