@@ -943,29 +943,33 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container bg-background">
+    <div className="mobile-container" style={{ background: "#09090b" }}>
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl border-b border-border px-4 py-3">
+      <header className="sticky top-0 z-20 backdrop-blur-xl border-b border-white/5 px-4 py-3" style={{ background: "rgba(9,9,11,0.92)" }}>
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
             {activeTab ? (
-              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-xl hover:bg-muted transition-colors">
+              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
                 <ArrowRight className="w-5 h-5 text-foreground" />
               </button>
             ) : (
-              <Shield className="w-6 h-6 text-primary" />
+              <Shield className="w-5 h-5 text-primary" />
             )}
-            <h1 className="font-bold text-lg">
-              {activeTab ? tabs.find(t => t.key === activeTab)?.label : "لوحة التحكم"}
-            </h1>
+            <div>
+              <h1 className="font-bold text-lg tracking-tight text-foreground">
+                {activeTab ? tabs.find(t => t.key === activeTab)?.label : "لوحة التحكم"}
+              </h1>
+              {!activeTab && (
+                <p className="text-[10px] text-muted-foreground">مرحباً، {adminUsername}</p>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground font-mono">{adminUsername}</span>
+          <div className="flex items-center gap-2">
             {adminRole === "super_admin" && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">رئيسي</span>
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">رئيسي</span>
             )}
-            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-muted transition-colors">
-              <LogOut className="w-5 h-5 text-muted-foreground" />
+            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
+              <LogOut className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
         </div>
@@ -973,74 +977,54 @@ const AdminDashboardPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto min-h-0">
       {/* Home Grid */}
       {!activeTab && (
-        <div className="max-w-2xl mx-auto p-4 space-y-6">
-          {/* Statistics Cards - Clickable */}
+        <div className="max-w-2xl mx-auto p-4 space-y-5">
+          {/* Statistics Cards */}
           <div className="grid grid-cols-3 gap-3" dir="rtl">
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => { setAllRequestsFilter("pending"); setActiveTab("all_requests"); }}
-              className="p-4 rounded-2xl border border-orange-500/30 bg-card/50 backdrop-blur-sm hover:border-orange-500/60 transition-all cursor-pointer"
-            >
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-1">معلقة</div>
-                <div className="text-3xl font-bold text-orange-500">{stats.pending}</div>
-              </div>
-            </motion.button>
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => { setAllRequestsFilter("approved"); setActiveTab("all_requests"); }}
-              className="p-4 rounded-2xl border border-green-500/30 bg-card/50 backdrop-blur-sm hover:border-green-500/60 transition-all cursor-pointer"
-            >
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-1">مقبولة</div>
-                <div className="text-3xl font-bold text-green-500">{stats.approved}</div>
-              </div>
-            </motion.button>
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => { setAllRequestsFilter("rejected"); setActiveTab("all_requests"); }}
-              className="p-4 rounded-2xl border border-red-500/30 bg-card/50 backdrop-blur-sm hover:border-red-500/60 transition-all cursor-pointer"
-            >
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-1">مرفوضة</div>
-                <div className="text-3xl font-bold text-red-500">{stats.rejected}</div>
-              </div>
-            </motion.button>
+            {[
+              { label: "معلقة", value: stats.pending, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5", onClick: () => { setAllRequestsFilter("pending"); setActiveTab("all_requests"); } },
+              { label: "مقبولة", value: stats.approved, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5", onClick: () => { setAllRequestsFilter("approved"); setActiveTab("all_requests"); } },
+              { label: "مرفوضة", value: stats.rejected, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5", onClick: () => { setAllRequestsFilter("rejected"); setActiveTab("all_requests"); } },
+            ].map((card, i) => (
+              <motion.button
+                key={card.label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05, duration: 0.4, ease: "easeOut" }}
+                whileTap={{ scale: 0.97 }}
+                onClick={card.onClick}
+                className={`p-4 rounded-2xl border ${card.border} ${card.bg} backdrop-blur-sm hover:border-white/10 transition-all duration-300 cursor-pointer`}
+              >
+                <p className="text-[10px] text-muted-foreground mb-1">{card.label}</p>
+                <p className={`text-3xl font-bold font-mono tabular-nums ${card.color}`}>{card.value}</p>
+              </motion.button>
+            ))}
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-3 gap-3" dir="rtl">
-            {tabs.map((tab) => (
+          <div className="grid grid-cols-3 gap-2.5" dir="rtl">
+            {tabs.map((tab, i) => (
               <motion.button
                 key={tab.key}
-                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 + 0.15, duration: 0.35, ease: "easeOut" }}
+                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.01, borderColor: "rgba(255,255,255,0.1)" }}
                 onClick={() => setActiveTab(tab.key)}
-                className="relative flex flex-col items-center gap-2.5 p-5 rounded-2xl border border-border/40 bg-card hover:border-primary/30 transition-all"
+                className="relative flex flex-col items-center gap-2 p-4 rounded-2xl border border-white/5 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300"
               >
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center`}>
-                  {tab.icon}
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center`}>
+                  {React.cloneElement(tab.icon as React.ReactElement, { className: "w-6 h-6" })}
                 </div>
-                <span className="text-xs font-bold text-foreground">{tab.label}</span>
+                <span className="text-[10px] font-bold text-foreground">{tab.label}</span>
                 {tab.count && tab.count > 0 ? (
-                  <span className="absolute top-2 left-2 min-w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold px-1">
-                    {tab.count}
-                  </span>
+                  <span className="absolute top-2.5 left-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#09090b]" />
                 ) : null}
               </motion.button>
             ))}
-
           </div>
         </div>
       )}
-
       {/* Content */}
       {activeTab && (
         <div className="max-w-2xl mx-auto p-4">
