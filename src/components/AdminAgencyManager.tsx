@@ -65,7 +65,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   const fetchAgencies = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${ADMIN_API}?action=agency_list&admin_key=ghala2026owner`);
+      const res = await fetch(`${ADMIN_API}?action=agency_list&token=${adminToken}`);
       const data = await res.json();
       if (data.success) {
         setAgencies(data.agencies || []);
@@ -112,7 +112,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          admin_key: "ghala2026owner",
+          token: adminToken,
           username: createForm.username,
           name: createForm.name,
           agency_id: createForm.agency_id,
@@ -149,7 +149,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const res = await fetch(`${ADMIN_API}?action=agency_add_balance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_key: "ghala2026owner", username, coins }),
+        body: JSON.stringify({ token: adminToken, username, coins }),
       });
       const data = await res.json();
       if (data.success) {
@@ -173,7 +173,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const res = await fetch(`${ADMIN_API}?action=agency_toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_key: "ghala2026owner", username }),
+        body: JSON.stringify({ token: adminToken, username }),
       });
       const data = await res.json();
       if (data.success) {
