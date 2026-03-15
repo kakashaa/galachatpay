@@ -123,7 +123,7 @@ const UserProfileCard: React.FC = () => {
   const userAvatar = getAvatarUrl(user.profile?.image || "");
   const avatarSrc = userAvatar || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
 
-  const salaryDisplay = salaryData?.net ?? (user as any)?.agency_salary?.amount_usd ?? 0;
+  
 
   const copyId = () => navigator.clipboard.writeText(user.uuid);
 
