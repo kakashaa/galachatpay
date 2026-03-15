@@ -148,13 +148,13 @@ const AgentStats: React.FC = () => {
             {stats?.by_bank && Object.keys(stats.by_bank).length > 0 ? (
               <div className="space-y-3">
                 {Object.entries(stats.by_bank).map(([bank, amount]) => {
-                  const info = bankLabels[bank] || { label: bank, flag: "💳" };
+                  const label = BANK_LABELS[bank] || bank;
                   const pct = (amount / maxBank) * 100;
                   return (
                     <div key={bank}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-foreground" dir="ltr">${amount.toLocaleString()}</span>
-                        <span className="text-xs text-muted-foreground">{info.flag} {info.label}</span>
+                        <span className="text-xs text-muted-foreground">{label}</span>
                       </div>
                       <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
                         <div className="h-full bg-gradient-to-l from-amber-400 to-amber-500 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />

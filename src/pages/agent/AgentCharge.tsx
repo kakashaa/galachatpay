@@ -324,9 +324,9 @@ const AgentCharge: React.FC = () => {
                     selectedPayment === pm.id ? "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30" : "border-white/10"
                   }`}
                 >
-                  <span className="text-2xl block mb-1">{pm.flag}</span>
+                  <Landmark className="w-6 h-6 text-amber-400 mx-auto mb-1" />
                   <p className="text-sm font-bold text-foreground">{pm.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{pm.desc}</p>
+                  <p className="text-[10px] text-muted-foreground">{pm.country}</p>
                   {selectedPayment === pm.id && <Check className="w-4 h-4 text-amber-400 mx-auto mt-1" />}
                 </button>
               ))}
