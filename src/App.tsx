@@ -118,6 +118,12 @@ const App = () => {
                   <Route path="/ban-check" element={<BanCheckPage />} />
                   <Route path="/custom-wares" element={<CustomWaresRequest />} />
                   <Route path="/my-wares-requests" element={<MyWaresRequests />} />
+                  <Route path="/login/agent" element={<AgentLogin />} />
+                  <Route path="/agent/setup" element={<AgentSetup />} />
+                  <Route path="/agent" element={<AgentDashboard />} />
+                  <Route path="/agent/charge" element={<AgentCharge />} />
+                  <Route path="/agent/history" element={<AgentHistory />} />
+                  <Route path="/agent/stats" element={<AgentStats />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
