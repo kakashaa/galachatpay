@@ -342,13 +342,100 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  // ── STEP 0: Loading ──
-  if (loading) {
+  // ── Choice Loading ──
+  if (choiceLoading || loading) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">جاري التحقق من الراتب...</p>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // ── No Salary At All (for agency owners who have neither) ──
+  if (noSalaryAtAll) {
+    return (
+      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+          <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
+            <Frown className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-3">للأسف ليس لديك أي راتب</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+            لم يتم العثور على راتب مستحق لحسابك هذا الشهر.
+            <br />
+            إذا كنت تعتقد أن هذا خطأ، تواصل مع خدمة العملاء.
+          </p>
+          <div className="space-y-3 w-full max-w-xs">
+            <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">
+              تواصل مع الدعم
+            </Button>
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
+              الرجوع
+            </Button>
+          </div>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // ── Salary Type Choice Screen (for agency owners with both salaries) ──
+  if (isAgencyOwner && !salaryType && hostSalaryAmount !== null && agencySalaryAmount !== null) {
+    return (
+      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+        <div className="px-5 py-8 space-y-6">
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-foreground mb-1">أي راتب تريد سحبه؟</h2>
+            <p className="text-xs text-muted-foreground">اختر نوع الراتب الذي تريد سحبه</p>
+          </div>
+
+          {/* Agency Salary Card */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            onClick={() => handleChooseSalaryType("agency")}
+            className="w-full text-right glass-card rounded-2xl p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98] space-y-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                <Landmark className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">راتب الوكالة</p>
+                <p className="text-[11px] text-muted-foreground">نسبتك من أرباح الوكالة{agencySalaryName ? ` — ${agencySalaryName}` : ""}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
+              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
+              <span className="text-xl font-black text-amber-400" dir="ltr">${agencySalaryAmount.toFixed(2)}</span>
+            </div>
+          </motion.button>
+
+          {/* Host Salary Card */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            onClick={() => handleChooseSalaryType("host")}
+            className="w-full text-right glass-card rounded-2xl p-5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-[0.98] space-y-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                <User className="w-6 h-6 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">راتبي كمضيف</p>
+                <p className="text-[11px] text-muted-foreground">راتبك الشخصي من الاستضافة</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
+              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
+              <span className="text-xl font-black text-emerald-400" dir="ltr">${hostSalaryAmount.toFixed(2)}</span>
+            </div>
+          </motion.button>
         </div>
       </MobileLayout>
     );
