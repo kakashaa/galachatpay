@@ -28,6 +28,7 @@ interface SalaryRequest {
 interface Props {
   userUuid: string;
   onResubmit?: (req: SalaryRequest) => void;
+  onWithdrawnCalculated?: (amount: number) => void;
 }
 
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string }> = {
