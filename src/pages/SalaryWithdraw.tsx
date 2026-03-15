@@ -859,51 +859,82 @@ const SalaryWithdraw: React.FC = () => {
                   <Globe className="w-4 h-4 text-primary" /> وين تبي نحوّل لك؟
                 </h3>
                 <div className="space-y-2">
-                  {SALARY_COUNTRIES.map(c => (
-                    <div key={c.id}>
-                      <button
-                        onClick={() => {
-                          setSelectedCountry(selectedCountry === c.id ? "" : c.id);
-                          setSelectedBank("");
-                          setCustomBankName("");
-                        }}
-                        className="w-full flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/30 hover:bg-muted/30 transition-colors"
-                      >
-                        <span className="text-sm font-bold text-foreground">{c.name}</span>
-                        <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", selectedCountry === c.id && "rotate-180")} />
-                      </button>
-                      {selectedCountry === c.id && (
-                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="grid grid-cols-2 gap-2 mt-2 pr-3">
-                          {c.banks.map(b => (
-                            <button
-                              key={b.id}
-                              onClick={() => { setSelectedBank(b.id); setCustomBankName(""); }}
-                              className={cn(
-                                "p-3 rounded-xl text-sm text-center border transition-all",
-                                selectedBank === b.id
-                                  ? "bg-primary/10 border-primary text-primary font-bold"
-                                  : "bg-muted/20 border-border/30 text-foreground hover:bg-muted/30"
-                              )}
+                  {SALARY_COUNTRIES.map(c => {
+                    const flag = COUNTRY_FLAGS[c.id] || "🏳️";
+                    const isOpen = selectedCountry === c.id;
+                    return (
+                      <div key={c.id}>
+                        <button
+                          onClick={() => {
+                            setSelectedCountry(isOpen ? "" : c.id);
+                            setSelectedBank("");
+                            setCustomBankName("");
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between p-3.5 rounded-xl border transition-all",
+                            isOpen
+                              ? "bg-white/[0.06] border-primary/30"
+                              : "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20"
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-lg">{flag}</span>
+                            <span className="text-sm font-bold text-foreground">{c.name}</span>
+                            {isOpen && <span className="text-[10px] text-muted-foreground">({c.banks.length} خيار)</span>}
+                          </div>
+                          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
+                        </button>
+                        <AnimatePresence>
+                          {isOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2, ease: "easeInOut" }}
+                              className="overflow-hidden"
                             >
-                              {b.label}
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                      {/* Custom bank name input */}
-                      {selectedCountry === c.id && isOtherBank && (
-                        <div className="mt-2 pr-3">
-                          <Input
-                            value={customBankName}
-                            onChange={e => setCustomBankName(e.target.value)}
-                            placeholder="اكتب اسم البنك أو الشبكة"
-                            className="bg-muted/20 border-border/30"
-                            dir="rtl"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                              <div className="grid grid-cols-2 gap-2 pt-2.5 pr-3">
+                                {c.banks.map(b => {
+                                  const bankStyle = BANK_ICONS[b.id] || { icon: "🏦", color: "from-white/5 to-white/[0.02] border-white/10" };
+                                  const isSelected = selectedBank === b.id;
+                                  return (
+                                    <button
+                                      key={b.id}
+                                      onClick={() => { setSelectedBank(b.id); setCustomBankName(""); }}
+                                      className={cn(
+                                        "flex items-center gap-2.5 p-3 rounded-xl border transition-all text-right bg-gradient-to-br",
+                                        isSelected
+                                          ? "ring-2 ring-primary border-primary/50 scale-[0.98]"
+                                          : `${bankStyle.color} hover:border-white/20 hover:scale-[1.01]`
+                                      )}
+                                    >
+                                      <span className="text-lg shrink-0">{bankStyle.icon}</span>
+                                      <span className={cn("text-xs font-medium flex-1", isSelected ? "text-primary font-bold" : "text-foreground")}>
+                                        {b.label}
+                                      </span>
+                                      {isSelected && <CheckCircle className="w-4 h-4 text-primary shrink-0" />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {/* Custom bank name input */}
+                              {isOtherBank && (
+                                <div className="mt-2.5 pr-3">
+                                  <Input
+                                    value={customBankName}
+                                    onChange={e => setCustomBankName(e.target.value)}
+                                    placeholder="اكتب اسم البنك أو الشبكة"
+                                    className="bg-white/[0.03] border-white/10"
+                                    dir="rtl"
+                                  />
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
               <div className="flex gap-3">
