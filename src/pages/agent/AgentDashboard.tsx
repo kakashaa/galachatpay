@@ -14,7 +14,8 @@ interface DashboardData {
   balance_usd: number;
   today_charges: number;
   today_count: number;
-  last_charge_time: string;
+  last_charge: string;
+  bonus_percent: number;
   recent_transactions: Array<{
     id: string;
     user_name: string;

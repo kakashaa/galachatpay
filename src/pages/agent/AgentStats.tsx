@@ -1,18 +1,32 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, TrendingUp, Wallet } from "lucide-react";
+import { ArrowRight, TrendingUp, Wallet, Gem } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 
 const AGENT_API = "https://galachat.site/admin-panel-api.php";
 
+interface WeeklyItem {
+  date: string;
+  day: string;
+  total: number;
+  count: number;
+}
+
 interface StatsData {
   original_balance: number;
-  total_charged: number;
-  remaining_balance: number;
-  usage_percent: number;
+  original_balance_usd: number;
+  current_balance: number;
+  current_balance_usd: number;
+  total_charged_coins: number;
+  total_charged_usd: number;
+  consumption_percent: number;
+  bonus_percent: number;
+  tier: string;
+  today_usd: number;
+  today_count: number;
   by_bank: Record<string, number>;
-  weekly: number[];
+  weekly: WeeklyItem[];
 }
 
 const bankLabels: Record<string, { label: string; flag: string }> = {
@@ -52,7 +66,8 @@ const AgentStats: React.FC = () => {
   }
 
   const maxBank = stats?.by_bank ? Math.max(...Object.values(stats.by_bank), 1) : 1;
-  const maxWeekly = stats?.weekly ? Math.max(...stats.weekly, 1) : 1;
+  const weeklyTotals = stats?.weekly?.map(w => w.total) || [];
+  const maxWeekly = weeklyTotals.length ? Math.max(...weeklyTotals, 1) : 1;
 
   return (
     <>
@@ -72,28 +87,65 @@ const AgentStats: React.FC = () => {
               <Wallet className="w-5 h-5 text-amber-400" />
               <span className="text-sm font-bold text-amber-400">ملخص الوكالة</span>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">الرصيد الأصلي</p>
-                <p className="text-sm font-black text-foreground" dir="ltr">${stats?.original_balance?.toLocaleString() || 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">إجمالي المشحون</p>
-                <p className="text-sm font-black text-green-400" dir="ltr">${stats?.total_charged?.toLocaleString() || 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">المتبقي</p>
-                <p className="text-sm font-black text-amber-400" dir="ltr">${stats?.remaining_balance?.toLocaleString() || 0}</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">الرصيد الأصلي</p>
+                  <p className="text-sm font-black text-foreground" dir="ltr">
+                    {(stats?.original_balance || 0).toLocaleString()} كوينز
+                  </p>
+                  <p className="text-[10px] text-muted-foreground" dir="ltr">
+                    (${(stats?.original_balance_usd || 0).toLocaleString()})
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">إجمالي المشحون</p>
+                  <p className="text-sm font-black text-green-400" dir="ltr">
+                    {(stats?.total_charged_coins || 0).toLocaleString()} كوينز
+                  </p>
+                  <p className="text-[10px] text-muted-foreground" dir="ltr">
+                    (${(stats?.total_charged_usd || 0).toLocaleString()})
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">المتبقي</p>
+                  <p className="text-sm font-black text-amber-400" dir="ltr">
+                    {(stats?.current_balance || 0).toLocaleString()} كوينز
+                  </p>
+                  <p className="text-[10px] text-muted-foreground" dir="ltr">
+                    (${(stats?.current_balance_usd || 0).toLocaleString()})
+                  </p>
+                </div>
               </div>
             </div>
             <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-l from-amber-400 to-amber-500 rounded-full transition-all duration-700"
-                style={{ width: `${100 - (stats?.usage_percent || 0)}%` }}
+                style={{ width: `${stats?.consumption_percent || 0}%` }}
               />
             </div>
-            <p className="text-[10px] text-muted-foreground text-center">نسبة الاستهلاك: {stats?.usage_percent || 0}%</p>
+            <p className="text-[10px] text-muted-foreground text-center">نسبة الاستهلاك: {stats?.consumption_percent || 0}%</p>
           </div>
+
+          {/* Bonus/Tier Card */}
+          {stats?.tier && (
+            <div className="glass-card rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Gem className="w-5 h-5 text-amber-400" />
+                <span className="text-sm font-bold text-amber-400">نسبة الوكالة</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">الفئة</p>
+                  <p className="text-sm font-black text-foreground">{stats.tier}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">البونص</p>
+                  <p className="text-sm font-black text-green-400">{stats.bonus_percent || 0}%</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* By Bank */}
           <div className="glass-card rounded-2xl p-4">
@@ -129,13 +181,13 @@ const AgentStats: React.FC = () => {
             <div className="glass-card rounded-2xl p-4">
               <p className="text-sm font-bold text-amber-400 mb-3">شحنات الأسبوع</p>
               <div className="flex items-end gap-2 h-24">
-                {stats.weekly.map((val, i) => (
+                {stats.weekly.map((w, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
                     <div
                       className="w-full bg-gradient-to-t from-amber-500 to-amber-400 rounded-t-lg transition-all duration-500"
-                      style={{ height: `${(val / maxWeekly) * 100}%`, minHeight: val > 0 ? 4 : 0 }}
+                      style={{ height: `${(w.total / maxWeekly) * 100}%`, minHeight: w.total > 0 ? 4 : 0 }}
                     />
-                    <span className="text-[8px] text-muted-foreground">{["سبت", "أحد", "إثن", "ثلا", "أرب", "خمي", "جمع"][i] || ""}</span>
+                    <span className="text-[8px] text-muted-foreground">{w.day || ""}</span>
                   </div>
                 ))}
               </div>
