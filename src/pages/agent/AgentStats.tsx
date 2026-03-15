@@ -24,6 +24,17 @@ interface Transaction {
   date?: string;
 }
 
+interface FrozenAgency {
+  agency_number: number;
+  tier: string;
+  total_coins: number;
+  charged_coins: number;
+  remaining_coins: number;
+  status: string;
+  start_date?: string;
+  end_date?: string;
+}
+
 interface StatsData {
   original_balance: number;
   original_balance_usd: number;
@@ -34,11 +45,17 @@ interface StatsData {
   consumption_percent: number;
   bonus_percent: number;
   tier: string;
+  tier_usd: number;
+  bonus_usd: number;
+  bonus_coins: number;
+  total_with_bonus: number;
   today_usd: number;
   today_count: number;
   by_bank: Record<string, number>;
   weekly: WeeklyItem[];
   recent_transactions?: Transaction[];
+  frozen_agencies?: FrozenAgency[];
+  total_frozen_coins?: number;
 }
 
 interface DashboardData {

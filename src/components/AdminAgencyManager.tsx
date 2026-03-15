@@ -28,13 +28,13 @@ interface Agency {
   last_login: string;
 }
 
-const TIERS = [
-  { label: "$1,000", coins: 8500000, bonus: 10 },
-  { label: "$3,000", coins: 25500000, bonus: 12 },
-  { label: "$5,000", coins: 42500000, bonus: 15 },
-  { label: "$10,000", coins: 85000000, bonus: 18 },
-  { label: "$15,000", coins: 127500000, bonus: 18.7 },
-  { label: "$20,000", coins: 170000000, bonus: 20 },
+const AGENCY_TIERS = [
+  { id: "1000",  label: "$1,000",  usd: 1000,  coins: 8500000,   bonusPercent: 10,   bonusUsd: 100,   bonusCoins: 850000,    total: 9350000 },
+  { id: "3000",  label: "$3,000",  usd: 3000,  coins: 25500000,  bonusPercent: 12,   bonusUsd: 360,   bonusCoins: 3060000,   total: 28560000 },
+  { id: "5000",  label: "$5,000",  usd: 5000,  coins: 42500000,  bonusPercent: 15,   bonusUsd: 750,   bonusCoins: 6375000,   total: 48875000 },
+  { id: "10000", label: "$10,000", usd: 10000, coins: 85000000,  bonusPercent: 18,   bonusUsd: 1800,  bonusCoins: 15300000,  total: 100300000 },
+  { id: "15000", label: "$15,000", usd: 15000, coins: 127500000, bonusPercent: 18.7, bonusUsd: 2800,  bonusCoins: 23800000,  total: 151300000 },
+  { id: "20000", label: "$20,000", usd: 20000, coins: 170000000, bonusPercent: 20,   bonusUsd: 4000,  bonusCoins: 34000000,  total: 204000000 },
 ];
 
 interface AdminAgencyManagerProps {
