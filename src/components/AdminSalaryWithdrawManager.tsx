@@ -570,13 +570,21 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           </DialogHeader>
           {detailReq && (
             <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between">
-                {statusBadge(detailReq.status)}
-                <span className="text-lg font-bold font-mono tabular-nums text-primary">${detailReq.amount}</span>
+              <div className="flex items-center gap-3">
+                <img src={detailReq.avatar || avatarMale} alt={detailReq.user_name}
+                  className="w-12 h-12 rounded-xl object-cover border border-white/10"
+                  onError={(e) => { (e.target as HTMLImageElement).src = avatarMale; }} />
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-foreground">{detailReq.user_name}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">UUID: {detailReq.user_uuid}</p>
+                </div>
+                <div className="text-left">
+                  {statusBadge(detailReq.status)}
+                  <p className="text-lg font-bold font-mono tabular-nums text-primary mt-1">${detailReq.amount}</p>
+                </div>
               </div>
               <div className="space-y-2">
-                <DetailCell icon={<User className="w-3 h-3" />} label="المستخدم" value={`${detailReq.user_name} (${detailReq.user_uuid})`} />
-                <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${detailReq.bank} — ${detailReq.country}`} />
+                <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${BANK_LABELS[detailReq.bank] || detailReq.bank} — ${COUNTRY_LABELS[detailReq.country] || detailReq.country}`} />
                 <DetailCell icon={<User className="w-3 h-3" />} label="اسم المستلم" value={detailReq.account_name} />
                 <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
                 <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
