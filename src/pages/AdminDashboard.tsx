@@ -384,17 +384,25 @@ const AdminDashboardPage: React.FC = () => {
     const { data: result, error } = await supabase.functions.invoke("admin-manage", {
       body: { username: adminUsername, session_token: adminSessionToken, action, data },
     });
+    
+    // Check for auth errors in both error and result
+    const authErrorMsg = "بيانات الدخول غير صحيحة";
+    const isAuthError = result?.error === authErrorMsg || 
+      (error && (error.message?.includes("401") || error.message?.includes(authErrorMsg)));
+    
+    if (isAuthError) {
+      sessionStorage.removeItem("admin_session_token");
+      sessionStorage.removeItem("admin_username");
+      sessionStorage.removeItem("admin_role");
+      sessionStorage.removeItem("admin_permissions");
+      sessionStorage.removeItem("admin_api_token");
+      toast.error("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
+      navigate("/admin");
+      return;
+    }
+    
     if (error) throw error;
     if (result?.error) {
-      // If auth error, redirect to login
-      if (result.error === "بيانات الدخول غير صحيحة") {
-        sessionStorage.removeItem("admin_session_token");
-        sessionStorage.removeItem("admin_username");
-        sessionStorage.removeItem("admin_role");
-        toast.error("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
-        navigate("/admin");
-        return;
-      }
       throw new Error(result.error);
     }
     return result?.data;
