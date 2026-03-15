@@ -1296,18 +1296,24 @@ const AdminDashboardPage: React.FC = () => {
             {activeTab === "salary" && (
               <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Sub-tabs */}
-                <div className="flex gap-2 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
+                <div className="flex gap-1 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
                   <button
                     onClick={() => setSalarySubTab("requests")}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${salarySubTab === "requests" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "requests" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
                   >
                     طلبات الرواتب
                   </button>
                   <button
                     onClick={() => setSalarySubTab("withdraw")}
-                    className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors ${salarySubTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
                   >
                     سحب الرواتب
+                  </button>
+                  <button
+                    onClick={() => setSalarySubTab("charge")}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "charge" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"}`}
+                  >
+                    شحن الراتب
                   </button>
                 </div>
 
