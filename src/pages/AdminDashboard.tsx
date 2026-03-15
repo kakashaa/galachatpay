@@ -982,8 +982,11 @@ const AdminDashboardPage: React.FC = () => {
       <header className="sticky top-0 z-20 backdrop-blur-xl border-b border-white/5 px-4 py-3" style={{ background: "rgba(9,9,11,0.92)" }}>
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
-            {activeTab ? (
-              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
+            {(activeTab || activeSection) ? (
+              <button onClick={() => {
+                if (activeTab) { setActiveTab(null); }
+                else { setActiveSection(null); }
+              }} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
                 <ArrowRight className="w-5 h-5 text-foreground" />
               </button>
             ) : (
@@ -991,9 +994,11 @@ const AdminDashboardPage: React.FC = () => {
             )}
             <div>
               <h1 className="font-bold text-lg tracking-tight text-foreground">
-                {activeTab ? tabs.find(t => t.key === activeTab)?.label : "لوحة التحكم"}
+                {activeTab ? tabs.find(t => t.key === activeTab)?.label
+                  : activeSection ? currentSectionDef?.title
+                  : "لوحة التحكم"}
               </h1>
-              {!activeTab && (
+              {!activeTab && !activeSection && (
                 <p className="text-[10px] text-muted-foreground">مرحباً، {adminUsername}</p>
               )}
             </div>
@@ -1009,15 +1014,15 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </header>
       <div className="flex-1 overflow-y-auto min-h-0">
-      {/* Home Grid */}
-      {!activeTab && (
+      {/* Home — 4 Section Cards */}
+      {!activeTab && !activeSection && (
         <div className="max-w-2xl mx-auto p-4 space-y-5">
           {/* Statistics Cards */}
           <div className="grid grid-cols-3 gap-3" dir="rtl">
             {[
-              { label: "معلقة", value: stats.pending, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5", onClick: () => { setAllRequestsFilter("pending"); setActiveTab("all_requests"); } },
-              { label: "مقبولة", value: stats.approved, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5", onClick: () => { setAllRequestsFilter("approved"); setActiveTab("all_requests"); } },
-              { label: "مرفوضة", value: stats.rejected, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5", onClick: () => { setAllRequestsFilter("rejected"); setActiveTab("all_requests"); } },
+              { label: "معلقة", value: stats.pending, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5", onClick: () => { setAllRequestsFilter("pending"); setActiveSection("requests"); setActiveTab("all_requests"); } },
+              { label: "مقبولة", value: stats.approved, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5", onClick: () => { setAllRequestsFilter("approved"); setActiveSection("requests"); setActiveTab("all_requests"); } },
+              { label: "مرفوضة", value: stats.rejected, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5", onClick: () => { setAllRequestsFilter("rejected"); setActiveSection("requests"); setActiveTab("all_requests"); } },
             ].map((card, i) => (
               <motion.button
                 key={card.label}
@@ -1034,45 +1039,91 @@ const AdminDashboardPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-3 gap-2.5" dir="rtl">
-            {tabs.map((tab, i) => (
-              <motion.button
-                key={tab.key}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 + 0.15, duration: 0.35, ease: "easeOut" }}
-                whileTap={{ scale: 0.97 }}
-                whileHover={{ scale: 1.01, borderColor: "rgba(255,255,255,0.1)" }}
-                onClick={() => setActiveTab(tab.key)}
-                className="relative flex flex-col items-center gap-2 p-4 rounded-2xl border border-white/5 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300"
-              >
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center`}>
-                  {React.cloneElement(tab.icon as React.ReactElement, { className: "w-6 h-6" })}
-                </div>
-                <span className="text-[10px] font-bold text-foreground">{tab.label}</span>
-                {tab.count && tab.count > 0 ? (
-                  <span className="absolute top-2.5 left-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#09090b]" />
-                ) : null}
-              </motion.button>
-            ))}
+          {/* 4 Section Cards */}
+          <div className="grid grid-cols-2 gap-3" dir="rtl">
+            {SECTIONS.map((section, i) => {
+              const badge = getSectionBadge(section.id);
+              // Filter section tabs by moderator access
+              const visibleTabs = isModeratorRole
+                ? section.tabs.filter(tabKey => hasTabAccess(tabKey))
+                : section.tabs;
+              if (visibleTabs.length === 0) return null;
+              return (
+                <motion.button
+                  key={section.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.01, borderColor: "rgba(255,255,255,0.12)" }}
+                  onClick={() => {
+                    setActiveSection(section.id);
+                    setActiveTab(visibleTabs[0]);
+                  }}
+                  className={`relative bg-gradient-to-br ${section.gradient} border border-white/5 rounded-3xl p-5 text-right hover:border-white/10 transition-all duration-300`}
+                >
+                  <div className={section.iconColor}>{section.icon}</div>
+                  <h3 className="text-base font-bold text-foreground mt-3">{section.title}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-1">{section.description}</p>
+                  {badge > 0 && (
+                    <span className="absolute top-3 left-3 inline-flex items-center justify-center min-w-5 h-5 px-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-full">
+                      {badge}
+                    </span>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
       )}
-      {/* Content */}
-      {activeTab && (
+
+      {/* Section Tab Chips + Content */}
+      {activeSection && !activeTab && (
         <div className="max-w-2xl mx-auto p-4">
-        {loading ? (
-          <div className="space-y-3 py-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-card/50 border border-white/5 rounded-2xl p-5 animate-pulse">
-                <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
-                <div className="h-3 bg-white/5 rounded w-2/3" />
-              </div>
-            ))}
+          <p className="text-sm text-muted-foreground text-center py-10">اختر تبويباً</p>
+        </div>
+      )}
+      {activeTab && activeSection && (
+        <div className="max-w-2xl mx-auto">
+          {/* Tab chips */}
+          <div className="px-4 pt-3 pb-2">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+              {(currentSectionDef?.tabs || []).map(tabKey => {
+                const tabDef = tabs.find(t => t.key === tabKey);
+                if (!tabDef) return null;
+                return (
+                  <button
+                    key={tabKey}
+                    onClick={() => setActiveTab(tabKey)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
+                      activeTab === tabKey
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "bg-card/50 text-muted-foreground hover:bg-card border border-white/5"
+                    }`}
+                  >
+                    {tabDef.icon}
+                    {tabDef.label}
+                    {tabDef.count && tabDef.count > 0 && (
+                      <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] flex items-center justify-center">{tabDef.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        ) : (
+          <div className="px-4 pb-4">
+      {loading ? (
+        <div className="space-y-3 py-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-card/50 border border-white/5 rounded-2xl p-5 animate-pulse">
+              <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-white/5 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      ) : (
           <AnimatePresence mode="wait">
+
             {/* Videos Tab */}
             {activeTab === "videos" && (
               <motion.div key="videos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
