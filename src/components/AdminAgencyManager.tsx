@@ -206,6 +206,43 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     }
   };
 
+  const handleEditAgency = async () => {
+    if (!editAgency) return;
+    const body: Record<string, string> = { admin_key: "ghala2026owner", username: editAgency.username };
+    if (editForm.name.trim()) body.name = editForm.name.trim();
+    if (editForm.phone.trim()) body.phone = editForm.phone.trim();
+    if (editForm.new_password.trim()) body.new_password = editForm.new_password.trim();
+    if (editForm.transfer_to_uuid.trim()) body.transfer_to_uuid = editForm.transfer_to_uuid.trim();
+
+    if (Object.keys(body).length <= 2) { toast.error("لم يتم تعديل أي بيانات"); return; }
+
+    setEditLoading(true);
+    try {
+      const res = await fetch(`${ADMIN_API}?action=agency_update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("تم تحديث بيانات الوكالة");
+        setEditAgency(null);
+        fetchAgencies();
+      } else {
+        toast.error(data.message || data.error || "فشل التحديث");
+      }
+    } catch {
+      toast.error("خطأ في الاتصال");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const openEditSheet = (agency: Agency) => {
+    setEditForm({ name: agency.name, phone: agency.phone || "", new_password: "", transfer_to_uuid: "" });
+    setEditAgency(agency);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
