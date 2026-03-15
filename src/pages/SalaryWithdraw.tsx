@@ -132,12 +132,111 @@ const SalaryWithdraw: React.FC = () => {
   const [submitResult, setSubmitResult] = useState<{ success: boolean; request_id?: string; message?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Salary type choice for agency owners
+  const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
+  const [choiceLoading, setChoiceLoading] = useState(false);
+  const [hostSalaryAmount, setHostSalaryAmount] = useState<number | null>(null);
+  const [agencySalaryAmount, setAgencySalaryAmount] = useState<number | null>(null);
+  const [agencySalaryName, setAgencySalaryName] = useState("");
+  const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
+
   const token = localStorage.getItem("gala_session_key") || "";
+
+  // Check if user is an agency owner (type_user 2, 4, 6)
+  const isAgencyOwner = user ? [2, 4, 6].includes(user.type_user) : false;
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
-    checkSalary();
+    if (isAgencyOwner) {
+      // Fetch both salary types
+      fetchBothSalaries();
+    } else {
+      checkSalary();
+    }
   }, [user]);
+
+  const fetchBothSalaries = async () => {
+    setChoiceLoading(true);
+    try {
+      const [hostRes, agencyRes] = await Promise.all([
+        fetch(`${API}?action=salary_check&token=${token}&uuid=${user!.uuid}`),
+        fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`),
+      ]);
+      const hostData = await hostRes.json();
+      const agencyData = await agencyRes.json();
+
+      const hasHost = hostData.success && hostData.has_salary;
+      const hasAgency = agencyData.has_salary;
+
+      if (hasHost) setHostSalaryAmount(hostData.net || 0);
+      if (hasAgency) {
+        setAgencySalaryAmount(agencyData.amount || 0);
+        setAgencySalaryName(agencyData.agency_name || "");
+      }
+
+      if (!hasHost && !hasAgency) {
+        setNoSalaryAtAll(true);
+      } else if (hasHost && !hasAgency) {
+        // Only host salary — go directly
+        setSalaryType("host");
+        setCheckResult(hostData);
+        if (!hostData.is_suspicious && hostData.withdraw_open !== false &&
+            (hostData.withdrawals_this_month || 0) < (hostData.max_withdrawals || 1)) {
+          setStep(1);
+        }
+      } else if (!hasHost && hasAgency) {
+        // Only agency salary — go directly
+        setSalaryType("agency");
+        // Will need to re-check with agency endpoint
+        await checkAgencySalary();
+      }
+      // else: both available — show choice screen
+    } catch {
+      setError("فشل الاتصال بالخادم");
+    } finally {
+      setChoiceLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleChooseSalaryType = async (type: "host" | "agency") => {
+    setSalaryType(type);
+    setLoading(true);
+    if (type === "host") {
+      await checkSalary();
+    } else {
+      await checkAgencySalary();
+    }
+  };
+
+  const checkAgencySalary = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`);
+      const data = await res.json();
+      if (data.has_salary) {
+        setCheckResult({
+          success: true,
+          has_salary: true,
+          salary: data.amount || 0,
+          deduction: 0,
+          net: data.amount || 0,
+          user_type: "agent",
+          withdraw_open: true,
+          withdrawals_this_month: 0,
+          max_withdrawals: 1,
+        });
+        setStep(1);
+      } else {
+        setCheckResult({ success: true, has_salary: false, reason: "no_agency_salary" });
+      }
+    } catch {
+      setError("فشل الاتصال بالخادم");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const checkSalary = async () => {
     setLoading(true);
