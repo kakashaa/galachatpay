@@ -2278,7 +2278,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Animated Photos Tab */}
             {activeTab === "animated_photos" && (
-              <motion.div key="animated_photos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="animated_photos" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Filter Buttons */}
                 <div className="flex gap-2 flex-wrap">
                   {[
