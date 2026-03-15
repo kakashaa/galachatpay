@@ -2595,7 +2595,8 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        )}
+      )}
+          </div>
         </div>
       )}
       </div>
