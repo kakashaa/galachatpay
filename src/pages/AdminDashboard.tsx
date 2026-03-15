@@ -2398,7 +2398,9 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Banners Tab */}
             {activeTab === "banners" && (
-              <AdminBannerManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("banners")} />
+              <motion.div key="banners" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminBannerManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("banners")} />
+              </motion.div>
             )}
 
             {/* Moderators Management Tab */}
