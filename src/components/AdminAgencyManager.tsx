@@ -75,6 +75,11 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   // Toggle loading
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
 
+  // Edit agency
+  const [editAgency, setEditAgency] = useState<Agency | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", new_password: "", transfer_to_uuid: "" });
+  const [editLoading, setEditLoading] = useState(false);
+
   const adminToken = sessionStorage.getItem("admin_session_token");
 
   const fetchAgencies = useCallback(async () => {
