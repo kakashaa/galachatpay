@@ -389,7 +389,7 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   // ── Loading ──
-  if (choiceLoading || loading) {
+  if (loading) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
