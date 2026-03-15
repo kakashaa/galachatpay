@@ -2183,7 +2183,7 @@ const AdminDashboardPage: React.FC = () => {
                           </div>
                           <label className="flex items-center gap-2 text-xs cursor-pointer">
                             <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
-                            <span className="text-destructive font-bold">⛔ رفض نهائي</span>
+                            <span className="text-destructive font-bold">رفض نهائي</span>
                           </label>
                           <div className="flex gap-2">
                             <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleAnimatedPhotoReject(photo)}>
