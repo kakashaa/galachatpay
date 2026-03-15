@@ -2472,7 +2472,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Support Tickets Tab */}
             {activeTab === "support_tickets" && (
-              <motion.div key="support_tickets" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="support_tickets" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Filter */}
                 <div className="flex gap-2 flex-wrap">
                   {[
