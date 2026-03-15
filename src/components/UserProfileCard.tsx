@@ -9,7 +9,7 @@ import { getAvatarUrl } from "@/lib/utils";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 const getUserTypeLabel = (type: number): string => {
   switch (type) {
