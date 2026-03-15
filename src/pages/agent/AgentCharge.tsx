@@ -95,7 +95,7 @@ const AgentCharge: React.FC = () => {
           uuid: uuid.trim(),
           coins: parseInt(coins),
           payment_method: selectedPayment,
-          payment_country: countryMap[selectedPayment] || "other",
+          payment_country: paymentMethods.find(p => p.id === selectedPayment)?.countryId || "other",
           receipt_confirmed: receiptConfirmed,
           receipt_image: receiptImage || null,
           notes: notes || null,
