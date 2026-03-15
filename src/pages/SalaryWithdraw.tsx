@@ -4,15 +4,16 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe,
   UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
-  Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown, ChevronDown, ShieldX, RefreshCw,
+  Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown, ChevronDown, ShieldX, RefreshCw, History,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import ServicePreviousRequests from "@/components/ServicePreviousRequests";
+// ServicePreviousRequests replaced by SalaryRequestsHistory
 import SalaryHistory from "@/components/SalaryHistory";
+import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -208,6 +209,7 @@ const SalaryWithdraw: React.FC = () => {
   const [agencySalaryAmount, setAgencySalaryAmount] = useState<number | null>(null);
   const [agencySalaryName, setAgencySalaryName] = useState("");
   const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const token = localStorage.getItem("gala_session_key") || "";
   const hasFetchedRef = useRef(false);
@@ -708,9 +710,44 @@ const SalaryWithdraw: React.FC = () => {
           </div>
         )}
 
-        {/* Salary History & Previous Requests on Step 1 */}
+        {/* Toggle: History button + content */}
+        {step === 1 && (
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="flex items-center gap-1.5 text-xs text-primary font-bold"
+            >
+              <History className="w-3.5 h-3.5" />
+              {showHistory ? "إخفاء الطلبات السابقة" : "طلباتي السابقة"}
+            </button>
+
+            <AnimatePresence>
+              {showHistory && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <SalaryRequestsHistory
+                    userUuid={user.uuid}
+                    onResubmit={(req) => {
+                      // Pre-fill data from rejected request
+                      if (req.country) setSelectedCountry(req.country);
+                      if (req.bank) setSelectedBank(req.bank);
+                      if (req.account_name) setRecipientName(req.account_name);
+                      if (req.account_number) setAccountNumber(req.account_number);
+                      setShowHistory(false);
+                      setStep(3);
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
         {step === 1 && <SalaryHistory userUuid={user.uuid} />}
-        {step === 1 && <ServicePreviousRequests userUuid={user.uuid} serviceType="salary" />}
 
         <AnimatePresence mode="wait">
           {/* ── STEP 1: Display Salary + Transfer Instructions ── */}
