@@ -1282,7 +1282,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Salary Tab */}
             {activeTab === "salary" && (
-              <motion.div key="salary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Sub-tabs */}
                 <div className="flex gap-2 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
                   <button
