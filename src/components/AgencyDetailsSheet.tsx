@@ -13,7 +13,7 @@ import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
 import {
-  BANK_LABELS, COUNTRY_LABELS, BANK_COLORS, getBankColorByKey, COINS_PER_DOLLAR,
+  COUNTRIES, BANK_LABELS, COUNTRY_LABELS, BANK_COLORS, getBankColorByKey, COINS_PER_DOLLAR,
 } from "@/lib/constants";
 
 const API = "https://galachat.site/project-z/api.php";
