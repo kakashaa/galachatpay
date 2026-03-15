@@ -375,6 +375,9 @@ const SalaryWithdraw: React.FC = () => {
           whatsapp: `${whatsappCode}${whatsappNumber}`,
           notes,
           transfer_verified: verifyResult?.verified || false,
+          reference_id: verifyResult?.transaction_id || null,
+          transferred_usd: verifyResult?.transferred_usd || null,
+          approved_amount: verifyResult?.approved_amount || null,
           screenshot: screenshotBase64 || null,
         }),
       });
