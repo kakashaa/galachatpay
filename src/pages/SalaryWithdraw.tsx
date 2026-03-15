@@ -34,6 +34,14 @@ interface SalaryCheckResult {
   withdraw_open?: boolean;
 }
 
+interface SalaryCheckAllResult {
+  is_agency_owner: boolean;
+  host_salary: { salary: number; deduction: number; net: number; has_salary: boolean; is_suspicious?: boolean; suspicious_amount?: number };
+  agency_salary: { amount: number; agency_name: string; has_salary: boolean };
+  withdrawals: { count: number; max: number; total_withdrawn: number; remaining_host: number; remaining_agency: number; can_withdraw: boolean };
+  withdraw_open?: boolean;
+}
+
 interface VerifyResult {
   verified: boolean;
   transaction_id?: string;
@@ -204,125 +212,77 @@ const SalaryWithdraw: React.FC = () => {
 
   // Salary type choice for agency owners
   const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
-  const [choiceLoading, setChoiceLoading] = useState(false);
-  const [hostSalaryAmount, setHostSalaryAmount] = useState<number | null>(null);
-  const [agencySalaryAmount, setAgencySalaryAmount] = useState<number | null>(null);
-  const [agencySalaryName, setAgencySalaryName] = useState("");
+  const [allData, setAllData] = useState<SalaryCheckAllResult | null>(null);
   const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
   const [alreadyWithdrawn, setAlreadyWithdrawn] = useState(0);
 
   const token = localStorage.getItem("gala_session_key") || "";
   const hasFetchedRef = useRef(false);
 
-  // Check if user is an agency owner (type_user 2, 4, 6)
-  const isAgencyOwner = user ? [2, 4, 6].includes(user.type_user) : false;
-
   useEffect(() => {
     if (!user) { navigate("/"); return; }
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    if (isAgencyOwner) {
-      fetchBothSalaries();
-    } else {
-      checkSalary();
-    }
+    fetchAllSalaries();
   }, [user?.uuid]);
 
-  const fetchBothSalaries = async () => {
-    setChoiceLoading(true);
+  const fetchAllSalaries = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const [hostRes, agencyRes] = await Promise.all([
-        fetch(`${API}?action=salary_check&token=${token}&uuid=${user!.uuid}`),
-        fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`),
-      ]);
-      const hostData = await hostRes.json();
-      const agencyData = await agencyRes.json();
+      const res = await fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`);
+      const data: SalaryCheckAllResult = await res.json();
+      setAllData(data);
 
-      const hasHost = hostData.success && hostData.has_salary;
-      const hasAgency = agencyData.has_salary;
-
-      if (hasHost) setHostSalaryAmount(hostData.net || 0);
-      if (hasAgency) {
-        setAgencySalaryAmount(agencyData.amount || 0);
-        setAgencySalaryName(agencyData.agency_name || "");
-      }
+      const hasHost = data.host_salary?.has_salary;
+      const hasAgency = data.agency_salary?.has_salary;
 
       if (!hasHost && !hasAgency) {
         setNoSalaryAtAll(true);
-      } else if (hasHost && !hasAgency) {
+      } else if (!data.is_agency_owner && hasHost) {
+        // Regular host — go straight to step 1
         setSalaryType("host");
-        setCheckResult(hostData);
-        if (!hostData.is_suspicious && hostData.withdraw_open !== false &&
-            (hostData.withdrawals_this_month || 0) < (hostData.max_withdrawals || 1)) {
+        setCheckResult({
+          success: true, has_salary: true,
+          salary: data.host_salary.salary, deduction: data.host_salary.deduction, net: data.host_salary.net,
+          is_suspicious: data.host_salary.is_suspicious, suspicious_amount: data.host_salary.suspicious_amount,
+          user_type: "host",
+          withdrawals_this_month: data.withdrawals.count, max_withdrawals: data.withdrawals.max,
+          withdraw_open: data.withdraw_open !== false,
+        });
+        if (!data.host_salary.is_suspicious && data.withdraw_open !== false && data.withdrawals.can_withdraw) {
           setStep(1);
         }
-      } else if (!hasHost && hasAgency) {
-        setSalaryType("agency");
-        await checkAgencySalary();
       }
-      // else: both available — show choice screen
+      // else: agency owner — show choice screen (handled in render)
     } catch {
       setError("فشل الاتصال بالخادم");
     } finally {
-      setChoiceLoading(false);
       setLoading(false);
     }
   };
 
-  const handleChooseSalaryType = async (type: "host" | "agency") => {
+  const handleChooseSalaryType = (type: "host" | "agency") => {
     setSalaryType(type);
-    setLoading(true);
-    if (type === "host") {
-      await checkSalary();
-    } else {
-      await checkAgencySalary();
-    }
-  };
-
-  const checkAgencySalary = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`);
-      const data = await res.json();
-      if (data.has_salary) {
-        setCheckResult({
-          success: true,
-          has_salary: true,
-          salary: data.amount || 0,
-          deduction: 0,
-          net: data.amount || 0,
-          user_type: "agent",
-          withdraw_open: true,
-          withdrawals_this_month: 0,
-          max_withdrawals: 1,
-        });
-        setStep(1);
-      } else {
-        setCheckResult({ success: true, has_salary: false, reason: "no_agency_salary" });
-      }
-    } catch {
-      setError("فشل الاتصال بالخادم");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkSalary = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`${API}?action=salary_check&token=${token}&uuid=${user!.uuid}`);
-      const data = await res.json();
-      setCheckResult(data);
-      if (data.success && data.has_salary && !data.is_suspicious && data.withdraw_open !== false &&
-          (data.withdrawals_this_month || 0) < (data.max_withdrawals || 1)) {
-        setStep(1);
-      }
-    } catch {
-      setError("فشل الاتصال بالخادم. حاول مرة أخرى.");
-    } finally {
-      setLoading(false);
+    if (type === "host" && allData) {
+      setCheckResult({
+        success: true, has_salary: allData.host_salary.has_salary,
+        salary: allData.host_salary.salary, deduction: allData.host_salary.deduction, net: allData.host_salary.net,
+        is_suspicious: allData.host_salary.is_suspicious, suspicious_amount: allData.host_salary.suspicious_amount,
+        user_type: "host",
+        withdrawals_this_month: allData.withdrawals.count, max_withdrawals: allData.withdrawals.max,
+        withdraw_open: allData.withdraw_open !== false,
+      });
+      if (allData.withdrawals.can_withdraw && !allData.host_salary.is_suspicious) setStep(1);
+    } else if (type === "agency" && allData) {
+      setCheckResult({
+        success: true, has_salary: allData.agency_salary.has_salary,
+        salary: allData.agency_salary.amount, deduction: 0, net: allData.agency_salary.amount,
+        user_type: "agent",
+        withdrawals_this_month: allData.withdrawals.count, max_withdrawals: allData.withdrawals.max,
+        withdraw_open: allData.withdraw_open !== false,
+      });
+      if (allData.withdrawals.can_withdraw) setStep(1);
     }
   };
 
@@ -429,7 +389,7 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   // ── Loading ──
-  if (choiceLoading || loading) {
+  if (loading) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -467,40 +427,75 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── Salary Type Choice Screen ──
-  if (isAgencyOwner && !salaryType && hostSalaryAmount !== null && agencySalaryAmount !== null) {
+  // ── Salary Type Choice Screen (agency owner) ──
+  if (allData?.is_agency_owner && !salaryType) {
+    const hs = allData.host_salary;
+    const as_ = allData.agency_salary;
+    const w = allData.withdrawals;
+    const canW = w.can_withdraw;
+
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="px-5 py-8 space-y-6">
+        <div className="px-5 py-6 space-y-5">
           <div className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-1">أي راتب تريد سحبه؟</h2>
-            <p className="text-xs text-muted-foreground">اختر نوع الراتب الذي تريد سحبه</p>
+            <h2 className="text-lg font-bold text-foreground mb-1">اختر نوع الراتب</h2>
+            <p className="text-xs text-muted-foreground">سحبت {w.count} من {w.max} هذا الشهر</p>
           </div>
 
+          {/* Can't withdraw banner */}
+          {!canW && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center space-y-2">
+              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
+              <p className="text-sm font-bold text-foreground">✅ تم صرف جميع الرواتب لهذا الشهر</p>
+              <p className="text-xs text-muted-foreground">سحبت: {w.count} من {w.max}</p>
+            </motion.div>
+          )}
+
+          {/* Agency card */}
           <motion.button
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            onClick={() => handleChooseSalaryType("agency")}
-            className="w-full text-right glass-card rounded-2xl p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98] space-y-3"
+            onClick={() => canW && as_.has_salary && handleChooseSalaryType("agency")}
+            disabled={!canW || !as_.has_salary}
+            className={cn(
+              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
+              canW && as_.has_salary
+                ? "border-amber-500/20 hover:border-amber-500/40 active:scale-[0.98]"
+                : "border-border/10 opacity-60"
+            )}
           >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
                 <Landmark className="w-6 h-6 text-amber-400" />
               </div>
               <div>
-                <p className="text-sm font-bold text-foreground">راتب الوكالة</p>
-                <p className="text-[11px] text-muted-foreground">نسبتك من أرباح الوكالة{agencySalaryName ? ` — ${agencySalaryName}` : ""}</p>
+                <p className="text-sm font-bold text-foreground">راتب الوكالة{as_.agency_name ? ` — ${as_.agency_name}` : ""}</p>
+                {as_.has_salary ? (
+                  <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-amber-400" dir="ltr">${w.remaining_agency.toFixed(2)}</span></p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب وكالة</p>
+                )}
               </div>
             </div>
-            <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
-              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
-              <span className="text-xl font-black text-amber-400" dir="ltr">${agencySalaryAmount.toFixed(2)}</span>
-            </div>
+            {as_.has_salary && (
+              <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
+                <span className="text-xs text-muted-foreground">الراتب الكامل</span>
+                <span className="text-lg font-black text-amber-400" dir="ltr">${as_.amount.toFixed(2)}</span>
+              </div>
+            )}
           </motion.button>
 
+          {/* Host card */}
           <motion.button
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            onClick={() => handleChooseSalaryType("host")}
-            className="w-full text-right glass-card rounded-2xl p-5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-[0.98] space-y-3"
+            onClick={() => canW && hs.has_salary && handleChooseSalaryType("host")}
+            disabled={!canW || !hs.has_salary}
+            className={cn(
+              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
+              canW && hs.has_salary
+                ? "border-emerald-500/20 hover:border-emerald-500/40 active:scale-[0.98]"
+                : "border-border/10 opacity-60"
+            )}
           >
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
@@ -508,14 +503,23 @@ const SalaryWithdraw: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-bold text-foreground">راتبي كمضيف</p>
-                <p className="text-[11px] text-muted-foreground">راتبك الشخصي من الاستضافة</p>
+                {hs.has_salary ? (
+                  <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-emerald-400" dir="ltr">${w.remaining_host.toFixed(2)}</span></p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب</p>
+                )}
               </div>
             </div>
-            <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
-              <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
-              <span className="text-xl font-black text-emerald-400" dir="ltr">${hostSalaryAmount.toFixed(2)}</span>
-            </div>
+            {hs.has_salary && (
+              <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
+                <span className="text-xs text-muted-foreground">الصافي</span>
+                <span className="text-lg font-black text-emerald-400" dir="ltr">${hs.net.toFixed(2)}</span>
+              </div>
+            )}
           </motion.button>
+
+          {/* Always show previous requests */}
+          <SalaryRequestsHistory userUuid={user.uuid} />
         </div>
       </MobileLayout>
     );
@@ -645,7 +649,7 @@ const SalaryWithdraw: React.FC = () => {
             <AlertCircle className="w-8 h-8 text-destructive" />
           </div>
           <p className="text-sm text-muted-foreground mb-6">{error}</p>
-          <Button onClick={checkSalary} className="gold-gradient text-primary-foreground font-bold px-8">إعادة المحاولة</Button>
+          <Button onClick={fetchAllSalaries} className="gold-gradient text-primary-foreground font-bold px-8">إعادة المحاولة</Button>
         </div>
       </MobileLayout>
     );
