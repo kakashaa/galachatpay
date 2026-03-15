@@ -844,6 +844,7 @@ const AdminDashboardPage: React.FC = () => {
     { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400" },
     { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-7 h-7" />, color: "from-slate-500/20 to-slate-600/10 text-slate-400" },
     { key: "banners", label: "بنرات", icon: <ImageIcon className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400" },
+    { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
     ...((adminRole === "super_admin" || adminRole === "admin") ? [
       { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400" },
     ] : []),
