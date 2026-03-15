@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Filter, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, Image as ImageIcon } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 
