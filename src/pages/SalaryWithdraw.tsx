@@ -308,10 +308,11 @@ const SalaryWithdraw: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "salary_withdraw",
+          action: salaryType === "agency" ? "agency_salary_withdraw" : "salary_withdraw",
           token,
           uuid: user.uuid,
           amount: checkResult?.net || 0,
+          salary_type: salaryType || "host",
           country: selectedCountry,
           bank: selectedBank,
           account_name: recipientName,
