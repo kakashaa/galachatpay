@@ -226,101 +226,63 @@ const SalaryWithdraw: React.FC = () => {
     fetchAllSalaries();
   }, [user?.uuid]);
 
-  const fetchBothSalaries = async () => {
-    setChoiceLoading(true);
+  const fetchAllSalaries = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const [hostRes, agencyRes] = await Promise.all([
-        fetch(`${API}?action=salary_check&token=${token}&uuid=${user!.uuid}`),
-        fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`),
-      ]);
-      const hostData = await hostRes.json();
-      const agencyData = await agencyRes.json();
+      const res = await fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`);
+      const data: SalaryCheckAllResult = await res.json();
+      setAllData(data);
 
-      const hasHost = hostData.success && hostData.has_salary;
-      const hasAgency = agencyData.has_salary;
-
-      if (hasHost) setHostSalaryAmount(hostData.net || 0);
-      if (hasAgency) {
-        setAgencySalaryAmount(agencyData.amount || 0);
-        setAgencySalaryName(agencyData.agency_name || "");
-      }
+      const hasHost = data.host_salary?.has_salary;
+      const hasAgency = data.agency_salary?.has_salary;
 
       if (!hasHost && !hasAgency) {
         setNoSalaryAtAll(true);
-      } else if (hasHost && !hasAgency) {
+      } else if (!data.is_agency_owner && hasHost) {
+        // Regular host — go straight to step 1
         setSalaryType("host");
-        setCheckResult(hostData);
-        if (!hostData.is_suspicious && hostData.withdraw_open !== false &&
-            (hostData.withdrawals_this_month || 0) < (hostData.max_withdrawals || 1)) {
+        setCheckResult({
+          success: true, has_salary: true,
+          salary: data.host_salary.salary, deduction: data.host_salary.deduction, net: data.host_salary.net,
+          is_suspicious: data.host_salary.is_suspicious, suspicious_amount: data.host_salary.suspicious_amount,
+          user_type: "host",
+          withdrawals_this_month: data.withdrawals.count, max_withdrawals: data.withdrawals.max,
+          withdraw_open: data.withdraw_open !== false,
+        });
+        if (!data.host_salary.is_suspicious && data.withdraw_open !== false && data.withdrawals.can_withdraw) {
           setStep(1);
         }
-      } else if (!hasHost && hasAgency) {
-        setSalaryType("agency");
-        await checkAgencySalary();
       }
-      // else: both available — show choice screen
+      // else: agency owner — show choice screen (handled in render)
     } catch {
       setError("فشل الاتصال بالخادم");
     } finally {
-      setChoiceLoading(false);
       setLoading(false);
     }
   };
 
-  const handleChooseSalaryType = async (type: "host" | "agency") => {
+  const handleChooseSalaryType = (type: "host" | "agency") => {
     setSalaryType(type);
-    setLoading(true);
-    if (type === "host") {
-      await checkSalary();
-    } else {
-      await checkAgencySalary();
-    }
-  };
-
-  const checkAgencySalary = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`${API}?action=agency_salary_check&uuid=${user!.uuid}`);
-      const data = await res.json();
-      if (data.has_salary) {
-        setCheckResult({
-          success: true,
-          has_salary: true,
-          salary: data.amount || 0,
-          deduction: 0,
-          net: data.amount || 0,
-          user_type: "agent",
-          withdraw_open: true,
-          withdrawals_this_month: 0,
-          max_withdrawals: 1,
-        });
-        setStep(1);
-      } else {
-        setCheckResult({ success: true, has_salary: false, reason: "no_agency_salary" });
-      }
-    } catch {
-      setError("فشل الاتصال بالخادم");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkSalary = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`${API}?action=salary_check&token=${token}&uuid=${user!.uuid}`);
-      const data = await res.json();
-      setCheckResult(data);
-      if (data.success && data.has_salary && !data.is_suspicious && data.withdraw_open !== false &&
-          (data.withdrawals_this_month || 0) < (data.max_withdrawals || 1)) {
-        setStep(1);
-      }
-    } catch {
-      setError("فشل الاتصال بالخادم. حاول مرة أخرى.");
-    } finally {
-      setLoading(false);
+    if (type === "host" && allData) {
+      setCheckResult({
+        success: true, has_salary: allData.host_salary.has_salary,
+        salary: allData.host_salary.salary, deduction: allData.host_salary.deduction, net: allData.host_salary.net,
+        is_suspicious: allData.host_salary.is_suspicious, suspicious_amount: allData.host_salary.suspicious_amount,
+        user_type: "host",
+        withdrawals_this_month: allData.withdrawals.count, max_withdrawals: allData.withdrawals.max,
+        withdraw_open: allData.withdraw_open !== false,
+      });
+      if (allData.withdrawals.can_withdraw && !allData.host_salary.is_suspicious) setStep(1);
+    } else if (type === "agency" && allData) {
+      setCheckResult({
+        success: true, has_salary: allData.agency_salary.has_salary,
+        salary: allData.agency_salary.amount, deduction: 0, net: allData.agency_salary.amount,
+        user_type: "agent",
+        withdrawals_this_month: allData.withdrawals.count, max_withdrawals: allData.withdrawals.max,
+        withdraw_open: allData.withdraw_open !== false,
+      });
+      if (allData.withdrawals.can_withdraw) setStep(1);
     }
   };
 
