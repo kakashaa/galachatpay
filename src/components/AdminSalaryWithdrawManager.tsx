@@ -136,16 +136,19 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         }));
         const enriched = await enrichWithAvatars(rawRequests);
         setRequests(enriched);
-        // Map stats: API uses "delivered" count for approved
+        // Compute amounts from actual request data (API stats may not include amounts)
+        const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
+        const pendingReqs = rawRequests.filter(r => r.status === "pending");
+        const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
         const apiStats = data.stats || {};
         setStats({
-          total: apiStats.total || 0,
-          delivered: apiStats.delivered || 0,
-          delivered_amount: apiStats.delivered_amount || (apiStats.delivered ? apiStats.total_amount - (apiStats.pending_amount || 0) : 0),
-          pending: apiStats.pending || 0,
-          pending_amount: apiStats.pending_amount || 0,
-          rejected: apiStats.rejected || 0,
-          rejected_amount: apiStats.rejected_amount || 0,
+          total: apiStats.total || rawRequests.length,
+          delivered: apiStats.delivered || deliveredReqs.length,
+          delivered_amount: deliveredReqs.reduce((s, r) => s + (r.amount || 0), 0),
+          pending: apiStats.pending || pendingReqs.length,
+          pending_amount: pendingReqs.reduce((s, r) => s + (r.amount || 0), 0),
+          rejected: apiStats.rejected || rejectedReqs.length,
+          rejected_amount: rejectedReqs.reduce((s, r) => s + (r.amount || 0), 0),
         });
       }
     } catch {
