@@ -179,7 +179,7 @@ const AdminDashboardPage: React.FC = () => {
   const [approveReceiptFile, setApproveReceiptFile] = useState<File | null>(null);
   const [salaryActionLoading, setSalaryActionLoading] = useState(false);
   const [salaryFilter, setSalaryFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
-  const [salarySubTab, setSalarySubTab] = useState<"requests" | "withdraw">("requests");
+  const [salarySubTab, setSalarySubTab] = useState<"requests" | "withdraw" | "charge">("requests");
   const [rejectImageFile, setRejectImageFile] = useState<File | null>(null);
   const [isFinalRejection, setIsFinalRejection] = useState(false);
   const [animatedPhotoAction, setAnimatedPhotoAction] = useState<{ id: string; type: "approve" | "reject" } | null>(null);
