@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, TrendingUp, Wallet, Gem } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
-import { BANK_LABELS, COUNTRY_LABELS, getBankCountry } from "@/lib/constants";
+import { BANK_LABELS } from "@/lib/constants";
 
 const AGENT_API = "https://galachat.site/project-z/api.php";
 
