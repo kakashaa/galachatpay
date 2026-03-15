@@ -384,7 +384,18 @@ const AdminDashboardPage: React.FC = () => {
       body: { username: adminUsername, session_token: adminSessionToken, action, data },
     });
     if (error) throw error;
-    if (result?.error) throw new Error(result.error);
+    if (result?.error) {
+      // If auth error, redirect to login
+      if (result.error === "بيانات الدخول غير صحيحة") {
+        sessionStorage.removeItem("admin_session_token");
+        sessionStorage.removeItem("admin_username");
+        sessionStorage.removeItem("admin_role");
+        toast.error("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
+        navigate("/admin");
+        return;
+      }
+      throw new Error(result.error);
+    }
     return result?.data;
   };
 
