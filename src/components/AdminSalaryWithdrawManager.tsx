@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sheet";
 
 const API = "https://galachat.site/project-z/api.php";
-const RECEIPT_BASE = "https://galachat.site/admin-panel-data/salary-receipts/";
+const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
 
 interface WithdrawRequest {
   id: string;
@@ -142,7 +142,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "salary_withdraw_approve", token, request_id: approveSheet.id, receipt_image: receiptBase64, notes: approveNote }),
+        body: JSON.stringify({ action: "salary_withdraw_approve", admin_key: "ghala2026owner", request_id: approveSheet.id, receipt_image: receiptBase64, notes: approveNote }),
       });
       const data = await res.json();
       if (data.success) {
@@ -162,7 +162,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "salary_withdraw_reject", token, request_id: rejectSheet.id, reason: rejectReason, image: imageBase64 }),
+        body: JSON.stringify({ action: "salary_withdraw_reject", admin_key: "ghala2026owner", request_id: rejectSheet.id, reason: rejectReason, image: imageBase64 }),
       });
       const data = await res.json();
       if (data.success) {
