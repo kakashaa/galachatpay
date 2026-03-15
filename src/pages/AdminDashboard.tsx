@@ -2391,7 +2391,9 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Element Settings Tab */}
             {activeTab === "element_settings" && (
-              <AdminElementSettings readOnly={isModeratorRole && isTabViewOnly("element_settings")} adminUsername={adminUsername || ""} />
+              <motion.div key="element_settings" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminElementSettings readOnly={isModeratorRole && isTabViewOnly("element_settings")} adminUsername={adminUsername || ""} />
+              </motion.div>
             )}
 
             {/* Banners Tab */}
