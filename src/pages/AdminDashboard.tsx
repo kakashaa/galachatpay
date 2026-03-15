@@ -2616,7 +2616,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Audit Log Tab - Super Admin Only */}
             {activeTab === "audit_log" && adminRole === "super_admin" && (
-              <motion.div key="audit_log" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="audit_log" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-3 mb-4">
                   <p className="text-xs text-violet-400 leading-relaxed">
                     📋 سجل جميع عمليات الأدمن (آخر 300 عملية). يتم تسجيل كل إجراء تلقائياً.
