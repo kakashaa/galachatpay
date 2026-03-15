@@ -207,18 +207,21 @@ const SalaryWithdraw: React.FC = () => {
   const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
 
   const token = localStorage.getItem("gala_session_key") || "";
+  const hasFetchedRef = useRef(false);
 
   // Check if user is an agency owner (type_user 2, 4, 6)
   const isAgencyOwner = user ? [2, 4, 6].includes(user.type_user) : false;
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     if (isAgencyOwner) {
       fetchBothSalaries();
     } else {
       checkSalary();
     }
-  }, [user]);
+  }, [user?.uuid]);
 
   const fetchBothSalaries = async () => {
     setChoiceLoading(true);
