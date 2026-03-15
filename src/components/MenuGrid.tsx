@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, BadgeCheck, Briefcase,
-  Ban, Clock, Construction,
+  Ban, Clock, Construction, Landmark,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
