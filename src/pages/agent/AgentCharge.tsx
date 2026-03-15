@@ -452,7 +452,7 @@ const AgentCharge: React.FC = () => {
                 <div className="flex justify-between"><span className="text-muted-foreground">👤 المستخدم</span><span className="font-bold text-foreground">{userName} ({uuid})</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">💰 الكوينز</span><span className="font-bold text-foreground" dir="ltr">{parseInt(coins).toLocaleString()}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">💵 المبلغ</span><span className="font-bold text-amber-400" dir="ltr">${usdAmount.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">🏦 الدفع</span><span className="font-bold text-foreground">{paymentMethods.find(p => p.id === selectedPayment)?.label}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">🏦 الدفع</span><span className="font-bold text-foreground">{AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.label}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">📎 الإيصال</span><span className="font-bold">{receiptImage ? "✅ مرفق" : "❌ غير مرفق"}</span></div>
               </div>
             </div>
