@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DollarSign, CheckCircle, XCircle, Clock, Search, Upload,
-  Loader2, Phone, CreditCard, Globe, User, FileText, X, Image,
-  ChevronDown, ChevronUp, Filter, Eye,
+  Loader2, FileText, Image,
+  ChevronDown, ChevronUp, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

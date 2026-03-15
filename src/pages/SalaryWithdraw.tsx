@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, User, CheckCircle, AlertCircle, Globe, CreditCard,
+  CheckCircle, AlertCircle, Globe, CreditCard,
   UserCheck, DollarSign, ArrowRight, ArrowLeft, Shield, Phone,
-  MessageSquare, FileText, Loader2, Ban, Clock, ChevronDown,
+  Loader2, Ban, Clock,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
