@@ -411,7 +411,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
       {/* ===== 5. MONTHLY SUMMARY ===== */}
       {!loading && filtered.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+        <div className="bg-[#1c1e2e] border border-white/10 rounded-2xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             📊 ملخص شهر {monthLabel}
           </h3>
