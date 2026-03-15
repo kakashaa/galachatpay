@@ -6,9 +6,8 @@ import {
 import {
   Loader2, ArrowLeftRight, PieChart, FileText,
   Calendar, ImageIcon, AlertTriangle, Wallet,
-  X,
+  X, Globe,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
@@ -60,12 +59,12 @@ const BANK_COLORS: Record<string, { bg: string; text: string; border: string }> 
   "حساب الوكيل": { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-slate-500/20" },
 };
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  "السعودية": "🇸🇦",
-  "اليمن": "🇾🇪",
-  "أمريكا": "🇺🇸",
-  "مصر": "🇪🇬",
-  "العراق": "🇮🇶",
+const COUNTRY_LABELS: Record<string, string> = {
+  "السعودية": "SA",
+  "اليمن": "YE",
+  "أمريكا": "US",
+  "مصر": "EG",
+  "العراق": "IQ",
 };
 
 const getBankColor = (bank: string) => {
@@ -260,7 +259,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                               {/* Bank + Date */}
                               <div className="flex items-center justify-between">
                                 <span className={`text-[10px] px-2 py-1 rounded-lg ${bankColor.bg} ${bankColor.text} border ${bankColor.border} font-bold`}>
-                                  {COUNTRY_FLAGS[txn.country] || ""} {txn.bank}
+                                  {txn.bank}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground font-mono">
                                   {txn.created_at ? new Date(txn.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"}
@@ -337,7 +336,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                                 transition={{ delay: i * 0.06, duration: 0.3 }}
                                 className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-4 text-center"
                               >
-                                <span className="text-2xl">{COUNTRY_FLAGS[country] || "🌍"}</span>
+                                <Globe className="w-6 h-6 text-amber-400" />
                                 <p className="text-xs font-bold text-foreground mt-1">{country}</p>
                                 <p className="text-base font-black text-amber-400 font-mono mt-1">${info.total_usd?.toFixed(2)}</p>
                                 <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
