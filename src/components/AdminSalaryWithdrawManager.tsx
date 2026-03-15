@@ -365,7 +365,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       </div>
 
       {/* ═══════ 3. STATUS CHIPS ═══════ */}
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
         {chips.map(chip => {
           const cfg = statusConfig[chip.key];
           const isActive = filter === chip.key;
@@ -373,7 +373,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             <button
               key={chip.key}
               onClick={() => setFilter(isActive ? "all" : chip.key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 flex items-center gap-1.5 ${
+              className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all duration-200 flex items-center gap-1 ${
                 isActive
                   ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
                   : `${cfg.bg} ${cfg.border} ${cfg.color} hover:border-white/20`
@@ -381,7 +381,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             >
               {cfg.icon}
               <span>{chip.count} {cfg.chipLabel}</span>
-              <span className="font-mono text-[10px] opacity-70">${chip.amount.toLocaleString()}</span>
+              <span className="font-mono text-[9px] opacity-70">${chip.amount.toLocaleString()}</span>
             </button>
           );
         })}
