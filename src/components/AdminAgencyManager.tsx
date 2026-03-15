@@ -38,6 +38,15 @@ interface AdminAgencyManagerProps {
   canAct: boolean;
 }
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.06, duration: 0.4, ease: "easeOut" },
+  }),
+};
+
 const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +68,6 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
 
   // Toggle loading
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
-
 
   const adminToken = sessionStorage.getItem("admin_session_token");
 
@@ -199,24 +207,29 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   }
 
   return (
-    <div className="space-y-4" dir="rtl">
-      {/* Summary Cards */}
+    <div className="space-y-5" dir="rtl">
+      {/* ===== Summary Cards ===== */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card border border-amber-500/20 rounded-2xl p-4 text-center">
-          <p className="text-[10px] text-muted-foreground mb-1">وكالات نشطة</p>
-          <span className="text-2xl font-bold text-amber-400">{activeAgencies.length}</span>
-        </div>
-        <div className="bg-card border border-green-500/20 rounded-2xl p-4 text-center">
-          <p className="text-[10px] text-muted-foreground mb-1">شحنات اليوم</p>
-          <span className="text-2xl font-bold text-green-400 font-mono">${totalTodayCharges.toLocaleString()}</span>
-        </div>
-        <div className="bg-card border border-blue-500/20 rounded-2xl p-4 text-center">
-          <p className="text-[10px] text-muted-foreground mb-1">إجمالي الرصيد</p>
-          <span className="text-lg font-bold text-blue-400 font-mono">{(totalBalance / 1000000).toFixed(1)}M</span>
-        </div>
+        {[
+          { label: "وكالات نشطة", value: activeAgencies.length, sub: `من ${agencies.length}`, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
+          { label: "شحنات اليوم", value: `$${totalTodayCharges.toLocaleString()}`, sub: `${agencies.reduce((s, a) => s + (a.today_count || 0), 0)} عملية`, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
+          { label: "إجمالي الرصيد", value: `${(totalBalance / 1000000).toFixed(1)}M`, sub: `$${(totalBalance / 8500).toFixed(0)}`, color: "text-blue-400", border: "border-blue-500/20", bg: "bg-blue-500/5" },
+        ].map((card, i) => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: i * 0.08, duration: 0.35 }}
+            className={`${card.bg} border ${card.border} rounded-2xl p-4 text-center`}
+          >
+            <p className="text-[10px] text-muted-foreground mb-1">{card.label}</p>
+            <span className={`text-xl font-black ${card.color} font-mono`}>{card.value}</span>
+            <p className="text-[9px] text-muted-foreground mt-0.5">{card.sub}</p>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Search + Create */}
+      {/* ===== Search + Create ===== */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -224,21 +237,22 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
             placeholder="ابحث بالاسم أو ID..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="pr-9"
+            className="pr-9 bg-muted/20 border-border/30 h-9 text-xs"
           />
         </div>
         {canAct && (
           <Button
             onClick={() => setShowCreate(!showCreate)}
             variant={showCreate ? "outline" : "default"}
-            className="bg-amber-500 hover:bg-amber-600 text-white"
+            className={showCreate ? "" : "bg-amber-500 hover:bg-amber-600 text-white"}
+            size="sm"
           >
             {showCreate ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           </Button>
         )}
       </div>
 
-      {/* Create Form */}
+      {/* ===== Create Form ===== */}
       <AnimatePresence>
         {showCreate && (
           <motion.div
@@ -247,18 +261,20 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
             exit={{ opacity: 0, height: 0 }}
             className="bg-card border border-amber-500/20 rounded-2xl p-4 space-y-3 overflow-hidden"
           >
-            <h3 className="text-sm font-bold text-amber-400">إنشاء وكالة جديدة</h3>
-            <Input placeholder="اسم الوكيل *" value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} />
-            <Input placeholder="اسم المستخدم (للدخول) *" value={createForm.username} onChange={e => setCreateForm({ ...createForm, username: e.target.value })} dir="ltr" />
-            <Input placeholder="ID الوكالة (UUID) *" value={createForm.agency_id} onChange={e => setCreateForm({ ...createForm, agency_id: e.target.value })} dir="ltr" />
-            <Input placeholder="رقم الواتساب" value={createForm.phone} onChange={e => setCreateForm({ ...createForm, phone: e.target.value })} dir="ltr" />
+            <h3 className="text-sm font-bold text-amber-400 flex items-center gap-2">
+              <Plus className="w-4 h-4" /> إنشاء وكالة جديدة
+            </h3>
+            <Input placeholder="اسم الوكيل *" value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })} className="bg-muted/20 border-border/30" />
+            <Input placeholder="اسم المستخدم (للدخول) *" value={createForm.username} onChange={e => setCreateForm({ ...createForm, username: e.target.value })} dir="ltr" className="bg-muted/20 border-border/30" />
+            <Input placeholder="ID الوكالة (UUID) *" value={createForm.agency_id} onChange={e => setCreateForm({ ...createForm, agency_id: e.target.value })} dir="ltr" className="bg-muted/20 border-border/30" />
+            <Input placeholder="رقم الواتساب" value={createForm.phone} onChange={e => setCreateForm({ ...createForm, phone: e.target.value })} dir="ltr" className="bg-muted/20 border-border/30" />
 
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">الفئة</label>
               <select
                 value={createForm.tier}
                 onChange={e => setCreateForm({ ...createForm, tier: e.target.value })}
-                className="w-full bg-muted/20 border border-border/30 rounded-lg p-2.5 text-sm"
+                className="w-full bg-muted/20 border border-border/30 rounded-xl p-2.5 text-sm text-foreground"
               >
                 {TIERS.map(t => (
                   <option key={t.label} value={t.label}>{t.label} — بونص {t.bonus}%</option>
@@ -274,6 +290,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                 value={createForm.custom_coins}
                 onChange={e => setCreateForm({ ...createForm, custom_coins: e.target.value })}
                 dir="ltr"
+                className="bg-muted/20 border-border/30"
               />
             ) : (
               <div className="bg-muted/10 rounded-xl p-3 border border-border/20">
@@ -285,7 +302,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                   return (
                     <div className="text-xs space-y-1">
                       <div className="flex justify-between"><span className="text-muted-foreground">أساسي:</span><span className="font-mono">{t.coins.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-green-400">+{bonus.toLocaleString()}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-emerald-400">+{bonus.toLocaleString()}</span></div>
                       <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{total.toLocaleString()}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">≈</span><span className="font-mono text-muted-foreground">${(total / 8500).toFixed(2)}</span></div>
                     </div>
@@ -297,7 +314,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
             <Button
               onClick={handleCreate}
               disabled={createLoading}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-xl h-11 font-bold"
             >
               {createLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
               إنشاء الوكالة
@@ -306,62 +323,104 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
         )}
       </AnimatePresence>
 
-      {/* Agencies List */}
+      {/* ===== Agencies List ===== */}
       {filtered.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground">
-          <DollarSign className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p>{search ? "لا توجد نتائج" : "لا توجد وكالات"}</p>
+        <div className="text-center py-14">
+          <DollarSign className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">{search ? "لا توجد نتائج" : "لا توجد وكالات"}</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map(agency => {
+          {filtered.map((agency, i) => {
             const isActive = agency.status === "active";
             const balanceUSD = (agency.balance / 8500).toFixed(2);
             const isExpanded = expanded === agency.username;
+            const balancePct = agency.original_balance > 0
+              ? Math.min(100, Math.round((agency.balance / agency.original_balance) * 100))
+              : 0;
 
             return (
               <motion.div
                 key={agency.username}
+                custom={i}
+                variants={cardVariants}
+                initial="hidden"
+                animate="visible"
                 layout
-                className={`bg-card border rounded-2xl overflow-hidden transition-colors ${isActive ? "border-amber-500/20" : "border-red-500/20 opacity-70"}`}
+                className={`bg-[#1c1e2e] border rounded-2xl overflow-hidden transition-all hover:border-amber-500/30 ${
+                  isActive ? "border-white/10" : "border-red-500/20 opacity-70"
+                }`}
               >
                 {/* Main info */}
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border ${isActive ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold border ${
+                        isActive ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20"
+                      }`}>
                         💰
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold">{agency.name}</h4>
-                        <span className="text-[10px] text-muted-foreground font-mono">ID: {agency.agency_id}</span>
+                        <h4 className="text-sm font-bold text-foreground">{agency.name}</h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground font-mono">ID: {agency.agency_id}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                            isActive ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+                          }`}>
+                            {isActive ? "● نشط" : "● مجمّد"}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${isActive ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
-                      {isActive ? "نشط" : "مجمّد"}
-                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-muted/10 rounded-lg p-2">
-                      <p className="text-muted-foreground text-[10px]">الرصيد</p>
-                      <p className="font-mono font-bold">{agency.balance?.toLocaleString()} <span className="text-[9px] text-muted-foreground">كوينز</span></p>
-                      <p className="text-[10px] text-muted-foreground font-mono">${balanceUSD}</p>
+                  {/* Balance section with progress bar */}
+                  <div className="bg-white/[0.03] rounded-xl p-3 border border-white/5 mb-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">الرصيد المتبقي</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">${balanceUSD}</span>
                     </div>
-                    <div className="bg-muted/10 rounded-lg p-2">
-                      <p className="text-muted-foreground text-[10px]">شحنات اليوم</p>
-                      <p className="font-mono font-bold">${agency.today_charges || 0}</p>
-                      <p className="text-[10px] text-muted-foreground">{agency.today_count || 0} عمليات</p>
+                    <p className="text-lg font-black text-amber-400 font-mono">{agency.balance?.toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">كوينز</span></p>
+                    {/* Progress bar */}
+                    {agency.original_balance > 0 && (
+                      <div className="space-y-1">
+                        <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${balancePct}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut", delay: i * 0.06 + 0.3 }}
+                            className={`h-full rounded-full ${
+                              balancePct > 50 ? "bg-amber-500" : balancePct > 20 ? "bg-orange-500" : "bg-red-500"
+                            }`}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[9px] text-muted-foreground">
+                          <span>{balancePct}% متبقي</span>
+                          <span>من {agency.original_balance?.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Today stats */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-emerald-500/5 rounded-xl p-2.5 border border-emerald-500/10 text-center">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">شحنات اليوم</p>
+                      <p className="text-base font-black text-emerald-400 font-mono">${agency.today_charges || 0}</p>
+                    </div>
+                    <div className="bg-blue-500/5 rounded-xl p-2.5 border border-blue-500/10 text-center">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">عدد العمليات</p>
+                      <p className="text-base font-black text-blue-400 font-mono">{agency.today_count || 0}</p>
                     </div>
                   </div>
 
-                  {/* Expandable details */}
+                  {/* Expand toggle */}
                   <button
                     onClick={() => setExpanded(isExpanded ? null : agency.username)}
-                    className="w-full flex items-center justify-center gap-1 mt-2 text-[10px] text-muted-foreground hover:text-foreground"
+                    className="w-full flex items-center justify-center gap-1 mt-3 text-[10px] text-muted-foreground hover:text-foreground transition-colors py-1"
                   >
                     {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {isExpanded ? "إخفاء" : "المزيد"}
+                    {isExpanded ? "إخفاء التفاصيل" : "عرض التفاصيل"}
                   </button>
 
                   <AnimatePresence>
@@ -372,18 +431,18 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="mt-3 space-y-2 text-xs border-t border-border/20 pt-3">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Clock className="w-3 h-3" />
-                            <span>آخر دخول: {agency.last_login || "—"}</span>
+                        <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-white/[0.02] rounded-lg px-3 py-2">
+                            <Clock className="w-3.5 h-3.5 text-muted-foreground/60" />
+                            <span>آخر دخول: <strong className="text-foreground">{agency.last_login || "—"}</strong></span>
                           </div>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Phone className="w-3 h-3" />
-                            <span dir="ltr">{agency.phone || "—"}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-white/[0.02] rounded-lg px-3 py-2">
+                            <Phone className="w-3.5 h-3.5 text-muted-foreground/60" />
+                            <span dir="ltr"><strong className="text-foreground">{agency.phone || "—"}</strong></span>
                           </div>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Receipt className="w-3 h-3" />
-                            <span>الرصيد الأصلي: {agency.original_balance?.toLocaleString() || "—"}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-white/[0.02] rounded-lg px-3 py-2">
+                            <Receipt className="w-3.5 h-3.5 text-muted-foreground/60" />
+                            <span>الرصيد الأصلي: <strong className="text-foreground font-mono">{agency.original_balance?.toLocaleString() || "—"}</strong></span>
                           </div>
                         </div>
                       </motion.div>
@@ -393,33 +452,35 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
 
                 {/* Actions */}
                 {canAct && (
-                  <div className="flex border-t border-border/20">
+                  <div className="flex border-t border-white/5">
                     <button
                       onClick={() => setAddBalanceTarget(addBalanceTarget === agency.username ? null : agency.username)}
-                      className="flex-1 py-2.5 text-[11px] font-bold text-amber-400 hover:bg-amber-500/5 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 py-3 text-[11px] font-bold text-amber-400 hover:bg-amber-500/5 transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <Plus className="w-3 h-3" /> إضافة رصيد
+                      <Plus className="w-3.5 h-3.5" /> إضافة رصيد
                     </button>
-                    <div className="w-px bg-border/20" />
+                    <div className="w-px bg-white/5" />
                     <button
                       onClick={() => handleToggle(agency.username)}
                       disabled={toggleLoading === agency.username}
-                      className={`flex-1 py-2.5 text-[11px] font-bold transition-colors flex items-center justify-center gap-1 ${isActive ? "text-blue-400 hover:bg-blue-500/5" : "text-green-400 hover:bg-green-500/5"}`}
+                      className={`flex-1 py-3 text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5 ${
+                        isActive ? "text-blue-400 hover:bg-blue-500/5" : "text-emerald-400 hover:bg-emerald-500/5"
+                      }`}
                     >
                       {toggleLoading === agency.username ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : isActive ? (
-                        <><Snowflake className="w-3 h-3" /> تجميد</>
+                        <><Snowflake className="w-3.5 h-3.5" /> تجميد</>
                       ) : (
-                        <><Play className="w-3 h-3" /> تفعيل</>
+                        <><Play className="w-3.5 h-3.5" /> تفعيل</>
                       )}
                     </button>
-                    <div className="w-px bg-border/20" />
+                    <div className="w-px bg-white/5" />
                     <button
                       onClick={() => setExpanded(isExpanded ? null : agency.username)}
-                      className="flex-1 py-2.5 text-[11px] font-bold text-muted-foreground hover:bg-muted/10 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 py-3 text-[11px] font-bold text-muted-foreground hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <Eye className="w-3 h-3" /> التفاصيل
+                      <Eye className="w-3.5 h-3.5" /> التفاصيل
                     </button>
                   </div>
                 )}
@@ -434,11 +495,13 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                       className="overflow-hidden border-t border-amber-500/20"
                     >
                       <div className="p-4 space-y-3 bg-amber-500/5">
-                        <h4 className="text-xs font-bold text-amber-400">إضافة رصيد لـ {agency.name}</h4>
+                        <h4 className="text-xs font-bold text-amber-400 flex items-center gap-2">
+                          <Plus className="w-3.5 h-3.5" /> إضافة رصيد لـ {agency.name}
+                        </h4>
                         <select
                           value={addBalanceTier}
                           onChange={e => setAddBalanceTier(e.target.value)}
-                          className="w-full bg-muted/20 border border-border/30 rounded-lg p-2.5 text-sm"
+                          className="w-full bg-muted/20 border border-border/30 rounded-xl p-2.5 text-sm text-foreground"
                         >
                           {TIERS.map(t => (
                             <option key={t.label} value={t.label}>{t.label} — بونص {t.bonus}%</option>
@@ -453,6 +516,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                             value={addBalanceCustom}
                             onChange={e => setAddBalanceCustom(e.target.value)}
                             dir="ltr"
+                            className="bg-muted/20 border-border/30"
                           />
                         ) : (
                           <div className="bg-card rounded-xl p-3 border border-border/20 text-xs">
@@ -464,7 +528,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                               return (
                                 <div className="space-y-1">
                                   <div className="flex justify-between"><span className="text-muted-foreground">أساسي:</span><span className="font-mono">{t.coins.toLocaleString()}</span></div>
-                                  <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-green-400">+{bonus.toLocaleString()}</span></div>
+                                  <div className="flex justify-between"><span className="text-muted-foreground">بونص ({t.bonus}%):</span><span className="font-mono text-emerald-400">+{bonus.toLocaleString()}</span></div>
                                   <div className="flex justify-between border-t border-border/20 pt-1"><span className="font-bold">الإجمالي:</span><span className="font-mono font-bold text-amber-400">{total.toLocaleString()}</span></div>
                                 </div>
                               );
@@ -476,13 +540,13 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                           <Button
                             onClick={() => handleAddBalance(agency.username)}
                             disabled={addBalanceLoading}
-                            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+                            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl"
                             size="sm"
                           >
                             {addBalanceLoading ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Plus className="w-3 h-3 ml-1" />}
                             إضافة
                           </Button>
-                          <Button onClick={() => setAddBalanceTarget(null)} variant="outline" size="sm">
+                          <Button onClick={() => setAddBalanceTarget(null)} variant="outline" size="sm" className="rounded-xl">
                             إلغاء
                           </Button>
                         </div>
