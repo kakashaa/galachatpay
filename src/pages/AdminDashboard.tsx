@@ -2161,7 +2161,7 @@ const AdminDashboardPage: React.FC = () => {
             )}
 
             {activeTab === "admin_stars" && (
-              <motion.div key="admin_stars" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="admin_stars" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct ? (
                   <>
                     <div className="bg-card border rounded-xl p-4 space-y-3">
