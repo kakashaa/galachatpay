@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, BadgeCheck, Briefcase,
-  Ban, Clock, Construction,
+  Ban, Clock, Construction, Landmark,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
@@ -36,20 +36,6 @@ const ELEMENT_LABELS: Record<string, string> = {
   stars: "🌟 نجومي",
 };
 
-const menuItems: MenuItem[] = [
-  { icon: Wallet, label: "سحب راتب", route: "/salary", bg: "rgba(34,197,94,0.12)", iconColor: "text-emerald-400", banKey: "salary" },
-  { icon: Headset, label: "دعم سريع", route: "/support", bg: "rgba(59,130,246,0.12)", iconColor: "text-blue-400", banKey: "quick_support" },
-  { icon: Fingerprint, label: "تغيير الآيدي", route: "/change-id", bg: "rgba(168,85,247,0.12)", iconColor: "text-purple-400", banKey: "change_id" },
-  { icon: Crown, label: "طلب VIP", route: "/request-vip", bg: "rgba(234,179,8,0.12)", iconColor: "text-yellow-400", banKey: "vip" },
-  { icon: Gift, label: "هدية مخصصة", route: "/custom-gift", bg: "rgba(236,72,153,0.12)", iconColor: "text-pink-400", banKey: "gifts" },
-  { icon: Sparkles, label: "دخولية", route: "/entry-request", bg: "rgba(6,182,212,0.12)", iconColor: "text-cyan-400", guestAllowed: true, banKey: "entries" },
-  { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400", banKey: "animated_photos" },
-  { icon: Frame, label: "إطار", route: "/frames", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400", guestAllowed: true, banKey: "frames" },
-  { icon: BadgeCheck, label: "مركز الشارة", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400", banKey: "hairs" },
-  { icon: Briefcase, label: "works", route: "/bd", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]", banKey: "works" },
-  { icon: FileText, label: "السياسة", route: "/policy", bg: "rgba(100,116,139,0.12)", iconColor: "text-slate-400", guestAllowed: true },
-];
-
 const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
@@ -59,6 +45,23 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
   const [bdBanned, setBdBanned] = useState(false);
   const [banDialog, setBanDialog] = useState<{ open: boolean; elementKey: string }>({ open: false, elementKey: "" });
   const [disabledDialog, setDisabledDialog] = useState<{ open: boolean; label: string }>({ open: false, label: "" });
+
+  const agencyLoggedIn = !!localStorage.getItem("ghala_token") && localStorage.getItem("ghala_type") === "agent";
+
+  const menuItems: MenuItem[] = [
+    { icon: Wallet, label: "سحب راتب", route: "/salary", bg: "rgba(34,197,94,0.12)", iconColor: "text-emerald-400", banKey: "salary" },
+    { icon: Headset, label: "دعم سريع", route: "/support", bg: "rgba(59,130,246,0.12)", iconColor: "text-blue-400", banKey: "quick_support" },
+    { icon: Fingerprint, label: "تغيير الآيدي", route: "/change-id", bg: "rgba(168,85,247,0.12)", iconColor: "text-purple-400", banKey: "change_id" },
+    { icon: Crown, label: "طلب VIP", route: "/request-vip", bg: "rgba(234,179,8,0.12)", iconColor: "text-yellow-400", banKey: "vip" },
+    { icon: Gift, label: "هدية مخصصة", route: "/custom-gift", bg: "rgba(236,72,153,0.12)", iconColor: "text-pink-400", banKey: "gifts" },
+    { icon: Sparkles, label: "دخولية", route: "/entry-request", bg: "rgba(6,182,212,0.12)", iconColor: "text-cyan-400", guestAllowed: true, banKey: "entries" },
+    { icon: PlayCircle, label: "صورة متحركة", route: "/animated-photo", bg: "rgba(249,115,22,0.12)", iconColor: "text-orange-400", banKey: "animated_photos" },
+    { icon: Frame, label: "إطار", route: "/frames", bg: "rgba(99,102,241,0.12)", iconColor: "text-indigo-400", guestAllowed: true, banKey: "frames" },
+    { icon: BadgeCheck, label: "مركز الشارة", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400", banKey: "hairs" },
+    { icon: Briefcase, label: "works", route: "/bd", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]", banKey: "works" },
+    { icon: Landmark, label: "وكالة الشحن", route: agencyLoggedIn ? "/agent" : "/login/agent", bg: "rgba(245,158,11,0.12)", iconColor: "text-amber-400", guestAllowed: true },
+    { icon: FileText, label: "السياسة", route: "/policy", bg: "rgba(100,116,139,0.12)", iconColor: "text-slate-400", guestAllowed: true },
+  ];
 
   useEffect(() => {
     if (!user?.uuid) return;
