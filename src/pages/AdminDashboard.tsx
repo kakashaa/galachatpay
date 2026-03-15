@@ -1627,7 +1627,7 @@ const AdminDashboardPage: React.FC = () => {
                           : "bg-muted/50 text-muted-foreground hover:bg-muted"
                       }`}
                     >
-                      {f === "all" ? "الكل" : f === "pending" ? "⏳ معلقة" : f === "approved" ? "✅ مقبولة" : "❌ مرفوضة"}
+                      {f === "all" ? "الكل" : f === "pending" ? "معلقة" : f === "approved" ? "مقبولة" : "مرفوضة"}
                     </button>
                   ))}
                 </div>
