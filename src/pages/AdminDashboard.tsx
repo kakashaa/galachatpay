@@ -152,6 +152,13 @@ const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>(null);
   const [activeSection, setActiveSection] = useState<"requests" | "products" | "finance" | "settings" | null>(null);
+  const [tabDirection, setTabDirection] = useState<1 | -1>(1);
+
+  const tabSlideVariants = {
+    enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
+  };
   const [loading, setLoading] = useState(false);
 
   // Videos state
@@ -1096,7 +1103,13 @@ const AdminDashboardPage: React.FC = () => {
                 return (
                   <button
                     key={tabKey}
-                    onClick={() => setActiveTab(tabKey)}
+                    onClick={() => {
+                      const sectionTabs = currentSectionDef?.tabs || [];
+                      const oldIdx = sectionTabs.indexOf(activeTab as any);
+                      const newIdx = sectionTabs.indexOf(tabKey);
+                      setTabDirection(newIdx >= oldIdx ? 1 : -1);
+                      setActiveTab(tabKey);
+                    }}
                     className={cn(
                       "relative flex flex-col items-center gap-1 min-w-[56px] px-3 py-2 rounded-2xl text-[10px] font-medium whitespace-nowrap transition-all duration-200",
                       isActive
@@ -1189,7 +1202,7 @@ const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-4 overflow-hidden">
       {loading ? (
         <div className="space-y-3 py-4">
           {[...Array(4)].map((_, i) => (
@@ -1200,11 +1213,11 @@ const AdminDashboardPage: React.FC = () => {
           ))}
         </div>
       ) : (
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" custom={tabDirection}>
 
             {/* Videos Tab */}
             {activeTab === "videos" && (
-              <motion.div key="videos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="videos" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct && <Button onClick={() => setShowAddVideo(!showAddVideo)} className="w-full" variant={showAddVideo ? "outline" : "default"}>
                   {showAddVideo ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة فيديو</>}
                 </Button>}
@@ -1269,7 +1282,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Salary Tab */}
             {activeTab === "salary" && (
-              <motion.div key="salary" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Sub-tabs */}
                 <div className="flex gap-2 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
                   <button
@@ -1399,7 +1412,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Reports Tab */}
             {activeTab === "reports" && (
-              <motion.div key="reports" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="reports" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {banReports.map((report) => (
                   <div key={report.id} className="bg-card border rounded-xl overflow-hidden">
                     <button onClick={() => setExpandedReport(expandedReport === report.id ? null : report.id)} className="w-full p-4 flex items-center justify-between text-right">
@@ -1441,7 +1454,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Blocks Tab */}
             {activeTab === "blocks" && (
-              <motion.div key="blocks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="blocks" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {/* Ban Form */}
                 {canAct && (
                   <div className="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -1642,7 +1655,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Entries Tab */}
             {activeTab === "entries" && (
-              <motion.div key="entries" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="entries" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct && <Button onClick={() => setShowAddEntry(!showAddEntry)} className="w-full" variant={showAddEntry ? "outline" : "default"}>
                   {showAddEntry ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة دخولية</>}
                 </Button>}
@@ -1689,7 +1702,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Frames Tab */}
             {activeTab === "frames" && (
-              <motion.div key="frames" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="frames" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct && <Button onClick={() => setShowAddFrame(!showAddFrame)} className="w-full" variant={showAddFrame ? "outline" : "default"}>
                   {showAddFrame ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><Plus className="w-4 h-4 ml-2" />إضافة إطار</>}
                 </Button>}
@@ -1728,7 +1741,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Star Gifts Tab */}
             {activeTab === "gifts" && (
-              <motion.div key="gifts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="gifts" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {starGifts.map((gift) => (
                   <div key={gift.id} className="bg-card border rounded-xl p-3 space-y-1">
                     <div className="flex items-center justify-between">
@@ -1752,7 +1765,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* All Requests Tab */}
             {activeTab === "all_requests" && (
-              <motion.div key="all_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="all_requests" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {/* Sub-tab Navigation */}
                 <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
                   {([
@@ -2101,7 +2114,7 @@ const AdminDashboardPage: React.FC = () => {
 
 
             {activeTab === "notifications" && (
-              <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="notifications" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct ? (
                   <div className="bg-card border rounded-xl p-4 space-y-3">
                     <h3 className="font-bold text-sm flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />إرسال إشعار عام لجميع المستخدمين</h3>
@@ -2148,7 +2161,7 @@ const AdminDashboardPage: React.FC = () => {
             )}
 
             {activeTab === "admin_stars" && (
-              <motion.div key="admin_stars" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="admin_stars" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {canAct ? (
                   <>
                     <div className="bg-card border rounded-xl p-4 space-y-3">
@@ -2196,7 +2209,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Custom Gifts Tab */}
             {activeTab === "custom_gifts" && (
-              <motion.div key="custom_gifts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="custom_gifts" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Filter Buttons */}
                 <div className="flex gap-2 flex-wrap">
                   {[
@@ -2265,7 +2278,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Animated Photos Tab */}
             {activeTab === "animated_photos" && (
-              <motion.div key="animated_photos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="animated_photos" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Filter Buttons */}
                 <div className="flex gap-2 flex-wrap">
                   {[
@@ -2364,33 +2377,43 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* TOP Agents Tab */}
             {activeTab === "top_agents" && (
-              <AdminTopAgents readOnly={isModeratorRole && isTabViewOnly("top_agents")} />
+              <motion.div key="top_agents" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminTopAgents readOnly={isModeratorRole && isTabViewOnly("top_agents")} />
+              </motion.div>
             )}
 
             {/* BD Management Tab */}
             {activeTab === "bd_management" && (
-              <AdminBDManager readOnly={isModeratorRole && isTabViewOnly("bd_management")} />
+              <motion.div key="bd_management" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminBDManager readOnly={isModeratorRole && isTabViewOnly("bd_management")} />
+              </motion.div>
             )}
 
             {/* Element Settings Tab */}
             {activeTab === "element_settings" && (
-              <AdminElementSettings readOnly={isModeratorRole && isTabViewOnly("element_settings")} adminUsername={adminUsername || ""} />
+              <motion.div key="element_settings" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminElementSettings readOnly={isModeratorRole && isTabViewOnly("element_settings")} adminUsername={adminUsername || ""} />
+              </motion.div>
             )}
 
             {/* Banners Tab */}
             {activeTab === "banners" && (
-              <AdminBannerManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("banners")} />
+              <motion.div key="banners" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminBannerManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("banners")} />
+              </motion.div>
             )}
 
             {/* Moderators Management Tab */}
             {activeTab === "moderators" && (adminRole === "super_admin" || adminRole === "admin") && (
-              <AdminModeratorManager adminCall={adminCall} />
+              <motion.div key="moderators" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminModeratorManager adminCall={adminCall} />
+              </motion.div>
             )}
 
 
             {/* Trash Tab - Super Admin Only */}
             {activeTab === "trash" && adminRole === "super_admin" && (
-              <motion.div key="trash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+              <motion.div key="trash" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
                 {/* Trash sections */}
                 {[
                   { key: "videos", label: "فيديوهات محذوفة", items: trashData.videos, table: "video_tutorials" },
@@ -2459,7 +2482,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Support Tickets Tab */}
             {activeTab === "support_tickets" && (
-              <motion.div key="support_tickets" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="support_tickets" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {/* Filter */}
                 <div className="flex gap-2 flex-wrap">
                   {[
@@ -2522,7 +2545,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Quick Support Tab */}
             {activeTab === "quick_support" && (
-              <motion.div key="quick_support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="quick_support" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {quickSupportRequests.length === 0 ? (
                   <p className="text-center py-10 text-muted-foreground">لا توجد طلبات دعم سريع</p>
                 ) : quickSupportRequests.map((req: any) => {
@@ -2567,7 +2590,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* ID Changes Tab */}
             {activeTab === "id_changes" && (
-              <motion.div key="id_changes" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="id_changes" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {idChanges.length === 0 ? (
                   <div className="text-center py-10 text-muted-foreground">
                     <Hash className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -2598,12 +2621,14 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Hairs Tab */}
             {activeTab === "hairs" && (
-              <AdminHairManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("hairs")} />
+              <motion.div key="hairs" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminHairManager adminSessionToken={adminSessionToken!} adminUsername={adminUsername!} readOnly={isModeratorRole && isTabViewOnly("hairs")} />
+              </motion.div>
             )}
 
             {/* Audit Log Tab - Super Admin Only */}
             {activeTab === "audit_log" && adminRole === "super_admin" && (
-              <motion.div key="audit_log" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="audit_log" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-3 mb-4">
                   <p className="text-xs text-violet-400 leading-relaxed">
                     📋 سجل جميع عمليات الأدمن (آخر 300 عملية). يتم تسجيل كل إجراء تلقائياً.
@@ -2668,7 +2693,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Agencies Tab */}
             {activeTab === "agencies" && (
-              <motion.div key="agencies" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <motion.div key="agencies" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
                 <AdminAgencyManager canAct={canAct} />
               </motion.div>
             )}
