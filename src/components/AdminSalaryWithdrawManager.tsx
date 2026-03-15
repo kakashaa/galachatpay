@@ -108,7 +108,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const res = await fetch(`${API}?action=salary_withdraw_list&admin_key=ghala2026owner&month=${selectedMonth}`);
       const data = await res.json();
       if (data.success || data.requests) {
-        setRequests(data.requests || []);
+        const rawRequests: WithdrawRequest[] = data.requests || [];
+        // Enrich with avatars in parallel (batch of 5)
+        const enriched = await enrichWithAvatars(rawRequests);
+        setRequests(enriched);
         setStats(data.stats || { total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
       }
     } catch {
@@ -117,6 +120,29 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       setLoading(false);
     }
   }, [selectedMonth]);
+
+  const enrichWithAvatars = async (reqs: WithdrawRequest[]): Promise<WithdrawRequest[]> => {
+    const BATCH = 5;
+    const result = [...reqs];
+    for (let i = 0; i < result.length; i += BATCH) {
+      const batch = result.slice(i, i + BATCH);
+      const avatars = await Promise.all(
+        batch.map(async (req) => {
+          try {
+            const res = await fetch(`${API}?action=agent_lookup_user&admin_key=ghala2026owner&uuid=${req.user_uuid}`);
+            const data = await res.json();
+            return data.avatar ? getAvatarUrl(data.avatar) : "";
+          } catch {
+            return "";
+          }
+        })
+      );
+      batch.forEach((req, j) => {
+        result[i + j] = { ...req, avatar: avatars[j] };
+      });
+    }
+    return result;
+  };
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
