@@ -92,8 +92,8 @@ const App = () => {
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <ScrollToTop />
               <Suspense fallback={<PageLoader />}>
-                <Routes>
                   <Route path="/" element={<Login />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/change-id" element={<ChangeId />} />
