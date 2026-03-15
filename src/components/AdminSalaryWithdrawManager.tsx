@@ -91,7 +91,7 @@ const BANKS = [
 
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [requests, setRequests] = useState<WithdrawRequest[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
+  const [_stats, setStats] = useState<Stats>({ total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "delivered" | "rejected">("all");
   const [search, setSearch] = useState("");
