@@ -2384,7 +2384,9 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* BD Management Tab */}
             {activeTab === "bd_management" && (
-              <AdminBDManager readOnly={isModeratorRole && isTabViewOnly("bd_management")} />
+              <motion.div key="bd_management" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminBDManager readOnly={isModeratorRole && isTabViewOnly("bd_management")} />
+              </motion.div>
             )}
 
             {/* Element Settings Tab */}
