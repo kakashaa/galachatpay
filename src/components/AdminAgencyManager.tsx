@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Loader2, Plus, X, Save, Eye, Search,
+  Loader2, Plus, X, Save, Search,
   Snowflake, Play, DollarSign, Phone, Clock,
-  ChevronDown, ChevronUp, Receipt,
+  ChevronDown, ChevronUp, Receipt, Wallet, Eye,
 } from "lucide-react";
+import AgencyDetailsSheet from "./AgencyDetailsSheet";
 
 const ADMIN_API = "https://galachat.site/project-z/api.php";
-// IMPORTANT: Use admin_key instead of token for all agency API calls
 
 interface Agency {
   username: string;
@@ -52,6 +52,9 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // Details sheet
+  const [detailsAgency, setDetailsAgency] = useState<Agency | null>(null);
 
   // Create agency
   const [showCreate, setShowCreate] = useState(false);
@@ -104,7 +107,6 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
 
   const getSelectedTier = (tierLabel: string) => TIERS.find(t => t.label === tierLabel);
 
-  // Create agency
   const handleCreate = async () => {
     if (!createForm.name || !createForm.username || !createForm.agency_id) {
       toast.error("الاسم واسم المستخدم والآيدي مطلوبين");
@@ -147,7 +149,6 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     }
   };
 
-  // Add balance
   const handleAddBalance = async (username: string) => {
     setAddBalanceLoading(true);
     try {
@@ -175,7 +176,6 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     }
   };
 
-  // Toggle freeze
   const handleToggle = async (username: string) => {
     setToggleLoading(username);
     try {
@@ -355,10 +355,10 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-lg font-bold border ${
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
                         isActive ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20"
                       }`}>
-                        💰
+                        <Wallet className={`w-5 h-5 ${isActive ? "text-amber-400" : "text-red-400"}`} />
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-foreground">{agency.name}</h4>
@@ -367,7 +367,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
                             isActive ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
                           }`}>
-                            {isActive ? "● نشط" : "● مجمّد"}
+                            {isActive ? "نشط" : "مجمّد"}
                           </span>
                         </div>
                       </div>
@@ -381,7 +381,6 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                       <span className="text-[10px] text-muted-foreground font-mono">${balanceUSD}</span>
                     </div>
                     <p className="text-lg font-black text-amber-400 font-mono">{agency.balance?.toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">كوينز</span></p>
-                    {/* Progress bar */}
                     {agency.original_balance > 0 && (
                       <div className="space-y-1">
                         <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
@@ -414,13 +413,13 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                     </div>
                   </div>
 
-                  {/* Expand toggle */}
+                  {/* Quick info expand */}
                   <button
                     onClick={() => setExpanded(isExpanded ? null : agency.username)}
                     className="w-full flex items-center justify-center gap-1 mt-3 text-[10px] text-muted-foreground hover:text-foreground transition-colors py-1"
                   >
                     {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {isExpanded ? "إخفاء التفاصيل" : "عرض التفاصيل"}
+                    {isExpanded ? "إخفاء" : "معلومات سريعة"}
                   </button>
 
                   <AnimatePresence>
@@ -477,8 +476,8 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                     </button>
                     <div className="w-px bg-white/5" />
                     <button
-                      onClick={() => setExpanded(isExpanded ? null : agency.username)}
-                      className="flex-1 py-3 text-[11px] font-bold text-muted-foreground hover:bg-white/[0.02] transition-colors flex items-center justify-center gap-1.5"
+                      onClick={() => setDetailsAgency(agency)}
+                      className="flex-1 py-3 text-[11px] font-bold text-violet-400 hover:bg-violet-500/5 transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Eye className="w-3.5 h-3.5" /> التفاصيل
                     </button>
@@ -559,6 +558,13 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
           })}
         </div>
       )}
+
+      {/* Agency Details Sheet */}
+      <AgencyDetailsSheet
+        agency={detailsAgency}
+        open={!!detailsAgency}
+        onClose={() => setDetailsAgency(null)}
+      />
     </div>
   );
 };
