@@ -6,9 +6,8 @@ import {
 import {
   Loader2, ArrowLeftRight, PieChart, FileText,
   Calendar, ImageIcon, AlertTriangle, Wallet,
-  X,
+  X, Globe,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
