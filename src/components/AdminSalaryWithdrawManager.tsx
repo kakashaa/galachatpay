@@ -101,17 +101,52 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // Map API status to internal status
+  const mapStatus = (s: string): "pending" | "delivered" | "rejected" => {
+    if (s === "approved" || s === "delivered") return "delivered";
+    if (s === "rejected") return "rejected";
+    return "pending";
+  };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API}?action=salary_withdraw_list&admin_key=ghala2026owner&month=${selectedMonth}`);
       const data = await res.json();
       if (data.success || data.requests) {
-        const rawRequests: WithdrawRequest[] = data.requests || [];
-        // Enrich with avatars in parallel (batch of 5)
+        // Map API fields to our interface
+        const rawRequests: WithdrawRequest[] = (data.requests || []).map((r: any) => ({
+          ...r,
+          user_uuid: r.uuid || r.user_uuid || "",
+          user_name: r.user_name || r.account_name || "",
+          request_code: r.id || "",
+          status: mapStatus(r.status),
+          coins: r.coins || 0,
+          bank: r.bank || "",
+          country: r.country || "",
+          account_name: r.account_name || "",
+          account_number: r.account_number || "",
+          whatsapp: r.whatsapp || "",
+          notes: r.notes || "",
+          admin_note: r.admin_note || r.reason || "",
+          transfer_verified: r.transfer_verified ?? true,
+          screenshot: r.screenshot || "",
+          approved_at: r.approved_at || null,
+          rejected_at: r.rejected_at || null,
+        }));
         const enriched = await enrichWithAvatars(rawRequests);
         setRequests(enriched);
-        setStats(data.stats || { total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
+        // Map stats: API uses "delivered" count for approved
+        const apiStats = data.stats || {};
+        setStats({
+          total: apiStats.total || 0,
+          delivered: apiStats.delivered || 0,
+          delivered_amount: apiStats.delivered_amount || (apiStats.delivered ? apiStats.total_amount - (apiStats.pending_amount || 0) : 0),
+          pending: apiStats.pending || 0,
+          pending_amount: apiStats.pending_amount || 0,
+          rejected: apiStats.rejected || 0,
+          rejected_amount: apiStats.rejected_amount || 0,
+        });
       }
     } catch {
       toast.error("فشل في جلب البيانات");
