@@ -325,21 +325,51 @@ const AgentCharge: React.FC = () => {
         {step === 2 && (
           <div className="space-y-4">
             <h2 className="text-sm font-bold text-foreground text-right mb-2">وين وصلت الفلوس؟</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {paymentMethods.map((pm) => (
-                <button
-                  key={pm.id}
-                  onClick={() => setSelectedPayment(pm.id)}
-                  className={`glass-card rounded-2xl p-4 text-center transition-all active:scale-95 ${
-                    selectedPayment === pm.id ? "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30" : "border-white/10"
-                  }`}
-                >
-                  <Landmark className="w-6 h-6 text-amber-400 mx-auto mb-1" />
-                  <p className="text-sm font-bold text-foreground">{pm.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{pm.country}</p>
-                  {selectedPayment === pm.id && <Check className="w-4 h-4 text-amber-400 mx-auto mt-1" />}
-                </button>
-              ))}
+            
+            {COUNTRY_GROUPS.map((group) => (
+              <div key={group.name}>
+                <p className="text-xs font-bold text-muted-foreground mb-2 text-right">{group.name}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {group.ids.map(id => {
+                    const pm = AGENT_PAYMENT_METHODS.find(m => m.id === id)!;
+                    return (
+                      <button
+                        key={pm.id}
+                        onClick={() => setSelectedPayment(pm.id)}
+                        className={cn(
+                          "rounded-xl p-4 text-center border transition-all bg-gradient-to-br",
+                          pm.color,
+                          selectedPayment === pm.id
+                            ? "ring-2 ring-amber-500/50 scale-[0.98]"
+                            : "hover:scale-[1.02]"
+                        )}
+                      >
+                        <Landmark className="w-6 h-6 mx-auto mb-2 text-amber-400" />
+                        <p className="text-sm font-semibold text-foreground">{pm.label}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{pm.country}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Agent account - separate */}
+            <div className="border-t border-white/10 pt-3">
+              <button
+                onClick={() => setSelectedPayment("agent")}
+                className={cn(
+                  "w-full rounded-xl p-4 text-center border transition-all bg-gradient-to-br",
+                  "from-gray-600/20 to-gray-700/10 border-gray-500/20",
+                  selectedPayment === "agent"
+                    ? "ring-2 ring-amber-500/50 scale-[0.98]"
+                    : "hover:scale-[1.02]"
+                )}
+              >
+                <Landmark className="w-6 h-6 mx-auto mb-2 text-amber-400" />
+                <p className="text-sm font-semibold text-foreground">حساب الوكيل</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">الفلوس عندي</p>
+              </button>
             </div>
 
             {selectedPayment && (
