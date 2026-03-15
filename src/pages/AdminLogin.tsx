@@ -19,24 +19,43 @@ const AdminLogin: React.FC = () => {
     setLoading(true);
     setError("");
     try {
+      // 1. Login via Supabase (for dashboard data)
       const { data, error: fnError } = await supabase.functions.invoke("admin-manage", {
         body: { username: username.trim().toLowerCase(), password, action: "auth_check", data: {} },
       });
-      if (fnError) throw fnError;
-      if (!data?.success) {
+      if (fnError || !data?.data) {
         setError("بيانات الدخول غير صحيحة");
         setLoading(false);
         return;
       }
-      sessionStorage.setItem("admin_username", data.username || username.trim());
-      sessionStorage.setItem("admin_role", data.role || "admin");
-      if (data.permissions) {
-        sessionStorage.setItem("admin_permissions", JSON.stringify(data.permissions));
+
+      // Store Supabase session
+      sessionStorage.setItem("admin_username", username.trim());
+      sessionStorage.setItem("admin_role", data.data.role);
+      if (data.data.permissions) {
+        sessionStorage.setItem("admin_permissions", JSON.stringify(data.data.permissions));
       }
-      sessionStorage.setItem("admin_session_token", data.token || Date.now().toString());
+      sessionStorage.setItem("admin_session_token", data.data.session_token || Date.now().toString());
+
+      // 2. Also login to project-z API (for agencies/salaries)
+      // This runs silently in background — if it fails, agencies tab just won't work
+      try {
+        const apiRes = await fetch("https://galachat.site/project-z/api.php?action=admin_login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
+        });
+        const apiData = await apiRes.json();
+        if (apiData.success && apiData.token) {
+          sessionStorage.setItem("admin_api_token", apiData.token);
+        }
+      } catch {
+        // Silent fail — agencies will use admin_key fallback
+      }
+
       navigate("/admin/dashboard", { replace: true });
     } catch {
-      setError("حدث خطأ. حاول مرة أخرى.");
+      setError("حدث خطأ أثناء تسجيل الدخول");
     } finally {
       setLoading(false);
     }
