@@ -1741,7 +1741,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Star Gifts Tab */}
             {activeTab === "gifts" && (
-              <motion.div key="gifts" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+              <motion.div key="gifts" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 {starGifts.map((gift) => (
                   <div key={gift.id} className="bg-card border rounded-xl p-3 space-y-1">
                     <div className="flex items-center justify-between">
