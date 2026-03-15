@@ -134,7 +134,8 @@ const UserProfileCard: React.FC = () => {
 
   const typeLabel = getUserTypeLabel(user.type_user);
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
-  const avatarSrc = user.profile?.gender === 2 ? avatarFemale : avatarMale;
+  const userAvatar = getAvatarUrl(user.profile?.image || user.avatar || "");
+  const avatarSrc = userAvatar || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
 
   const chargerPct = Math.min((user.level.charger_level / 100) * 100, 100);
   const receiverPct = Math.min((user.level.receiver_level / 100) * 100, 100);
