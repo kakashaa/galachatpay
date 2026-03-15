@@ -583,13 +583,36 @@ const SalaryWithdraw: React.FC = () => {
   if (checkResult && (checkResult.withdrawals_this_month || 0) >= (checkResult.max_withdrawals || 1)) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
-            <Ban className="w-8 h-8 text-amber-400" />
+        <div className="px-5 py-8 space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
+              className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-5">
+              <CheckCircle className="w-10 h-10 text-emerald-400" />
+            </motion.div>
+            <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل ✅</h2>
           </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">تم استنفاد محاولات السحب</h2>
-          <p className="text-sm text-muted-foreground mb-2">المسموح: {checkResult.max_withdrawals} مرة/شهر</p>
-          <Button onClick={() => navigate("/dashboard")} className="gold-gradient text-primary-foreground font-bold px-8 mt-4">الرئيسية</Button>
+
+          <div className="glass-card p-4 space-y-2">
+            <div className="flex justify-between items-center bg-muted/20 rounded-xl p-3">
+              <span className="text-xs text-muted-foreground">الراتب الأصلي</span>
+              <span className="text-lg font-bold text-foreground" dir="ltr">${checkResult.net}</span>
+            </div>
+            <div className="flex justify-between items-center bg-muted/20 rounded-xl p-3">
+              <span className="text-xs text-muted-foreground">تم السحب</span>
+              <span className="text-sm font-bold text-foreground">{checkResult.withdrawals_this_month} من {checkResult.max_withdrawals}</span>
+            </div>
+            <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+              <span className="text-xs text-emerald-400 font-bold">المتبقي</span>
+              <span className="text-lg font-black text-emerald-400">$0</span>
+            </div>
+          </div>
+
+          {/* Always show previous requests */}
+          <SalaryRequestsHistory userUuid={user.uuid} />
+
+          <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
+            الرجوع
+          </Button>
         </div>
       </MobileLayout>
     );
