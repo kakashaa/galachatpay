@@ -2485,6 +2485,13 @@ const AdminDashboardPage: React.FC = () => {
                 <AdminAgencyManager canAct={canAct} />
               </motion.div>
             )}
+
+            {/* Salary Withdraw Tab */}
+            {activeTab === "salary_withdraw" && (
+              <motion.div key="salary_withdraw" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AdminSalaryWithdrawManager canAct={canAct} />
+              </motion.div>
+            )}
           </AnimatePresence>
         )}
         </div>
