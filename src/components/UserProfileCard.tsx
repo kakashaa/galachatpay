@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
+import { getAvatarUrl } from "@/lib/utils";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
@@ -133,7 +134,8 @@ const UserProfileCard: React.FC = () => {
 
   const typeLabel = getUserTypeLabel(user.type_user);
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
-  const avatarSrc = user.profile?.gender === 2 ? avatarFemale : avatarMale;
+  const userAvatar = getAvatarUrl(user.profile?.image || "");
+  const avatarSrc = userAvatar || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
 
   const chargerPct = Math.min((user.level.charger_level / 100) * 100, 100);
   const receiverPct = Math.min((user.level.receiver_level / 100) * 100, 100);
@@ -231,7 +233,7 @@ const UserProfileCard: React.FC = () => {
               </div>
             </div>
             <button onClick={copyId} className="flex items-center gap-1 text-muted-foreground mb-1">
-              <span className="text-[9px] font-mono">ID: {user.uuid}</span>
+              <span className="text-[9px] font-mono">UUID: {user.uuid}</span>
               <Copy className="w-2.5 h-2.5" />
             </button>
             
