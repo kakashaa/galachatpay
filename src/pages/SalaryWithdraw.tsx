@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe,
   UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
-  Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown, ChevronDown, ShieldX, RefreshCw, History,
+  Loader2, Clock, Copy, Camera, Landmark, User, Frown, ChevronDown, ShieldX, RefreshCw,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -209,7 +209,7 @@ const SalaryWithdraw: React.FC = () => {
   const [agencySalaryAmount, setAgencySalaryAmount] = useState<number | null>(null);
   const [agencySalaryName, setAgencySalaryName] = useState("");
   const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [alreadyWithdrawn, setAlreadyWithdrawn] = useState(0);
 
   const token = localStorage.getItem("gala_session_key") || "";
   const hasFetchedRef = useRef(false);
@@ -583,13 +583,36 @@ const SalaryWithdraw: React.FC = () => {
   if (checkResult && (checkResult.withdrawals_this_month || 0) >= (checkResult.max_withdrawals || 1)) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mb-4">
-            <Ban className="w-8 h-8 text-amber-400" />
+        <div className="px-5 py-8 space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
+              className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-5">
+              <CheckCircle className="w-10 h-10 text-emerald-400" />
+            </motion.div>
+            <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل ✅</h2>
           </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">تم استنفاد محاولات السحب</h2>
-          <p className="text-sm text-muted-foreground mb-2">المسموح: {checkResult.max_withdrawals} مرة/شهر</p>
-          <Button onClick={() => navigate("/dashboard")} className="gold-gradient text-primary-foreground font-bold px-8 mt-4">الرئيسية</Button>
+
+          <div className="glass-card p-4 space-y-2">
+            <div className="flex justify-between items-center bg-muted/20 rounded-xl p-3">
+              <span className="text-xs text-muted-foreground">الراتب الأصلي</span>
+              <span className="text-lg font-bold text-foreground" dir="ltr">${checkResult.net}</span>
+            </div>
+            <div className="flex justify-between items-center bg-muted/20 rounded-xl p-3">
+              <span className="text-xs text-muted-foreground">تم السحب</span>
+              <span className="text-sm font-bold text-foreground">{checkResult.withdrawals_this_month} من {checkResult.max_withdrawals}</span>
+            </div>
+            <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+              <span className="text-xs text-emerald-400 font-bold">المتبقي</span>
+              <span className="text-lg font-black text-emerald-400">$0</span>
+            </div>
+          </div>
+
+          {/* Always show previous requests */}
+          <SalaryRequestsHistory userUuid={user.uuid} />
+
+          <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
+            الرجوع
+          </Button>
         </div>
       </MobileLayout>
     );
@@ -710,41 +733,19 @@ const SalaryWithdraw: React.FC = () => {
           </div>
         )}
 
-        {/* Toggle: History button + content */}
+        {/* Always-visible history on step 1 */}
         {step === 1 && (
-          <div className="space-y-3">
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-1.5 text-xs text-primary font-bold"
-            >
-              <History className="w-3.5 h-3.5" />
-              {showHistory ? "إخفاء الطلبات السابقة" : "طلباتي السابقة"}
-            </button>
-
-            <AnimatePresence>
-              {showHistory && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <SalaryRequestsHistory
-                    userUuid={user.uuid}
-                    onResubmit={(req) => {
-                      // Pre-fill data from rejected request
-                      if (req.country) setSelectedCountry(req.country);
-                      if (req.bank) setSelectedBank(req.bank);
-                      if (req.account_name) setRecipientName(req.account_name);
-                      if (req.account_number) setAccountNumber(req.account_number);
-                      setShowHistory(false);
-                      setStep(3);
-                    }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <SalaryRequestsHistory
+            userUuid={user.uuid}
+            onWithdrawnCalculated={(amt) => setAlreadyWithdrawn(amt)}
+            onResubmit={(req) => {
+              if (req.country) setSelectedCountry(req.country);
+              if (req.bank) setSelectedBank(req.bank);
+              if (req.account_name) setRecipientName(req.account_name);
+              if (req.account_number) setAccountNumber(req.account_number);
+              setStep(3);
+            }}
+          />
         )}
 
         {step === 1 && <SalaryHistory userUuid={user.uuid} />}
@@ -768,9 +769,15 @@ const SalaryWithdraw: React.FC = () => {
                       <span className="text-lg font-bold text-red-400">-${checkResult.deduction}</span>
                     </div>
                   )}
+                  {alreadyWithdrawn > 0 && (
+                    <div className="flex justify-between items-center bg-amber-500/5 border border-amber-500/10 rounded-xl p-3">
+                      <span className="text-xs text-amber-400">تم السحب ({checkResult.withdrawals_this_month || 0} طلب)</span>
+                      <span className="text-lg font-bold text-amber-400">-${alreadyWithdrawn.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                    <span className="text-sm font-bold text-emerald-400">الصافي المتاح</span>
-                    <span className="text-2xl font-black text-emerald-400">${checkResult.net}</span>
+                    <span className="text-sm font-bold text-emerald-400">المتبقي المتاح</span>
+                    <span className="text-2xl font-black text-emerald-400">${Math.max(0, (checkResult.net || 0) - alreadyWithdrawn).toFixed(2)}</span>
                   </div>
                 </div>
               </div>

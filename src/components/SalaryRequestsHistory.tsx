@@ -28,6 +28,7 @@ interface SalaryRequest {
 interface Props {
   userUuid: string;
   onResubmit?: (req: SalaryRequest) => void;
+  onWithdrawnCalculated?: (amount: number) => void;
 }
 
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string }> = {
@@ -51,7 +52,7 @@ const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; colo
   },
 };
 
-const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit }) => {
+const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdrawnCalculated }) => {
   const [requests, setRequests] = useState<SalaryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReq, setSelectedReq] = useState<SalaryRequest | null>(null);
@@ -63,7 +64,14 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit }) => {
         const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
         const res = await fetch(`${API}?action=my_salary_requests&uuid=${userUuid}&month=${month}`);
         const data = await res.json();
-        if (data.requests) setRequests(data.requests);
+        if (data.requests) {
+          setRequests(data.requests);
+          // Calculate already withdrawn (non-rejected)
+          const withdrawn = (data.requests as SalaryRequest[])
+            .filter((r: SalaryRequest) => r.status !== "rejected")
+            .reduce((sum: number, r: SalaryRequest) => sum + (r.amount || 0), 0);
+          onWithdrawnCalculated?.(withdrawn);
+        }
       } catch {
         // silent
       } finally {
