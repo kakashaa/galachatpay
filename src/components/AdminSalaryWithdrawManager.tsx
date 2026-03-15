@@ -500,7 +500,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             <div className="bg-white/[0.03] rounded-xl p-2.5">
               <p className="text-[10px] text-muted-foreground">إجمالي</p>
               <p className="text-sm font-bold font-mono tabular-nums text-foreground">{filtered.length}</p>
-              <p className="text-[10px] font-semibold font-mono text-primary">${totalAmount.toLocaleString()}</p>
+              <p className="text-[10px] font-semibold font-mono text-primary">${filteredStats.totalAmount.toLocaleString()}</p>
             </div>
             <div className="bg-emerald-500/5 rounded-xl p-2.5">
               <p className="text-[10px] text-emerald-400 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> مسلّمة</p>
