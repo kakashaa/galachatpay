@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronUp, Receipt,
 } from "lucide-react";
 
-const ADMIN_API = "https://galachat.site/admin-panel-api.php";
+const ADMIN_API = "https://galachat.site/project-z/api.php";
 // IMPORTANT: Use admin_key instead of token for all agency API calls
 
 interface Agency {

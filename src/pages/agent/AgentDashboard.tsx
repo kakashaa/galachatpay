@@ -4,7 +4,7 @@ import { LogOut, Wallet, TrendingUp, Hash, Clock, RefreshCw } from "lucide-react
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 
-const AGENT_API = "https://galachat.site/admin-panel-api.php";
+const AGENT_API = "https://galachat.site/project-z/api.php";
 
 interface DashboardData {
   agency_id: string;

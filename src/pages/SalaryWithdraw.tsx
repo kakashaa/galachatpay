@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 import SalaryHistory from "@/components/SalaryHistory";
 
-const API = "https://galachat.site/admin-panel-api.php";
+const API = "https://galachat.site/project-z/api.php";
 
 interface SalaryCheckResult {
   success: boolean;

@@ -17,7 +17,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 
-const API = "https://galachat.site/admin-panel-api.php";
+const API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/admin-panel-data/salary-receipts/";
 
 interface WithdrawRequest {

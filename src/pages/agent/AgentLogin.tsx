@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, User, Lock, Wallet, ArrowRight } from "lucide-react";
 
-const AGENT_API = "https://galachat.site/admin-panel-api.php";
+const AGENT_API = "https://galachat.site/project-z/api.php";
 
 const AgentLogin: React.FC = () => {
   const navigate = useNavigate();

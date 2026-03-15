@@ -6,7 +6,7 @@ import AgentBottomNav from "@/components/AgentBottomNav";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 
-const AGENT_API = "https://galachat.site/admin-panel-api.php";
+const AGENT_API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/admin-panel-data/agent-receipts/";
 
 const bankOptions = [

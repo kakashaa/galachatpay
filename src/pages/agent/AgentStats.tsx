@@ -4,7 +4,7 @@ import { ArrowRight, TrendingUp, Wallet, Gem } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 
-const AGENT_API = "https://galachat.site/admin-panel-api.php";
+const AGENT_API = "https://galachat.site/project-z/api.php";
 
 interface WeeklyItem {
   date: string;

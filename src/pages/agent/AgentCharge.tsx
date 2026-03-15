@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { toast } from "sonner";
 
-const AGENT_API = "https://galachat.site/admin-panel-api.php";
+const AGENT_API = "https://galachat.site/project-z/api.php";
 const COINS_PER_USD = 8500;
 
 const paymentMethods = [
