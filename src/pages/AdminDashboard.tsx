@@ -1088,28 +1088,31 @@ const AdminDashboardPage: React.FC = () => {
         <div className="max-w-2xl mx-auto">
           {/* Tab chips */}
           <div className="px-4 pt-3 pb-2">
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
               {(currentSectionDef?.tabs || []).map(tabKey => {
                 const tabDef = tabs.find(t => t.key === tabKey);
                 if (!tabDef) return null;
+                const isActive = activeTab === tabKey;
                 return (
                   <button
                     key={tabKey}
                     onClick={() => setActiveTab(tabKey)}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200",
-                      activeTab === tabKey
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                        : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                      "relative flex flex-col items-center gap-1 min-w-[56px] px-3 py-2 rounded-2xl text-[10px] font-medium whitespace-nowrap transition-all duration-200",
+                      isActive
+                        ? "bg-white/10 text-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                     )}
                   >
-                    {tabDef.icon}
-                    {tabDef.label}
+                    <span className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded-xl transition-colors",
+                      isActive ? "bg-primary/20 text-primary" : "text-muted-foreground"
+                    )}>
+                      {React.cloneElement(tabDef.icon as React.ReactElement, { className: "w-[18px] h-[18px]" })}
+                    </span>
+                    <span className="leading-tight">{tabDef.label}</span>
                     {tabDef.count && tabDef.count > 0 && (
-                      <span className={cn(
-                        "px-1.5 py-0.5 rounded-full text-[10px] font-bold",
-                        activeTab === tabKey ? "bg-white/20" : "bg-rose-500/80 text-white"
-                      )}>
+                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-bold rounded-full">
                         {tabDef.count}
                       </span>
                     )}
