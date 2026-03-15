@@ -91,7 +91,7 @@ const BANKS = [
 
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [requests, setRequests] = useState<WithdrawRequest[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
+  const [_stats, setStats] = useState<Stats>({ total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "delivered" | "rejected">("all");
   const [search, setSearch] = useState("");
@@ -305,17 +305,32 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     );
   };
 
-  const totalAmount = filtered.reduce((s, r) => s + r.amount, 0);
+  // Compute stats from filtered results so they react to all filters
+  const filteredStats = useMemo(() => {
+    const pending = filtered.filter(r => r.status === "pending");
+    const delivered = filtered.filter(r => r.status === "delivered");
+    const rejected = filtered.filter(r => r.status === "rejected");
+    return {
+      total: filtered.length,
+      totalAmount: filtered.reduce((s, r) => s + r.amount, 0),
+      pending: pending.length,
+      pendingAmount: pending.reduce((s, r) => s + r.amount, 0),
+      delivered: delivered.length,
+      deliveredAmount: delivered.reduce((s, r) => s + r.amount, 0),
+      rejected: rejected.length,
+      rejectedAmount: rejected.reduce((s, r) => s + r.amount, 0),
+    };
+  }, [filtered]);
 
   return (
     <div className="space-y-5 print-area" dir="rtl">
       {/* ===== 1. STAT CARDS ===== */}
       <div className="grid grid-cols-4 gap-2">
         {[
-          { key: "all" as const, label: "الكل", icon: <ClipboardList className="w-4 h-4" />, count: stats.total, amount: stats.total_amount ?? (stats.delivered_amount + stats.pending_amount + (stats.rejected_amount || 0)), color: "text-foreground", border: "border-white/5", bg: "bg-card/50" },
-          { key: "pending" as const, label: "معلقة", icon: <Clock className="w-4 h-4" />, count: stats.pending, amount: stats.pending_amount, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
-          { key: "delivered" as const, label: "مسلّمة", icon: <CheckCircle className="w-4 h-4" />, count: stats.delivered, amount: stats.delivered_amount, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
-          { key: "rejected" as const, label: "مرفوضة", icon: <XCircle className="w-4 h-4" />, count: stats.rejected, amount: stats.rejected_amount || 0, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5" },
+          { key: "all" as const, label: "الكل", icon: <ClipboardList className="w-4 h-4" />, count: filteredStats.total, amount: filteredStats.totalAmount, color: "text-foreground", border: "border-white/5", bg: "bg-card/50" },
+          { key: "pending" as const, label: "معلقة", icon: <Clock className="w-4 h-4" />, count: filteredStats.pending, amount: filteredStats.pendingAmount, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
+          { key: "delivered" as const, label: "مسلّمة", icon: <CheckCircle className="w-4 h-4" />, count: filteredStats.delivered, amount: filteredStats.deliveredAmount, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
+          { key: "rejected" as const, label: "مرفوضة", icon: <XCircle className="w-4 h-4" />, count: filteredStats.rejected, amount: filteredStats.rejectedAmount, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5" },
         ].map((card, i) => (
           <motion.button
             key={card.key}
@@ -323,13 +338,13 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.4, ease: "easeOut" }}
             onClick={() => setFilter(card.key)}
-            className={`relative rounded-2xl p-2.5 text-center transition-all duration-300 border backdrop-blur-sm ${card.border} ${card.bg} ${
-              filter === card.key ? "ring-1 ring-primary/40 scale-[1.02]" : "hover:border-white/10"
+            className={`relative rounded-xl p-3 text-center transition-all duration-300 border backdrop-blur-sm ${card.border} ${card.bg} ${
+              filter === card.key ? "border-white/20 scale-[1.02]" : "hover:border-white/10"
             }`}>
             <div className={`${card.color} mb-1 flex justify-center`}>{card.icon}</div>
-            <p className="text-[9px] text-muted-foreground">{card.label}</p>
-            <p className={`text-lg font-bold font-mono tabular-nums ${card.color}`}>{card.count}</p>
-            <p className={`text-[10px] font-semibold font-mono tabular-nums ${card.color} opacity-70`}>${card.amount?.toLocaleString()}</p>
+            <p className={`text-2xl font-bold font-mono tabular-nums ${card.color}`}>{card.count}</p>
+            <p className="text-[10px] text-muted-foreground">{card.label}</p>
+            <p className={`text-xs font-semibold font-mono tabular-nums ${card.color} mt-0.5`}>${card.amount?.toLocaleString()}</p>
           </motion.button>
         ))}
       </div>
@@ -485,7 +500,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             <div className="bg-white/[0.03] rounded-xl p-2.5">
               <p className="text-[10px] text-muted-foreground">إجمالي</p>
               <p className="text-sm font-bold font-mono tabular-nums text-foreground">{filtered.length}</p>
-              <p className="text-[10px] font-semibold font-mono text-primary">${totalAmount.toLocaleString()}</p>
+              <p className="text-[10px] font-semibold font-mono text-primary">${filteredStats.totalAmount.toLocaleString()}</p>
             </div>
             <div className="bg-emerald-500/5 rounded-xl p-2.5">
               <p className="text-[10px] text-emerald-400 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> مسلّمة</p>
