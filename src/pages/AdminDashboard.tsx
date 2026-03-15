@@ -4,13 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Scissors } from "lucide-react";
+import { Scissors, Palette } from "lucide-react";
 import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
   Loader2, Eye, EyeOff, Upload, Wallet,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift, Users,
-  ArrowRight, Bell, ScrollText, Hash, Crown, Banknote,
+  ArrowRight, Bell, ScrollText, Hash, Crown, Settings as SettingsIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,7 @@ import AdminModeratorManager from "@/components/AdminModeratorManager";
 import AdminElementSettings from "@/components/AdminElementSettings";
 import AdminBannerManager from "@/components/AdminBannerManager";
 import { Settings, ImageIcon } from "lucide-react";
+// Settings imported twice - use SettingsIcon from above
 import TicketRepliesSection from "@/components/TicketRepliesSection";
 import AdminAgencyManager from "@/components/AdminAgencyManager";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
@@ -149,6 +150,7 @@ interface AnimatedPhotoRequest {
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>(null);
+  const [activeSection, setActiveSection] = useState<"requests" | "products" | "finance" | "settings" | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Videos state
@@ -370,21 +372,12 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   const adminCall = async (action: string, data: any = {}) => {
-    const token = adminSessionToken;
-    if (Object.keys(data).length > 0) {
-      const res = await fetch(`https://galachat.site/admin-panel-api.php?action=${action}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, token }),
-      });
-      const result = await res.json();
-      if (result?.error) throw new Error(result.error);
-      return result?.data ?? result;
-    }
-    const res = await fetch(`https://galachat.site/admin-panel-api.php?action=${action}&token=${token}`);
-    const result = await res.json();
+    const { data: result, error } = await supabase.functions.invoke("admin-manage", {
+      body: { username: adminUsername, session_token: adminSessionToken, action, data },
+    });
+    if (error) throw error;
     if (result?.error) throw new Error(result.error);
-    return result?.data ?? result;
+    return result?.data;
   };
 
   const uploadFile = async (file: File) => {
@@ -832,44 +825,85 @@ const AdminDashboardPage: React.FC = () => {
     </div>
   );
 
+  // Section definitions
+  type SectionKey = "requests" | "products" | "finance" | "settings";
+  const SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[] }[] = [
+    {
+      id: "requests", title: "استقبال الطلبات", description: "طلبات المستخدمين",
+      icon: <ClipboardList className="w-10 h-10" />, gradient: "from-blue-500/15 to-blue-600/5", iconColor: "text-blue-400",
+      tabs: ["all_requests", "id_changes", "support_tickets", "support_chats", "quick_support", "reports"],
+    },
+    {
+      id: "products", title: "إدارة المنتجات", description: "إضافة وتعديل",
+      icon: <Palette className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
+      tabs: ["entries", "frames", "hairs", "custom_gifts", "gifts", "animated_photos", "videos", "banners", "admin_stars"],
+    },
+    {
+      id: "finance", title: "المالية والوكالات", description: "وكالات + رواتب",
+      icon: <Wallet className="w-10 h-10" />, gradient: "from-amber-500/15 to-amber-600/5", iconColor: "text-amber-400",
+      tabs: ["agencies", "salary", "top_agents", "bd_management"],
+    },
+    {
+      id: "settings", title: "الإعدادات والنظام", description: "محظورين + سجلات",
+      icon: <Settings className="w-10 h-10" />, gradient: "from-slate-500/15 to-slate-600/5", iconColor: "text-slate-400",
+      tabs: ["blocks", "notifications", "element_settings",
+        ...(adminRole === "super_admin" || adminRole === "admin" ? ["moderators" as Exclude<Tab, null>] : []),
+        ...(adminRole === "super_admin" ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
+      ],
+    },
+  ];
+
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
-    { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
-    { key: "entries", label: "دخوليات", icon: <Sparkles className="w-7 h-7" />, color: "from-purple-500/20 to-purple-600/10 text-purple-400" },
-    { key: "frames", label: "إطارات", icon: <Frame className="w-7 h-7" />, color: "from-blue-500/20 to-blue-600/10 text-blue-400" },
-    { key: "hairs", label: "شعرات", icon: <Scissors className="w-7 h-7" />, color: "from-fuchsia-500/20 to-fuchsia-600/10 text-fuchsia-400" },
-    { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400" },
-    { key: "custom_gifts", label: "هدايا مخصصة", icon: <Gift className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400", count: allCustomGifts.filter(g => g.status === "pending").length },
-    { key: "salary", label: "رواتب", icon: <DollarSign className="w-7 h-7" />, color: "from-green-500/20 to-green-600/10 text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
-    
-    { key: "videos", label: "فيديوهات", icon: <Video className="w-7 h-7" />, color: "from-pink-500/20 to-pink-600/10 text-pink-400" },
-    { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400", count: banReports.filter(r => !r.is_verified).length },
-    { key: "blocks", label: "محظورين", icon: <Ban className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: blockedAccounts.filter(b => b.is_permanently_blocked).length },
-    { key: "notifications", label: "إشعارات", icon: <Bell className="w-7 h-7" />, color: "from-cyan-500/20 to-cyan-600/10 text-cyan-400" },
-    { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-7 h-7" />, color: "from-orange-500/20 to-orange-600/10 text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
-    { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
-    { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-7 h-7" />, color: "from-sky-500/20 to-sky-600/10 text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
-    { key: "support_chats", label: "شات VIP", icon: <Headset className="w-7 h-7" />, color: "from-rose-500/20 to-rose-600/10 text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
-    { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-7 h-7" />, color: "from-yellow-500/20 to-yellow-600/10 text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
-    { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-7 h-7" />, color: "from-indigo-500/20 to-indigo-600/10 text-indigo-400", count: idChanges.length },
-    { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
-    { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-7 h-7" />, color: "from-red-500/20 to-red-600/10 text-red-400" },
-    { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-7 h-7" />, color: "from-slate-500/20 to-slate-600/10 text-slate-400" },
-    { key: "banners", label: "بنرات", icon: <ImageIcon className="w-7 h-7" />, color: "from-teal-500/20 to-teal-600/10 text-teal-400" },
-    { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-7 h-7" />, color: "from-amber-500/20 to-amber-600/10 text-amber-400" },
+    { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-4 h-4" />, color: "text-blue-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
+    { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" />, color: "text-purple-400" },
+    { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" />, color: "text-blue-400" },
+    { key: "hairs", label: "شعرات", icon: <Scissors className="w-4 h-4" />, color: "text-fuchsia-400" },
+    { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-4 h-4" />, color: "text-yellow-400" },
+    { key: "custom_gifts", label: "هدايا مخصصة", icon: <Gift className="w-4 h-4" />, color: "text-pink-400", count: allCustomGifts.filter(g => g.status === "pending").length },
+    { key: "salary", label: "رواتب", icon: <DollarSign className="w-4 h-4" />, color: "text-green-400", count: salaryRequests.filter(r => r.status === "pending").length },
+    { key: "videos", label: "فيديوهات", icon: <Video className="w-4 h-4" />, color: "text-pink-400" },
+    { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-4 h-4" />, color: "text-red-400", count: banReports.filter(r => !r.is_verified).length },
+    { key: "blocks", label: "محظورين", icon: <Ban className="w-4 h-4" />, color: "text-rose-400" },
+    { key: "notifications", label: "إشعارات", icon: <Bell className="w-4 h-4" />, color: "text-cyan-400" },
+    { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-4 h-4" />, color: "text-orange-400", count: animatedPhotos.filter(p => p.status === "pending").length },
+    { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-4 h-4" />, color: "text-amber-400" },
+    { key: "support_tickets", label: "تذاكر الدعم", icon: <MessageSquare className="w-4 h-4" />, color: "text-sky-400", count: supportTickets.filter((t: any) => t.status === "open").length },
+    { key: "support_chats", label: "شات VIP", icon: <Headset className="w-4 h-4" />, color: "text-rose-400", count: supportChats.filter((c: any) => c.status === "waiting").length },
+    { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-4 h-4" />, color: "text-yellow-400", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
+    { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-4 h-4" />, color: "text-indigo-400", count: idChanges.length },
+    { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-4 h-4" />, color: "text-amber-400" },
+    { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-4 h-4" />, color: "text-red-400" },
+    { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-4 h-4" />, color: "text-slate-400" },
+    { key: "banners", label: "بنرات", icon: <ImageIcon className="w-4 h-4" />, color: "text-teal-400" },
+    { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-4 h-4" />, color: "text-amber-400" },
     ...((adminRole === "super_admin" || adminRole === "admin") ? [
-      { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-7 h-7" />, color: "from-emerald-500/20 to-emerald-600/10 text-emerald-400" },
+      { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-4 h-4" />, color: "text-emerald-400" },
     ] : []),
     ...(adminRole === "super_admin" ? [
-      { key: "trash" as Exclude<Tab, null>, label: "المحذوفات", icon: <Trash2 className="w-7 h-7" />, color: "from-gray-500/20 to-gray-600/10 text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
-      { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-7 h-7" />, color: "from-violet-500/20 to-violet-600/10 text-violet-400" },
+      { key: "trash" as Exclude<Tab, null>, label: "المحذوفات", icon: <Trash2 className="w-4 h-4" />, color: "text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
+      { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-4 h-4" />, color: "text-violet-400" },
     ] : []),
   ];
-  // Check if moderator has access (full "key" or view-only "key:view")
   const hasTabAccess = (key: string) => adminPermissions.includes(key) || adminPermissions.includes(`${key}:view`);
   const isTabViewOnly = (key: string) => adminPermissions.includes(`${key}:view`) && !adminPermissions.includes(key);
   const tabs = isModeratorRole ? allTabs.filter(t => hasTabAccess(t.key)) : allTabs;
-  // Helper: can the current user perform actions on the active tab?
   const canAct = !isModeratorRole || (activeTab ? !isTabViewOnly(activeTab) : true);
+
+  // Get current section's tabs for chip navigation
+  const currentSectionDef = SECTIONS.find(s => s.id === activeSection);
+  const currentSectionTabs = currentSectionDef
+    ? tabs.filter(t => currentSectionDef.tabs.includes(t.key))
+    : [];
+
+  // Calculate pending count per section for badges
+  const getSectionBadge = (sectionId: SectionKey) => {
+    const section = SECTIONS.find(s => s.id === sectionId);
+    if (!section) return 0;
+    return section.tabs.reduce((sum, tabKey) => {
+      const tab = allTabs.find(t => t.key === tabKey);
+      return sum + (tab?.count || 0);
+    }, 0);
+  };
 
   // Reusable item card for entries/frames with edit
   const renderMediaCard = (
@@ -948,8 +982,11 @@ const AdminDashboardPage: React.FC = () => {
       <header className="sticky top-0 z-20 backdrop-blur-xl border-b border-white/5 px-4 py-3" style={{ background: "rgba(9,9,11,0.92)" }}>
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <div className="flex items-center gap-3">
-            {activeTab ? (
-              <button onClick={() => setActiveTab(null)} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
+            {(activeTab || activeSection) ? (
+              <button onClick={() => {
+                if (activeTab) { setActiveTab(null); }
+                else { setActiveSection(null); }
+              }} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
                 <ArrowRight className="w-5 h-5 text-foreground" />
               </button>
             ) : (
@@ -957,9 +994,11 @@ const AdminDashboardPage: React.FC = () => {
             )}
             <div>
               <h1 className="font-bold text-lg tracking-tight text-foreground">
-                {activeTab ? tabs.find(t => t.key === activeTab)?.label : "لوحة التحكم"}
+                {activeTab ? tabs.find(t => t.key === activeTab)?.label
+                  : activeSection ? currentSectionDef?.title
+                  : "لوحة التحكم"}
               </h1>
-              {!activeTab && (
+              {!activeTab && !activeSection && (
                 <p className="text-[10px] text-muted-foreground">مرحباً، {adminUsername}</p>
               )}
             </div>
@@ -975,15 +1014,15 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       </header>
       <div className="flex-1 overflow-y-auto min-h-0">
-      {/* Home Grid */}
-      {!activeTab && (
+      {/* Home — 4 Section Cards */}
+      {!activeTab && !activeSection && (
         <div className="max-w-2xl mx-auto p-4 space-y-5">
           {/* Statistics Cards */}
           <div className="grid grid-cols-3 gap-3" dir="rtl">
             {[
-              { label: "معلقة", value: stats.pending, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5", onClick: () => { setAllRequestsFilter("pending"); setActiveTab("all_requests"); } },
-              { label: "مقبولة", value: stats.approved, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5", onClick: () => { setAllRequestsFilter("approved"); setActiveTab("all_requests"); } },
-              { label: "مرفوضة", value: stats.rejected, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5", onClick: () => { setAllRequestsFilter("rejected"); setActiveTab("all_requests"); } },
+              { label: "معلقة", value: stats.pending, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5", onClick: () => { setAllRequestsFilter("pending"); setActiveSection("requests"); setActiveTab("all_requests"); } },
+              { label: "مقبولة", value: stats.approved, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5", onClick: () => { setAllRequestsFilter("approved"); setActiveSection("requests"); setActiveTab("all_requests"); } },
+              { label: "مرفوضة", value: stats.rejected, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5", onClick: () => { setAllRequestsFilter("rejected"); setActiveSection("requests"); setActiveTab("all_requests"); } },
             ].map((card, i) => (
               <motion.button
                 key={card.label}
@@ -1000,45 +1039,91 @@ const AdminDashboardPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-3 gap-2.5" dir="rtl">
-            {tabs.map((tab, i) => (
-              <motion.button
-                key={tab.key}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 + 0.15, duration: 0.35, ease: "easeOut" }}
-                whileTap={{ scale: 0.97 }}
-                whileHover={{ scale: 1.01, borderColor: "rgba(255,255,255,0.1)" }}
-                onClick={() => setActiveTab(tab.key)}
-                className="relative flex flex-col items-center gap-2 p-4 rounded-2xl border border-white/5 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300"
-              >
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tab.color} flex items-center justify-center`}>
-                  {React.cloneElement(tab.icon as React.ReactElement, { className: "w-6 h-6" })}
-                </div>
-                <span className="text-[10px] font-bold text-foreground">{tab.label}</span>
-                {tab.count && tab.count > 0 ? (
-                  <span className="absolute top-2.5 left-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#09090b]" />
-                ) : null}
-              </motion.button>
-            ))}
+          {/* 4 Section Cards */}
+          <div className="grid grid-cols-2 gap-3" dir="rtl">
+            {SECTIONS.map((section, i) => {
+              const badge = getSectionBadge(section.id);
+              // Filter section tabs by moderator access
+              const visibleTabs = isModeratorRole
+                ? section.tabs.filter(tabKey => hasTabAccess(tabKey))
+                : section.tabs;
+              if (visibleTabs.length === 0) return null;
+              return (
+                <motion.button
+                  key={section.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.01, borderColor: "rgba(255,255,255,0.12)" }}
+                  onClick={() => {
+                    setActiveSection(section.id);
+                    setActiveTab(visibleTabs[0]);
+                  }}
+                  className={`relative bg-gradient-to-br ${section.gradient} border border-white/5 rounded-3xl p-5 text-right hover:border-white/10 transition-all duration-300`}
+                >
+                  <div className={section.iconColor}>{section.icon}</div>
+                  <h3 className="text-base font-bold text-foreground mt-3">{section.title}</h3>
+                  <p className="text-[10px] text-muted-foreground mt-1">{section.description}</p>
+                  {badge > 0 && (
+                    <span className="absolute top-3 left-3 inline-flex items-center justify-center min-w-5 h-5 px-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-full">
+                      {badge}
+                    </span>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
       )}
-      {/* Content */}
-      {activeTab && (
+
+      {/* Section Tab Chips + Content */}
+      {activeSection && !activeTab && (
         <div className="max-w-2xl mx-auto p-4">
-        {loading ? (
-          <div className="space-y-3 py-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-card/50 border border-white/5 rounded-2xl p-5 animate-pulse">
-                <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
-                <div className="h-3 bg-white/5 rounded w-2/3" />
-              </div>
-            ))}
+          <p className="text-sm text-muted-foreground text-center py-10">اختر تبويباً</p>
+        </div>
+      )}
+      {activeTab && activeSection && (
+        <div className="max-w-2xl mx-auto">
+          {/* Tab chips */}
+          <div className="px-4 pt-3 pb-2">
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+              {(currentSectionDef?.tabs || []).map(tabKey => {
+                const tabDef = tabs.find(t => t.key === tabKey);
+                if (!tabDef) return null;
+                return (
+                  <button
+                    key={tabKey}
+                    onClick={() => setActiveTab(tabKey)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all ${
+                      activeTab === tabKey
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "bg-card/50 text-muted-foreground hover:bg-card border border-white/5"
+                    }`}
+                  >
+                    {tabDef.icon}
+                    {tabDef.label}
+                    {tabDef.count && tabDef.count > 0 && (
+                      <span className="min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] flex items-center justify-center">{tabDef.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        ) : (
+          <div className="px-4 pb-4">
+      {loading ? (
+        <div className="space-y-3 py-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-card/50 border border-white/5 rounded-2xl p-5 animate-pulse">
+              <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
+              <div className="h-3 bg-white/5 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      ) : (
           <AnimatePresence mode="wait">
+
             {/* Videos Tab */}
             {activeTab === "videos" && (
               <motion.div key="videos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
@@ -2510,7 +2595,8 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        )}
+      )}
+          </div>
         </div>
       )}
       </div>
