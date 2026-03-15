@@ -150,6 +150,7 @@ interface AnimatedPhotoRequest {
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>(null);
+  const [activeSection, setActiveSection] = useState<"requests" | "products" | "finance" | "settings" | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Videos state
