@@ -4,7 +4,7 @@ import {
   CheckCircle, XCircle, Clock, Search, Upload,
   Loader2, FileText, Image, Printer, Building2,
   ChevronDown, ChevronUp, Eye, Phone, User, Hash, CalendarDays,
-  MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3,
+  MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,10 @@ interface WithdrawRequest {
   transfer_verified?: boolean;
   screenshot?: string;
   avatar?: string;
+  reference_id?: string;
+  transferred_usd?: number;
+  approved_amount?: number;
+  salary_type?: string;
 }
 
 interface Stats {
@@ -148,6 +152,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           screenshot: r.screenshot || "",
           approved_at: r.approved_at || null,
           rejected_at: r.rejected_at || null,
+          reference_id: r.reference_id || null,
+          transferred_usd: r.transferred_usd || null,
+          approved_amount: r.approved_amount || null,
+          salary_type: r.salary_type || "host",
         }));
         const enriched = await enrichWithAvatars(rawRequests);
         setRequests(enriched);
@@ -446,6 +454,67 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                       <div className={`flex items-center gap-2 rounded-xl p-2.5 text-xs font-bold ${req.transfer_verified ? "bg-emerald-500/5 text-emerald-400" : "bg-amber-500/5 text-amber-400"}`}>
                         {req.transfer_verified ? <><CheckCircle className="w-3.5 h-3.5" /> تم التحقق من التحويل</> : <><Clock className="w-3.5 h-3.5" /> لم يتم التحقق — مرفق إيصال</>}
                       </div>
+
+                      {/* ━━━ Verification Documentation ━━━ */}
+                      {(req.reference_id || req.transferred_usd || req.approved_amount) && (
+                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-primary" /> التوثيق
+                          </p>
+                          {req.reference_id && (
+                            <div className="flex items-center justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                              <span className="text-[10px] text-muted-foreground">الرقم المرجعي</span>
+                              <span className="text-xs font-bold font-mono text-emerald-400">#{req.reference_id}</span>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            {req.transferred_usd != null && (
+                              <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                                <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المحوّل</p>
+                                <p className="text-xs font-bold font-mono text-foreground">${req.transferred_usd.toLocaleString()}</p>
+                              </div>
+                            )}
+                            {req.approved_amount != null && (
+                              <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                                <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المعتمد</p>
+                                <p className="text-xs font-bold font-mono text-primary">${req.approved_amount.toLocaleString()}</p>
+                              </div>
+                            )}
+                          </div>
+                          {/* Amount mismatch warning */}
+                          {req.transferred_usd != null && req.approved_amount != null && req.transferred_usd > req.approved_amount && (
+                            <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/10 rounded-lg px-3 py-2">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                              <p className="text-[10px] text-amber-400 leading-relaxed">
+                                المبلغ المحوّل (${req.transferred_usd}) أكبر من الراتب (${req.approved_amount}) — سيتم احتساب الراتب فقط
+                              </p>
+                            </div>
+                          )}
+                          {req.transferred_usd != null && req.approved_amount != null && req.transferred_usd === req.approved_amount && (
+                            <div className="flex items-center gap-2 bg-emerald-500/5 rounded-lg px-3 py-2">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                              <p className="text-[10px] text-emerald-400">المبلغ متطابق مع الراتب المسجل</p>
+                            </div>
+                          )}
+                          {!req.transfer_verified && (
+                            <div className="flex items-center gap-2 bg-rose-500/5 rounded-lg px-3 py-2">
+                              <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                              <a href="https://galalivechat.com/admin/charges-reports?name=app" target="_blank" rel="noopener noreferrer"
+                                className="text-[10px] text-rose-400 underline hover:text-rose-300">
+                                يحتاج مراجعة يدوية — فتح صفحة الحوالات ↗
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {req.salary_type && (
+                        <div className="bg-white/[0.03] rounded-xl px-3 py-2 text-xs flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${req.salary_type === "agency" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+                            {req.salary_type === "agency" ? "وكالة" : "مضيف"}
+                          </span>
+                        </div>
+                      )}
                       {req.notes && <DetailCell icon={<MessageSquare className="w-3 h-3" />} label="ملاحظات" value={req.notes} />}
 
                       {req.receipt_image && (
@@ -651,6 +720,65 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
                 <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
                 <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={new Date(detailReq.created_at).toLocaleString("ar")} />
+                {detailReq.salary_type && (
+                  <div className="bg-white/[0.03] rounded-xl px-3 py-2 flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${detailReq.salary_type === "agency" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+                      {detailReq.salary_type === "agency" ? "وكالة" : "مضيف"}
+                    </span>
+                  </div>
+                )}
+                {/* ━━━ Verification Documentation ━━━ */}
+                {(detailReq.reference_id || detailReq.transferred_usd || detailReq.approved_amount) && (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary" /> التوثيق
+                    </p>
+                    {detailReq.reference_id && (
+                      <div className="flex items-center justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">الرقم المرجعي</span>
+                        <span className="text-xs font-bold font-mono text-emerald-400">#{detailReq.reference_id}</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {detailReq.transferred_usd != null && (
+                        <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                          <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المحوّل</p>
+                          <p className="text-xs font-bold font-mono text-foreground">${detailReq.transferred_usd.toLocaleString()}</p>
+                        </div>
+                      )}
+                      {detailReq.approved_amount != null && (
+                        <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                          <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المعتمد</p>
+                          <p className="text-xs font-bold font-mono text-primary">${detailReq.approved_amount.toLocaleString()}</p>
+                        </div>
+                      )}
+                    </div>
+                    {detailReq.transferred_usd != null && detailReq.approved_amount != null && detailReq.transferred_usd > detailReq.approved_amount && (
+                      <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/10 rounded-lg px-3 py-2">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                        <p className="text-[10px] text-amber-400 leading-relaxed">
+                          المبلغ المحوّل (${detailReq.transferred_usd}) أكبر من الراتب (${detailReq.approved_amount}) — سيتم احتساب الراتب فقط
+                        </p>
+                      </div>
+                    )}
+                    {detailReq.transferred_usd != null && detailReq.approved_amount != null && detailReq.transferred_usd === detailReq.approved_amount && (
+                      <div className="flex items-center gap-2 bg-emerald-500/5 rounded-lg px-3 py-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        <p className="text-[10px] text-emerald-400">المبلغ متطابق مع الراتب المسجل</p>
+                      </div>
+                    )}
+                    {!detailReq.transfer_verified && (
+                      <div className="flex items-center gap-2 bg-rose-500/5 rounded-lg px-3 py-2">
+                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                        <a href="https://galalivechat.com/admin/charges-reports?name=app" target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] text-rose-400 underline hover:text-rose-300">
+                          يحتاج مراجعة يدوية — فتح صفحة الحوالات ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {detailReq.notes && <DetailCell icon={<MessageSquare className="w-3 h-3" />} label="ملاحظات" value={detailReq.notes} />}
                 {detailReq.approved_at && <DetailCell icon={<CheckCircle className="w-3 h-3" />} label="تاريخ القبول" value={new Date(detailReq.approved_at).toLocaleString("ar")} />}
                 {detailReq.approved_by && <DetailCell icon={<User className="w-3 h-3" />} label="وافق عليه" value={detailReq.approved_by} />}
