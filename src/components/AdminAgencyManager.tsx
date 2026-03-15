@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 const ADMIN_API = "https://galachat.site/admin-panel-api.php";
+// IMPORTANT: Use admin_key instead of token for all agency API calls
 
 interface Agency {
   username: string;
@@ -65,7 +66,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   const fetchAgencies = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${ADMIN_API}?action=agency_list&token=${adminToken}`);
+      const res = await fetch(`${ADMIN_API}?action=agency_list&admin_key=ghala2026owner`);
       const data = await res.json();
       if (data.success) {
         setAgencies(data.agencies || []);
@@ -112,7 +113,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: adminToken,
+          admin_key: "ghala2026owner",
           username: createForm.username,
           name: createForm.name,
           agency_id: createForm.agency_id,
@@ -149,7 +150,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const res = await fetch(`${ADMIN_API}?action=agency_add_balance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: adminToken, username, coins }),
+        body: JSON.stringify({ admin_key: "ghala2026owner", username, coins }),
       });
       const data = await res.json();
       if (data.success) {
@@ -173,7 +174,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const res = await fetch(`${ADMIN_API}?action=agency_toggle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: adminToken, username }),
+        body: JSON.stringify({ admin_key: "ghala2026owner", username }),
       });
       const data = await res.json();
       if (data.success) {

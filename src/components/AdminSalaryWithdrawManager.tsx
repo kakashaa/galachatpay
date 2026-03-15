@@ -110,7 +110,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}?action=salary_withdraw_list&token=${token}&month=${selectedMonth}`);
+      const res = await fetch(`${API}?action=salary_withdraw_list&admin_key=ghala2026owner&month=${selectedMonth}`);
       const data = await res.json();
       if (data.success || data.requests) {
         setRequests(data.requests || []);
