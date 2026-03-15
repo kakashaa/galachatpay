@@ -319,46 +319,46 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       </div>
 
       {/* ═══════ 2. SEARCH + FILTERS ═══════ */}
-      <div className="space-y-2.5">
+      <div className="space-y-1.5">
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="بحث بالآيدي، الاسم، كود التتبع..."
-            className="bg-[#12121a] border-emerald-500/10 pr-10 text-xs h-11 rounded-2xl placeholder:text-muted-foreground/50" dir="rtl" />
+            className="bg-[#12121a] border-emerald-500/10 pr-9 text-xs h-9 rounded-xl placeholder:text-muted-foreground/50" dir="rtl" />
         </div>
 
         <button onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-          <Filter className="w-3.5 h-3.5" />
+          className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+          <Filter className="w-3 h-3" />
           {showFilters ? "إخفاء التصفية" : "تصفية متقدمة"}
         </button>
 
         <AnimatePresence>
           {showFilters && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden space-y-2">
-              <div className="grid grid-cols-2 gap-2">
+              className="overflow-hidden space-y-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <select value={filter === "all" ? "all" : filter} onChange={e => setFilter(e.target.value as any)}
-                  className="bg-[#12121a] border border-emerald-500/10 rounded-xl text-[11px] px-3 h-10 text-foreground">
+                  className="bg-[#12121a] border border-emerald-500/10 rounded-lg text-[10px] px-2 h-8 text-foreground">
                   <option value="all">كل الحالات</option>
                   <option value="pending">قيد الانتظار</option>
                   <option value="delivered">تم التحويل</option>
                   <option value="rejected">مرفوض</option>
                 </select>
                 <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
-                  className="bg-[#12121a] border border-emerald-500/10 rounded-xl text-[11px] px-3 h-10 text-foreground">
+                  className="bg-[#12121a] border border-emerald-500/10 rounded-lg text-[10px] px-2 h-8 text-foreground">
                   {COUNTRIES_FILTER.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground whitespace-nowrap">المبلغ ($):</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-muted-foreground whitespace-nowrap">المبلغ ($):</span>
                 <Input type="number" placeholder="من" value={amountMin} onChange={e => setAmountMin(e.target.value)}
-                  className="bg-[#12121a] border-emerald-500/10 text-[11px] h-9 px-2.5 rounded-xl flex-1" dir="ltr" />
+                  className="bg-[#12121a] border-emerald-500/10 text-[10px] h-8 px-2 rounded-lg flex-1" dir="ltr" />
                 <Input type="number" placeholder="إلى" value={amountMax} onChange={e => setAmountMax(e.target.value)}
-                  className="bg-[#12121a] border-emerald-500/10 text-[11px] h-9 px-2.5 rounded-xl flex-1" dir="ltr" />
+                  className="bg-[#12121a] border-emerald-500/10 text-[10px] h-8 px-2 rounded-lg flex-1" dir="ltr" />
               </div>
               <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-                className="bg-[#12121a] border-emerald-500/10 text-[11px] h-10 rounded-xl" dir="ltr" />
+                className="bg-[#12121a] border-emerald-500/10 text-[10px] h-8 rounded-lg" dir="ltr" />
             </motion.div>
           )}
         </AnimatePresence>
