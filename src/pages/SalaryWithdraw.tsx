@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  CheckCircle, AlertCircle, Globe, CreditCard,
+  CheckCircle, AlertCircle, Globe,
   UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
   Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown, ChevronDown,
 } from "lucide-react";
