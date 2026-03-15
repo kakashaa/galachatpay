@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
