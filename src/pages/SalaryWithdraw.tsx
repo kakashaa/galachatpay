@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import ServicePreviousRequests from "@/components/ServicePreviousRequests";
+// ServicePreviousRequests replaced by SalaryRequestsHistory
 import SalaryHistory from "@/components/SalaryHistory";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { toast } from "sonner";
