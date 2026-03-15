@@ -156,8 +156,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
   const expectedDeductionUSD = totalCharged / COINS_PER_DOLLAR;
   const hasDiscrepancy = totalUsd > 0 && Math.abs(totalUsd - expectedDeductionUSD) > 5;
 
-  const bankTotal = Object.values(byBank).reduce((s, b) => s + (b.total_usd || 0), 0);
-  const countryTotal = Object.values(byCountry).reduce((s, c) => s + (c.total_usd || 0), 0);
 
   const tabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
     { key: "transactions", label: "العمليات", icon: <ArrowLeftRight className="w-3.5 h-3.5" /> },
