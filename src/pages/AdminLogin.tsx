@@ -35,7 +35,13 @@ const AdminLogin: React.FC = () => {
       if (data.data.permissions) {
         sessionStorage.setItem("admin_permissions", JSON.stringify(data.data.permissions));
       }
-      sessionStorage.setItem("admin_session_token", data.data.session_token || Date.now().toString());
+      if (data.data.session_token) {
+        sessionStorage.setItem("admin_session_token", data.data.session_token);
+      } else {
+        // Generate a valid fallback token
+        const fallbackToken = btoa(JSON.stringify({ username: username.trim().toLowerCase(), role: data.data.role, iat: Date.now() }));
+        sessionStorage.setItem("admin_session_token", fallbackToken);
+      }
 
       // 2. Also login to project-z API (for agencies/salaries)
       // This runs silently in background — if it fails, agencies tab just won't work
