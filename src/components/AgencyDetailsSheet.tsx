@@ -336,7 +336,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                                 transition={{ delay: i * 0.06, duration: 0.3 }}
                                 className="bg-[#1c1e2e] border border-white/5 rounded-2xl p-4 text-center"
                               >
-                                <span className="text-2xl">{COUNTRY_FLAGS[country] || "🌍"}</span>
+                                <Globe className="w-6 h-6 text-amber-400" />
                                 <p className="text-xs font-bold text-foreground mt-1">{country}</p>
                                 <p className="text-base font-black text-amber-400 font-mono mt-1">${info.total_usd?.toFixed(2)}</p>
                                 <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
