@@ -52,7 +52,7 @@ const UserProfileCard: React.FC = () => {
   const [starWalletView, setStarWalletView] = useState<"main" | "cashout">("main");
   const [showTutorial, setShowTutorial] = useState(false);
   const [totalStars, setTotalStars] = useState(0);
-  const [salaryData, setSalaryData] = useState<{ salary: number; deduction: number; net: number } | null>(null);
+  const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
