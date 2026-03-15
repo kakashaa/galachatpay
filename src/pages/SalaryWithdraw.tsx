@@ -769,9 +769,15 @@ const SalaryWithdraw: React.FC = () => {
                       <span className="text-lg font-bold text-red-400">-${checkResult.deduction}</span>
                     </div>
                   )}
+                  {alreadyWithdrawn > 0 && (
+                    <div className="flex justify-between items-center bg-amber-500/5 border border-amber-500/10 rounded-xl p-3">
+                      <span className="text-xs text-amber-400">تم السحب ({checkResult.withdrawals_this_month || 0} طلب)</span>
+                      <span className="text-lg font-bold text-amber-400">-${alreadyWithdrawn.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                    <span className="text-sm font-bold text-emerald-400">الصافي المتاح</span>
-                    <span className="text-2xl font-black text-emerald-400">${checkResult.net}</span>
+                    <span className="text-sm font-bold text-emerald-400">المتبقي المتاح</span>
+                    <span className="text-2xl font-black text-emerald-400">${Math.max(0, (checkResult.net || 0) - alreadyWithdrawn).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
