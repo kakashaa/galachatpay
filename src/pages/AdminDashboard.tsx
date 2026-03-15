@@ -1454,7 +1454,7 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Blocks Tab */}
             {activeTab === "blocks" && (
-              <motion.div key="blocks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              <motion.div key="blocks" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {/* Ban Form */}
                 {canAct && (
                   <div className="bg-card border border-border rounded-xl p-4 space-y-3">
