@@ -992,7 +992,7 @@ const AdminDashboardPage: React.FC = () => {
           <div className="flex items-center gap-3">
             {(activeTab || activeSection) ? (
               <button onClick={() => {
-                if (activeTab) { setActiveTab(null); }
+                if (activeTab) { setActiveTab(null); setActiveSection(null); }
                 else { setActiveSection(null); }
               }} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
                 <ArrowRight className="w-5 h-5 text-foreground" />
