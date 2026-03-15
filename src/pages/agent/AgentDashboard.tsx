@@ -61,8 +61,9 @@ const AgentDashboard: React.FC = () => {
     requestAnimationFrame(animate);
   }, [data?.balance]);
 
-  const balancePercent = data ? Math.min((data.balance / (data.balance + (data.today_charges * 8500 || 1))) * 100, 100) : 0;
-  const barColor = balancePercent > 30 ? "from-green-400 to-green-500" : balancePercent > 10 ? "from-amber-400 to-amber-500" : "from-red-400 to-red-500";
+  const originalBalance = data?.original_balance || data?.balance || 1;
+  const balancePercent = data ? Math.min((data.balance / originalBalance) * 100, 100) : 0;
+  const barColor = balancePercent > 50 ? "from-green-400 to-green-500" : balancePercent > 20 ? "from-amber-400 to-amber-500" : "from-red-400 to-red-500";
 
   if (loading) {
     return (
