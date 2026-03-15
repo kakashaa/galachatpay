@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, TrendingUp, Wallet, Gem } from "lucide-react";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
+import { BANK_LABELS, COUNTRY_LABELS, getBankCountry } from "@/lib/constants";
 
 const AGENT_API = "https://galachat.site/project-z/api.php";
 
@@ -28,15 +29,6 @@ interface StatsData {
   by_bank: Record<string, number>;
   weekly: WeeklyItem[];
 }
-
-const bankLabels: Record<string, { label: string; flag: string }> = {
-  rajhi: { label: "الراجحي", flag: "🇸🇦" },
-  jeep: { label: "جيب", flag: "🇾🇪" },
-  kareem: { label: "كريم", flag: "🇾🇪" },
-  zelle: { label: "Zelle", flag: "🇺🇸" },
-  cashapp: { label: "Cash App", flag: "🇺🇸" },
-  agent: { label: "حساب الوكيل", flag: "💼" },
-};
 
 const AgentStats: React.FC = () => {
   const navigate = useNavigate();

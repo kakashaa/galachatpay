@@ -5,19 +5,18 @@ import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { toast } from "sonner";
 
+import { COUNTRIES, COINS_PER_DOLLAR, BANK_LABELS, COUNTRY_LABELS, getBankCountry } from "@/lib/constants";
+
 const AGENT_API = "https://galachat.site/project-z/api.php";
-const COINS_PER_USD = 8500;
+const COINS_PER_USD = COINS_PER_DOLLAR;
 
+// Build flat payment methods from COUNTRIES + agent option
 const paymentMethods = [
-  { id: "rajhi", label: "الراجحي", flag: "🇸🇦", desc: "السعودية" },
-  { id: "jeep", label: "جيب", flag: "🇾🇪", desc: "اليمن" },
-  { id: "kareem", label: "كريم", flag: "🇾🇪", desc: "اليمن" },
-  { id: "zelle", label: "Zelle", flag: "🇺🇸", desc: "أمريكا" },
-  { id: "cashapp", label: "Cash App", flag: "🇺🇸", desc: "أمريكا" },
-  { id: "agent", label: "حساب الوكيل", flag: "💼", desc: "الفلوس عندي" },
+  ...COUNTRIES.flatMap(c =>
+    c.banks.map(b => ({ id: b.id, label: b.label, country: c.name, countryId: c.id }))
+  ),
+  { id: "agent", label: "حساب الوكيل", country: "الفلوس عندي", countryId: "agent" },
 ];
-
-const countryMap: Record<string, string> = { rajhi: "sa", jeep: "ye", kareem: "ye", zelle: "us", cashapp: "us", agent: "agent" };
 
 const AgentCharge: React.FC = () => {
   const navigate = useNavigate();

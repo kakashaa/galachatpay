@@ -12,6 +12,9 @@ import {
 import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
+import {
+  BANK_LABELS, COUNTRY_LABELS, BANK_COLORS, getBankColorByKey, COINS_PER_DOLLAR,
+} from "@/lib/constants";
 
 const API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/receipts/";
@@ -51,37 +54,21 @@ interface AgencyDetailsSheetProps {
 
 type SubTab = "transactions" | "distribution" | "summary";
 
-const BANK_NAMES: Record<string, string> = {
-  rajhi: "الراجحي", jeep: "جيب", kareem: "كريم",
-  zelle: "Zelle", cashapp: "Cash App", agent: "حساب الوكيل", other: "أخرى",
+const DEFAULT_BANK_COLOR = { bg: "bg-muted/10", text: "text-muted-foreground", border: "border-border/20", bar: "bg-muted-foreground" };
+
+// Match bank key from transaction bank field (may be Arabic name or key)
+const resolveBankColor = (bank: string) => {
+  // Try direct key match
+  if (BANK_COLORS[bank]) return BANK_COLORS[bank];
+  // Try matching by label
+  for (const [key, label] of Object.entries(BANK_LABELS)) {
+    if (bank?.includes(label) || label?.includes(bank)) return BANK_COLORS[key] || DEFAULT_BANK_COLOR;
+  }
+  return DEFAULT_BANK_COLOR;
 };
 
-const COUNTRY_NAMES: Record<string, string> = {
-  sa: "السعودية", ye: "اليمن", us: "أمريكا", agent: "الوكيل", other: "أخرى",
-};
-
-const BANK_COLORS: Record<string, { bg: string; text: string; border: string; bar: string }> = {
-  rajhi: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", bar: "bg-emerald-500" },
-  jeep: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", bar: "bg-blue-500" },
-  kareem: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/20", bar: "bg-purple-500" },
-  zelle: { bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20", bar: "bg-violet-500" },
-  cashapp: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/20", bar: "bg-green-500" },
-  agent: { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-slate-500/20", bar: "bg-slate-500" },
-  other: { bg: "bg-muted/10", text: "text-muted-foreground", border: "border-border/20", bar: "bg-muted-foreground" },
-};
-
-const getBankColorByKey = (key: string) => BANK_COLORS[key] || BANK_COLORS.other;
-
-// Legacy support for matching Arabic bank names in transactions
-const getBankColor = (bank: string) => {
-  if (bank?.includes("الراجحي")) return BANK_COLORS.rajhi;
-  if (bank?.includes("جيب")) return BANK_COLORS.jeep;
-  if (bank?.includes("كريم")) return BANK_COLORS.kareem;
-  if (bank?.includes("Zelle")) return BANK_COLORS.zelle;
-  if (bank?.includes("Cash")) return BANK_COLORS.cashapp;
-  if (bank?.includes("وكيل") || bank?.includes("agent")) return BANK_COLORS.agent;
-  return BANK_COLORS.other;
-};
+const resolveBankLabel = (bankKey: string) => BANK_LABELS[bankKey] || bankKey;
+const resolveCountryLabel = (countryKey: string) => COUNTRY_LABELS[countryKey] || countryKey;
 
 const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, onClose }) => {
   const [subTab, setSubTab] = useState<SubTab>("transactions");
@@ -129,7 +116,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
     }
   };
 
-  // Client-side filtering
   const filteredTxns = useMemo(() => {
     let list = transactions;
     if (dateFilter) list = list.filter(t => t.created_at?.startsWith(dateFilter));
@@ -142,12 +128,12 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
       );
     }
     if (bankFilter !== "all") {
-      const bankName = BANK_NAMES[bankFilter] || bankFilter;
-      list = list.filter(t => t.bank?.includes(bankName) || t.bank === bankFilter);
+      const bankLabel = resolveBankLabel(bankFilter);
+      list = list.filter(t => t.bank === bankFilter || t.bank === bankLabel || t.bank?.includes(bankLabel));
     }
     if (countryFilter !== "all") {
-      const countryName = COUNTRY_NAMES[countryFilter] || countryFilter;
-      list = list.filter(t => t.country?.includes(countryName) || t.country === countryFilter);
+      const countryLabel = resolveCountryLabel(countryFilter);
+      list = list.filter(t => t.country === countryFilter || t.country === countryLabel || t.country?.includes(countryLabel));
     }
     return list;
   }, [transactions, dateFilter, searchQuery, bankFilter, countryFilter]);
@@ -160,17 +146,16 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
   if (!agency) return null;
 
   const isActive = agency.status === "active";
-  const balanceUSD = (agency.balance / 8500).toFixed(2);
+  const balanceUSD = (agency.balance / COINS_PER_DOLLAR).toFixed(2);
   const totalCharged = agency.original_balance - agency.balance;
-  const totalChargedUSD = (totalCharged / 8500).toFixed(2);
+  const totalChargedUSD = (totalCharged / COINS_PER_DOLLAR).toFixed(2);
   const consumptionPct = agency.original_balance > 0
     ? Math.min(100, Math.round((totalCharged / agency.original_balance) * 100))
     : 0;
   const remainingPct = 100 - consumptionPct;
-  const expectedDeductionUSD = totalCharged / 8500;
+  const expectedDeductionUSD = totalCharged / COINS_PER_DOLLAR;
   const hasDiscrepancy = totalUsd > 0 && Math.abs(totalUsd - expectedDeductionUSD) > 5;
 
-  // Distribution totals for percentage bars
   const bankTotal = Object.values(byBank).reduce((s, b) => s + (b.total_usd || 0), 0);
   const countryTotal = Object.values(byCountry).reduce((s, c) => s + (c.total_usd || 0), 0);
 
@@ -206,7 +191,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                 </SheetTitle>
               </SheetHeader>
 
-              {/* Balance bar */}
               <div className="mt-3 bg-white/[0.03] rounded-xl p-3 border border-white/5">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] text-muted-foreground">الرصيد المتبقي</span>
@@ -217,7 +201,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                 </p>
               </div>
 
-              {/* Sub-tabs */}
               <div className="flex gap-1 mt-3 bg-white/[0.03] rounded-xl p-1 border border-white/5">
                 {tabs.map(t => (
                   <button
@@ -275,7 +258,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                               className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 pr-8 text-[11px] text-foreground appearance-none focus:outline-none focus:border-amber-500/30 transition-colors"
                             >
                               <option value="all" className="bg-[#12141f]">الكل</option>
-                              {Object.entries(BANK_NAMES).map(([k, v]) => (
+                              {Object.entries(BANK_LABELS).map(([k, v]) => (
                                 <option key={k} value={k} className="bg-[#12141f]">{v}</option>
                               ))}
                             </select>
@@ -288,7 +271,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                               className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-3 py-2 pr-8 text-[11px] text-foreground appearance-none focus:outline-none focus:border-amber-500/30 transition-colors"
                             >
                               <option value="all" className="bg-[#12141f]">الكل</option>
-                              {Object.entries(COUNTRY_NAMES).map(([k, v]) => (
+                              {Object.entries(COUNTRY_LABELS).map(([k, v]) => (
                                 <option key={k} value={k} className="bg-[#12141f]">{v}</option>
                               ))}
                             </select>
@@ -314,7 +297,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                       ) : (
                         <>
                           {filteredTxns.map((txn, i) => {
-                            const bankColor = getBankColor(txn.bank || "");
+                            const bankColor = resolveBankColor(txn.bank || "");
                             return (
                               <motion.div
                                 key={txn.id || i}
@@ -323,54 +306,41 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                                 transition={{ delay: i * 0.03, duration: 0.3 }}
                                 className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 space-y-2.5 hover:border-white/10 transition-colors"
                               >
-                                {/* TXN code + amount */}
                                 <div className="flex items-center justify-between">
                                   <span className="font-mono text-[10px] text-muted-foreground">{txn.txn_code || `TXN-${txn.id?.slice(-8)}`}</span>
                                   <span className="text-sm font-black text-amber-400 font-mono tabular-nums">${txn.amount_usd?.toFixed(2)}</span>
                                 </div>
-
-                                {/* User info */}
                                 <div className="flex items-center gap-1.5">
                                   <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                                   <span className="text-xs font-bold text-foreground">{txn.user_name || "مستخدم"}</span>
                                   <span className="text-[9px] font-mono text-muted-foreground">({txn.user_uuid})</span>
                                 </div>
-
-                                {/* Coins */}
                                 <div className="flex items-center gap-1.5">
                                   <Coins className="w-3 h-3 text-amber-400 flex-shrink-0" />
                                   <span className="text-[11px] text-foreground font-mono tabular-nums">{txn.amount_coins?.toLocaleString()} كوينز</span>
                                 </div>
-
-                                {/* Bank + Country */}
                                 <div className="flex items-center gap-1.5">
                                   <Landmark className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                                   <span className={`text-[10px] px-2 py-0.5 rounded-lg ${bankColor.bg} ${bankColor.text} border ${bankColor.border} font-bold`}>
-                                    {txn.bank}
+                                    {resolveBankLabel(txn.bank)}
                                   </span>
                                   {txn.country && (
                                     <>
                                       <span className="text-muted-foreground/30">—</span>
-                                      <span className="text-[10px] text-muted-foreground">{txn.country}</span>
+                                      <span className="text-[10px] text-muted-foreground">{resolveCountryLabel(txn.country)}</span>
                                     </>
                                   )}
                                 </div>
-
-                                {/* Date */}
                                 <div className="flex items-center gap-1.5">
                                   <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
                                   <span className="text-[10px] text-muted-foreground font-mono">
                                     {txn.created_at ? new Date(txn.created_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" }) : "—"}
                                   </span>
                                 </div>
-
-                                {/* Status */}
                                 <div className="flex items-center gap-1.5">
                                   <CheckCircle2 className="w-3 h-3 text-emerald-400 flex-shrink-0" />
                                   <span className="text-[10px] text-emerald-400">ناجحة</span>
                                 </div>
-
-                                {/* Receipt button */}
                                 {txn.receipt_path && (
                                   <button
                                     onClick={() => setReceiptPreview(`${RECEIPT_BASE}${txn.receipt_path}`)}
@@ -383,8 +353,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                               </motion.div>
                             );
                           })}
-
-                          {/* Footer total */}
                           <div className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Receipt className="w-4 h-4 text-amber-400" />
@@ -403,7 +371,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                   {/* ===== Distribution Tab ===== */}
                   {subTab === "distribution" && (
                     <motion.div key="dist" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-                      {/* By Bank */}
                       <div>
                         <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
                           <Landmark className="w-4 h-4 text-amber-400" />
@@ -425,7 +392,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                                   className={`${color.bg} border ${color.border} rounded-2xl p-3.5 space-y-2`}
                                 >
                                   <Landmark className={`w-5 h-5 ${color.text}`} />
-                                  <p className={`text-xs font-bold ${color.text}`}>{BANK_NAMES[bankKey] || bankKey}</p>
+                                  <p className={`text-xs font-bold ${color.text}`}>{resolveBankLabel(bankKey)}</p>
                                   <p className={`text-base font-black font-mono tabular-nums ${color.text}`}>${info.total_usd?.toFixed(2)}</p>
                                   <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
                                   <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -444,7 +411,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                         )}
                       </div>
 
-                      {/* By Country */}
                       <div>
                         <h3 className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
                           <Globe className="w-4 h-4 text-blue-400" />
@@ -465,7 +431,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                                   className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-3.5 space-y-2"
                                 >
                                   <Globe className="w-5 h-5 text-blue-400" />
-                                  <p className="text-xs font-bold text-foreground">{COUNTRY_NAMES[countryKey] || countryKey}</p>
+                                  <p className="text-xs font-bold text-foreground">{resolveCountryLabel(countryKey)}</p>
                                   <p className="text-base font-black text-amber-400 font-mono tabular-nums">${info.total_usd?.toFixed(2)}</p>
                                   <p className="text-[9px] text-muted-foreground">{info.count} عملية</p>
                                   <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -507,7 +473,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
 
                       <div className="space-y-3">
                         {[
-                          { label: "الرصيد الأصلي", value: agency.original_balance?.toLocaleString(), sub: `$${(agency.original_balance / 8500).toFixed(2)}`, color: "text-blue-400" },
+                          { label: "الرصيد الأصلي", value: agency.original_balance?.toLocaleString(), sub: `$${(agency.original_balance / COINS_PER_DOLLAR).toFixed(2)}`, color: "text-blue-400" },
                           { label: "إجمالي المشحون", value: totalCharged.toLocaleString(), sub: `$${totalChargedUSD}`, color: "text-amber-400" },
                           { label: "المتبقي", value: agency.balance?.toLocaleString(), sub: `$${balanceUSD}`, color: "text-emerald-400" },
                           { label: "عدد العمليات الكلي", value: totalCount.toString(), sub: `$${totalUsd.toFixed(2)} إجمالي`, color: "text-violet-400" },
@@ -528,7 +494,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
                         ))}
                       </div>
 
-                      {/* Consumption progress */}
                       <div className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-muted-foreground">نسبة الاستهلاك</span>
@@ -558,7 +523,6 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
         </SheetContent>
       </Sheet>
 
-      {/* Receipt Preview Dialog */}
       <Dialog open={!!receiptPreview} onOpenChange={() => setReceiptPreview(null)}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] p-2 bg-black/90 border-white/10">
           {receiptPreview && (
