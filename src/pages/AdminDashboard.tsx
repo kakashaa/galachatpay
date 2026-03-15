@@ -2038,7 +2038,7 @@ const AdminDashboardPage: React.FC = () => {
                 <div className="flex gap-2 flex-wrap">
                   {[
                     { key: "all" as const, label: "الكل", count: allCustomGifts.length, color: "bg-muted/30" },
-                    { key: "approved" as const, label: "✅ مقبولة", count: allCustomGifts.filter(g => g.status === "approved").length, color: "bg-emerald-500/10 border-emerald-500/30" },
+                    { key: "approved" as const, label: "مقبولة", count: allCustomGifts.filter(g => g.status === "approved").length, color: "bg-emerald-500/10 border-emerald-500/30" },
                     { key: "pending" as const, label: "معلقة", count: allCustomGifts.filter(g => g.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
                     { key: "rejected" as const, label: "مرفوضة", count: allCustomGifts.filter(g => g.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
                   ].map(f => (
