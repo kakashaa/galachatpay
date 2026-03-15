@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe, CreditCard,
   UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
-  Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown,
+  Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown, ChevronDown,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 import SalaryHistory from "@/components/SalaryHistory";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const API = "https://galachat.site/project-z/api.php";
 
@@ -32,52 +33,92 @@ interface SalaryCheckResult {
   withdraw_open?: boolean;
 }
 
-
 interface VerifyResult {
   verified: boolean;
   transaction_id?: string;
   message?: string;
 }
 
-interface CountryOption {
+interface SalaryBank {
   id: string;
-  flag: string;
-  name: string;
-  banks: { id: string; label: string }[];
+  label: string;
 }
 
-const COUNTRIES: CountryOption[] = [
+interface SalaryCountry {
+  id: string;
+  name: string;
+  banks: SalaryBank[];
+}
+
+const SALARY_COUNTRIES: SalaryCountry[] = [
   {
-    id: "sa", flag: "🇸🇦", name: "السعودية",
+    id: "ye", name: "اليمن",
+    banks: [
+      { id: "jeeppay", label: "جيب (JeepPay)" },
+      { id: "kuraimi", label: "الكريمي" },
+      { id: "najm", label: "النجم" },
+      { id: "ye_other", label: "أخرى (اكتب اسم البنك)" },
+    ],
+  },
+  {
+    id: "sa", name: "السعودية",
     banks: [
       { id: "rajhi", label: "بنك الراجحي" },
       { id: "ahli", label: "بنك الأهلي" },
       { id: "stcpay", label: "stc pay" },
-      { id: "sa_other", label: "أخرى" },
     ],
   },
   {
-    id: "ye", flag: "🇾🇪", name: "اليمن",
-    banks: [
-      { id: "jeeppay", label: "جيب (JeepPay)" },
-      { id: "kuraimi", label: "كريمي" },
-      { id: "ye_cash", label: "كاش (يدوي)" },
-      { id: "ye_other", label: "أخرى" },
-    ],
+    id: "qa", name: "قطر",
+    banks: [{ id: "qa_bank", label: "تحويل بنكي" }],
   },
   {
-    id: "us", flag: "🇺🇸", name: "أمريكا",
+    id: "om", name: "عمان",
+    banks: [{ id: "om_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "ae", name: "الإمارات",
+    banks: [{ id: "ae_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "kw", name: "الكويت",
+    banks: [{ id: "kw_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "bh", name: "البحرين",
+    banks: [{ id: "bh_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "dz", name: "الجزائر",
+    banks: [{ id: "dz_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "ma", name: "المغرب",
+    banks: [{ id: "ma_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "eg", name: "مصر",
+    banks: [{ id: "eg_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "tn", name: "تونس",
+    banks: [{ id: "tn_bank", label: "تحويل بنكي" }],
+  },
+  {
+    id: "us", name: "أمريكا",
     banks: [
       { id: "zelle", label: "Zelle" },
       { id: "cashapp", label: "Cash App" },
-      { id: "us_other", label: "أخرى" },
+      { id: "chime", label: "Chime" },
+      { id: "applepay", label: "Apple Pay" },
     ],
   },
   {
-    id: "other", flag: "🌍", name: "أخرى",
+    id: "intl", name: "تحويل دولي",
     banks: [
-      { id: "other_bank", label: "تحويل بنكي" },
-      { id: "other_wallet", label: "محفظة إلكترونية" },
+      { id: "usdt", label: "USDT" },
+      { id: "western_union", label: "Western Union" },
+      { id: "moneygram", label: "MoneyGram" },
     ],
   },
 ];
@@ -87,10 +128,14 @@ const countryCodes = [
   { code: "+1", flag: "🇺🇸" }, { code: "+20", flag: "🇪🇬" },
   { code: "+213", flag: "🇩🇿" }, { code: "+212", flag: "🇲🇦" },
   { code: "+962", flag: "🇯🇴" }, { code: "+90", flag: "🇹🇷" },
+  { code: "+974", flag: "🇶🇦" }, { code: "+968", flag: "🇴🇲" },
+  { code: "+971", flag: "🇦🇪" }, { code: "+965", flag: "🇰🇼" },
+  { code: "+973", flag: "🇧🇭" }, { code: "+216", flag: "🇹🇳" },
   { code: "+91", flag: "🇮🇳" }, { code: "+92", flag: "🇵🇰" },
   { code: "+880", flag: "🇧🇩" },
 ];
 
+// Steps: 1=salary+instructions, 2=verify(merged), 3=bank, 4=account+confirm, 5=success
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 const TRANSFER_TARGET_ID = "10000";
@@ -104,7 +149,7 @@ const SalaryWithdraw: React.FC = () => {
   const [checkResult, setCheckResult] = useState<SalaryCheckResult | null>(null);
   const [error, setError] = useState("");
 
-  // Step 2: Transfer verification
+  // Verification (merged into step 1 flow)
   const [verifying, setVerifying] = useState(false);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [screenshotBase64, setScreenshotBase64] = useState<string>("");
@@ -114,6 +159,7 @@ const SalaryWithdraw: React.FC = () => {
   // Step 3: Country & Bank
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedBank, setSelectedBank] = useState<string>("");
+  const [customBankName, setCustomBankName] = useState("");
 
   // Step 4: Account details
   const [recipientName, setRecipientName] = useState("");
@@ -142,7 +188,6 @@ const SalaryWithdraw: React.FC = () => {
   useEffect(() => {
     if (!user) { navigate("/"); return; }
     if (isAgencyOwner) {
-      // Fetch both salary types
       fetchBothSalaries();
     } else {
       checkSalary();
@@ -171,7 +216,6 @@ const SalaryWithdraw: React.FC = () => {
       if (!hasHost && !hasAgency) {
         setNoSalaryAtAll(true);
       } else if (hasHost && !hasAgency) {
-        // Only host salary — go directly
         setSalaryType("host");
         setCheckResult(hostData);
         if (!hostData.is_suspicious && hostData.withdraw_open !== false &&
@@ -179,9 +223,7 @@ const SalaryWithdraw: React.FC = () => {
           setStep(1);
         }
       } else if (!hasHost && hasAgency) {
-        // Only agency salary — go directly
         setSalaryType("agency");
-        // Will need to re-check with agency endpoint
         await checkAgencySalary();
       }
       // else: both available — show choice screen
@@ -255,7 +297,8 @@ const SalaryWithdraw: React.FC = () => {
     toast.success("تم النسخ!");
   };
 
-  const handleVerifyTransfer = async () => {
+  // Single verification call — triggered when user clicks "تم التحويل"
+  const handleTransferDone = async () => {
     setVerifying(true);
     setError("");
     try {
@@ -266,8 +309,17 @@ const SalaryWithdraw: React.FC = () => {
       });
       const data: VerifyResult = await res.json();
       setVerifyResult(data);
+      if (data.verified) {
+        // Auto-proceed to bank selection
+        toast.success("✅ تم التحقق من التحويل بنجاح!");
+        setStep(3);
+      } else {
+        // Show screenshot upload on step 2
+        setStep(2);
+      }
     } catch {
       setError("فشل التحقق من التحويل");
+      setStep(2);
     } finally {
       setVerifying(false);
     }
@@ -289,16 +341,15 @@ const SalaryWithdraw: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Can proceed from step 2 (verify)
-  const canProceedStep2 = verifyResult?.verified || screenshotBase64;
-
   if (!user) return null;
 
-  const country = COUNTRIES.find(c => c.id === selectedCountry);
+  const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
   const bank = country?.banks.find(b => b.id === selectedBank);
+  const isOtherBank = selectedBank?.endsWith("_other");
+  const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
 
-  const canProceedStep3 = selectedCountry && selectedBank;
-  const canProceedStep4 = recipientName.trim().length >= 2 && accountNumber.trim().length >= 4 && whatsappNumber.trim().length >= 6;
+  const canProceedStep3 = selectedCountry && selectedBank && (!isOtherBank || customBankName.trim().length >= 2);
+  const canProceedStep4 = recipientName.trim().length >= 2 && whatsappNumber.trim().length >= 6;
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -314,9 +365,9 @@ const SalaryWithdraw: React.FC = () => {
           amount: checkResult?.net || 0,
           salary_type: salaryType || "host",
           country: selectedCountry,
-          bank: selectedBank,
+          bank: isOtherBank ? customBankName : selectedBank,
           account_name: recipientName,
-          account_number: accountNumber,
+          account_number: accountNumber || "",
           whatsapp: `${whatsappCode}${whatsappNumber}`,
           notes,
           transfer_verified: verifyResult?.verified || false,
@@ -337,7 +388,7 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  // ── Choice Loading ──
+  // ── Loading ──
   if (choiceLoading || loading) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
@@ -349,7 +400,7 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── No Salary At All (for agency owners who have neither) ──
+  // ── No Salary At All ──
   if (noSalaryAtAll) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
@@ -376,7 +427,7 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── Salary Type Choice Screen (for agency owners with both salaries) ──
+  // ── Salary Type Choice Screen ──
   if (isAgencyOwner && !salaryType && hostSalaryAmount !== null && agencySalaryAmount !== null) {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
@@ -386,11 +437,8 @@ const SalaryWithdraw: React.FC = () => {
             <p className="text-xs text-muted-foreground">اختر نوع الراتب الذي تريد سحبه</p>
           </div>
 
-          {/* Agency Salary Card */}
           <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             onClick={() => handleChooseSalaryType("agency")}
             className="w-full text-right glass-card rounded-2xl p-5 border border-amber-500/20 hover:border-amber-500/40 transition-all active:scale-[0.98] space-y-3"
           >
@@ -409,11 +457,8 @@ const SalaryWithdraw: React.FC = () => {
             </div>
           </motion.button>
 
-          {/* Host Salary Card */}
           <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             onClick={() => handleChooseSalaryType("host")}
             className="w-full text-right glass-card rounded-2xl p-5 border border-emerald-500/20 hover:border-emerald-500/40 transition-all active:scale-[0.98] space-y-3"
           >
@@ -472,31 +517,19 @@ const SalaryWithdraw: React.FC = () => {
             <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-5">
               <ShieldAlert className="w-8 h-8 text-destructive" />
             </div>
-
             <h2 className="text-2xl font-black text-foreground mb-4">لا يمكن سحب الراتب</h2>
-
             <p className="text-base font-semibold text-foreground leading-8 mb-2">
               يوجد مبلغ <span className="text-destructive">${checkResult.suspicious_amount || 0}</span> غير مدعوم مضاف
               لراتبك بشكل يدوي.
             </p>
             <p className="text-sm text-muted-foreground leading-7 mb-8">
               هذا المبلغ يحتاج مراجعة من خدمة العملاء قبل السحب.
-              <br />
-              يرجى التواصل مع الدعم الفني لحل هذه المشكلة.
             </p>
-
             <div className="space-y-3">
-              <Button
-                onClick={() => navigate("/quick-support")}
-                className="w-full gold-gradient text-primary-foreground font-bold h-12"
-              >
+              <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">
                 تواصل مع خدمة العملاء
               </Button>
-              <Button
-                onClick={() => navigate("/dashboard")}
-                variant="outline"
-                className="w-full h-12 border-border/30 font-bold"
-              >
+              <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
                 الرجوع
               </Button>
             </div>
@@ -601,10 +634,16 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── STEPPER PROGRESS ──
+  // ── STEPPER ──
   const stepLabels = ["الراتب", "التحويل", "التحقق", "البنك", "التأكيد"];
   const currentBack = () => {
-    if (step <= 1) navigate("/dashboard");
+    if (step === 1) navigate("/dashboard");
+    else if (step === 2) setStep(1);
+    else if (step === 3) {
+      // If verified, go back to step 1 (skip step 2)
+      setStep(verifyResult?.verified ? 1 : 2);
+    }
+    else if (step === 4) setStep(3);
     else setStep((step - 1) as Step);
   };
 
@@ -648,18 +687,16 @@ const SalaryWithdraw: React.FC = () => {
                     <span className="text-xs text-muted-foreground">الراتب الكامل</span>
                     <span className="text-lg font-bold text-foreground">${checkResult.salary}</span>
                   </div>
-                  <div className="flex justify-between items-center bg-red-500/5 border border-red-500/10 rounded-xl p-3">
-                    <span className="text-xs text-red-400">المبلغ المقتطع</span>
-                    <span className="text-lg font-bold text-red-400">-${checkResult.deduction}</span>
-                  </div>
+                  {(checkResult.deduction || 0) > 0 && (
+                    <div className="flex justify-between items-center bg-red-500/5 border border-red-500/10 rounded-xl p-3">
+                      <span className="text-xs text-red-400">المبلغ المقتطع</span>
+                      <span className="text-lg font-bold text-red-400">-${checkResult.deduction}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
                     <span className="text-sm font-bold text-emerald-400">الصافي المتاح</span>
                     <span className="text-2xl font-black text-emerald-400">${checkResult.net}</span>
                   </div>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground pt-2">
-                  <span>نوع حسابك: {checkResult.user_type === "agent" ? "وكيل" : "مستضيف"}</span>
-                  <span>السحب المتبقي: {(checkResult.max_withdrawals || 1) - (checkResult.withdrawals_this_month || 0)} من {checkResult.max_withdrawals || 1}</span>
                 </div>
               </div>
 
@@ -670,8 +707,8 @@ const SalaryWithdraw: React.FC = () => {
                   {[
                     "افتح تطبيق غلا لايف",
                     'اذهب إلى "تحويل الرصيد"',
-                    null, // special: ID row
-                    null, // special: amount row
+                    null, // ID row
+                    null, // amount row
                     'اضغط "تحويل"',
                     "ارجع هنا واضغط الزر أدناه",
                   ].map((text, i) => {
@@ -725,52 +762,28 @@ const SalaryWithdraw: React.FC = () => {
                 </div>
               </div>
 
-              <Button onClick={() => setStep(2)} className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base">
-                تم التحويل — متابعة <ArrowLeft className="w-4 h-4 mr-2" />
+              <Button onClick={handleTransferDone} disabled={verifying}
+                className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base">
+                {verifying ? (
+                  <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري التحقق...</>
+                ) : (
+                  <>تم التحويل — متابعة <ArrowLeft className="w-4 h-4 mr-2" /></>
+                )}
               </Button>
             </motion.div>
           )}
 
-          {/* ── STEP 2: Verify Transfer + Screenshot ── */}
+          {/* ── STEP 2: Screenshot upload (only if verification failed) ── */}
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
               <div className="glass-card p-5 space-y-4">
-                <h3 className="text-sm font-bold text-foreground text-center">🔍 التحقق من التحويل</h3>
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center">
+                  <p className="text-xs text-amber-400 font-bold">⚠️ لم نجد التحويل تلقائياً</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">يرجى رفع صورة إيصال التحويل (screenshot) للمتابعة</p>
+                </div>
 
-                {!verifyResult && (
-                  <div className="text-center space-y-3">
-                    <p className="text-xs text-muted-foreground">سنتحقق تلقائياً من وصول التحويل</p>
-                    <Button onClick={handleVerifyTransfer} disabled={verifying}
-                      className="w-full gold-gradient text-primary-foreground font-bold h-11">
-                      {verifying ? <Loader2 className="w-5 h-5 animate-spin" /> : "تحقق الآن"}
-                    </Button>
-                  </div>
-                )}
-
-                {verifyResult?.verified && (
-                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-center space-y-2">
-                    <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
-                    <p className="text-sm font-bold text-emerald-400">تم التحقق بنجاح ✅</p>
-                    {verifyResult.transaction_id && (
-                      <p className="text-[10px] text-muted-foreground font-mono">رقم المعاملة: {verifyResult.transaction_id}</p>
-                    )}
-                  </div>
-                )}
-
-                {verifyResult && !verifyResult.verified && (
-                  <div className="space-y-3">
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center">
-                      <p className="text-xs text-amber-400 font-bold">⚠️ لم نجد التحويل تلقائياً</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">يرجى رفع صورة إيصال التحويل (screenshot)</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Screenshot upload — mandatory if not verified, optional if verified */}
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-foreground">
-                    {verifyResult?.verified ? "📎 رفع إيصال (اختياري)" : "📎 رفع إيصال التحويل *"}
-                  </p>
+                  <p className="text-xs font-bold text-foreground">📎 رفع إيصال التحويل</p>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -801,9 +814,9 @@ const SalaryWithdraw: React.FC = () => {
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-12 border-border/30">
                   <ArrowRight className="w-4 h-4 ml-1" /> رجوع
                 </Button>
-                <Button onClick={() => setStep(3)} disabled={!canProceedStep2}
+                <Button onClick={() => setStep(3)} disabled={!screenshotBase64}
                   className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
-                  متابعة <ArrowLeft className="w-4 h-4 mr-1" />
+                  متابعة بدون تحقق <ArrowLeft className="w-4 h-4 mr-1" />
                 </Button>
               </div>
             </motion.div>
@@ -816,34 +829,56 @@ const SalaryWithdraw: React.FC = () => {
                 <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Globe className="w-4 h-4 text-primary" /> وين تبي نحوّل لك؟
                 </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {COUNTRIES.map(c => (
-                    <button key={c.id} onClick={() => { setSelectedCountry(c.id); setSelectedBank(""); }}
-                      className={`p-3 rounded-xl border text-center transition-all ${
-                        selectedCountry === c.id ? "border-primary bg-primary/10" : "border-border/30 bg-muted/20 hover:bg-muted/30"
-                      }`}>
-                      <span className="text-2xl block mb-1">{c.flag}</span>
-                      <span className="text-xs font-bold text-foreground">{c.name}</span>
-                    </button>
+                <div className="space-y-2">
+                  {SALARY_COUNTRIES.map(c => (
+                    <div key={c.id}>
+                      <button
+                        onClick={() => {
+                          setSelectedCountry(selectedCountry === c.id ? "" : c.id);
+                          setSelectedBank("");
+                          setCustomBankName("");
+                        }}
+                        className="w-full flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/30 hover:bg-muted/30 transition-colors"
+                      >
+                        <span className="text-sm font-bold text-foreground">{c.name}</span>
+                        <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform", selectedCountry === c.id && "rotate-180")} />
+                      </button>
+                      {selectedCountry === c.id && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="grid grid-cols-2 gap-2 mt-2 pr-3">
+                          {c.banks.map(b => (
+                            <button
+                              key={b.id}
+                              onClick={() => { setSelectedBank(b.id); setCustomBankName(""); }}
+                              className={cn(
+                                "p-3 rounded-xl text-sm text-center border transition-all",
+                                selectedBank === b.id
+                                  ? "bg-primary/10 border-primary text-primary font-bold"
+                                  : "bg-muted/20 border-border/30 text-foreground hover:bg-muted/30"
+                              )}
+                            >
+                              {b.label}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                      {/* Custom bank name input */}
+                      {selectedCountry === c.id && isOtherBank && (
+                        <div className="mt-2 pr-3">
+                          <Input
+                            value={customBankName}
+                            onChange={e => setCustomBankName(e.target.value)}
+                            placeholder="اكتب اسم البنك أو الشبكة"
+                            className="bg-muted/20 border-border/30"
+                            dir="rtl"
+                          />
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
-                {selectedCountry && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-                    <p className="text-xs font-bold text-foreground">اختر البنك / المحفظة:</p>
-                    {country?.banks.map(b => (
-                      <button key={b.id} onClick={() => setSelectedBank(b.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                          selectedBank === b.id ? "border-primary bg-primary/10" : "border-border/30 bg-muted/20 hover:bg-muted/30"
-                        }`}>
-                        <CreditCard className={`w-4 h-4 ${selectedBank === b.id ? "text-primary" : "text-muted-foreground"}`} />
-                        <span className="text-sm font-bold text-foreground">{b.label}</span>
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(2)} className="flex-1 h-12 border-border/30">
+                <Button variant="outline" onClick={() => setStep(verifyResult?.verified ? 1 : 2)} className="flex-1 h-12 border-border/30">
                   <ArrowRight className="w-4 h-4 ml-1" /> رجوع
                 </Button>
                 <Button onClick={() => setStep(4)} disabled={!canProceedStep3}
@@ -868,7 +903,7 @@ const SalaryWithdraw: React.FC = () => {
                     className="bg-muted/20 border-border/30" dir="rtl" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-foreground">رقم الحساب / المحفظة *</label>
+                  <label className="text-xs font-bold text-foreground">رقم الحساب / المحفظة (اختياري)</label>
                   <Input value={accountNumber} onChange={e => setAccountNumber(e.target.value)}
                     placeholder="أدخل رقم الحساب أو المحفظة"
                     className="bg-muted/20 border-border/30" dir="ltr" />
@@ -914,16 +949,18 @@ const SalaryWithdraw: React.FC = () => {
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">🏦 البنك</span>
-                      <span className="font-bold text-foreground">{bank?.label} — {country?.name} {country?.flag}</span>
+                      <span className="font-bold text-foreground">{effectiveBankLabel} — {country?.name}</span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">👤 المستلم</span>
                       <span className="font-bold text-foreground">{recipientName}</span>
                     </div>
-                    <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                      <span className="text-muted-foreground">🔢 الحساب</span>
-                      <span className="font-bold text-foreground" dir="ltr">{accountNumber}</span>
-                    </div>
+                    {accountNumber && (
+                      <div className="flex justify-between bg-muted/30 rounded-xl p-3">
+                        <span className="text-muted-foreground">🔢 الحساب</span>
+                        <span className="font-bold text-foreground" dir="ltr">{accountNumber}</span>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
