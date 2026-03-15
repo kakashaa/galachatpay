@@ -5,6 +5,7 @@ import {
   Loader2, FileText, Image, Printer, Building2,
   ChevronDown, ChevronUp, Eye, Phone, User, Hash, CalendarDays,
   MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3,
+  ShieldCheck, ShieldX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,8 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { BANK_LABELS, COUNTRY_LABELS } from "@/lib/constants";
+import { getAvatarUrl } from "@/lib/utils";
+import avatarMale from "@/assets/avatar-male.png";
 
 const API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
@@ -27,6 +30,7 @@ interface WithdrawRequest {
   user_uuid: string;
   user_name: string;
   amount: number;
+  coins?: number;
   country: string;
   bank: string;
   account_name: string;
@@ -41,6 +45,9 @@ interface WithdrawRequest {
   rejected_at?: string;
   approved_by?: string;
   rejected_by?: string;
+  transfer_verified?: boolean;
+  screenshot?: string;
+  avatar?: string;
 }
 
 interface Stats {
