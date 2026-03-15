@@ -811,52 +811,130 @@ const SalaryWithdraw: React.FC = () => {
             </motion.div>
           )}
 
-          {/* ── STEP 2: Screenshot upload (only if verification failed) ── */}
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <div className="glass-card p-5 space-y-4">
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center">
-                  <p className="text-xs text-amber-400 font-bold">⚠️ لم نجد التحويل تلقائياً</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">يرجى رفع صورة إيصال التحويل (screenshot) للمتابعة</p>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-foreground">📎 رفع إيصال التحويل</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handleScreenshot}
-                  />
-                  {screenshotPreview ? (
-                    <div className="relative">
-                      <img src={screenshotPreview} alt="receipt" className="w-full max-h-48 object-contain rounded-xl border border-border/20" />
-                      <button onClick={() => { setScreenshotBase64(""); setScreenshotPreview(""); }}
-                        className="absolute top-2 left-2 p-1.5 rounded-full bg-destructive/80 text-white">
-                        ✕
-                      </button>
+              
+              {/* ── State: already_used — salary already withdrawn ── */}
+              {verifyResult?.already_used && (
+                <div className="glass-card p-6 space-y-5 text-center">
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
+                    className="w-20 h-20 rounded-full bg-destructive/15 flex items-center justify-center mx-auto">
+                    <ShieldX className="w-10 h-10 text-destructive" />
+                  </motion.div>
+                  <h2 className="text-lg font-bold text-foreground">تم صرف هذا الراتب من قبل</h2>
+                  
+                  {(verifyResult.reference_id || verifyResult.transaction_id) && (
+                    <div className="rounded-xl bg-muted/30 border border-border/20 p-4 space-y-1">
+                      <p className="text-[10px] text-muted-foreground">الرقم المرجعي</p>
+                      <p className="text-xl font-black text-foreground font-mono tracking-wider">
+                        {verifyResult.reference_id || verifyResult.transaction_id}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">مستخدم في طلب سابق</p>
                     </div>
-                  ) : (
-                    <button onClick={() => fileInputRef.current?.click()}
-                      className="w-full p-6 border-2 border-dashed border-border/30 rounded-xl flex flex-col items-center gap-2 hover:bg-muted/10 transition-colors">
-                      <Camera className="w-6 h-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">اضغط لرفع صورة الإيصال</span>
-                    </button>
                   )}
+                  
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    إذا كنت تعتقد أن هذا خطأ، تواصل مع خدمة العملاء.
+                  </p>
+                  
+                  <div className="space-y-3 pt-2">
+                    <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">
+                      تواصل مع الدعم
+                    </Button>
+                    <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">
+                      الرجوع
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-12 border-border/30">
-                  <ArrowRight className="w-4 h-4 ml-1" /> رجوع
-                </Button>
-                <Button onClick={() => setStep(3)} disabled={!screenshotBase64}
-                  className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
-                  متابعة بدون تحقق <ArrowLeft className="w-4 h-4 mr-1" />
-                </Button>
-              </div>
+              {/* ── State: wrong_amount — transferred amount differs ── */}
+              {!verifyResult?.already_used && verifyResult?.wrong_amount && (
+                <div className="glass-card p-5 space-y-4">
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center space-y-3">
+                    <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+                    <p className="text-sm font-bold text-foreground">المبلغ المحوّل مختلف عن الراتب</p>
+                    <div className="flex items-center justify-center gap-3 text-sm">
+                      <span className="text-muted-foreground">المحوّل: <span className="font-bold text-amber-400" dir="ltr">${verifyResult.transferred_usd || 0}</span></span>
+                      <span className="text-muted-foreground">|</span>
+                      <span className="text-muted-foreground">الراتب: <span className="font-bold text-emerald-400" dir="ltr">${verifyResult.approved_amount || checkResult?.net || 0}</span></span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-foreground">📎 رفع إيصال التحويل</p>
+                    <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScreenshot} />
+                    {screenshotPreview ? (
+                      <div className="relative">
+                        <img src={screenshotPreview} alt="receipt" className="w-full max-h-48 object-contain rounded-xl border border-border/20" />
+                        <button onClick={() => { setScreenshotBase64(""); setScreenshotPreview(""); }}
+                          className="absolute top-2 left-2 p-1.5 rounded-full bg-destructive/80 text-white">✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => fileInputRef.current?.click()}
+                        className="w-full p-6 border-2 border-dashed border-border/30 rounded-xl flex flex-col items-center gap-2 hover:bg-muted/10 transition-colors">
+                        <Camera className="w-6 h-6 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">اضغط لرفع صورة الإيصال</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-12 border-border/30">
+                      <ArrowRight className="w-4 h-4 ml-1" /> رجوع
+                    </Button>
+                    <Button onClick={() => setStep(3)} disabled={!screenshotBase64}
+                      className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
+                      متابعة <ArrowLeft className="w-4 h-4 mr-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── State: normal failure — transfer not found ── */}
+              {!verifyResult?.already_used && !verifyResult?.wrong_amount && (
+                <div className="glass-card p-5 space-y-4">
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center space-y-2">
+                    <AlertCircle className="w-6 h-6 text-amber-400 mx-auto" />
+                    <p className="text-xs text-amber-400 font-bold">⚠️ لم نجد التحويل تلقائياً</p>
+                    <p className="text-[10px] text-muted-foreground">تأكد إنك حوّلت المبلغ كاملاً ثم أعد المحاولة، أو ارفع إيصال التحويل</p>
+                  </div>
+
+                  <Button variant="outline" onClick={handleTransferDone} disabled={verifying}
+                    className="w-full h-11 border-primary/30 text-primary font-bold">
+                    {verifying ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <RefreshCw className="w-4 h-4 ml-2" />}
+                    إعادة المحاولة
+                  </Button>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-foreground">📎 أو ارفع إيصال التحويل (screenshot)</p>
+                    <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScreenshot} />
+                    {screenshotPreview ? (
+                      <div className="relative">
+                        <img src={screenshotPreview} alt="receipt" className="w-full max-h-48 object-contain rounded-xl border border-border/20" />
+                        <button onClick={() => { setScreenshotBase64(""); setScreenshotPreview(""); }}
+                          className="absolute top-2 left-2 p-1.5 rounded-full bg-destructive/80 text-white">✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => fileInputRef.current?.click()}
+                        className="w-full p-6 border-2 border-dashed border-border/30 rounded-xl flex flex-col items-center gap-2 hover:bg-muted/10 transition-colors">
+                        <Camera className="w-6 h-6 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">اضغط لرفع صورة الإيصال</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-12 border-border/30">
+                      <ArrowRight className="w-4 h-4 ml-1" /> رجوع
+                    </Button>
+                    <Button onClick={() => setStep(3)} disabled={!screenshotBase64}
+                      className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
+                      متابعة بدون تحقق <ArrowLeft className="w-4 h-4 mr-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
