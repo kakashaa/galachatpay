@@ -2405,7 +2405,9 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* Moderators Management Tab */}
             {activeTab === "moderators" && (adminRole === "super_admin" || adminRole === "admin") && (
-              <AdminModeratorManager adminCall={adminCall} />
+              <motion.div key="moderators" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminModeratorManager adminCall={adminCall} />
+              </motion.div>
             )}
 
 
