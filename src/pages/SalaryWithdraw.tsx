@@ -341,12 +341,15 @@ const SalaryWithdraw: React.FC = () => {
       });
       const data: VerifyResult = await res.json();
       setVerifyResult(data);
-      if (data.verified) {
+      if (data.already_used) {
+        // Salary already withdrawn — block on step 2
+        setStep(2);
+      } else if (data.verified) {
         // Auto-proceed to bank selection
         toast.success("✅ تم التحقق من التحويل بنجاح!");
         setStep(3);
       } else {
-        // Show screenshot upload on step 2
+        // Show screenshot upload on step 2 (wrong_amount or not found)
         setStep(2);
       }
     } catch {
