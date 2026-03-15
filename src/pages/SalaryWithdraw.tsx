@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe, CreditCard,
   UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
-  Loader2, Ban, Clock, Copy, Camera,
+  Loader2, Ban, Clock, Copy, Camera, Landmark, User, Frown,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
