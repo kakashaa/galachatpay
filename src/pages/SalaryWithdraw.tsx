@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe, CreditCard,
-  UserCheck, DollarSign, ArrowRight, ArrowLeft, Shield, Phone,
+  UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
   Loader2, Ban, Clock, Copy, Camera,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
