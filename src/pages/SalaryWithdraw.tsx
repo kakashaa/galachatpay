@@ -605,7 +605,7 @@ const SalaryWithdraw: React.FC = () => {
             <AlertCircle className="w-8 h-8 text-destructive" />
           </div>
           <p className="text-sm text-muted-foreground mb-6">{error}</p>
-          <Button onClick={checkSalary} className="gold-gradient text-primary-foreground font-bold px-8">إعادة المحاولة</Button>
+          <Button onClick={fetchAllSalaries} className="gold-gradient text-primary-foreground font-bold px-8">إعادة المحاولة</Button>
         </div>
       </MobileLayout>
     );
