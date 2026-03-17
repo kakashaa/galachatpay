@@ -264,6 +264,10 @@ const AdminDashboardPage: React.FC = () => {
   const [adminStarAmount, setAdminStarAmount] = useState("");
   const [adminStarLoading, setAdminStarLoading] = useState(false);
 
+  // VIP grant state
+  const [vipGrantLevel, setVipGrantLevel] = useState("3");
+  const [vipGrantDuration, setVipGrantDuration] = useState("30");
+  const [vipGrantLoading, setVipGrantLoading] = useState(false);
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
