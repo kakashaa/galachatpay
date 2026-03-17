@@ -840,7 +840,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 <DetailCell icon={<User className="w-3 h-3" />} label="اسم المستلم" value={detailReq.account_name} />
                 <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
                 <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
-                <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={new Date(detailReq.created_at).toLocaleString("ar")} />
+                <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(detailReq.created_at)} />
                 {detailReq.salary_type && (
                   <div className="bg-white/[0.03] rounded-xl px-3 py-2 flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>
