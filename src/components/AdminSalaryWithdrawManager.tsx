@@ -154,23 +154,49 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
   const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
     const checks: { status: "safe" | "danger" | "warning"; text: string }[] = [];
-    const hs = data?.host_salary;
-    if (hs) {
-      if (hs.deduction > hs.salary && hs.salary > 0) {
-        checks.push({ status: "danger", text: `راتب مشبوه — مبلغ يدوي $${(hs.deduction - hs.salary).toFixed(2)}` });
-      } else {
-        checks.push({ status: "safe", text: "الراتب رسمي (من الدعم)" });
+    
+    // Use new salary_report security object if available
+    if (data?.security) {
+      const sec = data.security;
+      checks.push({
+        status: sec.salary_official ? "safe" : "danger",
+        text: sec.salary_official ? "الراتب رسمي (من الدعم)" : "الراتب غير رسمي",
+      });
+      checks.push({
+        status: sec.no_manual ? "safe" : "danger",
+        text: sec.no_manual ? "لا يوجد مبالغ يدوية" : `يوجد مبلغ يدوي: $${data.manual_amount || 0}`,
+      });
+      checks.push({
+        status: sec.transfer_verified ? "safe" : "warning",
+        text: sec.transfer_verified ? "الحوالة موجودة ومؤكدة" : "الحوالة غير مؤكدة",
+      });
+      checks.push({
+        status: sec.reference_new ? "safe" : "warning",
+        text: sec.reference_new ? "الرقم المرجعي جديد" : "الرقم المرجعي مستخدم سابقاً",
+      });
+      if (data.is_suspicious) {
+        checks.push({ status: "danger", text: "🔴 الراتب مشبوه — يحتاج مراجعة" });
       }
-      if (hs.salary === 0 && hs.net > 0) {
-        checks.push({ status: "danger", text: "الراتب كله يدوي — غير مدعوم" });
-      } else {
-        checks.push({ status: "safe", text: "لا يوجد مبالغ يدوية" });
-      }
-    }
-    if (req.reference_id) {
-      checks.push({ status: "safe", text: `الرقم المرجعي: ${req.reference_id}` });
     } else {
-      checks.push({ status: "warning", text: "بدون رقم مرجعي" });
+      // Fallback to old salary_check_all format
+      const hs = data?.host_salary;
+      if (hs) {
+        if (hs.deduction > hs.salary && hs.salary > 0) {
+          checks.push({ status: "danger", text: `راتب مشبوه — مبلغ يدوي $${(hs.deduction - hs.salary).toFixed(2)}` });
+        } else {
+          checks.push({ status: "safe", text: "الراتب رسمي (من الدعم)" });
+        }
+        if (hs.salary === 0 && hs.net > 0) {
+          checks.push({ status: "danger", text: "الراتب كله يدوي — غير مدعوم" });
+        } else {
+          checks.push({ status: "safe", text: "لا يوجد مبالغ يدوية" });
+        }
+      }
+      if (req.reference_id) {
+        checks.push({ status: "safe", text: `الرقم المرجعي: ${req.reference_id}` });
+      } else {
+        checks.push({ status: "warning", text: "بدون رقم مرجعي" });
+      }
     }
     return checks;
   };
