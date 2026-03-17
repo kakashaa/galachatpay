@@ -135,8 +135,7 @@ const UserProfileCard: React.FC = () => {
 
   const typeLabel = getUserTypeLabel(user.type_user);
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
-  const userAvatar = getAvatarUrl(user.profile?.image || "");
-  const avatarSrc = userAvatar || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
+  const avatarSrc = avatarUrl || getAvatarUrl(user.profile?.image || "") || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
 
   
 
