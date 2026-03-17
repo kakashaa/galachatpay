@@ -1170,7 +1170,7 @@ const AdminDashboardPage: React.FC = () => {
               </button>
             ))}
           </div>
-          <AdminSupportManager adminUsername={adminUsername || ''} />
+          <AdminSupportManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={true} />
         </div>
       )}
 
