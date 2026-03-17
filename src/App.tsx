@@ -57,6 +57,7 @@ const BDWithdraw = lazy(() => import("./pages/BDWithdraw"));
 const BanCheckPage = lazy(() => import("./pages/BanCheckPage"));
 const CustomWaresRequest = lazy(() => import("./pages/CustomWaresRequest"));
 const MyWaresRequests = lazy(() => import("./pages/MyWaresRequests"));
+const AdminIncome = lazy(() => import("./pages/AdminIncome"));
 
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
