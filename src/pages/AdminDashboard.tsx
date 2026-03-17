@@ -542,8 +542,13 @@ const AdminDashboardPage: React.FC = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("admin_session_token");
     sessionStorage.removeItem("admin_username");
+    sessionStorage.removeItem("admin_display_name");
     sessionStorage.removeItem("admin_role");
     sessionStorage.removeItem("admin_permissions");
+    sessionStorage.removeItem("admin_api_token");
+    sessionStorage.removeItem("admin_shift_start");
+    sessionStorage.removeItem("admin_shift_end");
+    sessionStorage.removeItem("admin_phone");
     navigate("/admin");
   };
 
