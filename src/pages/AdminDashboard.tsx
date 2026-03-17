@@ -1039,7 +1039,7 @@ const AdminDashboardPage: React.FC = () => {
                   : "لوحة التحكم"}
               </h1>
               {!activeTab && !activeSection && (
-                <p className="text-[10px] text-muted-foreground">مرحباً، {adminUsername}</p>
+                <p className="text-[10px] text-muted-foreground">مرحباً، {adminDisplayName}</p>
               )}
             </div>
           </div>
