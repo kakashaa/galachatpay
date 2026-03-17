@@ -107,6 +107,39 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_chat_messages: {
+        Row: {
+          created_at: string
+          deleted_by: string | null
+          id: string
+          is_deleted: boolean
+          message: string
+          message_type: string
+          sender_display_name: string
+          sender_username: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          message: string
+          message_type?: string
+          sender_display_name?: string
+          sender_username: string
+        }
+        Update: {
+          created_at?: string
+          deleted_by?: string | null
+          id?: string
+          is_deleted?: boolean
+          message?: string
+          message_type?: string
+          sender_display_name?: string
+          sender_username?: string
+        }
+        Relationships: []
+      }
       agent_vip_overrides: {
         Row: {
           agent_name: string
