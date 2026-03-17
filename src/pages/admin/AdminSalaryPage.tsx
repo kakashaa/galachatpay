@@ -15,8 +15,8 @@ const AdminSalaryPage: React.FC = () => {
           <button onClick={() => setSubTab("withdraw")} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${subTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>سحب الرواتب</button>
           <button onClick={() => setSubTab("charge")} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${subTab === "charge" ? "bg-emerald-600 text-white" : "text-muted-foreground"}`}>شحن الراتب</button>
         </div>
-        {subTab === "withdraw" && <AdminSalaryWithdrawManager />}
-        {subTab === "charge" && <AdminSalaryChargeManager />}
+        {subTab === "withdraw" && <AdminSalaryWithdrawManager canAct={true} />}
+        {subTab === "charge" && <AdminSalaryChargeManager canAct={true} />}
       </div>
     </AdminPageLayout>
   );

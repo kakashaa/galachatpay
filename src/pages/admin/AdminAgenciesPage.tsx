@@ -9,7 +9,7 @@ const AdminAgenciesPage: React.FC = () => {
   return (
     <AdminPageLayout title="إدارة الوكالات" onLogout={handleLogout}>
       <div className="max-w-2xl mx-auto p-4" dir="rtl">
-        <AdminAgencyManager />
+        <AdminAgencyManager canAct={true} />
       </div>
     </AdminPageLayout>
   );

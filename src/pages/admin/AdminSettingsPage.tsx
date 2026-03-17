@@ -7,7 +7,7 @@ import AdminBannerManager from "@/components/AdminBannerManager";
 import { Users, Settings, ImageIcon } from "lucide-react";
 
 const AdminSettingsPage: React.FC = () => {
-  const { handleLogout, adminCall, adminSessionToken, adminUsername, isOwner } = useAdminSession();
+  const { handleLogout, adminCall, adminSessionToken, adminUsername } = useAdminSession();
   const [subTab, setSubTab] = useState<"moderators" | "elements" | "banners">("moderators");
 
   return (

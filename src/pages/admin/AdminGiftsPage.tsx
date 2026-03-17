@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Gift, Star, Loader2, CheckCircle, XCircle, Plus, X, Save, Eye, EyeOff, Trash2, Sparkles, Frame } from "lucide-react";
 
 const AdminGiftsPage: React.FC = () => {
-  const { adminCall, uploadFile, handleLogout, isOwner, isSuperAdmin } = useAdminSession();
+  const { adminCall, uploadFile, handleLogout } = useAdminSession();
   const [loading, setLoading] = useState(false);
 
   // Star gifts

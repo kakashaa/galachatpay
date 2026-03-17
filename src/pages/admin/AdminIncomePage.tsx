@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 
 const AdminIncomePage: React.FC = () => {
-  const { adminCall, handleLogout } = useAdminSession();
+  const { handleLogout } = useAdminSession();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalDiamonds: 0, todayIncome: 0, monthlyGoal: 85 });
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
