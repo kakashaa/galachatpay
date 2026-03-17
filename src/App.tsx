@@ -66,6 +66,18 @@ const AgentCharge = lazy(() => import("./pages/agent/AgentCharge"));
 const AgentHistory = lazy(() => import("./pages/agent/AgentHistory"));
 const AgentStats = lazy(() => import("./pages/agent/AgentStats"));
 
+// Admin sub-pages
+const AdminGiftsPage = lazy(() => import("./pages/admin/AdminGiftsPage"));
+const AdminIncomePage = lazy(() => import("./pages/admin/AdminIncomePage"));
+const AdminBDPage = lazy(() => import("./pages/admin/AdminBDPage"));
+const AdminVipPage = lazy(() => import("./pages/admin/AdminVipPage"));
+const AdminBanPage = lazy(() => import("./pages/admin/AdminBanPage"));
+const AdminIdChangePage = lazy(() => import("./pages/admin/AdminIdChangePage"));
+const AdminSalaryPage = lazy(() => import("./pages/admin/AdminSalaryPage"));
+const AdminAgenciesPage = lazy(() => import("./pages/admin/AdminAgenciesPage"));
+const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
+const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
+
 const queryClient = new QueryClient();
 
 const PageLoader = () => (
