@@ -484,7 +484,7 @@ const SalaryWithdraw: React.FC = () => {
               <CheckCircle className="w-10 h-10 text-emerald-400" />
             </motion.div>
             <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل ✅</h2>
-            <p className="text-xs text-muted-foreground">سحبت {allData.withdrawals.count} من {allData.withdrawals.max} هذا الشهر</p>
+            <p className="text-xs text-muted-foreground">سحبت {allData.withdrawals.count} من {getWithdrawalLimits(allData.is_agency_owner).maxTotal} هذا الشهر</p>
           </div>
           <SalaryRequestsHistory userUuid={user.uuid} />
           <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
