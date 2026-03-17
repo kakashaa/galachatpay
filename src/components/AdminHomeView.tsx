@@ -108,7 +108,7 @@ const AdminHomeView: React.FC<Props> = ({
   // Service grid items - same style as user MenuGrid
   const services: ServiceItem[] = [
     ...(isSuperAdmin ? [
-      { key: 'all_requests', label: 'VIP', icon: Crown, bg: 'rgba(234,179,8,0.12)', iconColor: 'text-yellow-400', badge: badges.vip || 0 },
+      { key: 'vip', label: 'VIP', icon: Crown, bg: 'rgba(234,179,8,0.12)', iconColor: 'text-yellow-400', badge: badges.vip || 0 },
       { key: 'reports', label: 'البلاغات', icon: ShieldBan, bg: 'rgba(239,68,68,0.12)', iconColor: 'text-red-400', badge: badges.protection || 0 },
     ] : []),
     { key: 'blocks', label: 'الحظر', icon: Ban, bg: 'rgba(239,68,68,0.12)', iconColor: 'text-red-400' },
