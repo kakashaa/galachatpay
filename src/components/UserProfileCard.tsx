@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
-import { getAvatarUrl } from "@/lib/utils";
+import { getAvatar, fixAvatarUrl } from "@/lib/avatarHelper";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
@@ -56,19 +56,16 @@ const UserProfileCard: React.FC = () => {
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
 
-  // Fetch avatar from API if not cached
+  // Fetch avatar using centralized helper
   useEffect(() => {
-    if (avatarUrl || !user?.uuid) return;
-    fetch(`https://galachat.site/project-z/api.php?action=get_avatar&uuid=${user.uuid}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.avatar) {
-          setAvatarUrl(d.avatar);
-          localStorage.setItem("gala_avatar", d.avatar);
-        }
-      })
-      .catch(() => {});
-  }, [user?.uuid, avatarUrl]);
+    if (!user?.uuid) return;
+    getAvatar(user.uuid).then(url => {
+      if (url) {
+        setAvatarUrl(url);
+        localStorage.setItem("gala_avatar", url);
+      }
+    });
+  }, [user?.uuid]);
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
     ((user.vip as any).vip_level || (user.vip as any).level || 0) > 0);
@@ -135,7 +132,7 @@ const UserProfileCard: React.FC = () => {
 
   const typeLabel = getUserTypeLabel(user.type_user);
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
-  const avatarSrc = avatarUrl || getAvatarUrl(user.profile?.image || "") || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
+  const avatarSrc = avatarUrl || fixAvatarUrl(user.profile?.image) || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
 
   
 
