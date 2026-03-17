@@ -217,9 +217,11 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
             placeholder="بحث: UUID، اسم، رقم مرجعي..."
             className="bg-white/5 border-white/10 pr-9 text-xs h-9 rounded-xl" dir="rtl" />
         </div>
-        <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-          className="bg-white/5 border-white/10 w-[130px] text-xs h-9 rounded-xl" dir="ltr" />
-        {canAct && (
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-xl text-xs px-2 h-9 text-foreground w-[150px]">
+          {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        {canAct && isCurrentMonth && (
           <Button onClick={() => setChargeSheet(true)} size="sm"
             className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 rounded-xl text-xs px-3">
             <Zap className="w-3.5 h-3.5 ml-1" /> شحن يدوي
