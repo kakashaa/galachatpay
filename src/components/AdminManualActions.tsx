@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Loader2, Crown, Hash, ShieldBan, Search, ScrollText, User } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Loader2, Crown, Hash, ShieldBan, Search, ScrollText, User, Upload, Image } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 const API = "https://galachat.site/project-z/api.php";
 const ADMIN_KEY = "ghala2026owner";
@@ -15,30 +16,32 @@ interface Props {
 const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
   const [activeAction, setActiveAction] = useState<'vip' | 'change_id' | 'ban' | 'user_search' | 'action_log' | null>(null);
 
-  // VIP state
+  // VIP
   const [vipUuid, setVipUuid] = useState('');
   const [vipLevel, setVipLevel] = useState('3');
   const [vipDuration, setVipDuration] = useState('30');
   const [vipLoading, setVipLoading] = useState(false);
 
-  // Change ID state
+  // Change ID
   const [changeUuid, setChangeUuid] = useState('');
   const [newUuid, setNewUuid] = useState('');
   const [changeLoading, setChangeLoading] = useState(false);
 
-  // Ban state
+  // Ban
   const [banUuid, setBanUuid] = useState('');
   const [banReason, setBanReason] = useState('promo');
   const [banCustomReason, setBanCustomReason] = useState('');
   const [banDuration, setBanDuration] = useState('24h');
+  const [banImage, setBanImage] = useState<File | null>(null);
   const [banLoading, setBanLoading] = useState(false);
+  const banFileRef = useRef<HTMLInputElement>(null);
 
-  // User search state
+  // User search
   const [searchUuid, setSearchUuid] = useState('');
   const [userInfo, setUserInfo] = useState<any>(null);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  // Action log state
+  // Action log
   const [logAdmin, setLogAdmin] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
   const [logLoading, setLogLoading] = useState(false);
@@ -59,22 +62,22 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     return res.json();
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleGiveVip = async () => {
     if (!vipUuid.trim()) { toast.error('أدخل UUID'); return; }
     setVipLoading(true);
     try {
-      const data = await apiPost({
-        action: 'admin_give_vip',
-        uuid: vipUuid.trim(),
-        level: parseInt(vipLevel),
-        duration: vipDuration,
-      });
-      if (data.success) {
-        toast.success('تم إعطاء VIP بنجاح');
-        setVipUuid('');
-      } else {
-        toast.error(data.error || 'فشلت العملية');
-      }
+      const data = await apiPost({ action: 'admin_give_vip', uuid: vipUuid.trim(), level: parseInt(vipLevel), duration: vipDuration });
+      if (data.success) { toast.success('تم إعطاء VIP بنجاح'); setVipUuid(''); }
+      else toast.error(data.error || 'فشلت العملية');
     } catch { toast.error('فشل الاتصال'); }
     setVipLoading(false);
   };
@@ -83,17 +86,9 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     if (!changeUuid.trim() || !newUuid.trim()) { toast.error('أدخل البيانات'); return; }
     setChangeLoading(true);
     try {
-      const data = await apiPost({
-        action: 'admin_change_uuid',
-        uuid: changeUuid.trim(),
-        new_uuid: newUuid.trim(),
-      });
-      if (data.success) {
-        toast.success('تم تغيير الآيدي');
-        setChangeUuid(''); setNewUuid('');
-      } else {
-        toast.error(data.error || 'فشلت العملية');
-      }
+      const data = await apiPost({ action: 'admin_change_uuid', uuid: changeUuid.trim(), new_uuid: newUuid.trim() });
+      if (data.success) { toast.success('تم تغيير الآيدي'); setChangeUuid(''); setNewUuid(''); }
+      else toast.error(data.error || 'فشلت العملية');
     } catch { toast.error('فشل الاتصال'); }
     setChangeLoading(false);
   };
@@ -104,19 +99,20 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     if (!reason.trim()) { toast.error('أدخل السبب'); return; }
     setBanLoading(true);
     try {
-      const data = await apiPost({
+      const body: any = {
         action: 'admin_ban_user',
         uuid: banUuid.trim(),
         reason,
         reason_type: banReason,
         duration: banDuration,
-      });
-      if (data.success) {
-        toast.success('تم الحظر');
-        setBanUuid(''); setBanCustomReason('');
-      } else {
-        toast.error(data.error || 'فشلت العملية');
+        admin: adminUsername,
+      };
+      if (banImage) {
+        body.image = await fileToBase64(banImage);
       }
+      const data = await apiPost(body);
+      if (data.success) { toast.success('تم الحظر'); setBanUuid(''); setBanCustomReason(''); setBanImage(null); }
+      else toast.error(data.error || 'فشلت العملية');
     } catch { toast.error('فشل الاتصال'); }
     setBanLoading(false);
   };
@@ -126,16 +122,9 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     setSearchLoading(true);
     setUserInfo(null);
     try {
-      const data = await apiGet({
-        action: 'admin_user_info',
-        admin_key: ADMIN_KEY,
-        uuid: searchUuid.trim(),
-      });
-      if (data.success) {
-        setUserInfo(data);
-      } else {
-        toast.error(data.error || 'مستخدم غير موجود');
-      }
+      const data = await apiGet({ action: 'admin_user_info', admin_key: ADMIN_KEY, uuid: searchUuid.trim() });
+      if (data.success !== false) setUserInfo(data);
+      else toast.error(data.error || 'مستخدم غير موجود');
     } catch { toast.error('فشل البحث'); }
     setSearchLoading(false);
   };
@@ -143,47 +132,46 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
   const handleLoadLogs = async () => {
     setLogLoading(true);
     try {
-      const params: Record<string, string> = {
-        action: 'admin_action_log',
-        admin_key: ADMIN_KEY,
-        limit: '50',
-      };
+      const params: Record<string, string> = { action: 'admin_action_log', admin_key: ADMIN_KEY, limit: '50' };
       if (logAdmin.trim()) params.admin = logAdmin.trim();
       const data = await apiGet(params);
-      if (data.success && data.logs) {
-        setLogs(data.logs);
-      }
+      if (data.logs) setLogs(data.logs);
     } catch { toast.error('فشل التحميل'); }
     setLogLoading(false);
   };
 
   const actions = [
-    { key: 'vip' as const, label: 'إعطاء VIP', icon: <Crown className="w-5 h-5" />, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-    { key: 'change_id' as const, label: 'تغيير آيدي', icon: <Hash className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-    { key: 'ban' as const, label: 'حظر مستخدم', icon: <ShieldBan className="w-5 h-5" />, color: 'text-red-400', bg: 'bg-red-500/10' },
-    { key: 'user_search' as const, label: 'بحث مستخدم', icon: <Search className="w-5 h-5" />, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { key: 'action_log' as const, label: 'سجل العمليات', icon: <ScrollText className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+    { key: 'vip' as const, label: 'إعطاء VIP', icon: <Crown className="w-5 h-5" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
+    { key: 'change_id' as const, label: 'تغيير آيدي', icon: <Hash className="w-5 h-5" />, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+    { key: 'ban' as const, label: 'حظر مستخدم', icon: <ShieldBan className="w-5 h-5" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+    { key: 'user_search' as const, label: 'بحث مستخدم', icon: <Search className="w-5 h-5" />, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+    { key: 'action_log' as const, label: 'سجل العمليات', icon: <ScrollText className="w-5 h-5" />, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' },
   ];
 
   if (!activeAction) {
     return (
       <div className="grid grid-cols-2 gap-3" dir="rtl">
-        {actions.map(a => (
-          <button
+        {actions.map((a, i) => (
+          <motion.button
             key={a.key}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06 }}
             onClick={() => setActiveAction(a.key)}
-            className={`${a.bg} border border-border/30 rounded-xl p-4 text-center hover:border-primary/30 transition-all active:scale-[0.97]`}
+            className={`${a.bg} border rounded-xl p-4 text-center hover:scale-[1.02] transition-all active:scale-[0.97]`}
           >
-            <div className={`${a.color} mx-auto mb-2`}>{a.icon}</div>
+            <div className={`${a.color} mx-auto mb-2 flex justify-center`}>{a.icon}</div>
             <p className="text-sm font-bold text-foreground">{a.label}</p>
-          </button>
+          </motion.button>
         ))}
       </div>
     );
   }
 
+  const selectClass = "w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground";
+
   return (
-    <div className="space-y-4" dir="rtl">
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4" dir="rtl">
       <button onClick={() => setActiveAction(null)} className="text-xs text-primary font-bold flex items-center gap-1">
         ← رجوع للأدوات
       </button>
@@ -198,15 +186,13 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="text-[11px] text-muted-foreground mb-1 block">المستوى</label>
-              <select value={vipLevel} onChange={(e) => setVipLevel(e.target.value)}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <select value={vipLevel} onChange={(e) => setVipLevel(e.target.value)} className={selectClass}>
                 {[1,2,3,4,5,6].map(l => <option key={l} value={l}>VIP {l}</option>)}
               </select>
             </div>
             <div>
               <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
-              <select value={vipDuration} onChange={(e) => setVipDuration(e.target.value)}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <select value={vipDuration} onChange={(e) => setVipDuration(e.target.value)} className={selectClass}>
                 <option value="7">7 أيام</option>
                 <option value="30">30 يوم</option>
                 <option value="90">90 يوم</option>
@@ -228,7 +214,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
             <Hash className="w-4 h-4 text-indigo-400" /> تغيير آيدي
           </h3>
           <Input value={changeUuid} onChange={(e) => setChangeUuid(e.target.value)} placeholder="UUID الحالي" dir="ltr" />
-          <Input value={newUuid} onChange={(e) => setNewUuid(e.target.value)} placeholder="الآيدي الجديد" dir="ltr" />
+          <Input value={newUuid} onChange={(e) => setNewUuid(e.target.value)} placeholder="UUID الجديد" dir="ltr" />
           <Button className="w-full" onClick={handleChangeId} disabled={changeLoading}>
             {changeLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Hash className="w-4 h-4 ml-2" />}
             تغيير
@@ -245,8 +231,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           <Input value={banUuid} onChange={(e) => setBanUuid(e.target.value)} placeholder="UUID المستخدم" dir="ltr" />
           <div>
             <label className="text-[11px] text-muted-foreground mb-1 block">السبب</label>
-            <select value={banReason} onChange={(e) => setBanReason(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <select value={banReason} onChange={(e) => setBanReason(e.target.value)} className={selectClass}>
               <option value="promo">ترويج</option>
               <option value="abuse">سب</option>
               <option value="other">أخرى</option>
@@ -257,8 +242,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           )}
           <div>
             <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
-            <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass}>
               <option value="3h">3 ساعات</option>
               <option value="24h">يوم</option>
               <option value="48h">يومين</option>
@@ -266,6 +250,26 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
               <option value="720h">شهر</option>
               <option value="8760h">سنة</option>
             </select>
+          </div>
+          {/* Image/Video upload */}
+          <div>
+            <input type="file" ref={banFileRef} className="hidden" accept="image/*,video/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f && f.size <= 10 * 1024 * 1024) setBanImage(f);
+                else if (f) toast.error('الحد الأقصى 10MB');
+              }}
+            />
+            <button
+              onClick={() => banFileRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-border/50 bg-muted/10 text-muted-foreground text-xs hover:border-primary/30 transition-all"
+            >
+              {banImage ? (
+                <><Image className="w-4 h-4 text-primary" /> {banImage.name}</>
+              ) : (
+                <><Upload className="w-4 h-4" /> رفع صورة أو فيديو (اختياري)</>
+              )}
+            </button>
           </div>
           <Button variant="destructive" className="w-full" onClick={handleBan} disabled={banLoading}>
             {banLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <ShieldBan className="w-4 h-4 ml-2" />}
@@ -292,30 +296,39 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           </div>
 
           {userInfo && (
-            <div className="bg-card border border-border/40 rounded-xl p-4 space-y-2">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border/40 rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-6 h-6 text-primary" />
-                </div>
+                {userInfo.avatar ? (
+                  <img src={userInfo.avatar} className="w-12 h-12 rounded-full object-cover border-2 border-primary/20" alt="" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-6 h-6 text-primary" />
+                  </div>
+                )}
                 <div>
                   <p className="text-sm font-bold text-foreground">{userInfo.name || 'غير معروف'}</p>
                   <p className="text-[11px] text-muted-foreground font-mono" dir="ltr">{searchUuid}</p>
                 </div>
+                {userInfo.online && (
+                  <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-bold mr-auto">متصل</span>
+                )}
               </div>
               {[
-                { label: 'VIP', value: userInfo.vip || 'لا يوجد' },
+                { label: 'VIP', value: userInfo.vip_level ? `VIP ${userInfo.vip_level}` : 'لا يوجد' },
                 { label: 'الراتب', value: userInfo.salary || '-' },
-                { label: 'الدعم', value: userInfo.support || '-' },
-                { label: 'المستوى', value: userInfo.level || '-' },
-                { label: 'الوكالة', value: userInfo.agency || 'لا يوجد' },
-                { label: 'الحظر', value: userInfo.ban || 'غير محظور' },
+                { label: 'إرسال شهري', value: userInfo.monthly_sent || '-' },
+                { label: 'استقبال شهري', value: userInfo.monthly_received || '-' },
+                { label: 'مستوى الإرسال', value: userInfo.sender_level ?? '-' },
+                { label: 'مستوى الاستقبال', value: userInfo.receiver_level ?? '-' },
+                { label: 'الوكالة', value: userInfo.agency_id || 'لا يوجد' },
+                { label: 'الحظر', value: userInfo.is_banned ? 'محظور' : 'غير محظور' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/20 last:border-0">
                   <span className="text-xs text-muted-foreground">{item.label}</span>
-                  <span className="text-xs font-bold text-foreground">{item.value}</span>
+                  <span className={`text-xs font-bold ${item.label === 'الحظر' && userInfo.is_banned ? 'text-destructive' : 'text-foreground'}`}>{item.value}</span>
                 </div>
               ))}
-            </div>
+            </motion.div>
           )}
         </div>
       )}
@@ -336,7 +349,13 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           </div>
 
           {logs.map((log: any, i: number) => (
-            <div key={i} className="bg-card border border-border/40 rounded-xl p-3 space-y-1">
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+              className="bg-card border border-border/40 rounded-xl p-3 space-y-1"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">{log.admin}</span>
@@ -344,14 +363,15 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
                 </div>
                 <span className="text-[10px] text-muted-foreground">{log.time}</span>
               </div>
+              {log.uuid && <p className="text-[11px] text-muted-foreground font-mono" dir="ltr">UUID: {log.uuid}</p>}
               {log.details && (
-                <p className="text-[11px] text-muted-foreground font-mono truncate" dir="ltr">{typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}</p>
               )}
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
