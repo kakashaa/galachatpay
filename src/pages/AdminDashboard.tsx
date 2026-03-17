@@ -870,7 +870,7 @@ const AdminDashboardPage: React.FC = () => {
     {
       id: "requests", title: "الطلبات والموافقات", description: "طلبات تحتاج موافقة",
       icon: <ClipboardList className="w-10 h-10" />, gradient: "from-blue-500/15 to-blue-600/5", iconColor: "text-blue-400",
-      tabs: ["all_requests", "salary", "custom_gifts", "animated_photos", "id_changes", "reports"],
+      tabs: ["all_requests", "salary", "custom_gifts", "animated_photos", "id_changes", "reports", "manual_actions"],
       roles: ["owner", "super_admin"],
     },
     {
