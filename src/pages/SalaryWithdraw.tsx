@@ -14,6 +14,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 
 const API = "https://galachat.site/project-z/api.php";
 
@@ -180,6 +183,10 @@ const SalaryWithdraw: React.FC = () => {
   const [chargingCoins, setChargingCoins] = useState(false);
   const [coinsCharged, setCoinsCharged] = useState(0);
 
+  // Salary report check
+  const [salaryCheckLoading, setSalaryCheckLoading] = useState(false);
+  const [salaryWarning, setSalaryWarning] = useState<{ show: boolean; manual_amount?: number; message?: string } | null>(null);
+
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
@@ -226,8 +233,37 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleSelectTransfer = (transfer: Transfer, mode: "cash" | "coins") => {
+  const checkSalaryReport = async (_transfer: Transfer, _mode: "cash" | "coins") => {
+    setSalaryCheckLoading(true);
+    try {
+      const reportRes = await fetch(`${API}?action=salary_report&uuid=${user!.uuid}`);
+      const report = await reportRes.json();
+      if (report.is_suspicious || report.is_manual) {
+        setSalaryWarning({
+          show: true,
+          manual_amount: report.manual_amount || 0,
+          message: report.is_suspicious
+            ? "راتبك يحتوي على مبلغ مشبوه ويحتاج مراجعة"
+            : `راتبك يحتوي على مبلغ يدوي ($${report.manual_amount || 0} غير مدعوم)`,
+        });
+        setSalaryCheckLoading(false);
+        return false;
+      }
+      setSalaryCheckLoading(false);
+      return true;
+    } catch {
+      setSalaryCheckLoading(false);
+      // Allow on network error — don't block
+      return true;
+    }
+  };
+
+  const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "coins") => {
     setSelectedTransfer(transfer);
+    setSalaryWarning(null);
+
+    const safe = await checkSalaryReport(transfer, mode);
+    if (!safe) return;
 
     if (mode === "cash") {
       const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
@@ -632,6 +668,44 @@ const SalaryWithdraw: React.FC = () => {
           </Button>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
+
+          {/* Salary Warning Dialog */}
+          <Dialog open={!!salaryWarning?.show} onOpenChange={() => setSalaryWarning(null)}>
+            <DialogContent className="max-w-[360px] rounded-2xl" dir="rtl">
+              <DialogHeader>
+                <DialogTitle className="text-center text-base flex items-center justify-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-destructive" /> ⚠️ تحذير أمان
+                </DialogTitle>
+                <DialogDescription className="text-center text-sm text-muted-foreground pt-2">
+                  {salaryWarning?.message}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 pt-2">
+                <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                  يرجى التواصل مع خدمة العملاء قبل سحب الراتب
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setSalaryWarning(null)} className="flex-1 h-11 border-border/30">
+                    إلغاء
+                  </Button>
+                  <Button onClick={() => { setSalaryWarning(null); navigate("/support"); }}
+                    className="flex-1 h-11 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold">
+                    تواصل مع الدعم
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Loading overlay for salary check */}
+          {salaryCheckLoading && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+              <div className="glass-card p-6 rounded-2xl flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground">جاري فحص الراتب...</p>
+              </div>
+            </div>
+          )}
         </div>
       </MobileLayout>
     );
