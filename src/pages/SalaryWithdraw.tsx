@@ -764,12 +764,13 @@ const SalaryWithdraw: React.FC = () => {
 
                 {withdrawalMode === "cash" ? (
                   <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
-                    <p className="text-xs text-blue-400 font-bold">💵 المرة الأولى — سحب نقدي</p>
+                    <p className="text-xs text-blue-400 font-bold">💵 سحب راتب نقدي</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">متاح فقط آخر 3 أيام من الشهر</p>
                   </div>
                 ) : (
                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-                    <p className="text-xs text-amber-400 font-bold">🪙 المرة الثانية — شحن كوينز</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">= {(registeredSalary * USD_TO_COINS).toLocaleString()} كوينز</p>
+                    <p className="text-xs text-amber-400 font-bold">🪙 شحن كوينز</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">= {(registeredSalary * USD_TO_COINS).toLocaleString()} كوينز — متاح في أي وقت</p>
                   </div>
                 )}
 
