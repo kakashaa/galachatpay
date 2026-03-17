@@ -1094,65 +1094,108 @@ const AdminDashboardPage: React.FC = () => {
       </header>
       <div className="flex-1 overflow-y-auto min-h-0">
       {/* Home — 4 Section Cards */}
-      {!activeTab && !activeSection && (
-        <div className="max-w-2xl mx-auto p-4 space-y-5">
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-3 gap-3" dir="rtl">
+      {!activeTab && !activeSection && bottomTab === 'home' && (
+        <AdminHomeView
+          adminDisplayName={adminDisplayName || ''}
+          adminRole={adminRole}
+          stats={stats}
+          badges={{
+            vip: 0,
+            protection: banReports.filter(r => !r.is_verified).length,
+            support: supportTickets.filter((t: any) => t.status === 'open').length + quickSupportRequests.filter((r: any) => r.status === 'pending').length + supportChats.filter((c: any) => c.status === 'waiting').length,
+            requests: animatedPhotos.filter(p => p.status === 'pending').length + allCustomGifts.filter(g => g.status === 'pending').length,
+            salary: salaryRequests.filter(r => r.status === 'pending').length,
+          }}
+          onServiceClick={(key) => {
+            const serviceMap: Record<string, { section: typeof activeSection; tab: Tab }> = {
+              vip: { section: 'requests', tab: 'all_requests' },
+              protection: { section: 'requests', tab: 'reports' },
+              reports: { section: 'requests', tab: 'all_requests' },
+              support: { section: 'chat', tab: 'admin_support' },
+              requests: { section: 'requests', tab: 'all_requests' },
+              salary: { section: 'requests', tab: 'salary' },
+              change_id: { section: 'requests', tab: 'manual_actions' },
+              store: { section: 'settings', tab: 'entries' },
+              settings: { section: 'settings', tab: 'videos' },
+              agencies: { section: 'finance', tab: 'agencies' },
+              moderators: { section: 'settings', tab: 'moderators' },
+              audit_log: { section: 'settings', tab: 'audit_log' },
+            };
+            const mapping = serviceMap[key];
+            if (mapping) {
+              setActiveSection(mapping.section);
+              setActiveTab(mapping.tab);
+            }
+          }}
+          onChatClick={() => {
+            setActiveSection('chat');
+            setActiveTab('admin_chat');
+          }}
+          recentLogs={auditLogs.slice(0, 5)}
+          isOwner={isOwner}
+          isSuperAdmin={isSuperAdmin}
+        />
+      )}
+
+      {/* Search tab */}
+      {!activeTab && !activeSection && bottomTab === 'search' && (
+        <div className="max-w-2xl mx-auto p-4" dir="rtl">
+          <AdminManualActions adminUsername={adminUsername || ''} />
+        </div>
+      )}
+
+      {/* Chat tab */}
+      {!activeTab && !activeSection && bottomTab === 'chat' && (
+        <div className="max-w-2xl mx-auto p-4">
+          <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole || 'admin'} />
+        </div>
+      )}
+
+      {/* Monitor tab */}
+      {!activeTab && !activeSection && bottomTab === 'monitor' && (
+        <div className="max-w-2xl mx-auto p-4 space-y-4" dir="rtl">
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "معلقة", value: stats.pending, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5", onClick: () => { setAllRequestsFilter("pending"); setActiveSection("requests"); setActiveTab("all_requests"); } },
-              { label: "مقبولة", value: stats.approved, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5", onClick: () => { setAllRequestsFilter("approved"); setActiveSection("requests"); setActiveTab("all_requests"); } },
-              { label: "مرفوضة", value: stats.rejected, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5", onClick: () => { setAllRequestsFilter("rejected"); setActiveSection("requests"); setActiveTab("all_requests"); } },
-            ].map((card, i) => (
-              <motion.button
+              { label: 'معلقة', value: stats.pending, color: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/5', onClick: () => { setActiveSection('requests'); setActiveTab('all_requests'); } },
+              { label: 'مقبولة', value: stats.approved, color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
+              { label: 'مرفوضة', value: stats.rejected, color: 'text-rose-400', border: 'border-rose-500/20', bg: 'bg-rose-500/5' },
+            ].map((card) => (
+              <button
                 key={card.label}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05, duration: 0.4, ease: "easeOut" }}
-                whileTap={{ scale: 0.97 }}
                 onClick={card.onClick}
-                className={`p-4 rounded-2xl border ${card.border} ${card.bg} backdrop-blur-sm hover:border-white/10 transition-all duration-300 cursor-pointer`}
+                className={`p-4 rounded-2xl border ${card.border} ${card.bg} text-center`}
               >
                 <p className="text-[10px] text-muted-foreground mb-1">{card.label}</p>
-                <p className={`text-3xl font-bold font-mono tabular-nums ${card.color}`}>{card.value}</p>
-              </motion.button>
+                <p className={`text-3xl font-bold font-mono ${card.color}`}>{card.value}</p>
+              </button>
             ))}
           </div>
+          <AdminSupportManager adminUsername={adminUsername || ''} />
+        </div>
+      )}
 
-          {/* 4 Section Cards */}
-          <div className="grid grid-cols-2 gap-3" dir="rtl">
-            {SECTIONS.map((section, i) => {
-              const badge = getSectionBadge(section.id);
-              // Filter section tabs by moderator access
-              const visibleTabs = isModeratorRole
-                ? section.tabs.filter(tabKey => hasTabAccess(tabKey))
-                : section.tabs;
-              if (visibleTabs.length === 0) return null;
-              return (
-                <motion.button
-                  key={section.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
-                  whileTap={{ scale: 0.97 }}
-                  whileHover={{ scale: 1.01, borderColor: "rgba(255,255,255,0.12)" }}
-                  onClick={() => {
-                    setActiveSection(section.id);
-                    setActiveTab(visibleTabs[0]);
-                  }}
-                  className={`relative bg-gradient-to-br ${section.gradient} border border-white/5 rounded-3xl p-5 text-right hover:border-white/10 transition-all duration-300`}
-                >
-                  <div className={section.iconColor}>{section.icon}</div>
-                  <h3 className="text-base font-bold text-foreground mt-3">{section.title}</h3>
-                  <p className="text-[10px] text-muted-foreground mt-1">{section.description}</p>
-                  {badge > 0 && (
-                    <span className="absolute top-3 left-3 inline-flex items-center justify-center min-w-5 h-5 px-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-full">
-                      {badge}
-                    </span>
-                  )}
-                </motion.button>
-              );
-            })}
-          </div>
+      {/* Favorites tab - shows quick access buttons */}
+      {!activeTab && !activeSection && bottomTab === 'favorites' && (
+        <div className="max-w-2xl mx-auto p-4 space-y-3" dir="rtl">
+          <p className="text-sm font-bold text-muted-foreground">الوصول السريع</p>
+          {[
+            { label: 'طلبات الرواتب', tab: 'salary' as Tab, section: 'requests' as const, count: salaryRequests.filter(r => r.status === 'pending').length },
+            { label: 'الصور المتحركة', tab: 'animated_photos' as Tab, section: 'requests' as const, count: animatedPhotos.filter(p => p.status === 'pending').length },
+            { label: 'هدايا مخصصة', tab: 'custom_gifts' as Tab, section: 'requests' as const, count: allCustomGifts.filter(g => g.status === 'pending').length },
+            { label: 'تذاكر الدعم', tab: 'support_tickets' as Tab, section: 'chat' as const, count: supportTickets.filter((t: any) => t.status === 'open').length },
+            { label: 'البلاغات', tab: 'reports' as Tab, section: 'requests' as const, count: banReports.filter(r => !r.is_verified).length },
+          ].map(item => (
+            <button
+              key={item.label}
+              onClick={() => { setActiveSection(item.section); setActiveTab(item.tab); }}
+              className="w-full flex items-center justify-between p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:border-white/10 transition-colors"
+            >
+              <span className="text-sm font-bold text-foreground">{item.label}</span>
+              {item.count > 0 && (
+                <span className="min-w-6 h-6 px-2 flex items-center justify-center bg-rose-500 text-white text-xs font-bold rounded-full">{item.count}</span>
+              )}
+            </button>
+          ))}
         </div>
       )}
 
