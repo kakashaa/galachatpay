@@ -118,7 +118,7 @@ const AdminLogin: React.FC = () => {
     }
   };
 
-  const completeLogin = async (data: any, pwd?: string) => {
+  const completeLogin = async (data: any) => {
     sessionStorage.setItem("admin_username", data.username || username.trim());
     sessionStorage.setItem("admin_display_name", data.name || data.display_name || username.trim());
     sessionStorage.setItem("admin_role", data.role);
