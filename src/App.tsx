@@ -77,6 +77,9 @@ const AdminSalaryPage = lazy(() => import("./pages/admin/AdminSalaryPage"));
 const AdminAgenciesPage = lazy(() => import("./pages/admin/AdminAgenciesPage"));
 const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
 const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
+const AdminChatPage = lazy(() => import("./pages/admin/AdminChatPage"));
+const AdminLogPage = lazy(() => import("./pages/admin/AdminLogPage"));
+const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
 
 const queryClient = new QueryClient();
 
