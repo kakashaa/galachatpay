@@ -230,8 +230,37 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleSelectTransfer = (transfer: Transfer, mode: "cash" | "coins") => {
+  const checkSalaryReport = async (transfer: Transfer, mode: "cash" | "coins") => {
+    setSalaryCheckLoading(true);
+    try {
+      const reportRes = await fetch(`${API}?action=salary_report&uuid=${user!.uuid}`);
+      const report = await reportRes.json();
+      if (report.is_suspicious || report.is_manual) {
+        setSalaryWarning({
+          show: true,
+          manual_amount: report.manual_amount || 0,
+          message: report.is_suspicious
+            ? "راتبك يحتوي على مبلغ مشبوه ويحتاج مراجعة"
+            : `راتبك يحتوي على مبلغ يدوي ($${report.manual_amount || 0} غير مدعوم)`,
+        });
+        setSalaryCheckLoading(false);
+        return false;
+      }
+      setSalaryCheckLoading(false);
+      return true;
+    } catch {
+      setSalaryCheckLoading(false);
+      // Allow on network error — don't block
+      return true;
+    }
+  };
+
+  const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "coins") => {
     setSelectedTransfer(transfer);
+    setSalaryWarning(null);
+
+    const safe = await checkSalaryReport(transfer, mode);
+    if (!safe) return;
 
     if (mode === "cash") {
       const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
