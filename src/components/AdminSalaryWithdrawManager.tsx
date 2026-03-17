@@ -559,7 +559,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={req.account_number} dir="ltr" />
                         <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={req.whatsapp} dir="ltr" />
                       </div>
-                      <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={new Date(req.created_at).toLocaleString("ar")} />
+                      <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(req.created_at)} />
                       <DetailCell icon={<Hash className="w-3 h-3" />} label="رقم الطلب" value={req.request_code} />
                       <div className={`flex items-center gap-2 rounded-xl p-2.5 text-xs font-bold ${req.transfer_verified ? "bg-emerald-500/5 text-emerald-400" : "bg-amber-500/5 text-amber-400"}`}>
                         {req.transfer_verified ? <><CheckCircle className="w-3.5 h-3.5" /> تم التحقق من التحويل</> : <><Clock className="w-3.5 h-3.5" /> لم يتم التحقق — مرفق إيصال</>}
