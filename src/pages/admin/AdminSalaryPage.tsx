@@ -5,7 +5,7 @@ import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager"
 import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
 
 const AdminSalaryPage: React.FC = () => {
-  const { handleLogout, adminSessionToken, adminUsername } = useAdminSession();
+  const { handleLogout } = useAdminSession();
   const [subTab, setSubTab] = useState<"withdraw" | "charge">("withdraw");
 
   return (
