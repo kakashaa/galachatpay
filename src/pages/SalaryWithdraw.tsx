@@ -706,7 +706,7 @@ const SalaryWithdraw: React.FC = () => {
   // STEPPER FLOW
   // ══════════════════════════════════════════
 
-  const stepperLabels = isFirstWithdrawal
+  const stepperLabels = withdrawalMode === "cash"
     ? ["المبلغ", "التحويل", "التحقق", "البنك", "التأكيد"]
     : ["المبلغ", "التحويل", "التحقق", "شحن"];
 
