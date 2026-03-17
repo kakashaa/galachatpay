@@ -119,6 +119,7 @@ const App = () => {
                   <Route path="/instant/request" element={<InstantRequest />} />
                   <Route path="/admin" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                  <Route path="/admin/income" element={<AdminIncome />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/policy" element={<PolicyPage />} />
                   <Route path="/quick-support" element={<QuickSupport />} />
