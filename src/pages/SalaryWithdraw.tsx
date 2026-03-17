@@ -622,15 +622,23 @@ const SalaryWithdraw: React.FC = () => {
     const hs = allData.host_salary;
     const as_ = allData.agency_salary;
     const w = allData.withdrawals;
+    const { maxCash, maxTotal } = getWithdrawalLimits(true);
+    const cashLeft = Math.max(0, maxCash - w.count);
+    const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
 
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="px-5 py-6 space-y-5">
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground mb-1">اختر نوع الراتب</h2>
-            <p className="text-xs text-muted-foreground">سحبت {w.count} من {w.max} هذا الشهر</p>
+            <p className="text-xs text-muted-foreground">سحبت {w.count} من {maxTotal} هذا الشهر</p>
             <p className="text-[10px] text-muted-foreground mt-1">
-              {w.count === 0 ? "المرة الأولى: سحب نقدي 💵" : "المرة الثانية: شحن كوينز 🪙"}
+              {cashLeft > 0
+                ? (canWithdrawCash
+                  ? `💵 سحب نقدي متاح (${cashLeft} سحبة متبقية)`
+                  : `⏰ السحب النقدي يفتح يوم ${startDay}/${new Date().getMonth() + 1}`)
+                : "🪙 شحن كوينز فقط"
+              }
             </p>
           </div>
 
