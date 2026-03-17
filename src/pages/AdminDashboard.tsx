@@ -2892,6 +2892,15 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       )}
       </div>
+
+      {/* Bottom Navigation - only show when no sub-page is open */}
+      {!activeTab && !activeSection && (
+        <AdminBottomNav
+          active={bottomTab}
+          onChange={(tab) => setBottomTab(tab)}
+          chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
+        />
+      )}
       
       {/* Admin notifications listener */}
       <AdminNotificationListener />
