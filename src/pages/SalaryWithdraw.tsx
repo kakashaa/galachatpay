@@ -754,7 +754,7 @@ const SalaryWithdraw: React.FC = () => {
                   <span className="text-lg font-black text-emerald-400" dir="ltr">${registeredSalary.toFixed(2)}</span>
                 </div>
 
-                {isFirstWithdrawal ? (
+                {withdrawalMode === "cash" ? (
                   <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
                     <p className="text-xs text-blue-400 font-bold">💵 المرة الأولى — سحب نقدي</p>
                   </div>
