@@ -939,6 +939,7 @@ const AdminDashboardPage: React.FC = () => {
   });
 
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
+    { key: "vip", label: "VIP", icon: <Crown className="w-4 h-4" />, color: "text-yellow-400" },
     { key: "admin_chat", label: "دردشة الإدارة", icon: <MessageSquare className="w-4 h-4" />, color: "text-emerald-400" },
     { key: "admin_support", label: "الدعم الفني", icon: <Headset className="w-4 h-4" />, color: "text-cyan-400" },
     { key: "manual_actions", label: "صلاحيات يدوية", icon: <Crown className="w-4 h-4" />, color: "text-amber-400" },
