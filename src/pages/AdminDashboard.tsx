@@ -1063,51 +1063,37 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container" style={{ background: "#09090b" }}>
-      {/* Header */}
-      <header className="sticky top-0 z-20 backdrop-blur-xl border-b border-white/5 px-4 py-3" style={{ background: "rgba(9,9,11,0.92)" }}>
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <div className="flex items-center gap-3">
-            {(activeTab || activeSection) ? (
-              <button onClick={() => {
-                if (activeTab) { setActiveTab(null); setActiveSection(null); }
-                else { setActiveSection(null); }
-              }} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                <ArrowRight className="w-5 h-5 text-foreground" />
-              </button>
-            ) : (
-              <Shield className="w-5 h-5 text-primary" />
-            )}
-            <div>
-              <h1 className="font-bold text-lg tracking-tight text-foreground">
-                {activeTab ? tabs.find(t => t.key === activeTab)?.label
-                  : activeSection ? currentSectionDef?.title
-                  : "لوحة التحكم"}
-              </h1>
-              {!activeTab && !activeSection && (
-                <p className="text-[10px] text-muted-foreground">مرحباً، {adminDisplayName}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isOwner && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>
-            )}
-            {adminRole === "super_admin" && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر أدمن</span>
-            )}
-            {adminRole === "admin" && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>
-            )}
-            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
-              <LogOut className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
+    <div className="mobile-container text-foreground overflow-x-hidden overflow-y-auto relative" style={{ background: "#09090b", overflow: 'hidden auto' }}>
+      {/* Header - same style as user Dashboard */}
+      <header className="relative z-10 flex justify-between items-center px-4 pt-6 pb-2">
+        {activeTab ? (
+          <button
+            onClick={() => { setActiveTab(null); setActiveSection(null); }}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+          >
+            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        ) : (
+          <button onClick={handleLogout} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors">
+            <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+        <h1 className="text-base font-black gradient-text">
+          {activeTab ? (tabs.find(t => t.key === activeTab)?.label || 'لوحة التحكم') : 'غلا شات'}
+        </h1>
+        <div className="w-8 flex items-center justify-center">
+          {!activeTab && (
+            <>
+              {isOwner && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>}
+              {adminRole === "super_admin" && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر</span>}
+              {adminRole === "admin" && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>}
+            </>
+          )}
         </div>
       </header>
-      <div className="flex-1 overflow-y-auto min-h-0">
-      {/* Home — 4 Section Cards */}
-      {!activeTab && !activeSection && bottomTab === 'home' && (
+      <div className="relative z-10">
+      {/* Home View */}
+      {!activeTab && (
         <AdminHomeView
           adminDisplayName={adminDisplayName || ''}
           adminRole={adminRole}
@@ -1120,216 +1106,23 @@ const AdminDashboardPage: React.FC = () => {
             salary: salaryRequests.filter(r => r.status === 'pending').length,
           }}
           onServiceClick={(key) => {
-            const serviceMap: Record<string, { section: typeof activeSection; tab: Tab }> = {
-              vip: { section: 'requests', tab: 'all_requests' },
-              protection: { section: 'requests', tab: 'reports' },
-              reports: { section: 'requests', tab: 'all_requests' },
-              support: { section: 'chat', tab: 'admin_support' },
-              requests: { section: 'requests', tab: 'all_requests' },
-              salary: { section: 'requests', tab: 'salary' },
-              change_id: { section: 'requests', tab: 'manual_actions' },
-              store: { section: 'settings', tab: 'entries' },
-              settings: { section: 'settings', tab: 'videos' },
-              agencies: { section: 'finance', tab: 'agencies' },
-              moderators: { section: 'settings', tab: 'moderators' },
-              audit_log: { section: 'settings', tab: 'audit_log' },
-            };
-            const mapping = serviceMap[key];
-            if (mapping) {
-              setActiveSection(mapping.section);
-              setActiveTab(mapping.tab);
-            }
+            setActiveTab(key as Tab);
+            setActiveSection(null);
           }}
-          onChatClick={() => {
-            setActiveSection('chat');
+          onChatClick={(room) => {
             setActiveTab('admin_chat');
+            setActiveSection(null);
           }}
           recentLogs={auditLogs.slice(0, 5)}
           isOwner={isOwner}
           isSuperAdmin={isSuperAdmin}
+          chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
         />
       )}
 
-      {/* Search tab */}
-      {!activeTab && !activeSection && bottomTab === 'search' && (
-        <div className="max-w-2xl mx-auto p-4" dir="rtl">
-          <AdminManualActions adminUsername={adminUsername || ''} />
-        </div>
-      )}
-
-      {/* Chat tab */}
-      {!activeTab && !activeSection && bottomTab === 'chat' && (
-        <div className="max-w-2xl mx-auto p-4">
-          <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole || 'admin'} />
-        </div>
-      )}
-
-      {/* Monitor tab */}
-      {!activeTab && !activeSection && bottomTab === 'monitor' && (
-        <div className="max-w-2xl mx-auto p-4 space-y-4" dir="rtl">
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'معلقة', value: stats.pending, color: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/5', onClick: () => { setActiveSection('requests'); setActiveTab('all_requests'); } },
-              { label: 'مقبولة', value: stats.approved, color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
-              { label: 'مرفوضة', value: stats.rejected, color: 'text-rose-400', border: 'border-rose-500/20', bg: 'bg-rose-500/5' },
-            ].map((card) => (
-              <button
-                key={card.label}
-                onClick={card.onClick}
-                className={`p-4 rounded-2xl border ${card.border} ${card.bg} text-center`}
-              >
-                <p className="text-[10px] text-muted-foreground mb-1">{card.label}</p>
-                <p className={`text-3xl font-bold font-mono ${card.color}`}>{card.value}</p>
-              </button>
-            ))}
-          </div>
-          <AdminSupportManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={true} />
-        </div>
-      )}
-
-      {/* Favorites tab - shows quick access buttons */}
-      {!activeTab && !activeSection && bottomTab === 'favorites' && (
-        <div className="max-w-2xl mx-auto p-4 space-y-3" dir="rtl">
-          <p className="text-sm font-bold text-muted-foreground">الوصول السريع</p>
-          {[
-            { label: 'طلبات الرواتب', tab: 'salary' as Tab, section: 'requests' as const, count: salaryRequests.filter(r => r.status === 'pending').length },
-            { label: 'الصور المتحركة', tab: 'animated_photos' as Tab, section: 'requests' as const, count: animatedPhotos.filter(p => p.status === 'pending').length },
-            { label: 'هدايا مخصصة', tab: 'custom_gifts' as Tab, section: 'requests' as const, count: allCustomGifts.filter(g => g.status === 'pending').length },
-            { label: 'تذاكر الدعم', tab: 'support_tickets' as Tab, section: 'chat' as const, count: supportTickets.filter((t: any) => t.status === 'open').length },
-            { label: 'البلاغات', tab: 'reports' as Tab, section: 'requests' as const, count: banReports.filter(r => !r.is_verified).length },
-          ].map(item => (
-            <button
-              key={item.label}
-              onClick={() => { setActiveSection(item.section); setActiveTab(item.tab); }}
-              className="w-full flex items-center justify-between p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:border-white/10 transition-colors"
-            >
-              <span className="text-sm font-bold text-foreground">{item.label}</span>
-              {item.count > 0 && (
-                <span className="min-w-6 h-6 px-2 flex items-center justify-center bg-rose-500 text-white text-xs font-bold rounded-full">{item.count}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Section Tab Chips + Content */}
-      {activeSection && !activeTab && (
-        <div className="max-w-2xl mx-auto p-4">
-          <p className="text-sm text-muted-foreground text-center py-10">اختر تبويباً</p>
-        </div>
-      )}
-      {activeTab && activeSection && (
-        <div className="max-w-2xl mx-auto">
-          {/* Tab chips */}
-          <div className="px-4 pt-3 pb-2">
-            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
-              {(currentSectionDef?.tabs || []).map(tabKey => {
-                const tabDef = tabs.find(t => t.key === tabKey);
-                if (!tabDef) return null;
-                const isActive = activeTab === tabKey;
-                return (
-                  <button
-                    key={tabKey}
-                    onClick={() => {
-                      const sectionTabs = currentSectionDef?.tabs || [];
-                      const oldIdx = sectionTabs.indexOf(activeTab as any);
-                      const newIdx = sectionTabs.indexOf(tabKey);
-                      setTabDirection(newIdx >= oldIdx ? 1 : -1);
-                      setActiveTab(tabKey);
-                    }}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1 min-w-[56px] px-3 py-2 rounded-2xl text-[10px] font-medium whitespace-nowrap transition-all duration-200",
-                      isActive
-                        ? "bg-white/10 text-foreground shadow-sm"
-                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                    )}
-                  >
-                    <span className={cn(
-                      "flex items-center justify-center w-8 h-8 rounded-xl transition-colors",
-                      isActive ? "bg-primary/20 text-primary" : "text-muted-foreground"
-                    )}>
-                      {React.cloneElement(tabDef.icon as React.ReactElement, { className: "w-[18px] h-[18px]" })}
-                    </span>
-                    <span className="leading-tight">{tabDef.label}</span>
-                    {tabDef.count && tabDef.count > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-bold rounded-full">
-                        {tabDef.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Section Stats Cards */}
-          {activeSection === "requests" && (
-            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
-              {[
-                { label: "معلقة", value: stats.pending, icon: Clock, gradient: "from-amber-500/10 to-amber-600/5", border: "border-amber-500/20", iconColor: "text-amber-400" },
-                { label: "مقبولة اليوم", value: stats.approved, icon: CheckCircle, gradient: "from-emerald-500/10 to-emerald-600/5", border: "border-emerald-500/20", iconColor: "text-emerald-400" },
-                { label: "مرفوضة اليوم", value: stats.rejected, icon: XCircle, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
-                >
-                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
-                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {activeSection === "settings" && (
-            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
-              {[
-                { label: "إجمالي", value: entryGifts.length + frameItems.length + videos.length, icon: Package, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
-                { label: "نشطة", value: entryGifts.filter(g => g.is_active).length + frameItems.filter(f => f.is_active).length + videos.filter(v => v.is_active).length, icon: CheckCircle, gradient: "from-emerald-500/10 to-emerald-600/5", border: "border-emerald-500/20", iconColor: "text-emerald-400" },
-                { label: "معطلة", value: entryGifts.filter(g => !g.is_active).length + frameItems.filter(f => !f.is_active).length + videos.filter(v => !v.is_active).length, icon: Ban, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
-                >
-                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
-                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {activeSection === "chat" && (
-            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
-              {[
-                { label: "تذاكر مفتوحة", value: supportTickets.filter((t: any) => t.status === "open").length, icon: MessageSquare, gradient: "from-sky-500/10 to-sky-600/5", border: "border-sky-500/20", iconColor: "text-sky-400" },
-                { label: "VIP انتظار", value: supportChats.filter((c: any) => c.status === "waiting").length, icon: Headset, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
-                { label: "دعم معلق", value: quickSupportRequests.filter((r: any) => r.status === "pending").length, icon: Zap, gradient: "from-yellow-500/10 to-yellow-600/5", border: "border-yellow-500/20", iconColor: "text-yellow-400" },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
-                >
-                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
-                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          <div className="px-4 pb-4 overflow-hidden">
+      {/* Tab Content - each service isolated */}
+      {activeTab && (
+        <div className="max-w-2xl mx-auto px-4 pb-4 overflow-hidden">
       {loading ? (
         <div className="space-y-3 py-4">
           {[...Array(4)].map((_, i) => (
@@ -2906,16 +2699,21 @@ const AdminDashboardPage: React.FC = () => {
       )}
       </div>
 
-      {/* Bottom Navigation - only show when no sub-page is open */}
-      {!activeTab && !activeSection && (
+      {/* Bottom Navigation */}
+      {!activeTab && (
         <AdminBottomNav
           active={bottomTab}
-          onChange={(tab) => setBottomTab(tab)}
+          onChange={(tab) => {
+            if (tab === 'ban') { setActiveTab('blocks'); return; }
+            if (tab === 'vip') { setActiveTab('all_requests'); return; }
+            if (tab === 'chat') { setActiveTab('admin_chat'); return; }
+            if (tab === 'search') { setActiveTab('manual_actions'); return; }
+            setBottomTab(tab);
+          }}
           chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
         />
       )}
       
-      {/* Admin notifications listener */}
       <AdminNotificationListener />
     </div>
   );
