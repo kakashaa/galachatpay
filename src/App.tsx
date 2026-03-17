@@ -130,6 +130,16 @@ const App = () => {
                   <Route path="/instant/request" element={<InstantRequest />} />
                   <Route path="/admin" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                  <Route path="/admin/gifts" element={<AdminGiftsPage />} />
+                  <Route path="/admin/income" element={<AdminIncomePage />} />
+                  <Route path="/admin/bd" element={<AdminBDPage />} />
+                  <Route path="/admin/vip" element={<AdminVipPage />} />
+                  <Route path="/admin/ban" element={<AdminBanPage />} />
+                  <Route path="/admin/id-change" element={<AdminIdChangePage />} />
+                  <Route path="/admin/salary" element={<AdminSalaryPage />} />
+                  <Route path="/admin/agencies" element={<AdminAgenciesPage />} />
+                  <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                  <Route path="/admin/support" element={<AdminSupportPage />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/policy" element={<PolicyPage />} />
                   <Route path="/quick-support" element={<QuickSupport />} />
