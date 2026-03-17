@@ -12,7 +12,7 @@ import {
   Loader2, Eye, EyeOff, Upload, Wallet,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift, Users,
-  ArrowRight, Bell, ScrollText, Hash, Crown, Settings as SettingsIcon,
+  ArrowRight, Bell, ScrollText, Hash, Crown, Settings as SettingsIcon, BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
