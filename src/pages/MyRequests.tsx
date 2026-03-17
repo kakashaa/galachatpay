@@ -3,11 +3,14 @@ import { useNavigate } from "react-router-dom";
 import {
   FileText, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
   Wallet, Zap, Globe, CreditCard, User, Image as ImageIcon, Sparkles, Frame, RefreshCw, Headset,
+  ArrowUpRight, Hash, Link2,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+
+const EXT_API = "https://galachat.site/project-z/api.php";
 
 interface SalaryRequest {
   id: string;
@@ -22,6 +25,7 @@ interface SalaryRequest {
   admin_note: string | null;
   transfer_image_url: string | null;
   created_at: string;
+  transaction_id?: string | null;
 }
 
 interface ClaimRecord {
@@ -45,9 +49,33 @@ interface ApiRequest {
   admin_note?: string;
 }
 
+interface Transfer {
+  reference_id: string;
+  amount_usd: number;
+  time: string;
+  is_used: boolean;
+  selectable: boolean;
+}
+
+interface ExtSalaryRequest {
+  id: string;
+  amount: number;
+  status: string;
+  bank: string;
+  country: string;
+  created_at: string;
+  reference_id?: string;
+  account_name?: string;
+  account_number?: string;
+  whatsapp?: string;
+  admin_note?: string;
+  transfer_image_url?: string;
+  rejection_image_url?: string;
+}
+
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode; bg: string }> = {
   pending: { label: "قيد المراجعة", color: "text-yellow-400", icon: <Clock className="w-4 h-4" />, bg: "bg-yellow-500/10 border-yellow-500/20" },
-  approved: { label: "تم القبول", color: "text-emerald-400", icon: <CheckCircle className="w-4 h-4" />, bg: "bg-emerald-500/10 border-emerald-500/20" },
+  approved: { label: "تم التسليم", color: "text-emerald-400", icon: <CheckCircle className="w-4 h-4" />, bg: "bg-emerald-500/10 border-emerald-500/20" },
   rejected: { label: "مرفوض", color: "text-red-400", icon: <XCircle className="w-4 h-4" />, bg: "bg-red-500/10 border-red-500/20" },
   completed: { label: "مكتمل", color: "text-emerald-400", icon: <CheckCircle className="w-4 h-4" />, bg: "bg-emerald-500/10 border-emerald-500/20" },
 };
@@ -68,6 +96,8 @@ const MyRequests: React.FC = () => {
   const [entryClaims, setEntryClaims] = useState<ClaimRecord[]>([]);
   const [frameClaims, setFrameClaims] = useState<ClaimRecord[]>([]);
   const [apiRequests, setApiRequests] = useState<ApiRequest[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [extSalaryRequests, setExtSalaryRequests] = useState<ExtSalaryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -84,15 +114,24 @@ const MyRequests: React.FC = () => {
   const fetchAll = async () => {
     if (!user) return;
     setLoading(true);
-    const [salaryRes, entryRes, frameRes] = await Promise.all([
+
+    // Parallel: Supabase + external API
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    const [salaryRes, entryRes, frameRes, transfersRes, extRequestsRes] = await Promise.all([
       supabase.from("salary_requests").select("*").eq("user_uuid", user.uuid).order("created_at", { ascending: false }),
       supabase.from("entry_gift_claims").select("*").eq("user_uuid", user.uuid).order("created_at", { ascending: false }),
       supabase.from("frame_claims").select("*").eq("user_uuid", user.uuid).order("created_at", { ascending: false }),
+      fetch(`${EXT_API}?action=user_transfers&uuid=${user.uuid}`).then(r => r.json()).catch(() => ({ transfers: [] })),
+      fetch(`${EXT_API}?action=my_salary_requests&uuid=${user.uuid}&month=${month}`).then(r => r.json()).catch(() => ({ requests: [] })),
     ]);
 
     if (salaryRes.data) setRequests(salaryRes.data as SalaryRequest[]);
     if (entryRes.data) setEntryClaims((entryRes.data as any[]).map(c => ({ ...c, type: "entry" as const })));
     if (frameRes.data) setFrameClaims((frameRes.data as any[]).map(c => ({ ...c, type: "frame" as const })));
+    if (transfersRes?.transfers) setTransfers(transfersRes.transfers);
+    if (extRequestsRes?.requests) setExtSalaryRequests(extRequestsRes.requests);
 
     // Fetch general requests from API
     try {
@@ -124,6 +163,21 @@ const MyRequests: React.FC = () => {
     const hours = String(d.getUTCHours()).padStart(2, "0");
     const minutes = String(d.getUTCMinutes()).padStart(2, "0");
     return `${hours}:${minutes}`;
+  };
+
+  // Link transfers to salary requests by reference_id
+  const getTransferStatus = (transfer: Transfer) => {
+    const linkedReq = extSalaryRequests.find(r => r.reference_id === transfer.reference_id);
+    if (linkedReq) {
+      if (linkedReq.status === "rejected") {
+        return { status: "rejected" as const, label: `الطلب مرفوض`, reqId: linkedReq.id };
+      }
+      return { status: "linked" as const, label: `مرتبطة بطلب ${linkedReq.id}`, reqId: linkedReq.id };
+    }
+    if (transfer.is_used) {
+      return { status: "used" as const, label: "مستخدمة", reqId: null };
+    }
+    return { status: "waiting" as const, label: "بانتظار الربط — اسحب راتبك", reqId: null };
   };
 
   const allClaims = [...entryClaims, ...frameClaims].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -180,20 +234,151 @@ const MyRequests: React.FC = () => {
               </div>
             </div>
 
-            {requests.length === 0 && (
-              <div className="flex flex-col items-center py-16 text-center css-fade-up">
-                <div className="w-16 h-16 rounded-full bg-muted/30 flex items-center justify-center mb-4">
-                  <FileText className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-base font-bold text-foreground mb-2">لا توجد طلبات</h3>
-                <p className="text-sm text-muted-foreground mb-6">لم تقم بإرسال أي طلب سحب راتب بعد</p>
-                <button onClick={() => navigate("/salary")} className="px-6 py-3 rounded-xl gold-gradient text-primary-foreground font-bold text-sm">
-                  سحب راتب جديد
-                </button>
+            {/* ━━━ Transfers Section ━━━ */}
+            {transfers.length > 0 && (
+              <div className="space-y-2.5 css-fade-up">
+                <h3 className="text-xs font-bold text-foreground flex items-center gap-2 px-1">
+                  <ArrowUpRight className="w-3.5 h-3.5 text-primary" /> حوالات الراتب ({transfers.length})
+                </h3>
+                {transfers.map((t) => {
+                  const tStatus = getTransferStatus(t);
+                  const statusColors = {
+                    linked: { dot: "🟢", border: "border-emerald-500/20", text: "text-emerald-400" },
+                    waiting: { dot: "🟡", border: "border-amber-500/20", text: "text-amber-400" },
+                    rejected: { dot: "🔴", border: "border-red-500/20", text: "text-red-400" },
+                    used: { dot: "⚪", border: "border-muted/20", text: "text-muted-foreground" },
+                  };
+                  const sc = statusColors[tStatus.status];
+                  return (
+                    <div key={t.reference_id} className={`glass-card p-3.5 rounded-xl border ${sc.border} space-y-2`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{sc.dot}</span>
+                          <span className="text-xs font-mono font-bold text-foreground">حوالة #{t.reference_id}</span>
+                        </div>
+                        <span className="text-sm font-black text-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <ArrowUpRight className="w-3 h-3" /> UUID 10000
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {tStatus.status === "linked" && <Link2 className="w-3 h-3 text-emerald-400" />}
+                        {tStatus.status === "rejected" && <XCircle className="w-3 h-3 text-red-400" />}
+                        {tStatus.status === "waiting" && <Clock className="w-3 h-3 text-amber-400" />}
+                        <span className={`text-[11px] font-bold ${sc.text}`}>{tStatus.label}</span>
+                      </div>
+                      {tStatus.status === "waiting" && (
+                        <button onClick={() => navigate("/salary")}
+                          className="w-full text-[10px] text-primary font-bold py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
+                          اسحب راتبك الآن →
+                        </button>
+                      )}
+                      {tStatus.status === "rejected" && (
+                        <button onClick={() => navigate("/salary")}
+                          className="w-full text-[10px] text-red-400 font-bold py-1.5 rounded-lg bg-red-500/5 hover:bg-red-500/10 transition-colors">
+                          إعادة المحاولة →
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {requests.map((req, index) => {
+            {/* ━━━ Salary Requests Section ━━━ */}
+            {extSalaryRequests.length > 0 && (
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-bold text-foreground flex items-center gap-2 px-1">
+                  <FileText className="w-3.5 h-3.5 text-primary" /> طلبات السحب ({extSalaryRequests.length})
+                </h3>
+                {extSalaryRequests.map((req) => {
+                  const st = statusConfig[req.status] || statusConfig.pending;
+                  const isExpanded = expandedId === `ext-${req.id}`;
+                  return (
+                    <div key={req.id} className={`glass-card overflow-hidden border ${st.bg}`}>
+                      <button onClick={() => setExpandedId(isExpanded ? null : `ext-${req.id}`)} className="w-full p-3.5 flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary/10 shrink-0">
+                            <Wallet className="w-4.5 h-4.5 text-primary" />
+                          </div>
+                          <div className="text-right min-w-0">
+                            <p className="text-xs font-bold text-foreground truncate">{req.id}</p>
+                            <p className="text-[10px] text-muted-foreground">{req.bank} — {req.country}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 mr-2">
+                          <div className="text-left">
+                            <p className="text-sm font-bold font-mono text-foreground" dir="ltr">${req.amount}</p>
+                            <span className={`text-[10px] font-bold flex items-center gap-1 ${st.color}`}>{st.icon}{st.label}</span>
+                          </div>
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-3.5 pb-3.5 space-y-2 border-t border-border/20 pt-3">
+                          <div className="text-xs space-y-1.5">
+                            {req.reference_id && (
+                              <div className="flex justify-between bg-muted/20 rounded-lg p-2.5">
+                                <span className="text-muted-foreground flex items-center gap-1"><Hash className="w-3 h-3" /> المرجعي</span>
+                                <span className="font-bold font-mono text-foreground">#{req.reference_id}</span>
+                              </div>
+                            )}
+                            {req.account_name && (
+                              <div className="flex justify-between bg-muted/20 rounded-lg p-2.5">
+                                <span className="text-muted-foreground flex items-center gap-1"><User className="w-3 h-3" /> المستلم</span>
+                                <span className="font-bold text-foreground">{req.account_name}</span>
+                              </div>
+                            )}
+                            {req.account_number && (
+                              <div className="flex justify-between bg-muted/20 rounded-lg p-2.5">
+                                <span className="text-muted-foreground flex items-center gap-1"><CreditCard className="w-3 h-3" /> الحساب</span>
+                                <span className="font-bold text-foreground" dir="ltr">{req.account_number}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between bg-muted/20 rounded-lg p-2.5">
+                              <span className="text-muted-foreground">التاريخ</span>
+                              <span className="font-bold text-foreground">{formatDate(req.created_at)}</span>
+                            </div>
+                          </div>
+                          {req.status === "approved" && req.transfer_image_url && (
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                                <ImageIcon className="w-3.5 h-3.5" /> إيصال التحويل:
+                              </p>
+                              <img src={req.transfer_image_url} alt="إيصال"
+                                className="w-full max-h-48 object-contain rounded-xl border border-emerald-500/20 cursor-pointer bg-black/20"
+                                onClick={() => setImagePreview(req.transfer_image_url!)} />
+                            </div>
+                          )}
+                          {req.status === "rejected" && req.admin_note && (
+                            <div className="p-2.5 rounded-xl bg-red-500/5 border border-red-500/10 text-xs">
+                              <p className="text-[10px] text-red-400 font-bold mb-0.5">سبب الرفض:</p>
+                              <p className="text-foreground">{req.admin_note}</p>
+                            </div>
+                          )}
+                          {req.status === "rejected" && req.rejection_image_url && (
+                            <img src={req.rejection_image_url} alt="توضيح"
+                              className="w-full max-h-48 object-contain rounded-xl border border-red-500/20 cursor-pointer"
+                              onClick={() => setImagePreview(req.rejection_image_url!)} />
+                          )}
+                          {req.status === "rejected" && (
+                            <Button onClick={() => navigate("/salary")} className="w-full" size="sm">
+                              <RefreshCw className="w-4 h-4 ml-1" /> إعادة المحاولة
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ━━━ Supabase Salary Requests (legacy) ━━━ */}
+            {requests.length > 0 && extSalaryRequests.length === 0 && requests.map((req, index) => {
               const status = statusConfig[req.status] || statusConfig.pending;
               const isExpanded = expandedId === req.id;
               return (
@@ -273,6 +458,19 @@ const MyRequests: React.FC = () => {
                 </div>
               );
             })}
+
+            {requests.length === 0 && transfers.length === 0 && extSalaryRequests.length === 0 && (
+              <div className="flex flex-col items-center py-16 text-center css-fade-up">
+                <div className="w-16 h-16 rounded-full bg-muted/30 flex items-center justify-center mb-4">
+                  <FileText className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-base font-bold text-foreground mb-2">لا توجد طلبات</h3>
+                <p className="text-sm text-muted-foreground mb-6">لم تقم بإرسال أي طلب سحب راتب بعد</p>
+                <button onClick={() => navigate("/salary")} className="px-6 py-3 rounded-xl gold-gradient text-primary-foreground font-bold text-sm">
+                  سحب راتب جديد
+                </button>
+              </div>
+            )}
           </>
         )}
 
