@@ -705,6 +705,42 @@ const AdminDashboardPage: React.FC = () => {
     finally { setSalaryActionLoading(false); }
   };
 
+  // VIP grant handler
+  const handleGrantVip = async () => {
+    if (!adminStarUuid.trim()) { toast.error('أدخل UUID'); return; }
+    setVipGrantLoading(true);
+    try {
+      const res = await fetch('https://galachat.site/project-z/api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          admin_key: 'ghala2026owner',
+          action: 'admin_give_vip',
+          uuid: adminStarUuid.trim(),
+          level: parseInt(vipGrantLevel),
+          duration: vipGrantDuration,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('تم إهداء VIP بنجاح');
+        setAdminStarUuid('');
+        // Log the action
+        await supabase.from('admin_audit_log').insert({
+          admin_username: adminUsername || '',
+          admin_role: adminRole || '',
+          action: 'grant_vip',
+          details: { uuid: adminStarUuid.trim(), level: vipGrantLevel, duration: vipGrantDuration },
+        });
+      } else {
+        toast.error(data.error || 'فشلت العملية');
+      }
+    } catch {
+      toast.error('فشل الاتصال');
+    }
+    setVipGrantLoading(false);
+  };
+
   // Animated photo approve/reject handlers
   const handleAnimatedPhotoApprove = async (photo: AnimatedPhotoRequest) => {
     setSalaryActionLoading(true);
