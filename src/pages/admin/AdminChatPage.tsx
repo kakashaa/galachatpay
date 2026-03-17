@@ -1,151 +1,335 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useAdminSession } from "@/hooks/use-admin-session";
-import AdminPageLayout from "@/components/AdminPageLayout";
-import { supabase } from "@/integrations/supabase/client";
-import { Input } from "@/components/ui/input";
-import { Loader2, Send, MessageSquare, Shield, Users } from "lucide-react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, Loader2, MessageCircle, ArrowRight, Users, Shield, Mic, ImageIcon, Phone, StopCircle, ArrowLeft, Headset } from 'lucide-react';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAdminSession } from '@/hooks/use-admin-session';
+import { useNavigate } from 'react-router-dom';
 
-type ChatGroup = "super_group" | "all_group";
+const API = "https://galachat.site/project-z/api.php";
+const ADMIN_KEY = "ghala2026owner";
 
-const AdminChatPage: React.FC = () => {
-  const { adminCall, adminUsername, adminDisplayName, handleLogout, isSuperAdmin } = useAdminSession();
-  const [activeGroup, setActiveGroup] = useState<ChatGroup | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+interface ChatRoom {
+  id: string;
+  name: string;
+  type: string;
+  members: number;
+  last_message?: { text: string; sender: string; time: string };
+  unread: number;
+}
+
+interface ChatMessage {
+  id: string;
+  sender: string;
+  sender_name: string;
+  text: string;
+  type: string;
+  time: string;
+}
+
+export default function AdminChatPage() {
+  const { adminUsername, adminDisplayName } = useAdminSession();
+  const navigate = useNavigate();
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [activeRoom, setActiveRoom] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const [recording, setRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const messagesEnd = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (activeGroup) loadMessages();
-  }, [activeGroup]);
+  const adminName = adminUsername || 'naz';
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Realtime
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-chat-rt")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "admin_chat_messages" }, (payload) => {
-        setMessages(prev => [...prev, payload.new]);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+  const fetchRooms = useCallback(async () => {
+    try {
+      const fd = new FormData();
+      fd.append('action', 'admin_chat_list');
+      fd.append('admin_key', ADMIN_KEY);
+      const res = await fetch(API, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) setRooms(data.chats || []);
+    } catch { }
+    setLoading(false);
   }, []);
 
-  const loadMessages = async () => {
-    setLoading(true);
+  const fetchMessages = useCallback(async (roomId: string) => {
     try {
-      const { data } = await supabase
-        .from("admin_chat_messages")
-        .select("*")
-        .eq("message_type", activeGroup === "super_group" ? "super" : "general")
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: true })
-        .limit(50);
-      setMessages(data || []);
+      const fd = new FormData();
+      fd.append('action', 'admin_chat_messages');
+      fd.append('admin_key', ADMIN_KEY);
+      fd.append('chat_id', roomId);
+      fd.append('limit', '50');
+      const res = await fetch(API, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) setMessages(data.messages || []);
     } catch { }
-    finally { setLoading(false); }
-  };
+  }, []);
 
-  const sendMessage = async () => {
-    if (!message.trim() || !activeGroup) return;
+  useEffect(() => { fetchRooms(); }, [fetchRooms]);
+
+  useEffect(() => {
+    if (activeRoom) {
+      fetchMessages(activeRoom);
+      const iv = setInterval(() => fetchMessages(activeRoom), 5000);
+      return () => clearInterval(iv);
+    }
+  }, [activeRoom, fetchMessages]);
+
+  useEffect(() => {
+    messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async (text: string, type = 'text') => {
+    if (!text.trim() || !activeRoom) return;
     setSending(true);
     try {
-      await supabase.from("admin_chat_messages").insert({
-        sender_username: adminUsername || "",
-        sender_display_name: adminDisplayName || "",
-        message: message.trim(),
-        message_type: activeGroup === "super_group" ? "super" : "general",
-      });
-      setMessage("");
-    } catch { }
-    finally { setSending(false); }
+      const fd = new FormData();
+      fd.append('action', 'admin_chat_send');
+      fd.append('admin_key', ADMIN_KEY);
+      fd.append('chat_id', activeRoom);
+      fd.append('message', text);
+      fd.append('sender', adminName);
+      fd.append('type', type);
+      const res = await fetch(API, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => [...prev, data.message]);
+        setInput('');
+      }
+    } catch { toast.error('فشل الإرسال'); }
+    setSending(false);
   };
 
-  if (!activeGroup) {
+  const handleVoiceToggle = () => {
+    if (recording) {
+      setRecording(false);
+      clearInterval(timerRef.current);
+      const duration = recordingTime;
+      setRecordingTime(0);
+      sendMessage(`🎤 رسالة صوتية (${duration}ث)`, 'voice');
+    } else {
+      setRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    }
+  };
+
+  const handleImageUpload = () => { fileInputRef.current?.click(); };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) sendMessage(`📷 صورة: ${file.name}`, 'image');
+  };
+
+  const handleCall = () => {
+    toast.info('🔊 جاري بدء المكالمة الصوتية...');
+    sendMessage('📞 بدأ مكالمة صوتية', 'call');
+  };
+
+  const formatTime = (t: string) => {
+    try {
+      const d = new Date(t.replace(' ', 'T'));
+      return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    } catch { return t; }
+  };
+
+  // Room list view
+  if (!activeRoom) {
     return (
-      <AdminPageLayout title="دردشة الإدارة" accentColor="#10b981" onLogout={handleLogout}>
-        <div className="max-w-2xl mx-auto p-4 space-y-4" dir="rtl">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-            {isSuperAdmin && (
-              <button onClick={() => setActiveGroup("super_group")}
-                className="w-full bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-2xl p-5 flex items-center gap-4 hover:border-emerald-500/40 transition-colors active:scale-[0.98]">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-emerald-400">مجموعة المشرفين</p>
-                  <p className="text-[11px] text-muted-foreground">السوبر أدمن فقط</p>
-                </div>
-              </button>
-            )}
-            <button onClick={() => setActiveGroup("all_group")}
-              className="w-full bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] rounded-2xl p-5 flex items-center gap-4 hover:border-white/15 transition-colors active:scale-[0.98]">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-foreground">المسؤولين + المنسقين</p>
-                <p className="text-[11px] text-muted-foreground">جميع أعضاء الفريق</p>
-              </div>
-            </button>
-          </motion.div>
+      <div className="max-w-2xl mx-auto p-4 space-y-4 min-h-screen" dir="rtl">
+        <div className="flex items-center justify-between">
+          <button onClick={() => navigate('/admin/dashboard')} className="text-muted-foreground">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg font-bold text-emerald-400">الدردشة</h1>
+          <MessageCircle className="w-5 h-5 text-emerald-400" />
         </div>
-      </AdminPageLayout>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Quick Support */}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => navigate('/admin/support')}
+              className="w-full bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-cyan-500/20 rounded-2xl p-4 flex items-center gap-3"
+            >
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                <Headset className="w-5 h-5 text-cyan-400" />
+              </div>
+              <div className="text-right flex-1">
+                <p className="text-sm font-bold text-cyan-400">الدعم السريع</p>
+                <p className="text-[10px] text-muted-foreground">تذاكر المستخدمين</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-cyan-400" />
+            </motion.button>
+
+            {/* Chat Groups */}
+            {rooms.map((room, i) => (
+              <motion.button
+                key={room.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: (i + 1) * 0.1 }}
+                onClick={() => setActiveRoom(room.id)}
+                className="w-full bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-3"
+              >
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    {room.type === 'super_group' ? (
+                      <Shield className="w-6 h-6 text-emerald-400" />
+                    ) : (
+                      <Users className="w-6 h-6 text-emerald-400" />
+                    )}
+                  </div>
+                  {room.unread > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-[9px] text-white font-bold flex items-center justify-center">
+                      {room.unread}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">{room.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {room.last_message ? `${room.last_message.sender}: ${room.last_message.text}` : 'لا رسائل بعد'}
+                  </p>
+                </div>
+                <div className="text-left shrink-0">
+                  <p className="text-[9px] text-muted-foreground">
+                    {room.last_message ? formatTime(room.last_message.time) : ''}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground">{room.members} عضو</p>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )}
+      </div>
     );
   }
 
+  // Chat view
+  const currentRoom = rooms.find(r => r.id === activeRoom);
+
   return (
-    <AdminPageLayout title={activeGroup === "super_group" ? "مجموعة المشرفين" : "مجموعة الكل"} accentColor="#10b981" onLogout={handleLogout}
-      rightContent={<button onClick={() => setActiveGroup(null)} className="text-[11px] text-muted-foreground hover:text-foreground px-2">← رجوع</button>}>
-      <div className="flex flex-col h-[calc(100vh-120px)]">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {loading ? (
-            <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-emerald-400" /></div>
-          ) : messages.length === 0 ? (
-            <div className="text-center py-20 text-muted-foreground"><MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-50" /><p className="text-sm">لا توجد رسائل بعد</p></div>
-          ) : messages.map((msg: any) => {
-            const isMine = msg.sender_username === adminUsername;
+    <div className="max-w-2xl mx-auto flex flex-col h-screen" dir="rtl">
+      {/* Header */}
+      <div className="bg-[#111318] border-b border-white/5 px-4 py-3 flex items-center gap-3 shrink-0">
+        <button onClick={() => setActiveRoom(null)} className="text-muted-foreground">
+          <ArrowRight className="w-5 h-5" />
+        </button>
+        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+          {currentRoom?.type === 'super_group' ? (
+            <Shield className="w-5 h-5 text-emerald-400" />
+          ) : (
+            <Users className="w-5 h-5 text-emerald-400" />
+          )}
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-white">{currentRoom?.name}</p>
+          <p className="text-[10px] text-emerald-400">{currentRoom?.members} عضو</p>
+        </div>
+        <button onClick={handleCall} className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center">
+          <Phone className="w-4 h-4 text-emerald-400" />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        <AnimatePresence>
+          {messages.map((msg, i) => {
+            const isMe = msg.sender === adminName;
             return (
-              <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`} dir="rtl">
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${isMine ? "bg-emerald-600 text-white rounded-bl-md" : "bg-white/[0.06] text-foreground rounded-br-md"}`}>
-                  {!isMine && <p className="text-[10px] font-bold text-emerald-400 mb-0.5">{msg.sender_display_name}</p>}
-                  <p className="text-sm leading-relaxed">{msg.message}</p>
-                  <p className={`text-[9px] mt-1 ${isMine ? "text-white/60" : "text-muted-foreground"}`}>
-                    {new Date(msg.created_at).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
+              <motion.div
+                key={msg.id || i}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}
+              >
+                <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${
+                  isMe
+                    ? 'bg-emerald-500/20 border border-emerald-500/10'
+                    : 'bg-white/[0.06] border border-white/5'
+                }`}>
+                  {!isMe && (
+                    <p className="text-[9px] font-bold text-emerald-400 mb-0.5">{msg.sender_name}</p>
+                  )}
+                  {msg.type === 'voice' ? (
+                    <div className="flex items-center gap-2">
+                      <Mic className="w-4 h-4 text-emerald-400" />
+                      <div className="w-24 h-1 bg-emerald-500/30 rounded-full">
+                        <div className="w-1/2 h-full bg-emerald-400 rounded-full" />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">0:05</span>
+                    </div>
+                  ) : msg.type === 'image' ? (
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs">{msg.text}</span>
+                    </div>
+                  ) : msg.type === 'call' ? (
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-green-400" />
+                      <span className="text-xs text-green-400">{msg.text}</span>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                  )}
+                  <p className="text-[8px] text-muted-foreground mt-1 text-left">{formatTime(msg.time)}</p>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-          <div ref={endRef} />
-        </div>
+        </AnimatePresence>
+        <div ref={messagesEnd} />
+      </div>
 
-        {/* Input */}
-        <div className="border-t border-white/5 p-3 bg-background/80 backdrop-blur-xl">
-          <div className="flex gap-2 max-w-2xl mx-auto">
-            <Input
+      {/* Input */}
+      <div className="bg-[#111318] border-t border-white/5 px-3 py-2 shrink-0">
+        {recording ? (
+          <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-2">
+            <button onClick={handleVoiceToggle} className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center animate-pulse">
+              <StopCircle className="w-4 h-4 text-white" />
+            </button>
+            <div className="flex-1 text-center">
+              <span className="text-sm text-red-400 font-mono">{recordingTime}ث</span>
+              <span className="text-xs text-muted-foreground mr-2">جاري التسجيل...</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+            <button onClick={handleImageUpload} className="w-9 h-9 rounded-full bg-white/[0.05] flex items-center justify-center shrink-0">
+              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button onClick={handleVoiceToggle} className="w-9 h-9 rounded-full bg-white/[0.05] flex items-center justify-center shrink-0">
+              <Mic className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
               placeholder="اكتب رسالتك..."
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-              className="flex-1"
+              className="flex-1 bg-white/[0.05] border border-white/5 rounded-full px-4 py-2 text-sm outline-none"
               dir="rtl"
             />
-            <button onClick={sendMessage} disabled={sending || !message.trim()}
-              className="p-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 transition-colors">
-              {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || sending}
+              className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 disabled:opacity-30"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Send className="w-4 h-4 text-white" />}
             </button>
           </div>
-        </div>
+        )}
       </div>
-    </AdminPageLayout>
+    </div>
   );
-};
-
-export default AdminChatPage;
+}
