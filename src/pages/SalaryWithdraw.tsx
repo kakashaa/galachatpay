@@ -193,17 +193,23 @@ const SalaryWithdraw: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`);
-      const data: TransfersResult = await res.json();
+      const [transfersRes, salaryRes] = await Promise.all([
+        fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`),
+        fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`),
+      ]);
+      const data: TransfersResult = await transfersRes.json();
+      const salaryData = await salaryRes.json();
+
       const allTransfers = data.transfers || [];
       setTransfers(allTransfers);
-      setIsAgencyOwner(!!data.is_agency_owner);
+      const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
+      setIsAgencyOwner(agencyOwner);
 
       const used = allTransfers.filter(t => t.is_used).length;
       setUsedCount(used);
 
       const newTransfers = allTransfers.filter(t => !t.is_used && t.selectable);
-      const { maxTotal } = getWithdrawalLimits(!!data.is_agency_owner);
+      const { maxTotal } = getWithdrawalLimits(agencyOwner);
 
       if (used >= maxTotal) {
         setStep("exhausted");
@@ -220,15 +226,10 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleSelectTransfer = (transfer: Transfer) => {
+  const handleSelectTransfer = (transfer: Transfer, mode: "cash" | "coins") => {
     setSelectedTransfer(transfer);
 
-    const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
-    const selectedIndex = newTransfers.indexOf(transfer);
-    const { maxCash } = getWithdrawalLimits(isAgencyOwner);
-    const isCash = (usedCount + selectedIndex) < maxCash;
-
-    if (isCash) {
+    if (mode === "cash") {
       const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
       if (!canWithdrawCash) {
         toast.error(`سحب الراتب النقدي متاح فقط من يوم ${startDay} إلى ${lastDay} من الشهر`);
@@ -509,6 +510,7 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "transfers_list") {
     const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
     const usedTransfers = transfers.filter(t => t.is_used);
+    const oldTransfers = transfers.filter(t => !t.is_used && !t.selectable);
     const { maxCash, maxTotal } = getWithdrawalLimits(isAgencyOwner);
     const cashLeft = Math.max(0, maxCash - usedCount);
     const { canWithdrawCash, startDay } = getCashWithdrawDates();
@@ -518,6 +520,7 @@ const SalaryWithdraw: React.FC = () => {
         <div className="px-5 py-6 space-y-5">
           <div className="text-center space-y-2">
             <h2 className="text-lg font-bold text-foreground">حوالاتك إلى الإدارة</h2>
+            <p className="text-[10px] text-muted-foreground">UUID: {TRANSFER_TARGET_ID}</p>
             <p className="text-xs text-muted-foreground">
               سحبت {usedCount} من {maxTotal} هذا الشهر
             </p>
@@ -531,44 +534,73 @@ const SalaryWithdraw: React.FC = () => {
             </p>
           </div>
 
-          {/* New (selectable) transfers */}
+          {/* Selectable transfers */}
           {newTransfers.length > 0 && (
             <div className="space-y-3">
-              {newTransfers.map((t, i) => {
-                const isCash = (usedCount + i) < maxCash;
-                return (
-                  <motion.button
-                    key={t.reference_id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => handleSelectTransfer(t)}
-                    className="w-full glass-card p-4 rounded-2xl border border-emerald-500/20 hover:border-emerald-500/40 active:scale-[0.98] transition-all text-right space-y-2"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">🟢</span>
-                        <span className="text-sm font-mono font-bold text-foreground">#{t.reference_id}</span>
-                      </div>
-                      <span className="text-lg font-black text-emerald-400" dir="ltr">${t.amount_usd.toFixed(2)}</span>
+              {newTransfers.map((t, i) => (
+                <motion.div
+                  key={t.reference_id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="w-full glass-card p-4 rounded-2xl border border-emerald-500/20 text-right space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🟢</span>
+                      <span className="text-sm font-mono font-bold text-foreground">#{t.reference_id}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                      <span className={cn(
-                        "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                        isCash ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
-                      )}>
-                        {isCash ? "💵 نقدي" : "🪙 كوينز"}
-                      </span>
+                    <span className="text-lg font-black text-emerald-400" dir="ltr">${t.amount_usd.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {cashLeft > 0 && (
+                      <Button
+                        onClick={() => handleSelectTransfer(t, "cash")}
+                        size="sm"
+                        className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        💵 سحب نقدي
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => handleSelectTransfer(t, "coins")}
+                      size="sm"
+                      variant={cashLeft > 0 ? "outline" : "default"}
+                      className={cn(
+                        "flex-1 h-9 text-xs font-bold",
+                        cashLeft > 0 ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10" : "gold-gradient text-primary-foreground"
+                      )}
+                    >
+                      🪙 شحن كوينز
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* Old (non-selectable) transfers */}
+          {oldTransfers.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-muted-foreground font-bold px-1">حوالات قديمة:</p>
+              {oldTransfers.map(t => (
+                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-muted/20 opacity-50 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔴</span>
+                      <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
                     </div>
-                    <div className="flex items-center justify-center pt-1">
-                      <span className="text-[10px] text-primary flex items-center gap-1">
-                        اختيار للسحب <ArrowLeft className="w-3 h-3" />
-                      </span>
-                    </div>
-                  </motion.button>
-                );
-              })}
+                    <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                    <span className="text-[10px] text-muted-foreground font-bold">(قديمة)</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
