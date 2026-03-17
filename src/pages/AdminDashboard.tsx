@@ -903,6 +903,8 @@ const AdminDashboardPage: React.FC = () => {
 
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
     { key: "admin_chat", label: "دردشة الإدارة", icon: <MessageSquare className="w-4 h-4" />, color: "text-emerald-400" },
+    { key: "admin_support", label: "الدعم الفني", icon: <Headset className="w-4 h-4" />, color: "text-cyan-400" },
+    { key: "manual_actions", label: "صلاحيات يدوية", icon: <Crown className="w-4 h-4" />, color: "text-amber-400" },
     { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-4 h-4" />, color: "text-blue-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
     { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" />, color: "text-purple-400" },
     { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" />, color: "text-blue-400" },
