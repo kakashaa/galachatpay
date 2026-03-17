@@ -14,6 +14,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 const API = "https://galachat.site/project-z/api.php";
 
