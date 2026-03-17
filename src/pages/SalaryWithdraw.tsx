@@ -624,7 +624,7 @@ const SalaryWithdraw: React.FC = () => {
     const w = allData.withdrawals;
     const { maxCash, maxTotal } = getWithdrawalLimits(true);
     const cashLeft = Math.max(0, maxCash - w.count);
-    const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
+    const { canWithdrawCash, startDay } = getCashWithdrawDates();
 
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
