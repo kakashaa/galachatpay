@@ -39,8 +39,10 @@ import AdminAgencyManager from "@/components/AdminAgencyManager";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
 import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
 import AdminGroupChat from "@/components/AdminGroupChat";
+import AdminSupportManager from "@/components/AdminSupportManager";
+import AdminManualActions from "@/components/AdminManualActions";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | "admin_chat" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | "admin_chat" | "admin_support" | "manual_actions" | null;
 
 
 interface VideoTutorial {
@@ -883,7 +885,7 @@ const AdminDashboardPage: React.FC = () => {
     {
       id: "chat", title: "الدردشة والدعم", description: "تواصل + مساعدة",
       icon: <MessageSquare className="w-10 h-10" />, gradient: "from-emerald-500/15 to-emerald-600/5", iconColor: "text-emerald-400",
-      tabs: ["admin_chat", "support_tickets", "support_chats", "quick_support"],
+      tabs: ["admin_chat", "admin_support", "support_tickets", "support_chats", "quick_support", "manual_actions"],
       roles: ["owner", "super_admin", "admin"],
     },
     {
@@ -901,6 +903,8 @@ const AdminDashboardPage: React.FC = () => {
 
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
     { key: "admin_chat", label: "دردشة الإدارة", icon: <MessageSquare className="w-4 h-4" />, color: "text-emerald-400" },
+    { key: "admin_support", label: "الدعم الفني", icon: <Headset className="w-4 h-4" />, color: "text-cyan-400" },
+    { key: "manual_actions", label: "صلاحيات يدوية", icon: <Crown className="w-4 h-4" />, color: "text-amber-400" },
     { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-4 h-4" />, color: "text-blue-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
     { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" />, color: "text-purple-400" },
     { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" />, color: "text-blue-400" },
@@ -2537,6 +2541,20 @@ const AdminDashboardPage: React.FC = () => {
             {activeTab === "admin_chat" && (
               <motion.div key="admin_chat" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
                 <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole} />
+              </motion.div>
+            )}
+
+            {/* Admin Support Tab */}
+            {activeTab === "admin_support" && (
+              <motion.div key="admin_support" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminSupportManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={canAct} />
+              </motion.div>
+            )}
+
+            {/* Manual Actions Tab */}
+            {activeTab === "manual_actions" && (
+              <motion.div key="manual_actions" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminManualActions adminUsername={adminUsername || ''} />
               </motion.div>
             )}
 

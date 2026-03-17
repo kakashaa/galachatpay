@@ -1,17 +1,32 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Send, Loader2, Trash2, MessageCircle } from 'lucide-react';
+import { Send, Loader2, MessageCircle, Circle } from 'lucide-react';
 import { toast } from 'sonner';
+
+const API = "https://galachat.site/project-z/api.php";
+const ADMIN_KEY = "ghala2026owner";
+
+interface ChatRoom {
+  id: string;
+  name: string;
+  member_count: number;
+  last_message?: string;
+  last_time?: string;
+  unread?: number;
+}
 
 interface ChatMessage {
   id: string;
-  sender_username: string;
-  sender_display_name: string;
+  sender: string;
+  sender_name: string;
   message: string;
-  message_type: string;
-  is_deleted: boolean;
-  deleted_by: string | null;
   created_at: string;
+  is_deleted?: boolean;
+}
+
+interface OnlineAdmin {
+  username: string;
+  typing?: boolean;
+  chat_id?: string;
 }
 
 interface Props {
@@ -20,16 +35,37 @@ interface Props {
 }
 
 const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [onlineAdmins, setOnlineAdmins] = useState<OnlineAdmin[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const channelRef = useRef<any>(null);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
 
-  const isOwner = adminRole === 'super_admin';
+  const isOwner = adminRole === 'owner';
+  const isSuperAdmin = adminRole === 'super_admin' || isOwner;
+
+  const apiPost = async (body: Record<string, any>) => {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_key: ADMIN_KEY, ...body }),
+    });
+    return res.json();
+  };
+
+  const apiGet = async (params: Record<string, string>) => {
+    const url = new URL(API);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    const res = await fetch(url.toString());
+    return res.json();
+  };
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -37,116 +73,125 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
     }, 100);
   }, []);
 
-  // Load messages
+  // Load chat rooms
   useEffect(() => {
+    const loadRooms = async () => {
+      try {
+        const data = await apiPost({ action: 'admin_chat_list' });
+        if (data.success && data.chats) {
+          setChatRooms(data.chats);
+        } else {
+          // Default rooms
+          setChatRooms([
+            { id: 'super_group', name: 'مجموعة السوبر', member_count: 4 },
+            { id: 'all_admins', name: 'كل الإدارة', member_count: 12 },
+          ]);
+        }
+      } catch {
+        setChatRooms([
+          { id: 'super_group', name: 'مجموعة السوبر', member_count: 4 },
+          { id: 'all_admins', name: 'كل الإدارة', member_count: 12 },
+        ]);
+      }
+      setLoading(false);
+    };
+    loadRooms();
+  }, []);
+
+  // Load messages for active chat
+  useEffect(() => {
+    if (!activeChatId) return;
     const loadMessages = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('admin_chat_messages')
-        .select('*')
-        .order('created_at', { ascending: true })
-        .limit(200);
-      setMessages((data as ChatMessage[]) || []);
+      try {
+        const data = await apiPost({ action: 'admin_chat_messages', chat_id: activeChatId });
+        if (data.success && data.messages) {
+          setMessages(data.messages);
+        }
+      } catch { /* silent */ }
       setLoading(false);
       scrollToBottom();
     };
     loadMessages();
-  }, [scrollToBottom]);
+  }, [activeChatId, scrollToBottom]);
 
-  // Realtime subscription
+  // Polling for new messages + online status
   useEffect(() => {
-    const channel = supabase
-      .channel('admin-group-chat')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'admin_chat_messages' },
-        (payload) => {
-          const msg = payload.new as ChatMessage;
-          setMessages(prev => [...prev, msg]);
-          scrollToBottom();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'admin_chat_messages' },
-        (payload) => {
-          const updated = payload.new as ChatMessage;
-          setMessages(prev => prev.map(m => m.id === updated.id ? updated : m));
-        }
-      )
-      .subscribe();
+    if (!activeChatId) return;
 
-    channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
+    const poll = async () => {
+      try {
+        const [msgData, onlineData] = await Promise.all([
+          apiPost({ action: 'admin_chat_messages', chat_id: activeChatId }),
+          apiGet({ action: 'admin_online' }),
+        ]);
+        if (msgData.success && msgData.messages) {
+          setMessages(prev => {
+            if (msgData.messages.length !== prev.length) {
+              scrollToBottom();
+              return msgData.messages;
+            }
+            return msgData.messages;
+          });
+        }
+        if (onlineData.success && onlineData.admins) {
+          setOnlineAdmins(onlineData.admins);
+          const typing = onlineData.admins
+            .filter((a: OnlineAdmin) => a.typing && a.chat_id === activeChatId && a.username !== adminUsername)
+            .map((a: OnlineAdmin) => a.username);
+          setTypingUsers(typing);
+        }
+      } catch { /* silent */ }
     };
-  }, [scrollToBottom]);
 
-  // Presence for typing indicator
+    pollRef.current = setInterval(poll, 3000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [activeChatId, adminUsername, scrollToBottom]);
+
+  // Heartbeat every 10s
   useEffect(() => {
-    const presenceChannel = supabase.channel('admin-chat-presence', {
-      config: { presence: { key: adminUsername } },
-    });
+    if (!activeChatId) return;
 
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState();
-        const typing: string[] = [];
-        Object.entries(state).forEach(([key, values]) => {
-          if (key !== adminUsername && (values as any[])?.[0]?.typing) {
-            typing.push(key);
-          }
-        });
-        setTypingUsers(typing);
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({ typing: false });
-        }
-      });
-
-    return () => {
-      supabase.removeChannel(presenceChannel);
+    const beat = () => {
+      apiPost({
+        action: 'admin_heartbeat',
+        username: adminUsername,
+        typing: isTypingRef.current,
+        chat_id: activeChatId,
+      }).catch(() => {});
+      isTypingRef.current = false;
     };
-  }, [adminUsername]);
 
-  const broadcastTyping = useCallback(() => {
-    const presenceChannel = supabase.channel('admin-chat-presence');
-    presenceChannel.track({ typing: true });
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      presenceChannel.track({ typing: false });
-    }, 2000);
-  }, []);
+    beat();
+    heartbeatRef.current = setInterval(beat, 10000);
+    return () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current); };
+  }, [activeChatId, adminUsername]);
 
   const handleSend = async () => {
-    if (!newMessage.trim() || sending) return;
+    if (!newMessage.trim() || sending || !activeChatId) return;
     setSending(true);
     try {
-      const { error } = await supabase.from('admin_chat_messages').insert({
-        sender_username: adminUsername,
-        sender_display_name: adminUsername,
+      const data = await apiPost({
+        action: 'admin_chat_send',
+        chat_id: activeChatId,
         message: newMessage.trim(),
-        message_type: 'text',
-      } as any);
-      if (error) throw error;
-      setNewMessage('');
+        sender: adminUsername,
+      });
+      if (data.success) {
+        setNewMessage('');
+        // Immediate refresh
+        const msgData = await apiPost({ action: 'admin_chat_messages', chat_id: activeChatId });
+        if (msgData.success && msgData.messages) {
+          setMessages(msgData.messages);
+          scrollToBottom();
+        }
+      } else {
+        toast.error('فشل إرسال الرسالة');
+      }
     } catch {
       toast.error('فشل إرسال الرسالة');
     } finally {
       setSending(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await supabase.from('admin_chat_messages').update({
-        is_deleted: true,
-        deleted_by: adminUsername,
-      } as any).eq('id', id);
-    } catch {
-      toast.error('فشل حذف الرسالة');
     }
   };
 
@@ -160,6 +205,71 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
     return d.toLocaleDateString('ar-SA', { timeZone: 'Asia/Riyadh', month: 'short', day: 'numeric' });
   };
 
+  const isAdminOnline = (username: string) => onlineAdmins.some(a => a.username === username);
+
+  // Chat rooms list view
+  if (!activeChatId) {
+    return (
+      <div className="space-y-3">
+        {/* Online admins bar */}
+        {onlineAdmins.length > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+            <Circle className="w-2.5 h-2.5 fill-emerald-400 text-emerald-400" />
+            <span className="text-[11px] text-emerald-400 font-bold">
+              أونلاين: {onlineAdmins.map(a => a.username).join('، ')}
+            </span>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : chatRooms.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <MessageCircle className="w-10 h-10 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">لا توجد مجموعات</p>
+          </div>
+        ) : (
+          chatRooms
+            .filter(room => {
+              // super_group only for owner and super_admin
+              if (room.id === 'super_group' && !isSuperAdmin) return false;
+              return true;
+            })
+            .map(room => (
+              <button
+                key={room.id}
+                onClick={() => setActiveChatId(room.id)}
+                className="w-full bg-card border border-border/40 rounded-xl p-4 text-right hover:border-primary/30 transition-all active:scale-[0.98]"
+                dir="rtl"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <MessageCircle className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{room.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{room.member_count} أعضاء</p>
+                    </div>
+                  </div>
+                  {room.unread && room.unread > 0 && (
+                    <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {room.unread}
+                    </span>
+                  )}
+                </div>
+                {room.last_message && (
+                  <p className="text-[11px] text-muted-foreground mt-2 truncate">{room.last_message}</p>
+                )}
+              </button>
+            ))
+        )}
+      </div>
+    );
+  }
+
   // Group messages by date
   const groupedMessages: { date: string; msgs: ChatMessage[] }[] = [];
   messages.forEach(msg => {
@@ -172,8 +282,25 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
     }
   });
 
+  const activeRoom = chatRooms.find(r => r.id === activeChatId);
+
   return (
     <div className="flex flex-col h-[calc(100vh-180px)] max-h-[600px]">
+      {/* Chat header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/30">
+        <button
+          onClick={() => setActiveChatId(null)}
+          className="text-xs text-primary font-bold flex items-center gap-1"
+        >
+          ← رجوع
+        </button>
+        <div className="text-center">
+          <p className="text-sm font-bold text-foreground">{activeRoom?.name || activeChatId}</p>
+          <p className="text-[10px] text-muted-foreground">{activeRoom?.member_count} أعضاء</p>
+        </div>
+        <div className="w-12" />
+      </div>
+
       {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-1 px-2 py-3">
         {loading ? (
@@ -195,14 +322,14 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
                 </span>
               </div>
               {group.msgs.map((msg) => {
-                const isMine = msg.sender_username === adminUsername;
+                const isMine = msg.sender === adminUsername;
                 return (
                   <div
                     key={msg.id}
                     className={`flex mb-1.5 ${isMine ? 'justify-start' : 'justify-end'}`}
                   >
                     <div
-                      className={`relative group max-w-[80%] rounded-2xl px-3.5 py-2 ${
+                      className={`relative max-w-[80%] rounded-2xl px-3.5 py-2 ${
                         msg.is_deleted
                           ? 'bg-muted/20 border border-border/30'
                           : isMine
@@ -211,9 +338,12 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
                       }`}
                     >
                       {!isMine && (
-                        <p className="text-[10px] font-bold text-primary mb-0.5">
-                          {msg.sender_display_name || msg.sender_username}
-                        </p>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Circle className={`w-2 h-2 ${isAdminOnline(msg.sender) ? 'fill-emerald-400 text-emerald-400' : 'fill-muted-foreground/30 text-muted-foreground/30'}`} />
+                          <p className="text-[10px] font-bold text-primary">
+                            {msg.sender_name || msg.sender}
+                          </p>
+                        </div>
                       )}
                       {msg.is_deleted ? (
                         <p className="text-xs text-muted-foreground italic">🗑️ تم حذف الرسالة</p>
@@ -225,15 +355,6 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-[9px] text-muted-foreground">{formatTime(msg.created_at)}</span>
                       </div>
-                      {/* Delete button - owner can delete any, user can delete own */}
-                      {!msg.is_deleted && (isOwner || isMine) && (
-                        <button
-                          onClick={() => handleDelete(msg.id)}
-                          className="absolute -top-2 left-0 opacity-0 group-hover:opacity-100 p-1 rounded-full bg-destructive/10 hover:bg-destructive/20 transition-all"
-                        >
-                          <Trash2 className="w-3 h-3 text-destructive" />
-                        </button>
-                      )}
                     </div>
                   </div>
                 );
@@ -260,7 +381,7 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
             value={newMessage}
             onChange={(e) => {
               setNewMessage(e.target.value);
-              broadcastTyping();
+              isTypingRef.current = true;
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
