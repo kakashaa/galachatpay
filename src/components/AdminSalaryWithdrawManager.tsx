@@ -5,6 +5,7 @@ import {
   Loader2, FileText, Image, Printer, Building2,
   ChevronDown, ChevronUp, Eye, Phone, User, Hash, CalendarDays,
   MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3, ShieldCheck,
+  ShieldAlert, Coins, UserSearch, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,6 +120,60 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [rejectImage, setRejectImage] = useState<File | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // User report state
+  const [userReportReq, setUserReportReq] = useState<WithdrawRequest | null>(null);
+  const [userReportLoading, setUserReportLoading] = useState(false);
+  const [userReportData, setUserReportData] = useState<any>(null);
+  const [userReportAvatar, setUserReportAvatar] = useState("");
+
+  const fetchUserReport = async (req: WithdrawRequest) => {
+    setUserReportReq(req);
+    setUserReportLoading(true);
+    setUserReportData(null);
+    setUserReportAvatar("");
+    try {
+      const [salaryRes, avatarRes] = await Promise.all([
+        fetch(`${API}?action=salary_check_all&uuid=${req.user_uuid}`),
+        fetch(`${API}?action=get_avatar&uuid=${req.user_uuid}`),
+      ]);
+      const salaryData = await salaryRes.json();
+      setUserReportData(salaryData);
+      try {
+        const avatarData = await avatarRes.json();
+        if (avatarData.success && avatarData.avatar) {
+          setUserReportAvatar(avatarData.avatar.startsWith("http") ? avatarData.avatar : getAvatarUrl(avatarData.avatar));
+        }
+      } catch { /* silent */ }
+    } catch {
+      toast.error("فشل في جلب بيانات المستخدم");
+    } finally {
+      setUserReportLoading(false);
+    }
+  };
+
+  const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
+    const checks: { status: "safe" | "danger" | "warning"; text: string }[] = [];
+    const hs = data?.host_salary;
+    if (hs) {
+      if (hs.deduction > hs.salary && hs.salary > 0) {
+        checks.push({ status: "danger", text: `راتب مشبوه — مبلغ يدوي $${(hs.deduction - hs.salary).toFixed(2)}` });
+      } else {
+        checks.push({ status: "safe", text: "الراتب رسمي (من الدعم)" });
+      }
+      if (hs.salary === 0 && hs.net > 0) {
+        checks.push({ status: "danger", text: "الراتب كله يدوي — غير مدعوم" });
+      } else {
+        checks.push({ status: "safe", text: "لا يوجد مبالغ يدوية" });
+      }
+    }
+    if (req.reference_id) {
+      checks.push({ status: "safe", text: `الرقم المرجعي: ${req.reference_id}` });
+    } else {
+      checks.push({ status: "warning", text: "بدون رقم مرجعي" });
+    }
+    return checks;
+  };
 
   // Map API status to internal status
   const mapStatus = (s: string): "pending" | "delivered" | "rejected" => {
@@ -532,10 +587,16 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         </div>
                       )}
 
-                      <Button variant="ghost" size="sm" onClick={() => setDetailReq(req)}
-                        className="w-full text-xs text-muted-foreground hover:text-primary h-8 rounded-xl">
-                        <Eye className="w-3.5 h-3.5 ml-1" /> عرض التفاصيل الكاملة
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setDetailReq(req)}
+                          className="flex-1 text-xs text-muted-foreground hover:text-primary h-8 rounded-xl">
+                          <Eye className="w-3.5 h-3.5 ml-1" /> عرض التفاصيل
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => fetchUserReport(req)}
+                          className="flex-1 text-xs text-muted-foreground hover:text-amber-400 h-8 rounded-xl">
+                          <UserSearch className="w-3.5 h-3.5 ml-1" /> تفاصيل المستخدم
+                        </Button>
+                      </div>
 
                       {canAct && req.status === "pending" && (
                         <div className="flex gap-2 pt-1">
@@ -805,6 +866,150 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ===== USER REPORT SHEET ===== */}
+      <Sheet open={!!userReportReq} onOpenChange={() => setUserReportReq(null)}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/5">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <UserSearch className="w-5 h-5 text-primary" /> تفاصيل المستخدم
+            </SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 pt-4">
+            {userReportLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground">جاري جلب بيانات المستخدم...</p>
+              </div>
+            ) : userReportData && userReportReq ? (
+              <>
+                {/* User header */}
+                <div className="flex items-center gap-3">
+                  <AvatarCircle src={userReportAvatar || userReportReq.avatar} name={userReportReq.user_name} size="w-14 h-14" />
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-foreground">{userReportReq.user_name}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">UUID: {userReportReq.user_uuid}</p>
+                  </div>
+                </div>
+
+                {/* Safety badge */}
+                {(() => {
+                  const checks = getUserSecurityChecks(userReportData, userReportReq);
+                  const allSafe = checks.every(c => c.status === "safe");
+                  const hasDanger = checks.some(c => c.status === "danger");
+                  return (
+                    <div className={`px-4 py-2.5 rounded-xl text-xs font-bold text-center ${
+                      allSafe ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                      hasDanger ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" :
+                      "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                    }`}>
+                      {allSafe ? "آمن ✓" : hasDanger ? "⚠️ يحتاج مراجعة" : "⚠️ تحذيرات"}
+                    </div>
+                  );
+                })()}
+
+                {/* Salary report */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <DollarSign className="w-3.5 h-3.5 text-primary" /> تقرير الراتب
+                  </p>
+                  {userReportData.host_salary && (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
+                        <span className="text-xs font-bold font-mono text-foreground">${userReportData.host_salary.salary?.toLocaleString() || 0}</span>
+                      </div>
+                      {(userReportData.host_salary.deduction || 0) > 0 && (
+                        <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-rose-400">المقتطع</span>
+                          <span className="text-xs font-bold font-mono text-rose-400">-${userReportData.host_salary.deduction}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
+                        <span className="text-xs font-bold font-mono text-emerald-400">${userReportData.host_salary.net?.toLocaleString() || 0}</span>
+                      </div>
+                    </div>
+                  )}
+                  {userReportData.agency_salary?.has_salary && (
+                    <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
+                      <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
+                      <span className="text-xs font-bold font-mono text-amber-400">${userReportData.agency_salary.amount}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Account status */}
+                {userReportData.host_salary && (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-primary" /> حالة الحساب
+                    </p>
+                    {userReportData.is_agency_owner !== undefined && (
+                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">صاحب وكالة</span>
+                        <span className={`text-xs font-bold ${userReportData.is_agency_owner ? "text-emerald-400" : "text-muted-foreground"}`}>
+                          {userReportData.is_agency_owner ? "✅ نعم" : "❌ لا"}
+                        </span>
+                      </div>
+                    )}
+                    {userReportData.agency_salary?.agency_name && (
+                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">الوكالة</span>
+                        <span className="text-xs font-bold text-foreground">{userReportData.agency_salary.agency_name}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Withdrawal history */}
+                {userReportData.withdrawals && (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <Coins className="w-3.5 h-3.5 text-primary" /> سجل السحب
+                    </p>
+                    <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                      <span className="text-[10px] text-muted-foreground">سحبات هذا الشهر</span>
+                      <span className="text-xs font-bold text-foreground">{userReportData.withdrawals.count} من {userReportData.withdrawals.max}</span>
+                    </div>
+                    <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                      <span className="text-[10px] text-muted-foreground">إجمالي المسحوب</span>
+                      <span className="text-xs font-bold font-mono text-foreground">${userReportData.withdrawals.total_withdrawn || 0}</span>
+                    </div>
+                    <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                      <span className="text-[10px] text-emerald-400 font-bold">المتبقي</span>
+                      <span className="text-xs font-bold font-mono text-emerald-400">
+                        ${(userReportData.withdrawals.remaining_host || 0) + (userReportData.withdrawals.remaining_agency || 0)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Security checks */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-primary" /> حالة الأمان
+                  </p>
+                  {getUserSecurityChecks(userReportData, userReportReq).map((check, i) => (
+                    <div key={i} className={`flex items-center gap-2 text-xs p-2.5 rounded-lg ${
+                      check.status === "safe" ? "bg-emerald-500/10 text-emerald-400" :
+                      check.status === "danger" ? "bg-rose-500/10 text-rose-400" :
+                      "bg-amber-500/10 text-amber-400"
+                    }`}>
+                      {check.status === "safe" && <CheckCircle className="w-4 h-4 shrink-0" />}
+                      {check.status === "danger" && <ShieldAlert className="w-4 h-4 shrink-0" />}
+                      {check.status === "warning" && <AlertTriangle className="w-4 h-4 shrink-0" />}
+                      <span className="font-medium">{check.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground text-sm">لا توجد بيانات</div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* ===== IMAGE PREVIEW ===== */}
       <Dialog open={!!imagePreview} onOpenChange={() => setImagePreview(null)}>
