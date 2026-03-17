@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Crown, Shield, BarChart3, Headset, ClipboardList, DollarSign,
@@ -12,6 +13,7 @@ interface ServiceItem {
   gradient: string;
   borderColor: string;
   badge?: number;
+  route?: string;
 }
 
 interface Props {
