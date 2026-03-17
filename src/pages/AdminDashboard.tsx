@@ -487,13 +487,13 @@ const AdminDashboardPage: React.FC = () => {
           break;
         }
         case "trash": {
-          if (adminRole === "super_admin") {
+          if (isOwner) {
             setTrashData(await adminCall("list_trash") || { videos: [], entries: [], frames: [], customs: [] });
           }
           break;
         }
         case "audit_log": {
-          if (adminRole === "super_admin") {
+          if (isOwner) {
             setAuditLogs(await adminCall("list_audit_log") || []);
           }
           break;
