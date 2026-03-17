@@ -474,8 +474,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
               placeholder="بحث: UUID، اسم، كود الطلب..."
               className="bg-white/5 border-white/10 pr-9 text-xs h-9 rounded-xl" dir="rtl" />
           </div>
-          <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-            className="bg-white/5 border-white/10 w-[130px] text-xs h-9 rounded-xl" dir="ltr" />
+          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl text-xs px-2 h-9 text-foreground w-[150px]">
+            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <select value={bankFilter} onChange={e => setBankFilter(e.target.value)}
