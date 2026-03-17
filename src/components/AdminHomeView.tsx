@@ -41,21 +41,21 @@ const AdminHomeView: React.FC<Props> = ({
   // Build services grid based on role
   const services: ServiceItem[] = [
     ...(isSuperAdmin ? [
-      { key: 'vip', label: 'طلبات VIP', icon: <Crown className="w-7 h-7" />, gradient: 'from-amber-500/20 to-amber-600/5', borderColor: 'border-amber-500/20', badge: badges.vip || 0 },
-      { key: 'protection', label: 'الحماية', icon: <Shield className="w-7 h-7" />, gradient: 'from-red-500/20 to-red-600/5', borderColor: 'border-red-500/20', badge: badges.protection || 0 },
-      { key: 'reports', label: 'تقارير', icon: <BarChart3 className="w-7 h-7" />, gradient: 'from-sky-500/20 to-sky-600/5', borderColor: 'border-sky-500/20' },
+      { key: 'vip', label: 'طلبات VIP', icon: <Crown className="w-7 h-7" />, gradient: 'from-amber-500/20 to-amber-600/5', borderColor: 'border-amber-500/20', badge: badges.vip || 0, route: '/admin/vip' },
+      { key: 'protection', label: 'الحماية', icon: <Shield className="w-7 h-7" />, gradient: 'from-red-500/20 to-red-600/5', borderColor: 'border-red-500/20', badge: badges.protection || 0, route: '/admin/ban' },
+      { key: 'reports', label: 'المداخيل', icon: <BarChart3 className="w-7 h-7" />, gradient: 'from-sky-500/20 to-sky-600/5', borderColor: 'border-sky-500/20', route: '/admin/income' },
     ] : []),
-    { key: 'support', label: 'الدعم الفني', icon: <Headset className="w-7 h-7" />, gradient: 'from-cyan-500/20 to-cyan-600/5', borderColor: 'border-cyan-500/20', badge: badges.support || 0 },
+    { key: 'support', label: 'الدعم الفني', icon: <Headset className="w-7 h-7" />, gradient: 'from-cyan-500/20 to-cyan-600/5', borderColor: 'border-cyan-500/20', badge: badges.support || 0, route: '/admin/support' },
     ...(isSuperAdmin ? [
-      { key: 'requests', label: 'الطلبات', icon: <ClipboardList className="w-7 h-7" />, gradient: 'from-blue-500/20 to-blue-600/5', borderColor: 'border-blue-500/20', badge: badges.requests || 0 },
-      { key: 'salary', label: 'الرواتب', icon: <DollarSign className="w-7 h-7" />, gradient: 'from-emerald-500/20 to-emerald-600/5', borderColor: 'border-emerald-500/20', badge: badges.salary || 0 },
-      { key: 'change_id', label: 'تغيير آيدي', icon: <Hash className="w-7 h-7" />, gradient: 'from-indigo-500/20 to-indigo-600/5', borderColor: 'border-indigo-500/20' },
-      { key: 'store', label: 'المتجر', icon: <ShoppingBag className="w-7 h-7" />, gradient: 'from-purple-500/20 to-purple-600/5', borderColor: 'border-purple-500/20' },
+      { key: 'requests', label: 'الهدايا', icon: <ShoppingBag className="w-7 h-7" />, gradient: 'from-blue-500/20 to-blue-600/5', borderColor: 'border-blue-500/20', badge: badges.requests || 0, route: '/admin/gifts' },
+      { key: 'salary', label: 'الرواتب', icon: <DollarSign className="w-7 h-7" />, gradient: 'from-emerald-500/20 to-emerald-600/5', borderColor: 'border-emerald-500/20', badge: badges.salary || 0, route: '/admin/salary' },
+      { key: 'change_id', label: 'تغيير آيدي', icon: <Hash className="w-7 h-7" />, gradient: 'from-indigo-500/20 to-indigo-600/5', borderColor: 'border-indigo-500/20', route: '/admin/id-change' },
+      { key: 'bd', label: 'فريق البيدي', icon: <Briefcase className="w-7 h-7" />, gradient: 'from-purple-500/20 to-purple-600/5', borderColor: 'border-purple-500/20', route: '/admin/bd' },
     ] : []),
     ...(isOwner ? [
-      { key: 'settings', label: 'الإعدادات', icon: <Settings className="w-7 h-7" />, gradient: 'from-slate-500/20 to-slate-600/5', borderColor: 'border-slate-500/20' },
-      { key: 'agencies', label: 'الوكالات', icon: <Briefcase className="w-7 h-7" />, gradient: 'from-amber-500/20 to-amber-600/5', borderColor: 'border-amber-500/20' },
-      { key: 'moderators', label: 'الأدمن', icon: <Users className="w-7 h-7" />, gradient: 'from-emerald-500/20 to-emerald-600/5', borderColor: 'border-emerald-500/20' },
+      { key: 'settings', label: 'الإعدادات', icon: <Settings className="w-7 h-7" />, gradient: 'from-slate-500/20 to-slate-600/5', borderColor: 'border-slate-500/20', route: '/admin/settings' },
+      { key: 'agencies', label: 'الوكالات', icon: <ClipboardList className="w-7 h-7" />, gradient: 'from-amber-500/20 to-amber-600/5', borderColor: 'border-amber-500/20', route: '/admin/agencies' },
+      { key: 'moderators', label: 'الأدمن', icon: <Users className="w-7 h-7" />, gradient: 'from-emerald-500/20 to-emerald-600/5', borderColor: 'border-emerald-500/20', route: '/admin/settings' },
       { key: 'audit_log', label: 'السجل', icon: <ScrollText className="w-7 h-7" />, gradient: 'from-violet-500/20 to-violet-600/5', borderColor: 'border-violet-500/20' },
     ] : []),
   ];
