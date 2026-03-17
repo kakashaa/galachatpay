@@ -855,30 +855,30 @@ const AdminDashboardPage: React.FC = () => {
   );
 
   // Section definitions
-  type SectionKey = "requests" | "products" | "finance" | "settings";
+  type SectionKey = "requests" | "settings" | "chat" | "finance";
   const SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[] }[] = [
     {
-      id: "requests", title: "استقبال الطلبات", description: "طلبات المستخدمين",
+      id: "requests", title: "الطلبات والموافقات", description: "طلبات تحتاج موافقة",
       icon: <ClipboardList className="w-10 h-10" />, gradient: "from-blue-500/15 to-blue-600/5", iconColor: "text-blue-400",
-      tabs: ["all_requests", "id_changes", "support_tickets", "support_chats", "quick_support", "reports"],
+      tabs: ["all_requests", "salary", "custom_gifts", "animated_photos", "id_changes", "reports"],
     },
     {
-      id: "products", title: "إدارة المنتجات", description: "إضافة وتعديل",
-      icon: <Palette className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
-      tabs: ["entries", "frames", "hairs", "custom_gifts", "gifts", "animated_photos", "videos", "banners", "admin_stars"],
+      id: "settings", title: "الإعدادات والإضافات", description: "إدارة المحتوى",
+      icon: <Settings className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
+      tabs: ["videos", "entries", "frames", "hairs", "gifts", "notifications", "banners", "admin_stars", "element_settings",
+        ...(adminRole === "super_admin" || adminRole === "admin" ? ["moderators" as Exclude<Tab, null>] : []),
+        ...(adminRole === "super_admin" ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
+      ],
+    },
+    {
+      id: "chat", title: "الدردشة والدعم", description: "تواصل + مساعدة",
+      icon: <MessageSquare className="w-10 h-10" />, gradient: "from-emerald-500/15 to-emerald-600/5", iconColor: "text-emerald-400",
+      tabs: ["admin_chat", "support_tickets", "support_chats", "quick_support"],
     },
     {
       id: "finance", title: "المالية والوكالات", description: "وكالات + رواتب",
       icon: <Wallet className="w-10 h-10" />, gradient: "from-amber-500/15 to-amber-600/5", iconColor: "text-amber-400",
-      tabs: ["agencies", "salary", "top_agents", "bd_management"],
-    },
-    {
-      id: "settings", title: "الإعدادات والنظام", description: "محظورين + سجلات",
-      icon: <Settings className="w-10 h-10" />, gradient: "from-slate-500/15 to-slate-600/5", iconColor: "text-slate-400",
-      tabs: ["blocks", "notifications", "element_settings",
-        ...(adminRole === "super_admin" || adminRole === "admin" ? ["moderators" as Exclude<Tab, null>] : []),
-        ...(adminRole === "super_admin" ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
-      ],
+      tabs: ["agencies", "top_agents", "bd_management", "blocks"],
     },
   ];
 
