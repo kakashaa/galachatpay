@@ -1161,7 +1161,7 @@ const AdminDashboardPage: React.FC = () => {
           </button>
         </div>
       </header>
-      <div className="relative z-10">
+      <div className="relative z-10 pt-20 pb-32">
       {/* Home View */}
       {!activeTab && (
         <AdminHomeView
@@ -1192,7 +1192,7 @@ const AdminDashboardPage: React.FC = () => {
 
       {/* Tab Content - each service isolated */}
       {activeTab && (
-        <div className="max-w-2xl mx-auto px-4 pb-4 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pb-8 overflow-hidden">
       {loading ? (
         <div className="space-y-3 py-4">
           {[...Array(4)].map((_, i) => (
