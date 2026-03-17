@@ -220,22 +220,34 @@ const SalaryWithdraw: React.FC = () => {
       if (!hasHost && !hasAgency) {
         setNoSalaryAtAll(true);
         setStep("no_salary");
-      } else if (!data.withdrawals.can_withdraw) {
-        setStep("exhausted");
-      } else if (data.withdraw_open === false) {
-        setStep("closed");
       } else if (data.host_salary?.is_suspicious) {
         setStep("suspicious");
       } else if (data.is_agency_owner && hasHost && hasAgency) {
-        setStep("choose_type");
+        // Check exhausted for agency (max 3)
+        const { maxTotal } = getWithdrawalLimits(true);
+        if (data.withdrawals.count >= maxTotal) {
+          setStep("exhausted");
+        } else {
+          setStep("choose_type");
+        }
       } else {
         // Regular host or agency owner with only one salary
         const type = hasHost ? "host" : "agency";
         const net = type === "host" ? data.host_salary.net : data.agency_salary.amount;
-        setSalaryType(type);
-        setRegisteredSalary(net);
-        setIsFirstWithdrawal(data.withdrawals.count === 0);
-        setStep("enter_amount");
+        const { maxCash, maxTotal } = getWithdrawalLimits(data.is_agency_owner);
+        const count = data.withdrawals.count;
+
+        if (count >= maxTotal) {
+          setStep("exhausted");
+          setAllData(data);
+        } else {
+          setSalaryType(type);
+          setRegisteredSalary(net);
+          const mode = count < maxCash ? "cash" : "coins";
+          setWithdrawalMode(mode);
+          setCashWithdrawalsLeft(Math.max(0, maxCash - count));
+          setStep("enter_amount");
+        }
       }
     } catch {
       setError("فشل الاتصال بالخادم");
@@ -250,7 +262,11 @@ const SalaryWithdraw: React.FC = () => {
     setSalaryType(type);
     const net = type === "host" ? allData.host_salary.net : allData.agency_salary.amount;
     setRegisteredSalary(net);
-    setIsFirstWithdrawal(allData.withdrawals.count === 0);
+    const { maxCash } = getWithdrawalLimits(allData.is_agency_owner);
+    const count = allData.withdrawals.count;
+    const mode = count < maxCash ? "cash" : "coins";
+    setWithdrawalMode(mode);
+    setCashWithdrawalsLeft(Math.max(0, maxCash - count));
     setStep("enter_amount");
   };
 
