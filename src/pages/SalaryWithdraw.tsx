@@ -133,6 +133,22 @@ const countryCodes = [
 const TRANSFER_TARGET_ID = "10000";
 const USD_TO_COINS = 8500; // $1 = 8,500 coins
 
+// Date helpers for cash withdrawal availability
+const getCashWithdrawDates = () => {
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const canWithdrawCash = dayOfMonth >= lastDay - 2; // last 3 days: 29, 30, 31
+  return { dayOfMonth, lastDay, canWithdrawCash, startDay: lastDay - 2 };
+};
+
+// Withdrawal limits
+const getWithdrawalLimits = (isAgencyOwner: boolean) => {
+  const maxCash = isAgencyOwner ? 2 : 1;
+  const maxTotal = isAgencyOwner ? 3 : 2;
+  return { maxCash, maxTotal };
+};
+
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
