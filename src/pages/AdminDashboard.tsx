@@ -159,6 +159,7 @@ const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>(null);
   const [activeSection, setActiveSection] = useState<"requests" | "settings" | "chat" | "finance" | null>(null);
+  const [bottomTab, setBottomTab] = useState<'home' | 'search' | 'chat' | 'monitor' | 'favorites'>('home');
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
 
   const tabSlideVariants = {
