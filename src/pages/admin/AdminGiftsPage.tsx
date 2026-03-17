@@ -4,8 +4,7 @@ import AdminPageLayout from "@/components/AdminPageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Gift, Star, Loader2, CheckCircle, XCircle, Plus, X, Save, Eye, EyeOff, Edit2, Trash2, Sparkles, Frame } from "lucide-react";
-import { motion } from "framer-motion";
+import { Gift, Star, Loader2, CheckCircle, XCircle, Plus, X, Save, Eye, EyeOff, Trash2, Sparkles, Frame } from "lucide-react";
 
 const AdminGiftsPage: React.FC = () => {
   const { adminCall, uploadFile, handleLogout, isOwner, isSuperAdmin } = useAdminSession();
