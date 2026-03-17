@@ -38,8 +38,9 @@ import TicketRepliesSection from "@/components/TicketRepliesSection";
 import AdminAgencyManager from "@/components/AdminAgencyManager";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
 import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
+import AdminGroupChat from "@/components/AdminGroupChat";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | "admin_chat" | null;
 
 
 interface VideoTutorial {
@@ -152,7 +153,7 @@ interface AnimatedPhotoRequest {
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>(null);
-  const [activeSection, setActiveSection] = useState<"requests" | "products" | "finance" | "settings" | null>(null);
+  const [activeSection, setActiveSection] = useState<"requests" | "settings" | "chat" | "finance" | null>(null);
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
 
   const tabSlideVariants = {
@@ -854,34 +855,35 @@ const AdminDashboardPage: React.FC = () => {
   );
 
   // Section definitions
-  type SectionKey = "requests" | "products" | "finance" | "settings";
+  type SectionKey = "requests" | "settings" | "chat" | "finance";
   const SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[] }[] = [
     {
-      id: "requests", title: "استقبال الطلبات", description: "طلبات المستخدمين",
+      id: "requests", title: "الطلبات والموافقات", description: "طلبات تحتاج موافقة",
       icon: <ClipboardList className="w-10 h-10" />, gradient: "from-blue-500/15 to-blue-600/5", iconColor: "text-blue-400",
-      tabs: ["all_requests", "id_changes", "support_tickets", "support_chats", "quick_support", "reports"],
+      tabs: ["all_requests", "salary", "custom_gifts", "animated_photos", "id_changes", "reports"],
     },
     {
-      id: "products", title: "إدارة المنتجات", description: "إضافة وتعديل",
-      icon: <Palette className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
-      tabs: ["entries", "frames", "hairs", "custom_gifts", "gifts", "animated_photos", "videos", "banners", "admin_stars"],
-    },
-    {
-      id: "finance", title: "المالية والوكالات", description: "وكالات + رواتب",
-      icon: <Wallet className="w-10 h-10" />, gradient: "from-amber-500/15 to-amber-600/5", iconColor: "text-amber-400",
-      tabs: ["agencies", "salary", "top_agents", "bd_management"],
-    },
-    {
-      id: "settings", title: "الإعدادات والنظام", description: "محظورين + سجلات",
-      icon: <Settings className="w-10 h-10" />, gradient: "from-slate-500/15 to-slate-600/5", iconColor: "text-slate-400",
-      tabs: ["blocks", "notifications", "element_settings",
+      id: "settings", title: "الإعدادات والإضافات", description: "إدارة المحتوى",
+      icon: <Settings className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
+      tabs: ["videos", "entries", "frames", "hairs", "gifts", "notifications", "banners", "admin_stars", "element_settings",
         ...(adminRole === "super_admin" || adminRole === "admin" ? ["moderators" as Exclude<Tab, null>] : []),
         ...(adminRole === "super_admin" ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
       ],
     },
+    {
+      id: "chat", title: "الدردشة والدعم", description: "تواصل + مساعدة",
+      icon: <MessageSquare className="w-10 h-10" />, gradient: "from-emerald-500/15 to-emerald-600/5", iconColor: "text-emerald-400",
+      tabs: ["admin_chat", "support_tickets", "support_chats", "quick_support"],
+    },
+    {
+      id: "finance", title: "المالية والوكالات", description: "وكالات + رواتب",
+      icon: <Wallet className="w-10 h-10" />, gradient: "from-amber-500/15 to-amber-600/5", iconColor: "text-amber-400",
+      tabs: ["agencies", "top_agents", "bd_management", "blocks"],
+    },
   ];
 
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
+    { key: "admin_chat", label: "دردشة الإدارة", icon: <MessageSquare className="w-4 h-4" />, color: "text-emerald-400" },
     { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-4 h-4" />, color: "text-blue-400", count: allSalaryRequests.filter(r => r.status === "pending").length + allEntryClaims.length + allFrameClaims.length },
     { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" />, color: "text-purple-400" },
     { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" />, color: "text-blue-400" },
@@ -1178,7 +1180,7 @@ const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {activeSection === "products" && (
+          {activeSection === "settings" && (
             <div className="grid grid-cols-3 gap-3 px-4 mb-4">
               {[
                 { label: "إجمالي", value: entryGifts.length + frameItems.length + videos.length, icon: Package, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
@@ -1200,12 +1202,12 @@ const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {activeSection === "settings" && (
+          {activeSection === "chat" && (
             <div className="grid grid-cols-3 gap-3 px-4 mb-4">
               {[
-                { label: "محظورين", value: blockedAccounts.length + manualBans.filter(b => b.status === "active").length, icon: ShieldBan, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
-                { label: "مسؤولين", value: (adminRole === "super_admin" || adminRole === "admin") ? "—" : "—", icon: Users, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
-                { label: "إشعارات", value: "—", icon: Bell, gradient: "from-violet-500/10 to-violet-600/5", border: "border-violet-500/20", iconColor: "text-violet-400" },
+                { label: "تذاكر مفتوحة", value: supportTickets.filter((t: any) => t.status === "open").length, icon: MessageSquare, gradient: "from-sky-500/10 to-sky-600/5", border: "border-sky-500/20", iconColor: "text-sky-400" },
+                { label: "VIP انتظار", value: supportChats.filter((c: any) => c.status === "waiting").length, icon: Headset, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+                { label: "دعم معلق", value: quickSupportRequests.filter((r: any) => r.status === "pending").length, icon: Zap, gradient: "from-yellow-500/10 to-yellow-600/5", border: "border-yellow-500/20", iconColor: "text-yellow-400" },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
@@ -2510,6 +2512,13 @@ const AdminDashboardPage: React.FC = () => {
 
 
 
+            {/* Admin Group Chat Tab */}
+            {activeTab === "admin_chat" && (
+              <motion.div key="admin_chat" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole} />
+              </motion.div>
+            )}
+
             {/* Support Tickets Tab */}
             {activeTab === "support_tickets" && (
               <motion.div key="support_tickets" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
@@ -2576,45 +2585,89 @@ const AdminDashboardPage: React.FC = () => {
             {/* Quick Support Tab */}
             {activeTab === "quick_support" && (
               <motion.div key="quick_support" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
-                {quickSupportRequests.length === 0 ? (
-                  <p className="text-center py-10 text-muted-foreground">لا توجد طلبات دعم سريع</p>
-                ) : quickSupportRequests.map((req: any) => {
-                  const typeLabels: Record<string, string> = {
-                    admin_visit: "🏠 طلب إداري",
-                    report: "⚠️ بلاغ",
-                    complaint: "📋 شكوى",
-                    direct_contact: "📞 تواصل مباشر",
-                  };
-                  return (
-                    <div key={req.id} className="bg-card border rounded-xl p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">{typeLabels[req.request_type] || req.request_type}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${req.status === "pending" ? "bg-amber-500/10 text-amber-400" : req.status === "resolved" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
-                          {req.status === "pending" ? "معلق" : req.status === "resolved" ? "تم" : req.status}
-                        </span>
+                {/* Filter + Search */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { key: "all", label: "الكل", count: quickSupportRequests.length },
+                    { key: "pending", label: "معلقة", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
+                    { key: "resolved", label: "أرشيف", count: quickSupportRequests.filter((r: any) => r.status === "resolved").length },
+                  ].map(f => (
+                    <button key={f.key} onClick={() => {
+                      const el = document.getElementById('qs-filter') as HTMLInputElement;
+                      if (el) el.dataset.filter = f.key;
+                      // Use a state-like approach with data attributes for simplicity
+                      setQuickSupportRequests(prev => [...prev]); // trigger re-render
+                    }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all bg-card border-border/40`}>
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  placeholder="🔍 بحث بالاسم أو UUID..."
+                  onChange={(e) => {
+                    const el = document.getElementById('qs-search') as HTMLInputElement;
+                    if (el) el.value = e.target.value;
+                    setQuickSupportRequests(prev => [...prev]);
+                  }}
+                  className="text-sm"
+                  dir="rtl"
+                />
+                {(() => {
+                  const searchEl = document.getElementById('qs-search') as HTMLInputElement;
+                  const filterEl = document.getElementById('qs-filter') as HTMLInputElement;
+                  const searchVal = searchEl?.value?.toLowerCase() || '';
+                  const filterVal = filterEl?.dataset?.filter || 'pending';
+                  const filtered = quickSupportRequests
+                    .filter((r: any) => filterVal === 'all' || r.status === filterVal)
+                    .filter((r: any) => !searchVal || r.user_name?.toLowerCase().includes(searchVal) || r.user_uuid?.toLowerCase().includes(searchVal));
+                  const isArchive = filterVal === 'resolved';
+                  
+                  return filtered.length === 0 ? (
+                    <p className="text-center py-10 text-muted-foreground">لا توجد طلبات دعم سريع</p>
+                  ) : filtered.map((req: any) => {
+                    const typeLabels: Record<string, string> = {
+                      admin_visit: "🏠 طلب إداري",
+                      admin_presence: "🏠 حضور إداري",
+                      report: "⚠️ بلاغ",
+                      complaint: "📋 شكوى",
+                      direct_contact: "📞 تواصل مباشر",
+                      contact: "📞 تواصل",
+                    };
+                    return (
+                      <div key={req.id} className={`bg-card border rounded-xl p-4 space-y-2 ${isArchive ? 'opacity-70' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold">{typeLabels[req.request_type] || req.request_type}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${req.status === "pending" ? "bg-amber-500/10 text-amber-400" : req.status === "resolved" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                            {req.status === "pending" ? "معلق" : req.status === "resolved" ? "✅ أرشيف" : req.status}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">{req.user_name} • <span className="font-mono" dir="ltr">{req.user_uuid}</span></p>
+                        {req.room_code && <p className="text-xs text-foreground">🏠 الغرفة: <span className="font-bold font-mono" dir="ltr">{req.room_code}</span></p>}
+                        {req.description && <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{req.description}</p>}
+                        {req.phone_number && <p className="text-xs text-foreground">📞 <span className="font-mono" dir="ltr">{req.phone_number}</span></p>}
+                        {req.attachment_url && (
+                          <a href={req.attachment_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">📎 عرض المرفق</a>
+                        )}
+                        <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}</p>
+                        {canAct && req.status === "pending" && (
+                          <Button size="sm" className="w-full" onClick={async () => {
+                            try {
+                              await supabase.from("quick_support_requests").update({ status: "resolved" } as any).eq("id", req.id);
+                              setQuickSupportRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "resolved" } : r));
+                              toast.success("تم تحديث الحالة");
+                            } catch { toast.error("فشل التحديث"); }
+                          }}>
+                            <CheckCircle className="w-3 h-3 ml-1" />تم المعالجة
+                          </Button>
+                        )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">{req.user_name} • {req.user_uuid}</p>
-                      {req.room_code && <p className="text-xs text-foreground">🏠 الغرفة: <span className="font-bold font-mono" dir="ltr">{req.room_code}</span></p>}
-                      {req.description && <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{req.description}</p>}
-                      {req.phone_number && <p className="text-xs text-foreground">📞 <span className="font-mono" dir="ltr">{req.phone_number}</span></p>}
-                      {req.attachment_url && (
-                        <a href={req.attachment_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">📎 عرض المرفق</a>
-                      )}
-                      <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString("ar-EG")}</p>
-                      {canAct && req.status === "pending" && (
-                        <Button size="sm" className="w-full" onClick={async () => {
-                          try {
-                            await supabase.from("quick_support_requests").update({ status: "resolved" } as any).eq("id", req.id);
-                            setQuickSupportRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "resolved" } : r));
-                            toast.success("تم تحديث الحالة");
-                          } catch { toast.error("فشل التحديث"); }
-                        }}>
-                          <CheckCircle className="w-3 h-3 ml-1" />تم المعالجة
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
+                {/* Hidden elements for filter/search state */}
+                <input id="qs-search" type="hidden" />
+                <input id="qs-filter" type="hidden" data-filter="pending" />
               </motion.div>
             )}
 
