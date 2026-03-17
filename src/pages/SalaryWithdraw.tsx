@@ -281,7 +281,14 @@ const SalaryWithdraw: React.FC = () => {
       return;
     }
     setAmountError("");
-    if (isFirstWithdrawal) {
+
+    if (withdrawalMode === "cash") {
+      // Check date for cash withdrawals
+      const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
+      if (!canWithdrawCash) {
+        setAmountError(`سحب الراتب النقدي متاح فقط من يوم ${startDay} إلى ${lastDay} من الشهر`);
+        return;
+      }
       setStep("transfer_instructions");
     } else {
       setStep("coins_instructions");
