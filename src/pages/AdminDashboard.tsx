@@ -1241,132 +1241,274 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Salary Tab */}
+            {/* Salary Tab - Kinetic Green Design */}
             {activeTab === "salary" && (
-              <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
-                {/* Sub-tabs */}
-                <div className="flex gap-1 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
+              <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
+                {/* Sub-tabs - Kinetic Style */}
+                <div className="flex gap-1 rounded-xl p-1" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.1)' }}>
                   <button
                     onClick={() => setSalarySubTab("requests")}
-                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "requests" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${salarySubTab === "requests" ? "text-[#0e0e0e]" : "text-white/40 hover:text-white/70"}`}
+                    style={salarySubTab === "requests" ? { background: 'linear-gradient(135deg, #34eb45, #00d632)' } : {}}
                   >
                     طلبات الرواتب
                   </button>
                   <button
                     onClick={() => setSalarySubTab("withdraw")}
-                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${salarySubTab === "withdraw" ? "text-[#0e0e0e]" : "text-white/40 hover:text-white/70"}`}
+                    style={salarySubTab === "withdraw" ? { background: 'linear-gradient(135deg, #34eb45, #00d632)' } : {}}
                   >
                     سحب الرواتب
                   </button>
                   <button
                     onClick={() => setSalarySubTab("charge")}
-                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "charge" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"}`}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${salarySubTab === "charge" ? "text-[#0e0e0e]" : "text-white/40 hover:text-white/70"}`}
+                    style={salarySubTab === "charge" ? { background: 'linear-gradient(135deg, #34eb45, #00d632)' } : {}}
                   >
                     شحن الراتب
                   </button>
                 </div>
 
                 {salarySubTab === "requests" && (
-                  <div className="space-y-3">
-                    {/* Filter Buttons */}
-                    <div className="flex gap-2 flex-wrap">
-                      {[
-                        { key: "all" as const, label: "الكل", count: salaryRequests.length, color: "bg-muted/30" },
-                        { key: "pending" as const, label: "معلقة", count: salaryRequests.filter(r => r.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
-                        { key: "approved" as const, label: "مقبولة", count: salaryRequests.filter(r => r.status === "approved").length, color: "bg-green-500/10 border-green-500/30" },
-                        { key: "rejected" as const, label: "مرفوضة", count: salaryRequests.filter(r => r.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
-                      ].map(f => (
-                        <button
-                          key={f.key}
-                          onClick={() => setSalaryFilter(f.key)}
-                          className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
-                            salaryFilter === f.key
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : f.color + " border"
-                          }`}
-                        >
-                          {f.label}
-                          <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {salaryRequests
-                      .filter(req => salaryFilter === "all" || req.status === salaryFilter)
-                      .map((req) => (
-                      <div key={req.id} className="bg-card border rounded-xl overflow-hidden">
-                        <button onClick={() => setExpandedSalary(expandedSalary === req.id ? null : req.id)} className="w-full p-4 flex items-center justify-between text-right">
-                          <div className="flex items-center gap-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${req.status === "pending" ? "bg-yellow-500/20 text-yellow-500" : req.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"}`}>
-                              {req.status === "pending" ? "معلق" : req.status === "approved" ? "مقبول" : "مرفوض"}
+                  <div className="space-y-6">
+                    {/* Bento Financial Overview */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Total Pending Card */}
+                      <div className="md:col-span-2 rounded-xl p-6 relative overflow-hidden group" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.05)' }}>
+                        <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-500">
+                          <DollarSign className="w-40 h-40 text-[#34eb45]" />
+                        </div>
+                        <div className="relative z-10">
+                          <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.15em] mb-1">إجمالي المبالغ المعلقة</p>
+                          <h2 className="text-4xl font-black text-white tracking-tighter mb-4">
+                            {salaryRequests.filter(r => r.status === "pending").reduce((sum, r) => sum + r.amount_usd, 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            <span className="text-[#34eb45] text-xl mr-2">SAR</span>
+                          </h2>
+                          <div className="flex items-center gap-4 flex-wrap">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>
+                              <Sparkles className="w-3 h-3" />
+                              +12% عن الشهر الماضي
                             </span>
-                            <div>
-                              <p className="font-bold text-sm">{req.user_name}</p>
-                              <p className="text-xs text-muted-foreground">${req.amount_usd} - {req.payment_method}</p>
-                            </div>
+                            <span className="text-[10px] text-white/30">{salaryRequests.filter(r => r.status === "pending").length} طلب انتظار جديد</span>
                           </div>
-                          {expandedSalary === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                        {expandedSalary === req.id && (
-                          <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{req.user_uuid}</span></div>
-                              <div><span className="text-muted-foreground">النوع:</span> {req.request_type}</div>
-                              <div><span className="text-muted-foreground">المستلم:</span> {req.recipient_name}</div>
-                              <div><span className="text-muted-foreground">البلد:</span> {req.recipient_country}</div>
-                              <div className="col-span-2"><span className="text-muted-foreground">التفاصيل:</span> {req.payment_details}</div>
-                              <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</div>
-                            </div>
-                            {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
-                              <div className="flex gap-2">
-                                <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
-                                  <CheckCircle className="w-4 h-4 ml-1" />قبول
-                                </Button>
-                                <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setSalaryAction({ id: req.id, type: "reject" }); setRejectReason(""); }}>
-                                  <XCircle className="w-4 h-4 ml-1" />رفض
-                                </Button>
-                              </div>
-                            )}
-                            {salaryAction?.id === req.id && salaryAction.type === "approve" && (
-                              <div className="space-y-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl">
-                                <p className="text-xs font-bold text-green-500">رفع صورة إيصال التحويل</p>
-                                <input type="file" accept="image/*" onChange={(e) => setApproveReceiptFile(e.target.files?.[0] || null)}
-                                  className="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-green-600 file:text-white bg-muted/20 border border-border/30 rounded-lg p-1" />
-                                {approveReceiptFile && <p className="text-[10px] text-muted-foreground">{approveReceiptFile.name}</p>}
-                                <div className="flex gap-2">
-                                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={salaryActionLoading} onClick={() => handleApproveWithReceipt(req.id)}>
-                                    {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" />تأكيد القبول</>}
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)}>إلغاء</Button>
+                        </div>
+                      </div>
+                      {/* Budget Card - Green Gradient */}
+                      <div className="rounded-xl p-6 flex flex-col justify-between relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #34eb45, #00d632)', boxShadow: '0 8px 30px rgba(52,235,69,0.15)' }}>
+                        <div className="flex justify-between items-start">
+                          <Zap className="w-8 h-8 text-[#00500c]" />
+                          <span className="text-[10px] font-bold px-2 py-1 rounded" style={{ background: 'rgba(0,80,12,0.1)', color: '#00500c' }}>إجراء سريع</span>
+                        </div>
+                        <div className="mt-4">
+                          <p className="text-[#00500c]/80 text-xs mb-1">الميزانية المتبقية</p>
+                          <h3 className="text-2xl font-black text-[#00500c]">150,000.00</h3>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pending Requests Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-6 rounded-full" style={{ background: '#34eb45' }} />
+                          <h2 className="text-lg font-bold text-white">طلبات الرواتب المعلقة</h2>
+                        </div>
+                        <div className="flex gap-2">
+                          {[
+                            { key: "all" as const, label: "الكل", count: salaryRequests.length },
+                            { key: "pending" as const, label: "معلقة", count: salaryRequests.filter(r => r.status === "pending").length },
+                            { key: "approved" as const, label: "مقبولة", count: salaryRequests.filter(r => r.status === "approved").length },
+                            { key: "rejected" as const, label: "مرفوضة", count: salaryRequests.filter(r => r.status === "rejected").length },
+                          ].map(f => (
+                            <button
+                              key={f.key}
+                              onClick={() => setSalaryFilter(f.key)}
+                              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                                salaryFilter === f.key
+                                  ? "text-[#0e0e0e]"
+                                  : "text-white/40 hover:text-white/60"
+                              }`}
+                              style={salaryFilter === f.key ? { background: 'rgba(52,235,69,0.9)' } : { background: '#262626' }}
+                            >
+                              {f.label} ({f.count})
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Request Cards */}
+                      <div className="space-y-3">
+                        {salaryRequests
+                          .filter(req => salaryFilter === "all" || req.status === salaryFilter)
+                          .map((req) => (
+                          <div key={req.id} className="rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.01]" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.05)' }}>
+                            <button onClick={() => setExpandedSalary(expandedSalary === req.id ? null : req.id)} className="w-full p-4 text-right">
+                              <div className="flex items-center gap-4">
+                                {/* Avatar */}
+                                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#262626', border: '1px solid rgba(52,235,69,0.1)' }}>
+                                  <Users className="w-5 h-5 text-[#34eb45]" />
+                                </div>
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-bold text-sm text-white">{req.user_name}</h4>
+                                  <p className="text-[10px] text-white/30 font-mono">ID: #{req.user_uuid}</p>
+                                </div>
+                                {/* Amount */}
+                                <div className="text-left">
+                                  <p className="text-[10px] text-white/30 mb-0.5">المبلغ المطلوب</p>
+                                  <p className="text-lg font-black text-[#34eb45]">{req.amount_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px]">SAR</span></p>
                                 </div>
                               </div>
-                            )}
-                            {salaryAction?.id === req.id && salaryAction.type === "reject" && (
-                              <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
-                                <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
-                                <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
-                                <div className="space-y-1">
-                                  <label className="text-xs text-muted-foreground">صورة توضيحية (اختياري)</label>
-                                  <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
-                                    className="w-full text-sm file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:bg-destructive/10 file:text-destructive bg-muted/20 border border-border/30 rounded-lg p-1" />
+                              {/* Action buttons for pending - inline */}
+                              {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
+                                <div className="flex items-center gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    className="flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                                    style={{ background: 'linear-gradient(135deg, #34eb45, #00d632)', color: '#0e0e0e' }}
+                                    onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                    اعتماد
+                                  </button>
+                                  <button
+                                    className="flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform text-white/50 hover:text-[#ff7162]"
+                                    style={{ background: '#262626' }}
+                                    onClick={() => { setSalaryAction({ id: req.id, type: "reject" }); setRejectReason(""); }}
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                    رفض
+                                  </button>
                                 </div>
-                                <label className="flex items-center gap-2 text-xs cursor-pointer">
-                                  <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
-                                  <span className="text-destructive font-bold">رفض نهائي (لا يمكن للمستخدم التعديل)</span>
-                                </label>
-                                <div className="flex gap-2">
-                                  <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)}>
-                                    {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => { setSalaryAction(null); setRejectImageFile(null); setIsFinalRejection(false); }}>إلغاء</Button>
+                              )}
+                              {/* Status badge for non-pending */}
+                              {req.status !== "pending" && (
+                                <div className="mt-3">
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                    req.status === "approved" ? "text-[#34eb45]" : "text-[#ff7162]"
+                                  }`} style={{ background: req.status === "approved" ? 'rgba(52,235,69,0.1)' : 'rgba(255,113,98,0.1)' }}>
+                                    {req.status === "approved" ? <><CheckCircle className="w-3 h-3" />مقبول</> : <><XCircle className="w-3 h-3" />مرفوض</>}
+                                  </span>
                                 </div>
+                              )}
+                            </button>
+
+                            {/* Expanded details */}
+                            {expandedSalary === req.id && (
+                              <div className="px-4 pb-4 space-y-3 pt-3" style={{ borderTop: '1px solid rgba(72,72,71,0.1)' }}>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
+                                    <span className="text-white/30 text-[10px] block">UUID</span>
+                                    <span className="font-mono text-white/70">{req.user_uuid}</span>
+                                  </div>
+                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
+                                    <span className="text-white/30 text-[10px] block">النوع</span>
+                                    <span className="text-white/70">{req.request_type}</span>
+                                  </div>
+                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
+                                    <span className="text-white/30 text-[10px] block">المستلم</span>
+                                    <span className="text-white/70">{req.recipient_name}</span>
+                                  </div>
+                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
+                                    <span className="text-white/30 text-[10px] block">البلد</span>
+                                    <span className="text-white/70">{req.recipient_country}</span>
+                                  </div>
+                                  <div className="col-span-2 rounded-lg p-2.5" style={{ background: '#000' }}>
+                                    <span className="text-white/30 text-[10px] block">التفاصيل</span>
+                                    <span className="text-white/70">{req.payment_details}</span>
+                                  </div>
+                                  <div className="col-span-2 rounded-lg p-2.5" style={{ background: '#000' }}>
+                                    <span className="text-white/30 text-[10px] block">التاريخ</span>
+                                    <span className="text-white/70">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
+                                  </div>
+                                </div>
+                                {/* Approve action panel */}
+                                {salaryAction?.id === req.id && salaryAction.type === "approve" && (
+                                  <div className="space-y-2 p-3 rounded-xl" style={{ background: 'rgba(52,235,69,0.05)', border: '1px solid rgba(52,235,69,0.15)' }}>
+                                    <p className="text-xs font-bold text-[#34eb45]">رفع صورة إيصال التحويل</p>
+                                    <input type="file" accept="image/*" onChange={(e) => setApproveReceiptFile(e.target.files?.[0] || null)}
+                                      className="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:text-[#0e0e0e] file:font-bold bg-black border rounded-lg p-1" style={{ borderColor: 'rgba(72,72,71,0.15)', background: '#000', color: 'white' }} />
+                                    {approveReceiptFile && <p className="text-[10px] text-white/40">{approveReceiptFile.name}</p>}
+                                    <div className="flex gap-2">
+                                      <Button size="sm" className="flex-1 text-[#0e0e0e] font-bold" disabled={salaryActionLoading} onClick={() => handleApproveWithReceipt(req.id)} style={{ background: 'linear-gradient(135deg, #34eb45, #00d632)' }}>
+                                        {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" />تأكيد القبول</>}
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)} className="border-white/10 text-white/50">إلغاء</Button>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Reject action panel */}
+                                {salaryAction?.id === req.id && salaryAction.type === "reject" && (
+                                  <div className="space-y-2 p-3 rounded-xl" style={{ background: 'rgba(255,113,98,0.05)', border: '1px solid rgba(255,113,98,0.15)' }}>
+                                    <p className="text-xs font-bold text-[#ff7162]">سبب الرفض *</p>
+                                    <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px] bg-black border-white/[0.06] text-white" />
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] text-white/30">صورة توضيحية (اختياري)</label>
+                                      <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
+                                        className="w-full text-sm bg-black border rounded-lg p-1" style={{ borderColor: 'rgba(72,72,71,0.15)', color: 'white' }} />
+                                    </div>
+                                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                      <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
+                                      <span className="text-[#ff7162] font-bold">رفض نهائي (لا يمكن للمستخدم التعديل)</span>
+                                    </label>
+                                    <div className="flex gap-2">
+                                      <Button size="sm" className="flex-1 font-bold" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)} style={{ background: 'linear-gradient(135deg, #ff7162, #c0000c)', color: 'white' }}>
+                                        {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => { setSalaryAction(null); setRejectImageFile(null); setIsFinalRejection(false); }} className="border-white/10 text-white/50">إلغاء</Button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
+                          </div>
+                        ))}
+                        {salaryRequests.filter(req => salaryFilter === "all" || req.status === salaryFilter).length === 0 && (
+                          <div className="text-center py-10 rounded-xl" style={{ background: '#131313' }}>
+                            <DollarSign className="w-10 h-10 mx-auto mb-2 text-white/10" />
+                            <p className="text-white/30 text-sm">لا توجد طلبات رواتب</p>
                           </div>
                         )}
                       </div>
-                    ))}
-                    {salaryRequests.length === 0 && (
-                      <div className="text-center py-10 text-muted-foreground"><DollarSign className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد طلبات رواتب</p></div>
+                    </div>
+
+                    {/* Approved History Table */}
+                    {salaryRequests.filter(r => r.status === "approved").length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-6 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
+                            <h2 className="text-lg font-bold text-white">سجل العمليات المعتمدة</h2>
+                          </div>
+                          <button className="text-xs font-bold text-[#34eb45] hover:underline">عرض الكل</button>
+                        </div>
+                        <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.05)' }}>
+                          <table className="w-full text-right">
+                            <thead>
+                              <tr style={{ background: 'rgba(32,31,31,0.5)' }}>
+                                <th className="px-4 py-3 text-[10px] text-white/30 font-bold uppercase tracking-[0.15em]">المستفيد</th>
+                                <th className="px-4 py-3 text-[10px] text-white/30 font-bold uppercase tracking-[0.15em]">التاريخ</th>
+                                <th className="px-4 py-3 text-[10px] text-white/30 font-bold uppercase tracking-[0.15em] text-left">المبلغ المعتمد</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {salaryRequests.filter(r => r.status === "approved").slice(0, 5).map((req) => (
+                                <tr key={req.id} className="hover:bg-[#201f1f] transition-colors" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                                  <td className="px-4 py-3.5">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: 'rgba(52,235,69,0.15)' }}>
+                                        <CheckCircle className="w-3.5 h-3.5 text-[#34eb45]" />
+                                      </div>
+                                      <span className="text-xs font-medium text-white">{req.user_name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3.5 text-[10px] text-white/30">{new Date(req.created_at).toLocaleDateString("ar-EG")}</td>
+                                  <td className="px-4 py-3.5 text-xs font-bold text-[#34eb45] text-left">{req.amount_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })} SAR</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
