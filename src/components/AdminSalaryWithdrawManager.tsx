@@ -94,16 +94,43 @@ const BANKS = [
   ...Object.entries(BANK_LABELS).map(([k, v]) => ({ value: k, label: v })),
 ];
 
+const getMonthOptions = () => {
+  const months: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
+    months.push({ value, label });
+  }
+  return months;
+};
+
+const getCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const formatDateSA = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString("ar-SA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch { return dateStr; }
+};
+
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [requests, setRequests] = useState<WithdrawRequest[]>([]);
   const [_stats, setStats] = useState<Stats>({ total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "delivered" | "rejected">("all");
   const [search, setSearch] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const isCurrentMonth = selectedMonth === getCurrentMonth();
+  const monthOptions = useMemo(getMonthOptions, []);
   const [bankFilter, setBankFilter] = useState("all");
   const [countryFilter, setCountryFilter] = useState("all");
   const [amountMin, setAmountMin] = useState("");
@@ -447,8 +474,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
               placeholder="بحث: UUID، اسم، كود الطلب..."
               className="bg-white/5 border-white/10 pr-9 text-xs h-9 rounded-xl" dir="rtl" />
           </div>
-          <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-            className="bg-white/5 border-white/10 w-[130px] text-xs h-9 rounded-xl" dir="ltr" />
+          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl text-xs px-2 h-9 text-foreground w-[150px]">
+            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
         </div>
         <div className="flex gap-1.5 flex-wrap">
           <select value={bankFilter} onChange={e => setBankFilter(e.target.value)}
@@ -530,7 +559,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={req.account_number} dir="ltr" />
                         <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={req.whatsapp} dir="ltr" />
                       </div>
-                      <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={new Date(req.created_at).toLocaleString("ar")} />
+                      <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(req.created_at)} />
                       <DetailCell icon={<Hash className="w-3 h-3" />} label="رقم الطلب" value={req.request_code} />
                       <div className={`flex items-center gap-2 rounded-xl p-2.5 text-xs font-bold ${req.transfer_verified ? "bg-emerald-500/5 text-emerald-400" : "bg-amber-500/5 text-amber-400"}`}>
                         {req.transfer_verified ? <><CheckCircle className="w-3.5 h-3.5" /> تم التحقق من التحويل</> : <><Clock className="w-3.5 h-3.5" /> لم يتم التحقق — مرفق إيصال</>}
@@ -624,7 +653,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         </Button>
                       </div>
 
-                      {canAct && req.status === "pending" && (
+                      {canAct && isCurrentMonth && req.status === "pending" && (
                         <div className="flex gap-2 pt-1">
                           <Button onClick={() => { setApproveSheet(req); setReceiptFile(null); setReceiptPreview(""); setApproveNote(""); }}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
@@ -634,6 +663,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                             className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
                             <XCircle className="w-4 h-4" /> رفض + سبب
                           </button>
+                        </div>
+                      )}
+                      {!isCurrentMonth && req.status === "pending" && (
+                        <div className="bg-muted/20 rounded-xl p-2.5 text-center text-[10px] text-muted-foreground">
+                          📁 أرشيف — لا يمكن التعديل على طلبات الأشهر السابقة
                         </div>
                       )}
                     </div>
@@ -806,7 +840,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 <DetailCell icon={<User className="w-3 h-3" />} label="اسم المستلم" value={detailReq.account_name} />
                 <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
                 <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
-                <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={new Date(detailReq.created_at).toLocaleString("ar")} />
+                <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(detailReq.created_at)} />
                 {detailReq.salary_type && (
                   <div className="bg-white/[0.03] rounded-xl px-3 py-2 flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>

@@ -30,15 +30,42 @@ interface Props {
   canAct: boolean;
 }
 
+const getMonthOptions = () => {
+  const months: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
+    months.push({ value, label });
+  }
+  return months;
+};
+
+const getCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const formatDateSA = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString("ar-SA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch { return dateStr; }
+};
+
 const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
   const [charges, setCharges] = useState<SalaryCharge[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "completed" | "pending">("all");
   const [search, setSearch] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const isCurrentMonth = selectedMonth === getCurrentMonth();
+  const monthOptions = useMemo(getMonthOptions, []);
 
   // Manual charge sheet
   const [chargeSheet, setChargeSheet] = useState(false);
@@ -190,9 +217,11 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
             placeholder="بحث: UUID، اسم، رقم مرجعي..."
             className="bg-white/5 border-white/10 pr-9 text-xs h-9 rounded-xl" dir="rtl" />
         </div>
-        <Input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-          className="bg-white/5 border-white/10 w-[130px] text-xs h-9 rounded-xl" dir="ltr" />
-        {canAct && (
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+          className="bg-white/5 border border-white/10 rounded-xl text-xs px-2 h-9 text-foreground w-[150px]">
+          {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        {canAct && isCurrentMonth && (
           <Button onClick={() => setChargeSheet(true)} size="sm"
             className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 rounded-xl text-xs px-3">
             <Zap className="w-3.5 h-3.5 ml-1" /> شحن يدوي
@@ -255,7 +284,7 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                   <span className="text-muted-foreground text-[10px] flex items-center gap-1 mb-0.5">
                     <CalendarDays className="w-3 h-3" /> التاريخ
                   </span>
-                  <span className="font-bold text-foreground">{new Date(charge.created_at).toLocaleDateString("ar")}</span>
+                  <span className="font-bold text-foreground">{formatDateSA(charge.created_at)}</span>
                 </div>
               </div>
 
