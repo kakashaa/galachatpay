@@ -2694,7 +2694,6 @@ const AdminDashboardPage: React.FC = () => {
             )}
           </AnimatePresence>
       )}
-          </div>
         </div>
       )}
       </div>
