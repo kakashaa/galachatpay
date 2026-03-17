@@ -180,6 +180,10 @@ const SalaryWithdraw: React.FC = () => {
   const [chargingCoins, setChargingCoins] = useState(false);
   const [coinsCharged, setCoinsCharged] = useState(0);
 
+  // Salary report check
+  const [salaryCheckLoading, setSalaryCheckLoading] = useState(false);
+  const [salaryWarning, setSalaryWarning] = useState<{ show: boolean; manual_amount?: number; message?: string } | null>(null);
+
   const hasFetchedRef = useRef(false);
 
   useEffect(() => {
