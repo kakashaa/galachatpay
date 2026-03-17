@@ -324,7 +324,7 @@ const SalaryWithdraw: React.FC = () => {
       } else if (data.wrong_amount && (data.transferred_usd || 0) >= registeredSalary) {
         // Transferred >= salary → accept with registered salary
         toast.success("✅ تم التحقق — سيتم احتساب الراتب المسجل فقط");
-        if (isFirstWithdrawal) {
+        if (withdrawalMode === "cash") {
           setStep("bank");
         } else {
           await chargeCoins(data.transaction_id || "");
