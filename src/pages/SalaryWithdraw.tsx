@@ -272,18 +272,6 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleScreenshot = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error("حجم الصورة كبير (الحد 5MB)"); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setScreenshotBase64(result);
-      setScreenshotPreview(result);
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleSubmit = async () => {
     if (!selectedTransfer) return;
