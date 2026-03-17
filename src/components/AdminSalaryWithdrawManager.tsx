@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   CheckCircle, XCircle, Clock, Search, Upload,
   Loader2, FileText, Image, Printer, Building2,
-  ChevronDown, ChevronUp, Eye, Phone, User, Hash, CalendarDays,
+  Eye, Phone, User, Hash, CalendarDays,
   MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3, ShieldCheck,
-  ShieldAlert, Coins, UserSearch, DollarSign,
+  ShieldAlert, Coins, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent,
 } from "@/components/ui/dialog";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
@@ -122,6 +122,32 @@ const formatDateSA = (dateStr: string) => {
   } catch { return dateStr; }
 };
 
+const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
+  const checks: { status: "safe" | "danger" | "warning"; text: string }[] = [];
+  if (data?.security) {
+    const sec = data.security;
+    checks.push({ status: sec.salary_official ? "safe" : "danger", text: sec.salary_official ? "الراتب رسمي (من الدعم)" : "الراتب غير رسمي" });
+    checks.push({ status: sec.no_manual ? "safe" : "danger", text: sec.no_manual ? "لا يوجد مبالغ يدوية" : `يوجد مبلغ يدوي: $${data.manual_amount || 0}` });
+    checks.push({ status: sec.transfer_verified ? "safe" : "warning", text: sec.transfer_verified ? "الحوالة موجودة ومؤكدة" : "الحوالة غير مؤكدة" });
+    checks.push({ status: sec.reference_new ? "safe" : "warning", text: sec.reference_new ? "الرقم المرجعي جديد" : "الرقم المرجعي مستخدم سابقاً" });
+    if (data.is_suspicious) checks.push({ status: "danger", text: "🔴 الراتب مشبوه — يحتاج مراجعة" });
+  } else {
+    const hs = data?.host_salary;
+    if (hs) {
+      checks.push(hs.deduction > hs.salary && hs.salary > 0
+        ? { status: "danger", text: `راتب مشبوه — مبلغ يدوي $${(hs.deduction - hs.salary).toFixed(2)}` }
+        : { status: "safe", text: "الراتب رسمي (من الدعم)" });
+      checks.push(hs.salary === 0 && hs.net > 0
+        ? { status: "danger", text: "الراتب كله يدوي — غير مدعوم" }
+        : { status: "safe", text: "لا يوجد مبالغ يدوية" });
+    }
+    checks.push(req.reference_id
+      ? { status: "safe", text: `الرقم المرجعي: ${req.reference_id}` }
+      : { status: "warning", text: "بدون رقم مرجعي" });
+  }
+  return checks;
+};
+
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [requests, setRequests] = useState<WithdrawRequest[]>([]);
   const [_stats, setStats] = useState<Stats>({ total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
@@ -135,9 +161,14 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [countryFilter, setCountryFilter] = useState("all");
   const [amountMin, setAmountMin] = useState("");
   const [amountMax, setAmountMax] = useState("");
-  const [expanded, setExpanded] = useState<string | null>(null);
 
+  // Unified detail sheet
   const [detailReq, setDetailReq] = useState<WithdrawRequest | null>(null);
+  const [detailReport, setDetailReport] = useState<any>(null);
+  const [detailReportLoading, setDetailReportLoading] = useState(false);
+  const [detailAvatar, setDetailAvatar] = useState("");
+
+  // Approve/Reject sheets
   const [approveSheet, setApproveSheet] = useState<WithdrawRequest | null>(null);
   const [rejectSheet, setRejectSheet] = useState<WithdrawRequest | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -148,87 +179,31 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // User report state
-  const [userReportReq, setUserReportReq] = useState<WithdrawRequest | null>(null);
-  const [userReportLoading, setUserReportLoading] = useState(false);
-  const [userReportData, setUserReportData] = useState<any>(null);
-  const [userReportAvatar, setUserReportAvatar] = useState("");
-
-  const fetchUserReport = async (req: WithdrawRequest) => {
-    setUserReportReq(req);
-    setUserReportLoading(true);
-    setUserReportData(null);
-    setUserReportAvatar("");
+  const openDetailSheet = async (req: WithdrawRequest) => {
+    setDetailReq(req);
+    setDetailReport(null);
+    setDetailAvatar(req.avatar || "");
+    setDetailReportLoading(true);
     try {
       const [reportRes, avatarRes] = await Promise.all([
         fetch(`${API}?action=salary_report&uuid=${req.user_uuid}`),
-        fetch(`${API}?action=get_avatar&uuid=${req.user_uuid}`),
+        !req.avatar ? fetch(`${API}?action=get_avatar&uuid=${req.user_uuid}`) : Promise.resolve(null),
       ]);
       const reportData = await reportRes.json();
-      setUserReportData(reportData);
-      try {
-        const avatarData = await avatarRes.json();
-        if (avatarData.success && avatarData.avatar) {
-          setUserReportAvatar(avatarData.avatar.startsWith("http") ? avatarData.avatar : getAvatarUrl(avatarData.avatar));
-        }
-      } catch { /* silent */ }
+      setDetailReport(reportData);
+      if (avatarRes) {
+        try {
+          const ad = await avatarRes.json();
+          if (ad.success && ad.avatar) setDetailAvatar(ad.avatar.startsWith("http") ? ad.avatar : getAvatarUrl(ad.avatar));
+        } catch { /* silent */ }
+      }
     } catch {
       toast.error("فشل في جلب بيانات المستخدم");
     } finally {
-      setUserReportLoading(false);
+      setDetailReportLoading(false);
     }
   };
 
-  const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
-    const checks: { status: "safe" | "danger" | "warning"; text: string }[] = [];
-    
-    // Use new salary_report security object if available
-    if (data?.security) {
-      const sec = data.security;
-      checks.push({
-        status: sec.salary_official ? "safe" : "danger",
-        text: sec.salary_official ? "الراتب رسمي (من الدعم)" : "الراتب غير رسمي",
-      });
-      checks.push({
-        status: sec.no_manual ? "safe" : "danger",
-        text: sec.no_manual ? "لا يوجد مبالغ يدوية" : `يوجد مبلغ يدوي: $${data.manual_amount || 0}`,
-      });
-      checks.push({
-        status: sec.transfer_verified ? "safe" : "warning",
-        text: sec.transfer_verified ? "الحوالة موجودة ومؤكدة" : "الحوالة غير مؤكدة",
-      });
-      checks.push({
-        status: sec.reference_new ? "safe" : "warning",
-        text: sec.reference_new ? "الرقم المرجعي جديد" : "الرقم المرجعي مستخدم سابقاً",
-      });
-      if (data.is_suspicious) {
-        checks.push({ status: "danger", text: "🔴 الراتب مشبوه — يحتاج مراجعة" });
-      }
-    } else {
-      // Fallback to old salary_check_all format
-      const hs = data?.host_salary;
-      if (hs) {
-        if (hs.deduction > hs.salary && hs.salary > 0) {
-          checks.push({ status: "danger", text: `راتب مشبوه — مبلغ يدوي $${(hs.deduction - hs.salary).toFixed(2)}` });
-        } else {
-          checks.push({ status: "safe", text: "الراتب رسمي (من الدعم)" });
-        }
-        if (hs.salary === 0 && hs.net > 0) {
-          checks.push({ status: "danger", text: "الراتب كله يدوي — غير مدعوم" });
-        } else {
-          checks.push({ status: "safe", text: "لا يوجد مبالغ يدوية" });
-        }
-      }
-      if (req.reference_id) {
-        checks.push({ status: "safe", text: `الرقم المرجعي: ${req.reference_id}` });
-      } else {
-        checks.push({ status: "warning", text: "بدون رقم مرجعي" });
-      }
-    }
-    return checks;
-  };
-
-  // Map API status to internal status
   const mapStatus = (s: string): "pending" | "delivered" | "rejected" => {
     if (s === "approved" || s === "delivered") return "delivered";
     if (s === "rejected") return "rejected";
@@ -241,7 +216,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const res = await fetch(`${API}?action=salary_withdraw_list&admin_key=ghala2026owner&month=${selectedMonth}`);
       const data = await res.json();
       if (data.success || data.requests) {
-        // Map API fields to our interface
         const rawRequests: WithdrawRequest[] = (data.requests || []).map((r: any) => ({
           ...r,
           user_uuid: r.uuid || r.user_uuid || "",
@@ -267,7 +241,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         }));
         const enriched = await enrichWithAvatars(rawRequests);
         setRequests(enriched);
-        // Compute amounts from actual request data (API stats may not include amounts)
         const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
         const pendingReqs = rawRequests.filter(r => r.status === "pending");
         const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
@@ -300,14 +273,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             const res = await fetch(`${API}?action=agent_lookup_user&admin_key=ghala2026owner&uuid=${req.user_uuid}`);
             const data = await res.json();
             return data.avatar ? getAvatarUrl(data.avatar) : "";
-          } catch {
-            return "";
-          }
+          } catch { return ""; }
         })
       );
-      batch.forEach((req, j) => {
-        result[i + j] = { ...req, avatar: avatars[j] };
-      });
+      batch.forEach((req, j) => { result[i + j] = { ...req, avatar: avatars[j] }; });
     }
     return result;
   };
@@ -397,12 +366,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     return Object.entries(map).sort((a, b) => b[1].amount - a[1].amount);
   }, [filtered]);
 
-  const monthLabel = (() => {
-    const [y, m] = selectedMonth.split("-");
-    const months = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-    return `${months[parseInt(m) - 1]} ${y}`;
-  })();
-
   const handlePrint = () => window.print();
 
   const statusConfig: Record<string, { label: string; textClass: string; bgClass: string; icon: React.ReactNode }> = {
@@ -421,7 +384,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     );
   };
 
-  // Compute stats from filtered results so they react to all filters
   const filteredStats = useMemo(() => {
     const pending = filtered.filter(r => r.status === "pending");
     const delivered = filtered.filter(r => r.status === "delivered");
@@ -499,12 +461,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         </div>
       </div>
 
-      {/* ===== 3. REQUESTS LIST ===== */}
+      {/* ===== 3. COMPACT CARDS LIST ===== */}
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-card/50 border border-white/5 rounded-2xl p-5 animate-pulse">
-              <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-card/50 border border-white/5 rounded-xl p-3 animate-pulse">
               <div className="h-3 bg-white/5 rounded w-2/3" />
             </div>
           ))}
@@ -515,192 +476,68 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           <p className="text-sm text-muted-foreground">لا توجد طلبات {filter !== "all" ? statusConfig[filter]?.label : ""}</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filtered.map((req, i) => (
-            <motion.div key={req.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04, duration: 0.35, ease: "easeOut" }}
-              whileHover={{ borderColor: "rgba(255,255,255,0.1)" }}
-              className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl overflow-hidden transition-all duration-300">
-              <button onClick={() => setExpanded(expanded === req.id ? null : req.id)}
-                className="w-full flex items-center justify-between p-3.5 text-right">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <AvatarCircle src={req.avatar} name={req.user_name || req.account_name} />
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-foreground">{req.user_name}</span>
-                      {statusBadge(req.status)}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1.5">
-                      <Hash className="w-3 h-3 inline shrink-0" /> UUID: {req.user_uuid}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {req.request_code} · {BANK_LABELS[req.bank] || req.bank} — {COUNTRY_LABELS[req.country] || req.country}
-                    </p>
+            <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03, duration: 0.3 }}
+              className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-xl p-3 hover:border-white/10 transition-colors">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {statusBadge(req.status)}
+                    {req.status === "rejected" && req.admin_note && (
+                      <span className="text-[9px] text-red-400/70 truncate max-w-[120px]">({req.admin_note})</span>
+                    )}
                   </div>
+                  <p className="text-xs text-foreground truncate">
+                    <span className="font-bold">{req.user_name}</span>
+                    <span className="text-muted-foreground"> • UUID: {req.user_uuid} • </span>
+                    <span className="font-bold font-mono">${req.amount}</span>
+                    <span className="text-muted-foreground"> • {BANK_LABELS[req.bank] || req.bank}</span>
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-mono">{req.request_code}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 mr-2">
-                  <div className="text-left">
-                    <p className="text-sm font-bold font-mono tabular-nums text-foreground">${req.amount?.toLocaleString()}</p>
-                    <p className={`text-[9px] flex items-center gap-0.5 ${req.transfer_verified ? "text-emerald-400" : "text-amber-400"}`}>
-                      {req.transfer_verified ? <><CheckCircle className="w-2.5 h-2.5" /> تم التحقق</> : <><Clock className="w-2.5 h-2.5" /> إيصال</>}
-                    </p>
-                  </div>
-                  {expanded === req.id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                <div className="shrink-0">
+                  {req.status === "pending" && canAct && isCurrentMonth ? (
+                    <Button size="sm" onClick={() => openDetailSheet(req)}
+                      className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] h-7 px-3 rounded-lg">
+                      معالجة
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" onClick={() => openDetailSheet(req)}
+                      className="text-muted-foreground hover:text-foreground text-[10px] h-7 px-3 rounded-lg">
+                      {req.status === "pending" ? "التفاصيل" : "عرض التفاصيل"}
+                    </Button>
+                  )}
                 </div>
-              </button>
-
-              <AnimatePresence>
-                {expanded === req.id && (
-                  <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-                    <div className="px-3.5 pb-3.5 space-y-2 border-t border-white/5 pt-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${BANK_LABELS[req.bank] || req.bank} — ${COUNTRY_LABELS[req.country] || req.country}`} />
-                        <DetailCell icon={<User className="w-3 h-3" />} label="المستلم" value={req.account_name} />
-                        <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={req.account_number} dir="ltr" />
-                        <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={req.whatsapp} dir="ltr" />
-                      </div>
-                      <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(req.created_at)} />
-                      <DetailCell icon={<Hash className="w-3 h-3" />} label="رقم الطلب" value={req.request_code} />
-                      <div className={`flex items-center gap-2 rounded-xl p-2.5 text-xs font-bold ${req.transfer_verified ? "bg-emerald-500/5 text-emerald-400" : "bg-amber-500/5 text-amber-400"}`}>
-                        {req.transfer_verified ? <><CheckCircle className="w-3.5 h-3.5" /> تم التحقق من التحويل</> : <><Clock className="w-3.5 h-3.5" /> لم يتم التحقق — مرفق إيصال</>}
-                      </div>
-
-                      {/* ━━━ Verification Documentation ━━━ */}
-                      {(req.reference_id || req.transferred_usd || req.approved_amount) && (
-                        <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                            <ShieldCheck className="w-3.5 h-3.5 text-primary" /> التوثيق
-                          </p>
-                          {req.reference_id && (
-                            <div className="flex items-center justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
-                              <span className="text-[10px] text-muted-foreground">الرقم المرجعي</span>
-                              <span className="text-xs font-bold font-mono text-emerald-400">#{req.reference_id}</span>
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-2">
-                            {req.transferred_usd != null && (
-                              <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                                <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المحوّل</p>
-                                <p className="text-xs font-bold font-mono text-foreground">${req.transferred_usd.toLocaleString()}</p>
-                              </div>
-                            )}
-                            {req.approved_amount != null && (
-                              <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                                <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المعتمد</p>
-                                <p className="text-xs font-bold font-mono text-primary">${req.approved_amount.toLocaleString()}</p>
-                              </div>
-                            )}
-                          </div>
-                          {/* Amount mismatch warning */}
-                          {req.transferred_usd != null && req.approved_amount != null && req.transferred_usd > req.approved_amount && (
-                            <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/10 rounded-lg px-3 py-2">
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                              <p className="text-[10px] text-amber-400 leading-relaxed">
-                                المبلغ المحوّل (${req.transferred_usd}) أكبر من الراتب (${req.approved_amount}) — سيتم احتساب الراتب فقط
-                              </p>
-                            </div>
-                          )}
-                          {req.transferred_usd != null && req.approved_amount != null && req.transferred_usd === req.approved_amount && (
-                            <div className="flex items-center gap-2 bg-emerald-500/5 rounded-lg px-3 py-2">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                              <p className="text-[10px] text-emerald-400">المبلغ متطابق مع الراتب المسجل</p>
-                            </div>
-                          )}
-                          {!req.transfer_verified && (
-                            <div className="flex items-center gap-2 bg-rose-500/5 rounded-lg px-3 py-2">
-                              <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                              <a href="https://galalivechat.com/admin/charges-reports?name=app" target="_blank" rel="noopener noreferrer"
-                                className="text-[10px] text-rose-400 underline hover:text-rose-300">
-                                يحتاج مراجعة يدوية — فتح صفحة الحوالات ↗
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {req.salary_type && (
-                        <div className="bg-white/[0.03] rounded-xl px-3 py-2 text-xs flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${req.salary_type === "agency" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}`}>
-                            {req.salary_type === "agency" ? "وكالة" : "مضيف"}
-                          </span>
-                        </div>
-                      )}
-                      {req.notes && <DetailCell icon={<MessageSquare className="w-3 h-3" />} label="ملاحظات" value={req.notes} />}
-
-                      {req.receipt_image && (
-                        <button onClick={() => setImagePreview(`${RECEIPT_BASE}${req.receipt_image}`)}
-                          className="flex items-center gap-2 text-xs text-primary hover:underline">
-                          <Eye className="w-3.5 h-3.5" /> عرض الإيصال
-                        </button>
-                      )}
-                      {req.admin_note && (
-                        <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5 text-xs">
-                          <span className="text-rose-400 text-[10px] font-bold flex items-center gap-1 mb-0.5">
-                            <XCircle className="w-3 h-3" /> سبب الرفض
-                          </span>
-                          <p className="text-foreground">{req.admin_note}</p>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setDetailReq(req)}
-                          className="flex-1 text-xs text-muted-foreground hover:text-primary h-8 rounded-xl">
-                          <Eye className="w-3.5 h-3.5 ml-1" /> عرض التفاصيل
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => fetchUserReport(req)}
-                          className="flex-1 text-xs text-muted-foreground hover:text-amber-400 h-8 rounded-xl">
-                          <UserSearch className="w-3.5 h-3.5 ml-1" /> تفاصيل المستخدم
-                        </Button>
-                      </div>
-
-                      {canAct && isCurrentMonth && req.status === "pending" && (
-                        <div className="flex gap-2 pt-1">
-                          <Button onClick={() => { setApproveSheet(req); setReceiptFile(null); setReceiptPreview(""); setApproveNote(""); }}
-                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
-                            <CheckCircle className="w-4 h-4 ml-1.5" /> قبول + إيصال
-                          </Button>
-                          <button onClick={() => { setRejectSheet(req); setRejectReason(""); setRejectImage(null); }}
-                            className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
-                            <XCircle className="w-4 h-4" /> رفض + سبب
-                          </button>
-                        </div>
-                      )}
-                      {!isCurrentMonth && req.status === "pending" && (
-                        <div className="bg-muted/20 rounded-xl p-2.5 text-center text-[10px] text-muted-foreground">
-                          📁 أرشيف — لا يمكن التعديل على طلبات الأشهر السابقة
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              </div>
             </motion.div>
           ))}
         </div>
       )}
 
-      {/* ===== 5. MONTHLY SUMMARY ===== */}
+      {/* ===== 4. MONTHLY SUMMARY ===== */}
       {!loading && filtered.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-foreground tracking-tight flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" /> ملخص شهر {monthLabel}
+            <BarChart3 className="w-4 h-4 text-primary" /> ملخص الشهر
           </h3>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-white/[0.03] rounded-xl p-2.5">
-              <p className="text-[10px] text-muted-foreground">إجمالي</p>
-              <p className="text-sm font-bold font-mono tabular-nums text-foreground">{filtered.length}</p>
-              <p className="text-[10px] font-semibold font-mono text-primary">${filteredStats.totalAmount.toLocaleString()}</p>
-            </div>
             <div className="bg-emerald-500/5 rounded-xl p-2.5">
               <p className="text-[10px] text-emerald-400 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> مسلّمة</p>
-              <p className="text-sm font-bold font-mono tabular-nums text-emerald-400">{filtered.filter(r => r.status === "delivered").length}</p>
-              <p className="text-[10px] font-semibold font-mono text-emerald-400/70">${filtered.filter(r => r.status === "delivered").reduce((s, r) => s + r.amount, 0).toLocaleString()}</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-emerald-400">{filteredStats.delivered}</p>
+              <p className="text-[10px] font-semibold font-mono text-emerald-400/70">${filteredStats.deliveredAmount.toLocaleString()}</p>
+            </div>
+            <div className="bg-rose-500/5 rounded-xl p-2.5">
+              <p className="text-[10px] text-rose-400 flex items-center justify-center gap-1"><XCircle className="w-3 h-3" /> مرفوضة</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-rose-400">{filteredStats.rejected}</p>
+              <p className="text-[10px] font-semibold font-mono text-rose-400/70">${filteredStats.rejectedAmount.toLocaleString()}</p>
             </div>
             <div className="bg-amber-500/5 rounded-xl p-2.5">
               <p className="text-[10px] text-amber-400 flex items-center justify-center gap-1"><Clock className="w-3 h-3" /> معلقة</p>
-              <p className="text-sm font-bold font-mono tabular-nums text-amber-400">{filtered.filter(r => r.status === "pending").length}</p>
-              <p className="text-[10px] font-semibold font-mono text-amber-400/70">${filtered.filter(r => r.status === "pending").reduce((s, r) => s + r.amount, 0).toLocaleString()}</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-amber-400">{filteredStats.pending}</p>
+              <p className="text-[10px] font-semibold font-mono text-amber-400/70">${filteredStats.pendingAmount.toLocaleString()}</p>
             </div>
           </div>
           {countrySummary.length > 0 && (
@@ -716,6 +553,195 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           )}
         </motion.div>
       )}
+
+      {/* ===== UNIFIED DETAIL SHEET ===== */}
+      <Sheet open={!!detailReq} onOpenChange={() => setDetailReq(null)}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/5">
+            <SheetTitle className="flex items-center gap-2 text-base">
+              <Hash className="w-4 h-4 text-primary" /> تفاصيل الطلب
+            </SheetTitle>
+          </SheetHeader>
+          {detailReq && (
+            <div className="space-y-4 pt-4">
+              {/* User header */}
+              <div className="flex items-center gap-3">
+                <AvatarCircle src={detailAvatar || detailReq.avatar} name={detailReq.user_name || detailReq.account_name} size="w-12 h-12" />
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-foreground">{detailReq.user_name}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">UUID: {detailReq.user_uuid}</p>
+                </div>
+                <div className="text-left">
+                  {statusBadge(detailReq.status)}
+                  <p className="text-lg font-bold font-mono tabular-nums text-primary mt-1">${detailReq.amount}</p>
+                </div>
+              </div>
+
+              {/* ━━━ Request Info ━━━ */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1">تفاصيل الطلب</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${BANK_LABELS[detailReq.bank] || detailReq.bank} — ${COUNTRY_LABELS[detailReq.country] || detailReq.country}`} />
+                  <DetailCell icon={<User className="w-3 h-3" />} label="المستلم" value={detailReq.account_name} />
+                  <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
+                  <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
+                </div>
+                <DetailCell icon={<Hash className="w-3 h-3" />} label="المرجعي" value={detailReq.reference_id ? `#${detailReq.reference_id}` : "—"} />
+                <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(detailReq.created_at)} />
+                {detailReq.salary_type && (
+                  <div className="bg-white/[0.03] rounded-xl px-3 py-2 text-xs flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${detailReq.salary_type === "agency" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+                      {detailReq.salary_type === "agency" ? "وكالة" : "مضيف"}
+                    </span>
+                  </div>
+                )}
+                {detailReq.notes && <DetailCell icon={<MessageSquare className="w-3 h-3" />} label="ملاحظات" value={detailReq.notes} />}
+                {detailReq.admin_note && (
+                  <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5 text-xs">
+                    <span className="text-rose-400 text-[10px] font-bold flex items-center gap-1 mb-0.5"><XCircle className="w-3 h-3" /> سبب الرفض</span>
+                    <p className="text-foreground">{detailReq.admin_note}</p>
+                  </div>
+                )}
+                {detailReq.receipt_image && (
+                  <button onClick={() => setImagePreview(`${RECEIPT_BASE}${detailReq.receipt_image}`)}
+                    className="flex items-center gap-2 text-xs text-primary hover:underline">
+                    <Eye className="w-3.5 h-3.5" /> عرض الإيصال
+                  </button>
+                )}
+              </div>
+
+              {/* ━━━ Salary Report (loaded async) ━━━ */}
+              {detailReportLoading ? (
+                <div className="flex items-center justify-center py-6 gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground">جاري جلب التقرير...</span>
+                </div>
+              ) : detailReport && (
+                <>
+                  {/* Support details */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1 flex items-center gap-1.5">
+                      <BarChart3 className="w-3.5 h-3.5 text-primary" /> الدعم والهدايا
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: "أرسل هذا الشهر", value: detailReport.monthly_sent || 0 },
+                        { label: "استلم هذا الشهر", value: detailReport.monthly_received || 0 },
+                        { label: "مستوى الإرسال", value: detailReport.sender_level || 0 },
+                        { label: "مستوى الاستقبال", value: detailReport.receiver_level || 0 },
+                      ].map((item, idx) => (
+                        <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2 flex justify-between items-center">
+                          <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                          <span className="text-xs font-bold font-mono text-foreground">{item.value.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {(detailReport.charger_level || 0) > 0 && (
+                      <div className="bg-white/[0.03] rounded-lg px-3 py-2 flex justify-between items-center">
+                        <span className="text-[10px] text-muted-foreground">مستوى الشحن</span>
+                        <span className="text-xs font-bold font-mono text-foreground">{detailReport.charger_level}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Salary report */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1 flex items-center gap-1.5">
+                      <DollarSign className="w-3.5 h-3.5 text-primary" /> تقرير الراتب
+                    </p>
+                    {detailReport.salary !== undefined ? (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
+                          <span className="text-xs font-bold font-mono text-foreground">${detailReport.salary?.toLocaleString() || 0}</span>
+                        </div>
+                        {(detailReport.deduction || 0) > 0 && (
+                          <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
+                            <span className="text-[10px] text-rose-400">المقتطع</span>
+                            <span className="text-xs font-bold font-mono text-rose-400">-${detailReport.deduction}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
+                          <span className="text-xs font-bold font-mono text-emerald-400">${detailReport.net?.toLocaleString() || 0}</span>
+                        </div>
+                        {detailReport.agency_salary > 0 && (
+                          <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
+                            <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
+                            <span className="text-xs font-bold font-mono text-amber-400">${detailReport.agency_salary}</span>
+                          </div>
+                        )}
+                        {detailReport.agency_id > 0 && (
+                          <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                            <span className="text-[10px] text-muted-foreground">الوكالة</span>
+                            <span className="text-xs font-bold text-foreground">#{detailReport.agency_id}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : detailReport.host_salary ? (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
+                          <span className="text-xs font-bold font-mono text-foreground">${detailReport.host_salary.salary?.toLocaleString() || 0}</span>
+                        </div>
+                        {(detailReport.host_salary.deduction || 0) > 0 && (
+                          <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
+                            <span className="text-[10px] text-rose-400">المقتطع</span>
+                            <span className="text-xs font-bold font-mono text-rose-400">-${detailReport.host_salary.deduction}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
+                          <span className="text-xs font-bold font-mono text-emerald-400">${detailReport.host_salary.net?.toLocaleString() || 0}</span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Security checks */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary" /> حالة الأمان
+                    </p>
+                    {getUserSecurityChecks(detailReport, detailReq).map((check, idx) => (
+                      <div key={idx} className={`flex items-center gap-2 text-xs p-2 rounded-lg ${
+                        check.status === "safe" ? "bg-emerald-500/5 text-emerald-400" :
+                        check.status === "danger" ? "bg-rose-500/5 text-rose-400" :
+                        "bg-amber-500/5 text-amber-400"
+                      }`}>
+                        {check.status === "safe" && <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
+                        {check.status === "danger" && <ShieldAlert className="w-3.5 h-3.5 shrink-0" />}
+                        {check.status === "warning" && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                        <span className="font-medium">{check.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* ━━━ Actions ━━━ */}
+              {canAct && isCurrentMonth && detailReq.status === "pending" && (
+                <div className="flex gap-2 pt-2 border-t border-white/5">
+                  <Button onClick={() => { setApproveSheet(detailReq); setDetailReq(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote(""); }}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
+                    <CheckCircle className="w-4 h-4 ml-1.5" /> قبول + إيصال
+                  </Button>
+                  <button onClick={() => { setRejectSheet(detailReq); setDetailReq(null); setRejectReason(""); setRejectImage(null); }}
+                    className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                    <XCircle className="w-4 h-4" /> رفض + سبب
+                  </button>
+                </div>
+              )}
+              {!isCurrentMonth && detailReq.status === "pending" && (
+                <div className="bg-muted/20 rounded-xl p-2.5 text-center text-[10px] text-muted-foreground">
+                  📁 أرشيف — لا يمكن التعديل على طلبات الأشهر السابقة
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* ===== APPROVE SHEET ===== */}
       <Sheet open={!!approveSheet} onOpenChange={() => setApproveSheet(null)}>
@@ -810,349 +836,6 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><XCircle className="w-4 h-4" /> تأكيد الرفض</>}
               </button>
             </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* ===== DETAIL DIALOG ===== */}
-      <Dialog open={!!detailReq} onOpenChange={() => setDetailReq(null)}>
-        <DialogContent className="max-w-[420px] rounded-2xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-sm flex items-center gap-2">
-              <Hash className="w-4 h-4 text-primary" /> تفاصيل الطلب {detailReq?.request_code}
-            </DialogTitle>
-          </DialogHeader>
-          {detailReq && (
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center gap-3">
-                <AvatarCircle src={detailReq.avatar} name={detailReq.user_name || detailReq.account_name} size="w-12 h-12" />
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-foreground">{detailReq.user_name}</p>
-                  <p className="text-[10px] text-muted-foreground font-mono">UUID: {detailReq.user_uuid}</p>
-                </div>
-                <div className="text-left">
-                  {statusBadge(detailReq.status)}
-                  <p className="text-lg font-bold font-mono tabular-nums text-primary mt-1">${detailReq.amount}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${BANK_LABELS[detailReq.bank] || detailReq.bank} — ${COUNTRY_LABELS[detailReq.country] || detailReq.country}`} />
-                <DetailCell icon={<User className="w-3 h-3" />} label="اسم المستلم" value={detailReq.account_name} />
-                <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
-                <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
-                <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(detailReq.created_at)} />
-                {detailReq.salary_type && (
-                  <div className="bg-white/[0.03] rounded-xl px-3 py-2 flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${detailReq.salary_type === "agency" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}`}>
-                      {detailReq.salary_type === "agency" ? "وكالة" : "مضيف"}
-                    </span>
-                  </div>
-                )}
-                {/* ━━━ Verification Documentation ━━━ */}
-                {(detailReq.reference_id || detailReq.transferred_usd || detailReq.approved_amount) && (
-                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-primary" /> التوثيق
-                    </p>
-                    {detailReq.reference_id && (
-                      <div className="flex items-center justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground">الرقم المرجعي</span>
-                        <span className="text-xs font-bold font-mono text-emerald-400">#{detailReq.reference_id}</span>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-2">
-                      {detailReq.transferred_usd != null && (
-                        <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                          <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المحوّل</p>
-                          <p className="text-xs font-bold font-mono text-foreground">${detailReq.transferred_usd.toLocaleString()}</p>
-                        </div>
-                      )}
-                      {detailReq.approved_amount != null && (
-                        <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                          <p className="text-[9px] text-muted-foreground mb-0.5">المبلغ المعتمد</p>
-                          <p className="text-xs font-bold font-mono text-primary">${detailReq.approved_amount.toLocaleString()}</p>
-                        </div>
-                      )}
-                    </div>
-                    {detailReq.transferred_usd != null && detailReq.approved_amount != null && detailReq.transferred_usd > detailReq.approved_amount && (
-                      <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/10 rounded-lg px-3 py-2">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                        <p className="text-[10px] text-amber-400 leading-relaxed">
-                          المبلغ المحوّل (${detailReq.transferred_usd}) أكبر من الراتب (${detailReq.approved_amount}) — سيتم احتساب الراتب فقط
-                        </p>
-                      </div>
-                    )}
-                    {detailReq.transferred_usd != null && detailReq.approved_amount != null && detailReq.transferred_usd === detailReq.approved_amount && (
-                      <div className="flex items-center gap-2 bg-emerald-500/5 rounded-lg px-3 py-2">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                        <p className="text-[10px] text-emerald-400">المبلغ متطابق مع الراتب المسجل</p>
-                      </div>
-                    )}
-                    {!detailReq.transfer_verified && (
-                      <div className="flex items-center gap-2 bg-rose-500/5 rounded-lg px-3 py-2">
-                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                        <a href="https://galalivechat.com/admin/charges-reports?name=app" target="_blank" rel="noopener noreferrer"
-                          className="text-[10px] text-rose-400 underline hover:text-rose-300">
-                          يحتاج مراجعة يدوية — فتح صفحة الحوالات ↗
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {detailReq.notes && <DetailCell icon={<MessageSquare className="w-3 h-3" />} label="ملاحظات" value={detailReq.notes} />}
-                {detailReq.approved_at && <DetailCell icon={<CheckCircle className="w-3 h-3" />} label="تاريخ القبول" value={new Date(detailReq.approved_at).toLocaleString("ar")} />}
-                {detailReq.approved_by && <DetailCell icon={<User className="w-3 h-3" />} label="وافق عليه" value={detailReq.approved_by} />}
-                {detailReq.rejected_at && <DetailCell icon={<XCircle className="w-3 h-3" />} label="تاريخ الرفض" value={new Date(detailReq.rejected_at).toLocaleString("ar")} />}
-                {detailReq.rejected_by && <DetailCell icon={<User className="w-3 h-3" />} label="رفض بواسطة" value={detailReq.rejected_by} />}
-                {detailReq.admin_note && (
-                  <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5">
-                    <span className="text-rose-400 text-[10px] font-bold flex items-center gap-1 mb-0.5">
-                      <XCircle className="w-3 h-3" /> سبب الرفض
-                    </span>
-                    <p className="text-foreground">{detailReq.admin_note}</p>
-                  </div>
-                )}
-              </div>
-              {detailReq.receipt_image && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground font-bold">إيصال التحويل:</p>
-                  <img src={`${RECEIPT_BASE}${detailReq.receipt_image}`} alt="receipt"
-                    className="w-full rounded-xl border border-white/5 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => setImagePreview(`${RECEIPT_BASE}${detailReq.receipt_image}`)} />
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ===== USER REPORT SHEET ===== */}
-      <Sheet open={!!userReportReq} onOpenChange={() => setUserReportReq(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
-          <SheetHeader className="pb-3 border-b border-white/5">
-            <SheetTitle className="flex items-center gap-2 text-base">
-              <UserSearch className="w-5 h-5 text-primary" /> تفاصيل المستخدم
-            </SheetTitle>
-          </SheetHeader>
-          <div className="space-y-4 pt-4">
-            {userReportLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-xs text-muted-foreground">جاري جلب بيانات المستخدم...</p>
-              </div>
-            ) : userReportData && userReportReq ? (
-              <>
-                {/* User header */}
-                <div className="flex items-center gap-3">
-                  <AvatarCircle src={userReportAvatar || userReportReq.avatar} name={userReportReq.user_name} size="w-14 h-14" />
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-foreground">{userReportReq.user_name}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">UUID: {userReportReq.user_uuid}</p>
-                  </div>
-                </div>
-
-                {/* Safety badge */}
-                {(() => {
-                  const checks = getUserSecurityChecks(userReportData, userReportReq);
-                  const allSafe = checks.every(c => c.status === "safe");
-                  const hasDanger = checks.some(c => c.status === "danger");
-                  return (
-                    <div className={`px-4 py-2.5 rounded-xl text-xs font-bold text-center ${
-                      allSafe ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                      hasDanger ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" :
-                      "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                    }`}>
-                      {allSafe ? "آمن ✓" : hasDanger ? "⚠️ يحتاج مراجعة" : "⚠️ تحذيرات"}
-                    </div>
-                  );
-                })()}
-
-                {/* Salary report */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <DollarSign className="w-3.5 h-3.5 text-primary" /> تقرير الراتب
-                  </p>
-                  {/* New salary_report format */}
-                  {userReportData.salary !== undefined ? (
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
-                        <span className="text-xs font-bold font-mono text-foreground">${userReportData.salary?.toLocaleString() || 0}</span>
-                      </div>
-                      {(userReportData.deduction || 0) > 0 && (
-                        <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
-                          <span className="text-[10px] text-rose-400">المقتطع</span>
-                          <span className="text-xs font-bold font-mono text-rose-400">-${userReportData.deduction}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
-                        <span className="text-xs font-bold font-mono text-emerald-400">${userReportData.net?.toLocaleString() || 0}</span>
-                      </div>
-                      {userReportData.agency_salary > 0 && (
-                        <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
-                          <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
-                          <span className="text-xs font-bold font-mono text-amber-400">${userReportData.agency_salary}</span>
-                        </div>
-                      )}
-                      {userReportData.is_manual && (
-                        <div className="flex justify-between bg-rose-500/5 border border-rose-500/10 rounded-lg px-3 py-2">
-                          <span className="text-[10px] text-rose-400 font-bold">⚠️ مبلغ يدوي</span>
-                          <span className="text-xs font-bold font-mono text-rose-400">${userReportData.manual_amount || 0}</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : userReportData.host_salary ? (
-                    /* Fallback: old salary_check_all format */
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
-                        <span className="text-xs font-bold font-mono text-foreground">${userReportData.host_salary.salary?.toLocaleString() || 0}</span>
-                      </div>
-                      {(userReportData.host_salary.deduction || 0) > 0 && (
-                        <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
-                          <span className="text-[10px] text-rose-400">المقتطع</span>
-                          <span className="text-xs font-bold font-mono text-rose-400">-${userReportData.host_salary.deduction}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
-                        <span className="text-xs font-bold font-mono text-emerald-400">${userReportData.host_salary.net?.toLocaleString() || 0}</span>
-                      </div>
-                      {userReportData.agency_salary?.has_salary && (
-                        <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
-                          <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
-                          <span className="text-xs font-bold font-mono text-amber-400">${userReportData.agency_salary.amount}</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* Supporter details (from salary_report) */}
-                {(userReportData.monthly_sent || userReportData.monthly_received) && (
-                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <BarChart3 className="w-3.5 h-3.5 text-primary" /> تفاصيل الدعم
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                        <p className="text-[9px] text-muted-foreground mb-0.5">إجمالي المُرسل</p>
-                        <p className="text-xs font-bold font-mono text-foreground">{(userReportData.monthly_sent || 0).toLocaleString()}</p>
-                      </div>
-                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                        <p className="text-[9px] text-muted-foreground mb-0.5">إجمالي المُستلم</p>
-                        <p className="text-xs font-bold font-mono text-foreground">{(userReportData.monthly_received || 0).toLocaleString()}</p>
-                      </div>
-                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                        <p className="text-[9px] text-muted-foreground mb-0.5">مستوى الإرسال</p>
-                        <p className="text-xs font-bold font-mono text-foreground">{userReportData.sender_level || 0}</p>
-                      </div>
-                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
-                        <p className="text-[9px] text-muted-foreground mb-0.5">مستوى الاستقبال</p>
-                        <p className="text-xs font-bold font-mono text-foreground">{userReportData.receiver_level || 0}</p>
-                      </div>
-                    </div>
-                    {userReportData.charger_level > 0 && (
-                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground">مستوى الشحن</span>
-                        <span className="text-xs font-bold font-mono text-foreground">{userReportData.charger_level}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Transfers to 10000 (from salary_report) */}
-                {userReportData.transfers_to_10000?.length > 0 && (
-                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <CreditCard className="w-3.5 h-3.5 text-primary" /> الحوالات المختارة
-                    </p>
-                    {userReportData.transfers_to_10000.map((t: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground font-mono">ref: {t.ref}</span>
-                        <span className="text-xs font-bold font-mono text-foreground">${t.amount_usd}</span>
-                        <span className="text-[9px] text-muted-foreground">{t.time}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Account status */}
-                {(userReportData.agency_id || userReportData.host_salary) && (
-                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-primary" /> حالة الحساب
-                    </p>
-                    {userReportData.agency_id > 0 && (
-                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground">رقم الوكالة</span>
-                        <span className="text-xs font-bold text-foreground">{userReportData.agency_id}</span>
-                      </div>
-                    )}
-                    {userReportData.is_agency_owner !== undefined && (
-                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground">صاحب وكالة</span>
-                        <span className={`text-xs font-bold ${userReportData.is_agency_owner ? "text-emerald-400" : "text-muted-foreground"}`}>
-                          {userReportData.is_agency_owner ? "✅ نعم" : "❌ لا"}
-                        </span>
-                      </div>
-                    )}
-                    {userReportData.agency_salary?.agency_name && (
-                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground">الوكالة</span>
-                        <span className="text-xs font-bold text-foreground">{userReportData.agency_salary.agency_name}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Withdrawal history */}
-                {userReportData.withdrawals && (
-                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                      <Coins className="w-3.5 h-3.5 text-primary" /> سجل السحب
-                    </p>
-                    <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                      <span className="text-[10px] text-muted-foreground">سحبات هذا الشهر</span>
-                      <span className="text-xs font-bold text-foreground">{userReportData.withdrawals.count} من {userReportData.withdrawals.max}</span>
-                    </div>
-                    <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
-                      <span className="text-[10px] text-muted-foreground">إجمالي المسحوب</span>
-                      <span className="text-xs font-bold font-mono text-foreground">${userReportData.withdrawals.total_withdrawn || 0}</span>
-                    </div>
-                    <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
-                      <span className="text-[10px] text-emerald-400 font-bold">المتبقي</span>
-                      <span className="text-xs font-bold font-mono text-emerald-400">
-                        ${(userReportData.withdrawals.remaining_host || 0) + (userReportData.withdrawals.remaining_agency || 0)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Security checks */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-primary" /> حالة الأمان
-                  </p>
-                  {getUserSecurityChecks(userReportData, userReportReq).map((check, i) => (
-                    <div key={i} className={`flex items-center gap-2 text-xs p-2.5 rounded-lg ${
-                      check.status === "safe" ? "bg-emerald-500/10 text-emerald-400" :
-                      check.status === "danger" ? "bg-rose-500/10 text-rose-400" :
-                      "bg-amber-500/10 text-amber-400"
-                    }`}>
-                      {check.status === "safe" && <CheckCircle className="w-4 h-4 shrink-0" />}
-                      {check.status === "danger" && <ShieldAlert className="w-4 h-4 shrink-0" />}
-                      {check.status === "warning" && <AlertTriangle className="w-4 h-4 shrink-0" />}
-                      <span className="font-medium">{check.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground text-sm">لا توجد بيانات</div>
-            )}
           </div>
         </SheetContent>
       </Sheet>
