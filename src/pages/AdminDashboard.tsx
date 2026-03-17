@@ -258,8 +258,11 @@ const AdminDashboardPage: React.FC = () => {
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
-  const adminRole = sessionStorage.getItem("admin_role") as "super_admin" | "admin" | "moderator" | null;
-  const isSuperAdmin = adminRole === "super_admin";
+  const adminDisplayName = sessionStorage.getItem("admin_display_name") || adminUsername;
+  const adminRole = sessionStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
+  const isOwner = adminRole === "owner";
+  const isSuperAdmin = adminRole === "super_admin" || isOwner;
+  const isRegularAdmin = adminRole === "admin";
   const adminPermissions: string[] = (() => {
     try { return JSON.parse(sessionStorage.getItem("admin_permissions") || "[]"); } catch { return []; }
   })();
