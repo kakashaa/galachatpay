@@ -118,19 +118,26 @@ const AdminLogin: React.FC = () => {
     }
   };
 
-  const completeLogin = (data: any) => {
+  const completeLogin = async (data: any) => {
     sessionStorage.setItem("admin_username", data.username || username.trim());
     sessionStorage.setItem("admin_display_name", data.name || data.display_name || username.trim());
     sessionStorage.setItem("admin_role", data.role);
-    sessionStorage.setItem("admin_session_token", data.token || "");
     if (data.shift_start) sessionStorage.setItem("admin_shift_start", data.shift_start);
     if (data.shift_end) sessionStorage.setItem("admin_shift_end", data.shift_end);
     if (data.phone) sessionStorage.setItem("admin_phone", data.phone);
 
-    // Also store API token for agencies/salaries
+    // Store external API token for agencies/salaries
     if (data.token) {
       sessionStorage.setItem("admin_api_token", data.token);
     }
+
+    // Generate edge-function compatible session token
+    const edgeToken = btoa(JSON.stringify({ 
+      username: data.username || username.trim(), 
+      role: data.role, 
+      iat: Date.now() 
+    }));
+    sessionStorage.setItem("admin_session_token", edgeToken);
 
     navigate("/admin/dashboard", { replace: true });
   };
