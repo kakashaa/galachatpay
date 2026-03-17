@@ -71,7 +71,16 @@ Deno.serve(async (req) => {
     if (session_token && action !== "auth_check") {
       // Validate existing session token
       try {
-        const decoded = JSON.parse(atob(session_token));
+        let decoded: any;
+        try {
+          decoded = JSON.parse(atob(session_token));
+        } catch {
+          // Token is not valid base64-JSON — reject it
+          return new Response(
+            JSON.stringify({ error: "جلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى", auth_error: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         if (decoded.username) {
           if (ADMIN_ACCOUNTS[decoded.username]) {
             auth = { role: ADMIN_ACCOUNTS[decoded.username].role };
