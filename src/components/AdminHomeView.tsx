@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Crown, Shield, BarChart3, Headset, ClipboardList, DollarSign,
-  Hash, ShoppingBag, Settings, Briefcase, Users, ScrollText, MessageSquare
+  Hash, ShoppingBag, Settings, Briefcase, Users, ScrollText, MessageSquare, Search
 } from 'lucide-react';
 
 interface ServiceItem {
@@ -33,10 +33,15 @@ const AdminHomeView: React.FC<Props> = ({
   onServiceClick, onChatClick, recentLogs, isOwner, isSuperAdmin,
 }) => {
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  
   const roleLabel = adminRole === 'owner' ? 'مدير النظام الأعلى'
     : adminRole === 'super_admin' ? 'مسؤول أعلى'
     : adminRole === 'admin' ? 'مسؤول'
     : 'مشرف';
+
+  const shiftStart = sessionStorage.getItem("admin_shift_start");
+  const shiftEnd = sessionStorage.getItem("admin_shift_end");
 
   // Build services grid based on role
   const services: ServiceItem[] = [
@@ -47,45 +52,74 @@ const AdminHomeView: React.FC<Props> = ({
     ] : []),
     { key: 'support', label: 'الدعم الفني', icon: <Headset className="w-7 h-7" />, gradient: 'from-cyan-500/20 to-cyan-600/5', borderColor: 'border-cyan-500/20', badge: badges.support || 0, route: '/admin/support' },
     ...(isSuperAdmin ? [
-      { key: 'requests', label: 'الهدايا', icon: <ShoppingBag className="w-7 h-7" />, gradient: 'from-blue-500/20 to-blue-600/5', borderColor: 'border-blue-500/20', badge: badges.requests || 0, route: '/admin/gifts' },
+      { key: 'requests', label: 'الهدايا', icon: <ShoppingBag className="w-7 h-7" />, gradient: 'from-pink-500/20 to-pink-600/5', borderColor: 'border-pink-500/20', badge: badges.requests || 0, route: '/admin/gifts' },
       { key: 'salary', label: 'الرواتب', icon: <DollarSign className="w-7 h-7" />, gradient: 'from-emerald-500/20 to-emerald-600/5', borderColor: 'border-emerald-500/20', badge: badges.salary || 0, route: '/admin/salary' },
-      { key: 'change_id', label: 'تغيير آيدي', icon: <Hash className="w-7 h-7" />, gradient: 'from-indigo-500/20 to-indigo-600/5', borderColor: 'border-indigo-500/20', route: '/admin/id-change' },
+      { key: 'change_id', label: 'تغيير آيدي', icon: <Hash className="w-7 h-7" />, gradient: 'from-violet-500/20 to-violet-600/5', borderColor: 'border-violet-500/20', route: '/admin/id-change' },
       { key: 'bd', label: 'فريق البيدي', icon: <Briefcase className="w-7 h-7" />, gradient: 'from-purple-500/20 to-purple-600/5', borderColor: 'border-purple-500/20', route: '/admin/bd' },
     ] : []),
     ...(isOwner ? [
       { key: 'settings', label: 'الإعدادات', icon: <Settings className="w-7 h-7" />, gradient: 'from-slate-500/20 to-slate-600/5', borderColor: 'border-slate-500/20', route: '/admin/settings' },
       { key: 'agencies', label: 'الوكالات', icon: <ClipboardList className="w-7 h-7" />, gradient: 'from-amber-500/20 to-amber-600/5', borderColor: 'border-amber-500/20', route: '/admin/agencies' },
-      { key: 'moderators', label: 'الأدمن', icon: <Users className="w-7 h-7" />, gradient: 'from-emerald-500/20 to-emerald-600/5', borderColor: 'border-emerald-500/20', route: '/admin/settings' },
-      { key: 'audit_log', label: 'السجل', icon: <ScrollText className="w-7 h-7" />, gradient: 'from-violet-500/20 to-violet-600/5', borderColor: 'border-violet-500/20' },
+      { key: 'accounts', label: 'الأدمن', icon: <Users className="w-7 h-7" />, gradient: 'from-emerald-500/20 to-emerald-600/5', borderColor: 'border-emerald-500/20', route: '/admin/accounts' },
+      { key: 'audit_log', label: 'السجل', icon: <ScrollText className="w-7 h-7" />, gradient: 'from-violet-500/20 to-violet-600/5', borderColor: 'border-violet-500/20', route: '/admin/log' },
     ] : []),
   ];
 
   return (
-    <div className="max-w-2xl mx-auto p-4 space-y-5 pb-4" dir="rtl">
+    <div className="max-w-2xl mx-auto p-4 space-y-4 pb-4" dir="rtl">
+      {/* Quick Search */}
+      <div className="bg-white/[0.03] rounded-2xl border border-white/5 px-4 py-3 flex items-center gap-3">
+        <Search className="w-5 h-5 text-muted-foreground" />
+        <input
+          placeholder="البحث بواسطة معرف المستخدم (User ID)"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="bg-transparent border-none outline-none text-sm w-full text-foreground placeholder:text-muted-foreground"
+          dir="ltr"
+        />
+      </div>
+
       {/* Admin Card */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] rounded-3xl p-5 space-y-4"
+        className="bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] rounded-3xl p-5 space-y-3"
       >
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center">
             <Shield className="w-6 h-6 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-base font-bold text-foreground">أهلاً، {adminDisplayName}</p>
             <p className="text-[11px] text-muted-foreground">{roleLabel}</p>
           </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] text-emerald-400 font-bold">متصل</span>
+          </div>
         </div>
 
-        {/* Chat Button */}
-        <button
-          onClick={onChatClick}
-          className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
-        >
-          <MessageSquare className="w-5 h-5" />
-          دخول مجموعة الإدارة
-        </button>
+        {/* Shift info */}
+        {(shiftStart || shiftEnd) && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+            <span className="text-[10px] text-muted-foreground">فترة الدوام:</span>
+            <span className="text-[11px] font-bold text-foreground font-mono">{shiftStart || "—"} - {shiftEnd || "—"}</span>
+          </div>
+        )}
+
+        {/* Chat Bubbles */}
+        <div className="flex gap-3">
+          <button onClick={() => navigate("/admin/chat")}
+            className="flex-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full py-3 px-4 flex items-center justify-center gap-2 hover:bg-emerald-500/15 transition-colors active:scale-[0.97]">
+            <Shield className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs text-emerald-400 font-bold">مجموعة المشرفين</span>
+          </button>
+          <button onClick={() => navigate("/admin/chat")}
+            className="flex-1 bg-white/[0.03] border border-white/5 rounded-full py-3 px-4 flex items-center justify-center gap-2 hover:bg-white/[0.05] transition-colors active:scale-[0.97]">
+            <Users className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground font-bold">الكل</span>
+          </button>
+        </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-2">
@@ -128,7 +162,12 @@ const AdminHomeView: React.FC<Props> = ({
       {/* Recent Activity */}
       {recentLogs.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-bold text-muted-foreground">آخر العمليات</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-muted-foreground">آخر العمليات</p>
+            {isOwner && (
+              <button onClick={() => navigate("/admin/log")} className="text-[10px] text-primary font-bold hover:underline">عرض الكل</button>
+            )}
+          </div>
           {recentLogs.slice(0, 5).map((log: any, i: number) => (
             <motion.div
               key={log.id || i}

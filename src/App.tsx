@@ -77,6 +77,9 @@ const AdminSalaryPage = lazy(() => import("./pages/admin/AdminSalaryPage"));
 const AdminAgenciesPage = lazy(() => import("./pages/admin/AdminAgenciesPage"));
 const AdminSettingsPage = lazy(() => import("./pages/admin/AdminSettingsPage"));
 const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
+const AdminChatPage = lazy(() => import("./pages/admin/AdminChatPage"));
+const AdminLogPage = lazy(() => import("./pages/admin/AdminLogPage"));
+const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
 
 const queryClient = new QueryClient();
 
@@ -140,6 +143,9 @@ const App = () => {
                   <Route path="/admin/agencies" element={<AdminAgenciesPage />} />
                   <Route path="/admin/settings" element={<AdminSettingsPage />} />
                   <Route path="/admin/support" element={<AdminSupportPage />} />
+                  <Route path="/admin/chat" element={<AdminChatPage />} />
+                  <Route path="/admin/log" element={<AdminLogPage />} />
+                  <Route path="/admin/accounts" element={<AdminAccountsPage />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/policy" element={<PolicyPage />} />
                   <Route path="/quick-support" element={<QuickSupport />} />
