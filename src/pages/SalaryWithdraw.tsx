@@ -161,12 +161,13 @@ const SalaryWithdraw: React.FC = () => {
 
   // Flow state
   const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
-  const [registeredSalary, setRegisteredSalary] = useState(0); // the net salary for chosen type
+  const [registeredSalary, setRegisteredSalary] = useState(0);
   const [enteredAmount, setEnteredAmount] = useState("");
   const [amountError, setAmountError] = useState("");
-  const [isFirstWithdrawal, setIsFirstWithdrawal] = useState(true);
+  const [withdrawalMode, setWithdrawalMode] = useState<"cash" | "coins">("cash");
+  const [cashWithdrawalsLeft, setCashWithdrawalsLeft] = useState(0);
 
-  // Steps: "choose_type" | "enter_amount" | "transfer_instructions" | "verify" | "bank" | "account" | "success" | "coins_instructions" | "coins_success"
+  // Steps
   const [step, setStep] = useState<string>("loading");
 
   // Verification
