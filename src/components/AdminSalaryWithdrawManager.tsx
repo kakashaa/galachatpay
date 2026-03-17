@@ -121,6 +121,60 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // User report state
+  const [userReportReq, setUserReportReq] = useState<WithdrawRequest | null>(null);
+  const [userReportLoading, setUserReportLoading] = useState(false);
+  const [userReportData, setUserReportData] = useState<any>(null);
+  const [userReportAvatar, setUserReportAvatar] = useState("");
+
+  const fetchUserReport = async (req: WithdrawRequest) => {
+    setUserReportReq(req);
+    setUserReportLoading(true);
+    setUserReportData(null);
+    setUserReportAvatar("");
+    try {
+      const [salaryRes, avatarRes] = await Promise.all([
+        fetch(`${API}?action=salary_check_all&uuid=${req.user_uuid}`),
+        fetch(`${API}?action=get_avatar&uuid=${req.user_uuid}`),
+      ]);
+      const salaryData = await salaryRes.json();
+      setUserReportData(salaryData);
+      try {
+        const avatarData = await avatarRes.json();
+        if (avatarData.success && avatarData.avatar) {
+          setUserReportAvatar(avatarData.avatar.startsWith("http") ? avatarData.avatar : getAvatarUrl(avatarData.avatar));
+        }
+      } catch { /* silent */ }
+    } catch {
+      toast.error("فشل في جلب بيانات المستخدم");
+    } finally {
+      setUserReportLoading(false);
+    }
+  };
+
+  const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
+    const checks: { status: "safe" | "danger" | "warning"; text: string }[] = [];
+    const hs = data?.host_salary;
+    if (hs) {
+      if (hs.deduction > hs.salary && hs.salary > 0) {
+        checks.push({ status: "danger", text: `راتب مشبوه — مبلغ يدوي $${(hs.deduction - hs.salary).toFixed(2)}` });
+      } else {
+        checks.push({ status: "safe", text: "الراتب رسمي (من الدعم)" });
+      }
+      if (hs.salary === 0 && hs.net > 0) {
+        checks.push({ status: "danger", text: "الراتب كله يدوي — غير مدعوم" });
+      } else {
+        checks.push({ status: "safe", text: "لا يوجد مبالغ يدوية" });
+      }
+    }
+    if (req.reference_id) {
+      checks.push({ status: "safe", text: `الرقم المرجعي: ${req.reference_id}` });
+    } else {
+      checks.push({ status: "warning", text: "بدون رقم مرجعي" });
+    }
+    return checks;
+  };
+
   // Map API status to internal status
   const mapStatus = (s: string): "pending" | "delivered" | "rejected" => {
     if (s === "approved" || s === "delivered") return "delivered";
