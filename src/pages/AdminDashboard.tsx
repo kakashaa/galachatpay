@@ -857,33 +857,42 @@ const AdminDashboardPage: React.FC = () => {
     </div>
   );
 
-  // Section definitions
+  // Section definitions - filtered by role
   type SectionKey = "requests" | "settings" | "chat" | "finance";
-  const SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[] }[] = [
+  const ALL_SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[]; roles: string[] }[] = [
     {
       id: "requests", title: "الطلبات والموافقات", description: "طلبات تحتاج موافقة",
       icon: <ClipboardList className="w-10 h-10" />, gradient: "from-blue-500/15 to-blue-600/5", iconColor: "text-blue-400",
       tabs: ["all_requests", "salary", "custom_gifts", "animated_photos", "id_changes", "reports"],
+      roles: ["owner", "super_admin"],
     },
     {
       id: "settings", title: "الإعدادات والإضافات", description: "إدارة المحتوى",
       icon: <Settings className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
       tabs: ["videos", "entries", "frames", "hairs", "gifts", "notifications", "banners", "admin_stars", "element_settings",
-        ...(adminRole === "super_admin" || adminRole === "admin" ? ["moderators" as Exclude<Tab, null>] : []),
-        ...(adminRole === "super_admin" ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
+        ...(isOwner ? ["moderators" as Exclude<Tab, null>] : []),
+        ...(isOwner ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
       ],
+      roles: ["owner"],
     },
     {
       id: "chat", title: "الدردشة والدعم", description: "تواصل + مساعدة",
       icon: <MessageSquare className="w-10 h-10" />, gradient: "from-emerald-500/15 to-emerald-600/5", iconColor: "text-emerald-400",
       tabs: ["admin_chat", "support_tickets", "support_chats", "quick_support"],
+      roles: ["owner", "super_admin", "admin"],
     },
     {
       id: "finance", title: "المالية والوكالات", description: "وكالات + رواتب",
       icon: <Wallet className="w-10 h-10" />, gradient: "from-amber-500/15 to-amber-600/5", iconColor: "text-amber-400",
       tabs: ["agencies", "top_agents", "bd_management", "blocks"],
+      roles: ["owner"],
     },
   ];
+  // Filter sections by role
+  const SECTIONS = ALL_SECTIONS.filter(s => {
+    if (isModeratorRole) return true; // moderators use permission-based filtering
+    return adminRole ? s.roles.includes(adminRole) : false;
+  });
 
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
     { key: "admin_chat", label: "دردشة الإدارة", icon: <MessageSquare className="w-4 h-4" />, color: "text-emerald-400" },
