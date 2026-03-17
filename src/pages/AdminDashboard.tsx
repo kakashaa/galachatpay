@@ -2585,45 +2585,89 @@ const AdminDashboardPage: React.FC = () => {
             {/* Quick Support Tab */}
             {activeTab === "quick_support" && (
               <motion.div key="quick_support" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
-                {quickSupportRequests.length === 0 ? (
-                  <p className="text-center py-10 text-muted-foreground">لا توجد طلبات دعم سريع</p>
-                ) : quickSupportRequests.map((req: any) => {
-                  const typeLabels: Record<string, string> = {
-                    admin_visit: "🏠 طلب إداري",
-                    report: "⚠️ بلاغ",
-                    complaint: "📋 شكوى",
-                    direct_contact: "📞 تواصل مباشر",
-                  };
-                  return (
-                    <div key={req.id} className="bg-card border rounded-xl p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">{typeLabels[req.request_type] || req.request_type}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${req.status === "pending" ? "bg-amber-500/10 text-amber-400" : req.status === "resolved" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
-                          {req.status === "pending" ? "معلق" : req.status === "resolved" ? "تم" : req.status}
-                        </span>
+                {/* Filter + Search */}
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { key: "all", label: "الكل", count: quickSupportRequests.length },
+                    { key: "pending", label: "معلقة", count: quickSupportRequests.filter((r: any) => r.status === "pending").length },
+                    { key: "resolved", label: "أرشيف", count: quickSupportRequests.filter((r: any) => r.status === "resolved").length },
+                  ].map(f => (
+                    <button key={f.key} onClick={() => {
+                      const el = document.getElementById('qs-filter') as HTMLInputElement;
+                      if (el) el.dataset.filter = f.key;
+                      // Use a state-like approach with data attributes for simplicity
+                      setQuickSupportRequests(prev => [...prev]); // trigger re-render
+                    }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all bg-card border-border/40`}>
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  placeholder="🔍 بحث بالاسم أو UUID..."
+                  onChange={(e) => {
+                    const el = document.getElementById('qs-search') as HTMLInputElement;
+                    if (el) el.value = e.target.value;
+                    setQuickSupportRequests(prev => [...prev]);
+                  }}
+                  className="text-sm"
+                  dir="rtl"
+                />
+                {(() => {
+                  const searchEl = document.getElementById('qs-search') as HTMLInputElement;
+                  const filterEl = document.getElementById('qs-filter') as HTMLInputElement;
+                  const searchVal = searchEl?.value?.toLowerCase() || '';
+                  const filterVal = filterEl?.dataset?.filter || 'pending';
+                  const filtered = quickSupportRequests
+                    .filter((r: any) => filterVal === 'all' || r.status === filterVal)
+                    .filter((r: any) => !searchVal || r.user_name?.toLowerCase().includes(searchVal) || r.user_uuid?.toLowerCase().includes(searchVal));
+                  const isArchive = filterVal === 'resolved';
+                  
+                  return filtered.length === 0 ? (
+                    <p className="text-center py-10 text-muted-foreground">لا توجد طلبات دعم سريع</p>
+                  ) : filtered.map((req: any) => {
+                    const typeLabels: Record<string, string> = {
+                      admin_visit: "🏠 طلب إداري",
+                      admin_presence: "🏠 حضور إداري",
+                      report: "⚠️ بلاغ",
+                      complaint: "📋 شكوى",
+                      direct_contact: "📞 تواصل مباشر",
+                      contact: "📞 تواصل",
+                    };
+                    return (
+                      <div key={req.id} className={`bg-card border rounded-xl p-4 space-y-2 ${isArchive ? 'opacity-70' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold">{typeLabels[req.request_type] || req.request_type}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${req.status === "pending" ? "bg-amber-500/10 text-amber-400" : req.status === "resolved" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                            {req.status === "pending" ? "معلق" : req.status === "resolved" ? "✅ أرشيف" : req.status}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">{req.user_name} • <span className="font-mono" dir="ltr">{req.user_uuid}</span></p>
+                        {req.room_code && <p className="text-xs text-foreground">🏠 الغرفة: <span className="font-bold font-mono" dir="ltr">{req.room_code}</span></p>}
+                        {req.description && <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{req.description}</p>}
+                        {req.phone_number && <p className="text-xs text-foreground">📞 <span className="font-mono" dir="ltr">{req.phone_number}</span></p>}
+                        {req.attachment_url && (
+                          <a href={req.attachment_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">📎 عرض المرفق</a>
+                        )}
+                        <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}</p>
+                        {canAct && req.status === "pending" && (
+                          <Button size="sm" className="w-full" onClick={async () => {
+                            try {
+                              await supabase.from("quick_support_requests").update({ status: "resolved" } as any).eq("id", req.id);
+                              setQuickSupportRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "resolved" } : r));
+                              toast.success("تم تحديث الحالة");
+                            } catch { toast.error("فشل التحديث"); }
+                          }}>
+                            <CheckCircle className="w-3 h-3 ml-1" />تم المعالجة
+                          </Button>
+                        )}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">{req.user_name} • {req.user_uuid}</p>
-                      {req.room_code && <p className="text-xs text-foreground">🏠 الغرفة: <span className="font-bold font-mono" dir="ltr">{req.room_code}</span></p>}
-                      {req.description && <p className="text-xs text-foreground bg-muted/10 rounded-lg p-2">{req.description}</p>}
-                      {req.phone_number && <p className="text-xs text-foreground">📞 <span className="font-mono" dir="ltr">{req.phone_number}</span></p>}
-                      {req.attachment_url && (
-                        <a href={req.attachment_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">📎 عرض المرفق</a>
-                      )}
-                      <p className="text-[10px] text-muted-foreground">{new Date(req.created_at).toLocaleString("ar-EG")}</p>
-                      {canAct && req.status === "pending" && (
-                        <Button size="sm" className="w-full" onClick={async () => {
-                          try {
-                            await supabase.from("quick_support_requests").update({ status: "resolved" } as any).eq("id", req.id);
-                            setQuickSupportRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: "resolved" } : r));
-                            toast.success("تم تحديث الحالة");
-                          } catch { toast.error("فشل التحديث"); }
-                        }}>
-                          <CheckCircle className="w-3 h-3 ml-1" />تم المعالجة
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
+                {/* Hidden elements for filter/search state */}
+                <input id="qs-search" type="hidden" />
+                <input id="qs-filter" type="hidden" data-filter="pending" />
               </motion.div>
             )}
 
