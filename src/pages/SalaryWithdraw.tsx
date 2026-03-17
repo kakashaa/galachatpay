@@ -315,7 +315,7 @@ const SalaryWithdraw: React.FC = () => {
         setStep("verify");
       } else if (data.verified) {
         toast.success("✅ تم التحقق من التحويل بنجاح!");
-        if (isFirstWithdrawal) {
+        if (withdrawalMode === "cash") {
           setStep("bank");
         } else {
           // Coins flow — auto-charge
