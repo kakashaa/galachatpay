@@ -32,6 +32,7 @@ const AdminHomeView: React.FC<Props> = ({
   adminDisplayName, adminRole, stats, badges,
   onServiceClick, onChatClick, recentLogs, isOwner, isSuperAdmin,
 }) => {
+  const navigate = useNavigate();
   const roleLabel = adminRole === 'owner' ? 'مدير النظام الأعلى'
     : adminRole === 'super_admin' ? 'مسؤول أعلى'
     : adminRole === 'admin' ? 'مسؤول'
