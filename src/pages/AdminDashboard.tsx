@@ -918,10 +918,8 @@ const AdminDashboardPage: React.FC = () => {
     { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-4 h-4" />, color: "text-slate-400" },
     { key: "banners", label: "بنرات", icon: <ImageIcon className="w-4 h-4" />, color: "text-teal-400" },
     { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-4 h-4" />, color: "text-amber-400" },
-    ...((adminRole === "super_admin" || adminRole === "admin") ? [
+    ...(isOwner ? [
       { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-4 h-4" />, color: "text-emerald-400" },
-    ] : []),
-    ...(adminRole === "super_admin" ? [
       { key: "trash" as Exclude<Tab, null>, label: "المحذوفات", icon: <Trash2 className="w-4 h-4" />, color: "text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
       { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-4 h-4" />, color: "text-violet-400" },
     ] : []),
