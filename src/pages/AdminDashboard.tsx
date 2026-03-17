@@ -1820,70 +1820,117 @@ const AdminDashboardPage: React.FC = () => {
             {activeTab === "vip" && (
               <motion.div key="vip" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
                 {/* Grant VIP Section */}
-                <div className="rounded-xl p-5" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)', boxShadow: '0 0 20px rgba(52,235,69,0.04)' }}>
-                  <div className="flex items-center gap-2 mb-4">
+                {/* Page Header */}
+                <div className="text-center mb-2">
+                  <span className="text-[10px] uppercase tracking-[0.1em] text-yellow-500 font-bold">Premium Access Control</span>
+                  <h2 className="text-2xl font-black tracking-tight text-white mt-1">إدارة الـ VIP</h2>
+                </div>
+
+                {/* Send VIP Gift Form */}
+                <div className="rounded-xl p-5 relative overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
+                  <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl rounded-full -mr-16 -mt-16" style={{ background: 'linear-gradient(135deg, #FFD700, #B8860B)' }} />
+                  <div className="flex items-center gap-2 mb-5">
                     <Crown className="w-5 h-5 text-yellow-400" />
-                    <h2 className="text-sm font-bold text-white tracking-tight">إهداء VIP</h2>
+                    <h3 className="text-lg font-bold tracking-tight text-white">إرسال هدية VIP</h3>
                   </div>
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">معرف المستخدم (UUID)</label>
+                      <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">معرف المستخدم (User ID)</label>
                       <Input
                         type="text"
                         inputMode="numeric"
-                        placeholder="مثال: 504932"
+                        placeholder="مثال: #88291"
                         value={adminStarUuid}
                         onChange={(e) => setAdminStarUuid(e.target.value)}
                         dir="ltr"
-                        className="h-12 bg-black border-white/[0.06] text-white placeholder:text-white/20 focus:border-[#34eb45] focus:ring-[#34eb45]/20"
+                        className="h-12 bg-black border-white/[0.06] text-white placeholder:text-white/20 focus:border-yellow-500 focus:ring-yellow-500/20 font-mono"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">مستوى VIP</label>
-                        <select
-                          value={vipGrantLevel}
-                          onChange={(e) => setVipGrantLevel(e.target.value)}
-                          className="w-full rounded-lg px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer"
-                          style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
-                        >
-                          <option value="1">VIP 1</option>
-                          <option value="2">VIP 2</option>
-                          <option value="3">VIP 3</option>
-                          <option value="4">VIP 4</option>
-                          <option value="5">VIP 5</option>
-                          <option value="6">VIP 6</option>
-                        </select>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">فئة العضوية (Tier)</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: "GOLD", levels: ["4", "5", "6"], color: "#FFD700" },
+                          { label: "SILVER", levels: ["2", "3"], color: "#c0c0c0" },
+                          { label: "BRONZE", levels: ["1"], color: "#cd7f32" },
+                        ].map((tier) => (
+                          <button
+                            key={tier.label}
+                            onClick={() => setVipGrantLevel(tier.levels[0])}
+                            className="py-3 rounded-lg text-[11px] font-black uppercase transition-all"
+                            style={{
+                              background: tier.levels.includes(vipGrantLevel) ? `${tier.color}10` : '#000',
+                              border: `1px solid ${tier.levels.includes(vipGrantLevel) ? `${tier.color}40` : 'rgba(72,72,71,0.15)'}`,
+                              color: tier.levels.includes(vipGrantLevel) ? tier.color : 'rgba(255,255,255,0.4)',
+                            }}
+                          >
+                            {tier.label}
+                          </button>
+                        ))}
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">المدة</label>
-                        <select
-                          value={vipGrantDuration}
-                          onChange={(e) => setVipGrantDuration(e.target.value)}
-                          className="w-full rounded-lg px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer"
-                          style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
-                        >
-                          <option value="7">7 أيام</option>
-                          <option value="15">15 يوم</option>
-                          <option value="30">30 يوم</option>
-                          <option value="90">90 يوم</option>
-                          <option value="180">180 يوم</option>
-                          <option value="365">سنة</option>
-                        </select>
-                      </div>
+                      {/* Specific level selector */}
+                      <select
+                        value={vipGrantLevel}
+                        onChange={(e) => setVipGrantLevel(e.target.value)}
+                        className="w-full rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer mt-2"
+                        style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
+                      >
+                        <option value="1">VIP 1 (Bronze)</option>
+                        <option value="2">VIP 2 (Silver)</option>
+                        <option value="3">VIP 3 (Silver)</option>
+                        <option value="4">VIP 4 (Gold)</option>
+                        <option value="5">VIP 5 (Gold)</option>
+                        <option value="6">VIP 6 (Gold)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">المدة (Duration)</label>
+                      <select
+                        value={vipGrantDuration}
+                        onChange={(e) => setVipGrantDuration(e.target.value)}
+                        className="w-full rounded-lg px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer"
+                        style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
+                      >
+                        <option value="7">7 أيام</option>
+                        <option value="15">15 يوم</option>
+                        <option value="30">30 يوم</option>
+                        <option value="90">90 يوم</option>
+                        <option value="180">180 يوم</option>
+                        <option value="365">سنة كاملة</option>
+                      </select>
                     </div>
                     <button
                       onClick={handleGrantVip}
                       disabled={vipGrantLoading || !adminStarUuid.trim()}
-                      className="w-full py-3.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+                      className="w-full py-3.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
                       style={{
-                        background: 'linear-gradient(135deg, #34eb45 0%, #00d632 100%)',
-                        color: '#004108',
-                        boxShadow: '0 0 20px rgba(52,235,69,0.2)',
+                        background: 'linear-gradient(135deg, #FFD700 0%, #B8860B 100%)',
+                        color: '#000',
+                        boxShadow: '0 0 20px rgba(255,215,0,0.15)',
                       }}
                     >
-                      {vipGrantLoading ? <><Loader2 className="w-4 h-4 animate-spin" />جاري الإهداء...</> : <><Crown className="w-4 h-4" />إهداء VIP</>}
+                      {vipGrantLoading ? <><Loader2 className="w-4 h-4 animate-spin" />جاري التفعيل...</> : "تفعيل العضوية الآن"}
                     </button>
+                  </div>
+                </div>
+
+                {/* VIP Stats */}
+                <div className="rounded-xl p-4" style={{ background: 'rgba(32,31,31,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-white/40 uppercase tracking-widest">توزيع العضويات</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-white">عضويات فعالة</span>
+                      <span className="text-sm font-black text-[#34eb45]">{allVipRequests.length}</span>
+                    </div>
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                      <div className="bg-[#34eb45] h-full rounded-full" style={{ width: '75%' }} />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-white">طلبات معلقة</span>
+                      <span className="text-sm font-black text-red-400">{allVipRequests.length}</span>
+                    </div>
                   </div>
                 </div>
 
