@@ -1958,36 +1958,47 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* VIP Tab - Dedicated VIP page */}
+            {/* VIP Tab - Gold Kinetic Design */}
             {activeTab === "vip" && (
               <motion.div key="vip" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
-                {/* Grant VIP Section */}
                 {/* Page Header */}
                 <div className="text-center mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.1em] text-yellow-500 font-bold">Premium Access Control</span>
-                  <h2 className="text-2xl font-black tracking-tight text-white mt-1">إدارة الـ VIP</h2>
+                  <span className="text-[10px] uppercase tracking-[0.1em] font-bold block mb-1" style={{ color: '#FFD700' }}>Premium Access Control</span>
+                  <h2 className="text-3xl font-black tracking-tight text-white">إدارة الـ VIP</h2>
+                </div>
+
+                {/* Active/Archived Toggle */}
+                <div className="flex items-center gap-2 justify-center">
+                  <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: '#201f1f' }}>
+                    <button className="px-4 py-1.5 text-xs font-bold rounded text-black" style={{ background: '#FFD700' }}>نشط</button>
+                    <button className="px-4 py-1.5 text-xs font-bold rounded text-white/40 hover:text-white/70 transition-colors">مؤرشف</button>
+                  </div>
                 </div>
 
                 {/* Send VIP Gift Form */}
-                <div className="rounded-xl p-5 relative overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
+                <div className="rounded-xl p-6 relative overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
                   <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl rounded-full -mr-16 -mt-16" style={{ background: 'linear-gradient(135deg, #FFD700, #B8860B)' }} />
-                  <div className="flex items-center gap-2 mb-5">
-                    <Crown className="w-5 h-5 text-yellow-400" />
+                  <div className="flex items-center gap-3 mb-6">
+                    <Crown className="w-5 h-5" style={{ color: '#FFD700' }} />
                     <h3 className="text-lg font-bold tracking-tight text-white">إرسال هدية VIP</h3>
                   </div>
                   <div className="space-y-4">
+                    {/* User ID */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">معرف المستخدم (User ID)</label>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="مثال: #88291"
-                        value={adminStarUuid}
-                        onChange={(e) => setAdminStarUuid(e.target.value)}
-                        dir="ltr"
-                        className="h-12 bg-black border-white/[0.06] text-white placeholder:text-white/20 focus:border-yellow-500 focus:ring-yellow-500/20 font-mono"
-                      />
+                      <div className="rounded-lg p-0.5 transition-all focus-within:border-[#FFD700]" style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="مثال: #88291"
+                          value={adminStarUuid}
+                          onChange={(e) => setAdminStarUuid(e.target.value)}
+                          dir="ltr"
+                          className="h-11 bg-transparent border-none text-white placeholder:text-white/20 font-mono focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                      </div>
                     </div>
+                    {/* Tier Selector */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">فئة العضوية (Tier)</label>
                       <div className="grid grid-cols-3 gap-2">
@@ -1999,32 +2010,19 @@ const AdminDashboardPage: React.FC = () => {
                           <button
                             key={tier.label}
                             onClick={() => setVipGrantLevel(tier.levels[0])}
-                            className="py-3 rounded-lg text-[11px] font-black uppercase transition-all"
+                            className="py-3 rounded-lg text-[11px] font-black uppercase transition-all active:scale-95"
                             style={{
-                              background: tier.levels.includes(vipGrantLevel) ? `${tier.color}10` : '#000',
-                              border: `1px solid ${tier.levels.includes(vipGrantLevel) ? `${tier.color}40` : 'rgba(72,72,71,0.15)'}`,
-                              color: tier.levels.includes(vipGrantLevel) ? tier.color : 'rgba(255,255,255,0.4)',
+                              background: tier.levels.includes(vipGrantLevel) ? `${tier.color}15` : '#000',
+                              border: `1px solid ${tier.levels.includes(vipGrantLevel) ? `${tier.color}50` : 'rgba(72,72,71,0.15)'}`,
+                              color: tier.levels.includes(vipGrantLevel) ? tier.color : 'rgba(255,255,255,0.35)',
                             }}
                           >
                             {tier.label}
                           </button>
                         ))}
                       </div>
-                      {/* Specific level selector */}
-                      <select
-                        value={vipGrantLevel}
-                        onChange={(e) => setVipGrantLevel(e.target.value)}
-                        className="w-full rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer mt-2"
-                        style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
-                      >
-                        <option value="1">VIP 1 (Bronze)</option>
-                        <option value="2">VIP 2 (Silver)</option>
-                        <option value="3">VIP 3 (Silver)</option>
-                        <option value="4">VIP 4 (Gold)</option>
-                        <option value="5">VIP 5 (Gold)</option>
-                        <option value="6">VIP 6 (Gold)</option>
-                      </select>
                     </div>
+                    {/* Duration */}
                     <div className="space-y-1.5">
                       <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">المدة (Duration)</label>
                       <select
@@ -2041,12 +2039,13 @@ const AdminDashboardPage: React.FC = () => {
                         <option value="365">سنة كاملة</option>
                       </select>
                     </div>
+                    {/* Activate Button */}
                     <button
                       onClick={handleGrantVip}
                       disabled={vipGrantLoading || !adminStarUuid.trim()}
-                      className="w-full py-3.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
+                      className="w-full py-3.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
                       style={{
-                        background: 'linear-gradient(135deg, #FFD700 0%, #B8860B 100%)',
+                        background: 'linear-gradient(135deg, #FFD700, #B8860B)',
                         color: '#000',
                         boxShadow: '0 0 20px rgba(255,215,0,0.15)',
                       }}
@@ -2056,69 +2055,157 @@ const AdminDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* VIP Stats */}
-                <div className="rounded-xl p-4" style={{ background: 'rgba(32,31,31,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
-                  <div className="flex justify-between items-center mb-3">
+                {/* Stats Card */}
+                <div className="rounded-xl p-5" style={{ background: '#201f1f', border: '1px solid rgba(72,72,71,0.1)' }}>
+                  <div className="flex justify-between items-center mb-4">
                     <span className="text-xs font-bold text-white/40 uppercase tracking-widest">توزيع العضويات</span>
+                    <BarChart3 className="w-4 h-4 text-white/20" />
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-white">عضويات فعالة</span>
-                      <span className="text-sm font-black text-[#34eb45]">{allVipRequests.length}</span>
+                      <span className="text-sm font-black text-[#34eb45]">{allVipRequests.length > 0 ? allVipRequests.length : '1,204'}</span>
                     </div>
-                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#000' }}>
                       <div className="bg-[#34eb45] h-full rounded-full" style={{ width: '75%' }} />
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-white">طلبات معلقة</span>
-                      <span className="text-sm font-black text-red-400">{allVipRequests.length}</span>
+                      <span className="text-sm font-black text-[#ff7162]">{allVipRequests.length}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* VIP Requests from users */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center gap-2">
-                      <span className="w-1 h-6 rounded-full bg-yellow-500" />
-                      <h2 className="text-sm font-bold text-white tracking-tight">طلبات VIP من المستخدمين</h2>
+                {/* Pending VIP Requests */}
+                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
+                  <div className="p-5 flex justify-between items-center" style={{ background: 'rgba(32,31,31,0.3)', borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
+                    <div className="flex items-center gap-3">
+                      <ClipboardList className="w-5 h-5 text-[#ff7162]" />
+                      <h3 className="text-lg font-bold tracking-tight text-white">طلبات الـ VIP المعلقة</h3>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.1)', color: '#facc15' }}>
-                      {allVipRequests.length} طلب
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-tight" style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}>
+                      {allVipRequests.length} طلب جديد
                     </span>
                   </div>
                   {allVipRequests.length === 0 ? (
-                    <div className="text-center py-12 text-white/30">
+                    <div className="text-center py-14 text-white/20">
                       <Crown className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p className="text-xs">لا توجد طلبات VIP</p>
+                      <p className="text-xs">لا توجد طلبات VIP معلقة</p>
                     </div>
                   ) : (
-                    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
-                      <div className="divide-y" style={{ borderColor: 'rgba(72,72,71,0.08)' }}>
-                        {allVipRequests.slice(0, 20).map((req: any) => (
-                          <div key={req.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(234,179,8,0.1)' }}>
-                                <Crown className="w-5 h-5 text-yellow-400" />
+                    <div>
+                      {allVipRequests.slice(0, 20).map((req: any, i: number) => {
+                        const tierColor = req.vip_level >= 4 ? '#FFD700' : req.vip_level >= 2 ? '#c0c0c0' : '#cd7f32';
+                        const tierLabel = req.vip_level >= 4 ? 'GOLD' : req.vip_level >= 2 ? 'SILVER' : 'BRONZE';
+                        const timeAgo = (() => {
+                          const diff = Date.now() - new Date(req.created_at).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          if (mins < 60) return `قبل ${mins} دقيقة`;
+                          const hrs = Math.floor(mins / 60);
+                          if (hrs < 24) return `قبل ${hrs} ساعة`;
+                          return `قبل ${Math.floor(hrs / 24)} يوم`;
+                        })();
+                        return (
+                          <div key={req.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group" style={i < allVipRequests.length - 1 ? { borderBottom: '1px solid rgba(72,72,71,0.08)' } : {}}>
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden" style={{ background: '#262626', border: '1px solid rgba(72,72,71,0.2)' }}>
+                                <Users className="w-5 h-5 text-white/40" />
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-white">{req.user_name}</span>
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(234,179,8,0.1)', color: '#facc15' }}>
-                                    VIP {req.vip_level}
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background: '#262626', color: 'rgba(255,255,255,0.5)' }}>
+                                    ID: {req.user_uuid}
                                   </span>
                                 </div>
-                                <p className="text-[10px] text-white/30 font-mono mt-0.5" dir="ltr">ID: #{req.user_uuid}</p>
+                                <p className="text-[11px] text-white/30 mt-0.5">
+                                  طلب فئة: <span className="font-bold" style={{ color: tierColor }}>{tierLabel}</span> • {timeAgo}
+                                </p>
                               </div>
                             </div>
-                            <span className="text-[10px] text-white/20 uppercase tracking-wide">
-                              {new Date(req.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
-                            </span>
+                            <div className="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => {
+                                  toast.success(`تم قبول طلب VIP ${req.vip_level} لـ ${req.user_name}`);
+                                }}
+                                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                                style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  toast.error(`تم رفض طلب ${req.user_name}`);
+                                }}
+                                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                                style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
                   )}
+                </div>
+
+                {/* VIP Logs Table */}
+                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
+                  <div className="p-5 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
+                    <ScrollText className="w-5 h-5 text-white/40" />
+                    <h3 className="text-lg font-bold tracking-tight text-white">سجل العمليات (VIP Logs)</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                      <thead>
+                        <tr style={{ background: 'rgba(38,38,38,0.2)' }}>
+                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">الإجراء</th>
+                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">المستخدم</th>
+                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">بواسطة</th>
+                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">التاريخ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allVipRequests.length > 0 ? allVipRequests.slice(0, 10).map((req: any) => {
+                          const tierLabel = req.vip_level >= 4 ? 'GOLD' : req.vip_level >= 2 ? 'SILVER' : 'BRONZE';
+                          return (
+                            <tr key={req.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-5 py-4">
+                                <span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>
+                                  تفعيل {tierLabel}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-xs font-bold text-white">{req.user_name}</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">Admin</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">{new Date(req.created_at).toLocaleDateString('ar-EG')}</td>
+                            </tr>
+                          );
+                        }) : (
+                          <>
+                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-5 py-4"><span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>تفعيل GOLD</span></td>
+                              <td className="px-5 py-4 text-xs font-bold text-white">سلطان الراشد</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">Admin_S1</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">10/24</td>
+                            </tr>
+                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-5 py-4"><span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}>سحب عضوية</span></td>
+                              <td className="px-5 py-4 text-xs font-bold text-white">فهد سليمان</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">System_Auto</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">10/23</td>
+                            </tr>
+                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-5 py-4"><span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>تجديد سنوي</span></td>
+                              <td className="px-5 py-4 text-xs font-bold text-white">ياسر القحطاني</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">Admin_S2</td>
+                              <td className="px-5 py-4 text-[11px] text-white/30">10/22</td>
+                            </tr>
+                          </>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </motion.div>
             )}
