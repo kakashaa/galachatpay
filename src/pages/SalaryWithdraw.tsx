@@ -11,32 +11,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import SalaryHistory from "@/components/SalaryHistory";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const API = "https://galachat.site/project-z/api.php";
 
-interface SalaryCheckAllResult {
-  is_agency_owner: boolean;
-  host_salary: { salary: number; deduction: number; net: number; has_salary: boolean; is_suspicious?: boolean; suspicious_amount?: number };
-  agency_salary: { amount: number; agency_name: string; has_salary: boolean };
-  withdrawals: { count: number; max: number; total_withdrawn: number; remaining_host: number; remaining_agency: number; can_withdraw: boolean };
-  withdraw_open?: boolean;
+interface Transfer {
+  reference_id: string;
+  amount_usd: number;
+  time: string;
+  is_used: boolean;
+  selectable: boolean;
 }
 
-interface VerifyResult {
-  verified: boolean;
-  transaction_id?: string;
-  message?: string;
-  amount_coins?: number;
-  amount_usd?: number;
-  transferred_usd?: number;
-  approved_amount?: number;
-  already_used?: boolean;
-  reference_id?: string;
-  wrong_amount?: boolean;
+interface TransfersResult {
+  transfers: Transfer[];
+  is_agency_owner?: boolean;
+  withdrawals?: { count: number; max: number; total_withdrawn: number };
 }
 
 interface SalaryBank {
@@ -131,18 +123,16 @@ const countryCodes = [
 ];
 
 const TRANSFER_TARGET_ID = "10000";
-const USD_TO_COINS = 8500; // $1 = 8,500 coins
+const USD_TO_COINS = 8500;
 
-// Date helpers for cash withdrawal availability
 const getCashWithdrawDates = () => {
   const today = new Date();
   const dayOfMonth = today.getDate();
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const canWithdrawCash = dayOfMonth >= lastDay - 2; // last 3 days: 29, 30, 31
+  const canWithdrawCash = dayOfMonth >= lastDay - 2;
   return { dayOfMonth, lastDay, canWithdrawCash, startDay: lastDay - 2 };
 };
 
-// Withdrawal limits
 const getWithdrawalLimits = (isAgencyOwner: boolean) => {
   const maxCash = isAgencyOwner ? 2 : 1;
   const maxTotal = isAgencyOwner ? 3 : 2;
@@ -156,23 +146,18 @@ const SalaryWithdraw: React.FC = () => {
   // Core state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [allData, setAllData] = useState<SalaryCheckAllResult | null>(null);
-  const [_noSalaryAtAll, setNoSalaryAtAll] = useState(false);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [isAgencyOwner, setIsAgencyOwner] = useState(false);
+  const [usedCount, setUsedCount] = useState(0);
 
-  // Flow state
-  const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
-  const [registeredSalary, setRegisteredSalary] = useState(0);
-  const [enteredAmount, setEnteredAmount] = useState("");
-  const [amountError, setAmountError] = useState("");
+  // Selected transfer
+  const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
   const [withdrawalMode, setWithdrawalMode] = useState<"cash" | "coins">("cash");
-  const [cashWithdrawalsLeft, setCashWithdrawalsLeft] = useState(0);
 
   // Steps
   const [step, setStep] = useState<string>("loading");
 
-  // Verification
-  const [verifying, setVerifying] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
+  // Screenshot for manual verification
   const [screenshotBase64, setScreenshotBase64] = useState("");
   const [screenshotPreview, setScreenshotPreview] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,51 +188,31 @@ const SalaryWithdraw: React.FC = () => {
     if (!user) { navigate("/"); return; }
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    fetchAllSalaries();
+    fetchTransfers();
   }, [user?.uuid]);
 
-  const fetchAllSalaries = async () => {
+  const fetchTransfers = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`);
-      const data: SalaryCheckAllResult = await res.json();
-      setAllData(data);
+      const res = await fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`);
+      const data: TransfersResult = await res.json();
+      const allTransfers = data.transfers || [];
+      setTransfers(allTransfers);
+      setIsAgencyOwner(!!data.is_agency_owner);
 
-      const hasHost = data.host_salary?.has_salary;
-      const hasAgency = data.agency_salary?.has_salary;
+      const used = allTransfers.filter(t => t.is_used).length;
+      setUsedCount(used);
 
-      if (!hasHost && !hasAgency) {
-        setNoSalaryAtAll(true);
-        setStep("no_salary");
-      } else if (data.host_salary?.is_suspicious) {
-        setStep("suspicious");
-      } else if (data.is_agency_owner && hasHost && hasAgency) {
-        // Check exhausted for agency (max 3)
-        const { maxTotal } = getWithdrawalLimits(true);
-        if (data.withdrawals.count >= maxTotal) {
-          setStep("exhausted");
-        } else {
-          setStep("choose_type");
-        }
+      const newTransfers = allTransfers.filter(t => !t.is_used && t.selectable);
+      const { maxTotal } = getWithdrawalLimits(!!data.is_agency_owner);
+
+      if (used >= maxTotal) {
+        setStep("exhausted");
+      } else if (newTransfers.length === 0) {
+        setStep("no_transfers");
       } else {
-        // Regular host or agency owner with only one salary
-        const type = hasHost ? "host" : "agency";
-        const net = type === "host" ? data.host_salary.net : data.agency_salary.amount;
-        const { maxCash, maxTotal } = getWithdrawalLimits(data.is_agency_owner);
-        const count = data.withdrawals.count;
-
-        if (count >= maxTotal) {
-          setStep("exhausted");
-          setAllData(data);
-        } else {
-          setSalaryType(type);
-          setRegisteredSalary(net);
-          const mode = count < maxCash ? "cash" : "coins";
-          setWithdrawalMode(mode);
-          setCashWithdrawalsLeft(Math.max(0, maxCash - count));
-          setStep("enter_amount");
-        }
+        setStep("transfers_list");
       }
     } catch {
       setError("فشل الاتصال بالخادم");
@@ -257,91 +222,32 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleChooseSalaryType = (type: "host" | "agency") => {
-    if (!allData) return;
-    setSalaryType(type);
-    const net = type === "host" ? allData.host_salary.net : allData.agency_salary.amount;
-    setRegisteredSalary(net);
-    const { maxCash } = getWithdrawalLimits(allData.is_agency_owner);
-    const count = allData.withdrawals.count;
-    const mode = count < maxCash ? "cash" : "coins";
-    setWithdrawalMode(mode);
-    setCashWithdrawalsLeft(Math.max(0, maxCash - count));
-    setStep("enter_amount");
-  };
+  const handleSelectTransfer = (transfer: Transfer) => {
+    setSelectedTransfer(transfer);
 
-  const handleAmountSubmit = () => {
-    const amt = parseFloat(enteredAmount);
-    if (isNaN(amt) || amt <= 0) {
-      setAmountError("أدخل مبلغ صحيح");
-      return;
-    }
-    if (Math.abs(amt - registeredSalary) > 0.01) {
-      setAmountError(`المبلغ لا يتطابق مع الراتب المسجل ($${registeredSalary})`);
-      return;
-    }
-    setAmountError("");
+    const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
+    const selectedIndex = newTransfers.indexOf(transfer);
+    const { maxCash } = getWithdrawalLimits(isAgencyOwner);
+    const isCash = (usedCount + selectedIndex) < maxCash;
 
-    if (withdrawalMode === "cash") {
-      // Check date for cash withdrawals
+    if (isCash) {
       const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
       if (!canWithdrawCash) {
-        setAmountError(`سحب الراتب النقدي متاح فقط من يوم ${startDay} إلى ${lastDay} من الشهر`);
+        toast.error(`سحب الراتب النقدي متاح فقط من يوم ${startDay} إلى ${lastDay} من الشهر`);
         return;
       }
-      setStep("transfer_instructions");
+      setWithdrawalMode("cash");
+      setStep("bank");
     } else {
-      setStep("coins_instructions");
+      setWithdrawalMode("coins");
+      setStep("coins_confirm");
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("تم النسخ!");
-  };
-
-  const handleTransferDone = async () => {
-    setVerifying(true);
-    setError("");
-    try {
-      const res = await fetch(`${API}?action=salary_verify_transfer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uuid: user!.uuid, amount: registeredSalary }),
-      });
-      const data: VerifyResult = await res.json();
-      setVerifyResult(data);
-      if (data.already_used) {
-        setStep("verify");
-      } else if (data.verified) {
-        toast.success("✅ تم التحقق من التحويل بنجاح!");
-        if (withdrawalMode === "cash") {
-          setStep("bank");
-        } else {
-          // Coins flow — auto-charge
-          await chargeCoins(data.transaction_id || "");
-        }
-      } else if (data.wrong_amount && (data.transferred_usd || 0) >= registeredSalary) {
-        // Transferred >= salary → accept with registered salary
-        toast.success("✅ تم التحقق — سيتم احتساب الراتب المسجل فقط");
-        if (withdrawalMode === "cash") {
-          setStep("bank");
-        } else {
-          await chargeCoins(data.transaction_id || "");
-        }
-      } else {
-        setStep("verify");
-      }
-    } catch {
-      setError("فشل التحقق من التحويل");
-      setStep("verify");
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const chargeCoins = async (refId: string) => {
+  const chargeCoins = async () => {
+    if (!selectedTransfer) return;
     setChargingCoins(true);
+    setError("");
     try {
       const res = await fetch(API, {
         method: "POST",
@@ -350,21 +256,19 @@ const SalaryWithdraw: React.FC = () => {
           action: "salary_charge_manual",
           admin_key: "ghala2026owner",
           uuid: user!.uuid,
-          amount: registeredSalary,
-          reference_id: refId,
+          amount: selectedTransfer.amount_usd,
+          reference_id: selectedTransfer.reference_id,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setCoinsCharged(registeredSalary * USD_TO_COINS);
+        setCoinsCharged(selectedTransfer.amount_usd * USD_TO_COINS);
         setStep("coins_success");
       } else {
         setError(data.message || "فشل شحن الكوينز");
-        setStep("verify");
       }
     } catch {
       setError("فشل الاتصال بالخادم");
-      setStep("verify");
     } finally {
       setChargingCoins(false);
     }
@@ -384,6 +288,7 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!selectedTransfer) return;
     setSubmitting(true);
     setError("");
     try {
@@ -391,19 +296,16 @@ const SalaryWithdraw: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: salaryType === "agency" ? "agency_salary_withdraw" : "salary_withdraw",
+          action: "salary_withdraw",
           uuid: user!.uuid,
-          amount: registeredSalary,
-          salary_type: salaryType || "host",
+          amount: selectedTransfer.amount_usd,
           country: selectedCountry,
           bank: isOtherBank ? customBankName : selectedBank,
           account_name: recipientName,
           account_number: accountNumber || "",
           whatsapp: `${whatsappCode}${whatsappNumber}`,
           notes,
-          transfer_verified: verifyResult?.verified || false,
-          reference_id: verifyResult?.transaction_id || null,
-          transferred_usd: verifyResult?.transferred_usd || null,
+          reference_id: selectedTransfer.reference_id,
           screenshot: screenshotBase64 || null,
         }),
       });
@@ -429,15 +331,14 @@ const SalaryWithdraw: React.FC = () => {
   const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
   const canProceedBank = selectedCountry && selectedBank && (!isOtherBank || customBankName.trim().length >= 2);
   const canProceedAccount = recipientName.trim().length >= 2 && whatsappNumber.trim().length >= 6;
+  const withdrawAmount = selectedTransfer?.amount_usd || 0;
 
   const getBackAction = () => {
     switch (step) {
-      case "enter_amount": return salaryType && allData?.is_agency_owner ? () => setStep("choose_type") : () => navigate("/dashboard");
-      case "transfer_instructions": return () => setStep("enter_amount");
-      case "verify": return () => setStep("transfer_instructions");
-      case "bank": return () => setStep(verifyResult?.verified ? "transfer_instructions" : "verify");
+      case "transfers_list": return () => navigate("/dashboard");
+      case "bank": return () => setStep("transfers_list");
       case "account": return () => setStep("bank");
-      case "coins_instructions": return () => setStep("enter_amount");
+      case "coins_confirm": return () => setStep("transfers_list");
       default: return () => navigate("/dashboard");
     }
   };
@@ -448,33 +349,72 @@ const SalaryWithdraw: React.FC = () => {
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">جاري التحقق من الراتب...</p>
+          <p className="text-sm text-muted-foreground">جاري جلب الحوالات...</p>
         </div>
       </MobileLayout>
     );
   }
 
-  // ── NO SALARY ──
-  if (step === "no_salary") {
+  // ── NO TRANSFERS ──
+  if (step === "no_transfers") {
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
-            <Frown className="w-10 h-10 text-muted-foreground" />
+        <div className="px-5 py-8 space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
+              <Frown className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-3">لم نجد حوالات لحسابك</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-6">حوّل راتبك من التطبيق أولاً:</p>
           </div>
-          <h2 className="text-xl font-bold text-foreground mb-3">للأسف ليس لديك أي راتب</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-8">لم يتم العثور على راتب مستحق لحسابك هذا الشهر.</p>
-          <div className="space-y-3 w-full max-w-xs">
-            <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">تواصل مع الدعم</Button>
+
+          <div className="glass-card p-5 space-y-3 text-right">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-primary">1</span>
+              </div>
+              <span className="text-xs text-foreground font-semibold">افتح غلا لايف → تحويل الرصيد</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-primary">2</span>
+              </div>
+              <div className="flex-1 flex items-center justify-between bg-muted/30 rounded-xl p-3">
+                <span className="text-xs text-muted-foreground">UUID:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-black text-primary font-mono">{TRANSFER_TARGET_ID}</span>
+                  <button onClick={() => { navigator.clipboard.writeText(TRANSFER_TARGET_ID); toast.success("تم النسخ!"); }}
+                    className="p-1.5 rounded-lg bg-primary/15 active:scale-90 transition-transform">
+                    <Copy className="w-3.5 h-3.5 text-primary" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-primary">3</span>
+              </div>
+              <span className="text-xs text-foreground font-semibold">المبلغ: راتبك كامل</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }}
+              className="w-full gold-gradient text-primary-foreground font-bold h-12">
+              <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
+            </Button>
             <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
           </div>
+
+          <SalaryRequestsHistory userUuid={user.uuid} />
         </div>
       </MobileLayout>
     );
   }
 
   // ── EXHAUSTED ──
-  if (step === "exhausted" && allData) {
+  if (step === "exhausted") {
+    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="px-5 py-8 space-y-6">
@@ -484,52 +424,10 @@ const SalaryWithdraw: React.FC = () => {
               <CheckCircle className="w-10 h-10 text-emerald-400" />
             </motion.div>
             <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل ✅</h2>
-            <p className="text-xs text-muted-foreground">سحبت {allData.withdrawals.count} من {getWithdrawalLimits(allData.is_agency_owner).maxTotal} هذا الشهر</p>
+            <p className="text-xs text-muted-foreground">سحبت {usedCount} من {maxTotal} هذا الشهر</p>
           </div>
           <SalaryRequestsHistory userUuid={user.uuid} />
           <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  // ── CLOSED ──
-  if (step === "closed") {
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-blue-500/15 flex items-center justify-center mb-4">
-            <Clock className="w-8 h-8 text-blue-400" />
-          </div>
-          <h2 className="text-lg font-bold text-foreground mb-2">⏰ السحب غير متاح حالياً</h2>
-          <p className="text-sm text-muted-foreground mb-2">يفتح يوم {lastDay}/{now.getMonth() + 1}</p>
-          <Button onClick={() => navigate("/dashboard")} className="gold-gradient text-primary-foreground font-bold px-8 mt-4">الرئيسية</Button>
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  // ── SUSPICIOUS ──
-  if (step === "suspicious" && allData) {
-    return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
-        <div className="px-5 py-16">
-          <div className="max-w-md mx-auto rounded-2xl bg-rose-500/5 border border-rose-500/20 p-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-5">
-              <ShieldAlert className="w-8 h-8 text-destructive" />
-            </div>
-            <h2 className="text-2xl font-black text-foreground mb-4">لا يمكن سحب الراتب</h2>
-            <p className="text-base font-semibold text-foreground leading-8 mb-2">
-              يوجد مبلغ <span className="text-destructive">${allData.host_salary.suspicious_amount || 0}</span> غير مدعوم
-            </p>
-            <p className="text-sm text-muted-foreground leading-7 mb-8">تواصل مع خدمة العملاء قبل السحب.</p>
-            <div className="space-y-3">
-              <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">تواصل مع خدمة العملاء</Button>
-              <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
-            </div>
-          </div>
         </div>
       </MobileLayout>
     );
@@ -544,7 +442,7 @@ const SalaryWithdraw: React.FC = () => {
             <AlertCircle className="w-8 h-8 text-destructive" />
           </div>
           <p className="text-sm text-muted-foreground mb-6">{error}</p>
-          <Button onClick={() => { hasFetchedRef.current = false; fetchAllSalaries(); }} className="gold-gradient text-primary-foreground font-bold px-8">إعادة المحاولة</Button>
+          <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }} className="gold-gradient text-primary-foreground font-bold px-8">إعادة المحاولة</Button>
         </div>
       </MobileLayout>
     );
@@ -571,7 +469,11 @@ const SalaryWithdraw: React.FC = () => {
             <div className="mt-4 rounded-xl p-4 bg-muted/30 border border-border/20 space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">المبلغ</span>
-                <span className="font-bold text-foreground">${registeredSalary}</span>
+                <span className="font-bold text-foreground">${withdrawAmount}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">الحوالة</span>
+                <span className="font-bold text-foreground">#{selectedTransfer?.reference_id}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">البنك</span>
@@ -617,22 +519,23 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── CHOOSE TYPE (agency owner) ──
-  if (step === "choose_type" && allData) {
-    const hs = allData.host_salary;
-    const as_ = allData.agency_salary;
-    const w = allData.withdrawals;
-    const { maxCash, maxTotal } = getWithdrawalLimits(true);
-    const cashLeft = Math.max(0, maxCash - w.count);
+  // ── TRANSFERS LIST ──
+  if (step === "transfers_list") {
+    const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
+    const usedTransfers = transfers.filter(t => t.is_used);
+    const { maxCash, maxTotal } = getWithdrawalLimits(isAgencyOwner);
+    const cashLeft = Math.max(0, maxCash - usedCount);
     const { canWithdrawCash, startDay } = getCashWithdrawDates();
 
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="px-5 py-6 space-y-5">
-          <div className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-1">اختر نوع الراتب</h2>
-            <p className="text-xs text-muted-foreground">سحبت {w.count} من {maxTotal} هذا الشهر</p>
-            <p className="text-[10px] text-muted-foreground mt-1">
+          <div className="text-center space-y-2">
+            <h2 className="text-lg font-bold text-foreground">حوالاتك إلى الإدارة</h2>
+            <p className="text-xs text-muted-foreground">
+              سحبت {usedCount} من {maxTotal} هذا الشهر
+            </p>
+            <p className="text-[10px] text-muted-foreground">
               {cashLeft > 0
                 ? (canWithdrawCash
                   ? `💵 سحب نقدي متاح (${cashLeft} سحبة متبقية)`
@@ -642,67 +545,73 @@ const SalaryWithdraw: React.FC = () => {
             </p>
           </div>
 
-          {/* Agency card */}
-          <motion.button
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            onClick={() => as_.has_salary && handleChooseSalaryType("agency")}
-            disabled={!as_.has_salary}
-            className={cn(
-              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
-              as_.has_salary ? "border-amber-500/20 hover:border-amber-500/40 active:scale-[0.98]" : "border-border/10 opacity-60"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
-                <Landmark className="w-6 h-6 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">راتب الوكالة{as_.agency_name ? ` — ${as_.agency_name}` : ""}</p>
-                {!as_.has_salary ? (
-                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب وكالة</p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">متاح للسحب</p>
-                )}
-              </div>
+          {/* New (selectable) transfers */}
+          {newTransfers.length > 0 && (
+            <div className="space-y-3">
+              {newTransfers.map((t, i) => {
+                const isCash = (usedCount + i) < maxCash;
+                return (
+                  <motion.button
+                    key={t.reference_id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => handleSelectTransfer(t)}
+                    className="w-full glass-card p-4 rounded-2xl border border-emerald-500/20 hover:border-emerald-500/40 active:scale-[0.98] transition-all text-right space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🟢</span>
+                        <span className="text-sm font-mono font-bold text-foreground">#{t.reference_id}</span>
+                      </div>
+                      <span className="text-lg font-black text-emerald-400" dir="ltr">${t.amount_usd.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                      <span className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                        isCash ? "bg-blue-500/10 text-blue-400" : "bg-amber-500/10 text-amber-400"
+                      )}>
+                        {isCash ? "💵 نقدي" : "🪙 كوينز"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-center pt-1">
+                      <span className="text-[10px] text-primary flex items-center gap-1">
+                        اختيار للسحب <ArrowLeft className="w-3 h-3" />
+                      </span>
+                    </div>
+                  </motion.button>
+                );
+              })}
             </div>
-            {as_.has_salary && (
-              <div className="flex items-center justify-between bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
-                <span className="text-xs text-muted-foreground">المبلغ المتاح</span>
-                <span className="text-lg font-black text-amber-400" dir="ltr">${as_.amount.toFixed(2)}</span>
-              </div>
-            )}
-          </motion.button>
+          )}
 
-          {/* Host card */}
-          <motion.button
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            onClick={() => hs.has_salary && hs.net > 0 && handleChooseSalaryType("host")}
-            disabled={!hs.has_salary || hs.net <= 0}
-            className={cn(
-              "w-full text-right glass-card rounded-2xl p-5 border transition-all space-y-3",
-              hs.has_salary && hs.net > 0 ? "border-emerald-500/20 hover:border-emerald-500/40 active:scale-[0.98]" : "border-border/10 opacity-60"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                <User className="w-6 h-6 text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-foreground">راتبي كمضيف</p>
-                {hs.has_salary && hs.net > 0 ? (
-                  <p className="text-[11px] text-muted-foreground">متاح: <span className="font-bold text-emerald-400" dir="ltr">${hs.net.toFixed(2)}</span></p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">⛔ لا يوجد راتب</p>
-                )}
-              </div>
+          {/* Used transfers */}
+          {usedTransfers.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-muted-foreground font-bold px-1">حوالات مستخدمة:</p>
+              {usedTransfers.map(t => (
+                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-red-500/10 opacity-60 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🔴</span>
+                      <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
+                    </div>
+                    <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                    <span className="text-[10px] text-red-400 font-bold">تم السحب بها</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            {hs.has_salary && hs.net > 0 && (
-              <div className="flex items-center justify-between bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
-                <span className="text-xs text-muted-foreground">الصافي</span>
-                <span className="text-lg font-black text-emerald-400" dir="ltr">${hs.net.toFixed(2)}</span>
-              </div>
-            )}
-          </motion.button>
+          )}
+
+          <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }}
+            variant="outline" className="w-full h-10 border-border/30 text-xs font-bold">
+            <RefreshCw className="w-3.5 h-3.5 ml-2" /> تحديث الحوالات
+          </Button>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
         </div>
@@ -710,22 +619,60 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
+  // ── COINS CONFIRM ──
+  if (step === "coins_confirm" && selectedTransfer) {
+    return (
+      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={getBackAction()}>
+        <div className="px-5 py-6 space-y-5">
+          <div className="glass-card p-5 space-y-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto">
+              <Coins className="w-8 h-8 text-amber-400" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">استلام الراتب ككوينز</h3>
+
+            <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">الحوالة</span>
+              <span className="text-sm font-mono font-bold text-foreground">#{selectedTransfer.reference_id}</span>
+            </div>
+
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">المبلغ</p>
+              <p className="text-2xl font-black text-emerald-400" dir="ltr">${selectedTransfer.amount_usd}</p>
+              <p className="text-sm font-bold text-amber-400">= {(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز</p>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              سيتم تحويل المبلغ إلى كوينز وإضافتها لحسابك فوراً
+            </p>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setStep("transfers_list")} className="flex-1 h-12 border-border/30">
+              <ArrowRight className="w-4 h-4 ml-1" /> رجوع
+            </Button>
+            <Button onClick={chargeCoins} disabled={chargingCoins}
+              className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
+              {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : "✅ تأكيد الشحن"}
+            </Button>
+          </div>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   // ══════════════════════════════════════════
-  // STEPPER FLOW
+  // STEPPER FLOW (bank → account for cash)
   // ══════════════════════════════════════════
 
-  const stepperLabels = withdrawalMode === "cash"
-    ? ["المبلغ", "التحويل", "التحقق", "البنك", "التأكيد"]
-    : ["المبلغ", "التحويل", "التحقق", "شحن"];
-
-  const stepperIndex = {
-    enter_amount: 0,
-    transfer_instructions: 1,
-    verify: 2,
-    bank: 3,
-    account: 4,
-    coins_instructions: 1,
-  }[step] ?? 0;
+  const stepperLabels = ["الحوالة", "البنك", "التأكيد"];
+  const stepperIndex = { bank: 1, account: 2 }[step] ?? 0;
 
   return (
     <MobileLayout showHeader headerTitle="سحب الراتب" onBack={getBackAction()}>
@@ -740,6 +687,14 @@ const SalaryWithdraw: React.FC = () => {
           ))}
         </div>
 
+        {/* Selected transfer summary */}
+        {selectedTransfer && (
+          <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">الحوالة #{selectedTransfer.reference_id}</span>
+            <span className="text-sm font-black text-emerald-400" dir="ltr">${selectedTransfer.amount_usd}</span>
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
@@ -749,288 +704,6 @@ const SalaryWithdraw: React.FC = () => {
         )}
 
         <AnimatePresence mode="wait">
-          {/* ── ENTER AMOUNT ── */}
-          {step === "enter_amount" && (
-            <motion.div key="enter_amount" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <div className="glass-card p-5 space-y-4 text-center">
-                <h3 className="text-base font-bold text-foreground flex items-center justify-center gap-2">
-                  <DollarSign className="w-5 h-5 text-primary" /> كم تريد سحب؟
-                </h3>
-
-                <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
-                  <span className="text-xs text-muted-foreground">راتبك المسجل</span>
-                  <span className="text-lg font-black text-emerald-400" dir="ltr">${registeredSalary.toFixed(2)}</span>
-                </div>
-
-                {withdrawalMode === "cash" ? (
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
-                    <p className="text-xs text-blue-400 font-bold">💵 سحب راتب نقدي</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">متاح فقط آخر 3 أيام من الشهر</p>
-                  </div>
-                ) : (
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-                    <p className="text-xs text-amber-400 font-bold">🪙 شحن كوينز</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">= {(registeredSalary * USD_TO_COINS).toLocaleString()} كوينز — متاح في أي وقت</p>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Input
-                    type="number"
-                    value={enteredAmount}
-                    onChange={e => { setEnteredAmount(e.target.value); setAmountError(""); }}
-                    placeholder="أدخل المبلغ بالدولار"
-                    className="bg-muted/20 border-border/30 text-center text-xl font-bold h-14"
-                    dir="ltr"
-                  />
-                  {amountError && (
-                    <p className="text-xs text-destructive font-bold">{amountError}</p>
-                  )}
-                </div>
-
-                <Button onClick={handleAmountSubmit} className="w-full gold-gradient text-primary-foreground font-bold h-12">
-                  متابعة <ArrowLeft className="w-4 h-4 mr-2" />
-                </Button>
-              </div>
-
-              <SalaryRequestsHistory userUuid={user.uuid} />
-              <SalaryHistory userUuid={user.uuid} />
-            </motion.div>
-          )}
-
-          {/* ── TRANSFER INSTRUCTIONS (1st withdrawal: cash) ── */}
-          {step === "transfer_instructions" && (
-            <motion.div key="transfer" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <div className="glass-card p-5 space-y-4">
-                <h3 className="text-sm font-bold text-foreground text-center">📋 خطوات التحويل</h3>
-                <div className="space-y-3">
-                  {[
-                    "افتح تطبيق غلا لايف",
-                    'اذهب إلى "تحويل الرصيد"',
-                    null, // ID
-                    null, // amount
-                    'اضغط "تحويل"',
-                    "ارجع هنا واضغط الزر أدناه",
-                  ].map((text, i) => {
-                    if (i === 2) {
-                      return (
-                        <div key={i} className="flex items-center gap-3">
-                          <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-primary">{i + 1}</span>
-                          </div>
-                          <div className="flex-1 flex items-center justify-between bg-muted/30 rounded-xl p-3">
-                            <span className="text-xs text-muted-foreground">أدخل الآيدي:</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl font-black text-primary font-mono">{TRANSFER_TARGET_ID}</span>
-                              <button onClick={() => copyToClipboard(TRANSFER_TARGET_ID)} className="p-1.5 rounded-lg bg-primary/15 active:scale-90 transition-transform">
-                                <Copy className="w-3.5 h-3.5 text-primary" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    if (i === 3) {
-                      return (
-                        <div key={i} className="flex items-center gap-3">
-                          <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-primary">{i + 1}</span>
-                          </div>
-                          <div className="flex-1 flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
-                            <span className="text-xs text-muted-foreground">أدخل المبلغ:</span>
-                            <span className="text-lg font-black text-emerald-400 font-mono">${registeredSalary}</span>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-primary">{i + 1}</span>
-                        </div>
-                        <span className="text-xs text-foreground font-semibold">{text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                  <p className="text-[11px] text-amber-400 text-center leading-relaxed font-bold">
-                    ⚠️ يجب تحويل المبلغ كاملاً — لا يمكن تحويل جزء من الراتب
-                  </p>
-                </div>
-              </div>
-
-              <Button onClick={handleTransferDone} disabled={verifying}
-                className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base">
-                {verifying ? (
-                  <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري التحقق...</>
-                ) : (
-                  <>تم التحويل — متابعة <ArrowLeft className="w-4 h-4 mr-2" /></>
-                )}
-              </Button>
-            </motion.div>
-          )}
-
-          {/* ── COINS INSTRUCTIONS (2nd withdrawal) ── */}
-          {step === "coins_instructions" && (
-            <motion.div key="coins_instr" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              <div className="glass-card p-5 space-y-4 text-center">
-                <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto">
-                  <Coins className="w-8 h-8 text-amber-400" />
-                </div>
-                <h3 className="text-base font-bold text-foreground">استلام الراتب ككوينز</h3>
-
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-1">
-                  <p className="text-xs text-muted-foreground">راتبك المتبقي</p>
-                  <p className="text-2xl font-black text-emerald-400" dir="ltr">${registeredSalary}</p>
-                  <p className="text-sm font-bold text-amber-400">= {(registeredSalary * USD_TO_COINS).toLocaleString()} كوينز</p>
-                </div>
-
-                <div className="text-right space-y-3">
-                  <p className="text-xs font-bold text-foreground">الخطوات:</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-primary">1</span>
-                    </div>
-                    <span className="text-xs text-foreground">حوّل <span className="font-bold text-emerald-400">${registeredSalary}</span> من تحويل الرصيد → UUID <span className="font-bold text-primary">{TRANSFER_TARGET_ID}</span></span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-primary">2</span>
-                    </div>
-                    <span className="text-xs text-foreground">ارجع هنا واضغط "تم التحويل"</span>
-                  </div>
-                </div>
-              </div>
-
-              <Button onClick={handleTransferDone} disabled={verifying || chargingCoins}
-                className="w-full gold-gradient text-primary-foreground font-bold h-12 text-base">
-                {verifying || chargingCoins ? (
-                  <><Loader2 className="w-5 h-5 animate-spin ml-2" /> {chargingCoins ? "جاري الشحن..." : "جاري التحقق..."}</>
-                ) : (
-                  <>تم التحويل <ArrowLeft className="w-4 h-4 mr-2" /></>
-                )}
-              </Button>
-            </motion.div>
-          )}
-
-          {/* ── VERIFY (failed states) ── */}
-          {step === "verify" && (
-            <motion.div key="verify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-              {/* already_used */}
-              {verifyResult?.already_used && (
-                <div className="glass-card p-6 space-y-5 text-center">
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
-                    className="w-20 h-20 rounded-full bg-destructive/15 flex items-center justify-center mx-auto">
-                    <ShieldX className="w-10 h-10 text-destructive" />
-                  </motion.div>
-                  <h2 className="text-lg font-bold text-foreground">الرقم المرجعي مستخدم من قبل</h2>
-                  {(verifyResult.reference_id || verifyResult.transaction_id) && (
-                    <div className="rounded-xl bg-muted/30 border border-border/20 p-4 space-y-1">
-                      <p className="text-[10px] text-muted-foreground">الرقم المرجعي</p>
-                      <p className="text-xl font-black text-foreground font-mono">{verifyResult.reference_id || verifyResult.transaction_id}</p>
-                    </div>
-                  )}
-                  <p className="text-xs text-muted-foreground">إذا كنت تعتقد أن هذا خطأ، تواصل مع الدعم.</p>
-                  <div className="space-y-3 pt-2">
-                    <Button onClick={() => navigate("/quick-support")} className="w-full gold-gradient text-primary-foreground font-bold h-12">تواصل مع الدعم</Button>
-                    <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
-                  </div>
-                </div>
-              )}
-
-              {/* wrong_amount */}
-              {!verifyResult?.already_used && verifyResult?.wrong_amount && (
-                <div className="glass-card p-5 space-y-4">
-                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center space-y-3">
-                    <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-                    <p className="text-sm font-bold text-foreground">المبلغ المحوّل مختلف عن الراتب</p>
-                    <div className="flex items-center justify-center gap-3 text-sm">
-                      <span className="text-muted-foreground">المحوّل: <span className="font-bold text-amber-400" dir="ltr">${verifyResult.transferred_usd || 0}</span></span>
-                      <span className="text-muted-foreground">|</span>
-                      <span className="text-muted-foreground">الراتب: <span className="font-bold text-emerald-400" dir="ltr">${registeredSalary}</span></span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-foreground">📎 رفع إيصال التحويل</p>
-                    <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScreenshot} />
-                    {screenshotPreview ? (
-                      <div className="relative">
-                        <img src={screenshotPreview} alt="receipt" className="w-full max-h-48 object-contain rounded-xl border border-border/20" />
-                        <button onClick={() => { setScreenshotBase64(""); setScreenshotPreview(""); }}
-                          className="absolute top-2 left-2 p-1.5 rounded-full bg-destructive/80 text-white">✕</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => fileInputRef.current?.click()}
-                        className="w-full p-6 border-2 border-dashed border-border/30 rounded-xl flex flex-col items-center gap-2 hover:bg-muted/10 transition-colors">
-                        <Camera className="w-6 h-6 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">اضغط لرفع صورة الإيصال</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setStep("transfer_instructions")} className="flex-1 h-12 border-border/30">
-                      <ArrowRight className="w-4 h-4 ml-1" /> رجوع
-                    </Button>
-                    <Button onClick={() => setStep("bank")} disabled={!screenshotBase64}
-                      className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
-                      متابعة <ArrowLeft className="w-4 h-4 mr-1" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* normal failure — not found */}
-              {!verifyResult?.already_used && !verifyResult?.wrong_amount && (
-                <div className="glass-card p-5 space-y-4">
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center space-y-2">
-                    <AlertCircle className="w-6 h-6 text-amber-400 mx-auto" />
-                    <p className="text-xs text-amber-400 font-bold">⚠️ لم نجد التحويل</p>
-                    <p className="text-[10px] text-muted-foreground">تأكد إنك حوّلت المبلغ كاملاً ثم أعد المحاولة، أو ارفع إيصال</p>
-                  </div>
-
-                  <Button variant="outline" onClick={handleTransferDone} disabled={verifying}
-                    className="w-full h-11 border-primary/30 text-primary font-bold">
-                    {verifying ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <RefreshCw className="w-4 h-4 ml-2" />}
-                    إعادة المحاولة
-                  </Button>
-
-                  {withdrawalMode === "cash" && (
-                    <>
-                      <div className="space-y-2">
-                        <p className="text-xs font-bold text-foreground">📎 أو ارفع إيصال التحويل</p>
-                        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScreenshot} />
-                        {screenshotPreview ? (
-                          <div className="relative">
-                            <img src={screenshotPreview} alt="receipt" className="w-full max-h-48 object-contain rounded-xl border border-border/20" />
-                            <button onClick={() => { setScreenshotBase64(""); setScreenshotPreview(""); }}
-                              className="absolute top-2 left-2 p-1.5 rounded-full bg-destructive/80 text-white">✕</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => fileInputRef.current?.click()}
-                            className="w-full p-6 border-2 border-dashed border-border/30 rounded-xl flex flex-col items-center gap-2 hover:bg-muted/10 transition-colors">
-                            <Camera className="w-6 h-6 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">اضغط لرفع صورة الإيصال</span>
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex gap-3">
-                        <Button variant="outline" onClick={() => setStep("transfer_instructions")} className="flex-1 h-12 border-border/30">
-                          <ArrowRight className="w-4 h-4 ml-1" /> رجوع
-                        </Button>
-                        <Button onClick={() => setStep("bank")} disabled={!screenshotBase64}
-                          className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
-                          متابعة بدون تحقق <ArrowLeft className="w-4 h-4 mr-1" />
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          )}
-
           {/* ── BANK SELECTION ── */}
           {step === "bank" && (
             <motion.div key="bank" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
@@ -1094,7 +767,7 @@ const SalaryWithdraw: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep(verifyResult?.verified ? "transfer_instructions" : "verify")} className="flex-1 h-12 border-border/30">
+                <Button variant="outline" onClick={() => setStep("transfers_list")} className="flex-1 h-12 border-border/30">
                   <ArrowRight className="w-4 h-4 ml-1" /> رجوع
                 </Button>
                 <Button onClick={() => setStep("account")} disabled={!canProceedBank}
@@ -1151,13 +824,11 @@ const SalaryWithdraw: React.FC = () => {
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">💰 المبلغ</span>
-                      <span className="font-bold text-primary">${registeredSalary}</span>
+                      <span className="font-bold text-primary">${withdrawAmount}</span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                      <span className="text-muted-foreground">🔍 التحقق</span>
-                      <span className={`font-bold ${verifyResult?.verified ? "text-emerald-400" : "text-amber-400"}`}>
-                        {verifyResult?.verified ? "✅ تم" : "📎 إيصال مرفق"}
-                      </span>
+                      <span className="text-muted-foreground">📋 الحوالة</span>
+                      <span className="font-bold text-foreground">#{selectedTransfer?.reference_id}</span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">🏦 البنك</span>
