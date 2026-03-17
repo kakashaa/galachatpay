@@ -1179,7 +1179,7 @@ const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {activeSection === "products" && (
+          {activeSection === "settings" && (
             <div className="grid grid-cols-3 gap-3 px-4 mb-4">
               {[
                 { label: "إجمالي", value: entryGifts.length + frameItems.length + videos.length, icon: Package, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
@@ -1201,12 +1201,12 @@ const AdminDashboardPage: React.FC = () => {
             </div>
           )}
 
-          {activeSection === "settings" && (
+          {activeSection === "chat" && (
             <div className="grid grid-cols-3 gap-3 px-4 mb-4">
               {[
-                { label: "محظورين", value: blockedAccounts.length + manualBans.filter(b => b.status === "active").length, icon: ShieldBan, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
-                { label: "مسؤولين", value: (adminRole === "super_admin" || adminRole === "admin") ? "—" : "—", icon: Users, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
-                { label: "إشعارات", value: "—", icon: Bell, gradient: "from-violet-500/10 to-violet-600/5", border: "border-violet-500/20", iconColor: "text-violet-400" },
+                { label: "تذاكر مفتوحة", value: supportTickets.filter((t: any) => t.status === "open").length, icon: MessageSquare, gradient: "from-sky-500/10 to-sky-600/5", border: "border-sky-500/20", iconColor: "text-sky-400" },
+                { label: "VIP انتظار", value: supportChats.filter((c: any) => c.status === "waiting").length, icon: Headset, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+                { label: "دعم معلق", value: quickSupportRequests.filter((r: any) => r.status === "pending").length, icon: Zap, gradient: "from-yellow-500/10 to-yellow-600/5", border: "border-yellow-500/20", iconColor: "text-yellow-400" },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
