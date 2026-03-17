@@ -3,80 +3,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
-  Trash2, Save, X, Loader2, Eye, EyeOff, UserPlus, Shield, Settings,
-  ClipboardList, Sparkles, Frame, Scissors, Gift, DollarSign, Video, ShieldBan, Ban,
-  Bell, Camera, Star, MessageSquare, Headset, Zap, Hash, Crown, Briefcase,
-  Pencil,
+  Trash2, Save, X, Loader2, Eye, EyeOff, UserPlus, Shield,
+  Clock, Phone, Pencil, Snowflake, Activity,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface ModeratorAccount {
+const API_URL = "https://galachat.site/project-z/api.php";
+const ADMIN_KEY = "ghala2026owner";
+
+interface AdminAccount {
   id: string;
   username: string;
-  display_name: string;
+  name: string;
   role: string;
   is_active: boolean;
-  permissions: string[];
-  created_by: string;
+  phone: string;
+  shift_start: string;
+  shift_end: string;
+  is_online: boolean;
+  last_login: string | null;
+  operations_today: number;
+  operations_week: number;
+  operations_month: number;
   created_at: string;
-  updated_at: string;
-}
-
-// All available tab permissions
-const ALL_PERMISSIONS: { key: string; label: string; icon: React.ReactNode }[] = [
-  { key: "all_requests", label: "جميع الطلبات", icon: <ClipboardList className="w-4 h-4" /> },
-  { key: "entries", label: "دخوليات", icon: <Sparkles className="w-4 h-4" /> },
-  { key: "frames", label: "إطارات", icon: <Frame className="w-4 h-4" /> },
-  { key: "hairs", label: "شعرات", icon: <Scissors className="w-4 h-4" /> },
-  { key: "gifts", label: "إهداءات نجوم", icon: <Gift className="w-4 h-4" /> },
-  { key: "salary", label: "رواتب", icon: <DollarSign className="w-4 h-4" /> },
-  { key: "claims", label: "طلبات", icon: <ClipboardList className="w-4 h-4" /> },
-  { key: "videos", label: "فيديوهات", icon: <Video className="w-4 h-4" /> },
-  { key: "reports", label: "بلاغات", icon: <ShieldBan className="w-4 h-4" /> },
-  { key: "blocks", label: "محظورين", icon: <Ban className="w-4 h-4" /> },
-  { key: "notifications", label: "إشعارات", icon: <Bell className="w-4 h-4" /> },
-  { key: "animated_photos", label: "صور متحركة", icon: <Camera className="w-4 h-4" /> },
-  { key: "admin_stars", label: "منح نجوم", icon: <Star className="w-4 h-4" /> },
-  { key: "support_tickets", label: "تكتات الدعم", icon: <MessageSquare className="w-4 h-4" /> },
-  { key: "support_chats", label: "شات VIP", icon: <Headset className="w-4 h-4" /> },
-  { key: "quick_support", label: "دعم سريع", icon: <Zap className="w-4 h-4" /> },
-  { key: "id_changes", label: "تغيير آيدي", icon: <Hash className="w-4 h-4" /> },
-  { key: "top_agents", label: "TOP وكلاء", icon: <Crown className="w-4 h-4" /> },
-  { key: "bd_management", label: "إدارة BD", icon: <Briefcase className="w-4 h-4" /> },
-  { key: "custom_gifts", label: "هدايا مخصصة", icon: <Gift className="w-4 h-4" /> },
-  { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-4 h-4" /> },
-  { key: "banners", label: "بنرات", icon: <ClipboardList className="w-4 h-4" /> },
-];
-
-// Helper: check if a permission key is enabled (either "key" or "key:view")
-function isPermEnabled(perms: string[], key: string): boolean {
-  return perms.includes(key) || perms.includes(`${key}:view`);
-}
-
-// Helper: check if a permission is view-only
-function isViewOnly(perms: string[], key: string): boolean {
-  return perms.includes(`${key}:view`);
-}
-
-// Helper: toggle permission on/off (defaults to full access when enabling)
-function togglePerm(perms: string[], key: string): string[] {
-  if (isPermEnabled(perms, key)) {
-    return perms.filter(p => p !== key && p !== `${key}:view`);
-  }
-  return [...perms, key];
-}
-
-// Helper: toggle between full and view-only
-function toggleAccessLevel(perms: string[], key: string): string[] {
-  if (perms.includes(`${key}:view`)) {
-    return perms.map(p => p === `${key}:view` ? key : p);
-  }
-  return perms.map(p => p === key ? `${key}:view` : p);
-}
-
-// Helper: select all as full access
-function selectAllFull(): string[] {
-  return ALL_PERMISSIONS.map(p => p.key);
+  must_change_password: boolean;
 }
 
 interface Props {
@@ -84,63 +34,76 @@ interface Props {
 }
 
 const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
-  const [moderators, setModerators] = useState<ModeratorAccount[]>([]);
+  const [admins, setAdmins] = useState<AdminAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // New moderator form
-  const [newUsername, setNewUsername] = useState("");
-  const [newDisplayName, setNewDisplayName] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newPermissions, setNewPermissions] = useState<string[]>([]);
+  // New admin form
+  const [newName, setNewName] = useState("");
+  const [newRole, setNewRole] = useState<"super_admin" | "admin">("admin");
+  const [newShiftStart, setNewShiftStart] = useState("09:00");
+  const [newShiftEnd, setNewShiftEnd] = useState("17:00");
 
-  // Edit permissions
-  const [editPermissions, setEditPermissions] = useState<string[]>([]);
+  // Edit form
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState<"super_admin" | "admin">("admin");
+  const [editShiftStart, setEditShiftStart] = useState("");
+  const [editShiftEnd, setEditShiftEnd] = useState("");
   const [editPassword, setEditPassword] = useState("");
-  const [editDisplayName, setEditDisplayName] = useState("");
 
-  const loadModerators = useCallback(async () => {
+  const apiCall = useCallback(async (action: string, data: any = {}) => {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, admin_key: ADMIN_KEY, ...data }),
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.message || "فشل العملية");
+    return result;
+  }, []);
+
+  const loadAdmins = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await adminCall("list_moderators");
-      setModerators(data || []);
+      const result = await apiCall("admin_list");
+      setAdmins(result.admins || []);
     } catch (err: any) {
-      toast.error(err?.message || "فشل تحميل المسؤولين");
+      toast.error(err?.message || "فشل تحميل قائمة الأدمن");
     } finally {
       setLoading(false);
     }
-  }, [adminCall]);
+  }, [apiCall]);
 
   useEffect(() => {
-    loadModerators();
-  }, [loadModerators]);
+    loadAdmins();
+  }, [loadAdmins]);
 
   const handleAdd = async () => {
-    if (!newUsername.trim() || !newPassword.trim()) {
-      toast.error("اسم المستخدم وكلمة المرور مطلوبان");
-      return;
-    }
-    if (newPermissions.length === 0) {
-      toast.error("يرجى اختيار صلاحية واحدة على الأقل");
+    if (!newName.trim()) {
+      toast.error("الاسم مطلوب");
       return;
     }
     setActionLoading(true);
     try {
-      await adminCall("add_moderator", {
-        username: newUsername.trim().toLowerCase(),
-        display_name: newDisplayName.trim() || newUsername.trim(),
-        password: newPassword,
-        permissions: newPermissions,
+      await apiCall("admin_create", {
+        username: newName.trim(),
+        name: newName.trim(),
+        role: newRole,
+        password: "1122",
+        phone: "",
+        shift_start: newShiftStart,
+        shift_end: newShiftEnd,
       });
-      toast.success("تمت إضافة المسؤول بنجاح");
+      toast.success("تمت إضافة الأدمن بنجاح (كلمة المرور: 1122)");
       setShowAdd(false);
-      setNewUsername("");
-      setNewDisplayName("");
-      setNewPassword("");
-      setNewPermissions([]);
-      loadModerators();
+      setNewName("");
+      setNewRole("admin");
+      setNewShiftStart("09:00");
+      setNewShiftEnd("17:00");
+      loadAdmins();
     } catch (err: any) {
       toast.error(err?.message || "فشل الإضافة");
     } finally {
@@ -148,22 +111,24 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
     }
   };
 
-  const handleUpdate = async (mod: ModeratorAccount) => {
+  const handleUpdate = async (admin: AdminAccount) => {
     setActionLoading(true);
     try {
       const updateData: any = {
-        id: mod.id,
-        permissions: editPermissions,
-        display_name: editDisplayName.trim() || mod.display_name,
+        username: admin.username,
+        name: editName.trim() || admin.name,
+        role: editRole,
+        shift_start: editShiftStart,
+        shift_end: editShiftEnd,
       };
       if (editPassword.trim()) {
         updateData.password = editPassword.trim();
       }
-      await adminCall("update_moderator", updateData);
-      toast.success("تم تحديث المسؤول");
+      await apiCall("admin_update", updateData);
+      toast.success("تم تحديث الأدمن");
       setEditingId(null);
       setEditPassword("");
-      loadModerators();
+      loadAdmins();
     } catch (err: any) {
       toast.error(err?.message || "فشل التحديث");
     } finally {
@@ -171,25 +136,50 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
     }
   };
 
-  const handleToggleActive = async (mod: ModeratorAccount) => {
+  const handleToggleActive = async (admin: AdminAccount) => {
     try {
-      await adminCall("toggle_moderator", { id: mod.id, is_active: !mod.is_active });
-      toast.success(mod.is_active ? "تم تعطيل الحساب" : "تم تفعيل الحساب");
-      loadModerators();
+      await apiCall("admin_toggle", { username: admin.username, is_active: !admin.is_active });
+      toast.success(admin.is_active ? "تم تجميد الحساب" : "تم تفعيل الحساب");
+      loadAdmins();
     } catch (err: any) {
       toast.error(err?.message || "فشل التحديث");
     }
   };
 
-  const handleDelete = async (mod: ModeratorAccount) => {
-    if (!confirm(`هل تريد حذف حساب ${mod.display_name}؟`)) return;
+  const handleDelete = async (admin: AdminAccount) => {
+    if (admin.role === "owner") {
+      toast.error("لا يمكن حذف حساب المالك");
+      return;
+    }
+    if (!confirm(`هل تريد حذف حساب ${admin.name}؟`)) return;
     try {
-      await adminCall("delete_moderator", { id: mod.id });
+      await apiCall("admin_delete", { username: admin.username });
       toast.success("تم حذف الحساب");
-      loadModerators();
+      loadAdmins();
     } catch (err: any) {
       toast.error(err?.message || "فشل الحذف");
     }
+  };
+
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "owner": return { label: "Owner", cls: "bg-primary/10 text-primary border-primary/20" };
+      case "super_admin": return { label: "سوبر أدمن", cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" };
+      default: return { label: "أدمن", cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" };
+    }
+  };
+
+  const isInShift = (admin: AdminAccount) => {
+    if (!admin.shift_start || !admin.shift_end) return false;
+    const now = new Date();
+    const riyadhTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
+    const currentMinutes = riyadhTime.getHours() * 60 + riyadhTime.getMinutes();
+    const [sh, sm] = admin.shift_start.split(":").map(Number);
+    const [eh, em] = admin.shift_end.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    if (endMin > startMin) return currentMinutes >= startMin && currentMinutes < endMin;
+    return currentMinutes >= startMin || currentMinutes < endMin; // crosses midnight
   };
 
   if (loading) {
@@ -200,70 +190,11 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
     );
   }
 
-  const renderPermissionsGrid = (perms: string[], setPerms: (p: string[]) => void) => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-foreground">الصلاحيات</p>
-        <div className="flex gap-2">
-          <button onClick={() => setPerms(selectAllFull())} className="text-[10px] text-primary hover:underline">تحديد الكل</button>
-          <button onClick={() => setPerms([])} className="text-[10px] text-muted-foreground hover:underline">إلغاء الكل</button>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        {ALL_PERMISSIONS.map((perm) => {
-          const enabled = isPermEnabled(perms, perm.key);
-          const viewOnly = isViewOnly(perms, perm.key);
-          return (
-            <div
-              key={perm.key}
-              className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
-                enabled
-                  ? "border-primary bg-primary/5"
-                  : "border-border/40 hover:border-border"
-              }`}
-            >
-              <button
-                onClick={() => setPerms(togglePerm(perms, perm.key))}
-                className="flex items-center gap-2 flex-1 min-w-0"
-              >
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
-                  enabled ? "bg-primary border-primary" : "border-muted-foreground/40"
-                }`}>
-                  {enabled && <span className="text-primary-foreground text-[10px] font-bold">✓</span>}
-                </div>
-                <span className={`flex items-center gap-1.5 text-xs font-medium ${enabled ? "text-foreground" : "text-muted-foreground"}`}>
-                  {perm.icon}
-                  {perm.label}
-                </span>
-              </button>
-              {enabled && (
-                <button
-                  onClick={() => setPerms(toggleAccessLevel(perms, perm.key))}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all ${
-                    viewOnly
-                      ? "bg-amber-500/10 text-amber-600 border border-amber-500/30"
-                      : "bg-green-500/10 text-green-600 border border-green-500/30"
-                  }`}
-                >
-                  {viewOnly ? (
-                    <><Eye className="w-3 h-3" />مشاهدة</>
-                  ) : (
-                    <><Pencil className="w-3 h-3" />تصرف</>
-                  )}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-4">
       {/* Add Button */}
       <Button onClick={() => setShowAdd(!showAdd)} className="w-full" variant={showAdd ? "outline" : "default"}>
-        {showAdd ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><UserPlus className="w-4 h-4 ml-2" />إضافة مسؤول جديد</>}
+        {showAdd ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><UserPlus className="w-4 h-4 ml-2" />إضافة أدمن جديد</>}
       </Button>
 
       {/* Add Form */}
@@ -276,26 +207,35 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
             className="bg-card border rounded-xl p-4 space-y-3"
           >
             <Input
-              placeholder="اسم المستخدم (إنجليزي)"
-              value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
-              dir="ltr"
+              placeholder="الاسم (بالعربي — يُستخدم كاسم مستخدم)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
             />
-            <Input
-              placeholder="الاسم المعروض (عربي أو إنجليزي)"
-              value={newDisplayName}
-              onChange={(e) => setNewDisplayName(e.target.value)}
-            />
-            <Input
-              type="password"
-              placeholder="كلمة المرور"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              dir="ltr"
-            />
-
-            {renderPermissionsGrid(newPermissions, setNewPermissions)}
-
+            <div className="flex gap-2">
+              <button
+                onClick={() => setNewRole("admin")}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newRole === "admin" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-border/40"}`}
+              >
+                أدمن عادي
+              </button>
+              <button
+                onClick={() => setNewRole("super_admin")}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newRole === "super_admin" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/40"}`}
+              >
+                سوبر أدمن
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] text-muted-foreground mb-1 block">بداية الدوام</label>
+                <Input type="time" value={newShiftStart} onChange={(e) => setNewShiftStart(e.target.value)} dir="ltr" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground mb-1 block">نهاية الدوام</label>
+                <Input type="time" value={newShiftEnd} onChange={(e) => setNewShiftEnd(e.target.value)} dir="ltr" />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">كلمة المرور الافتراضية: <span className="font-mono font-bold">1122</span> (سيُجبر على تغييرها عند أول دخول)</p>
             <Button onClick={handleAdd} disabled={actionLoading} className="w-full">
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
               حفظ
@@ -304,124 +244,201 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
         )}
       </AnimatePresence>
 
-      {/* Moderators List */}
-      {moderators.length === 0 && !showAdd && (
+      {/* Admins List */}
+      {admins.length === 0 && !showAdd && (
         <div className="text-center py-10 text-muted-foreground">
           <Shield className="w-10 h-10 mx-auto mb-2 opacity-50" />
-          <p>لا يوجد مسؤولين فرعيين</p>
+          <p>لا يوجد أدمن</p>
         </div>
       )}
 
-      {moderators.map((mod) => (
-        <motion.div
-          key={mod.id}
-          layout
-          className={`bg-card border rounded-xl overflow-hidden ${!mod.is_active ? "opacity-60" : ""}`}
-        >
-          {/* Header */}
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${mod.is_active ? "bg-primary/10" : "bg-muted"}`}>
-                <Shield className={`w-5 h-5 ${mod.is_active ? "text-primary" : "text-muted-foreground"}`} />
-              </div>
-              <div>
-                <p className="font-bold text-sm">{mod.display_name}</p>
-                <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">@{mod.username}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => {
-                  if (editingId === mod.id) {
-                    setEditingId(null);
-                  } else {
-                    setEditingId(mod.id);
-                    setEditPermissions(mod.permissions || []);
-                    setEditDisplayName(mod.display_name);
-                    setEditPassword("");
-                  }
-                }}
-                className="p-2 rounded-lg hover:bg-muted"
-              >
-                <Settings className="w-4 h-4 text-primary" />
-              </button>
-              <button onClick={() => handleToggleActive(mod)} className="p-2 rounded-lg hover:bg-muted">
-                {mod.is_active ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-              </button>
-              <button onClick={() => handleDelete(mod)} className="p-2 rounded-lg hover:bg-destructive/10">
-                <Trash2 className="w-4 h-4 text-destructive" />
-              </button>
-            </div>
-          </div>
+      {admins.map((admin) => {
+        const roleBadge = getRoleBadge(admin.role);
+        const inShift = isInShift(admin);
+        const isOwnerAccount = admin.role === "owner";
 
-          {/* Permissions tags */}
-          {editingId !== mod.id && (
-            <div className="px-4 pb-3 flex flex-wrap gap-1">
-              {(mod.permissions || []).map((p) => {
-                const baseKey = p.replace(":view", "");
-                const isView = p.endsWith(":view");
-                const permInfo = ALL_PERMISSIONS.find(ap => ap.key === baseKey);
-                return (
-                  <span key={p} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    isView
-                      ? "bg-amber-500/10 text-amber-600"
-                      : "bg-primary/10 text-primary"
-                  }`}>
-                    {permInfo?.label || baseKey}
-                    {isView && " 👁"}
-                  </span>
-                );
-              })}
-              {(!mod.permissions || mod.permissions.length === 0) && (
-                <span className="text-[10px] text-muted-foreground">لا صلاحيات</span>
+        return (
+          <motion.div
+            key={admin.id || admin.username}
+            layout
+            className={`bg-card border rounded-xl overflow-hidden ${!admin.is_active ? "opacity-60" : ""}`}
+          >
+            {/* Header */}
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`relative w-10 h-10 rounded-xl flex items-center justify-center ${admin.is_active ? "bg-primary/10" : "bg-muted"}`}>
+                  <Shield className={`w-5 h-5 ${admin.is_active ? "text-primary" : "text-muted-foreground"}`} />
+                  {inShift && admin.is_active && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-sm">{admin.name}</p>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold border ${roleBadge.cls}`}>
+                      {roleBadge.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {admin.shift_start && admin.shift_end && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        {admin.shift_start} - {admin.shift_end}
+                      </span>
+                    )}
+                    {inShift && admin.is_active && (
+                      <span className="text-[9px] text-emerald-400 font-bold">🟢 أونلاين</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {!isOwnerAccount && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setDetailId(detailId === admin.username ? null : admin.username)}
+                    className="p-2 rounded-lg hover:bg-muted"
+                  >
+                    <Activity className="w-4 h-4 text-blue-400" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (editingId === admin.username) {
+                        setEditingId(null);
+                      } else {
+                        setEditingId(admin.username);
+                        setEditName(admin.name);
+                        setEditRole(admin.role as "super_admin" | "admin");
+                        setEditShiftStart(admin.shift_start || "");
+                        setEditShiftEnd(admin.shift_end || "");
+                        setEditPassword("");
+                      }
+                    }}
+                    className="p-2 rounded-lg hover:bg-muted"
+                  >
+                    <Pencil className="w-4 h-4 text-primary" />
+                  </button>
+                  <button onClick={() => handleToggleActive(admin)} className="p-2 rounded-lg hover:bg-muted">
+                    {admin.is_active ? <Snowflake className="w-4 h-4 text-blue-400" /> : <Eye className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  <button onClick={() => handleDelete(admin)} className="p-2 rounded-lg hover:bg-destructive/10">
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </button>
+                </div>
               )}
             </div>
-          )}
 
-          {/* Edit Panel */}
-          <AnimatePresence>
-            {editingId === mod.id && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="border-t border-border p-4 space-y-3"
-              >
-                <Input
-                  placeholder="الاسم المعروض"
-                  value={editDisplayName}
-                  onChange={(e) => setEditDisplayName(e.target.value)}
-                />
-                <Input
-                  type="password"
-                  placeholder="كلمة مرور جديدة (اتركه فارغ للإبقاء)"
-                  value={editPassword}
-                  onChange={(e) => setEditPassword(e.target.value)}
-                  dir="ltr"
-                />
+            {/* Stats row */}
+            <div className="px-4 pb-3 flex items-center gap-3 text-[10px] text-muted-foreground">
+              <span>عمليات اليوم: <span className="font-bold text-foreground">{admin.operations_today || 0}</span></span>
+              {admin.phone && (
+                <span className="flex items-center gap-0.5">
+                  <Phone className="w-3 h-3" />
+                  <span dir="ltr">{admin.phone}</span>
+                </span>
+              )}
+              {admin.last_login && (
+                <span>آخر دخول: {new Date(admin.last_login).toLocaleDateString("ar-EG")}</span>
+              )}
+            </div>
 
-                {renderPermissionsGrid(editPermissions, setEditPermissions)}
+            {/* Detail Panel */}
+            <AnimatePresence>
+              {detailId === admin.username && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="border-t border-border p-4 space-y-2"
+                >
+                  <p className="text-xs font-bold text-foreground mb-2">إحصائيات العمليات</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "اليوم", value: admin.operations_today || 0 },
+                      { label: "الأسبوع", value: admin.operations_week || 0 },
+                      { label: "الشهر", value: admin.operations_month || 0 },
+                    ].map(s => (
+                      <div key={s.label} className="bg-muted/20 rounded-lg p-2 text-center">
+                        <p className="text-lg font-bold font-mono">{s.value}</p>
+                        <p className="text-[10px] text-muted-foreground">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {admin.last_login && (
+                    <p className="text-[10px] text-muted-foreground">
+                      آخر دخول: {new Date(admin.last_login).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    {inShift && admin.is_active
+                      ? <><span className="text-emerald-400">✅</span> ملتزم بوقت الدوام</>
+                      : <><span className="text-amber-400">⚠️</span> خارج وقت الدوام</>
+                    }
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                <div className="flex gap-2">
-                  <Button onClick={() => handleUpdate(mod)} disabled={actionLoading} className="flex-1">
-                    {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <Save className="w-4 h-4 ml-1" />}
-                    حفظ
-                  </Button>
-                  <Button onClick={() => setEditingId(null)} variant="outline" className="flex-1">
-                    <X className="w-4 h-4 ml-1" />إلغاء
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            {/* Edit Panel */}
+            <AnimatePresence>
+              {editingId === admin.username && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="border-t border-border p-4 space-y-3"
+                >
+                  <Input
+                    placeholder="الاسم المعروض"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditRole("admin")}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editRole === "admin" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-border/40"}`}
+                    >
+                      أدمن عادي
+                    </button>
+                    <button
+                      onClick={() => setEditRole("super_admin")}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editRole === "super_admin" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/40"}`}
+                    >
+                      سوبر أدمن
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground mb-1 block">بداية الدوام</label>
+                      <Input type="time" value={editShiftStart} onChange={(e) => setEditShiftStart(e.target.value)} dir="ltr" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground mb-1 block">نهاية الدوام</label>
+                      <Input type="time" value={editShiftEnd} onChange={(e) => setEditShiftEnd(e.target.value)} dir="ltr" />
+                    </div>
+                  </div>
+                  <Input
+                    type="password"
+                    placeholder="كلمة مرور جديدة (اتركه فارغ للإبقاء)"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    dir="ltr"
+                  />
 
-          {/* Footer info */}
-          <div className="px-4 pb-3 flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>أنشأه: {mod.created_by}</span>
-            <span>{new Date(mod.created_at).toLocaleDateString("ar-EG")}</span>
-          </div>
-        </motion.div>
-      ))}
+                  <div className="flex gap-2">
+                    <Button onClick={() => handleUpdate(admin)} disabled={actionLoading} className="flex-1">
+                      {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <Save className="w-4 h-4 ml-1" />}
+                      حفظ
+                    </Button>
+                    <Button onClick={() => setEditingId(null)} variant="outline" className="flex-1">
+                      <X className="w-4 h-4 ml-1" />إلغاء
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
     </div>
   );
 };
