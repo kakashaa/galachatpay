@@ -2699,16 +2699,21 @@ const AdminDashboardPage: React.FC = () => {
       )}
       </div>
 
-      {/* Bottom Navigation - only show when no sub-page is open */}
-      {!activeTab && !activeSection && (
+      {/* Bottom Navigation */}
+      {!activeTab && (
         <AdminBottomNav
           active={bottomTab}
-          onChange={(tab) => setBottomTab(tab)}
+          onChange={(tab) => {
+            if (tab === 'ban') { setActiveTab('blocks'); return; }
+            if (tab === 'vip') { setActiveTab('all_requests'); return; }
+            if (tab === 'chat') { setActiveTab('admin_chat'); return; }
+            if (tab === 'search') { setActiveTab('manual_actions'); return; }
+            setBottomTab(tab);
+          }}
           chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
         />
       )}
       
-      {/* Admin notifications listener */}
       <AdminNotificationListener />
     </div>
   );
