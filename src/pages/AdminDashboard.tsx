@@ -2544,6 +2544,20 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
+            {/* Admin Support Tab */}
+            {activeTab === "admin_support" && (
+              <motion.div key="admin_support" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminSupportManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={canAct} />
+              </motion.div>
+            )}
+
+            {/* Manual Actions Tab */}
+            {activeTab === "manual_actions" && (
+              <motion.div key="manual_actions" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminManualActions adminUsername={adminUsername || ''} />
+              </motion.div>
+            )}
+
             {/* Support Tickets Tab */}
             {activeTab === "support_tickets" && (
               <motion.div key="support_tickets" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
