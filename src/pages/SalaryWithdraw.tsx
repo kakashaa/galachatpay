@@ -129,7 +129,7 @@ const getCashWithdrawDates = () => {
   const today = new Date();
   const dayOfMonth = today.getDate();
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const canWithdrawCash = dayOfMonth >= lastDay - 2;
+  const canWithdrawCash = true; // TESTING — فتح مؤقت للتجربة (الأصل: dayOfMonth >= lastDay - 2)
   return { dayOfMonth, lastDay, canWithdrawCash, startDay: lastDay - 2 };
 };
 
