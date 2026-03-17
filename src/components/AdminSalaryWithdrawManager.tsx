@@ -587,10 +587,16 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         </div>
                       )}
 
-                      <Button variant="ghost" size="sm" onClick={() => setDetailReq(req)}
-                        className="w-full text-xs text-muted-foreground hover:text-primary h-8 rounded-xl">
-                        <Eye className="w-3.5 h-3.5 ml-1" /> عرض التفاصيل الكاملة
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setDetailReq(req)}
+                          className="flex-1 text-xs text-muted-foreground hover:text-primary h-8 rounded-xl">
+                          <Eye className="w-3.5 h-3.5 ml-1" /> عرض التفاصيل
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => fetchUserReport(req)}
+                          className="flex-1 text-xs text-muted-foreground hover:text-amber-400 h-8 rounded-xl">
+                          <UserSearch className="w-3.5 h-3.5 ml-1" /> تفاصيل المستخدم
+                        </Button>
+                      </div>
 
                       {canAct && req.status === "pending" && (
                         <div className="flex gap-2 pt-1">
