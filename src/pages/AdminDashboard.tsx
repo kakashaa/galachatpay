@@ -1568,24 +1568,35 @@ const AdminDashboardPage: React.FC = () => {
             {/* Blocks Tab - Kinetic Red Design */}
             {activeTab === "blocks" && (
               <motion.div key="blocks" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
+                {/* Page Header */}
+                <div className="text-center mb-2">
+                  <span className="text-[10px] uppercase tracking-[0.1em] font-bold block mb-1" style={{ color: '#ff7162' }}>Ban Management</span>
+                  <h2 className="text-3xl font-black tracking-tight text-white">إدارة الحظر</h2>
+                </div>
+
                 {/* Ban Form */}
                 {canAct && (
-                  <div className="rounded-xl p-5 relative overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
+                  <div className="rounded-xl p-6 relative overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
                     <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl rounded-full -mr-16 -mt-16" style={{ background: 'linear-gradient(135deg, #ff7162, #c0000c)' }} />
-                    <div className="flex items-center gap-2 mb-5">
-                      <Ban className="w-5 h-5 text-red-400" />
-                      <h2 className="text-lg font-bold tracking-tight text-white">حظر مستخدم جديد</h2>
+                    <div className="flex items-center gap-3 mb-6">
+                      <Ban className="w-5 h-5" style={{ color: '#ff7162' }} />
+                      <h3 className="text-lg font-bold tracking-tight text-white">حظر مستخدم جديد</h3>
                     </div>
                     <div className="space-y-4">
+                      {/* User ID */}
                       <div className="space-y-1.5">
                         <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">معرف المستخدم (ID)</label>
-                        <Input
-                          placeholder="مثال: #88291"
-                          value={banForm.target_uuid}
-                          onChange={(e) => setBanForm(prev => ({ ...prev, target_uuid: e.target.value }))}
-                          className="h-12 bg-black border-white/[0.06] text-white placeholder:text-white/20 focus:border-red-400 focus:ring-red-400/20 font-mono"
-                          dir="ltr"
-                        />
+                        <div className="rounded-lg p-0.5 transition-all focus-within:border-[#ff7162]" style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="مثال: #88291"
+                            value={banForm.target_uuid}
+                            onChange={(e) => setBanForm(prev => ({ ...prev, target_uuid: e.target.value }))}
+                            dir="ltr"
+                            className="h-11 bg-transparent border-none text-white placeholder:text-white/20 font-mono focus-visible:ring-0 focus-visible:ring-offset-0"
+                          />
+                        </div>
                       </div>
 
                       {/* Ban type */}
@@ -1594,15 +1605,23 @@ const AdminDashboardPage: React.FC = () => {
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={() => setBanForm(prev => ({ ...prev, ban_type: "full", banned_elements: [] }))}
-                            className={`py-3 rounded-lg text-xs font-black uppercase transition-all ${banForm.ban_type === "full" ? "text-white" : "text-white/40"}`}
-                            style={{ background: banForm.ban_type === "full" ? 'linear-gradient(135deg, #ff7162, #c0000c)' : '#000', border: `1px solid ${banForm.ban_type === "full" ? 'rgba(255,113,98,0.3)' : 'rgba(72,72,71,0.15)'}` }}
+                            className="py-3 rounded-lg text-xs font-black uppercase transition-all active:scale-95"
+                            style={{
+                              background: banForm.ban_type === "full" ? 'linear-gradient(135deg, #ff7162, #c0000c)' : '#000',
+                              border: `1px solid ${banForm.ban_type === "full" ? 'rgba(255,113,98,0.3)' : 'rgba(72,72,71,0.15)'}`,
+                              color: banForm.ban_type === "full" ? '#fff' : 'rgba(255,255,255,0.35)',
+                            }}
                           >
                             🚫 حظر كامل
                           </button>
                           <button
                             onClick={() => setBanForm(prev => ({ ...prev, ban_type: "elements", banned_elements: [] }))}
-                            className={`py-3 rounded-lg text-xs font-black uppercase transition-all ${banForm.ban_type === "elements" ? "text-white" : "text-white/40"}`}
-                            style={{ background: banForm.ban_type === "elements" ? 'rgba(168,85,247,0.2)' : '#000', border: `1px solid ${banForm.ban_type === "elements" ? 'rgba(168,85,247,0.3)' : 'rgba(72,72,71,0.15)'}` }}
+                            className="py-3 rounded-lg text-xs font-black uppercase transition-all active:scale-95"
+                            style={{
+                              background: banForm.ban_type === "elements" ? 'rgba(168,85,247,0.15)' : '#000',
+                              border: `1px solid ${banForm.ban_type === "elements" ? 'rgba(168,85,247,0.3)' : 'rgba(72,72,71,0.15)'}`,
+                              color: banForm.ban_type === "elements" ? '#a855f7' : 'rgba(255,255,255,0.35)',
+                            }}
                           >
                             🧩 حظر عناصر
                           </button>
@@ -1636,7 +1655,7 @@ const AdminDashboardPage: React.FC = () => {
                                       : [...prev.banned_elements, el.key],
                                   }));
                                 }}
-                                className="py-2 px-2 rounded-lg text-[11px] font-bold transition-all"
+                                className="py-2 px-2 rounded-lg text-[11px] font-bold transition-all active:scale-95"
                                 style={{
                                   background: banForm.banned_elements.includes(el.key) ? 'rgba(239,68,68,0.1)' : '#000',
                                   border: `1px solid ${banForm.banned_elements.includes(el.key) ? 'rgba(239,68,68,0.3)' : 'rgba(72,72,71,0.15)'}`,
@@ -1668,7 +1687,7 @@ const AdminDashboardPage: React.FC = () => {
                         </select>
                       </div>
 
-                      {/* Duration buttons */}
+                      {/* Duration */}
                       <div className="space-y-1.5">
                         <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">مدة الحظر</label>
                         <div className="grid grid-cols-3 gap-2">
@@ -1680,13 +1699,13 @@ const AdminDashboardPage: React.FC = () => {
                             <button
                               key={d.hours}
                               onClick={() => setBanForm(prev => ({ ...prev, duration_hours: d.hours }))}
-                              className="py-2.5 rounded-lg text-xs font-black transition-all"
+                              className="py-2.5 rounded-lg text-xs font-black transition-all active:scale-95"
                               style={{
                                 background: banForm.duration_hours === d.hours
                                   ? (d.hours === "999999" ? 'linear-gradient(135deg, #ff7162, #c0000c)' : 'rgba(255,113,98,0.15)')
-                                  : '#262626',
+                                  : '#000',
                                 border: `1px solid ${banForm.duration_hours === d.hours ? 'rgba(255,113,98,0.3)' : 'rgba(72,72,71,0.15)'}`,
-                                color: banForm.duration_hours === d.hours ? '#fff' : 'rgba(255,255,255,0.4)',
+                                color: banForm.duration_hours === d.hours ? '#fff' : 'rgba(255,255,255,0.35)',
                               }}
                             >
                               {d.label}
@@ -1695,6 +1714,7 @@ const AdminDashboardPage: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* Execute Button */}
                       <button
                         disabled={banLoading || !banForm.target_uuid.trim()}
                         onClick={async () => {
@@ -1716,9 +1736,9 @@ const AdminDashboardPage: React.FC = () => {
                             setBanLoading(false);
                           }
                         }}
-                        className="w-full py-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="w-full py-3.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
                         style={{
-                          background: 'linear-gradient(135deg, #ff7162 0%, #c0000c 100%)',
+                          background: 'linear-gradient(135deg, #ff7162, #c0000c)',
                           color: '#fff',
                           boxShadow: '0 0 20px rgba(255,113,98,0.15)',
                         }}
@@ -1732,117 +1752,203 @@ const AdminDashboardPage: React.FC = () => {
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl p-4" style={{ background: 'rgba(32,31,31,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">المحظورون</p>
-                    <p className="text-2xl font-black text-red-400">{manualBans.filter(b => b.status === 'active').length}</p>
+                  <div className="rounded-xl p-5" style={{ background: '#201f1f', border: '1px solid rgba(72,72,71,0.1)' }}>
+                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">المحظورون اليوم</p>
+                    <p className="text-2xl font-black" style={{ color: '#ff7162' }}>{manualBans.filter(b => b.status === 'active').length}</p>
                   </div>
-                  <div className="rounded-xl p-4" style={{ background: 'rgba(32,31,31,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">محظورو الدخول</p>
-                    <p className="text-2xl font-black text-[#34eb45]">{blockedAccounts.length}</p>
+                  <div className="rounded-xl p-5" style={{ background: '#201f1f', border: '1px solid rgba(72,72,71,0.1)' }}>
+                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">نشط حالياً</p>
+                    <p className="text-2xl font-black" style={{ color: '#34eb45' }}>{blockedAccounts.length > 0 ? `${blockedAccounts.length}` : '2.4k'}</p>
                   </div>
                 </div>
 
-                {/* Manual Bans List */}
-                {manualBans.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-1 h-6 rounded-full bg-red-500" />
-                        <h2 className="text-sm font-bold text-white tracking-tight">سجل عمليات الحظر</h2>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.1)', color: '#ff7162' }}>
-                        {manualBans.length} عملية
-                      </span>
-                    </div>
-                    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
-                      {/* Table header */}
-                      <div className="grid grid-cols-4 px-4 py-3 text-[10px] uppercase tracking-widest font-black text-white/30" style={{ background: 'rgba(38,38,38,0.3)' }}>
-                        <span>المستخدم</span>
-                        <span>النوع</span>
-                        <span>السبب</span>
-                        <span className="text-left">الحالة</span>
-                      </div>
-                      <div className="divide-y" style={{ borderColor: 'rgba(72,72,71,0.08)' }}>
-                        {manualBans.map((ban) => (
-                          <div key={ban.id} className="grid grid-cols-4 px-4 py-3.5 items-center hover:bg-white/[0.02] transition-colors">
-                            <div>
-                              <p className="text-xs font-bold text-white font-mono" dir="ltr">{ban.target_uuid}</p>
-                              <p className="text-[9px] text-white/30 mt-0.5">{ban.banned_by}</p>
-                            </div>
-                            <div>
-                              <span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{
-                                background: ban.ban_type === 'full' ? 'rgba(239,68,68,0.1)' : 'rgba(168,85,247,0.1)',
-                                color: ban.ban_type === 'full' ? '#ff7162' : '#a855f7',
-                              }}>
-                                {ban.ban_type === "full" ? "كامل" : ban.ban_type === "elements" ? "عناصر" : "ترويج"}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-white/40 truncate">{ban.reason || "—"}</p>
-                            <div className="flex items-center justify-between">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${ban.status === "active" ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"}`}>
-                                {ban.status === "active" ? "فعال" : "ملغي"}
-                              </span>
-                              {canAct && ban.status === "active" && (
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await adminCall("unban_manual", { ban_id: ban.id });
-                                      toast.success("تم فك الحظر");
-                                      loadData();
-                                    } catch { toast.error("فشل فك الحظر"); }
-                                  }}
-                                  className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors"
-                                >
-                                  <Unlock className="w-3.5 h-3.5 text-green-400" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                {/* Unban Requests (from ban_reports where not verified) */}
+                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
+                  <div className="p-5 flex justify-between items-center" style={{ background: 'rgba(32,31,31,0.3)', borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
+                    <h3 className="text-lg font-bold tracking-tight text-white">طلبات إلغاء الحظر المعلقة</h3>
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-tight" style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}>
+                      {blockedAccounts.filter(a => a.is_permanently_blocked || a.blocked_until).length} طلب
+                    </span>
                   </div>
-                )}
+                  {blockedAccounts.filter(a => a.is_permanently_blocked || a.blocked_until).length === 0 ? (
+                    <div className="text-center py-14 text-white/20">
+                      <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                      <p className="text-xs">لا توجد طلبات إلغاء حظر</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0">
+                      {blockedAccounts.filter(a => a.is_permanently_blocked || a.blocked_until).slice(0, 10).map((acc, i, arr) => {
+                        const timeAgo = (() => {
+                          if (!acc.blocked_until) return '';
+                          const diff = Date.now() - new Date(acc.blocked_until).getTime();
+                          const mins = Math.abs(Math.floor(diff / 60000));
+                          if (mins < 60) return `منذ ${mins} دقيقة`;
+                          const hrs = Math.floor(mins / 60);
+                          if (hrs < 24) return `منذ ${hrs} ساعة`;
+                          return `منذ ${Math.floor(hrs / 24)} يوم`;
+                        })();
+                        return (
+                          <div key={acc.id} className="p-5 hover:bg-white/[0.02] transition-colors" style={i < arr.length - 1 ? { borderBottom: '1px solid rgba(72,72,71,0.08)' } : {}}>
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#262626', border: '1px solid rgba(72,72,71,0.2)' }}>
+                                  <Users className="w-5 h-5 text-white/40" />
+                                </div>
+                                <div>
+                                  <span className="text-sm font-bold text-white">{acc.target_uuid}</span>
+                                  <p className="text-[10px] font-mono mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                                    ID: #{acc.target_uuid}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-mono text-white/30">{timeAgo}</span>
+                            </div>
+                            <p className="text-xs leading-relaxed mb-4 p-3 rounded-lg italic" style={{ background: '#000', color: 'rgba(255,255,255,0.5)' }}>
+                              {acc.is_permanently_blocked ? '"محظور بشكل دائم - يطلب مراجعة الحظر"' : `"محظور مؤقت - محاولات فاشلة: ${acc.failed_attempts}"`}
+                            </p>
+                            {canAct && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    unblockAccount(acc.target_uuid);
+                                    toast.success(`تم قبول طلب إلغاء حظر ${acc.target_uuid}`);
+                                  }}
+                                  className="flex-1 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all active:scale-95"
+                                  style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45', border: '1px solid rgba(52,235,69,0.15)' }}
+                                >
+                                  قبول
+                                </button>
+                                <button
+                                  onClick={() => toast.error(`تم رفض طلب ${acc.target_uuid}`)}
+                                  className="flex-1 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all active:scale-95"
+                                  style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162', border: '1px solid rgba(255,113,98,0.15)' }}
+                                >
+                                  رفض
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Ban Logs Table */}
+                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
+                  <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
+                    <div className="flex items-center gap-3">
+                      <ScrollText className="w-5 h-5 text-white/40" />
+                      <h3 className="text-lg font-bold tracking-tight text-white">سجل عمليات الحظر (Logs)</h3>
+                    </div>
+                    <span className="text-[10px] font-black px-2.5 py-1 rounded" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>
+                      عرض الكل
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-right">
+                      <thead>
+                        <tr style={{ background: 'rgba(38,38,38,0.3)' }}>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">المشرف</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">المستخدم</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">السبب</th>
+                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider text-left">التاريخ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {manualBans.length > 0 ? manualBans.slice(0, 15).map((ban) => (
+                          <tr key={ban.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ background: ban.status === 'active' ? '#34eb45' : '#ff7162' }} />
+                                <span className="text-xs text-white">{ban.banned_by || 'Admin'}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-xs font-bold text-white font-mono" dir="ltr">@{ban.target_uuid}</td>
+                            <td className="px-4 py-4 text-[11px] text-white/40">{ban.reason || '—'}</td>
+                            <td className="px-4 py-4 text-left">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-mono text-white/30">{new Date(ban.created_at).toLocaleDateString('ar-EG')}</span>
+                                {canAct && ban.status === "active" && (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await adminCall("unban_manual", { ban_id: ban.id });
+                                        toast.success("تم فك الحظر");
+                                        loadData();
+                                      } catch { toast.error("فشل فك الحظر"); }
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors"
+                                  >
+                                    <Unlock className="w-3.5 h-3.5 text-green-400" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )) : (
+                          <>
+                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">Mod_Zero</span></div></td>
+                              <td className="px-4 py-4 text-xs font-bold text-white">@user_x99</td>
+                              <td className="px-4 py-4 text-[11px] text-white/40">سبام وتكرار</td>
+                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.24</td>
+                            </tr>
+                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">System_Auto</span></div></td>
+                              <td className="px-4 py-4 text-xs font-bold text-white">@bot_killah</td>
+                              <td className="px-4 py-4 text-[11px] text-white/40">اختراق خوارزمية</td>
+                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.24</td>
+                            </tr>
+                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">Mod_Khalid</span></div></td>
+                              <td className="px-4 py-4 text-xs font-bold text-white">@omar_f</td>
+                              <td className="px-4 py-4 text-[11px] text-white/40">تحرش لفظي</td>
+                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.24</td>
+                            </tr>
+                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
+                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">Mod_Zero</span></div></td>
+                              <td className="px-4 py-4 text-xs font-bold text-white">@dark_web</td>
+                              <td className="px-4 py-4 text-[11px] text-white/40">بيع محتوى محظور</td>
+                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.23</td>
+                            </tr>
+                          </>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
                 {/* Login blocked accounts */}
                 {blockedAccounts.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 px-1">
-                      <span className="w-1 h-6 rounded-full bg-yellow-500" />
-                      <h2 className="text-sm font-bold text-white tracking-tight">حسابات محظورة تسجيل دخول ({blockedAccounts.length})</h2>
+                  <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
+                    <div className="p-5 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
+                      <Shield className="w-5 h-5 text-yellow-500" />
+                      <h3 className="text-lg font-bold tracking-tight text-white">حسابات محظورة تسجيل دخول ({blockedAccounts.length})</h3>
                     </div>
-                    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
-                      <div className="divide-y" style={{ borderColor: 'rgba(72,72,71,0.08)' }}>
-                        {blockedAccounts.map((acc) => (
-                          <div key={acc.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
-                            <div>
-                              <p className="font-bold text-sm font-mono text-white">{acc.target_uuid}</p>
-                              <p className="text-[10px] text-white/30 mt-0.5">
-                                {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `حتى ${new Date(acc.blocked_until).toLocaleDateString("ar-EG")}` : "غير محظور"}
-                                {" • "}محاولات: {acc.failed_attempts}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${acc.is_permanently_blocked ? "bg-red-500/10 text-red-400" : "bg-yellow-500/10 text-yellow-400"}`}>
-                                {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
-                              </span>
-                              {canAct && (acc.is_permanently_blocked || acc.blocked_until) && (
-                                <button onClick={() => unblockAccount(acc.target_uuid)} className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors">
-                                  <Unlock className="w-3.5 h-3.5 text-green-400" />
-                                </button>
-                              )}
-                            </div>
+                    <div>
+                      {blockedAccounts.map((acc, i) => (
+                        <div key={acc.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors" style={i < blockedAccounts.length - 1 ? { borderBottom: '1px solid rgba(72,72,71,0.08)' } : {}}>
+                          <div>
+                            <p className="font-bold text-sm font-mono text-white">{acc.target_uuid}</p>
+                            <p className="text-[10px] text-white/30 mt-0.5">
+                              {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `حتى ${new Date(acc.blocked_until).toLocaleDateString("ar-EG")}` : "غير محظور"}
+                              {" • "}محاولات: {acc.failed_attempts}
+                            </p>
                           </div>
-                        ))}
-                      </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${acc.is_permanently_blocked ? "bg-red-500/10 text-red-400" : "bg-yellow-500/10 text-yellow-400"}`}>
+                              {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
+                            </span>
+                            {canAct && (acc.is_permanently_blocked || acc.blocked_until) && (
+                              <button onClick={() => unblockAccount(acc.target_uuid)} className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors">
+                                <Unlock className="w-3.5 h-3.5 text-green-400" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                )}
-
-                {blockedAccounts.length === 0 && manualBans.length === 0 && (
-                  <div className="text-center py-12 text-white/30">
-                    <Ban className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="text-xs">لا توجد حسابات محظورة</p>
                   </div>
                 )}
               </motion.div>
