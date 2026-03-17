@@ -228,6 +228,9 @@ const AdminDashboardPage: React.FC = () => {
 
   // Statistics state
   const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0 });
+  
+  // Badge counts for notification sounds
+  const prevBadgesRef = useRef<{ salary: number; support: number; total: number }>({ salary: 0, support: 0, total: 0 });
 
   // All requests state
    const [allRequestsFilter, setAllRequestsFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
