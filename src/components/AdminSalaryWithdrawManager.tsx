@@ -653,7 +653,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         </Button>
                       </div>
 
-                      {canAct && req.status === "pending" && (
+                      {canAct && isCurrentMonth && req.status === "pending" && (
                         <div className="flex gap-2 pt-1">
                           <Button onClick={() => { setApproveSheet(req); setReceiptFile(null); setReceiptPreview(""); setApproveNote(""); }}
                             className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
@@ -663,6 +663,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                             className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
                             <XCircle className="w-4 h-4" /> رفض + سبب
                           </button>
+                        </div>
+                      )}
+                      {!isCurrentMonth && req.status === "pending" && (
+                        <div className="bg-muted/20 rounded-xl p-2.5 text-center text-[10px] text-muted-foreground">
+                          📁 أرشيف — لا يمكن التعديل على طلبات الأشهر السابقة
                         </div>
                       )}
                     </div>
