@@ -45,7 +45,7 @@ import AdminManualActions from "@/components/AdminManualActions";
 import AdminBottomNav from "@/components/AdminBottomNav";
 import AdminHomeView from "@/components/AdminHomeView";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | "admin_chat" | "admin_support" | "manual_actions" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | "admin_chat" | "admin_support" | "manual_actions" | "vip" | null;
 
 
 interface VideoTutorial {

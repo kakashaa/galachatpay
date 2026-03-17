@@ -258,7 +258,7 @@ const AdminHomeView: React.FC<Props> = ({
             <div className="flex gap-1.5">
               {[
                 { label: 'حظر', key: 'blocks', icon: Ban, color: 'text-red-400', bg: 'bg-red-500/10' },
-                { label: 'VIP', key: 'all_requests', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+                { label: 'VIP', key: 'vip', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
                 { label: 'آيدي', key: 'id_changes', icon: Hash, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                 { label: 'السجل', key: 'audit_log', icon: ScrollText, color: 'text-violet-400', bg: 'bg-violet-500/10' },
               ].map(a => (
