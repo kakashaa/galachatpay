@@ -30,15 +30,42 @@ interface Props {
   canAct: boolean;
 }
 
+const getMonthOptions = () => {
+  const months: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
+    months.push({ value, label });
+  }
+  return months;
+};
+
+const getCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const formatDateSA = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleString("ar-SA", {
+      timeZone: "Asia/Riyadh",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch { return dateStr; }
+};
+
 const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
   const [charges, setCharges] = useState<SalaryCharge[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "completed" | "pending">("all");
   const [search, setSearch] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  });
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const isCurrentMonth = selectedMonth === getCurrentMonth();
+  const monthOptions = useMemo(getMonthOptions, []);
 
   // Manual charge sheet
   const [chargeSheet, setChargeSheet] = useState(false);
