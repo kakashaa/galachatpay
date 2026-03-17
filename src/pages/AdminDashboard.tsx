@@ -1736,95 +1736,117 @@ const AdminDashboardPage: React.FC = () => {
 
             {/* VIP Tab - Dedicated VIP page */}
             {activeTab === "vip" && (
-              <motion.div key="vip" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
+              <motion.div key="vip" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
                 {/* Grant VIP Section */}
-                <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="rounded-xl p-5" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)', boxShadow: '0 0 20px rgba(52,235,69,0.04)' }}>
+                  <div className="flex items-center gap-2 mb-4">
                     <Crown className="w-5 h-5 text-yellow-400" />
-                    <h3 className="text-sm font-bold text-foreground">إهداء VIP</h3>
+                    <h2 className="text-sm font-bold text-white tracking-tight">إهداء VIP</h2>
                   </div>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="UUID المستخدم"
-                    value={adminStarUuid}
-                    onChange={(e) => setAdminStarUuid(e.target.value)}
-                    dir="ltr"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-muted-foreground">مستوى VIP</label>
-                      <select
-                        value={vipGrantLevel}
-                        onChange={(e) => setVipGrantLevel(e.target.value)}
-                        className="w-full rounded-lg bg-muted/30 border border-border/40 px-3 py-2 text-sm text-foreground"
-                      >
-                        <option value="1">VIP 1</option>
-                        <option value="2">VIP 2</option>
-                        <option value="3">VIP 3</option>
-                        <option value="4">VIP 4</option>
-                        <option value="5">VIP 5</option>
-                        <option value="6">VIP 6</option>
-                      </select>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">معرف المستخدم (UUID)</label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="مثال: 504932"
+                        value={adminStarUuid}
+                        onChange={(e) => setAdminStarUuid(e.target.value)}
+                        dir="ltr"
+                        className="h-12 bg-black border-white/[0.06] text-white placeholder:text-white/20 focus:border-[#34eb45] focus:ring-[#34eb45]/20"
+                      />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-muted-foreground">المدة</label>
-                      <select
-                        value={vipGrantDuration}
-                        onChange={(e) => setVipGrantDuration(e.target.value)}
-                        className="w-full rounded-lg bg-muted/30 border border-border/40 px-3 py-2 text-sm text-foreground"
-                      >
-                        <option value="7">7 أيام</option>
-                        <option value="15">15 يوم</option>
-                        <option value="30">30 يوم</option>
-                        <option value="90">90 يوم</option>
-                        <option value="180">180 يوم</option>
-                        <option value="365">سنة</option>
-                      </select>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">مستوى VIP</label>
+                        <select
+                          value={vipGrantLevel}
+                          onChange={(e) => setVipGrantLevel(e.target.value)}
+                          className="w-full rounded-lg px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer"
+                          style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
+                        >
+                          <option value="1">VIP 1</option>
+                          <option value="2">VIP 2</option>
+                          <option value="3">VIP 3</option>
+                          <option value="4">VIP 4</option>
+                          <option value="5">VIP 5</option>
+                          <option value="6">VIP 6</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 px-1">المدة</label>
+                        <select
+                          value={vipGrantDuration}
+                          onChange={(e) => setVipGrantDuration(e.target.value)}
+                          className="w-full rounded-lg px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer"
+                          style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
+                        >
+                          <option value="7">7 أيام</option>
+                          <option value="15">15 يوم</option>
+                          <option value="30">30 يوم</option>
+                          <option value="90">90 يوم</option>
+                          <option value="180">180 يوم</option>
+                          <option value="365">سنة</option>
+                        </select>
+                      </div>
                     </div>
+                    <button
+                      onClick={handleGrantVip}
+                      disabled={vipGrantLoading || !adminStarUuid.trim()}
+                      className="w-full py-3.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+                      style={{
+                        background: 'linear-gradient(135deg, #34eb45 0%, #00d632 100%)',
+                        color: '#004108',
+                        boxShadow: '0 0 20px rgba(52,235,69,0.2)',
+                      }}
+                    >
+                      {vipGrantLoading ? <><Loader2 className="w-4 h-4 animate-spin" />جاري الإهداء...</> : <><Crown className="w-4 h-4" />إهداء VIP</>}
+                    </button>
                   </div>
-                  <Button
-                    onClick={handleGrantVip}
-                    disabled={vipGrantLoading || !adminStarUuid.trim()}
-                    className="w-full"
-                  >
-                    {vipGrantLoading ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإهداء...</> : <><Crown className="w-4 h-4 ml-2" />إهداء VIP</>}
-                  </Button>
                 </div>
 
                 {/* VIP Requests from users */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-1 h-3.5 rounded-full bg-yellow-500/50" />
-                    <h3 className="text-xs font-black text-foreground">طلبات VIP من المستخدمين</h3>
-                    <span className="text-[10px] bg-muted/50 px-2 py-0.5 rounded-full text-muted-foreground">{allVipRequests.length}</span>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1 h-6 rounded-full bg-yellow-500" />
+                      <h2 className="text-sm font-bold text-white tracking-tight">طلبات VIP من المستخدمين</h2>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.1)', color: '#facc15' }}>
+                      {allVipRequests.length} طلب
+                    </span>
                   </div>
                   {allVipRequests.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Crown className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <div className="text-center py-12 text-white/30">
+                      <Crown className="w-10 h-10 mx-auto mb-3 opacity-30" />
                       <p className="text-xs">لا توجد طلبات VIP</p>
                     </div>
                   ) : (
-                    allVipRequests.slice(0, 20).map((req: any) => (
-                      <div key={req.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Crown className="w-3.5 h-3.5 text-yellow-400" />
-                            <span className="text-xs font-bold text-foreground">{req.user_name}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 font-bold">VIP {req.vip_level}</span>
+                    <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
+                      <div className="divide-y" style={{ borderColor: 'rgba(72,72,71,0.08)' }}>
+                        {allVipRequests.slice(0, 20).map((req: any) => (
+                          <div key={req.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(234,179,8,0.1)' }}>
+                                <Crown className="w-5 h-5 text-yellow-400" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-white">{req.user_name}</span>
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: 'rgba(234,179,8,0.1)', color: '#facc15' }}>
+                                    VIP {req.vip_level}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-white/30 font-mono mt-0.5" dir="ltr">ID: #{req.user_uuid}</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-white/20 uppercase tracking-wide">
+                              {new Date(req.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
+                            </span>
                           </div>
-                          <span className="text-[9px] text-muted-foreground">
-                            {new Date(req.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                          <span className="font-mono" dir="ltr">UUID: {req.user_uuid}</span>
-                          {req.recipient_uuid && req.recipient_uuid !== req.user_uuid && (
-                            <span className="font-mono" dir="ltr">→ {req.recipient_uuid}</span>
-                          )}
-                        </div>
+                        ))}
                       </div>
-                    ))
+                    </div>
                   )}
                 </div>
               </motion.div>
