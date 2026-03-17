@@ -133,6 +133,22 @@ const countryCodes = [
 const TRANSFER_TARGET_ID = "10000";
 const USD_TO_COINS = 8500; // $1 = 8,500 coins
 
+// Date helpers for cash withdrawal availability
+const getCashWithdrawDates = () => {
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const canWithdrawCash = dayOfMonth >= lastDay - 2; // last 3 days: 29, 30, 31
+  return { dayOfMonth, lastDay, canWithdrawCash, startDay: lastDay - 2 };
+};
+
+// Withdrawal limits
+const getWithdrawalLimits = (isAgencyOwner: boolean) => {
+  const maxCash = isAgencyOwner ? 2 : 1;
+  const maxTotal = isAgencyOwner ? 3 : 2;
+  return { maxCash, maxTotal };
+};
+
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -145,12 +161,13 @@ const SalaryWithdraw: React.FC = () => {
 
   // Flow state
   const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
-  const [registeredSalary, setRegisteredSalary] = useState(0); // the net salary for chosen type
+  const [registeredSalary, setRegisteredSalary] = useState(0);
   const [enteredAmount, setEnteredAmount] = useState("");
   const [amountError, setAmountError] = useState("");
-  const [isFirstWithdrawal, setIsFirstWithdrawal] = useState(true);
+  const [withdrawalMode, setWithdrawalMode] = useState<"cash" | "coins">("cash");
+  const [cashWithdrawalsLeft, setCashWithdrawalsLeft] = useState(0);
 
-  // Steps: "choose_type" | "enter_amount" | "transfer_instructions" | "verify" | "bank" | "account" | "success" | "coins_instructions" | "coins_success"
+  // Steps
   const [step, setStep] = useState<string>("loading");
 
   // Verification
@@ -203,22 +220,34 @@ const SalaryWithdraw: React.FC = () => {
       if (!hasHost && !hasAgency) {
         setNoSalaryAtAll(true);
         setStep("no_salary");
-      } else if (!data.withdrawals.can_withdraw) {
-        setStep("exhausted");
-      } else if (data.withdraw_open === false) {
-        setStep("closed");
       } else if (data.host_salary?.is_suspicious) {
         setStep("suspicious");
       } else if (data.is_agency_owner && hasHost && hasAgency) {
-        setStep("choose_type");
+        // Check exhausted for agency (max 3)
+        const { maxTotal } = getWithdrawalLimits(true);
+        if (data.withdrawals.count >= maxTotal) {
+          setStep("exhausted");
+        } else {
+          setStep("choose_type");
+        }
       } else {
         // Regular host or agency owner with only one salary
         const type = hasHost ? "host" : "agency";
         const net = type === "host" ? data.host_salary.net : data.agency_salary.amount;
-        setSalaryType(type);
-        setRegisteredSalary(net);
-        setIsFirstWithdrawal(data.withdrawals.count === 0);
-        setStep("enter_amount");
+        const { maxCash, maxTotal } = getWithdrawalLimits(data.is_agency_owner);
+        const count = data.withdrawals.count;
+
+        if (count >= maxTotal) {
+          setStep("exhausted");
+          setAllData(data);
+        } else {
+          setSalaryType(type);
+          setRegisteredSalary(net);
+          const mode = count < maxCash ? "cash" : "coins";
+          setWithdrawalMode(mode);
+          setCashWithdrawalsLeft(Math.max(0, maxCash - count));
+          setStep("enter_amount");
+        }
       }
     } catch {
       setError("فشل الاتصال بالخادم");
@@ -233,7 +262,11 @@ const SalaryWithdraw: React.FC = () => {
     setSalaryType(type);
     const net = type === "host" ? allData.host_salary.net : allData.agency_salary.amount;
     setRegisteredSalary(net);
-    setIsFirstWithdrawal(allData.withdrawals.count === 0);
+    const { maxCash } = getWithdrawalLimits(allData.is_agency_owner);
+    const count = allData.withdrawals.count;
+    const mode = count < maxCash ? "cash" : "coins";
+    setWithdrawalMode(mode);
+    setCashWithdrawalsLeft(Math.max(0, maxCash - count));
     setStep("enter_amount");
   };
 
@@ -248,7 +281,14 @@ const SalaryWithdraw: React.FC = () => {
       return;
     }
     setAmountError("");
-    if (isFirstWithdrawal) {
+
+    if (withdrawalMode === "cash") {
+      // Check date for cash withdrawals
+      const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
+      if (!canWithdrawCash) {
+        setAmountError(`سحب الراتب النقدي متاح فقط من يوم ${startDay} إلى ${lastDay} من الشهر`);
+        return;
+      }
       setStep("transfer_instructions");
     } else {
       setStep("coins_instructions");
@@ -275,7 +315,7 @@ const SalaryWithdraw: React.FC = () => {
         setStep("verify");
       } else if (data.verified) {
         toast.success("✅ تم التحقق من التحويل بنجاح!");
-        if (isFirstWithdrawal) {
+        if (withdrawalMode === "cash") {
           setStep("bank");
         } else {
           // Coins flow — auto-charge
@@ -284,7 +324,7 @@ const SalaryWithdraw: React.FC = () => {
       } else if (data.wrong_amount && (data.transferred_usd || 0) >= registeredSalary) {
         // Transferred >= salary → accept with registered salary
         toast.success("✅ تم التحقق — سيتم احتساب الراتب المسجل فقط");
-        if (isFirstWithdrawal) {
+        if (withdrawalMode === "cash") {
           setStep("bank");
         } else {
           await chargeCoins(data.transaction_id || "");
@@ -444,7 +484,7 @@ const SalaryWithdraw: React.FC = () => {
               <CheckCircle className="w-10 h-10 text-emerald-400" />
             </motion.div>
             <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل ✅</h2>
-            <p className="text-xs text-muted-foreground">سحبت {allData.withdrawals.count} من {allData.withdrawals.max} هذا الشهر</p>
+            <p className="text-xs text-muted-foreground">سحبت {allData.withdrawals.count} من {getWithdrawalLimits(allData.is_agency_owner).maxTotal} هذا الشهر</p>
           </div>
           <SalaryRequestsHistory userUuid={user.uuid} />
           <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
@@ -582,15 +622,23 @@ const SalaryWithdraw: React.FC = () => {
     const hs = allData.host_salary;
     const as_ = allData.agency_salary;
     const w = allData.withdrawals;
+    const { maxCash, maxTotal } = getWithdrawalLimits(true);
+    const cashLeft = Math.max(0, maxCash - w.count);
+    const { canWithdrawCash, startDay } = getCashWithdrawDates();
 
     return (
       <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
         <div className="px-5 py-6 space-y-5">
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground mb-1">اختر نوع الراتب</h2>
-            <p className="text-xs text-muted-foreground">سحبت {w.count} من {w.max} هذا الشهر</p>
+            <p className="text-xs text-muted-foreground">سحبت {w.count} من {maxTotal} هذا الشهر</p>
             <p className="text-[10px] text-muted-foreground mt-1">
-              {w.count === 0 ? "المرة الأولى: سحب نقدي 💵" : "المرة الثانية: شحن كوينز 🪙"}
+              {cashLeft > 0
+                ? (canWithdrawCash
+                  ? `💵 سحب نقدي متاح (${cashLeft} سحبة متبقية)`
+                  : `⏰ السحب النقدي يفتح يوم ${startDay}/${new Date().getMonth() + 1}`)
+                : "🪙 شحن كوينز فقط"
+              }
             </p>
           </div>
 
@@ -666,7 +714,7 @@ const SalaryWithdraw: React.FC = () => {
   // STEPPER FLOW
   // ══════════════════════════════════════════
 
-  const stepperLabels = isFirstWithdrawal
+  const stepperLabels = withdrawalMode === "cash"
     ? ["المبلغ", "التحويل", "التحقق", "البنك", "التأكيد"]
     : ["المبلغ", "التحويل", "التحقق", "شحن"];
 
@@ -714,14 +762,15 @@ const SalaryWithdraw: React.FC = () => {
                   <span className="text-lg font-black text-emerald-400" dir="ltr">${registeredSalary.toFixed(2)}</span>
                 </div>
 
-                {isFirstWithdrawal ? (
+                {withdrawalMode === "cash" ? (
                   <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
-                    <p className="text-xs text-blue-400 font-bold">💵 المرة الأولى — سحب نقدي</p>
+                    <p className="text-xs text-blue-400 font-bold">💵 سحب راتب نقدي</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">متاح فقط آخر 3 أيام من الشهر</p>
                   </div>
                 ) : (
                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-                    <p className="text-xs text-amber-400 font-bold">🪙 المرة الثانية — شحن كوينز</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">= {(registeredSalary * USD_TO_COINS).toLocaleString()} كوينز</p>
+                    <p className="text-xs text-amber-400 font-bold">🪙 شحن كوينز</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">= {(registeredSalary * USD_TO_COINS).toLocaleString()} كوينز — متاح في أي وقت</p>
                   </div>
                 )}
 
@@ -947,7 +996,7 @@ const SalaryWithdraw: React.FC = () => {
                     إعادة المحاولة
                   </Button>
 
-                  {isFirstWithdrawal && (
+                  {withdrawalMode === "cash" && (
                     <>
                       <div className="space-y-2">
                         <p className="text-xs font-bold text-foreground">📎 أو ارفع إيصال التحويل</p>
