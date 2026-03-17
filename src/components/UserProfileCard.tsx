@@ -56,19 +56,16 @@ const UserProfileCard: React.FC = () => {
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
 
-  // Fetch avatar from API if not cached
+  // Fetch avatar using centralized helper
   useEffect(() => {
-    if (avatarUrl || !user?.uuid) return;
-    fetch(`https://galachat.site/project-z/api.php?action=get_avatar&uuid=${user.uuid}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.avatar) {
-          setAvatarUrl(d.avatar);
-          localStorage.setItem("gala_avatar", d.avatar);
-        }
-      })
-      .catch(() => {});
-  }, [user?.uuid, avatarUrl]);
+    if (!user?.uuid) return;
+    getAvatar(user.uuid).then(url => {
+      if (url) {
+        setAvatarUrl(url);
+        localStorage.setItem("gala_avatar", url);
+      }
+    });
+  }, [user?.uuid]);
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
     ((user.vip as any).vip_level || (user.vip as any).level || 0) > 0);
