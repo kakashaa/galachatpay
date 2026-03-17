@@ -5,7 +5,7 @@ import {
   Loader2, FileText, Image, Printer, Building2,
   Eye, Phone, User, Hash, CalendarDays,
   MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3, ShieldCheck,
-  ShieldAlert, Coins, DollarSign,
+  ShieldAlert, DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
