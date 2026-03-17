@@ -111,7 +111,7 @@ const AdminHomeView: React.FC<Props> = ({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.04, duration: 0.3 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => onServiceClick(svc.key)}
+            onClick={() => svc.route ? navigate(svc.route) : onServiceClick(svc.key)}
             className={`relative bg-gradient-to-br ${svc.gradient} border ${svc.borderColor} rounded-2xl p-4 flex flex-col items-center gap-2 hover:border-white/15 transition-all`}
           >
             {svc.icon}
