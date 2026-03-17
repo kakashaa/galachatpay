@@ -284,7 +284,7 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                   <span className="text-muted-foreground text-[10px] flex items-center gap-1 mb-0.5">
                     <CalendarDays className="w-3 h-3" /> التاريخ
                   </span>
-                  <span className="font-bold text-foreground">{new Date(charge.created_at).toLocaleDateString("ar")}</span>
+                  <span className="font-bold text-foreground">{formatDateSA(charge.created_at)}</span>
                 </div>
               </div>
 
