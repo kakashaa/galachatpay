@@ -12,7 +12,7 @@ import {
   Loader2, Eye, EyeOff, Upload, Wallet,
   ShieldBan, DollarSign, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Ban, Unlock, Star, Sparkles, Frame, ClipboardList, Gift, Users,
-  ArrowRight, Bell, ScrollText, Hash, Crown, Settings as SettingsIcon, BarChart3,
+  ArrowRight, Bell, ScrollText, Hash, Crown, Settings as SettingsIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,7 +45,7 @@ import AdminManualActions from "@/components/AdminManualActions";
 import AdminBottomNav from "@/components/AdminBottomNav";
 import AdminHomeView from "@/components/AdminHomeView";
 
-type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | "admin_chat" | "admin_support" | "manual_actions" | "vip" | null;
+type Tab = "videos" | "salary" | "reports" | "blocks" | "entries" | "frames" | "gifts" | "notifications" | "all_requests" | "animated_photos" | "admin_stars" | "trash" | "audit_log" | "support_tickets" | "support_chats" | "quick_support" | "id_changes" | "hairs" | "top_agents" | "bd_management" | "moderators" | "custom_gifts" | "element_settings" | "banners" | "agencies" | "admin_chat" | "admin_support" | "manual_actions" | null;
 
 
 interface VideoTutorial {
@@ -264,10 +264,6 @@ const AdminDashboardPage: React.FC = () => {
   const [adminStarAmount, setAdminStarAmount] = useState("");
   const [adminStarLoading, setAdminStarLoading] = useState(false);
 
-  // VIP grant state
-  const [vipGrantLevel, setVipGrantLevel] = useState("3");
-  const [vipGrantDuration, setVipGrantDuration] = useState("30");
-  const [vipGrantLoading, setVipGrantLoading] = useState(false);
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
@@ -705,42 +701,6 @@ const AdminDashboardPage: React.FC = () => {
     finally { setSalaryActionLoading(false); }
   };
 
-  // VIP grant handler
-  const handleGrantVip = async () => {
-    if (!adminStarUuid.trim()) { toast.error('أدخل UUID'); return; }
-    setVipGrantLoading(true);
-    try {
-      const res = await fetch('https://galachat.site/project-z/api.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          admin_key: 'ghala2026owner',
-          action: 'admin_give_vip',
-          uuid: adminStarUuid.trim(),
-          level: parseInt(vipGrantLevel),
-          duration: vipGrantDuration,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('تم إهداء VIP بنجاح');
-        setAdminStarUuid('');
-        // Log the action
-        await supabase.from('admin_audit_log').insert({
-          admin_username: adminUsername || '',
-          admin_role: adminRole || '',
-          action: 'grant_vip',
-          details: { uuid: adminStarUuid.trim(), level: vipGrantLevel, duration: vipGrantDuration },
-        });
-      } else {
-        toast.error(data.error || 'فشلت العملية');
-      }
-    } catch {
-      toast.error('فشل الاتصال');
-    }
-    setVipGrantLoading(false);
-  };
-
   // Animated photo approve/reject handlers
   const handleAnimatedPhotoApprove = async (photo: AnimatedPhotoRequest) => {
     setSalaryActionLoading(true);
@@ -979,7 +939,6 @@ const AdminDashboardPage: React.FC = () => {
   });
 
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
-    { key: "vip", label: "VIP", icon: <Crown className="w-4 h-4" />, color: "text-yellow-400" },
     { key: "admin_chat", label: "دردشة الإدارة", icon: <MessageSquare className="w-4 h-4" />, color: "text-emerald-400" },
     { key: "admin_support", label: "الدعم الفني", icon: <Headset className="w-4 h-4" />, color: "text-cyan-400" },
     { key: "manual_actions", label: "صلاحيات يدوية", icon: <Crown className="w-4 h-4" />, color: "text-amber-400" },
@@ -1103,67 +1062,52 @@ const AdminDashboardPage: React.FC = () => {
     );
   };
 
-  // Get current section title for header
-  const currentSectionTitle = activeTab ? (tabs.find(t => t.key === activeTab)?.label || 'لوحة التحكم') : '';
-
   return (
-    <div className="mobile-container text-foreground overflow-x-hidden overflow-y-auto relative" style={{ background: "#0e0e0e", overflow: 'hidden auto' }}>
-      {/* Header - Admin.OS Kinetic Style */}
-      <header
-        className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 h-16"
-        style={{
-          background: '#0e0e0e',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(19,19,19,0.8)',
-        }}
-      >
-        <div className="flex items-center gap-3">
-          {activeTab ? (
-            <button
-              onClick={() => { setActiveTab(null); setActiveSection(null); }}
-              className="w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95"
-              style={{ background: 'rgba(52,235,69,0.1)' }}
-            >
-              <ArrowRight className="w-4 h-4" style={{ color: '#34eb45' }} />
-            </button>
-          ) : (
-            <span className="text-xl cursor-pointer hover:scale-110 transition-transform" style={{ color: '#34eb45' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>
-            </span>
-          )}
-          <h1 className="text-xl font-black tracking-tighter uppercase" style={{ color: '#34eb45', fontFamily: 'Inter, sans-serif' }}>
-            Admin.OS
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          {activeTab && (
-            <span className="text-white font-bold text-sm tracking-tight" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif' }}>
-              {currentSectionTitle}
-            </span>
-          )}
-          {!activeTab && (
-            <div className="flex items-center gap-2">
-              {isOwner && <span className="text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45', border: '1px solid rgba(52,235,69,0.2)' }}>Owner</span>}
-              {adminRole === "super_admin" && !isOwner && <span className="text-[8px] px-2 py-0.5 rounded-full font-black" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>سوبر</span>}
-              {adminRole === "admin" && <span className="text-[8px] px-2 py-0.5 rounded-full font-black" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>أدمن</span>}
-            </div>
-          )}
-          <button
-            onClick={activeTab ? undefined : handleLogout}
-            className="transition-all hover:scale-110"
-            style={{ color: activeTab ? 'rgba(173,170,170,0.8)' : 'rgba(173,170,170,0.6)' }}
-          >
-            {activeTab ? (
-              <Bell className="w-5 h-5" />
+    <div className="mobile-container" style={{ background: "#09090b" }}>
+      {/* Header */}
+      <header className="sticky top-0 z-20 backdrop-blur-xl border-b border-white/5 px-4 py-3" style={{ background: "rgba(9,9,11,0.92)" }}>
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <div className="flex items-center gap-3">
+            {(activeTab || activeSection) ? (
+              <button onClick={() => {
+                if (activeTab) { setActiveTab(null); setActiveSection(null); }
+                else { setActiveSection(null); }
+              }} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
+                <ArrowRight className="w-5 h-5 text-foreground" />
+              </button>
             ) : (
-              <LogOut className="w-5 h-5" />
+              <Shield className="w-5 h-5 text-primary" />
             )}
-          </button>
+            <div>
+              <h1 className="font-bold text-lg tracking-tight text-foreground">
+                {activeTab ? tabs.find(t => t.key === activeTab)?.label
+                  : activeSection ? currentSectionDef?.title
+                  : "لوحة التحكم"}
+              </h1>
+              {!activeTab && !activeSection && (
+                <p className="text-[10px] text-muted-foreground">مرحباً، {adminDisplayName}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isOwner && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>
+            )}
+            {adminRole === "super_admin" && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر أدمن</span>
+            )}
+            {adminRole === "admin" && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>
+            )}
+            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </header>
-      <div className="relative z-10 pt-20 pb-32">
-      {/* Home View */}
-      {!activeTab && (
+      <div className="flex-1 overflow-y-auto min-h-0">
+      {/* Home — 4 Section Cards */}
+      {!activeTab && !activeSection && bottomTab === 'home' && (
         <AdminHomeView
           adminDisplayName={adminDisplayName || ''}
           adminRole={adminRole}
@@ -1176,23 +1120,216 @@ const AdminDashboardPage: React.FC = () => {
             salary: salaryRequests.filter(r => r.status === 'pending').length,
           }}
           onServiceClick={(key) => {
-            setActiveTab(key as Tab);
-            setActiveSection(null);
+            const serviceMap: Record<string, { section: typeof activeSection; tab: Tab }> = {
+              vip: { section: 'requests', tab: 'all_requests' },
+              protection: { section: 'requests', tab: 'reports' },
+              reports: { section: 'requests', tab: 'all_requests' },
+              support: { section: 'chat', tab: 'admin_support' },
+              requests: { section: 'requests', tab: 'all_requests' },
+              salary: { section: 'requests', tab: 'salary' },
+              change_id: { section: 'requests', tab: 'manual_actions' },
+              store: { section: 'settings', tab: 'entries' },
+              settings: { section: 'settings', tab: 'videos' },
+              agencies: { section: 'finance', tab: 'agencies' },
+              moderators: { section: 'settings', tab: 'moderators' },
+              audit_log: { section: 'settings', tab: 'audit_log' },
+            };
+            const mapping = serviceMap[key];
+            if (mapping) {
+              setActiveSection(mapping.section);
+              setActiveTab(mapping.tab);
+            }
           }}
-          onChatClick={(room) => {
+          onChatClick={() => {
+            setActiveSection('chat');
             setActiveTab('admin_chat');
-            setActiveSection(null);
           }}
           recentLogs={auditLogs.slice(0, 5)}
           isOwner={isOwner}
           isSuperAdmin={isSuperAdmin}
-          chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
         />
       )}
 
-      {/* Tab Content - each service isolated */}
-      {activeTab && (
-        <div className="max-w-7xl mx-auto px-4 md:px-8 pb-8 overflow-hidden">
+      {/* Search tab */}
+      {!activeTab && !activeSection && bottomTab === 'search' && (
+        <div className="max-w-2xl mx-auto p-4" dir="rtl">
+          <AdminManualActions adminUsername={adminUsername || ''} />
+        </div>
+      )}
+
+      {/* Chat tab */}
+      {!activeTab && !activeSection && bottomTab === 'chat' && (
+        <div className="max-w-2xl mx-auto p-4">
+          <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole || 'admin'} />
+        </div>
+      )}
+
+      {/* Monitor tab */}
+      {!activeTab && !activeSection && bottomTab === 'monitor' && (
+        <div className="max-w-2xl mx-auto p-4 space-y-4" dir="rtl">
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'معلقة', value: stats.pending, color: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/5', onClick: () => { setActiveSection('requests'); setActiveTab('all_requests'); } },
+              { label: 'مقبولة', value: stats.approved, color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
+              { label: 'مرفوضة', value: stats.rejected, color: 'text-rose-400', border: 'border-rose-500/20', bg: 'bg-rose-500/5' },
+            ].map((card) => (
+              <button
+                key={card.label}
+                onClick={card.onClick}
+                className={`p-4 rounded-2xl border ${card.border} ${card.bg} text-center`}
+              >
+                <p className="text-[10px] text-muted-foreground mb-1">{card.label}</p>
+                <p className={`text-3xl font-bold font-mono ${card.color}`}>{card.value}</p>
+              </button>
+            ))}
+          </div>
+          <AdminSupportManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={true} />
+        </div>
+      )}
+
+      {/* Favorites tab - shows quick access buttons */}
+      {!activeTab && !activeSection && bottomTab === 'favorites' && (
+        <div className="max-w-2xl mx-auto p-4 space-y-3" dir="rtl">
+          <p className="text-sm font-bold text-muted-foreground">الوصول السريع</p>
+          {[
+            { label: 'طلبات الرواتب', tab: 'salary' as Tab, section: 'requests' as const, count: salaryRequests.filter(r => r.status === 'pending').length },
+            { label: 'الصور المتحركة', tab: 'animated_photos' as Tab, section: 'requests' as const, count: animatedPhotos.filter(p => p.status === 'pending').length },
+            { label: 'هدايا مخصصة', tab: 'custom_gifts' as Tab, section: 'requests' as const, count: allCustomGifts.filter(g => g.status === 'pending').length },
+            { label: 'تذاكر الدعم', tab: 'support_tickets' as Tab, section: 'chat' as const, count: supportTickets.filter((t: any) => t.status === 'open').length },
+            { label: 'البلاغات', tab: 'reports' as Tab, section: 'requests' as const, count: banReports.filter(r => !r.is_verified).length },
+          ].map(item => (
+            <button
+              key={item.label}
+              onClick={() => { setActiveSection(item.section); setActiveTab(item.tab); }}
+              className="w-full flex items-center justify-between p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:border-white/10 transition-colors"
+            >
+              <span className="text-sm font-bold text-foreground">{item.label}</span>
+              {item.count > 0 && (
+                <span className="min-w-6 h-6 px-2 flex items-center justify-center bg-rose-500 text-white text-xs font-bold rounded-full">{item.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Section Tab Chips + Content */}
+      {activeSection && !activeTab && (
+        <div className="max-w-2xl mx-auto p-4">
+          <p className="text-sm text-muted-foreground text-center py-10">اختر تبويباً</p>
+        </div>
+      )}
+      {activeTab && activeSection && (
+        <div className="max-w-2xl mx-auto">
+          {/* Tab chips */}
+          <div className="px-4 pt-3 pb-2">
+            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
+              {(currentSectionDef?.tabs || []).map(tabKey => {
+                const tabDef = tabs.find(t => t.key === tabKey);
+                if (!tabDef) return null;
+                const isActive = activeTab === tabKey;
+                return (
+                  <button
+                    key={tabKey}
+                    onClick={() => {
+                      const sectionTabs = currentSectionDef?.tabs || [];
+                      const oldIdx = sectionTabs.indexOf(activeTab as any);
+                      const newIdx = sectionTabs.indexOf(tabKey);
+                      setTabDirection(newIdx >= oldIdx ? 1 : -1);
+                      setActiveTab(tabKey);
+                    }}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1 min-w-[56px] px-3 py-2 rounded-2xl text-[10px] font-medium whitespace-nowrap transition-all duration-200",
+                      isActive
+                        ? "bg-white/10 text-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                    )}
+                  >
+                    <span className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded-xl transition-colors",
+                      isActive ? "bg-primary/20 text-primary" : "text-muted-foreground"
+                    )}>
+                      {React.cloneElement(tabDef.icon as React.ReactElement, { className: "w-[18px] h-[18px]" })}
+                    </span>
+                    <span className="leading-tight">{tabDef.label}</span>
+                    {tabDef.count && tabDef.count > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[9px] font-bold rounded-full">
+                        {tabDef.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section Stats Cards */}
+          {activeSection === "requests" && (
+            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
+              {[
+                { label: "معلقة", value: stats.pending, icon: Clock, gradient: "from-amber-500/10 to-amber-600/5", border: "border-amber-500/20", iconColor: "text-amber-400" },
+                { label: "مقبولة اليوم", value: stats.approved, icon: CheckCircle, gradient: "from-emerald-500/10 to-emerald-600/5", border: "border-emerald-500/20", iconColor: "text-emerald-400" },
+                { label: "مرفوضة اليوم", value: stats.rejected, icon: XCircle, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
+                >
+                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
+                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {activeSection === "settings" && (
+            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
+              {[
+                { label: "إجمالي", value: entryGifts.length + frameItems.length + videos.length, icon: Package, gradient: "from-blue-500/10 to-blue-600/5", border: "border-blue-500/20", iconColor: "text-blue-400" },
+                { label: "نشطة", value: entryGifts.filter(g => g.is_active).length + frameItems.filter(f => f.is_active).length + videos.filter(v => v.is_active).length, icon: CheckCircle, gradient: "from-emerald-500/10 to-emerald-600/5", border: "border-emerald-500/20", iconColor: "text-emerald-400" },
+                { label: "معطلة", value: entryGifts.filter(g => !g.is_active).length + frameItems.filter(f => !f.is_active).length + videos.filter(v => !v.is_active).length, icon: Ban, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
+                >
+                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
+                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {activeSection === "chat" && (
+            <div className="grid grid-cols-3 gap-3 px-4 mb-4">
+              {[
+                { label: "تذاكر مفتوحة", value: supportTickets.filter((t: any) => t.status === "open").length, icon: MessageSquare, gradient: "from-sky-500/10 to-sky-600/5", border: "border-sky-500/20", iconColor: "text-sky-400" },
+                { label: "VIP انتظار", value: supportChats.filter((c: any) => c.status === "waiting").length, icon: Headset, gradient: "from-rose-500/10 to-rose-600/5", border: "border-rose-500/20", iconColor: "text-rose-400" },
+                { label: "دعم معلق", value: quickSupportRequests.filter((r: any) => r.status === "pending").length, icon: Zap, gradient: "from-yellow-500/10 to-yellow-600/5", border: "border-yellow-500/20", iconColor: "text-yellow-400" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn("bg-gradient-to-br rounded-2xl p-4 border", stat.gradient, stat.border)}
+                >
+                  <stat.icon className={cn("w-5 h-5 mb-2", stat.iconColor)} />
+                  <p className="text-2xl font-bold font-mono">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{stat.label}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          <div className="px-4 pb-4 overflow-hidden">
       {loading ? (
         <div className="space-y-3 py-4">
           {[...Array(4)].map((_, i) => (
@@ -1270,274 +1407,132 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Salary Tab - Kinetic Green Design */}
+            {/* Salary Tab */}
             {activeTab === "salary" && (
-              <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
-                {/* Sub-tabs - Kinetic Style */}
-                <div className="flex gap-1 rounded-xl p-1" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.1)' }}>
+              <motion.div key="salary" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
+                {/* Sub-tabs */}
+                <div className="flex gap-1 bg-[#1c1e2e] rounded-xl p-1 border border-white/10">
                   <button
                     onClick={() => setSalarySubTab("requests")}
-                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${salarySubTab === "requests" ? "text-[#0e0e0e]" : "text-white/40 hover:text-white/70"}`}
-                    style={salarySubTab === "requests" ? { background: 'linear-gradient(135deg, #34eb45, #00d632)' } : {}}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "requests" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
                   >
                     طلبات الرواتب
                   </button>
                   <button
                     onClick={() => setSalarySubTab("withdraw")}
-                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${salarySubTab === "withdraw" ? "text-[#0e0e0e]" : "text-white/40 hover:text-white/70"}`}
-                    style={salarySubTab === "withdraw" ? { background: 'linear-gradient(135deg, #34eb45, #00d632)' } : {}}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "withdraw" ? "bg-primary text-primary-foreground" : "text-slate-400 hover:text-white"}`}
                   >
                     سحب الرواتب
                   </button>
                   <button
                     onClick={() => setSalarySubTab("charge")}
-                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${salarySubTab === "charge" ? "text-[#0e0e0e]" : "text-white/40 hover:text-white/70"}`}
-                    style={salarySubTab === "charge" ? { background: 'linear-gradient(135deg, #34eb45, #00d632)' } : {}}
+                    className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${salarySubTab === "charge" ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white"}`}
                   >
                     شحن الراتب
                   </button>
                 </div>
 
                 {salarySubTab === "requests" && (
-                  <div className="space-y-6">
-                    {/* Bento Financial Overview */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Total Pending Card */}
-                      <div className="md:col-span-2 rounded-xl p-6 relative overflow-hidden group" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.05)' }}>
-                        <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity duration-500">
-                          <DollarSign className="w-40 h-40 text-[#34eb45]" />
-                        </div>
-                        <div className="relative z-10">
-                          <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.15em] mb-1">إجمالي المبالغ المعلقة</p>
-                          <h2 className="text-4xl font-black text-white tracking-tighter mb-4">
-                            {salaryRequests.filter(r => r.status === "pending").reduce((sum, r) => sum + r.amount_usd, 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                            <span className="text-[#34eb45] text-xl mr-2">SAR</span>
-                          </h2>
-                          <div className="flex items-center gap-4 flex-wrap">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>
-                              <Sparkles className="w-3 h-3" />
-                              +12% عن الشهر الماضي
-                            </span>
-                            <span className="text-[10px] text-white/30">{salaryRequests.filter(r => r.status === "pending").length} طلب انتظار جديد</span>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Budget Card - Green Gradient */}
-                      <div className="rounded-xl p-6 flex flex-col justify-between relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #34eb45, #00d632)', boxShadow: '0 8px 30px rgba(52,235,69,0.15)' }}>
-                        <div className="flex justify-between items-start">
-                          <Zap className="w-8 h-8 text-[#00500c]" />
-                          <span className="text-[10px] font-bold px-2 py-1 rounded" style={{ background: 'rgba(0,80,12,0.1)', color: '#00500c' }}>إجراء سريع</span>
-                        </div>
-                        <div className="mt-4">
-                          <p className="text-[#00500c]/80 text-xs mb-1">الميزانية المتبقية</p>
-                          <h3 className="text-2xl font-black text-[#00500c]">150,000.00</h3>
-                        </div>
-                      </div>
+                  <div className="space-y-3">
+                    {/* Filter Buttons */}
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { key: "all" as const, label: "الكل", count: salaryRequests.length, color: "bg-muted/30" },
+                        { key: "pending" as const, label: "معلقة", count: salaryRequests.filter(r => r.status === "pending").length, color: "bg-yellow-500/10 border-yellow-500/30" },
+                        { key: "approved" as const, label: "مقبولة", count: salaryRequests.filter(r => r.status === "approved").length, color: "bg-green-500/10 border-green-500/30" },
+                        { key: "rejected" as const, label: "مرفوضة", count: salaryRequests.filter(r => r.status === "rejected").length, color: "bg-red-500/10 border-red-500/30" },
+                      ].map(f => (
+                        <button
+                          key={f.key}
+                          onClick={() => setSalaryFilter(f.key)}
+                          className={`px-3 py-2 rounded-lg border text-xs font-bold transition-colors flex items-center gap-2 ${
+                            salaryFilter === f.key
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : f.color + " border"
+                          }`}
+                        >
+                          {f.label}
+                          <span className="min-w-5 h-5 rounded-full bg-background/20 flex items-center justify-center text-[10px]">{f.count}</span>
+                        </button>
+                      ))}
                     </div>
-
-                    {/* Pending Requests Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-6 rounded-full" style={{ background: '#34eb45' }} />
-                          <h2 className="text-lg font-bold text-white">طلبات الرواتب المعلقة</h2>
-                        </div>
-                        <div className="flex gap-2">
-                          {[
-                            { key: "all" as const, label: "الكل", count: salaryRequests.length },
-                            { key: "pending" as const, label: "معلقة", count: salaryRequests.filter(r => r.status === "pending").length },
-                            { key: "approved" as const, label: "مقبولة", count: salaryRequests.filter(r => r.status === "approved").length },
-                            { key: "rejected" as const, label: "مرفوضة", count: salaryRequests.filter(r => r.status === "rejected").length },
-                          ].map(f => (
-                            <button
-                              key={f.key}
-                              onClick={() => setSalaryFilter(f.key)}
-                              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
-                                salaryFilter === f.key
-                                  ? "text-[#0e0e0e]"
-                                  : "text-white/40 hover:text-white/60"
-                              }`}
-                              style={salaryFilter === f.key ? { background: 'rgba(52,235,69,0.9)' } : { background: '#262626' }}
-                            >
-                              {f.label} ({f.count})
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Request Cards */}
-                      <div className="space-y-3">
-                        {salaryRequests
-                          .filter(req => salaryFilter === "all" || req.status === salaryFilter)
-                          .map((req) => (
-                          <div key={req.id} className="rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.01]" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.05)' }}>
-                            <button onClick={() => setExpandedSalary(expandedSalary === req.id ? null : req.id)} className="w-full p-4 text-right">
-                              <div className="flex items-center gap-4">
-                                {/* Avatar */}
-                                <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#262626', border: '1px solid rgba(52,235,69,0.1)' }}>
-                                  <Users className="w-5 h-5 text-[#34eb45]" />
-                                </div>
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-sm text-white">{req.user_name}</h4>
-                                  <p className="text-[10px] text-white/30 font-mono">ID: #{req.user_uuid}</p>
-                                </div>
-                                {/* Amount */}
-                                <div className="text-left">
-                                  <p className="text-[10px] text-white/30 mb-0.5">المبلغ المطلوب</p>
-                                  <p className="text-lg font-black text-[#34eb45]">{req.amount_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px]">SAR</span></p>
+                    {salaryRequests
+                      .filter(req => salaryFilter === "all" || req.status === salaryFilter)
+                      .map((req) => (
+                      <div key={req.id} className="bg-card border rounded-xl overflow-hidden">
+                        <button onClick={() => setExpandedSalary(expandedSalary === req.id ? null : req.id)} className="w-full p-4 flex items-center justify-between text-right">
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${req.status === "pending" ? "bg-yellow-500/20 text-yellow-500" : req.status === "approved" ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"}`}>
+                              {req.status === "pending" ? "معلق" : req.status === "approved" ? "مقبول" : "مرفوض"}
+                            </span>
+                            <div>
+                              <p className="font-bold text-sm">{req.user_name}</p>
+                              <p className="text-xs text-muted-foreground">${req.amount_usd} - {req.payment_method}</p>
+                            </div>
+                          </div>
+                          {expandedSalary === req.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedSalary === req.id && (
+                          <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono">{req.user_uuid}</span></div>
+                              <div><span className="text-muted-foreground">النوع:</span> {req.request_type}</div>
+                              <div><span className="text-muted-foreground">المستلم:</span> {req.recipient_name}</div>
+                              <div><span className="text-muted-foreground">البلد:</span> {req.recipient_country}</div>
+                              <div className="col-span-2"><span className="text-muted-foreground">التفاصيل:</span> {req.payment_details}</div>
+                              <div className="col-span-2"><span className="text-muted-foreground">التاريخ:</span> {new Date(req.created_at).toLocaleDateString("ar-EG")}</div>
+                            </div>
+                            {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
+                              <div className="flex gap-2">
+                                <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}>
+                                  <CheckCircle className="w-4 h-4 ml-1" />قبول
+                                </Button>
+                                <Button size="sm" variant="destructive" className="flex-1" onClick={() => { setSalaryAction({ id: req.id, type: "reject" }); setRejectReason(""); }}>
+                                  <XCircle className="w-4 h-4 ml-1" />رفض
+                                </Button>
+                              </div>
+                            )}
+                            {salaryAction?.id === req.id && salaryAction.type === "approve" && (
+                              <div className="space-y-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl">
+                                <p className="text-xs font-bold text-green-500">رفع صورة إيصال التحويل</p>
+                                <input type="file" accept="image/*" onChange={(e) => setApproveReceiptFile(e.target.files?.[0] || null)}
+                                  className="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-green-600 file:text-white bg-muted/20 border border-border/30 rounded-lg p-1" />
+                                {approveReceiptFile && <p className="text-[10px] text-muted-foreground">{approveReceiptFile.name}</p>}
+                                <div className="flex gap-2">
+                                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" disabled={salaryActionLoading} onClick={() => handleApproveWithReceipt(req.id)}>
+                                    {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" />تأكيد القبول</>}
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)}>إلغاء</Button>
                                 </div>
                               </div>
-                              {/* Action buttons for pending - inline */}
-                              {canAct && req.status === "pending" && salaryAction?.id !== req.id && (
-                                <div className="flex items-center gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    className="flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                                    style={{ background: 'linear-gradient(135deg, #34eb45, #00d632)', color: '#0e0e0e' }}
-                                    onClick={() => { setSalaryAction({ id: req.id, type: "approve" }); setApproveReceiptFile(null); }}
-                                  >
-                                    <CheckCircle className="w-4 h-4" />
-                                    اعتماد
-                                  </button>
-                                  <button
-                                    className="flex-1 py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform text-white/50 hover:text-[#ff7162]"
-                                    style={{ background: '#262626' }}
-                                    onClick={() => { setSalaryAction({ id: req.id, type: "reject" }); setRejectReason(""); }}
-                                  >
-                                    <XCircle className="w-4 h-4" />
-                                    رفض
-                                  </button>
+                            )}
+                            {salaryAction?.id === req.id && salaryAction.type === "reject" && (
+                              <div className="space-y-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl">
+                                <p className="text-xs font-bold text-destructive">سبب الرفض *</p>
+                                <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px]" />
+                                <div className="space-y-1">
+                                  <label className="text-xs text-muted-foreground">صورة توضيحية (اختياري)</label>
+                                  <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
+                                    className="w-full text-sm file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:bg-destructive/10 file:text-destructive bg-muted/20 border border-border/30 rounded-lg p-1" />
                                 </div>
-                              )}
-                              {/* Status badge for non-pending */}
-                              {req.status !== "pending" && (
-                                <div className="mt-3">
-                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                                    req.status === "approved" ? "text-[#34eb45]" : "text-[#ff7162]"
-                                  }`} style={{ background: req.status === "approved" ? 'rgba(52,235,69,0.1)' : 'rgba(255,113,98,0.1)' }}>
-                                    {req.status === "approved" ? <><CheckCircle className="w-3 h-3" />مقبول</> : <><XCircle className="w-3 h-3" />مرفوض</>}
-                                  </span>
+                                <label className="flex items-center gap-2 text-xs cursor-pointer">
+                                  <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
+                                  <span className="text-destructive font-bold">رفض نهائي (لا يمكن للمستخدم التعديل)</span>
+                                </label>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="destructive" className="flex-1" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)}>
+                                    {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => { setSalaryAction(null); setRejectImageFile(null); setIsFinalRejection(false); }}>إلغاء</Button>
                                 </div>
-                              )}
-                            </button>
-
-                            {/* Expanded details */}
-                            {expandedSalary === req.id && (
-                              <div className="px-4 pb-4 space-y-3 pt-3" style={{ borderTop: '1px solid rgba(72,72,71,0.1)' }}>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
-                                    <span className="text-white/30 text-[10px] block">UUID</span>
-                                    <span className="font-mono text-white/70">{req.user_uuid}</span>
-                                  </div>
-                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
-                                    <span className="text-white/30 text-[10px] block">النوع</span>
-                                    <span className="text-white/70">{req.request_type}</span>
-                                  </div>
-                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
-                                    <span className="text-white/30 text-[10px] block">المستلم</span>
-                                    <span className="text-white/70">{req.recipient_name}</span>
-                                  </div>
-                                  <div className="rounded-lg p-2.5" style={{ background: '#000' }}>
-                                    <span className="text-white/30 text-[10px] block">البلد</span>
-                                    <span className="text-white/70">{req.recipient_country}</span>
-                                  </div>
-                                  <div className="col-span-2 rounded-lg p-2.5" style={{ background: '#000' }}>
-                                    <span className="text-white/30 text-[10px] block">التفاصيل</span>
-                                    <span className="text-white/70">{req.payment_details}</span>
-                                  </div>
-                                  <div className="col-span-2 rounded-lg p-2.5" style={{ background: '#000' }}>
-                                    <span className="text-white/30 text-[10px] block">التاريخ</span>
-                                    <span className="text-white/70">{new Date(req.created_at).toLocaleDateString("ar-EG")}</span>
-                                  </div>
-                                </div>
-                                {/* Approve action panel */}
-                                {salaryAction?.id === req.id && salaryAction.type === "approve" && (
-                                  <div className="space-y-2 p-3 rounded-xl" style={{ background: 'rgba(52,235,69,0.05)', border: '1px solid rgba(52,235,69,0.15)' }}>
-                                    <p className="text-xs font-bold text-[#34eb45]">رفع صورة إيصال التحويل</p>
-                                    <input type="file" accept="image/*" onChange={(e) => setApproveReceiptFile(e.target.files?.[0] || null)}
-                                      className="w-full text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:text-[#0e0e0e] file:font-bold bg-black border rounded-lg p-1" style={{ borderColor: 'rgba(72,72,71,0.15)', background: '#000', color: 'white' }} />
-                                    {approveReceiptFile && <p className="text-[10px] text-white/40">{approveReceiptFile.name}</p>}
-                                    <div className="flex gap-2">
-                                      <Button size="sm" className="flex-1 text-[#0e0e0e] font-bold" disabled={salaryActionLoading} onClick={() => handleApproveWithReceipt(req.id)} style={{ background: 'linear-gradient(135deg, #34eb45, #00d632)' }}>
-                                        {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Upload className="w-4 h-4 ml-1" />تأكيد القبول</>}
-                                      </Button>
-                                      <Button size="sm" variant="outline" onClick={() => setSalaryAction(null)} className="border-white/10 text-white/50">إلغاء</Button>
-                                    </div>
-                                  </div>
-                                )}
-                                {/* Reject action panel */}
-                                {salaryAction?.id === req.id && salaryAction.type === "reject" && (
-                                  <div className="space-y-2 p-3 rounded-xl" style={{ background: 'rgba(255,113,98,0.05)', border: '1px solid rgba(255,113,98,0.15)' }}>
-                                    <p className="text-xs font-bold text-[#ff7162]">سبب الرفض *</p>
-                                    <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="اكتب سبب الرفض هنا..." className="text-sm min-h-[60px] bg-black border-white/[0.06] text-white" />
-                                    <div className="space-y-1">
-                                      <label className="text-[10px] text-white/30">صورة توضيحية (اختياري)</label>
-                                      <input type="file" accept="image/*" onChange={(e) => setRejectImageFile(e.target.files?.[0] || null)}
-                                        className="w-full text-sm bg-black border rounded-lg p-1" style={{ borderColor: 'rgba(72,72,71,0.15)', color: 'white' }} />
-                                    </div>
-                                    <label className="flex items-center gap-2 text-xs cursor-pointer">
-                                      <input type="checkbox" checked={isFinalRejection} onChange={(e) => setIsFinalRejection(e.target.checked)} className="rounded" />
-                                      <span className="text-[#ff7162] font-bold">رفض نهائي (لا يمكن للمستخدم التعديل)</span>
-                                    </label>
-                                    <div className="flex gap-2">
-                                      <Button size="sm" className="flex-1 font-bold" disabled={salaryActionLoading} onClick={() => handleRejectWithReason(req.id)} style={{ background: 'linear-gradient(135deg, #ff7162, #c0000c)', color: 'white' }}>
-                                        {salaryActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4 ml-1" />{isFinalRejection ? "رفض نهائي" : "تأكيد الرفض"}</>}
-                                      </Button>
-                                      <Button size="sm" variant="outline" onClick={() => { setSalaryAction(null); setRejectImageFile(null); setIsFinalRejection(false); }} className="border-white/10 text-white/50">إلغاء</Button>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             )}
                           </div>
-                        ))}
-                        {salaryRequests.filter(req => salaryFilter === "all" || req.status === salaryFilter).length === 0 && (
-                          <div className="text-center py-10 rounded-xl" style={{ background: '#131313' }}>
-                            <DollarSign className="w-10 h-10 mx-auto mb-2 text-white/10" />
-                            <p className="text-white/30 text-sm">لا توجد طلبات رواتب</p>
-                          </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* Approved History Table */}
-                    {salaryRequests.filter(r => r.status === "approved").length > 0 && (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between px-1">
-                          <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-6 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
-                            <h2 className="text-lg font-bold text-white">سجل العمليات المعتمدة</h2>
-                          </div>
-                          <button className="text-xs font-bold text-[#34eb45] hover:underline">عرض الكل</button>
-                        </div>
-                        <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.05)' }}>
-                          <table className="w-full text-right">
-                            <thead>
-                              <tr style={{ background: 'rgba(32,31,31,0.5)' }}>
-                                <th className="px-4 py-3 text-[10px] text-white/30 font-bold uppercase tracking-[0.15em]">المستفيد</th>
-                                <th className="px-4 py-3 text-[10px] text-white/30 font-bold uppercase tracking-[0.15em]">التاريخ</th>
-                                <th className="px-4 py-3 text-[10px] text-white/30 font-bold uppercase tracking-[0.15em] text-left">المبلغ المعتمد</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {salaryRequests.filter(r => r.status === "approved").slice(0, 5).map((req) => (
-                                <tr key={req.id} className="hover:bg-[#201f1f] transition-colors" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                                  <td className="px-4 py-3.5">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: 'rgba(52,235,69,0.15)' }}>
-                                        <CheckCircle className="w-3.5 h-3.5 text-[#34eb45]" />
-                                      </div>
-                                      <span className="text-xs font-medium text-white">{req.user_name}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3.5 text-[10px] text-white/30">{new Date(req.created_at).toLocaleDateString("ar-EG")}</td>
-                                  <td className="px-4 py-3.5 text-xs font-bold text-[#34eb45] text-left">{req.amount_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })} SAR</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
+                    ))}
+                    {salaryRequests.length === 0 && (
+                      <div className="text-center py-10 text-muted-foreground"><DollarSign className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد طلبات رواتب</p></div>
                     )}
                   </div>
                 )}
@@ -1594,391 +1589,203 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Blocks Tab - Kinetic Red Design */}
+            {/* Blocks Tab */}
             {activeTab === "blocks" && (
-              <motion.div key="blocks" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
-                {/* Page Header */}
-                <div className="text-center mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.1em] font-bold block mb-1" style={{ color: '#ff7162' }}>Ban Management</span>
-                  <h2 className="text-3xl font-black tracking-tight text-white">إدارة الحظر</h2>
-                </div>
-
+              <motion.div key="blocks" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
                 {/* Ban Form */}
                 {canAct && (
-                  <div className="rounded-xl p-6 relative overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
-                    <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl rounded-full -mr-16 -mt-16" style={{ background: 'linear-gradient(135deg, #ff7162, #c0000c)' }} />
-                    <div className="flex items-center gap-3 mb-6">
-                      <Ban className="w-5 h-5" style={{ color: '#ff7162' }} />
-                      <h3 className="text-lg font-bold tracking-tight text-white">حظر مستخدم جديد</h3>
+                  <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2"><ShieldBan className="w-4 h-4 text-destructive" /> حظر مستخدم</h3>
+                    <Input
+                      placeholder="UUID المستخدم"
+                      value={banForm.target_uuid}
+                      onChange={(e) => setBanForm(prev => ({ ...prev, target_uuid: e.target.value }))}
+                      className="font-mono text-sm"
+                      dir="ltr"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "full", banned_elements: [] }))}
+                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "full" ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground"}`}
+                      >
+                        🚫 حظر كامل
+                      </button>
+                      <button
+                        onClick={() => setBanForm(prev => ({ ...prev, ban_type: "elements", banned_elements: [] }))}
+                        className={`py-2 px-3 rounded-lg border text-xs font-bold transition-colors ${banForm.ban_type === "elements" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+                      >
+                        🧩 حظر عناصر
+                      </button>
                     </div>
-                    <div className="space-y-4">
-                      {/* User ID */}
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">معرف المستخدم (ID)</label>
-                        <div className="rounded-lg p-0.5 transition-all focus-within:border-[#ff7162]" style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="مثال: #88291"
-                            value={banForm.target_uuid}
-                            onChange={(e) => setBanForm(prev => ({ ...prev, target_uuid: e.target.value }))}
-                            dir="ltr"
-                            className="h-11 bg-transparent border-none text-white placeholder:text-white/20 font-mono focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Ban type */}
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">نوع الحظر</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => setBanForm(prev => ({ ...prev, ban_type: "full", banned_elements: [] }))}
-                            className="py-3 rounded-lg text-xs font-black uppercase transition-all active:scale-95"
-                            style={{
-                              background: banForm.ban_type === "full" ? 'linear-gradient(135deg, #ff7162, #c0000c)' : '#000',
-                              border: `1px solid ${banForm.ban_type === "full" ? 'rgba(255,113,98,0.3)' : 'rgba(72,72,71,0.15)'}`,
-                              color: banForm.ban_type === "full" ? '#fff' : 'rgba(255,255,255,0.35)',
-                            }}
-                          >
-                            🚫 حظر كامل
-                          </button>
-                          <button
-                            onClick={() => setBanForm(prev => ({ ...prev, ban_type: "elements", banned_elements: [] }))}
-                            className="py-3 rounded-lg text-xs font-black uppercase transition-all active:scale-95"
-                            style={{
-                              background: banForm.ban_type === "elements" ? 'rgba(168,85,247,0.15)' : '#000',
-                              border: `1px solid ${banForm.ban_type === "elements" ? 'rgba(168,85,247,0.3)' : 'rgba(72,72,71,0.15)'}`,
-                              color: banForm.ban_type === "elements" ? '#a855f7' : 'rgba(255,255,255,0.35)',
-                            }}
-                          >
-                            🧩 حظر عناصر
-                          </button>
-                        </div>
-                      </div>
-
-                      {banForm.ban_type === "elements" && (
-                        <div className="space-y-2">
-                          <label className="text-[11px] text-white/40 font-bold">اختر العناصر المراد حظرها:</label>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {[
-                              { key: "entries", label: "🎁 دخوليات" },
-                              { key: "frames", label: "🖼️ إطارات" },
-                              { key: "gifts", label: "🎀 هدايا مخصصة" },
-                              { key: "animated_photos", label: "📸 صور متحركة" },
-                              { key: "change_id", label: "🔄 تغيير آيدي" },
-                              { key: "hairs", label: "💇 تسريحات" },
-                              { key: "vip", label: "⭐ VIP" },
-                              { key: "salary", label: "💰 رواتب" },
-                              { key: "quick_support", label: "🎧 دعم سريع" },
-                              { key: "works", label: "💼 works" },
-                              { key: "stars", label: "🌟 نجومي" },
-                            ].map((el) => (
-                              <button
-                                key={el.key}
-                                onClick={() => {
-                                  setBanForm(prev => ({
-                                    ...prev,
-                                    banned_elements: prev.banned_elements.includes(el.key)
-                                      ? prev.banned_elements.filter(e => e !== el.key)
-                                      : [...prev.banned_elements, el.key],
-                                  }));
-                                }}
-                                className="py-2 px-2 rounded-lg text-[11px] font-bold transition-all active:scale-95"
-                                style={{
-                                  background: banForm.banned_elements.includes(el.key) ? 'rgba(239,68,68,0.1)' : '#000',
-                                  border: `1px solid ${banForm.banned_elements.includes(el.key) ? 'rgba(239,68,68,0.3)' : 'rgba(72,72,71,0.15)'}`,
-                                  color: banForm.banned_elements.includes(el.key) ? '#ff7162' : 'rgba(255,255,255,0.4)',
-                                }}
-                              >
-                                {el.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Reason */}
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">سبب الحظر</label>
-                        <select
-                          value={banForm.reason}
-                          onChange={(e) => setBanForm(prev => ({ ...prev, reason: e.target.value }))}
-                          className="w-full rounded-lg px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer"
-                          style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
-                        >
-                          <option value="">اختر السبب...</option>
-                          <option value="انتهاك سياسة المجتمع">انتهاك سياسة المجتمع</option>
-                          <option value="سلوك غير لائق">سلوك غير لائق</option>
-                          <option value="رسائل مزعجة (Spam)">رسائل مزعجة (Spam)</option>
-                          <option value="انتحال شخصية">انتحال شخصية</option>
-                          <option value="أخرى">أخرى</option>
-                        </select>
-                      </div>
-
-                      {/* Duration */}
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">مدة الحظر</label>
-                        <div className="grid grid-cols-3 gap-2">
+                    {banForm.ban_type === "elements" && (
+                      <div className="space-y-2">
+                        <label className="text-xs text-muted-foreground">اختر العناصر المراد حظرها:</label>
+                        <div className="grid grid-cols-2 gap-1.5">
                           {[
-                            { label: "24 ساعة", hours: "24" },
-                            { label: "7 أيام", hours: "168" },
-                            { label: "دائم", hours: "999999" },
-                          ].map((d) => (
+                            { key: "entries", label: "🎁 دخوليات" },
+                            { key: "frames", label: "🖼️ إطارات" },
+                            { key: "gifts", label: "🎀 هدايا مخصصة" },
+                            { key: "animated_photos", label: "📸 صور متحركة" },
+                            { key: "change_id", label: "🔄 تغيير آيدي" },
+                            { key: "hairs", label: "💇 تسريحات" },
+                            { key: "vip", label: "⭐ VIP" },
+                            { key: "salary", label: "💰 رواتب" },
+                            { key: "quick_support", label: "🎧 دعم سريع" },
+                            { key: "works", label: "💼 works" },
+                            { key: "stars", label: "🌟 نجومي" },
+                          ].map((el) => (
                             <button
-                              key={d.hours}
-                              onClick={() => setBanForm(prev => ({ ...prev, duration_hours: d.hours }))}
-                              className="py-2.5 rounded-lg text-xs font-black transition-all active:scale-95"
-                              style={{
-                                background: banForm.duration_hours === d.hours
-                                  ? (d.hours === "999999" ? 'linear-gradient(135deg, #ff7162, #c0000c)' : 'rgba(255,113,98,0.15)')
-                                  : '#000',
-                                border: `1px solid ${banForm.duration_hours === d.hours ? 'rgba(255,113,98,0.3)' : 'rgba(72,72,71,0.15)'}`,
-                                color: banForm.duration_hours === d.hours ? '#fff' : 'rgba(255,255,255,0.35)',
+                              key={el.key}
+                              onClick={() => {
+                                setBanForm(prev => ({
+                                  ...prev,
+                                  banned_elements: prev.banned_elements.includes(el.key)
+                                    ? prev.banned_elements.filter(e => e !== el.key)
+                                    : [...prev.banned_elements, el.key],
+                                }));
                               }}
+                              className={`py-1.5 px-2 rounded-lg border text-[11px] font-bold transition-colors ${
+                                banForm.banned_elements.includes(el.key)
+                                  ? "border-destructive bg-destructive/10 text-destructive"
+                                  : "border-border text-muted-foreground"
+                              }`}
                             >
-                              {d.label}
+                              {el.label}
                             </button>
                           ))}
                         </div>
                       </div>
-
-                      {/* Execute Button */}
-                      <button
-                        disabled={banLoading || !banForm.target_uuid.trim()}
-                        onClick={async () => {
-                          setBanLoading(true);
-                          try {
-                            await adminCall("manual_ban_user", {
-                              target_uuid: banForm.target_uuid.trim(),
-                              ban_type: banForm.ban_type,
-                              duration_hours: parseInt(banForm.duration_hours) || 24,
-                              reason: banForm.reason.trim(),
-                              banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null,
-                            });
-                            toast.success("تم حظر المستخدم بنجاح");
-                            setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
-                            loadData();
-                          } catch (err: any) {
-                            toast.error(err?.message || "فشل الحظر");
-                          } finally {
-                            setBanLoading(false);
-                          }
-                        }}
-                        className="w-full py-3.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
-                        style={{
-                          background: 'linear-gradient(135deg, #ff7162, #c0000c)',
-                          color: '#fff',
-                          boxShadow: '0 0 20px rgba(255,113,98,0.15)',
-                        }}
-                      >
-                        {banLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
-                        تأفيذ الحظر الفوري
-                      </button>
+                    )}
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">مدة الحظر (بالساعات)</label>
+                      <Input
+                        type="number"
+                        placeholder="24"
+                        value={banForm.duration_hours}
+                        onChange={(e) => setBanForm(prev => ({ ...prev, duration_hours: e.target.value }))}
+                        min="1"
+                        dir="ltr"
+                      />
                     </div>
+                    <Input
+                      placeholder="سبب الحظر (اختياري)"
+                      value={banForm.reason}
+                      onChange={(e) => setBanForm(prev => ({ ...prev, reason: e.target.value }))}
+                    />
+                    <Button
+                      className="w-full"
+                      variant="destructive"
+                      disabled={banLoading || !banForm.target_uuid.trim()}
+                      onClick={async () => {
+                        setBanLoading(true);
+                        try {
+                          await adminCall("manual_ban_user", {
+                            target_uuid: banForm.target_uuid.trim(),
+                            ban_type: banForm.ban_type,
+                            duration_hours: parseInt(banForm.duration_hours) || 24,
+                            reason: banForm.reason.trim(),
+                            banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null,
+                          });
+                          toast.success("تم حظر المستخدم بنجاح");
+                          setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
+                          loadData();
+                        } catch (err: any) {
+                          toast.error(err?.message || "فشل الحظر");
+                        } finally {
+                          setBanLoading(false);
+                        }
+                      }}
+                    >
+                      {banLoading ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <Ban className="w-4 h-4 ml-1" />}
+                      تنفيذ الحظر
+                    </Button>
                   </div>
                 )}
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl p-5" style={{ background: '#201f1f', border: '1px solid rgba(72,72,71,0.1)' }}>
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">المحظورون اليوم</p>
-                    <p className="text-2xl font-black" style={{ color: '#ff7162' }}>{manualBans.filter(b => b.status === 'active').length}</p>
-                  </div>
-                  <div className="rounded-xl p-5" style={{ background: '#201f1f', border: '1px solid rgba(72,72,71,0.1)' }}>
-                    <p className="text-[10px] uppercase tracking-widest text-white/40 mb-1">نشط حالياً</p>
-                    <p className="text-2xl font-black" style={{ color: '#34eb45' }}>{blockedAccounts.length > 0 ? `${blockedAccounts.length}` : '2.4k'}</p>
-                  </div>
-                </div>
-
-                {/* Unban Requests (from ban_reports where not verified) */}
-                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
-                  <div className="p-5 flex justify-between items-center" style={{ background: 'rgba(32,31,31,0.3)', borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
-                    <h3 className="text-lg font-bold tracking-tight text-white">طلبات إلغاء الحظر المعلقة</h3>
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-tight" style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}>
-                      {blockedAccounts.filter(a => a.is_permanently_blocked || a.blocked_until).length} طلب
-                    </span>
-                  </div>
-                  {blockedAccounts.filter(a => a.is_permanently_blocked || a.blocked_until).length === 0 ? (
-                    <div className="text-center py-14 text-white/20">
-                      <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p className="text-xs">لا توجد طلبات إلغاء حظر</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-0">
-                      {blockedAccounts.filter(a => a.is_permanently_blocked || a.blocked_until).slice(0, 10).map((acc, i, arr) => {
-                        const timeAgo = (() => {
-                          if (!acc.blocked_until) return '';
-                          const diff = Date.now() - new Date(acc.blocked_until).getTime();
-                          const mins = Math.abs(Math.floor(diff / 60000));
-                          if (mins < 60) return `منذ ${mins} دقيقة`;
-                          const hrs = Math.floor(mins / 60);
-                          if (hrs < 24) return `منذ ${hrs} ساعة`;
-                          return `منذ ${Math.floor(hrs / 24)} يوم`;
-                        })();
-                        return (
-                          <div key={acc.id} className="p-5 hover:bg-white/[0.02] transition-colors" style={i < arr.length - 1 ? { borderBottom: '1px solid rgba(72,72,71,0.08)' } : {}}>
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: '#262626', border: '1px solid rgba(72,72,71,0.2)' }}>
-                                  <Users className="w-5 h-5 text-white/40" />
-                                </div>
-                                <div>
-                                  <span className="text-sm font-bold text-white">{acc.target_uuid}</span>
-                                  <p className="text-[10px] font-mono mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                                    ID: #{acc.target_uuid}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="text-[10px] font-mono text-white/30">{timeAgo}</span>
-                            </div>
-                            <p className="text-xs leading-relaxed mb-4 p-3 rounded-lg italic" style={{ background: '#000', color: 'rgba(255,255,255,0.5)' }}>
-                              {acc.is_permanently_blocked ? '"محظور بشكل دائم - يطلب مراجعة الحظر"' : `"محظور مؤقت - محاولات فاشلة: ${acc.failed_attempts}"`}
+                {/* Manual Bans List */}
+                {manualBans.length > 0 && (
+                  <>
+                    <h3 className="text-sm font-bold text-foreground mt-4">عمليات الحظر ({manualBans.length})</h3>
+                    {manualBans.map((ban) => (
+                      <div key={ban.id} className="bg-card border border-border rounded-xl p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-sm font-mono" dir="ltr">{ban.target_uuid}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {ban.ban_type === "full" ? "🚫 حظر كامل" : ban.ban_type === "elements" ? "🧩 حظر عناصر" : ban.ban_type === "promotion" ? "حظر ترويج" : "حظر"} • {ban.duration_hours === 999999 ? "أبدي" : `${ban.duration_hours} ساعة`}
                             </p>
-                            {canAct && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    unblockAccount(acc.target_uuid);
-                                    toast.success(`تم قبول طلب إلغاء حظر ${acc.target_uuid}`);
-                                  }}
-                                  className="flex-1 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all active:scale-95"
-                                  style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45', border: '1px solid rgba(52,235,69,0.15)' }}
-                                >
-                                  قبول
-                                </button>
-                                <button
-                                  onClick={() => toast.error(`تم رفض طلب ${acc.target_uuid}`)}
-                                  className="flex-1 py-2.5 rounded-lg text-[11px] font-black uppercase transition-all active:scale-95"
-                                  style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162', border: '1px solid rgba(255,113,98,0.15)' }}
-                                >
-                                  رفض
-                                </button>
+                            {ban.ban_type === "elements" && ban.banned_elements && ban.banned_elements.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {ban.banned_elements.map((el: string) => {
+                                  const labels: Record<string, string> = { entries: "دخوليات", frames: "إطارات", gifts: "هدايا", animated_photos: "صور متحركة", change_id: "تغيير آيدي", hairs: "تسريحات", vip: "VIP", salary: "رواتب", quick_support: "دعم سريع", works: "works", stars: "نجومي" };
+                                  return <span key={el} className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive text-[10px] font-bold">{labels[el] || el}</span>;
+                                })}
                               </div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Ban Logs Table */}
-                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
-                  <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
-                    <div className="flex items-center gap-3">
-                      <ScrollText className="w-5 h-5 text-white/40" />
-                      <h3 className="text-lg font-bold tracking-tight text-white">سجل عمليات الحظر (Logs)</h3>
-                    </div>
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>
-                      عرض الكل
-                    </span>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-right">
-                      <thead>
-                        <tr style={{ background: 'rgba(38,38,38,0.3)' }}>
-                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">المشرف</th>
-                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">المستخدم</th>
-                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">السبب</th>
-                          <th className="px-4 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider text-left">التاريخ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {manualBans.length > 0 ? manualBans.slice(0, 15).map((ban) => (
-                          <tr key={ban.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ background: ban.status === 'active' ? '#34eb45' : '#ff7162' }} />
-                                <span className="text-xs text-white">{ban.banned_by || 'Admin'}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4 text-xs font-bold text-white font-mono" dir="ltr">@{ban.target_uuid}</td>
-                            <td className="px-4 py-4 text-[11px] text-white/40">{ban.reason || '—'}</td>
-                            <td className="px-4 py-4 text-left">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[11px] font-mono text-white/30">{new Date(ban.created_at).toLocaleDateString('ar-EG')}</span>
-                                {canAct && ban.status === "active" && (
-                                  <button
-                                    onClick={async () => {
-                                      try {
-                                        await adminCall("unban_manual", { ban_id: ban.id });
-                                        toast.success("تم فك الحظر");
-                                        loadData();
-                                      } catch { toast.error("فشل فك الحظر"); }
-                                    }}
-                                    className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors"
-                                  >
-                                    <Unlock className="w-3.5 h-3.5 text-green-400" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )) : (
-                          <>
-                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">Mod_Zero</span></div></td>
-                              <td className="px-4 py-4 text-xs font-bold text-white">@user_x99</td>
-                              <td className="px-4 py-4 text-[11px] text-white/40">سبام وتكرار</td>
-                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.24</td>
-                            </tr>
-                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">System_Auto</span></div></td>
-                              <td className="px-4 py-4 text-xs font-bold text-white">@bot_killah</td>
-                              <td className="px-4 py-4 text-[11px] text-white/40">اختراق خوارزمية</td>
-                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.24</td>
-                            </tr>
-                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">Mod_Khalid</span></div></td>
-                              <td className="px-4 py-4 text-xs font-bold text-white">@omar_f</td>
-                              <td className="px-4 py-4 text-[11px] text-white/40">تحرش لفظي</td>
-                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.24</td>
-                            </tr>
-                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-4 py-4"><div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#34eb45]" /><span className="text-xs text-white">Mod_Zero</span></div></td>
-                              <td className="px-4 py-4 text-xs font-bold text-white">@dark_web</td>
-                              <td className="px-4 py-4 text-[11px] text-white/40">بيع محتوى محظور</td>
-                              <td className="px-4 py-4 text-left text-[11px] font-mono text-white/30">2024.10.23</td>
-                            </tr>
-                          </>
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${ban.status === "active" ? "bg-destructive/20 text-destructive" : "bg-green-500/20 text-green-500"}`}>
+                            {ban.status === "active" ? "فعال" : "ملغي"}
+                          </span>
+                        </div>
+                        {ban.reason && <p className="text-xs text-muted-foreground">السبب: {ban.reason}</p>}
+                        <div className="text-[10px] text-muted-foreground">
+                          بواسطة: {ban.banned_by} • {new Date(ban.created_at).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                        {ban.unbanned_at && (
+                          <div className="text-[10px] text-green-500">
+                            تم فك الحظر بواسطة: {ban.unbanned_by} • {new Date(ban.unbanned_at).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </div>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                        {canAct && ban.status === "active" && (
+                          <Button
+                            size="sm"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white"
+                            onClick={async () => {
+                              try {
+                                await adminCall("unban_manual", { ban_id: ban.id });
+                                toast.success("تم فك الحظر");
+                                loadData();
+                              } catch { toast.error("فشل فك الحظر"); }
+                            }}
+                          >
+                            <Unlock className="w-4 h-4 ml-1" />فك الحظر
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
 
                 {/* Login blocked accounts */}
                 {blockedAccounts.length > 0 && (
-                  <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
-                    <div className="p-5 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
-                      <Shield className="w-5 h-5 text-yellow-500" />
-                      <h3 className="text-lg font-bold tracking-tight text-white">حسابات محظورة تسجيل دخول ({blockedAccounts.length})</h3>
-                    </div>
-                    <div>
-                      {blockedAccounts.map((acc, i) => (
-                        <div key={acc.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors" style={i < blockedAccounts.length - 1 ? { borderBottom: '1px solid rgba(72,72,71,0.08)' } : {}}>
+                  <>
+                    <h3 className="text-sm font-bold text-foreground mt-4">حسابات محظورة تسجيل دخول ({blockedAccounts.length})</h3>
+                    {blockedAccounts.map((acc) => (
+                      <div key={acc.id} className="bg-card border border-border rounded-xl p-4 space-y-2">
+                        <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-bold text-sm font-mono text-white">{acc.target_uuid}</p>
-                            <p className="text-[10px] text-white/30 mt-0.5">
-                              {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `حتى ${new Date(acc.blocked_until).toLocaleDateString("ar-EG")}` : "غير محظور"}
-                              {" • "}محاولات: {acc.failed_attempts}
+                            <p className="font-bold text-sm font-mono">{acc.target_uuid}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {acc.is_permanently_blocked ? "محظور دائماً" : acc.blocked_until ? `محظور حتى ${new Date(acc.blocked_until).toLocaleDateString("ar-EG")}` : "غير محظور"}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${acc.is_permanently_blocked ? "bg-red-500/10 text-red-400" : "bg-yellow-500/10 text-yellow-400"}`}>
-                              {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
-                            </span>
-                            {canAct && (acc.is_permanently_blocked || acc.blocked_until) && (
-                              <button onClick={() => unblockAccount(acc.target_uuid)} className="p-1.5 rounded-lg hover:bg-green-500/10 transition-colors">
-                                <Unlock className="w-3.5 h-3.5 text-green-400" />
-                              </button>
-                            )}
-                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${acc.is_permanently_blocked ? "bg-destructive/20 text-destructive" : "bg-yellow-500/20 text-yellow-500"}`}>
+                            {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div className="text-xs text-muted-foreground">المحاولات: {acc.failed_attempts} | الحظر: {acc.block_count} مرة</div>
+                        {canAct && (acc.is_permanently_blocked || acc.blocked_until) && (
+                          <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => unblockAccount(acc.target_uuid)}>
+                            <Unlock className="w-4 h-4 ml-1" />فك الحظر
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {blockedAccounts.length === 0 && manualBans.length === 0 && (
+                  <div className="text-center py-10 text-muted-foreground"><Ban className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد حسابات محظورة</p></div>
                 )}
               </motion.div>
             )}
@@ -2090,258 +1897,6 @@ const AdminDashboardPage: React.FC = () => {
                 {starGifts.length === 0 && (
                   <div className="text-center py-10 text-muted-foreground"><Gift className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد عمليات إهداء</p></div>
                 )}
-              </motion.div>
-            )}
-
-            {/* VIP Tab - Gold Kinetic Design */}
-            {activeTab === "vip" && (
-              <motion.div key="vip" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-6">
-                {/* Page Header */}
-                <div className="text-center mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.1em] font-bold block mb-1" style={{ color: '#FFD700' }}>Premium Access Control</span>
-                  <h2 className="text-3xl font-black tracking-tight text-white">إدارة الـ VIP</h2>
-                </div>
-
-                {/* Active/Archived Toggle */}
-                <div className="flex items-center gap-2 justify-center">
-                  <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: '#201f1f' }}>
-                    <button className="px-4 py-1.5 text-xs font-bold rounded text-black" style={{ background: '#FFD700' }}>نشط</button>
-                    <button className="px-4 py-1.5 text-xs font-bold rounded text-white/40 hover:text-white/70 transition-colors">مؤرشف</button>
-                  </div>
-                </div>
-
-                {/* Send VIP Gift Form */}
-                <div className="rounded-xl p-6 relative overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
-                  <div className="absolute top-0 right-0 w-32 h-32 opacity-5 blur-3xl rounded-full -mr-16 -mt-16" style={{ background: 'linear-gradient(135deg, #FFD700, #B8860B)' }} />
-                  <div className="flex items-center gap-3 mb-6">
-                    <Crown className="w-5 h-5" style={{ color: '#FFD700' }} />
-                    <h3 className="text-lg font-bold tracking-tight text-white">إرسال هدية VIP</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {/* User ID */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">معرف المستخدم (User ID)</label>
-                      <div className="rounded-lg p-0.5 transition-all focus-within:border-[#FFD700]" style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="مثال: #88291"
-                          value={adminStarUuid}
-                          onChange={(e) => setAdminStarUuid(e.target.value)}
-                          dir="ltr"
-                          className="h-11 bg-transparent border-none text-white placeholder:text-white/20 font-mono focus-visible:ring-0 focus-visible:ring-offset-0"
-                        />
-                      </div>
-                    </div>
-                    {/* Tier Selector */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">فئة العضوية (Tier)</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[
-                          { label: "GOLD", levels: ["4", "5", "6"], color: "#FFD700" },
-                          { label: "SILVER", levels: ["2", "3"], color: "#c0c0c0" },
-                          { label: "BRONZE", levels: ["1"], color: "#cd7f32" },
-                        ].map((tier) => (
-                          <button
-                            key={tier.label}
-                            onClick={() => setVipGrantLevel(tier.levels[0])}
-                            className="py-3 rounded-lg text-[11px] font-black uppercase transition-all active:scale-95"
-                            style={{
-                              background: tier.levels.includes(vipGrantLevel) ? `${tier.color}15` : '#000',
-                              border: `1px solid ${tier.levels.includes(vipGrantLevel) ? `${tier.color}50` : 'rgba(72,72,71,0.15)'}`,
-                              color: tier.levels.includes(vipGrantLevel) ? tier.color : 'rgba(255,255,255,0.35)',
-                            }}
-                          >
-                            {tier.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Duration */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] uppercase tracking-wider text-white/40 font-bold">المدة (Duration)</label>
-                      <select
-                        value={vipGrantDuration}
-                        onChange={(e) => setVipGrantDuration(e.target.value)}
-                        className="w-full rounded-lg px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none cursor-pointer"
-                        style={{ background: '#000', border: '1px solid rgba(72,72,71,0.15)' }}
-                      >
-                        <option value="7">7 أيام</option>
-                        <option value="15">15 يوم</option>
-                        <option value="30">30 يوم</option>
-                        <option value="90">90 يوم</option>
-                        <option value="180">180 يوم</option>
-                        <option value="365">سنة كاملة</option>
-                      </select>
-                    </div>
-                    {/* Activate Button */}
-                    <button
-                      onClick={handleGrantVip}
-                      disabled={vipGrantLoading || !adminStarUuid.trim()}
-                      className="w-full py-3.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
-                      style={{
-                        background: 'linear-gradient(135deg, #FFD700, #B8860B)',
-                        color: '#000',
-                        boxShadow: '0 0 20px rgba(255,215,0,0.15)',
-                      }}
-                    >
-                      {vipGrantLoading ? <><Loader2 className="w-4 h-4 animate-spin" />جاري التفعيل...</> : "تفعيل العضوية الآن"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Stats Card */}
-                <div className="rounded-xl p-5" style={{ background: '#201f1f', border: '1px solid rgba(72,72,71,0.1)' }}>
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-xs font-bold text-white/40 uppercase tracking-widest">توزيع العضويات</span>
-                    <BarChart3 className="w-4 h-4 text-white/20" />
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-white">عضويات فعالة</span>
-                      <span className="text-sm font-black text-[#34eb45]">{allVipRequests.length > 0 ? allVipRequests.length : '1,204'}</span>
-                    </div>
-                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#000' }}>
-                      <div className="bg-[#34eb45] h-full rounded-full" style={{ width: '75%' }} />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-white">طلبات معلقة</span>
-                      <span className="text-sm font-black text-[#ff7162]">{allVipRequests.length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pending VIP Requests */}
-                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
-                  <div className="p-5 flex justify-between items-center" style={{ background: 'rgba(32,31,31,0.3)', borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
-                    <div className="flex items-center gap-3">
-                      <ClipboardList className="w-5 h-5 text-[#ff7162]" />
-                      <h3 className="text-lg font-bold tracking-tight text-white">طلبات الـ VIP المعلقة</h3>
-                    </div>
-                    <span className="text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-tight" style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}>
-                      {allVipRequests.length} طلب جديد
-                    </span>
-                  </div>
-                  {allVipRequests.length === 0 ? (
-                    <div className="text-center py-14 text-white/20">
-                      <Crown className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                      <p className="text-xs">لا توجد طلبات VIP معلقة</p>
-                    </div>
-                  ) : (
-                    <div>
-                      {allVipRequests.slice(0, 20).map((req: any, i: number) => {
-                        const tierColor = req.vip_level >= 4 ? '#FFD700' : req.vip_level >= 2 ? '#c0c0c0' : '#cd7f32';
-                        const tierLabel = req.vip_level >= 4 ? 'GOLD' : req.vip_level >= 2 ? 'SILVER' : 'BRONZE';
-                        const timeAgo = (() => {
-                          const diff = Date.now() - new Date(req.created_at).getTime();
-                          const mins = Math.floor(diff / 60000);
-                          if (mins < 60) return `قبل ${mins} دقيقة`;
-                          const hrs = Math.floor(mins / 60);
-                          if (hrs < 24) return `قبل ${hrs} ساعة`;
-                          return `قبل ${Math.floor(hrs / 24)} يوم`;
-                        })();
-                        return (
-                          <div key={req.id} className="p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors group" style={i < allVipRequests.length - 1 ? { borderBottom: '1px solid rgba(72,72,71,0.08)' } : {}}>
-                            <div className="flex items-center gap-4">
-                              <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden" style={{ background: '#262626', border: '1px solid rgba(72,72,71,0.2)' }}>
-                                <Users className="w-5 h-5 text-white/40" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-white">{req.user_name}</span>
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono" style={{ background: '#262626', color: 'rgba(255,255,255,0.5)' }}>
-                                    ID: {req.user_uuid}
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-white/30 mt-0.5">
-                                  طلب فئة: <span className="font-bold" style={{ color: tierColor }}>{tierLabel}</span> • {timeAgo}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => {
-                                  toast.success(`تم قبول طلب VIP ${req.vip_level} لـ ${req.user_name}`);
-                                }}
-                                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                                style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  toast.error(`تم رفض طلب ${req.user_name}`);
-                                }}
-                                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                                style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* VIP Logs Table */}
-                <div className="rounded-xl overflow-hidden" style={{ background: '#131313', border: '1px solid rgba(72,72,71,0.15)' }}>
-                  <div className="p-5 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(72,72,71,0.1)' }}>
-                    <ScrollText className="w-5 h-5 text-white/40" />
-                    <h3 className="text-lg font-bold tracking-tight text-white">سجل العمليات (VIP Logs)</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-right">
-                      <thead>
-                        <tr style={{ background: 'rgba(38,38,38,0.2)' }}>
-                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">الإجراء</th>
-                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">المستخدم</th>
-                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">بواسطة</th>
-                          <th className="px-5 py-3 text-[10px] font-black uppercase text-white/30 tracking-wider">التاريخ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allVipRequests.length > 0 ? allVipRequests.slice(0, 10).map((req: any) => {
-                          const tierLabel = req.vip_level >= 4 ? 'GOLD' : req.vip_level >= 2 ? 'SILVER' : 'BRONZE';
-                          return (
-                            <tr key={req.id} className="hover:bg-white/[0.02] transition-colors" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-5 py-4">
-                                <span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>
-                                  تفعيل {tierLabel}
-                                </span>
-                              </td>
-                              <td className="px-5 py-4 text-xs font-bold text-white">{req.user_name}</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">Admin</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">{new Date(req.created_at).toLocaleDateString('ar-EG')}</td>
-                            </tr>
-                          );
-                        }) : (
-                          <>
-                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-5 py-4"><span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>تفعيل GOLD</span></td>
-                              <td className="px-5 py-4 text-xs font-bold text-white">سلطان الراشد</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">Admin_S1</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">10/24</td>
-                            </tr>
-                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-5 py-4"><span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(255,113,98,0.1)', color: '#ff7162' }}>سحب عضوية</span></td>
-                              <td className="px-5 py-4 text-xs font-bold text-white">فهد سليمان</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">System_Auto</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">10/23</td>
-                            </tr>
-                            <tr className="hover:bg-white/[0.02]" style={{ borderTop: '1px solid rgba(72,72,71,0.05)' }}>
-                              <td className="px-5 py-4"><span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>تجديد سنوي</span></td>
-                              <td className="px-5 py-4 text-xs font-bold text-white">ياسر القحطاني</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">Admin_S2</td>
-                              <td className="px-5 py-4 text-[11px] text-white/30">10/22</td>
-                            </tr>
-                          </>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </motion.div>
             )}
 
@@ -3346,24 +2901,21 @@ const AdminDashboardPage: React.FC = () => {
             )}
           </AnimatePresence>
       )}
+          </div>
         </div>
       )}
       </div>
 
-      {/* Bottom Navigation */}
-      {!activeTab && (
+      {/* Bottom Navigation - only show when no sub-page is open */}
+      {!activeTab && !activeSection && (
         <AdminBottomNav
           active={bottomTab}
-          onChange={(tab) => {
-            if (tab === 'chat') { setActiveTab('admin_chat'); return; }
-            if (tab === 'search') { setActiveTab('manual_actions'); return; }
-            if (tab === 'monitor') { setActiveTab('blocks'); return; }
-            setBottomTab(tab);
-          }}
+          onChange={(tab) => setBottomTab(tab)}
           chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
         />
       )}
       
+      {/* Admin notifications listener */}
       <AdminNotificationListener />
     </div>
   );
