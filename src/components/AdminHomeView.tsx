@@ -88,7 +88,6 @@ const AdminHomeView: React.FC<Props> = ({
       const data = await res.json();
       if (data.success && data.user) {
         setSearchedUser(data.user);
-        // Try to get avatar
         const av = await getAvatar(q);
         if (av) setUserAvatar(fixAvatarUrl(av) || av);
       } else {
@@ -105,16 +104,16 @@ const AdminHomeView: React.FC<Props> = ({
     navigator.clipboard.writeText(uuid);
   };
 
-  // Service grid items - same style as user MenuGrid
+  // Service grid items
   const services: ServiceItem[] = [
     ...(isSuperAdmin ? [
       { key: 'vip', label: 'VIP', icon: Crown, bg: 'rgba(234,179,8,0.12)', iconColor: 'text-yellow-400', badge: badges.vip || 0 },
       { key: 'reports', label: 'البلاغات', icon: ShieldBan, bg: 'rgba(239,68,68,0.12)', iconColor: 'text-red-400', badge: badges.protection || 0 },
     ] : []),
     { key: 'blocks', label: 'الحظر', icon: Ban, bg: 'rgba(239,68,68,0.12)', iconColor: 'text-red-400' },
-    { key: 'admin_support', label: 'الدعم', icon: Headset, bg: 'rgba(59,130,246,0.12)', iconColor: 'text-blue-400', badge: badges.support || 0 },
+    { key: 'admin_support', label: 'الدعم', icon: Headset, bg: 'rgba(0,219,236,0.12)', iconColor: 'text-cyan-400', badge: badges.support || 0 },
     ...(isSuperAdmin ? [
-      { key: 'salary', label: 'الرواتب', icon: DollarSign, bg: 'rgba(34,197,94,0.12)', iconColor: 'text-green-400', badge: badges.salary || 0 },
+      { key: 'salary', label: 'الرواتب', icon: DollarSign, bg: 'rgba(52,235,69,0.12)', iconColor: 'text-[#34eb45]', badge: badges.salary || 0 },
       { key: 'manual_actions', label: 'صلاحيات', icon: Zap, bg: 'rgba(168,85,247,0.12)', iconColor: 'text-purple-400' },
       { key: 'custom_gifts', label: 'هدايا', icon: Gift, bg: 'rgba(236,72,153,0.12)', iconColor: 'text-pink-400', badge: badges.requests || 0 },
       { key: 'animated_photos', label: 'صور متحركة', icon: Camera, bg: 'rgba(249,115,22,0.12)', iconColor: 'text-orange-400' },
@@ -130,7 +129,7 @@ const AdminHomeView: React.FC<Props> = ({
       { key: 'banners', label: 'بنرات', icon: ImageIcon, bg: 'rgba(6,182,212,0.12)', iconColor: 'text-teal-400' },
       { key: 'element_settings', label: 'الإعدادات', icon: Settings, bg: 'rgba(100,116,139,0.12)', iconColor: 'text-slate-400' },
       { key: 'admin_stars', label: 'منح نجوم', icon: Star, bg: 'rgba(234,179,8,0.12)', iconColor: 'text-yellow-400' },
-      { key: 'moderators', label: 'الأدمن', icon: Users, bg: 'rgba(34,197,94,0.12)', iconColor: 'text-emerald-400' },
+      { key: 'moderators', label: 'الأدمن', icon: Users, bg: 'rgba(52,235,69,0.12)', iconColor: 'text-[#34eb45]' },
       { key: 'top_agents', label: 'TOP وكلاء', icon: Crown, bg: 'rgba(245,158,11,0.12)', iconColor: 'text-amber-400' },
       { key: 'bd_management', label: 'إدارة BD', icon: Briefcase, bg: 'rgba(239,68,68,0.12)', iconColor: 'text-red-400' },
       { key: 'audit_log', label: 'السجل', icon: ScrollText, bg: 'rgba(168,85,247,0.12)', iconColor: 'text-violet-400' },
@@ -139,42 +138,39 @@ const AdminHomeView: React.FC<Props> = ({
   ];
 
   return (
-    <div className="pb-36" dir="rtl">
-      {/* Lightweight background - same as user Dashboard */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full" />
-        <div className="absolute bottom-0 right-0 w-64 h-64 bg-accent/5 rounded-full" />
-      </div>
-
-      <main className="relative z-10 px-3 space-y-3">
+    <div className="pb-36" dir="rtl" style={{ background: '#0e0e0e', minHeight: '100vh' }}>
+      <main className="relative z-10 px-4 space-y-5 max-w-4xl mx-auto pt-3">
         {/* 1. Search Bar */}
-        <div className="flex gap-2 mt-2">
-          <div className="relative flex-1">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="بحث سريع بالآيدي..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full pr-9 pl-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 transition-colors"
-              dir="ltr"
-            />
-          </div>
-          <button
-            onClick={handleSearch}
-            disabled={searchLoading || !searchQuery.trim()}
-            className="px-4 rounded-xl bg-primary/15 border border-primary/20 text-primary font-bold text-xs active:scale-95 transition-transform disabled:opacity-40"
-          >
-            {searchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'بحث'}
-          </button>
+        <div className="relative group">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="البحث السريع عن المعرف (ID)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="w-full h-14 rounded-xl px-12 text-sm font-medium transition-all text-white placeholder:text-white/30"
+            style={{
+              background: '#000000',
+              border: '1px solid rgba(72, 72, 71, 0.15)',
+            }}
+            dir="ltr"
+          />
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30 group-focus-within:text-[#34eb45] transition-colors" />
+          {searchLoading ? (
+            <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#34eb45] animate-spin" />
+          ) : (
+            <button onClick={handleSearch} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-[#34eb45] transition-colors">
+              <Search className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Search Error */}
         {searchError && (
           <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-xs text-destructive text-center">
+            className="rounded-xl p-3 text-xs text-red-400 text-center"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
             {searchError}
           </motion.div>
         )}
@@ -184,215 +180,264 @@ const AdminHomeView: React.FC<Props> = ({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl p-3 relative overflow-hidden border border-white/5"
-            style={{ background: 'linear-gradient(145deg, rgba(18,18,26,1), rgba(26,26,46,1))' }}
+            className="rounded-xl p-4 relative overflow-hidden"
+            style={{ background: 'rgba(26, 25, 25, 0.95)', border: '1px solid rgba(72,72,71,0.1)', boxShadow: '0 0 20px rgba(52,235,69,0.04)' }}
           >
-            <div className="flex items-center gap-2.5 mb-2">
+            <div className="flex items-center gap-3 mb-3">
               <div className="relative flex-shrink-0">
                 <img
                   src={userAvatar || avatarMale}
                   alt={searchedUser.name}
-                  className="w-10 h-10 rounded-lg object-cover border border-white/10"
+                  className="w-14 h-14 rounded-full object-cover"
+                  style={{ border: '2px solid #34eb45' }}
                   loading="lazy"
                   onError={(e) => { e.currentTarget.src = avatarMale; }}
                 />
                 {searchedUser.is_online && (
-                  <div className="absolute -bottom-px -left-px w-2 h-2 rounded-full bg-emerald-500 border border-background" />
+                  <div className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-[#34eb45]" style={{ border: '3px solid #1a1919' }} />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 flex-wrap">
-                  <h2 className="text-xs font-bold text-foreground truncate">{searchedUser.name}</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm font-bold text-white">{searchedUser.name}</h2>
                   {searchedUser.vip_level && searchedUser.vip_level > 0 && (
-                    <span className="inline-flex items-center gap-px px-1 rounded text-[8px] font-bold"
-                      style={{ background: 'rgba(234,179,8,0.15)', border: '1px solid rgba(234,179,8,0.3)' }}>
-                      <Crown className="w-2 h-2 text-yellow-400" />
-                      <span className="text-yellow-300">VIP {searchedUser.vip_level}</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                      style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.2)', color: '#facc15' }}>
+                      <Crown className="w-3 h-3" />
+                      VIP {searchedUser.vip_level}
                     </span>
                   )}
-                  <span className="px-1 rounded text-[8px] font-bold bg-white/10 border border-white/20 text-foreground">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold" style={{ background: 'rgba(255,255,255,0.06)', color: '#adaaaa' }}>
                     {getUserTypeLabel(searchedUser.type_user || 0)}
                   </span>
                 </div>
-                <button onClick={() => copyUuid(searchedUser.uuid)} className="flex items-center gap-0.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="text-[9px] font-mono">UUID: {searchedUser.uuid}</span>
-                  <Copy className="w-2.5 h-2.5" />
+                <button onClick={() => copyUuid(searchedUser.uuid)} className="flex items-center gap-1 text-white/40 hover:text-white/70 transition-colors mt-0.5">
+                  <span className="text-[11px] font-mono">ID: #{searchedUser.uuid}</span>
+                  <Copy className="w-3 h-3" />
                 </button>
               </div>
             </div>
 
             {/* Stats grid */}
-            <div className="grid grid-cols-3 gap-1.5 mb-2">
+            <div className="grid grid-cols-3 gap-2 mb-3">
               {[
-                { label: 'كوينز', value: (searchedUser.coins || 0).toLocaleString(), color: 'text-yellow-400' },
-                { label: 'ماسات', value: (searchedUser.diamonds || 0).toLocaleString(), color: 'text-cyan-400' },
-                { label: 'الراتب', value: `$${searchedUser.salary || 0}`, color: 'text-emerald-400' },
+                { label: 'كوينز', value: (searchedUser.coins || 0).toLocaleString(), color: '#facc15' },
+                { label: 'ماسات', value: (searchedUser.diamonds || 0).toLocaleString(), color: '#22d3ee' },
+                { label: 'الراتب', value: `$${searchedUser.salary || 0}`, color: '#34eb45' },
               ].map(s => (
-                <div key={s.label} className="text-center py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.05]">
-                  <p className={`text-[10px] font-bold font-mono ${s.color}`}>{s.value}</p>
-                  <p className="text-[8px] text-muted-foreground">{s.label}</p>
+                <div key={s.label} className="text-center py-2 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(72,72,71,0.1)' }}>
+                  <p className="text-xs font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
+                  <p className="text-[9px] text-white/40">{s.label}</p>
                 </div>
               ))}
             </div>
 
             {/* Level bars */}
-            <div className="grid grid-cols-3 gap-1.5 mb-2">
+            <div className="grid grid-cols-3 gap-2 mb-3">
               {[
-                { label: 'داعم', level: searchedUser.charger_level || 0, color: 'bg-yellow-400' },
-                { label: 'مدعوم', level: searchedUser.receiver_level || 0, color: 'bg-cyan-400' },
-                { label: 'مرسل', level: searchedUser.sender_level || 0, color: 'bg-emerald-400' },
+                { label: 'داعم', level: searchedUser.charger_level || 0, color: '#facc15' },
+                { label: 'مدعوم', level: searchedUser.receiver_level || 0, color: '#22d3ee' },
+                { label: 'مرسل', level: searchedUser.sender_level || 0, color: '#34eb45' },
               ].map(l => (
-                <div key={l.label} className="space-y-0.5">
-                  <div className="flex justify-between text-[8px]">
-                    <span className="text-muted-foreground">{l.label}</span>
-                    <span className="text-foreground font-mono">{l.level}</span>
+                <div key={l.label} className="space-y-1">
+                  <div className="flex justify-between text-[9px]">
+                    <span className="text-white/40">{l.label}</span>
+                    <span className="text-white/70 font-mono">{l.level}</span>
                   </div>
-                  <div className="h-1 rounded-full bg-white/5">
-                    <div className={`h-full rounded-full ${l.color}`} style={{ width: `${Math.min(l.level, 100)}%` }} />
+                  <div className="h-1.5 rounded-full" style={{ background: 'rgba(0,0,0,0.4)' }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(l.level, 100)}%`, background: l.color }} />
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Quick action buttons */}
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {[
-                { label: 'حظر', key: 'blocks', icon: Ban, color: 'text-red-400', bg: 'bg-red-500/10' },
-                { label: 'VIP', key: 'vip', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-                { label: 'آيدي', key: 'id_changes', icon: Hash, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-                { label: 'السجل', key: 'audit_log', icon: ScrollText, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+                { label: 'حظر', key: 'blocks', icon: Ban, color: '#ff7162' },
+                { label: 'VIP', key: 'vip', icon: Crown, color: '#facc15' },
+                { label: 'آيدي', key: 'id_changes', icon: Hash, color: '#a855f7' },
+                { label: 'السجل', key: 'audit_log', icon: ScrollText, color: '#8b5cf6' },
               ].map(a => (
                 <button
                   key={a.key}
                   onClick={() => onServiceClick(a.key)}
-                  className={`flex-1 py-2 rounded-lg ${a.bg} border border-white/5 flex flex-col items-center gap-0.5 active:scale-95 transition-transform`}
+                  className="flex-1 py-2.5 rounded-lg flex flex-col items-center gap-1 active:scale-95 transition-transform"
+                  style={{ background: `${a.color}10`, border: '1px solid rgba(255,255,255,0.04)' }}
                 >
-                  <a.icon className={`w-3.5 h-3.5 ${a.color}`} />
-                  <span className="text-[8px] font-bold text-muted-foreground">{a.label}</span>
+                  <a.icon className="w-4 h-4" style={{ color: a.color }} />
+                  <span className="text-[9px] font-bold text-white/50">{a.label}</span>
                 </button>
               ))}
             </div>
           </motion.div>
         )}
 
-        {/* 2. Admin Card */}
+        {/* 2. Admin Profile Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-3 relative overflow-hidden border border-white/5"
-          style={{ background: 'linear-gradient(145deg, rgba(18,18,26,1), rgba(26,26,46,1))' }}
+          className="rounded-2xl p-5 relative overflow-hidden"
+          style={{ background: 'rgba(19, 19, 19, 0.95)', border: '1px solid rgba(72,72,71,0.05)', boxShadow: '0 0 20px rgba(52,235,69,0.04)' }}
         >
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
-              <Settings className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-xs font-bold text-foreground truncate">أهلاً، {adminDisplayName}</h2>
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          <div className="flex items-start justify-between">
+            <div className="flex gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden p-0.5" style={{ background: 'linear-gradient(135deg, #34eb45, #00d632)' }}>
+                  <div className="w-full h-full rounded-[14px] bg-[#1a1919] flex items-center justify-center">
+                    <Settings className="w-7 h-7 text-[#34eb45]" />
+                  </div>
+                </div>
+                <div className="absolute -bottom-1 -left-1 w-4 h-4 bg-[#34eb45] rounded-full flex items-center justify-center" style={{ border: '3px solid #131313' }}>
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                </div>
               </div>
-              <p className="text-[9px] text-muted-foreground">{roleLabel} • أونلاين</p>
+              <div>
+                <h2 className="text-base font-bold text-white">{adminDisplayName}</h2>
+                <p className="text-[11px] text-white/40 font-medium tracking-wide uppercase mt-0.5">{roleLabel}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider"
+                    style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>
+                    متصل الآن
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>
 
         {/* 3. Chat Bubbles */}
-        <div className="flex gap-3 overflow-x-auto py-1 scrollbar-hide">
-          {[
-            { key: 'super', label: 'مجموعة السوبر', icon: '⚡', color: 'from-amber-500/20 to-amber-600/10', border: 'border-amber-500/30', superOnly: true },
-            { key: 'all', label: 'مجموعة الكل', icon: '👥', color: 'from-emerald-500/20 to-emerald-600/10', border: 'border-emerald-500/30' },
-          ].filter(g => !g.superOnly || isSuperAdmin).map(group => (
-            <button
-              key={group.key}
-              onClick={() => onChatClick(group.key)}
-              className="flex flex-col items-center gap-1 flex-shrink-0 active:scale-95 transition-transform"
-            >
-              <div className={`relative w-14 h-14 rounded-full bg-gradient-to-br ${group.color} border ${group.border} flex items-center justify-center text-lg`}>
-                {group.icon}
-                {chatBadge && chatBadge > 0 && group.key === 'all' && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-[8px] text-white font-bold flex items-center justify-center">
-                    {chatBadge > 9 ? '9+' : chatBadge}
-                  </span>
-                )}
-              </div>
-              <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">{group.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* 4. Services Title */}
-        <div className="flex items-center gap-2 pr-1">
-          <div className="w-1 h-3.5 rounded-full" style={{ background: 'linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.3))' }} />
-          <h3 className="text-xs font-black text-foreground">الخدمات</h3>
-        </div>
-
-        {/* 5. Service Grid - 4 columns like user MenuGrid */}
-        <div className="grid grid-cols-4 gap-y-4 gap-x-1.5 px-1">
-          {services.map((svc, i) => (
-            <motion.button
-              key={svc.key}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.02, duration: 0.2 }}
-              onClick={() => onServiceClick(svc.key)}
-              className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
-            >
-              <div
-                className="relative w-12 h-12 rounded-[14px] flex items-center justify-center"
-                style={{ background: svc.bg, border: '1px solid rgba(255,255,255,0.06)' }}
+        <div className="space-y-2">
+          <h3 className="text-[11px] font-bold text-white/40 uppercase tracking-widest px-1">مجموعات المراسلة</h3>
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {[
+              { key: 'super', label: 'مجموعة الإدارة', icon: '🛡️', superOnly: true },
+              { key: 'all', label: 'مجموعة السوبر', icon: '⚡' },
+            ].filter(g => !g.superOnly || isSuperAdmin).map(group => (
+              <button
+                key={group.key}
+                onClick={() => onChatClick(group.key)}
+                className="flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-full active:scale-95 transition-all"
+                style={{ background: 'rgba(32,31,31,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}
               >
-                <svc.icon className={`w-5 h-5 ${svc.iconColor}`} />
+                <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                  style={{ background: 'rgba(52,235,69,0.15)' }}>
+                  {group.icon}
+                </span>
+                <span className="text-sm font-bold text-white">{group.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Services */}
+        <div className="space-y-3">
+          <h3 className="text-[11px] font-bold text-white/40 uppercase tracking-widest px-1">خدمات النظام</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {services.map((svc, i) => (
+              <motion.button
+                key={svc.key}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.02, duration: 0.2 }}
+                onClick={() => onServiceClick(svc.key)}
+                className="relative p-4 rounded-xl flex flex-col items-center justify-center gap-3 group active:scale-[0.97] transition-all"
+                style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.05)' }}
+              >
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
+                  style={{ background: svc.bg }}
+                >
+                  <svc.icon className={`w-6 h-6 ${svc.iconColor}`} />
+                </div>
+                <span className="text-xs font-bold text-white group-hover:text-[#34eb45] transition-colors">{svc.label}</span>
                 {svc.badge && svc.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-[8px] text-white font-bold flex items-center justify-center">
-                    {svc.badge > 99 ? '99' : svc.badge}
+                  <span className="absolute top-2 right-2 min-w-5 h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
+                    {svc.badge > 99 ? '99+' : svc.badge}
                   </span>
                 )}
-              </div>
-              <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">{svc.label}</span>
-            </motion.button>
-          ))}
+              </motion.button>
+            ))}
+          </div>
         </div>
 
         {/* Quick Stats Row */}
-        <div className="grid grid-cols-3 gap-2 mt-2">
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'معلقة', value: stats.pending, color: 'text-amber-400' },
-            { label: 'مقبولة', value: stats.approved, color: 'text-emerald-400' },
-            { label: 'مرفوضة', value: stats.rejected, color: 'text-rose-400' },
+            { label: 'معلقة', value: stats.pending, color: '#facc15' },
+            { label: 'مقبولة', value: stats.approved, color: '#34eb45' },
+            { label: 'مرفوضة', value: stats.rejected, color: '#ff7162' },
           ].map(s => (
-            <div key={s.label} className="text-center py-2 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <p className={`text-lg font-bold font-mono ${s.color}`}>{s.value}</p>
-              <p className="text-[9px] text-muted-foreground">{s.label}</p>
+            <div key={s.label} className="text-center py-3 rounded-xl"
+              style={{ background: 'rgba(32,31,31,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
+              <p className="text-xl font-black font-mono" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-[10px] text-white/40 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Recent Activity */}
         {recentLogs.length > 0 && (
-          <div className="space-y-2 mt-1">
-            <div className="flex items-center gap-2 pr-1">
-              <div className="w-1 h-3.5 rounded-full bg-violet-500/50" />
-              <h3 className="text-xs font-black text-foreground">آخر العمليات</h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <span className="w-1 h-6 rounded-full" style={{ background: 'rgba(168,85,247,0.5)', boxShadow: '0 0 10px rgba(168,85,247,0.3)' }} />
+              <h2 className="text-sm font-bold text-white tracking-tight">سجل العمليات</h2>
             </div>
-            {recentLogs.slice(0, 5).map((log: any, i: number) => (
-              <motion.div
-                key={log.id || i}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center gap-2 py-2 px-3 bg-white/[0.02] border border-white/[0.04] rounded-xl"
+            <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(19,19,19,0.95)', border: '1px solid rgba(72,72,71,0.1)' }}>
+              <div className="divide-y" style={{ borderColor: 'rgba(72,72,71,0.1)' }}>
+                {recentLogs.slice(0, 5).map((log: any, i: number) => (
+                  <motion.div
+                    key={log.id || i}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-center justify-between p-4 transition-colors"
+                    style={{ ':hover': { background: 'rgba(38,38,38,0.3)' } } as any}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg"
+                        style={{ background: log.action?.includes('reject') || log.action?.includes('ban') || log.action?.includes('delete') ? 'rgba(255,113,98,0.1)' : 'rgba(52,235,69,0.1)' }}>
+                        <div className={`w-2 h-2 rounded-full ${log.action?.includes('reject') || log.action?.includes('ban') || log.action?.includes('delete') ? 'bg-red-400' : 'bg-[#34eb45]'}`} />
+                      </div>
+                      <p className="text-sm font-medium text-white truncate max-w-[200px]">
+                        {log.action_label || log.action || 'عملية'}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-white/30 uppercase tracking-wide whitespace-nowrap">
+                      {log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+              <button
+                className="w-full py-3 text-xs font-bold uppercase tracking-widest text-white/30 hover:text-[#34eb45] transition-colors"
+                style={{ background: 'rgba(38,38,38,0.5)', borderTop: '1px solid rgba(72,72,71,0.1)' }}
+                onClick={() => onServiceClick('audit_log')}
               >
-                <div className={`w-2 h-2 rounded-full ${log.action?.includes('reject') || log.action?.includes('ban') || log.action?.includes('delete') ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-foreground truncate">
-                    {log.action_label || log.action || 'عملية'}
-                  </p>
-                </div>
-                <span className="text-[9px] text-muted-foreground whitespace-nowrap">
-                  {log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
-                </span>
-              </motion.div>
-            ))}
+                عرض السجل الكامل
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Chat Bubble */}
+        {chatBadge && chatBadge > 0 && (
+          <div className="fixed bottom-24 left-6 z-40">
+            <button
+              onClick={() => onChatClick('all')}
+              className="w-14 h-14 rounded-full flex items-center justify-center relative hover:scale-110 active:scale-95 transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #34eb45, #00d632)',
+                boxShadow: '0 0 30px rgba(52,235,69,0.4)',
+                color: '#0e0e0e',
+              }}
+            >
+              <MessageSquare className="w-6 h-6" />
+              <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white text-[#34eb45] text-[10px] font-black flex items-center justify-center"
+                style={{ border: '3px solid #0e0e0e' }}>
+                {chatBadge > 9 ? '9+' : chatBadge}
+              </span>
+            </button>
           </div>
         )}
       </main>
