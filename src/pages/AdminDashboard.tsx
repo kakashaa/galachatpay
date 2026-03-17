@@ -1046,8 +1046,14 @@ const AdminDashboardPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isOwner && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>
+            )}
             {adminRole === "super_admin" && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">رئيسي</span>
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر أدمن</span>
+            )}
+            {adminRole === "admin" && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>
             )}
             <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
               <LogOut className="w-4 h-4 text-muted-foreground" />
