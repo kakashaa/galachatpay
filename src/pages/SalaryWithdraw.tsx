@@ -668,6 +668,44 @@ const SalaryWithdraw: React.FC = () => {
           </Button>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
+
+          {/* Salary Warning Dialog */}
+          <Dialog open={!!salaryWarning?.show} onOpenChange={() => setSalaryWarning(null)}>
+            <DialogContent className="max-w-[360px] rounded-2xl" dir="rtl">
+              <DialogHeader>
+                <DialogTitle className="text-center text-base flex items-center justify-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-destructive" /> ⚠️ تحذير أمان
+                </DialogTitle>
+                <DialogDescription className="text-center text-sm text-muted-foreground pt-2">
+                  {salaryWarning?.message}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 pt-2">
+                <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                  يرجى التواصل مع خدمة العملاء قبل سحب الراتب
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setSalaryWarning(null)} className="flex-1 h-11 border-border/30">
+                    إلغاء
+                  </Button>
+                  <Button onClick={() => { setSalaryWarning(null); navigate("/support"); }}
+                    className="flex-1 h-11 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold">
+                    تواصل مع الدعم
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Loading overlay for salary check */}
+          {salaryCheckLoading && (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+              <div className="glass-card p-6 rounded-2xl flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <p className="text-xs text-muted-foreground">جاري فحص الراتب...</p>
+              </div>
+            </div>
+          )}
         </div>
       </MobileLayout>
     );

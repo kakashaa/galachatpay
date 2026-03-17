@@ -133,12 +133,12 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     setUserReportData(null);
     setUserReportAvatar("");
     try {
-      const [salaryRes, avatarRes] = await Promise.all([
-        fetch(`${API}?action=salary_check_all&uuid=${req.user_uuid}`),
+      const [reportRes, avatarRes] = await Promise.all([
+        fetch(`${API}?action=salary_report&uuid=${req.user_uuid}`),
         fetch(`${API}?action=get_avatar&uuid=${req.user_uuid}`),
       ]);
-      const salaryData = await salaryRes.json();
-      setUserReportData(salaryData);
+      const reportData = await reportRes.json();
+      setUserReportData(reportData);
       try {
         const avatarData = await avatarRes.json();
         if (avatarData.success && avatarData.avatar) {
