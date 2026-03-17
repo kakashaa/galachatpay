@@ -987,7 +987,7 @@ const SalaryWithdraw: React.FC = () => {
                     إعادة المحاولة
                   </Button>
 
-                  {isFirstWithdrawal && (
+                  {withdrawalMode === "cash" && (
                     <>
                       <div className="space-y-2">
                         <p className="text-xs font-bold text-foreground">📎 أو ارفع إيصال التحويل</p>
