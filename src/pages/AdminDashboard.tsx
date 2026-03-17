@@ -1103,33 +1103,62 @@ const AdminDashboardPage: React.FC = () => {
     );
   };
 
+  // Get current section title for header
+  const currentSectionTitle = activeTab ? (tabs.find(t => t.key === activeTab)?.label || 'لوحة التحكم') : '';
+
   return (
-    <div className="mobile-container text-foreground overflow-x-hidden overflow-y-auto relative" style={{ background: "#09090b", overflow: 'hidden auto' }}>
-      {/* Header - same style as user Dashboard */}
-      <header className="relative z-10 flex justify-between items-center px-4 pt-6 pb-2">
-        {activeTab ? (
-          <button
-            onClick={() => { setActiveTab(null); setActiveSection(null); }}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
-          >
-            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        ) : (
-          <button onClick={handleLogout} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors">
-            <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        )}
-        <h1 className="text-base font-black gradient-text">
-          {activeTab ? (tabs.find(t => t.key === activeTab)?.label || 'لوحة التحكم') : 'غلا شات'}
-        </h1>
-        <div className="w-8 flex items-center justify-center">
-          {!activeTab && (
-            <>
-              {isOwner && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>}
-              {adminRole === "super_admin" && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر</span>}
-              {adminRole === "admin" && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>}
-            </>
+    <div className="mobile-container text-foreground overflow-x-hidden overflow-y-auto relative" style={{ background: "#0e0e0e", overflow: 'hidden auto' }}>
+      {/* Header - Admin.OS Kinetic Style */}
+      <header
+        className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 h-16"
+        style={{
+          background: '#0e0e0e',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(19,19,19,0.8)',
+        }}
+      >
+        <div className="flex items-center gap-3">
+          {activeTab ? (
+            <button
+              onClick={() => { setActiveTab(null); setActiveSection(null); }}
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95"
+              style={{ background: 'rgba(52,235,69,0.1)' }}
+            >
+              <ArrowRight className="w-4 h-4" style={{ color: '#34eb45' }} />
+            </button>
+          ) : (
+            <span className="text-xl cursor-pointer hover:scale-110 transition-transform" style={{ color: '#34eb45' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>
+            </span>
           )}
+          <h1 className="text-xl font-black tracking-tighter uppercase" style={{ color: '#34eb45', fontFamily: 'Inter, sans-serif' }}>
+            Admin.OS
+          </h1>
+        </div>
+        <div className="flex items-center gap-4">
+          {activeTab && (
+            <span className="text-white font-bold text-sm tracking-tight" style={{ fontFamily: 'IBM Plex Sans Arabic, sans-serif' }}>
+              {currentSectionTitle}
+            </span>
+          )}
+          {!activeTab && (
+            <div className="flex items-center gap-2">
+              {isOwner && <span className="text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45', border: '1px solid rgba(52,235,69,0.2)' }}>Owner</span>}
+              {adminRole === "super_admin" && !isOwner && <span className="text-[8px] px-2 py-0.5 rounded-full font-black" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>سوبر</span>}
+              {adminRole === "admin" && <span className="text-[8px] px-2 py-0.5 rounded-full font-black" style={{ background: 'rgba(52,235,69,0.1)', color: '#34eb45' }}>أدمن</span>}
+            </div>
+          )}
+          <button
+            onClick={activeTab ? undefined : handleLogout}
+            className="transition-all hover:scale-110"
+            style={{ color: activeTab ? 'rgba(173,170,170,0.8)' : 'rgba(173,170,170,0.6)' }}
+          >
+            {activeTab ? (
+              <Bell className="w-5 h-5" />
+            ) : (
+              <LogOut className="w-5 h-5" />
+            )}
+          </button>
         </div>
       </header>
       <div className="relative z-10">
