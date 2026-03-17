@@ -1694,6 +1694,102 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
+            {/* VIP Tab - Dedicated VIP page */}
+            {activeTab === "vip" && (
+              <motion.div key="vip" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
+                {/* Grant VIP Section */}
+                <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Crown className="w-5 h-5 text-yellow-400" />
+                    <h3 className="text-sm font-bold text-foreground">إهداء VIP</h3>
+                  </div>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="UUID المستخدم"
+                    value={adminStarUuid}
+                    onChange={(e) => setAdminStarUuid(e.target.value)}
+                    dir="ltr"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">مستوى VIP</label>
+                      <select
+                        value={vipGrantLevel}
+                        onChange={(e) => setVipGrantLevel(e.target.value)}
+                        className="w-full rounded-lg bg-muted/30 border border-border/40 px-3 py-2 text-sm text-foreground"
+                      >
+                        <option value="1">VIP 1</option>
+                        <option value="2">VIP 2</option>
+                        <option value="3">VIP 3</option>
+                        <option value="4">VIP 4</option>
+                        <option value="5">VIP 5</option>
+                        <option value="6">VIP 6</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">المدة</label>
+                      <select
+                        value={vipGrantDuration}
+                        onChange={(e) => setVipGrantDuration(e.target.value)}
+                        className="w-full rounded-lg bg-muted/30 border border-border/40 px-3 py-2 text-sm text-foreground"
+                      >
+                        <option value="7">7 أيام</option>
+                        <option value="15">15 يوم</option>
+                        <option value="30">30 يوم</option>
+                        <option value="90">90 يوم</option>
+                        <option value="180">180 يوم</option>
+                        <option value="365">سنة</option>
+                      </select>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleGrantVip}
+                    disabled={vipGrantLoading || !adminStarUuid.trim()}
+                    className="w-full"
+                  >
+                    {vipGrantLoading ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري الإهداء...</> : <><Crown className="w-4 h-4 ml-2" />إهداء VIP</>}
+                  </Button>
+                </div>
+
+                {/* VIP Requests from users */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3.5 rounded-full bg-yellow-500/50" />
+                    <h3 className="text-xs font-black text-foreground">طلبات VIP من المستخدمين</h3>
+                    <span className="text-[10px] bg-muted/50 px-2 py-0.5 rounded-full text-muted-foreground">{allVipRequests.length}</span>
+                  </div>
+                  {allVipRequests.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Crown className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-xs">لا توجد طلبات VIP</p>
+                    </div>
+                  ) : (
+                    allVipRequests.slice(0, 20).map((req: any) => (
+                      <div key={req.id} className="bg-card border border-border/40 rounded-xl p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Crown className="w-3.5 h-3.5 text-yellow-400" />
+                            <span className="text-xs font-bold text-foreground">{req.user_name}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 font-bold">VIP {req.vip_level}</span>
+                          </div>
+                          <span className="text-[9px] text-muted-foreground">
+                            {new Date(req.created_at).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="font-mono" dir="ltr">UUID: {req.user_uuid}</span>
+                          {req.recipient_uuid && req.recipient_uuid !== req.user_uuid && (
+                            <span className="font-mono" dir="ltr">→ {req.recipient_uuid}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+
             {/* All Requests Tab */}
             {activeTab === "all_requests" && (
               <motion.div key="all_requests" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-4">
