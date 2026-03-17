@@ -54,6 +54,7 @@ const UserProfileCard: React.FC = () => {
   const [totalStars, setTotalStars] = useState(0);
   const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
     ((user.vip as any).vip_level || (user.vip as any).level || 0) > 0);
