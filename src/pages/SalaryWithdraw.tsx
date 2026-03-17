@@ -193,17 +193,23 @@ const SalaryWithdraw: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`);
-      const data: TransfersResult = await res.json();
+      const [transfersRes, salaryRes] = await Promise.all([
+        fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`),
+        fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`),
+      ]);
+      const data: TransfersResult = await transfersRes.json();
+      const salaryData = await salaryRes.json();
+
       const allTransfers = data.transfers || [];
       setTransfers(allTransfers);
-      setIsAgencyOwner(!!data.is_agency_owner);
+      const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
+      setIsAgencyOwner(agencyOwner);
 
       const used = allTransfers.filter(t => t.is_used).length;
       setUsedCount(used);
 
       const newTransfers = allTransfers.filter(t => !t.is_used && t.selectable);
-      const { maxTotal } = getWithdrawalLimits(!!data.is_agency_owner);
+      const { maxTotal } = getWithdrawalLimits(agencyOwner);
 
       if (used >= maxTotal) {
         setStep("exhausted");
