@@ -141,7 +141,7 @@ const SalaryWithdraw: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [allData, setAllData] = useState<SalaryCheckAllResult | null>(null);
-  const [noSalaryAtAll, setNoSalaryAtAll] = useState(false);
+  const [_noSalaryAtAll, setNoSalaryAtAll] = useState(false);
 
   // Flow state
   const [salaryType, setSalaryType] = useState<"host" | "agency" | null>(null);
