@@ -885,7 +885,7 @@ const AdminDashboardPage: React.FC = () => {
     {
       id: "chat", title: "الدردشة والدعم", description: "تواصل + مساعدة",
       icon: <MessageSquare className="w-10 h-10" />, gradient: "from-emerald-500/15 to-emerald-600/5", iconColor: "text-emerald-400",
-      tabs: ["admin_chat", "admin_support", "support_tickets", "support_chats", "quick_support", "manual_actions"],
+      tabs: ["admin_chat", "admin_support", "support_tickets", "support_chats", "quick_support"],
       roles: ["owner", "super_admin", "admin"],
     },
     {
