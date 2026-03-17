@@ -939,7 +939,38 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <DollarSign className="w-3.5 h-3.5 text-primary" /> تقرير الراتب
                   </p>
-                  {userReportData.host_salary && (
+                  {/* New salary_report format */}
+                  {userReportData.salary !== undefined ? (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
+                        <span className="text-xs font-bold font-mono text-foreground">${userReportData.salary?.toLocaleString() || 0}</span>
+                      </div>
+                      {(userReportData.deduction || 0) > 0 && (
+                        <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-rose-400">المقتطع</span>
+                          <span className="text-xs font-bold font-mono text-rose-400">-${userReportData.deduction}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
+                        <span className="text-xs font-bold font-mono text-emerald-400">${userReportData.net?.toLocaleString() || 0}</span>
+                      </div>
+                      {userReportData.agency_salary > 0 && (
+                        <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
+                          <span className="text-xs font-bold font-mono text-amber-400">${userReportData.agency_salary}</span>
+                        </div>
+                      )}
+                      {userReportData.is_manual && (
+                        <div className="flex justify-between bg-rose-500/5 border border-rose-500/10 rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-rose-400 font-bold">⚠️ مبلغ يدوي</span>
+                          <span className="text-xs font-bold font-mono text-rose-400">${userReportData.manual_amount || 0}</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : userReportData.host_salary ? (
+                    /* Fallback: old salary_check_all format */
                     <div className="space-y-1.5">
                       <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
                         <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
@@ -955,22 +986,77 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
                         <span className="text-xs font-bold font-mono text-emerald-400">${userReportData.host_salary.net?.toLocaleString() || 0}</span>
                       </div>
+                      {userReportData.agency_salary?.has_salary && (
+                        <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
+                          <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
+                          <span className="text-xs font-bold font-mono text-amber-400">${userReportData.agency_salary.amount}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {userReportData.agency_salary?.has_salary && (
-                    <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
-                      <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
-                      <span className="text-xs font-bold font-mono text-amber-400">${userReportData.agency_salary.amount}</span>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
 
+                {/* Supporter details (from salary_report) */}
+                {(userReportData.monthly_sent || userReportData.monthly_received) && (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <BarChart3 className="w-3.5 h-3.5 text-primary" /> تفاصيل الدعم
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                        <p className="text-[9px] text-muted-foreground mb-0.5">إجمالي المُرسل</p>
+                        <p className="text-xs font-bold font-mono text-foreground">{(userReportData.monthly_sent || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                        <p className="text-[9px] text-muted-foreground mb-0.5">إجمالي المُستلم</p>
+                        <p className="text-xs font-bold font-mono text-foreground">{(userReportData.monthly_received || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                        <p className="text-[9px] text-muted-foreground mb-0.5">مستوى الإرسال</p>
+                        <p className="text-xs font-bold font-mono text-foreground">{userReportData.sender_level || 0}</p>
+                      </div>
+                      <div className="bg-white/[0.03] rounded-lg px-3 py-2">
+                        <p className="text-[9px] text-muted-foreground mb-0.5">مستوى الاستقبال</p>
+                        <p className="text-xs font-bold font-mono text-foreground">{userReportData.receiver_level || 0}</p>
+                      </div>
+                    </div>
+                    {userReportData.charger_level > 0 && (
+                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">مستوى الشحن</span>
+                        <span className="text-xs font-bold font-mono text-foreground">{userReportData.charger_level}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Transfers to 10000 (from salary_report) */}
+                {userReportData.transfers_to_10000?.length > 0 && (
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-primary" /> الحوالات المختارة
+                    </p>
+                    {userReportData.transfers_to_10000.map((t: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground font-mono">ref: {t.ref}</span>
+                        <span className="text-xs font-bold font-mono text-foreground">${t.amount_usd}</span>
+                        <span className="text-[9px] text-muted-foreground">{t.time}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Account status */}
-                {userReportData.host_salary && (
+                {(userReportData.agency_id || userReportData.host_salary) && (
                   <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-2">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-primary" /> حالة الحساب
                     </p>
+                    {userReportData.agency_id > 0 && (
+                      <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <span className="text-[10px] text-muted-foreground">رقم الوكالة</span>
+                        <span className="text-xs font-bold text-foreground">{userReportData.agency_id}</span>
+                      </div>
+                    )}
                     {userReportData.is_agency_owner !== undefined && (
                       <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
                         <span className="text-[10px] text-muted-foreground">صاحب وكالة</span>
