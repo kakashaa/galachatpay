@@ -1063,49 +1063,35 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container" style={{ background: "#09090b" }}>
-      {/* Header */}
-      <header className="sticky top-0 z-20 backdrop-blur-xl border-b border-white/5 px-4 py-3" style={{ background: "rgba(9,9,11,0.92)" }}>
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <div className="flex items-center gap-3">
-            {(activeTab || activeSection) ? (
-              <button onClick={() => {
-                if (activeTab) { setActiveTab(null); setActiveSection(null); }
-                else { setActiveSection(null); }
-              }} className="p-1.5 rounded-xl hover:bg-white/5 transition-colors">
-                <ArrowRight className="w-5 h-5 text-foreground" />
-              </button>
-            ) : (
-              <Shield className="w-5 h-5 text-primary" />
-            )}
-            <div>
-              <h1 className="font-bold text-lg tracking-tight text-foreground">
-                {activeTab ? tabs.find(t => t.key === activeTab)?.label
-                  : activeSection ? currentSectionDef?.title
-                  : "لوحة التحكم"}
-              </h1>
-              {!activeTab && !activeSection && (
-                <p className="text-[10px] text-muted-foreground">مرحباً، {adminDisplayName}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isOwner && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>
-            )}
-            {adminRole === "super_admin" && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر أدمن</span>
-            )}
-            {adminRole === "admin" && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>
-            )}
-            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
-              <LogOut className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
+    <div className="mobile-container text-foreground overflow-x-hidden overflow-y-auto relative" style={{ background: "#09090b", overflow: 'hidden auto' }}>
+      {/* Header - same style as user Dashboard */}
+      <header className="relative z-10 flex justify-between items-center px-4 pt-6 pb-2">
+        {activeTab ? (
+          <button
+            onClick={() => { setActiveTab(null); setActiveSection(null); }}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+          >
+            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        ) : (
+          <button onClick={handleLogout} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors">
+            <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+        <h1 className="text-base font-black gradient-text">
+          {activeTab ? (tabs.find(t => t.key === activeTab)?.label || 'لوحة التحكم') : 'غلا شات'}
+        </h1>
+        <div className="w-8 flex items-center justify-center">
+          {!activeTab && (
+            <>
+              {isOwner && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>}
+              {adminRole === "super_admin" && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر</span>}
+              {adminRole === "admin" && <span className="text-[7px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>}
+            </>
+          )}
         </div>
       </header>
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="relative z-10">
       {/* Home — 4 Section Cards */}
       {!activeTab && !activeSection && bottomTab === 'home' && (
         <AdminHomeView
