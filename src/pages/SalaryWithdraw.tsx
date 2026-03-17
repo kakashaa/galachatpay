@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe,
-  UserCheck, DollarSign, ArrowRight, ArrowLeft, ShieldAlert, Phone,
-  Loader2, Clock, Copy, Camera, Landmark, User, Frown, ChevronDown, ShieldX, RefreshCw, Coins,
+  UserCheck, ArrowRight, ArrowLeft, Phone,
+  Loader2, Copy, Frown, ChevronDown, RefreshCw, Coins,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
