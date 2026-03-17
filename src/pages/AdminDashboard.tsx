@@ -353,7 +353,7 @@ const AdminDashboardPage: React.FC = () => {
 
   const loadStats = async () => {
     try {
-      const [salary, reports, animated, customG, tickets, quickSupport, vipReqs] = await Promise.all([
+      const [salary, reports, animated, customG, tickets, quickSupport, vipReqs, supportChatSessions] = await Promise.all([
         supabase.from("salary_requests").select("status"),
         supabase.from("ban_reports").select("is_verified"),
         supabase.from("animated_photo_requests").select("status"),
@@ -361,13 +361,19 @@ const AdminDashboardPage: React.FC = () => {
         supabase.from("support_tickets").select("status"),
         supabase.from("quick_support_requests").select("status"),
         supabase.from("vip_requests").select("id"),
+        supabase.from("support_chat_sessions").select("status"),
       ]);
       
       // Also update quick support requests for badge count
       setQuickSupportRequests(prev => prev.length ? prev : (quickSupport.data || []));
       setAllCustomGifts(prev => prev.length ? prev : (customG.data || []));
       
-      const pending = (salary.data?.filter(r => r.status === "pending").length || 0) + 
+      const salaryPending = salary.data?.filter(r => r.status === "pending").length || 0;
+      const supportPending = (tickets.data?.filter(r => r.status === "open").length || 0) +
+                            (quickSupport.data?.filter((r: any) => r.status === "pending").length || 0) +
+                            (supportChatSessions.data?.filter((r: any) => r.status === "waiting").length || 0);
+      
+      const pending = salaryPending + 
                       (reports.data?.filter(r => !r.is_verified).length || 0) +
                       (animated.data?.filter(r => r.status === "pending").length || 0) +
                       (customG.data?.filter(r => r.status === "pending").length || 0) +
@@ -383,6 +389,17 @@ const AdminDashboardPage: React.FC = () => {
       const rejected = (salary.data?.filter(r => r.status === "rejected").length || 0) +
                        (animated.data?.filter(r => r.status === "rejected").length || 0) +
                        (customG.data?.filter(r => r.status === "rejected").length || 0);
+      
+      // Play notification sounds when new items arrive
+      const prev = prevBadgesRef.current;
+      if (prev.total > 0) { // Skip first load
+        if (supportPending > prev.support) {
+          playUrgentSound();
+        } else if (salaryPending > prev.salary || pending > prev.total) {
+          playNotificationSound();
+        }
+      }
+      prevBadgesRef.current = { salary: salaryPending, support: supportPending, total: pending };
       
       setStats({ pending, approved, rejected });
     } catch (err) {
