@@ -258,8 +258,11 @@ const AdminDashboardPage: React.FC = () => {
 
   const adminSessionToken = sessionStorage.getItem("admin_session_token");
   const adminUsername = sessionStorage.getItem("admin_username");
-  const adminRole = sessionStorage.getItem("admin_role") as "super_admin" | "admin" | "moderator" | null;
-  const isSuperAdmin = adminRole === "super_admin";
+  const adminDisplayName = sessionStorage.getItem("admin_display_name") || adminUsername;
+  const adminRole = sessionStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
+  const isOwner = adminRole === "owner";
+  const isSuperAdmin = adminRole === "super_admin" || isOwner;
+  const isRegularAdmin = adminRole === "admin";
   const adminPermissions: string[] = (() => {
     try { return JSON.parse(sessionStorage.getItem("admin_permissions") || "[]"); } catch { return []; }
   })();
@@ -484,13 +487,13 @@ const AdminDashboardPage: React.FC = () => {
           break;
         }
         case "trash": {
-          if (adminRole === "super_admin") {
+          if (isOwner) {
             setTrashData(await adminCall("list_trash") || { videos: [], entries: [], frames: [], customs: [] });
           }
           break;
         }
         case "audit_log": {
-          if (adminRole === "super_admin") {
+          if (isOwner) {
             setAuditLogs(await adminCall("list_audit_log") || []);
           }
           break;
@@ -539,8 +542,13 @@ const AdminDashboardPage: React.FC = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("admin_session_token");
     sessionStorage.removeItem("admin_username");
+    sessionStorage.removeItem("admin_display_name");
     sessionStorage.removeItem("admin_role");
     sessionStorage.removeItem("admin_permissions");
+    sessionStorage.removeItem("admin_api_token");
+    sessionStorage.removeItem("admin_shift_start");
+    sessionStorage.removeItem("admin_shift_end");
+    sessionStorage.removeItem("admin_phone");
     navigate("/admin");
   };
 
@@ -854,33 +862,42 @@ const AdminDashboardPage: React.FC = () => {
     </div>
   );
 
-  // Section definitions
+  // Section definitions - filtered by role
   type SectionKey = "requests" | "settings" | "chat" | "finance";
-  const SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[] }[] = [
+  const ALL_SECTIONS: { id: SectionKey; title: string; description: string; icon: React.ReactNode; gradient: string; iconColor: string; tabs: Exclude<Tab, null>[]; roles: string[] }[] = [
     {
       id: "requests", title: "الطلبات والموافقات", description: "طلبات تحتاج موافقة",
       icon: <ClipboardList className="w-10 h-10" />, gradient: "from-blue-500/15 to-blue-600/5", iconColor: "text-blue-400",
       tabs: ["all_requests", "salary", "custom_gifts", "animated_photos", "id_changes", "reports"],
+      roles: ["owner", "super_admin"],
     },
     {
       id: "settings", title: "الإعدادات والإضافات", description: "إدارة المحتوى",
       icon: <Settings className="w-10 h-10" />, gradient: "from-violet-500/15 to-violet-600/5", iconColor: "text-violet-400",
       tabs: ["videos", "entries", "frames", "hairs", "gifts", "notifications", "banners", "admin_stars", "element_settings",
-        ...(adminRole === "super_admin" || adminRole === "admin" ? ["moderators" as Exclude<Tab, null>] : []),
-        ...(adminRole === "super_admin" ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
+        ...(isOwner ? ["moderators" as Exclude<Tab, null>] : []),
+        ...(isOwner ? ["trash" as Exclude<Tab, null>, "audit_log" as Exclude<Tab, null>] : []),
       ],
+      roles: ["owner"],
     },
     {
       id: "chat", title: "الدردشة والدعم", description: "تواصل + مساعدة",
       icon: <MessageSquare className="w-10 h-10" />, gradient: "from-emerald-500/15 to-emerald-600/5", iconColor: "text-emerald-400",
       tabs: ["admin_chat", "support_tickets", "support_chats", "quick_support"],
+      roles: ["owner", "super_admin", "admin"],
     },
     {
       id: "finance", title: "المالية والوكالات", description: "وكالات + رواتب",
       icon: <Wallet className="w-10 h-10" />, gradient: "from-amber-500/15 to-amber-600/5", iconColor: "text-amber-400",
       tabs: ["agencies", "top_agents", "bd_management", "blocks"],
+      roles: ["owner"],
     },
   ];
+  // Filter sections by role
+  const SECTIONS = ALL_SECTIONS.filter(s => {
+    if (isModeratorRole) return true; // moderators use permission-based filtering
+    return adminRole ? s.roles.includes(adminRole) : false;
+  });
 
   const allTabs: { key: Exclude<Tab, null>; label: string; icon: React.ReactNode; color: string; count?: number }[] = [
     { key: "admin_chat", label: "دردشة الإدارة", icon: <MessageSquare className="w-4 h-4" />, color: "text-emerald-400" },
@@ -906,10 +923,8 @@ const AdminDashboardPage: React.FC = () => {
     { key: "element_settings", label: "إعدادات العناصر", icon: <Settings className="w-4 h-4" />, color: "text-slate-400" },
     { key: "banners", label: "بنرات", icon: <ImageIcon className="w-4 h-4" />, color: "text-teal-400" },
     { key: "agencies", label: "وكالات الشحن", icon: <Wallet className="w-4 h-4" />, color: "text-amber-400" },
-    ...((adminRole === "super_admin" || adminRole === "admin") ? [
+    ...(isOwner ? [
       { key: "moderators" as Exclude<Tab, null>, label: "المسؤولين", icon: <Users className="w-4 h-4" />, color: "text-emerald-400" },
-    ] : []),
-    ...(adminRole === "super_admin" ? [
       { key: "trash" as Exclude<Tab, null>, label: "المحذوفات", icon: <Trash2 className="w-4 h-4" />, color: "text-gray-400", count: trashData.videos.length + trashData.entries.length + trashData.frames.length + trashData.customs.length },
       { key: "audit_log" as Exclude<Tab, null>, label: "سجل النشاطات", icon: <ScrollText className="w-4 h-4" />, color: "text-violet-400" },
     ] : []),
@@ -1029,13 +1044,19 @@ const AdminDashboardPage: React.FC = () => {
                   : "لوحة التحكم"}
               </h1>
               {!activeTab && !activeSection && (
-                <p className="text-[10px] text-muted-foreground">مرحباً، {adminUsername}</p>
+                <p className="text-[10px] text-muted-foreground">مرحباً، {adminDisplayName}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isOwner && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">Owner</span>
+            )}
             {adminRole === "super_admin" && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">رئيسي</span>
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold border border-primary/20">سوبر أدمن</span>
+            )}
+            {adminRole === "admin" && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">أدمن</span>
             )}
             <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-white/5 transition-colors">
               <LogOut className="w-4 h-4 text-muted-foreground" />
@@ -2709,8 +2730,8 @@ const AdminDashboardPage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Audit Log Tab - Super Admin Only */}
-            {activeTab === "audit_log" && adminRole === "super_admin" && (
+            {/* Audit Log Tab - Owner Only */}
+            {activeTab === "audit_log" && isOwner && (
               <motion.div key="audit_log" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
                 <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-3 mb-4">
                   <p className="text-xs text-violet-400 leading-relaxed">
