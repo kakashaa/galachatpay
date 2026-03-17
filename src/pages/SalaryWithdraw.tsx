@@ -226,15 +226,10 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleSelectTransfer = (transfer: Transfer) => {
+  const handleSelectTransfer = (transfer: Transfer, mode: "cash" | "coins") => {
     setSelectedTransfer(transfer);
 
-    const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
-    const selectedIndex = newTransfers.indexOf(transfer);
-    const { maxCash } = getWithdrawalLimits(isAgencyOwner);
-    const isCash = (usedCount + selectedIndex) < maxCash;
-
-    if (isCash) {
+    if (mode === "cash") {
       const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
       if (!canWithdrawCash) {
         toast.error(`سحب الراتب النقدي متاح فقط من يوم ${startDay} إلى ${lastDay} من الشهر`);
