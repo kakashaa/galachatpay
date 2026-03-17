@@ -152,15 +152,13 @@ const SalaryWithdraw: React.FC = () => {
 
   // Selected transfer
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
-  const [withdrawalMode, setWithdrawalMode] = useState<"cash" | "coins">("cash");
+  const [_withdrawalMode, setWithdrawalMode] = useState<"cash" | "coins">("cash");
 
   // Steps
   const [step, setStep] = useState<string>("loading");
 
   // Screenshot for manual verification
   const [screenshotBase64, setScreenshotBase64] = useState("");
-  const [screenshotPreview, setScreenshotPreview] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Bank selection
   const [selectedCountry, setSelectedCountry] = useState("");
