@@ -2512,6 +2512,13 @@ const AdminDashboardPage: React.FC = () => {
 
 
 
+            {/* Admin Group Chat Tab */}
+            {activeTab === "admin_chat" && (
+              <motion.div key="admin_chat" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }}>
+                <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole} />
+              </motion.div>
+            )}
+
             {/* Support Tickets Tab */}
             {activeTab === "support_tickets" && (
               <motion.div key="support_tickets" custom={tabDirection} variants={tabSlideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: "easeInOut" }} className="space-y-3">
