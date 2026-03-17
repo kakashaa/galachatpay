@@ -269,6 +269,19 @@ const AdminDashboardPage: React.FC = () => {
   const adminUsername = sessionStorage.getItem("admin_username");
   const adminDisplayName = sessionStorage.getItem("admin_display_name") || adminUsername;
   const adminRole = sessionStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
+
+  // Validate token format — if it's not valid base64-JSON, force re-login
+  useEffect(() => {
+    if (adminSessionToken) {
+      try {
+        JSON.parse(atob(adminSessionToken));
+      } catch {
+        console.warn("Invalid admin session token format, forcing re-login");
+        sessionStorage.clear();
+        navigate("/admin", { replace: true });
+      }
+    }
+  }, [adminSessionToken, navigate]);
   const isOwner = adminRole === "owner";
   const isSuperAdmin = adminRole === "super_admin" || isOwner;
   const isRegularAdmin = adminRole === "admin";
