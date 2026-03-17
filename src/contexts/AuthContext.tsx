@@ -219,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem("gala_user");
     localStorage.removeItem("gala_session_key");
+    localStorage.removeItem("gala_avatar");
   };
 
   return (

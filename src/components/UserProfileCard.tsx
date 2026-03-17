@@ -54,6 +54,21 @@ const UserProfileCard: React.FC = () => {
   const [totalStars, setTotalStars] = useState(0);
   const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
+
+  // Fetch avatar from API if not cached
+  useEffect(() => {
+    if (avatarUrl || !user?.uuid) return;
+    fetch(`https://galachat.site/project-z/api.php?action=get_avatar&uuid=${user.uuid}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.avatar) {
+          setAvatarUrl(d.avatar);
+          localStorage.setItem("gala_avatar", d.avatar);
+        }
+      })
+      .catch(() => {});
+  }, [user?.uuid, avatarUrl]);
 
   const hasVip = !!(user?.vip && Object.keys(user.vip).length > 0 &&
     ((user.vip as any).vip_level || (user.vip as any).level || 0) > 0);
@@ -120,8 +135,7 @@ const UserProfileCard: React.FC = () => {
 
   const typeLabel = getUserTypeLabel(user.type_user);
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
-  const userAvatar = getAvatarUrl(user.profile?.image || "");
-  const avatarSrc = userAvatar || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
+  const avatarSrc = avatarUrl || getAvatarUrl(user.profile?.image || "") || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
 
   
 

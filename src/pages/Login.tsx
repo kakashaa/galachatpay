@@ -192,6 +192,15 @@ const Login: React.FC = () => {
       // Store password for session verification
       localStorage.setItem("gala_session_key", btoa(password.trim()));
 
+      // Fetch and save real avatar from get_avatar API
+      try {
+        const avatarRes = await fetch(`https://galachat.site/project-z/api.php?action=get_avatar&uuid=${apiUser.uuid}`);
+        const avatarData = await avatarRes.json();
+        if (avatarData.avatar) {
+          localStorage.setItem("gala_avatar", avatarData.avatar);
+        }
+      } catch { /* silent */ }
+
       setUser(userObj);
 
       // Update saved accounts with latest info
