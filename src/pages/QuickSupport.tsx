@@ -16,7 +16,10 @@ const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
   const vipLevel = user.vip?.vip_level || user.vip?.level || 0;
   const isHostAgent = (user.agency_id || 0) > 0;
-  return vipLevel >= 6 || isHostAgent;
+  // type_user 2=وكيل مضيفين, 4=وكيل شحن ومضيفين, 5=وكيل شحن ومضيف, 6=الكل
+  const typeUser = user.type_user || 0;
+  const isAgentType = [2, 4, 5, 6].includes(typeUser);
+  return vipLevel >= 6 || isHostAgent || isAgentType;
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
