@@ -1107,7 +1107,27 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative" style={{ background: "#09090b", overflow: 'hidden auto' }}>
+    <div
+      ref={scrollContainerRef}
+      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative"
+      style={{ background: "#09090b", overflow: 'hidden auto' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 0 || refreshing) && (
+        <div
+          className="flex items-center justify-center transition-all duration-200 relative z-20"
+          style={{ height: refreshing ? 48 : pullDistance > 0 ? pullDistance : 0 }}
+        >
+          <RefreshCw
+            className={`w-5 h-5 text-primary transition-transform ${refreshing ? "animate-spin" : ""}`}
+            style={{ transform: `rotate(${pullProgress * 360}deg)`, opacity: pullProgress }}
+          />
+        </div>
+      )}
+
       {/* Background */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full" />
