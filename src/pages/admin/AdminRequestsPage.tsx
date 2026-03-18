@@ -115,14 +115,16 @@ const AdminRequestsPage: React.FC = () => {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
         const wareType = item.ware_type === "entry_profile" ? "entry" : "room_entry";
-        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: wareType, name: item.title || item.user_name || "دخولية", file_url: fileUrl, uuid: item.user_uuid, file_format: fileUrl.endsWith(".svga") ? "svga" : fileUrl.endsWith(".mp4") ? "mp4" : "svga", expire: String(item.duration_days || 30) }) });
+        const targetUuid = item.friend_uuid || item.user_uuid;
+        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: wareType, name: item.title || item.user_name || "دخولية", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : fileUrl.endsWith(".mp4") ? "mp4" : "svga", expire: String(item.duration_days || 30) }) });
         const data = await res.json();
         if (data.success) toast.success("تم رفع الدخولية لغلا لايف ✅");
         else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "frames") {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
-        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "frame", name: item.title || item.user_name || "إطار", file_url: fileUrl, uuid: item.user_uuid, file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4", expire: String(item.duration_days || 30) }) });
+        const targetUuid = item.friend_uuid || item.user_uuid;
+        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "frame", name: item.title || item.user_name || "إطار", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4", expire: String(item.duration_days || 30) }) });
         const data = await res.json();
         if (data.success) toast.success("تم رفع الإطار لغلا لايف ✅");
         else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
@@ -263,7 +265,7 @@ const AdminRequestsPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Header: title + badge */}
+        {/* Header: title + badges */}
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold truncate">{item.title || item.user_name || "—"}</p>
@@ -271,10 +273,17 @@ const AdminRequestsPage: React.FC = () => {
               <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
             )}
           </div>
-          <span className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1 mr-2 flex-shrink-0" style={{ background: badge.bg }}>
-            <BadgeIcon className={`w-3 h-3 ${badge.color}`} />
-            <span className={badge.color}>{badge.label}</span>
-          </span>
+          <div className="flex items-center gap-1.5 mr-2 flex-shrink-0">
+            {item.claim_type === "friend" && (
+              <span className="px-2 py-1 rounded-lg text-[9px] font-bold" style={{ background: 'rgba(236,72,153,0.1)', color: 'hsl(330 80% 60%)' }}>
+                إهداء 🎁
+              </span>
+            )}
+            <span className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1" style={{ background: badge.bg }}>
+              <BadgeIcon className={`w-3 h-3 ${badge.color}`} />
+              <span className={badge.color}>{badge.label}</span>
+            </span>
+          </div>
         </div>
 
         {/* Detail rows */}
