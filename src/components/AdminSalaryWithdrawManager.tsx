@@ -305,6 +305,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
+        await sendUserNotification(
+          approveSheet.user_uuid,
+          "تم قبول سحب الراتب ✅",
+          `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`
+        );
         toast.success("تم قبول الطلب وإرسال الإشعار");
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
         fetchData();
