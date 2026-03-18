@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, Search, MessageSquare, Eye, Star } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 type BottomTab = 'home' | 'search' | 'chat' | 'monitor' | 'favorites';
 
@@ -7,55 +8,86 @@ interface Props {
   active: BottomTab;
   onChange: (tab: BottomTab) => void;
   chatBadge?: number;
+  onChatNavigate?: () => void;
 }
 
-const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
+const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, onChatNavigate }) => {
   const tabs: { key: BottomTab; label: string; icon: React.ElementType }[] = [
     { key: 'favorites', label: 'المفضلة', icon: Star },
     { key: 'monitor', label: 'مراقبة', icon: Eye },
-    { key: 'home', label: 'الرئيسية', icon: Home },
-    { key: 'search', label: 'بحث', icon: Search },
     { key: 'chat', label: 'الدردشة', icon: MessageSquare },
+    { key: 'search', label: 'بحث', icon: Search },
+    { key: 'home', label: 'الرئيسية', icon: Home },
   ];
 
   return (
-    <div className="fixed left-1/2 -translate-x-1/2 z-50" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
-      <nav
-        className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-white/10"
-        style={{
-          background: "rgba(15, 15, 25, 0.88)",
-          boxShadow: "0 8px 32px -6px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06) inset",
-          backdropFilter: "blur(16px)",
-        }}
-      >
-        {tabs.map(tab => {
+    <motion.nav
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: "spring", damping: 20, stiffness: 300 }}
+      className="fixed bottom-0 left-0 right-0 z-50"
+    >
+      {/* Blur background */}
+      <div className="absolute inset-0 bg-[hsl(var(--background))]/80 backdrop-blur-xl border-t border-white/5" />
+
+      <div className="relative max-w-2xl mx-auto px-6 py-2 flex items-end justify-between">
+        {tabs.map((tab, i) => {
           const Icon = tab.icon;
+          const isCenter = i === 2; // الدردشة بالوسط
           const isActive = active === tab.key;
+
           return (
-            <button
+            <motion.button
               key={tab.key}
-              onClick={() => onChange(tab.key)}
-              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all duration-300 active:scale-90 group ${
-                isActive ? 'bg-primary/15' : 'hover:bg-white/5'
-              }`}
-              style={isActive ? { boxShadow: '0 0 14px hsl(8 88% 62% / 0.25)' } : undefined}
+              whileTap={{ scale: 0.85 }}
+              onClick={() => {
+                if (tab.key === 'chat' && onChatNavigate) {
+                  onChatNavigate();
+                } else {
+                  onChange(tab.key);
+                }
+              }}
+              className={`flex flex-col items-center gap-0.5 relative ${isCenter ? '-mt-4' : ''}`}
             >
-              <div className={`transition-transform duration-300 ${isActive ? 'animate-dock-bounce' : 'group-hover:animate-dock-wiggle'}`}>
-                <Icon className={`w-5 h-5 transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-              </div>
-              <span className={`text-[9px] font-bold transition-colors duration-200 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
+              {isCenter ? (
+                /* زر الدردشة — كبير ومميز */
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                    <Icon className="w-6 h-6 text-black" />
+                  </div>
+                  {chatBadge && chatBadge > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-[9px] text-white font-bold flex items-center justify-center shadow-lg shadow-red-500/30"
+                    >
+                      {chatBadge > 99 ? '99+' : chatBadge}
+                    </motion.span>
+                  )}
+                </div>
+              ) : (
+                <div className="relative py-1">
+                  <Icon className={`w-5 h-5 transition-colors duration-200 ${isActive ? 'text-emerald-400' : 'text-muted-foreground'}`} />
+                  {/* Active indicator */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="adminActiveTab"
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400"
+                    />
+                  )}
+                </div>
+              )}
+              <span className={`text-[9px] ${isActive || isCenter ? 'text-emerald-400 font-bold' : 'text-muted-foreground'}`}>
                 {tab.label}
               </span>
-              {tab.key === 'chat' && chatBadge && chatBadge > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[8px] font-bold rounded-full">
-                  {chatBadge > 99 ? '99+' : chatBadge}
-                </span>
-              )}
-            </button>
+            </motion.button>
           );
         })}
-      </nav>
-    </div>
+      </div>
+
+      {/* Safe area for iPhone */}
+      <div className="h-[env(safe-area-inset-bottom)] bg-[hsl(var(--background))]/80" />
+    </motion.nav>
   );
 };
 

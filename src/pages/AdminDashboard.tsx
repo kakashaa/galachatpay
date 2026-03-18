@@ -2942,13 +2942,8 @@ const AdminDashboardPage: React.FC = () => {
       {!activeTab && !activeSection && (
         <AdminBottomNav
           active={bottomTab}
-          onChange={(tab) => {
-            if (tab === 'chat') {
-              navigate("/admin/chat");
-            } else {
-              setBottomTab(tab);
-            }
-          }}
+          onChange={(tab) => setBottomTab(tab)}
+          onChatNavigate={() => navigate("/admin/chat")}
           chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
         />
       )}

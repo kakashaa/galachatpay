@@ -16,6 +16,7 @@ interface ServiceItem {
   icon: React.ElementType;
   bg: string;
   iconColor: string;
+  shadowColor: string;
   badge?: number;
   route?: string;
 }
@@ -45,7 +46,6 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
       const endDate = parseTime(shiftEnd);
       const startDate = shiftStart ? parseTime(shiftStart) : now;
 
-      // Handle overnight shifts
       if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
 
       const totalMs = endDate.getTime() - startDate.getTime();
@@ -58,11 +58,9 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
         return;
       }
 
-      // Alert at 5 minutes remaining
       if (remainMs <= 5 * 60 * 1000 && remainMs > 0 && !alertPlayedRef.current) {
         alertPlayedRef.current = true;
         playUrgentSound();
-        // Play again after 2 seconds for emphasis
         setTimeout(() => playUrgentSound(), 2000);
       }
 
@@ -118,6 +116,16 @@ interface Props {
   isSuperAdmin: boolean;
 }
 
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.8 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+};
+
 const AdminHomeView: React.FC<Props> = ({
   adminDisplayName, adminRole, stats, badges,
   onServiceClick, onChatClick, recentLogs, isOwner, isSuperAdmin,
@@ -157,25 +165,25 @@ const AdminHomeView: React.FC<Props> = ({
     }
   }, [searchQuery]);
 
-  // Build 4-column service grid
+  // Build 3-column service grid
   const services: ServiceItem[] = [
     ...(isSuperAdmin ? [
-      { key: 'vip', label: 'VIP', icon: Crown, bg: 'rgba(234,179,8,0.12)', iconColor: 'text-yellow-400', badge: badges.vip || 0, route: '/admin/vip' },
-      { key: 'protection', label: 'الحماية', icon: Shield, bg: 'rgba(239,68,68,0.12)', iconColor: 'text-red-400', badge: badges.protection || 0, route: '/admin/ban' },
-      { key: 'reports', label: 'المداخيل', icon: BarChart3, bg: 'rgba(56,189,248,0.12)', iconColor: 'text-sky-400', route: '/admin/income' },
+      { key: 'vip', label: 'VIP', icon: Crown, bg: 'bg-yellow-500/[0.12]', iconColor: 'text-yellow-400', shadowColor: 'rgba(234,179,8,0.3)', badge: badges.vip || 0, route: '/admin/vip' },
+      { key: 'protection', label: 'الحماية', icon: Shield, bg: 'bg-red-500/[0.12]', iconColor: 'text-red-400', shadowColor: 'rgba(239,68,68,0.3)', badge: badges.protection || 0, route: '/admin/ban' },
+      { key: 'reports', label: 'المداخيل', icon: BarChart3, bg: 'bg-sky-500/[0.12]', iconColor: 'text-sky-400', shadowColor: 'rgba(56,189,248,0.3)', route: '/admin/income' },
     ] : []),
-    { key: 'support', label: 'الدعم', icon: Headset, bg: 'rgba(6,182,212,0.12)', iconColor: 'text-cyan-400', badge: badges.support || 0, route: '/admin/support' },
+    { key: 'support', label: 'الدعم', icon: Headset, bg: 'bg-cyan-500/[0.12]', iconColor: 'text-cyan-400', shadowColor: 'rgba(6,182,212,0.3)', badge: badges.support || 0, route: '/admin/support' },
     ...(isSuperAdmin ? [
-      { key: 'requests', label: 'الهدايا', icon: ShoppingBag, bg: 'rgba(236,72,153,0.12)', iconColor: 'text-pink-400', badge: badges.requests || 0, route: '/admin/gifts' },
-      { key: 'salary', label: 'الرواتب', icon: DollarSign, bg: 'rgba(34,197,94,0.12)', iconColor: 'text-emerald-400', badge: badges.salary || 0, route: '/admin/salary' },
-      { key: 'change_id', label: 'آيدي', icon: Hash, bg: 'rgba(168,85,247,0.12)', iconColor: 'text-purple-400', route: '/admin/id-change' },
-      { key: 'bd', label: 'البيدي', icon: Briefcase, bg: 'rgba(147,51,234,0.12)', iconColor: 'text-violet-400', route: '/admin/bd' },
+      { key: 'requests', label: 'الهدايا', icon: ShoppingBag, bg: 'bg-pink-500/[0.12]', iconColor: 'text-pink-400', shadowColor: 'rgba(236,72,153,0.3)', badge: badges.requests || 0, route: '/admin/gifts' },
+      { key: 'salary', label: 'الرواتب', icon: DollarSign, bg: 'bg-emerald-500/[0.12]', iconColor: 'text-emerald-400', shadowColor: 'rgba(34,197,94,0.3)', badge: badges.salary || 0, route: '/admin/salary' },
+      { key: 'change_id', label: 'آيدي', icon: Hash, bg: 'bg-purple-500/[0.12]', iconColor: 'text-purple-400', shadowColor: 'rgba(168,85,247,0.3)', route: '/admin/id-change' },
+      { key: 'bd', label: 'البيدي', icon: Briefcase, bg: 'bg-violet-500/[0.12]', iconColor: 'text-violet-400', shadowColor: 'rgba(147,51,234,0.3)', route: '/admin/bd' },
     ] : []),
     ...(isOwner ? [
-      { key: 'settings', label: 'الإعدادات', icon: Settings, bg: 'rgba(100,116,139,0.12)', iconColor: 'text-slate-400', route: '/admin/settings' },
-      { key: 'agencies', label: 'الوكالات', icon: ClipboardList, bg: 'rgba(245,158,11,0.12)', iconColor: 'text-amber-400', route: '/admin/agencies' },
-      { key: 'accounts', label: 'الأدمن', icon: Users, bg: 'rgba(34,197,94,0.12)', iconColor: 'text-emerald-400', route: '/admin/accounts' },
-      { key: 'audit_log', label: 'السجل', icon: ScrollText, bg: 'rgba(139,92,246,0.12)', iconColor: 'text-violet-400', route: '/admin/log' },
+      { key: 'settings', label: 'الإعدادات', icon: Settings, bg: 'bg-slate-500/[0.12]', iconColor: 'text-slate-400', shadowColor: 'rgba(100,116,139,0.3)', route: '/admin/settings' },
+      { key: 'agencies', label: 'الوكالات', icon: ClipboardList, bg: 'bg-amber-500/[0.12]', iconColor: 'text-amber-400', shadowColor: 'rgba(245,158,11,0.3)', route: '/admin/agencies' },
+      { key: 'accounts', label: 'الأدمن', icon: Users, bg: 'bg-emerald-500/[0.12]', iconColor: 'text-emerald-400', shadowColor: 'rgba(34,197,94,0.3)', route: '/admin/accounts' },
+      { key: 'audit_log', label: 'السجل', icon: ScrollText, bg: 'bg-violet-500/[0.12]', iconColor: 'text-violet-400', shadowColor: 'rgba(139,92,246,0.3)', route: '/admin/log' },
     ] : []),
   ];
 
@@ -243,19 +251,20 @@ const AdminHomeView: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Admin Profile Card */}
+      {/* Admin Profile Card — emerald themed */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] rounded-2xl p-4 mb-3"
+        transition={{ duration: 0.5 }}
+        className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/15 rounded-2xl p-4 mb-3"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[14px] bg-primary/15 border border-primary/20 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-primary" />
+          <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/25 flex items-center justify-center">
+            <Crown className="w-6 h-6 text-emerald-400" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-foreground truncate">أهلاً، {adminDisplayName}</p>
-            <p className="text-[10px] text-muted-foreground">{roleLabel}</p>
+            <p className="text-[10px] text-emerald-400 font-bold">{roleLabel}</p>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -268,23 +277,41 @@ const AdminHomeView: React.FC<Props> = ({
           <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />
         )}
 
-        {/* Quick Stats Row */}
-        <div className="grid grid-cols-3 gap-1.5 mt-2.5">
+        {/* Quick Stats Row — spring animated */}
+        <motion.div className="grid grid-cols-3 gap-2 mt-3">
           {[
-            { label: 'معلقة', value: stats.pending, color: 'text-amber-400' },
-            { label: 'مقبولة', value: stats.approved, color: 'text-emerald-400' },
-            { label: 'مرفوضة', value: stats.rejected, color: 'text-rose-400' },
-          ].map(s => (
-            <div key={s.label} className="text-center py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <p className={`text-base font-bold font-mono ${s.color}`}>{s.value}</p>
-              <p className="text-[8px] text-muted-foreground">{s.label}</p>
-            </div>
+            { label: 'معلقة', value: stats.pending, color: 'amber' },
+            { label: 'مقبولة', value: stats.approved, color: 'emerald' },
+            { label: 'مرفوضة', value: stats.rejected, color: 'rose' },
+          ].map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 + i * 0.1, type: "spring" }}
+              className={`text-center py-2 rounded-xl border bg-${s.color}-500/10 border-${s.color}-500/15`}
+            >
+              <motion.p
+                className={`text-xl font-bold font-mono text-${s.color}-400`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 + i * 0.1 }}
+              >
+                {s.value}
+              </motion.p>
+              <p className="text-[9px] text-muted-foreground">{s.label}</p>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </motion.div>
 
-      {/* Chat Bubbles */}
-      <div className="flex gap-2 mb-3">
+      {/* Chat Bubbles — animated */}
+      <motion.div
+        className="flex gap-2 mb-3"
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.3 }}
+      >
         <button
           onClick={() => navigate("/admin/chat")}
           className="flex-1 bg-emerald-500/8 border border-emerald-500/15 rounded-full py-2.5 px-3 flex items-center justify-center gap-2 hover:bg-emerald-500/12 transition-colors active:scale-[0.97]"
@@ -299,7 +326,7 @@ const AdminHomeView: React.FC<Props> = ({
           <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
           <span className="text-[10px] text-muted-foreground font-bold">الكل</span>
         </button>
-      </div>
+      </motion.div>
 
       {/* Services Title */}
       <div className="flex items-center gap-2 mb-2.5 pr-1">
@@ -307,40 +334,49 @@ const AdminHomeView: React.FC<Props> = ({
         <h3 className="text-xs font-black text-foreground">الخدمات</h3>
       </div>
 
-      {/* 4-Column Service Grid - matches MenuGrid style */}
-      <div className="grid grid-cols-4 gap-y-4 gap-x-1.5 mb-4 px-1">
-        {services.map((svc, i) => {
+      {/* 3-Column Service Grid — stagger animation */}
+      <motion.div
+        className="grid grid-cols-3 gap-4 px-2 mb-4"
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        {services.map(svc => {
           const Icon = svc.icon;
           return (
             <motion.button
               key={svc.key}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.03, duration: 0.25 }}
+              variants={itemVariants}
+              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05 }}
               onClick={() => svc.route ? navigate(svc.route) : onServiceClick(svc.key)}
-              className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <div
-                className="relative w-12 h-12 rounded-[14px] flex items-center justify-center"
-                style={{
-                  background: svc.bg,
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                <Icon className={`w-5 h-5 ${svc.iconColor}`} />
+              <div className="relative">
+                <div
+                  className={`w-14 h-14 rounded-2xl ${svc.bg} border border-white/5 flex items-center justify-center transition-all duration-300 group-active:shadow-lg`}
+                  style={{ boxShadow: `0 0 0 0 ${svc.shadowColor}` }}
+                >
+                  <Icon className={`w-6 h-6 ${svc.iconColor} transition-transform duration-300 group-hover:scale-110`} />
+                </div>
+                {/* Badge — only shows if count > 0 */}
                 {svc.badge && svc.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 flex items-center justify-center bg-rose-500 text-white text-[8px] font-bold rounded-full">
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-1 shadow-lg shadow-red-500/30"
+                  >
                     {svc.badge > 99 ? '99+' : svc.badge}
-                  </span>
+                  </motion.span>
                 )}
               </div>
-              <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">
+              <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                 {svc.label}
               </span>
             </motion.button>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Recent Activity */}
       {recentLogs.length > 0 && (
