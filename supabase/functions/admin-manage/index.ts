@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 // Primary admin accounts with roles (hardcoded)
-const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "super_admin" | "admin" }> = {
-  naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "super_admin" },
+const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "owner" | "super_admin" | "admin" }> = {
+  naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "owner" },
   blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
 };
 
@@ -26,7 +26,7 @@ async function authenticateAdmin(
   username: string,
   password: string,
   supabaseClient?: any
-): Promise<{ role: "super_admin" | "admin" | "moderator"; permissions?: string[] } | null> {
+): Promise<{ role: "owner" | "super_admin" | "admin" | "moderator"; permissions?: string[] } | null> {
   // Check primary accounts first
   const account = ADMIN_ACCOUNTS[username];
   if (account) {
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     );
 
     // For actions after login, validate session token instead of password
-    let auth: { role: "super_admin" | "admin" | "moderator"; permissions?: string[] } | null = null;
+    let auth: { role: "owner" | "super_admin" | "admin" | "moderator"; permissions?: string[] } | null = null;
     
     if (session_token && action !== "auth_check") {
       // Validate existing session token
@@ -117,6 +117,7 @@ Deno.serve(async (req) => {
     // supabase client already created above
 
     let result;
+    const isSuperAdmin = auth.role === "owner" || auth.role === "super_admin";
 
     // Audit log helper
     const logAudit = async (details: Record<string, unknown> = {}) => {
@@ -144,7 +145,7 @@ Deno.serve(async (req) => {
 
       // Audit log (super_admin only)
       case "list_audit_log": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك");
         const { data: logs, error } = await supabase
           .from("admin_audit_log")
           .select("*")
@@ -803,7 +804,7 @@ Deno.serve(async (req) => {
 
       // ========== TRASH MANAGEMENT (super_admin only) ==========
       case "list_trash": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك بالوصول للمحذوفات");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك بالوصول للمحذوفات");
         
         const [videos, entries, frames, customs] = await Promise.all([
           supabase.from("video_tutorials").select("*").eq("is_deleted", true).order("deleted_at", { ascending: false }),
@@ -822,7 +823,7 @@ Deno.serve(async (req) => {
       }
       
       case "restore_item": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك");
         const { table, id } = data;
         const allowedTables = ["video_tutorials", "entry_gifts", "frames", "custom_gifts"];
         if (!allowedTables.includes(table)) throw new Error("جدول غير مسموح");
@@ -837,7 +838,7 @@ Deno.serve(async (req) => {
       }
       
       case "permanent_delete": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك");
         const { table: delTable, id: delId } = data;
         const allowedDelTables = ["video_tutorials", "entry_gifts", "frames", "custom_gifts"];
         if (!allowedDelTables.includes(delTable)) throw new Error("جدول غير مسموح");
@@ -907,7 +908,7 @@ Deno.serve(async (req) => {
 
       // ========== MODERATOR MANAGEMENT (super_admin/admin only) ==========
       case "list_moderators": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { data: mods, error } = await supabase
           .from("admin_accounts")
           .select("*")
@@ -919,7 +920,7 @@ Deno.serve(async (req) => {
       }
 
       case "add_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { username: modUsername, display_name, password: modPassword, permissions } = data;
         if (!modUsername || !modPassword) throw new Error("اسم المستخدم وكلمة المرور مطلوبان");
         
@@ -947,7 +948,7 @@ Deno.serve(async (req) => {
       }
 
       case "update_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { id: modId, permissions: modPerms, display_name: modName, password: newModPw } = data;
         if (!modId) throw new Error("معرف المسؤول مطلوب");
         
@@ -966,7 +967,7 @@ Deno.serve(async (req) => {
       }
 
       case "toggle_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { id: toggleId, is_active } = data;
         if (!toggleId) throw new Error("معرف المسؤول مطلوب");
         const { error } = await supabase
@@ -979,7 +980,7 @@ Deno.serve(async (req) => {
       }
 
       case "delete_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { id: delModId } = data;
         if (!delModId) throw new Error("معرف المسؤول مطلوب");
         const { error } = await supabase

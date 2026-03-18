@@ -6,16 +6,16 @@ import { toast } from "sonner";
 export function useAdminSession() {
   const navigate = useNavigate();
 
-  const adminSessionToken = sessionStorage.getItem("admin_session_token");
-  const adminUsername = sessionStorage.getItem("admin_username");
-  const adminDisplayName = sessionStorage.getItem("admin_display_name") || adminUsername;
-  const adminRole = sessionStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
+  const adminSessionToken = localStorage.getItem("admin_session_token");
+  const adminUsername = localStorage.getItem("admin_username");
+  const adminDisplayName = localStorage.getItem("admin_display_name") || adminUsername;
+  const adminRole = localStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
   const isOwner = adminRole === "owner";
   const isSuperAdmin = adminRole === "super_admin" || isOwner;
   const isRegularAdmin = adminRole === "admin";
   const isModeratorRole = adminRole === "moderator";
   const adminPermissions: string[] = (() => {
-    try { return JSON.parse(sessionStorage.getItem("admin_permissions") || "[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem("admin_permissions") || "[]"); } catch { return []; }
   })();
 
   useEffect(() => {
@@ -26,10 +26,37 @@ export function useAdminSession() {
     try {
       JSON.parse(atob(adminSessionToken));
     } catch {
-      sessionStorage.clear();
+      ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
+       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
+      ].forEach(k => localStorage.removeItem(k));
       navigate("/admin", { replace: true });
     }
   }, [adminSessionToken, navigate]);
+
+  // Auto refresh token every hour
+  useEffect(() => {
+    const token = localStorage.getItem("admin_session_token");
+    if (!token) return;
+
+    try {
+      const decoded = JSON.parse(atob(token));
+      const age = Date.now() - (decoded.iat || 0);
+
+      // Refresh if older than 1 hour
+      if (age > 60 * 60 * 1000) {
+        const uname = localStorage.getItem("admin_username");
+        if (uname) {
+          supabase.functions.invoke("admin-manage", {
+            body: { session_token: token, action: "auth_check" }
+          }).then(({ data }) => {
+            if (data?.session_token) {
+              localStorage.setItem("admin_session_token", data.session_token);
+            }
+          });
+        }
+      }
+    } catch { }
+  }, []);
 
   const adminCall = useCallback(async (action: string, data: any = {}) => {
     const { data: result, error } = await supabase.functions.invoke("admin-manage", {
@@ -39,11 +66,11 @@ export function useAdminSession() {
     const isAuthError = result?.error === authErrorMsg ||
       (error && (error.message?.includes("401") || error.message?.includes(authErrorMsg)));
     if (isAuthError) {
-      sessionStorage.removeItem("admin_session_token");
-      sessionStorage.removeItem("admin_username");
-      sessionStorage.removeItem("admin_role");
-      sessionStorage.removeItem("admin_permissions");
-      sessionStorage.removeItem("admin_api_token");
+      localStorage.removeItem("admin_session_token");
+      localStorage.removeItem("admin_username");
+      localStorage.removeItem("admin_role");
+      localStorage.removeItem("admin_permissions");
+      localStorage.removeItem("admin_api_token");
       toast.error("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى");
       navigate("/admin");
       return;
@@ -70,7 +97,7 @@ export function useAdminSession() {
   const handleLogout = useCallback(() => {
     ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
      "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
-    ].forEach(k => sessionStorage.removeItem(k));
+    ].forEach(k => localStorage.removeItem(k));
     navigate("/admin");
   }, [navigate]);
 

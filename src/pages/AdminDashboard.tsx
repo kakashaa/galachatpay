@@ -66,10 +66,10 @@ const AdminDashboardPage: React.FC = () => {
   const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
 
   // Session
-  const adminSessionToken = sessionStorage.getItem("admin_session_token");
-  const adminUsername = sessionStorage.getItem("admin_username");
-  const adminDisplayName = sessionStorage.getItem("admin_display_name") || adminUsername;
-  const adminRole = sessionStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
+  const adminSessionToken = localStorage.getItem("admin_session_token");
+  const adminUsername = localStorage.getItem("admin_username");
+  const adminDisplayName = localStorage.getItem("admin_display_name") || adminUsername;
+  const adminRole = localStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
   const isOwner = adminRole === "owner";
   const isSuperAdmin = adminRole === "super_admin" || isOwner;
 
@@ -83,7 +83,9 @@ const AdminDashboardPage: React.FC = () => {
       JSON.parse(atob(adminSessionToken));
     } catch {
       console.warn("Invalid admin session token format, forcing re-login");
-      sessionStorage.clear();
+      ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
+       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
+      ].forEach(k => localStorage.removeItem(k));
       navigate("/admin", { replace: true });
     }
   }, [adminSessionToken, navigate]);
@@ -190,7 +192,7 @@ const AdminDashboardPage: React.FC = () => {
   const handleLogout = () => {
     ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
-    ].forEach(k => sessionStorage.removeItem(k));
+    ].forEach(k => localStorage.removeItem(k));
     navigate("/admin");
   };
 

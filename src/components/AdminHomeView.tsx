@@ -307,10 +307,10 @@ const AdminHomeView: React.FC<Props> = ({
   const [searchResult, setSearchResult] = useState<any>(null);
   const [searching, setSearching] = useState(false);
 
-  const adminUsername = sessionStorage.getItem("admin_username") || '';
-  const adminRole = sessionStorage.getItem("admin_role") as string | null;
-  const shiftStart = sessionStorage.getItem("admin_shift_start");
-  const shiftEnd = sessionStorage.getItem("admin_shift_end");
+  const adminUsername = localStorage.getItem("admin_username") || '';
+  const adminRole = localStorage.getItem("admin_role") as string | null;
+  const shiftStart = localStorage.getItem("admin_shift_start");
+  const shiftEnd = localStorage.getItem("admin_shift_end");
 
   const searchUser = useCallback(async (uuid?: string) => {
     const target = uuid || searchUuid.trim();
