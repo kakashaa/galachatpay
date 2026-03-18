@@ -1163,20 +1163,20 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Favorites tab - shows quick access buttons */}
+      {/* Favorites tab - shows quick access buttons with route navigation */}
       {!activeTab && !activeSection && bottomTab === 'favorites' && (
         <div className="max-w-2xl mx-auto p-4 space-y-3" dir="rtl">
           <p className="text-sm font-bold text-muted-foreground">الوصول السريع</p>
           {[
-            { label: 'طلبات الرواتب', tab: 'salary' as Tab, section: 'requests' as const, count: salaryRequests.filter(r => r.status === 'pending').length },
-            { label: 'الصور المتحركة', tab: 'animated_photos' as Tab, section: 'requests' as const, count: animatedPhotos.filter(p => p.status === 'pending').length },
-            { label: 'هدايا مخصصة', tab: 'custom_gifts' as Tab, section: 'requests' as const, count: allCustomGifts.filter(g => g.status === 'pending').length },
-            { label: 'تذاكر الدعم', tab: 'support_tickets' as Tab, section: 'chat' as const, count: supportTickets.filter((t: any) => t.status === 'open').length },
-            { label: 'البلاغات', tab: 'reports' as Tab, section: 'requests' as const, count: banReports.filter(r => !r.is_verified).length },
+            { label: 'طلبات الرواتب', route: '/admin/salary', count: salaryRequests.filter(r => r.status === 'pending').length },
+            { label: 'الهدايا', route: '/admin/gifts', count: animatedPhotos.filter(p => p.status === 'pending').length + allCustomGifts.filter(g => g.status === 'pending').length },
+            { label: 'الدعم الفني', route: '/admin/support', count: supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length },
+            { label: 'الحماية', route: '/admin/ban', count: banReports.filter(r => !r.is_verified).length },
+            { label: 'تغيير آيدي', route: '/admin/id-change', count: 0 },
           ].map(item => (
             <button
               key={item.label}
-              onClick={() => { setActiveSection(item.section); setActiveTab(item.tab); }}
+              onClick={() => navigate(item.route)}
               className="w-full flex items-center justify-between p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:border-white/10 transition-colors"
             >
               <span className="text-sm font-bold text-foreground">{item.label}</span>
