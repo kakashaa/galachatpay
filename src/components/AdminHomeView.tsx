@@ -55,8 +55,6 @@ const AdminHomeView: React.FC<Props> = ({
     setSearching(true);
     setSearchResult(null);
     try {
-      const adminSessionToken = sessionStorage.getItem("admin_session_token");
-      const adminUsername = sessionStorage.getItem("admin_username");
       const { data } = await supabase.functions.invoke("gala-login", {
         body: { uuid: q, password: "info_only_bypass" },
       });
