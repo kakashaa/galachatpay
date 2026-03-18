@@ -1109,8 +1109,8 @@ const AdminDashboardPage: React.FC = () => {
   return (
     <div
       ref={scrollContainerRef}
-      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative"
-      style={{ background: "#09090b", overflow: 'hidden auto' }}
+      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative admin-theme"
+      style={{ background: "hsl(240 10% 3.9%)", overflow: 'hidden auto' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

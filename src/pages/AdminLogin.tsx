@@ -145,7 +145,7 @@ const AdminLogin: React.FC = () => {
   // First-login setup screen
   if (mustChangePassword) {
     return (
-      <div className="mobile-container flex flex-col items-center px-6 py-8 pb-16 overflow-y-auto bg-background relative" style={{ justifyContent: "safe center" }}>
+      <div className="mobile-container flex flex-col items-center px-6 py-8 pb-16 overflow-y-auto bg-background relative admin-theme" style={{ justifyContent: "safe center" }}>
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="w-full max-w-sm z-10">
           <div className="text-center mb-8">
@@ -208,7 +208,7 @@ const AdminLogin: React.FC = () => {
   }
 
   return (
-    <div className="mobile-container flex flex-col items-center px-6 py-8 pb-16 overflow-y-auto bg-background relative" style={{ justifyContent: "safe center" }}>
+    <div className="mobile-container flex flex-col items-center px-6 py-8 pb-16 overflow-y-auto bg-background relative admin-theme" style={{ justifyContent: "safe center" }}>
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
       <div className="w-full max-w-sm z-10">
         <div className="text-center mb-8 css-fade-up">
