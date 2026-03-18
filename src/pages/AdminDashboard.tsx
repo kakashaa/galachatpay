@@ -83,7 +83,9 @@ const AdminDashboardPage: React.FC = () => {
       JSON.parse(atob(adminSessionToken));
     } catch {
       console.warn("Invalid admin session token format, forcing re-login");
-      sessionStorage.clear();
+      ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
+       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
+      ].forEach(k => localStorage.removeItem(k));
       navigate("/admin", { replace: true });
     }
   }, [adminSessionToken, navigate]);
