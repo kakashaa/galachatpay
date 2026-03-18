@@ -117,6 +117,7 @@ Deno.serve(async (req) => {
     // supabase client already created above
 
     let result;
+    const isSuperAdmin = auth.role === "owner" || auth.role === "super_admin";
 
     // Audit log helper
     const logAudit = async (details: Record<string, unknown> = {}) => {
