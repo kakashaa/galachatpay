@@ -163,25 +163,22 @@ const AdminHomeView: React.FC<Props> = ({
     <div className="relative z-10 px-3 pb-4" dir="rtl">
       {/* Quick Search */}
       <div className="mt-3 mb-3">
-        <div className="flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-3 py-2.5">
-          <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <div className="relative">
           <input
-            placeholder="بحث بالـ UUID..."
             value={searchUuid}
             onChange={e => setSearchUuid(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && searchUser()}
-            className="bg-transparent border-none outline-none text-sm w-full text-foreground placeholder:text-muted-foreground font-mono"
+            placeholder="معرف المستخدم (UUID)"
+            className="w-full bg-zinc-900/80 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm outline-none focus:border-emerald-500/30 transition-colors font-mono text-foreground placeholder:text-muted-foreground"
             dir="ltr"
           />
-          {searchUuid && (
-            <button
-              onClick={searchUser}
-              disabled={searching}
-              className="px-3 py-1 rounded-xl bg-primary/15 text-primary text-[10px] font-bold hover:bg-primary/25 transition-colors"
-            >
-              {searching ? <Loader2 className="w-3 h-3 animate-spin" /> : 'بحث'}
-            </button>
-          )}
+          <button
+            onClick={searchUser}
+            disabled={searching}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center"
+          >
+            {searching ? <Loader2 className="w-4 h-4 animate-spin text-emerald-400" /> : <Search className="w-4 h-4 text-emerald-400" />}
+          </button>
         </div>
 
         {/* Search Result Card — rich with action buttons */}
