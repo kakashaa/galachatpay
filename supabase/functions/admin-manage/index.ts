@@ -967,7 +967,7 @@ Deno.serve(async (req) => {
       }
 
       case "toggle_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { id: toggleId, is_active } = data;
         if (!toggleId) throw new Error("معرف المسؤول مطلوب");
         const { error } = await supabase
