@@ -933,37 +933,58 @@ export type Database = {
       }
       entry_gift_claims: {
         Row: {
+          admin_note: string | null
+          approved_at: string | null
           charger_level_at_claim: number
           claim_month: string
           claim_type: string
           created_at: string
+          duration_days: number | null
+          file_url: string | null
           friend_uuid: string | null
           gift_id: string
           gift_usage: string
           id: string
+          status: string | null
+          title: string | null
           user_uuid: string
+          ware_type: string | null
         }
         Insert: {
+          admin_note?: string | null
+          approved_at?: string | null
           charger_level_at_claim?: number
           claim_month: string
           claim_type: string
           created_at?: string
+          duration_days?: number | null
+          file_url?: string | null
           friend_uuid?: string | null
           gift_id: string
           gift_usage: string
           id?: string
+          status?: string | null
+          title?: string | null
           user_uuid: string
+          ware_type?: string | null
         }
         Update: {
+          admin_note?: string | null
+          approved_at?: string | null
           charger_level_at_claim?: number
           claim_month?: string
           claim_type?: string
           created_at?: string
+          duration_days?: number | null
+          file_url?: string | null
           friend_uuid?: string | null
           gift_id?: string
           gift_usage?: string
           id?: string
+          status?: string | null
+          title?: string | null
           user_uuid?: string
+          ware_type?: string | null
         }
         Relationships: [
           {
@@ -1019,33 +1040,51 @@ export type Database = {
       }
       frame_claims: {
         Row: {
+          admin_note: string | null
+          approved_at: string | null
           charger_level_at_claim: number
           claim_month: string
           claim_type: string
           created_at: string
+          duration_days: number | null
+          file_url: string | null
           frame_id: string
           friend_uuid: string | null
           id: string
+          status: string | null
+          title: string | null
           user_uuid: string
         }
         Insert: {
+          admin_note?: string | null
+          approved_at?: string | null
           charger_level_at_claim?: number
           claim_month: string
           claim_type: string
           created_at?: string
+          duration_days?: number | null
+          file_url?: string | null
           frame_id: string
           friend_uuid?: string | null
           id?: string
+          status?: string | null
+          title?: string | null
           user_uuid: string
         }
         Update: {
+          admin_note?: string | null
+          approved_at?: string | null
           charger_level_at_claim?: number
           claim_month?: string
           claim_type?: string
           created_at?: string
+          duration_days?: number | null
+          file_url?: string | null
           frame_id?: string
           friend_uuid?: string | null
           id?: string
+          status?: string | null
+          title?: string | null
           user_uuid?: string
         }
         Relationships: [
