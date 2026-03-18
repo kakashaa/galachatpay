@@ -140,6 +140,87 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_complaints: {
+        Row: {
+          admin_name: string | null
+          admin_username: string
+          created_at: string | null
+          id: string
+          media_type: string | null
+          media_url: string | null
+          owner_notes: string | null
+          reason: string
+          reporter_name: string | null
+          reporter_uuid: string
+          status: string | null
+          voice_url: string | null
+        }
+        Insert: {
+          admin_name?: string | null
+          admin_username: string
+          created_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          owner_notes?: string | null
+          reason: string
+          reporter_name?: string | null
+          reporter_uuid: string
+          status?: string | null
+          voice_url?: string | null
+        }
+        Update: {
+          admin_name?: string | null
+          admin_username?: string
+          created_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          owner_notes?: string | null
+          reason?: string
+          reporter_name?: string | null
+          reporter_uuid?: string
+          status?: string | null
+          voice_url?: string | null
+        }
+        Relationships: []
+      }
+      admin_ratings: {
+        Row: {
+          admin_name: string | null
+          admin_username: string
+          comment: string | null
+          created_at: string | null
+          id: string
+          rating: number
+          service_type: string | null
+          user_name: string | null
+          user_uuid: string
+        }
+        Insert: {
+          admin_name?: string | null
+          admin_username: string
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating: number
+          service_type?: string | null
+          user_name?: string | null
+          user_uuid: string
+        }
+        Update: {
+          admin_name?: string | null
+          admin_username?: string
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          rating?: number
+          service_type?: string | null
+          user_name?: string | null
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       agent_vip_overrides: {
         Row: {
           agent_name: string
