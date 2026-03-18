@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 const WorksPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [myWorks, setMyWorks] = useState<any>(null);
   const [members, setMembers] = useState<any[]>([]);
