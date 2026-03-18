@@ -279,23 +279,21 @@ const AdminRequestsPage: React.FC = () => {
         </div>
 
         {/* User info section */}
-        <div className="p-3 space-y-2">
+        <div className="p-2 space-y-1.5">
           {/* User details */}
-          <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'rgba(0,0,0,0.2)' }}>
+          <div className="rounded-lg p-2 space-y-1" style={{ background: 'rgba(0,0,0,0.2)' }}>
             {item.user_uuid && (
-              <div className="flex items-center gap-2 text-[10px]">
-                <Hash className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                <span className="text-muted-foreground">UUID:</span>
+              <div className="flex items-center gap-1 text-[8px]">
+                <Hash className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
                 <span className="font-mono truncate flex-1">{item.user_uuid}</span>
                 <button onClick={() => copyToClipboard(item.user_uuid)} className="p-0.5 rounded hover:bg-white/10 flex-shrink-0">
-                  <Copy className="w-3 h-3 text-muted-foreground" />
+                  <Copy className="w-2.5 h-2.5 text-muted-foreground" />
                 </button>
               </div>
             )}
             {item.user_name && (
-              <div className="flex items-center gap-2 text-[10px]">
-                <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                <span className="text-muted-foreground">الاسم:</span>
+              <div className="flex items-center gap-1 text-[8px]">
+                <User className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
                 <span className="truncate flex-1">{item.user_name}</span>
               </div>
             )}
