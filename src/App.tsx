@@ -80,6 +80,7 @@ const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
 const AdminChatPage = lazy(() => import("./pages/admin/AdminChatPage"));
 const AdminLogPage = lazy(() => import("./pages/admin/AdminLogPage"));
 const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
+const AdminRequestsPage = lazy(() => import("./pages/admin/AdminRequestsPage"));
 
 const queryClient = new QueryClient();
 
