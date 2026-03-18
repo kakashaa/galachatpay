@@ -6,8 +6,7 @@ import {
   Hash, ShoppingBag, Settings, Briefcase, Users, ScrollText,
   Search, MessageSquare, Loader2, Clock
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { getAvatarUrl } from '@/lib/utils';
+import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
 
 interface ServiceItem {
@@ -29,54 +28,32 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
   const alertPlayedRef = React.useRef(false);
 
   useEffect(() => {
-    if (!shiftEnd) {
-      setRemaining('—');
-      return;
-    }
-
+    if (!shiftEnd) { setRemaining('—'); return; }
     const parseTime = (t: string) => {
       const [h, m] = t.split(':').map(Number);
       const now = new Date();
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
-      return d;
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
     };
-
     const update = () => {
       const now = new Date();
       const endDate = parseTime(shiftEnd);
       const startDate = shiftStart ? parseTime(shiftStart) : now;
-
       if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
-
       const totalMs = endDate.getTime() - startDate.getTime();
       const remainMs = endDate.getTime() - now.getTime();
-
-      if (remainMs <= 0) {
-        setRemaining('انتهى');
-        setProgress(100);
-        setIsOvertime(true);
-        return;
-      }
-
+      if (remainMs <= 0) { setRemaining('انتهى'); setProgress(100); setIsOvertime(true); return; }
       if (remainMs <= 5 * 60 * 1000 && remainMs > 0 && !alertPlayedRef.current) {
         alertPlayedRef.current = true;
         playUrgentSound();
         setTimeout(() => playUrgentSound(), 2000);
       }
-
       setIsOvertime(false);
-      const elapsedPct = Math.min(100, ((totalMs - remainMs) / totalMs) * 100);
-      setProgress(elapsedPct);
-
+      setProgress(Math.min(100, ((totalMs - remainMs) / totalMs) * 100));
       const hours = Math.floor(remainMs / 3600000);
       const mins = Math.floor((remainMs % 3600000) / 60000);
       const secs = Math.floor((remainMs % 60000) / 1000);
-      setRemaining(
-        hours > 0 ? `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-                   : `${mins}:${String(secs).padStart(2, '0')}`
-      );
+      setRemaining(hours > 0 ? `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}` : `${mins}:${String(secs).padStart(2, '0')}`);
     };
-
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
@@ -95,10 +72,7 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
         <span className={`text-[11px] font-bold font-mono ${textColor}`}>{remaining}</span>
       </div>
       <div className="w-full h-1 rounded-full bg-white/[0.04] overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
-          style={{ width: `${progress}%` }}
-        />
+        <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${progress}%` }} />
       </div>
     </div>
   );
@@ -120,7 +94,6 @@ const containerVariants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.06 } },
 };
-
 const itemVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.8 },
   visible: { opacity: 1, y: 0, scale: 1 },
@@ -131,39 +104,38 @@ const AdminHomeView: React.FC<Props> = ({
   onServiceClick, onChatClick, recentLogs, isOwner, isSuperAdmin,
 }) => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchUuid, setSearchUuid] = useState("");
   const [searchResult, setSearchResult] = useState<any>(null);
   const [searching, setSearching] = useState(false);
 
   const roleLabel = adminRole === 'owner' ? 'مدير النظام الأعلى'
     : adminRole === 'super_admin' ? 'مسؤول أعلى'
-    : adminRole === 'admin' ? 'مسؤول'
-    : 'مشرف';
+    : adminRole === 'admin' ? 'مسؤول' : 'مشرف';
 
   const shiftStart = sessionStorage.getItem("admin_shift_start");
   const shiftEnd = sessionStorage.getItem("admin_shift_end");
 
-  // UUID Search
-  const handleSearch = useCallback(async () => {
-    const q = searchQuery.trim();
-    if (!q) return;
+  // UUID Search — uses direct API
+  const searchUser = useCallback(async () => {
+    if (!searchUuid.trim()) return;
     setSearching(true);
     setSearchResult(null);
     try {
-      const { data } = await supabase.functions.invoke("gala-login", {
-        body: { uuid: q, password: "info_only_bypass" },
-      });
-      if (data?.user) {
-        setSearchResult(data.user);
+      const res = await fetch(
+        `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${searchUuid.trim()}`
+      );
+      const data = await res.json();
+      if (data.success) {
+        setSearchResult(data);
       } else {
-        setSearchResult({ error: true });
+        toast.error("لم يتم العثور على المستخدم");
+        setSearchResult(null);
       }
     } catch {
-      setSearchResult({ error: true });
-    } finally {
-      setSearching(false);
+      toast.error("خطأ في الاتصال");
     }
-  }, [searchQuery]);
+    setSearching(false);
+  }, [searchUuid]);
 
   // Build 3-column service grid
   const services: ServiceItem[] = [
@@ -195,15 +167,15 @@ const AdminHomeView: React.FC<Props> = ({
           <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <input
             placeholder="بحث بالـ UUID..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            value={searchUuid}
+            onChange={e => setSearchUuid(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && searchUser()}
             className="bg-transparent border-none outline-none text-sm w-full text-foreground placeholder:text-muted-foreground font-mono"
             dir="ltr"
           />
-          {searchQuery && (
+          {searchUuid && (
             <button
-              onClick={handleSearch}
+              onClick={searchUser}
               disabled={searching}
               className="px-3 py-1 rounded-xl bg-primary/15 text-primary text-[10px] font-bold hover:bg-primary/25 transition-colors"
             >
@@ -212,42 +184,50 @@ const AdminHomeView: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Search Result */}
-        {searchResult && !searchResult.error && (
+        {/* Search Result Card — rich with action buttons */}
+        {searchResult && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3"
+            className="mt-2 bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/10 rounded-2xl p-4 space-y-3"
           >
             <div className="flex items-center gap-3">
               <img
-                src={getAvatarUrl(searchResult.uuid || searchQuery)}
-                className="w-10 h-10 rounded-xl object-cover"
+                src={searchResult.avatar}
+                className="w-14 h-14 rounded-full object-cover border-2 border-emerald-500/30"
                 alt=""
                 onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
               />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-foreground truncate">{searchResult.name || searchResult.nick_name || 'مستخدم'}</p>
-                <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">{searchResult.uuid || searchQuery}</p>
+              <div>
+                <p className="font-bold text-base text-foreground">{searchResult.name}</p>
+                <p className="text-xs text-muted-foreground font-mono" dir="ltr">#{searchResult.uuid}</p>
+                {searchResult.vip_level > 0 && (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold">
+                    VIP {searchResult.vip_level}
+                  </span>
+                )}
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-1.5 mt-2">
+            <div className="grid grid-cols-2 gap-2">
               {[
-                { label: 'الكوينز', value: searchResult.coin_balance?.toLocaleString() || '0' },
-                { label: 'الماسات', value: searchResult.diamond?.toLocaleString() || '0' },
-                { label: 'الراتب', value: searchResult.salary?.toLocaleString() || '0' },
-                { label: 'المستوى', value: searchResult.charm_level || searchResult.level || '0' },
+                { label: 'الراتب', value: `$${searchResult.salary || 0}`, color: 'text-green-400' },
+                { label: 'مستوى الداعم', value: searchResult.sender_level || '0', color: 'text-blue-400' },
+                { label: 'مستوى الدعم', value: searchResult.receiver_level || '0', color: 'text-purple-400' },
+                { label: 'مستوى الشحن', value: searchResult.charger_level || '0', color: 'text-cyan-400' },
               ].map(s => (
-                <div key={s.label} className="text-center py-1.5 rounded-lg bg-white/[0.02]">
-                  <p className="text-[10px] font-bold text-foreground font-mono">{s.value}</p>
-                  <p className="text-[8px] text-muted-foreground">{s.label}</p>
+                <div key={s.label} className="bg-white/[0.03] rounded-xl p-2.5 text-center">
+                  <p className={`text-lg font-mono font-bold ${s.color}`}>{s.value}</p>
+                  <p className="text-[9px] text-muted-foreground">{s.label}</p>
                 </div>
               ))}
             </div>
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <button onClick={() => navigate(`/admin/ban?uuid=${searchResult.uuid}`)} className="flex-1 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold active:scale-95 transition-transform">حظر</button>
+              <button onClick={() => navigate(`/admin/vip?uuid=${searchResult.uuid}`)} className="flex-1 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold active:scale-95 transition-transform">VIP</button>
+              <button onClick={() => navigate(`/admin/id-change?uuid=${searchResult.uuid}`)} className="flex-1 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold active:scale-95 transition-transform">آيدي</button>
+            </div>
           </motion.div>
-        )}
-        {searchResult?.error && (
-          <p className="text-[11px] text-destructive mt-2 text-center">لم يتم العثور على المستخدم</p>
         )}
       </div>
 
@@ -272,7 +252,6 @@ const AdminHomeView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Shift info with countdown */}
         {(shiftStart || shiftEnd) && (
           <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />
         )}
@@ -359,7 +338,6 @@ const AdminHomeView: React.FC<Props> = ({
                 >
                   <Icon className={`w-6 h-6 ${svc.iconColor} transition-transform duration-300 group-hover:scale-110`} />
                 </div>
-                {/* Badge — only shows if count > 0 */}
                 {svc.badge && svc.badge > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
