@@ -141,6 +141,11 @@ const EntryRequest: React.FC = () => {
          gift_usage: giftUsage,
          claim_month: currentMonth,
          charger_level_at_claim: chargerLevel,
+         status: "pending",
+         file_url: selectedGift.video_url,
+         title: selectedGift.title,
+         duration_days: 30,
+         ware_type: giftUsage === "room" ? "entry_room" : "entry_profile",
        } as any);
        if (claimError) throw claimError;
 

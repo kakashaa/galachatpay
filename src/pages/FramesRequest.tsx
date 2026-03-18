@@ -102,6 +102,10 @@ const FramesRequest: React.FC = () => {
         friend_uuid: claimType === "friend" ? friendUuid.trim() : null,
         claim_month: currentMonth,
         charger_level_at_claim: chargerLevel,
+        status: "pending",
+        file_url: selectedFrame.file_url,
+        title: selectedFrame.title,
+        duration_days: 30,
       } as any);
       if (claimError) throw claimError;
 
