@@ -460,13 +460,105 @@ Deno.serve(async (req) => {
       }
 
       // Entry gift claims
-      case "list_entry_claims": {
+      case "list_entry_claims":
+      case "list_entry_requests": {
         const { data: claims, error } = await supabase
           .from("entry_gift_claims")
           .select("*")
           .order("created_at", { ascending: false });
         if (error) throw error;
         result = claims;
+        break;
+      }
+
+      // Hair selections
+      case "list_hair_selections": {
+        const { data: hairs, error } = await supabase
+          .from("hair_selections")
+          .select("*")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        result = hairs;
+        break;
+      }
+
+      // Approve/reject entry requests
+      case "approve_entry_request": {
+        const { id } = data;
+        const { error } = await supabase.from("entry_gift_claims").update({ status: "approved" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "reject_entry_request": {
+        const { id } = data;
+        const { error } = await supabase.from("entry_gift_claims").update({ status: "rejected" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      // Approve/reject frame claims
+      case "approve_frame_claim": {
+        const { id } = data;
+        const { error } = await supabase.from("frame_claims").update({ status: "approved" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "reject_frame_claim": {
+        const { id } = data;
+        const { error } = await supabase.from("frame_claims").update({ status: "rejected" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      // Approve/reject hair selections
+      case "approve_hair_selection": {
+        const { id } = data;
+        const { error } = await supabase.from("hair_selections").update({ status: "approved" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "reject_hair_selection": {
+        const { id } = data;
+        const { error } = await supabase.from("hair_selections").update({ status: "rejected" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      // Approve/reject animated photos
+      case "approve_animated_photo": {
+        const { id } = data;
+        const { error } = await supabase.from("animated_photo_requests").update({ status: "approved" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "reject_animated_photo": {
+        const { id } = data;
+        const { error } = await supabase.from("animated_photo_requests").update({ status: "approved" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      // Approve/reject custom gifts
+      case "approve_custom_gift": {
+        const { id } = data;
+        const { error } = await supabase.from("custom_gifts").update({ status: "approved" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "reject_custom_gift": {
+        const { id } = data;
+        const { error } = await supabase.from("custom_gifts").update({ status: "rejected" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
         break;
       }
 
