@@ -467,9 +467,13 @@ const CustomGiftUpload: React.FC = () => {
             <Upload className="w-4 h-4 text-primary" />
             فيديو الهدية *
           </h3>
-          <p className="text-[10px] text-muted-foreground">
-            الحد الأقصى للمدة: <span className="font-bold text-primary">{maxDuration} ثانية</span> | الحجم: 100MB
-          </p>
+          <ul className="text-[11px] text-muted-foreground space-y-1">
+            <li>• صيغة الفيديو: MP4 فقط</li>
+            <li>• الحد الأقصى للحجم: 8 ميغابايت</li>
+            <li>• الحد الأقصى للمدة: {maxDuration} ثانية (حسب مستواك)</li>
+            <li>• هدية واحدة لكل مستوى</li>
+            <li>• سعر الهدية: 20,000 كوينز</li>
+          </ul>
           <input
             type="file"
             accept="video/mp4,video/webm"
