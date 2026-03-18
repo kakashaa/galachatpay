@@ -298,32 +298,16 @@ const AdminRequestsPage: React.FC = () => {
               </div>
             )}
             {item.friend_uuid && (
-              <div className="flex items-center gap-2 text-[10px]">
-                <Send className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(330 80% 60%)' }} />
-                <span style={{ color: 'hsl(330 80% 60%)' }}>لصديق:</span>
+              <div className="flex items-center gap-1 text-[8px]">
+                <Send className="w-2.5 h-2.5 flex-shrink-0" style={{ color: 'hsl(330 80% 60%)' }} />
                 <span className="font-mono truncate flex-1" style={{ color: 'hsl(330 80% 60%)' }}>{item.friend_uuid}</span>
-                <button onClick={() => copyToClipboard(item.friend_uuid)} className="p-0.5 rounded hover:bg-white/10 flex-shrink-0">
-                  <Copy className="w-3 h-3 text-muted-foreground" />
-                </button>
               </div>
             )}
             {/* Extra info row */}
-            <div className="flex items-center gap-3 text-[9px] text-muted-foreground pt-1 border-t border-white/5">
-              {item.duration_days && (
-                <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" />{item.duration_days} يوم</span>
-              )}
-              {item.duration_label && (
-                <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" />{item.duration_label}</span>
-              )}
-              {(item.charger_level_at_claim || item.charger_level_at_upload) && (
-                <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" />لفل {item.charger_level_at_claim || item.charger_level_at_upload}</span>
-              )}
-              {item.max_level > 0 && (
-                <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" />مستوى {item.max_level}</span>
-              )}
-              {item.video_duration > 0 && (
-                <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{item.video_duration}ث</span>
-              )}
+            <div className="flex items-center gap-2 text-[7px] text-muted-foreground pt-1 border-t border-white/5 flex-wrap">
+              {item.duration_days && <span>{item.duration_days}يوم</span>}
+              {item.duration_label && <span>{item.duration_label}</span>}
+              {(item.charger_level_at_claim || item.charger_level_at_upload) && <span>لفل {item.charger_level_at_claim || item.charger_level_at_upload}</span>}
               <span className="mr-auto tabular-nums">{new Date(item.created_at).toLocaleDateString("ar-SA")}</span>
             </div>
           </div>
