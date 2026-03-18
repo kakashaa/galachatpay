@@ -7,6 +7,7 @@ import {
   CheckCircle, XCircle, Eye, Clock, Image as ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 
 type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom";
 
