@@ -175,7 +175,11 @@ const AdminRequestsPage: React.FC = () => {
     const dim = size === "grid" ? 140 : 260;
 
     if (isSvga(url)) {
-      return <SvgaPlayer src={url} width={dim} height={dim} className="w-full h-full object-contain" />;
+      return (
+        <div className="w-full h-full flex items-center justify-center" style={{ background: 'radial-gradient(circle, rgba(30,30,40,0.9) 0%, rgba(10,10,15,1) 100%)' }}>
+          <SvgaPlayer src={url} width={dim} height={dim} loop={0} className="object-contain" />
+        </div>
+      );
     }
     if (isVideo(url)) {
       return thumb
