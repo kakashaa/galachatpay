@@ -265,7 +265,7 @@ const AdminRequestsPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Header: title + badge */}
+        {/* Header: title + badges */}
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold truncate">{item.title || item.user_name || "—"}</p>
@@ -273,10 +273,17 @@ const AdminRequestsPage: React.FC = () => {
               <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
             )}
           </div>
-          <span className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1 mr-2 flex-shrink-0" style={{ background: badge.bg }}>
-            <BadgeIcon className={`w-3 h-3 ${badge.color}`} />
-            <span className={badge.color}>{badge.label}</span>
-          </span>
+          <div className="flex items-center gap-1.5 mr-2 flex-shrink-0">
+            {item.claim_type === "friend" && (
+              <span className="px-2 py-1 rounded-lg text-[9px] font-bold" style={{ background: 'rgba(236,72,153,0.1)', color: 'hsl(330 80% 60%)' }}>
+                إهداء 🎁
+              </span>
+            )}
+            <span className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1" style={{ background: badge.bg }}>
+              <BadgeIcon className={`w-3 h-3 ${badge.color}`} />
+              <span className={badge.color}>{badge.label}</span>
+            </span>
+          </div>
         </div>
 
         {/* Detail rows */}
