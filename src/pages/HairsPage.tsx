@@ -155,73 +155,46 @@ const HairsPage: React.FC = () => {
       return;
     }
 
-    // Delete old selections for this week
-    await supabase
-      .from("hair_selections")
-      .delete()
-      .eq("user_uuid", user.uuid)
-      .eq("selection_week", weekKey);
+    try {
+      // Step 1: Delete old selections (fast - Supabase)
+      await supabase.from("hair_selections").delete().eq("user_uuid", user.uuid).eq("selection_week", weekKey);
 
-    // Insert new selections
-    if (selectedIds.size > 0) {
-      const rows = Array.from(selectedIds).map(hair_id => ({
-        user_uuid: user.uuid,
-        hair_id,
-        selection_week: weekKey,
-        status: "pending",
-      }));
-      await supabase.from("hair_selections").insert(rows as any);
+      // Step 2: Insert new selections (fast - Supabase)
+      if (selectedIds.size > 0) {
+        const rows = Array.from(selectedIds).map(hair_id => ({
+          user_uuid: user.uuid, hair_id, selection_week: weekKey, status: "pending",
+        }));
+        await supabase.from("hair_selections").insert(rows as any);
+      }
 
-      // Send Telegram notification + gala-actions for each hair selection
+      // Step 3: Deduct stars (fast - Supabase)
+      if (totalCost > 0 && starBalance) {
+        const newTotal = starBalance.total_stars - totalCost;
+        await supabase.from("user_star_balance").update({ total_stars: newTotal }).eq("user_uuid", user.uuid).eq("current_month", starBalance.current_month);
+        fetchStarBalance();
+      }
+
+      // Success! Show immediately
+      setSavedIds(new Set(selectedIds));
+      setSaving(false);
+      toast.success(`✅ تم حفظ ${selectedIds.size} شعرة لهذا الأسبوع`);
+
+      // Step 4: Background notifications - user doesn't wait
       for (const hairId of Array.from(selectedIds)) {
         const h = hairs.find(x => x.id === hairId);
         if (h) {
-          try {
-            await supabase.functions.invoke("telegram-notify", {
-              body: {
-                type: "hair_selection",
-                record: {
-                  user_name: user.name || user.uuid,
-                  hair_title: h.title,
-                  file_url: h.file_url,
-                  star_cost: h.star_cost,
-                },
-              },
-            });
-          } catch (e) {
-            console.error("Telegram notify failed for hair:", e);
-          }
-          // Send to gala-actions with file URL
-          try {
-            await supabase.functions.invoke("gala-actions?action=submit-request", {
-              body: {
-                user_uuid: user.uuid,
-                user_name: user.name,
-                request_type: "hair",
-                details: { file_url: h.file_url, title: h.title, star_cost: h.star_cost },
-                evidence_url: h.file_url,
-                image_url: h.thumbnail_url || h.file_url,
-              },
-            });
-          } catch { /* silent */ }
+          supabase.functions.invoke("telegram-notify", {
+            body: { type: "hair_selection", record: { user_name: user.name || user.uuid, hair_title: h.title, file_url: h.file_url, star_cost: h.star_cost } },
+          }).catch(() => {});
+          supabase.functions.invoke("gala-actions?action=submit-request", {
+            body: { user_uuid: user.uuid, user_name: user.name, request_type: "hair", details: { file_url: h.file_url, title: h.title, star_cost: h.star_cost }, evidence_url: h.file_url, image_url: h.thumbnail_url || h.file_url },
+          }).catch(() => {});
         }
       }
+    } catch (err: any) {
+      toast.error(err?.message || "فشل الحفظ");
+      setSaving(false);
     }
-
-    // Deduct stars if cost > 0
-    if (totalCost > 0 && starBalance) {
-      const newTotal = starBalance.total_stars - totalCost;
-      await supabase
-        .from("user_star_balance")
-        .update({ total_stars: newTotal })
-        .eq("user_uuid", user.uuid)
-        .eq("current_month", starBalance.current_month);
-      fetchStarBalance();
-    }
-
-    setSavedIds(new Set(selectedIds));
-    setSaving(false);
-    toast.success(`✅ تم حفظ ${selectedIds.size} شعرة لهذا الأسبوع`);
   };
 
   const hasChanges = useMemo(() => {
