@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Home, Search, MessageCircle, Eye, MoreHorizontal } from 'lucide-react';
 
 type BottomTab = 'home' | 'search' | 'chat' | 'monitor' | 'favorites';
 
@@ -12,66 +13,57 @@ interface Props {
 const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!document.querySelector('link[href*="font-awesome"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css';
-      document.head.appendChild(link);
-    }
-  }, []);
-
-  const tabs: { key: BottomTab; label: string; iconClass: string; isCenter?: boolean }[] = [
-    { key: 'home', label: 'الرئيسية', iconClass: 'fa-solid fa-house' },
-    { key: 'search', label: 'بحث', iconClass: 'fa-solid fa-magnifying-glass' },
-    { key: 'chat', label: 'الدردشة', iconClass: 'fa-solid fa-comments', isCenter: true },
-    { key: 'monitor', label: 'المراقبة', iconClass: 'fa-solid fa-chart-simple' },
-    { key: 'favorites', label: 'المزيد', iconClass: 'fa-solid fa-bars' },
+  const tabs: { key: BottomTab; label: string; icon: React.ElementType }[] = [
+    { key: 'home', label: 'الرئيسية', icon: Home },
+    { key: 'search', label: 'بحث', icon: Search },
+    { key: 'chat', label: 'الدردشة', icon: MessageCircle },
+    { key: 'monitor', label: 'مراقبة', icon: Eye },
+    { key: 'favorites', label: 'المزيد', icon: MoreHorizontal },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-admin-bg/95 backdrop-blur-sm border-t border-border z-50">
-      <div className="max-w-[448px] mx-auto px-4 py-2" dir="rtl">
-        <div className="flex items-center justify-around">
-          {tabs.map((tab) => {
-            if (tab.isCenter) {
-              return (
-                <button
-                  type="button"
-                  key={tab.key}
-                  onClick={() => navigate('/admin/chat')}
-                  className="relative -mt-6 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-                  style={{
-                    background: 'linear-gradient(135deg, hsl(var(--admin-emerald)), hsl(var(--success)))',
-                    boxShadow: '0 12px 30px -14px hsl(var(--admin-emerald) / 0.9)',
-                  }}
-                >
-                  <i className={`${tab.iconClass} text-2xl text-primary-foreground`} />
+    <div className="fixed bottom-0 left-0 right-0 z-50">
+      <div className="absolute inset-0 bg-[#09090b]/95 backdrop-blur-xl border-t border-zinc-800/50" />
+      <div className="relative max-w-md mx-auto flex items-end justify-around px-8 pb-[max(env(safe-area-inset-bottom),1.75rem)] pt-2">
+        {tabs.map((tab, i) => {
+          const Icon = tab.icon;
+          const isCenter = i === 2;
+          const isActive = active === tab.key;
+
+          if (isCenter) {
+            return (
+              <button
+                key={tab.key}
+                onClick={() => navigate("/admin/chat")}
+                className="-mt-5 active:scale-90 transition-transform"
+              >
+                <div className="relative">
+                  <div className="w-[50px] h-[50px] rounded-[16px] bg-emerald-500 flex items-center justify-center shadow-[0_4px_24px_rgba(34,197,94,0.3)]">
+                    <Icon className="w-[22px] h-[22px] text-black" />
+                  </div>
                   {chatBadge && chatBadge > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-admin-rose rounded-full text-[10px] text-primary-foreground font-bold flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full bg-red-500 text-[8px] text-white font-bold flex items-center justify-center px-0.5">
                       {chatBadge > 99 ? '99+' : chatBadge}
                     </span>
                   )}
-                </button>
-              );
-            }
-
-            const isActive = active === tab.key;
-            return (
-              <button
-                type="button"
-                key={tab.key}
-                onClick={() => onChange(tab.key)}
-                className="flex flex-col items-center gap-1 p-2 active:scale-95 transition-transform"
-              >
-                <i className={`${tab.iconClass} text-xl ${isActive ? 'text-admin-emerald' : 'text-admin-muted'}`} />
-                <span className={`text-[10px] ${isActive ? 'text-admin-emerald' : 'text-admin-muted'}`}>{tab.label}</span>
+                </div>
               </button>
             );
-          })}
-        </div>
+          }
+
+          return (
+            <button
+              key={tab.key}
+              onClick={() => onChange(tab.key)}
+              className="flex flex-col items-center gap-1 active:scale-90 transition-transform"
+            >
+              <Icon className={`w-[20px] h-[20px] ${isActive ? 'text-emerald-400' : 'text-zinc-600'}`} />
+              <span className={`text-[8px] ${isActive ? 'text-emerald-400' : 'text-zinc-600'}`}>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
-    </nav>
+    </div>
   );
 };
 
