@@ -159,7 +159,7 @@ const EntryRequest: React.FC = () => {
        if (updateError) throw updateError;
 
        // Success! Show immediately
-       toast.success(claimType === "self" ? "تم لبس الدخولية بنجاح! 🎉" : "تم إرسال الدخولية لصديقك! 🎉");
+       toast.success(claimType === "self" ? "تم إرسال طلب الدخولية بنجاح! ⏳" : "تم إرسال طلب الدخولية لصديقك! ⏳");
        setShowClaimDialog(false);
        setSubmitting(false);
        fetchStarBalance();

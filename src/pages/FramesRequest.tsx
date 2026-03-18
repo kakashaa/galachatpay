@@ -119,7 +119,7 @@ const FramesRequest: React.FC = () => {
       if (updateError) throw updateError;
 
       // Success! Show immediately
-      toast.success(claimType === "self" ? "تم لبس الإطار بنجاح! 🎉" : "تم إرسال الإطار لصديقك! 🎉");
+      toast.success(claimType === "self" ? "تم إرسال طلب الإطار بنجاح! ⏳" : "تم إرسال طلب الإطار لصديقك! ⏳");
       setShowClaimDialog(false);
       setSubmitting(false);
       fetchStarBalance();
