@@ -141,9 +141,10 @@ const AdminRequestsPage: React.FC = () => {
         }
       }
       
-      toast.success("تم التنفيذ");
+      toast.success("تم التنفيذ ✅");
       loadData();
     } catch (err: any) { toast.error(err?.message || "فشل"); }
+    finally { setProcessingId(null); }
   };
 
   const currentTab = tabs.find(t => t.key === activeTab)!;
