@@ -1004,7 +1004,7 @@ const SupportChat: React.FC = () => {
               disabled={feedback.rating === 0 || submittingFeedback}
               className="w-full py-2 px-3 bg-primary text-primary-foreground rounded-lg text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-opacity active:scale-95"
             >
-              {submittingFeedback ? "جاري الحفظ..." : "إرسال التقييم"}
+              {submittingFeedback ? (<span className="flex items-center justify-center gap-1.5"><span className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />جاري الحفظ...</span>) : "إرسال التقييم"}
             </button>
           </div>
         )}
