@@ -26,6 +26,14 @@ const SupportMain: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("bot");
+  const [quickSupportDismissed, setQuickSupportDismissed] = useState(false);
+
+  const isEligibleForQuickSupport = (() => {
+    if (!user) return false;
+    const vipLevel = (user as any).vip?.vip_level || (user as any).vip?.level || 0;
+    const isHostAgent = ((user as any).agency_id || 0) > 0;
+    return vipLevel >= 6 || isHostAgent;
+  })();
 
   // Live chat state
   const [chatKey, setChatKey] = useState<string | null>(() => {
