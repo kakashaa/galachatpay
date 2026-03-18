@@ -314,19 +314,19 @@ const AdminRequestsPage: React.FC = () => {
 
           {/* Approve / Reject buttons */}
           {isPending && (
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
                 onClick={() => handleAction(approveAction[activeTab], item.id)}
-                className="flex-1 h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                قبول ورفع
+                className="flex-1 h-8 rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
+                {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                قبول
               </motion.button>
               <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
                 onClick={() => handleAction(rejectAction[activeTab], item.id)}
-                className="flex-1 h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 12px rgba(244,63,94,0.3)' }}>
-                <XCircle className="w-4 h-4" /> رفض
+                className="flex-1 h-8 rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))' }}>
+                <XCircle className="w-3 h-3" /> رفض
               </motion.button>
             </div>
           )}
