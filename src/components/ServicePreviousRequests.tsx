@@ -21,7 +21,7 @@ interface RequestItem {
 
 interface ServicePreviousRequestsProps {
   userUuid: string;
-  serviceType: "vip" | "animated_photo" | "salary" | "change_id" | "custom_gift" | "entry_gift" | "frame" | "gift";
+  serviceType: "vip" | "animated_photo" | "salary" | "change_id" | "custom_gift" | "entry_gift" | "frame" | "gift" | "hair";
 }
 
 const statusMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
