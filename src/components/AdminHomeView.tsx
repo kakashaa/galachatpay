@@ -19,7 +19,84 @@ interface ServiceItem {
   route?: string;
 }
 
-interface Props {
+// Shift countdown sub-component
+const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | null }> = ({ shiftStart, shiftEnd }) => {
+  const [remaining, setRemaining] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [isOvertime, setIsOvertime] = useState(false);
+
+  useEffect(() => {
+    if (!shiftEnd) {
+      setRemaining('—');
+      return;
+    }
+
+    const parseTime = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      const now = new Date();
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
+      return d;
+    };
+
+    const update = () => {
+      const now = new Date();
+      const endDate = parseTime(shiftEnd);
+      const startDate = shiftStart ? parseTime(shiftStart) : now;
+
+      // Handle overnight shifts
+      if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+
+      const totalMs = endDate.getTime() - startDate.getTime();
+      const remainMs = endDate.getTime() - now.getTime();
+
+      if (remainMs <= 0) {
+        setRemaining('انتهى');
+        setProgress(100);
+        setIsOvertime(true);
+        return;
+      }
+
+      setIsOvertime(false);
+      const elapsedPct = Math.min(100, ((totalMs - remainMs) / totalMs) * 100);
+      setProgress(elapsedPct);
+
+      const hours = Math.floor(remainMs / 3600000);
+      const mins = Math.floor((remainMs % 3600000) / 60000);
+      const secs = Math.floor((remainMs % 60000) / 1000);
+      setRemaining(
+        hours > 0 ? `${hours}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+                   : `${mins}:${String(secs).padStart(2, '0')}`
+      );
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [shiftStart, shiftEnd]);
+
+  const barColor = isOvertime ? 'bg-rose-500' : progress > 75 ? 'bg-amber-500' : 'bg-emerald-500';
+  const textColor = isOvertime ? 'text-rose-400' : progress > 75 ? 'text-amber-400' : 'text-emerald-400';
+
+  return (
+    <div className="mt-2 px-2.5 py-2 bg-white/[0.02] rounded-xl border border-white/[0.04] space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3 h-3 text-muted-foreground" />
+          <span className="text-[9px] text-muted-foreground">الدوام: {shiftStart || '—'} - {shiftEnd || '—'}</span>
+        </div>
+        <span className={`text-[11px] font-bold font-mono ${textColor}`}>{remaining}</span>
+      </div>
+      <div className="w-full h-1 rounded-full bg-white/[0.04] overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
+
   adminDisplayName: string;
   adminRole: string | null;
   stats: { pending: number; approved: number; rejected: number };
