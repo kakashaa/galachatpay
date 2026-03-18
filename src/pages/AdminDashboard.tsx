@@ -1134,12 +1134,11 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Chat tab */}
-      {!activeTab && !activeSection && bottomTab === 'chat' && (
-        <div className="max-w-2xl mx-auto p-4">
-          <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole || 'admin'} />
-        </div>
-      )}
+      {/* Chat tab — redirect to chat page */}
+      {!activeTab && !activeSection && bottomTab === 'chat' && (() => {
+        navigate("/admin/chat");
+        return null;
+      })()}
 
       {/* Monitor tab */}
       {!activeTab && !activeSection && bottomTab === 'monitor' && (
