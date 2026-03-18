@@ -9,6 +9,7 @@ import SvgaPlayer from "@/components/SvgaPlayer";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStarBalance } from "@/hooks/use-star-balance";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 interface HairItem {
   id: string;
