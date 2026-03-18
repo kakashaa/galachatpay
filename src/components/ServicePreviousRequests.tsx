@@ -210,7 +210,7 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
     setOpen(!open);
   };
 
-  const canResubmit = serviceType !== "vip" && serviceType !== "change_id" && serviceType !== "entry_gift" && serviceType !== "frame";
+  const canResubmit = serviceType !== "vip" && serviceType !== "change_id" && serviceType !== "entry_gift" && serviceType !== "frame" && serviceType !== "hair";
 
   return (
     <>

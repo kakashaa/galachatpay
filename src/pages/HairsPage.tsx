@@ -297,6 +297,9 @@ const HairsPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Previous requests */}
+        {user?.uuid && <ServicePreviousRequests userUuid={user.uuid} serviceType="hair" />}
+
         {/* Level info */}
         <div className="bg-card border border-border/40 rounded-xl p-3 text-xs text-muted-foreground space-y-1">
           <p>🔓 مفتوح لك: <span className="text-foreground font-bold">{unlockCount === Infinity ? "الكل" : unlockCount}</span> شعرة (لفل شحن {chargerLevel})</p>
