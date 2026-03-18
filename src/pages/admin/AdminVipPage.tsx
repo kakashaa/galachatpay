@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Star, Loader2, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminTopAgents from "@/components/AdminTopAgents";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 
 const tabs = ["إرسال VIP", "الطلبات", "TOP وكلاء"];
 
@@ -32,6 +33,11 @@ const AdminVipPage: React.FC = () => {
     setSending(true);
     try {
       await adminCall("admin_give_vip", { uuid: vipUuid.trim(), vip_level: vipLevel });
+      await sendUserNotification(
+        vipUuid.trim(),
+        "تم قبول طلب VIP ✅",
+        `تم تفعيل VIP ${vipLevel} على حسابك بنجاح!`
+      );
       toast.success(`تم إرسال VIP ${vipLevel} بنجاح`);
       setVipUuid("");
     } catch (err: any) { toast.error(err?.message || "فشل الإرسال"); }

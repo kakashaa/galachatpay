@@ -9,6 +9,7 @@ import SvgaPlayer from "@/components/SvgaPlayer";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStarBalance } from "@/hooks/use-star-balance";
+import ServicePreviousRequests from "@/components/ServicePreviousRequests";
 
 interface HairItem {
   id: string;
@@ -295,6 +296,9 @@ const HairsPage: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Previous requests */}
+        {user?.uuid && <ServicePreviousRequests userUuid={user.uuid} serviceType="hair" />}
 
         {/* Level info */}
         <div className="bg-card border border-border/40 rounded-xl p-3 text-xs text-muted-foreground space-y-1">

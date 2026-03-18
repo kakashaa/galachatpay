@@ -21,7 +21,7 @@ interface RequestItem {
 
 interface ServicePreviousRequestsProps {
   userUuid: string;
-  serviceType: "vip" | "animated_photo" | "salary" | "change_id" | "custom_gift" | "entry_gift" | "frame" | "gift";
+  serviceType: "vip" | "animated_photo" | "salary" | "change_id" | "custom_gift" | "entry_gift" | "frame" | "gift" | "hair";
 }
 
 const statusMap: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -46,6 +46,7 @@ const serviceRoutes: Record<string, string> = {
   entry_gift: "/entry-request",
   gift: "/gift",
   change_id: "/change-id",
+  hair: "/hairs",
 };
 
 const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userUuid, serviceType }) => {
@@ -178,6 +179,21 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
           }));
           break;
         }
+        case "hair": {
+          const { data } = await supabase
+            .from("hair_selections")
+            .select("id, hair_id, selection_week, status, created_at, admin_note")
+            .eq("user_uuid", userUuid)
+            .order("created_at", { ascending: false })
+            .limit(20);
+          items = (data || []).map((r: any) => ({
+            id: r.id, label: "شعرة",
+            detail: `أسبوع ${r.selection_week}`,
+            status: r.status === "approved" ? "approved" : r.status === "rejected" ? "rejected" : "pending",
+            date: r.created_at, adminNote: r.admin_note,
+          }));
+          break;
+        }
       }
 
       setRequests(items);
@@ -194,7 +210,7 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
     setOpen(!open);
   };
 
-  const canResubmit = serviceType !== "vip" && serviceType !== "change_id" && serviceType !== "entry_gift" && serviceType !== "frame";
+  const canResubmit = serviceType !== "vip" && serviceType !== "change_id" && serviceType !== "entry_gift" && serviceType !== "frame" && serviceType !== "hair";
 
   return (
     <>

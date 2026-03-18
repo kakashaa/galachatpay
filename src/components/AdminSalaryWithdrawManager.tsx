@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
@@ -304,6 +305,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
+        await sendUserNotification(
+          approveSheet.user_uuid,
+          "تم قبول سحب الراتب ✅",
+          `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`
+        );
         toast.success("تم قبول الطلب وإرسال الإشعار");
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
         fetchData();
@@ -324,6 +330,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
+        await sendUserNotification(
+          rejectSheet.user_uuid,
+          "تم رفض سحب الراتب ❌",
+          `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`
+        );
         toast.success("تم رفض الطلب وإرسال الإشعار");
         setRejectSheet(null); setRejectReason(""); setRejectImage(null);
         fetchData();

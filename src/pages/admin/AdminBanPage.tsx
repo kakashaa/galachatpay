@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Ban, Unlock, Loader2, ShieldBan, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 
 const AdminBanPage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
@@ -34,7 +35,14 @@ const AdminBanPage: React.FC = () => {
     if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
     setBanLoading(true);
     try {
-      await adminCall("manual_ban_user", { target_uuid: banForm.target_uuid.trim(), ban_type: banForm.ban_type, duration_hours: parseInt(banForm.duration_hours) || 24, reason: banForm.reason.trim(), banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null });
+      const durationHours = parseInt(banForm.duration_hours) || 24;
+      await adminCall("manual_ban_user", { target_uuid: banForm.target_uuid.trim(), ban_type: banForm.ban_type, duration_hours: durationHours, reason: banForm.reason.trim(), banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null });
+      const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
+      await sendUserNotification(
+        banForm.target_uuid.trim(),
+        "تم تعليق حسابك ⚠️",
+        `تم تعليق حسابك بسبب: ${banForm.reason || "مخالفة"}. المدة: ${durationText}.`
+      );
       toast.success("تم حظر المستخدم بنجاح");
       setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
       loadData();
@@ -175,7 +183,7 @@ const AdminBanPage: React.FC = () => {
                     </div>
                   )}
                   {ban.status === "active" && (
-                    <motion.button whileTap={{ scale: 0.96 }} onClick={async () => { await adminCall("unban_manual", { ban_id: ban.id }); toast.success("تم فك الحظر"); loadData(); }}
+                    <motion.button whileTap={{ scale: 0.96 }} onClick={async () => { await adminCall("unban_manual", { ban_id: ban.id }); await sendUserNotification(ban.target_uuid, "تم إعادة تفعيل حسابك ✅", "تم رفع الحظر عن حسابك. يمكنك استخدام التطبيق بشكل طبيعي."); toast.success("تم فك الحظر"); loadData(); }}
                       className="w-full h-10 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
                       style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
                       <Unlock className="w-4 h-4" />فك الحظر

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Hash, Loader2, ArrowLeftRight, ClipboardList, ScrollText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 
 const AdminIdChangePage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
@@ -30,6 +31,11 @@ const AdminIdChangePage: React.FC = () => {
     setChanging(true);
     try {
       await adminCall("admin_change_uuid", { old_uuid: oldUuid.trim(), new_uuid: newUuid.trim() });
+      await sendUserNotification(
+        newUuid.trim(),
+        "تم تغيير المعرف ✅",
+        `تم تغيير معرفك إلى ${newUuid.trim()} بنجاح!`
+      );
       toast.success("تم تغيير الآيدي بنجاح");
       setOldUuid(""); setNewUuid("");
     } catch (err: any) { toast.error(err?.message || "فشل التغيير"); }

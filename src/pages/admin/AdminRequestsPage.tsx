@@ -7,6 +7,7 @@ import {
   CheckCircle, XCircle, Eye, Clock, Image as ImageIcon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 
 type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom";
 
@@ -55,8 +56,31 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   const handleAction = async (action: string, id: string, extra?: any) => {
+    // Find the item to get user_uuid for notification
+    const item = items.find((i: any) => i.id === id);
     try {
       await adminCall(action, { id, ...extra });
+      
+      // Send notification to user
+      if (item?.user_uuid) {
+        const isApprove = action.startsWith("approve_");
+        const typeMap: Record<ReqTab, { approveTitle: string; approveBody: string; rejectTitle: string; rejectBody: string }> = {
+          entries: { approveTitle: "تم قبول طلب الدخولية ✅", approveBody: `تم تفعيل الدخولية "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الدخولية ❌", rejectBody: "للأسف تم رفض طلب الدخولية الخاص بك." },
+          frames: { approveTitle: "تم قبول طلب الإطار ✅", approveBody: `تم تفعيل الإطار "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الإطار ❌", rejectBody: "للأسف تم رفض طلب الإطار الخاص بك." },
+          hairs: { approveTitle: "تم قبول الشعار ✅", approveBody: "تم تفعيل الشعار المختار على ملفك الشخصي!", rejectTitle: "تم رفض الشعار ❌", rejectBody: "للأسف تم رفض طلب الشعار الخاص بك." },
+          animated: { approveTitle: "تم قبول الصورة المتحركة ✅", approveBody: "تم تفعيل صورتك المتحركة على ملفك الشخصي!", rejectTitle: "تم رفض الصورة المتحركة ❌", rejectBody: "تم رفض الصورة المتحركة. تواصل مع الدعم لمزيد من المعلومات." },
+          custom: { approveTitle: "تم قبول الهدية المخصصة ✅", approveBody: `تم تفعيل هديتك المخصصة "${item.title || ''}" بنجاح!`, rejectTitle: "تم رفض الهدية المخصصة ❌", rejectBody: "للأسف تم رفض الهدية المخصصة. تأكد من استيفاء الشروط." },
+        };
+        const msgs = typeMap[activeTab];
+        if (msgs) {
+          await sendUserNotification(
+            item.user_uuid,
+            isApprove ? msgs.approveTitle : msgs.rejectTitle,
+            isApprove ? msgs.approveBody : msgs.rejectBody
+          );
+        }
+      }
+      
       toast.success("تم التنفيذ");
       loadData();
     } catch (err: any) { toast.error(err?.message || "فشل"); }
