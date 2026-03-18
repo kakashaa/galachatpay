@@ -176,12 +176,9 @@ const AdminHomeView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Shift info */}
+        {/* Shift info with countdown */}
         {(shiftStart || shiftEnd) && (
-          <div className="flex items-center gap-2 mt-2 px-2.5 py-1.5 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-            <span className="text-[9px] text-muted-foreground">الدوام:</span>
-            <span className="text-[10px] font-bold text-foreground font-mono">{shiftStart || "—"} - {shiftEnd || "—"}</span>
-          </div>
+          <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />
         )}
 
         {/* Quick Stats Row */}
