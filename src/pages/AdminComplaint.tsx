@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, AlertTriangle, Upload, X, Send, Loader2, CheckCircle2, Mic, MicOff } from "lucide-react";
+import { ArrowRight, AlertTriangle, Upload, X, Send, Loader2, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
