@@ -26,14 +26,14 @@ const AdminQuickChats: React.FC = () => {
             <div className="relative">
               <img
                 src={chat.image}
-                className={`w-14 h-14 rounded-full object-cover border-2 ${chat.online ? "border-emerald-500" : "border-zinc-700"}`}
+                className={`w-14 h-14 rounded-full object-cover border-2 ${chat.online ? "border-admin-emerald" : "border-admin-surface-soft"}`}
                 alt={`صورة ${chat.label}`}
                 loading="lazy"
               />
-              {chat.online && <span className="absolute -bottom-0.5 left-0 w-2 h-2 bg-emerald-500 rounded-full" />}
-              {chat.hasAlert && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full" />}
+              {chat.online && <span className="absolute -bottom-0.5 left-0 w-2 h-2 bg-admin-emerald rounded-full" />}
+              {chat.hasAlert && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-admin-rose rounded-full" />}
             </div>
-            <span className="text-xs text-zinc-400">{chat.label}</span>
+            <span className="text-xs text-admin-muted">{chat.label}</span>
           </div>
         ))}
       </div>
