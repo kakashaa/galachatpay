@@ -948,7 +948,7 @@ Deno.serve(async (req) => {
       }
 
       case "update_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { id: modId, permissions: modPerms, display_name: modName, password: newModPw } = data;
         if (!modId) throw new Error("معرف المسؤول مطلوب");
         
