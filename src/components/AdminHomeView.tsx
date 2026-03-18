@@ -8,32 +8,23 @@ import {
   Gift, Wallet, Bell, X, Unlock, XCircle, Camera,
   Ban, KeyRound, RotateCcw, BatteryCharging, ImageIcon,
   ShoppingBag, TrendingUp, Building2, Banknote, Package,
-  ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle
+  ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle,
+  Copy, ChevronLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 
-/* ─── 3D Card Wrapper ─── */
-const Card3D: React.FC<{ children: React.ReactNode; className?: string; delay?: number; glow?: string }> = ({ children, className = '', delay = 0, glow }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20, rotateX: 8 }}
-    animate={{ opacity: 1, y: 0, rotateX: 0 }}
-    transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-    whileHover={{ y: -2, scale: 1.01 }}
-    className={`relative rounded-2xl overflow-hidden ${className}`}
-    style={{
-      perspective: '1000px',
-      background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%)',
-      backdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255,255,255,0.1)',
-      boxShadow: glow
-        ? `0 8px 32px -8px ${glow}, 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)`
-        : '0 8px 32px -8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-    }}
+/* ─── Animated Counter ─── */
+const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
+  <motion.span
+    key={value}
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    className={className}
   >
-    {children}
-  </motion.div>
+    {value}
+  </motion.span>
 );
 
 /* ─── Shift Countdown ─── */
@@ -77,179 +68,235 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
   const textColor = isOvertime ? 'text-admin-rose' : progress > 75 ? 'text-admin-amber' : 'text-admin-emerald';
 
   return (
-    <Card3D delay={0.3}>
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-admin-amber/10 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-admin-amber" />
-            </div>
-            <span className="text-xs text-muted-foreground tabular-nums">{shiftStart || '—'} → {shiftEnd || '—'}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="rounded-2xl p-4"
+      style={{
+        background: 'linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-admin-amber/10 flex items-center justify-center">
+            <Clock className="w-4 h-4 text-admin-amber" />
           </div>
-          <motion.span
-            className={`text-lg font-bold tabular-nums ${textColor} tracking-wider`}
-            animate={{ scale: isOvertime ? [1, 1.05, 1] : 1 }}
-            transition={{ repeat: isOvertime ? Infinity : 0, duration: 1 }}
-          >
-            {remaining}
-          </motion.span>
+          <span className="text-[11px] text-muted-foreground tabular-nums">{shiftStart || '—'} → {shiftEnd || '—'}</span>
         </div>
-        <div className="w-full h-2 rounded-full bg-muted/50 overflow-hidden">
-          <motion.div
-            className={`h-full rounded-full ${barColor}`}
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 1.2, ease: 'easeOut' }}
-            style={{ boxShadow: isOvertime ? '0 0 12px rgba(244,63,94,0.5)' : progress > 75 ? '0 0 12px rgba(245,158,11,0.4)' : '0 0 12px rgba(16,185,129,0.4)' }}
-          />
-        </div>
+        <motion.span
+          className={`text-lg font-bold tabular-nums ${textColor} tracking-wider`}
+          animate={{ scale: isOvertime ? [1, 1.05, 1] : 1 }}
+          transition={{ repeat: isOvertime ? Infinity : 0, duration: 1 }}
+        >
+          {remaining}
+        </motion.span>
       </div>
-    </Card3D>
+      <div className="w-full h-1.5 rounded-full bg-muted/30 overflow-hidden">
+        <motion.div
+          className={`h-full rounded-full ${barColor}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+        />
+      </div>
+    </motion.div>
   );
 };
 
-/* ─── User Control Card ─── */
-const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername: string; onRefresh: (uuid: string) => void }> = ({ user, onClose, adminUsername, onRefresh }) => {
+/* ─── User ID Card (بطاقة تعريفية) ─── */
+const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: string; onRefresh: (uuid: string) => void }> = ({ user, onClose, adminUsername, onRefresh }) => {
   const navigate = useNavigate();
   const isBanned = user.is_banned;
 
-  const stats = [
-    { label: "الراتب", value: `$${user.salary || 0}`, color: "text-admin-emerald", glow: "rgba(16,185,129,0.15)" },
-    { label: "مستوى الداعم", value: user.sender_level || 0, color: "text-admin-amber", glow: "rgba(245,158,11,0.15)" },
-    { label: "مستوى الدعم", value: user.receiver_level || 0, color: "text-admin-blue", glow: "rgba(59,130,246,0.15)" },
-    { label: "مستوى الشحن", value: user.charger_level || 0, color: "text-admin-orange", glow: "rgba(249,115,22,0.15)" },
-  ];
+  const copyUuid = () => {
+    navigator.clipboard.writeText(user.uuid);
+    toast.success('تم نسخ UUID');
+  };
 
   const actions = [
-    { label: "إرسال VIP", icon: Star, bg: "bg-admin-amber/10", text: "text-admin-amber", border: "border-admin-amber/20", onClick: () => navigate(`/admin/vip?uuid=${user.uuid}`) },
+    { label: "إرسال VIP", icon: Star, color: "#f59e0b", onClick: () => navigate(`/admin/vip?uuid=${user.uuid}`) },
     {
-      label: isBanned ? "فك الحظر" : "حظر", icon: Ban,
-      bg: isBanned ? "bg-admin-emerald/10" : "bg-admin-rose/10",
-      text: isBanned ? "text-admin-emerald" : "text-admin-rose",
-      border: isBanned ? "border-admin-emerald/20" : "border-admin-rose/20",
+      label: isBanned ? "فك الحظر" : "حظر", icon: isBanned ? Unlock : Ban,
+      color: isBanned ? "#10b981" : "#f43f5e",
       onClick: () => {
         if (isBanned) {
           fetch('https://galachat.site/project-z/api.php', {
             method: 'POST',
             body: new URLSearchParams({ action: 'admin_ban_user', admin_key: 'ghala2026owner', uuid: user.uuid, unban: 'true', reason: 'admin_action', admin_name: adminUsername }),
           }).then(r => r.json()).then(d => { if (d.success) { toast.success('تم فك الحظر'); onRefresh(user.uuid); } else toast.error('فشل فك الحظر'); }).catch(() => toast.error('خطأ في الاتصال'));
-        } else {
-          navigate(`/admin/ban?uuid=${user.uuid}`);
-        }
+        } else navigate(`/admin/ban?uuid=${user.uuid}`);
       }
     },
-    { label: "تغيير الآيدي", icon: KeyRound, bg: "bg-admin-purple/10", text: "text-admin-purple", border: "border-admin-purple/20", onClick: () => navigate(`/admin/id-change?uuid=${user.uuid}`) },
-    { label: "تصفير الراتب", icon: RotateCcw, bg: "bg-admin-orange/10", text: "text-admin-orange", border: "border-admin-orange/20", onClick: () => toast.info('جاري تصفير الراتب...') },
-    { label: "إيقاف الشحن", icon: BatteryCharging, bg: "bg-admin-rose/10", text: "text-admin-rose", border: "border-admin-rose/20", onClick: () => toast.info('جاري إيقاف الشحن...') },
-    { label: "تغيير الصورة", icon: ImageIcon, bg: "bg-admin-blue/10", text: "text-admin-blue", border: "border-admin-blue/20", onClick: () => toast.info('جاري فتح تغيير الصورة...') },
+    { label: "تغيير الآيدي", icon: KeyRound, color: "#8b5cf6", onClick: () => navigate(`/admin/id-change?uuid=${user.uuid}`) },
+    { label: "تصفير الراتب", icon: RotateCcw, color: "#f97316", onClick: () => toast.info('جاري تصفير الراتب...') },
+    { label: "إيقاف الشحن", icon: BatteryCharging, color: "#ef4444", onClick: () => toast.info('جاري إيقاف الشحن...') },
+    { label: "تغيير الصورة", icon: ImageIcon, color: "#06b6d4", onClick: () => toast.info('جاري فتح تغيير الصورة...') },
   ];
 
   return (
-    <Card3D glow="rgba(16,185,129,0.15)">
-      <div className="p-4 flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <motion.div
-              className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center overflow-hidden"
-              style={{ border: '2px solid rgba(255,255,255,0.1)' }}
-              whileHover={{ scale: 1.05 }}
-            >
-              <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
-            </motion.div>
-            <motion.div
-              className={`absolute -bottom-0.5 -left-0.5 w-4 h-4 rounded-full border-2 ${user.online ? 'bg-admin-emerald' : 'bg-muted-foreground'}`}
-              style={{ borderColor: 'hsl(240 10% 3.9%)' }}
-              animate={user.online ? { scale: [1, 1.2, 1] } : {}}
-              transition={{ repeat: Infinity, duration: 2 }}
-            />
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.92, rotateX: 8 }}
+      animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+      exit={{ opacity: 0, y: 30, scale: 0.92 }}
+      transition={{ type: "spring", damping: 22, stiffness: 260 }}
+      className="rounded-3xl overflow-hidden relative"
+      style={{
+        background: 'linear-gradient(160deg, rgba(16,185,129,0.12) 0%, rgba(255,255,255,0.04) 40%, rgba(245,158,11,0.06) 100%)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        boxShadow: '0 20px 60px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+      }}
+    >
+      {/* Card Header — ID Card top strip */}
+      <div
+        className="h-2 w-full"
+        style={{
+          background: 'linear-gradient(90deg, hsl(160 84% 39%), hsl(38 92% 50%), hsl(160 84% 39%))',
+        }}
+      />
+
+      {/* Profile Section */}
+      <div className="p-5 flex items-start gap-4">
+        <div className="relative flex-shrink-0">
+          <motion.div
+            className="w-20 h-20 rounded-2xl overflow-hidden"
+            style={{
+              border: '3px solid rgba(255,255,255,0.15)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            }}
+            whileHover={{ scale: 1.05 }}
+          >
+            <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+          </motion.div>
+          <motion.div
+            className={`absolute -bottom-1 -left-1 w-5 h-5 rounded-full border-[3px] ${user.online ? 'bg-admin-emerald' : 'bg-zinc-500'}`}
+            style={{ borderColor: 'hsl(240 10% 5%)' }}
+            animate={user.online ? { scale: [1, 1.2, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 2 }}
+          />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-bold text-base truncate">{user.name}</h3>
+            {user.vip_level > 0 && (
+              <span
+                className="px-2 py-0.5 rounded-lg text-[10px] font-bold flex-shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(245,158,11,0.1))',
+                  color: '#f59e0b',
+                  border: '1px solid rgba(245,158,11,0.3)',
+                }}
+              >
+                VIP {user.vip_level}
+              </span>
+            )}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm">{user.name}</h3>
-              {user.vip_level > 0 && (
-                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1))',
-                    color: 'hsl(38 92% 50%)',
-                    border: '1px solid rgba(245,158,11,0.3)',
-                  }}
-                >
-                  VIP {user.vip_level}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground tabular-nums mt-0.5">#{user.uuid}</p>
-            <p className={`text-[10px] mt-0.5 font-medium ${isBanned ? 'text-admin-rose' : 'text-admin-emerald'}`}>
-              {isBanned ? '⛔ محظور' : '✓ نشط'}
-            </p>
+
+          {/* UUID with copy */}
+          <button onClick={copyUuid} className="flex items-center gap-1.5 group mb-1.5">
+            <span className="text-xs text-muted-foreground tabular-nums font-mono">#{user.uuid}</span>
+            <Copy size={11} className="text-muted-foreground group-active:text-admin-emerald transition-colors" />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <span className={`text-[11px] font-bold ${isBanned ? 'text-admin-rose' : 'text-admin-emerald'}`}>
+              {isBanned ? '⛔ محظور' : '● نشط'}
+            </span>
+            {user.created_at && (
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(user.created_at).toLocaleDateString('ar-SA')}
+              </span>
+            )}
           </div>
         </div>
+
         <motion.button
           onClick={onClose}
-          whileTap={{ scale: 0.9, rotate: 90 }}
-          className="w-8 h-8 rounded-xl flex items-center justify-center"
+          whileTap={{ scale: 0.85, rotate: 90 }}
+          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <X size={16} />
+          <X size={14} />
         </motion.button>
       </div>
 
-      <div className="px-4 grid grid-cols-4 gap-2">
-        {stats.map((stat, i) => (
+      {/* Stats Row */}
+      <div className="px-5 grid grid-cols-4 gap-2">
+        {[
+          { label: "الراتب", value: `$${user.salary || 0}`, color: "#10b981" },
+          { label: "الداعم", value: user.sender_level || 0, color: "#f59e0b" },
+          { label: "الدعم", value: user.receiver_level || 0, color: "#3b82f6" },
+          { label: "الشحن", value: user.charger_level || 0, color: "#f97316" },
+        ].map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 + i * 0.05 }}
-            className="flex flex-col items-center p-2.5 rounded-xl"
-            style={{ background: stat.glow, border: '1px solid rgba(255,255,255,0.06)' }}
+            className="text-center py-2.5 rounded-xl"
+            style={{
+              background: `${stat.color}10`,
+              border: `1px solid ${stat.color}20`,
+            }}
           >
-            <span className="text-[10px] text-muted-foreground mb-1">{stat.label}</span>
-            <span className={`text-sm font-bold tabular-nums ${stat.color}`}>{stat.value}</span>
+            <p className="text-sm font-bold tabular-nums" style={{ color: stat.color }}>{stat.value}</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">{stat.label}</p>
           </motion.div>
         ))}
       </div>
 
-      <div className="px-4 mt-3 space-y-1.5">
+      {/* Details */}
+      <div className="px-5 mt-3 space-y-1">
         {[
           { label: "صافي الراتب", value: `$${user.net_salary || 0}` },
-          { label: "الخصومات", value: `$${user.deduction || 0}`, color: "text-admin-rose" },
-          { label: "الوكالة", value: user.agency_id || 'بدون' },
-          { label: "العائلة", value: user.family_id || 'بدون' },
+          { label: "الخصومات", value: `$${user.deduction || 0}`, color: "#f43f5e" },
+          { label: "الوكالة", value: user.agency_id || '—' },
+          { label: "العائلة", value: user.family_id || '—' },
         ].map((item) => (
-          <div key={item.label} className="flex justify-between text-xs">
+          <div key={item.label} className="flex justify-between text-[11px] py-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
             <span className="text-muted-foreground">{item.label}</span>
-            <span className={`font-medium tabular-nums ${item.color || ''}`}>{item.value}</span>
+            <span className="font-medium tabular-nums" style={item.color ? { color: item.color } : {}}>{item.value}</span>
           </div>
         ))}
-        {user.created_at && (
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">تاريخ الانضمام</span>
-            <span className="font-medium tabular-nums">{new Date(user.created_at).toLocaleDateString('ar-SA')}</span>
-          </div>
-        )}
       </div>
 
-      <div className="p-4 grid grid-cols-2 gap-2 mt-2">
+      {/* Action Buttons */}
+      <div className="p-4 grid grid-cols-3 gap-2">
         {actions.map((action, i) => {
           const Icon = action.icon;
           return (
             <motion.button
               key={action.label}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 + i * 0.04 }}
-              whileTap={{ scale: 0.94 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 + i * 0.03 }}
+              whileTap={{ scale: 0.92 }}
               onClick={action.onClick}
-              className={`h-11 ${action.bg} ${action.text} border ${action.border} rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors`}
+              className="py-2.5 rounded-xl text-[11px] font-bold flex flex-col items-center gap-1.5"
+              style={{
+                background: `${action.color}12`,
+                border: `1px solid ${action.color}20`,
+                color: action.color,
+              }}
             >
-              <Icon size={16} />
+              <Icon size={18} />
               {action.label}
             </motion.button>
           );
         })}
       </div>
-    </Card3D>
+
+      {/* Card bottom strip */}
+      <div
+        className="h-1 w-full"
+        style={{
+          background: 'linear-gradient(90deg, hsl(160 84% 39%), hsl(38 92% 50%), hsl(160 84% 39%))',
+          opacity: 0.5,
+        }}
+      />
+    </motion.div>
   );
 };
 
@@ -266,22 +313,26 @@ const DelayMonitor: React.FC = () => {
   if (alerts.length === 0) return null;
 
   return (
-    <Card3D glow="rgba(244,63,94,0.15)">
-      <div className="p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-xl bg-destructive/15 flex items-center justify-center">
-            <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
-          </div>
-          <p className="text-xs font-bold text-destructive">⚠️ طلبات متأخرة (+30 دقيقة)</p>
-        </div>
-        {alerts.map(a => (
-          <div key={a.type} className="flex justify-between text-[11px] px-1">
-            <span className="text-muted-foreground">{a.type}</span>
-            <span className="text-destructive font-bold">{a.count} طلب</span>
-          </div>
-        ))}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl p-4 space-y-2"
+      style={{
+        background: 'rgba(244,63,94,0.06)',
+        border: '1px solid rgba(244,63,94,0.15)',
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 text-destructive" />
+        <p className="text-xs font-bold text-destructive">طلبات متأخرة (+30 دقيقة)</p>
       </div>
-    </Card3D>
+      {alerts.map(a => (
+        <div key={a.type} className="flex justify-between text-[11px] px-1">
+          <span className="text-muted-foreground">{a.type}</span>
+          <span className="text-destructive font-bold">{a.count} طلب</span>
+        </div>
+      ))}
+    </motion.div>
   );
 };
 
@@ -332,93 +383,82 @@ const AdminHomeView: React.FC<Props> = ({
   const supportBadge = badges.support || 0;
   const totalBadge = vipBadge + banBadge + salaryBadge + requestsBadge + supportBadge;
 
-  // ─── Role-based service filtering ───
   const allServices = [
-    { icon: Star, label: "VIP", route: "/admin/vip", color: "text-admin-amber", bg: "rgba(245,158,11,0.1)", glowColor: "rgba(245,158,11,0.25)", badge: vipBadge, roles: ["owner", "super_admin"] },
-    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: banBadge, roles: ["owner", "super_admin"] },
-    { icon: Banknote, label: "الرواتب", route: "/admin/salary", color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)", glowColor: "rgba(16,185,129,0.25)", badge: salaryBadge, roles: ["owner"] },
-    { icon: Package, label: "الطلبات", route: "/admin/requests", color: "text-admin-blue", bg: "rgba(59,130,246,0.1)", glowColor: "rgba(59,130,246,0.25)", badge: requestsBadge, roles: ["owner", "super_admin", "admin"] },
-    { icon: ShoppingBag, label: "المتجر", route: "/admin/gifts", color: "text-admin-pink", bg: "rgba(236,72,153,0.1)", glowColor: "rgba(236,72,153,0.25)", badge: 0, roles: ["owner"] },
-    { icon: Headphones, label: "الدعم", route: "/admin/support", color: "text-admin-cyan", bg: "rgba(6,182,212,0.1)", glowColor: "rgba(6,182,212,0.25)", badge: supportBadge, roles: ["owner", "super_admin", "admin"] },
-    { icon: KeyRound, label: "الآيدي", route: "/admin/id-change", color: "text-admin-purple", bg: "rgba(139,92,246,0.1)", glowColor: "rgba(139,92,246,0.25)", badge: 0, roles: ["owner", "super_admin"] },
-    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)", glowColor: "rgba(16,185,129,0.25)", badge: 0, roles: ["owner"] },
-    { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "text-admin-orange", bg: "rgba(249,115,22,0.1)", glowColor: "rgba(249,115,22,0.25)", badge: 0, roles: ["owner"] },
-    { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "text-admin-teal", bg: "rgba(20,184,166,0.1)", glowColor: "rgba(20,184,166,0.25)", badge: 0, roles: ["owner"] },
-    { icon: ScrollText, label: "السجل", route: "/admin/log", color: "text-admin-indigo", bg: "rgba(99,102,241,0.1)", glowColor: "rgba(99,102,241,0.25)", badge: 0, roles: ["owner", "super_admin"] },
-    { icon: Briefcase, label: "البيدي", route: "/admin/bd", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: 0, roles: ["owner"] },
-    { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", glowColor: "rgba(255,255,255,0.1)", badge: 0, roles: ["owner"] },
+    { icon: Star, label: "VIP", route: "/admin/vip", color: "#f59e0b", roles: ["owner", "super_admin"], badge: vipBadge },
+    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "#f43f5e", roles: ["owner", "super_admin"], badge: banBadge },
+    { icon: Banknote, label: "الرواتب", route: "/admin/salary", color: "#10b981", roles: ["owner"], badge: salaryBadge },
+    { icon: Package, label: "الطلبات", route: "/admin/requests", color: "#3b82f6", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
+    { icon: ShoppingBag, label: "المتجر", route: "/admin/gifts", color: "#ec4899", roles: ["owner"], badge: 0 },
+    { icon: Headphones, label: "الدعم", route: "/admin/support", color: "#06b6d4", roles: ["owner", "super_admin", "admin"], badge: supportBadge },
+    { icon: KeyRound, label: "الآيدي", route: "/admin/id-change", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", color: "#10b981", roles: ["owner"], badge: 0 },
+    { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "#f97316", roles: ["owner"], badge: 0 },
+    { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "#14b8a6", roles: ["owner"], badge: 0 },
+    { icon: ScrollText, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Briefcase, label: "البيدي", route: "/admin/bd", color: "#f43f5e", roles: ["owner"], badge: 0 },
+    { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "#71717a", roles: ["owner"], badge: 0 },
   ];
 
   const visibleServices = allServices.filter(s => adminRole && s.roles.includes(adminRole));
 
-  const { pending, approved, rejected } = stats;
-
-  const statsCards = [
-    { label: "معلّق", value: pending, icon: Clock, color: "text-admin-amber", glow: "rgba(245,158,11,0.2)" },
-    { label: "مقبول", value: approved, icon: CheckCircle, color: "text-admin-emerald", glow: "rgba(16,185,129,0.2)" },
-    { label: "مرفوض", value: rejected, icon: XCircle, color: "text-admin-rose", glow: "rgba(244,63,94,0.2)" },
-  ];
-
   return (
-    <div className="min-h-screen bg-background pb-28 admin-theme" dir="rtl">
-      <div className="max-w-[448px] mx-auto px-4 pt-4 space-y-4">
+    <div className="min-h-screen bg-background pb-32 admin-theme" dir="rtl">
+      <div className="max-w-[448px] mx-auto px-4 pt-5 space-y-5">
 
-        {/* Welcome Card */}
-        <Card3D delay={0} glow="rgba(16,185,129,0.1)">
-          <div className="p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <motion.div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                  style={{
-                    background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))',
-                    boxShadow: '0 4px 16px rgba(16,185,129,0.3)',
-                  }}
-                  animate={{ rotateY: [0, 5, 0, -5, 0] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <Sparkles size={22} className="text-white" />
-                </motion.div>
-                <div>
-                  <h2 className="text-lg font-bold">أهلاً، {adminDisplayName}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">مرحباً بك في لوحة التحكم</p>
-                </div>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                whileHover={{ rotate: 15 }}
-                className="relative w-11 h-11 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                }}
-              >
-                <Bell size={18} />
-                {totalBadge > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full text-[9px] font-bold flex items-center justify-center"
-                    style={{
-                      background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
-                      boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
-                      border: '2px solid hsl(240 10% 3.9%)',
-                    }}
-                  >
-                    {totalBadge > 99 ? '99+' : totalBadge}
-                  </motion.span>
-                )}
-              </motion.button>
+        {/* ═══ Header ═══ */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <motion.div
+              className="w-11 h-11 rounded-2xl flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))',
+                boxShadow: '0 4px 20px rgba(16,185,129,0.35)',
+              }}
+              animate={{ rotateY: [0, 10, 0, -10, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <Sparkles size={20} className="text-white" />
+            </motion.div>
+            <div>
+              <h2 className="text-base font-bold leading-tight">أهلاً، {adminDisplayName}</h2>
+              <p className="text-[11px] text-muted-foreground">لوحة التحكم</p>
             </div>
           </div>
-        </Card3D>
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            className="relative w-10 h-10 rounded-2xl flex items-center justify-center"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <Bell size={17} />
+            {totalBadge > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
+                  boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
+                  border: '2px solid hsl(240 10% 3.9%)',
+                }}
+              >
+                {totalBadge > 99 ? '99+' : totalBadge}
+              </motion.span>
+            )}
+          </motion.button>
+        </motion.div>
 
-        {/* Quick Search */}
+        {/* ═══ Search Bar ═══ */}
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-3"
+          transition={{ delay: 0.05 }}
         >
           <div className="relative">
             <input
@@ -427,230 +467,218 @@ const AdminHomeView: React.FC<Props> = ({
               onChange={(e) => setSearchUuid(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchUser()}
               placeholder="ابحث برقم UUID..."
-              className="w-full h-12 rounded-2xl pr-4 pl-12 text-sm placeholder:text-muted-foreground focus:outline-none transition-all tabular-nums"
+              className="w-full h-11 rounded-2xl pr-4 pl-12 text-sm placeholder:text-muted-foreground focus:outline-none tabular-nums"
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(8px)',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.07)',
               }}
               dir="ltr"
             />
             <motion.button
               onClick={() => searchUser()}
               whileTap={{ scale: 0.9 }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center"
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center"
               style={{
                 background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))',
-                boxShadow: '0 2px 8px rgba(16,185,129,0.3)',
               }}
             >
-              {searching ? <Loader2 size={16} className="text-white animate-spin" /> : <Search size={16} className="text-white" />}
+              {searching ? <Loader2 size={14} className="text-white animate-spin" /> : <Search size={14} className="text-white" />}
             </motion.button>
             {searchUuid && (
               <button
                 onClick={() => { setSearchUuid(""); setSearchResult(null); }}
-                className="absolute left-12 top-1/2 -translate-y-1/2 text-muted-foreground"
+                className="absolute left-11 top-1/2 -translate-y-1/2 text-muted-foreground"
               >
-                <X size={16} />
+                <X size={14} />
               </button>
             )}
           </div>
-
-          <AnimatePresence>
-            {searchResult && (
-              <motion.div
-                initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 30, scale: 0.95 }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              >
-                <UserControlCard
-                  user={searchResult}
-                  onClose={() => setSearchResult(null)}
-                  adminUsername={adminUsername}
-                  onRefresh={searchUser}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
         </motion.div>
+
+        {/* ═══ Search Result — ID Card ═══ */}
+        <AnimatePresence>
+          {searchResult && (
+            <UserIdCard
+              user={searchResult}
+              onClose={() => setSearchResult(null)}
+              adminUsername={adminUsername}
+              onRefresh={searchUser}
+            />
+          )}
+        </AnimatePresence>
 
         {!searchResult && (
           <>
-            {/* Chat Bubbles */}
-            <div className="flex gap-2">
-              <motion.button
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.15 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => navigate("/admin/chat")}
-                className="flex-1 h-12 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 text-admin-emerald"
-                style={{
-                  background: 'rgba(16,185,129,0.08)',
-                  border: '1px solid rgba(16,185,129,0.15)',
-                }}
-              >
-                <Shield size={16} />
-                مجموعة المشرفين
-              </motion.button>
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => navigate("/admin/chat")}
-                className="flex-1 h-12 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 text-muted-foreground"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                <Users size={16} />
-                كل الأدمن
-              </motion.button>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-2">
-              {statsCards.map((stat, i) => {
+            {/* ═══ Stats Row ═══ */}
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { label: "معلّق", value: stats.pending, color: "#f59e0b", icon: Clock },
+                { label: "مقبول", value: stats.approved, color: "#10b981", icon: CheckCircle },
+                { label: "مرفوض", value: stats.rejected, color: "#f43f5e", icon: XCircle },
+              ].map((stat, i) => {
                 const Icon = stat.icon;
                 return (
                   <motion.div
                     key={stat.label}
-                    initial={{ opacity: 0, y: 20, rotateX: 10 }}
-                    animate={{ opacity: 1, y: 0, rotateX: 0 }}
-                    transition={{ delay: 0.2 + i * 0.06, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    whileHover={{ y: -3, scale: 1.03 }}
-                    className="rounded-2xl p-4 flex flex-col items-center gap-1.5 cursor-default"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + i * 0.06 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="rounded-2xl p-3.5 text-center relative overflow-hidden"
                     style={{
-                      background: stat.glow,
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      boxShadow: `0 4px 20px -4px ${stat.glow}`,
+                      background: `${stat.color}10`,
+                      border: `1px solid ${stat.color}18`,
                     }}
                   >
-                    <motion.div
-                      animate={{ rotateY: [0, 360] }}
-                      transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                    >
-                      <Icon size={20} className={stat.color} />
-                    </motion.div>
-                    <span className={`text-2xl font-bold tabular-nums ${stat.color}`}>{stat.value}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium">{stat.label}</span>
+                    <Icon size={18} className="mx-auto mb-1.5" style={{ color: stat.color }} />
+                    <p className="text-2xl font-bold tabular-nums font-mono" style={{ color: stat.color }}>
+                      <AnimatedNumber value={stat.value} />
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{stat.label}</p>
                   </motion.div>
                 );
               })}
             </div>
 
-            {/* Shift Timer */}
-            {(shiftStart || shiftEnd) && <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />}
-
-            {/* Owner Delay Monitor */}
-            {isOwner && <DelayMonitor />}
-
-            {/* Service Grid */}
-            <div className="grid grid-cols-4 gap-3">
-              {visibleServices.map((service, index) => {
-                const Icon = service.icon;
-                return (
-                  <motion.button
-                    key={service.route + service.label}
-                    initial={{ opacity: 0, scale: 0.8, y: 15 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ delay: 0.25 + index * 0.035, type: 'spring', stiffness: 300, damping: 20 }}
-                    whileTap={{ scale: 0.9 }}
-                    whileHover={{ y: -4, scale: 1.05 }}
-                    onClick={() => navigate(service.route)}
-                    className="flex flex-col items-center gap-2 relative"
-                  >
-                    <div
-                      className="aspect-square w-full rounded-2xl flex items-center justify-center relative overflow-hidden"
-                      style={{
-                        background: service.bg,
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        boxShadow: `0 4px 16px -4px ${service.glowColor}`,
-                      }}
-                    >
-                      <div
-                        className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500"
-                        style={{
-                          background: 'linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%)',
-                        }}
-                      />
-                      <Icon size={24} className={`${service.color} relative z-10`} />
-                    </div>
-                    {service.badge > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -left-1 h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
-                        style={{
-                          background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
-                          boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
-                          border: '2px solid hsl(240 10% 3.9%)',
-                        }}
-                      >
-                        {service.badge > 99 ? '99+' : service.badge}
-                      </motion.span>
-                    )}
-                    <span className="text-[11px] font-medium text-muted-foreground">{service.label}</span>
-                  </motion.button>
-                );
-              })}
+            {/* ═══ Quick Chat ═══ */}
+            <div className="flex gap-2">
+              <motion.button
+                initial={{ opacity: 0, x: 15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => navigate("/admin/chat")}
+                className="flex-1 h-11 rounded-2xl text-xs font-bold flex items-center justify-center gap-2"
+                style={{
+                  background: 'rgba(16,185,129,0.08)',
+                  border: '1px solid rgba(16,185,129,0.12)',
+                  color: '#10b981',
+                }}
+              >
+                <Shield size={15} />
+                مجموعة المشرفين
+              </motion.button>
+              <motion.button
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.18 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => navigate("/admin/chat")}
+                className="flex-1 h-11 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 text-muted-foreground"
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <Users size={15} />
+                كل الأدمن
+              </motion.button>
             </div>
 
-            {/* Recent Activity */}
-            {recentLogs.length > 0 && (
-              <Card3D delay={0.4}>
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-bold text-foreground">آخر العمليات</p>
-                    {isOwner && (
-                      <motion.button
-                        onClick={() => navigate("/admin/log")}
-                        whileTap={{ scale: 0.95 }}
-                        className="text-[10px] text-admin-emerald font-bold px-2 py-1 rounded-lg"
-                        style={{ background: 'rgba(16,185,129,0.1)' }}
+            {/* ═══ Shift Timer ═══ */}
+            {(shiftStart || shiftEnd) && <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />}
+
+            {/* ═══ Owner Delay Monitor ═══ */}
+            {isOwner && <DelayMonitor />}
+
+            {/* ═══ Service Grid — 4 cols ═══ */}
+            <div>
+              <p className="text-[11px] font-bold text-muted-foreground mb-3">الخدمات</p>
+              <div className="grid grid-cols-4 gap-3">
+                {visibleServices.map((service, index) => {
+                  const Icon = service.icon;
+                  return (
+                    <motion.button
+                      key={service.route + service.label}
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.2 + index * 0.03, type: 'spring', stiffness: 300, damping: 22 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => navigate(service.route)}
+                      className="flex flex-col items-center gap-1.5 relative"
+                    >
+                      <div
+                        className="w-[52px] h-[52px] rounded-[14px] flex items-center justify-center relative"
+                        style={{
+                          background: `${service.color}12`,
+                          border: `1px solid ${service.color}18`,
+                        }}
                       >
-                        عرض الكل
-                      </motion.button>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    {recentLogs.slice(0, 4).map((log: any, i: number) => {
-                      const isNegative = log.action?.includes('reject') || log.action?.includes('ban') || log.action?.includes('delete');
-                      return (
-                        <motion.div
-                          key={log.id || i}
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.5 + i * 0.05 }}
-                          className="rounded-xl p-3 flex items-center gap-3"
+                        <Icon size={22} style={{ color: service.color }} />
+                      </div>
+                      {service.badge > 0 && (
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -top-1 -left-1 h-[18px] min-w-[18px] rounded-full text-[9px] font-bold flex items-center justify-center px-1 text-white"
                           style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.05)',
+                            background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
+                            boxShadow: '0 2px 6px rgba(244,63,94,0.5)',
+                            border: '2px solid hsl(240 10% 3.9%)',
                           }}
                         >
-                          <div
-                            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                            style={{
-                              background: isNegative ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)',
-                            }}
-                          >
-                            <Clock size={14} className={isNegative ? 'text-admin-rose' : 'text-admin-emerald'} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold truncate">{log.action_label || log.action || 'عملية'}</p>
-                            <p className="text-[10px] text-muted-foreground tabular-nums">
-                              {log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
-                            </p>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
+                          {service.badge > 99 ? '99+' : service.badge}
+                        </motion.span>
+                      )}
+                      <span className="text-[10px] font-medium text-muted-foreground">{service.label}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ═══ Recent Activity ═══ */}
+            {recentLogs.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[11px] font-bold text-muted-foreground">آخر العمليات</p>
+                  {isOwner && (
+                    <motion.button
+                      onClick={() => navigate("/admin/log")}
+                      whileTap={{ scale: 0.95 }}
+                      className="text-[10px] font-bold px-2.5 py-1 rounded-lg"
+                      style={{ color: '#10b981', background: 'rgba(16,185,129,0.08)' }}
+                    >
+                      عرض الكل
+                    </motion.button>
+                  )}
                 </div>
-              </Card3D>
+                <div className="space-y-2">
+                  {recentLogs.slice(0, 4).map((log: any, i: number) => {
+                    const isNegative = log.action?.includes('reject') || log.action?.includes('ban') || log.action?.includes('delete');
+                    return (
+                      <motion.div
+                        key={log.id || i}
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.45 + i * 0.04 }}
+                        className="rounded-xl p-3 flex items-center gap-3"
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.05)',
+                        }}
+                      >
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: isNegative ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)' }}
+                        >
+                          <Clock size={13} style={{ color: isNegative ? '#f43f5e' : '#10b981' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold truncate">{log.action_label || log.action || 'عملية'}</p>
+                          <p className="text-[10px] text-muted-foreground tabular-nums">
+                            {log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
             )}
           </>
         )}
