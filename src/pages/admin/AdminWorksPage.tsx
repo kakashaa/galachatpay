@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Settings, Wallet } from "lucide-react";
+import { Loader2, Check, X, Users } from "lucide-react";
 
 const AdminWorksPage: React.FC = () => {
   const { handleLogout, adminCall, isModeratorRole } = useAdminSession();
