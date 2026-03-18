@@ -8,10 +8,11 @@ import {
   Gift, Wallet, Bell, X, Unlock, XCircle, Camera,
   Ban, KeyRound, RotateCcw, BatteryCharging, ImageIcon,
   ShoppingBag, TrendingUp, Building2, Banknote, Package,
-  ShieldAlert, Headphones, CheckCircle, Sparkles
+  ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
+import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 
 /* ─── 3D Card Wrapper ─── */
 const Card3D: React.FC<{ children: React.ReactNode; className?: string; delay?: number; glow?: string }> = ({ children, className = '', delay = 0, glow }) => (
@@ -247,6 +248,38 @@ const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername:
             </motion.button>
           );
         })}
+      </div>
+    </Card3D>
+  );
+};
+
+/* ─── Delay Monitor (Owner only) ─── */
+const DelayMonitor: React.FC = () => {
+  const [alerts, setAlerts] = useState<DelayAlert[]>([]);
+
+  useEffect(() => {
+    checkPendingRequests().then(setAlerts);
+    const iv = setInterval(() => checkPendingRequests().then(setAlerts), 10 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  if (alerts.length === 0) return null;
+
+  return (
+    <Card3D glow="rgba(244,63,94,0.15)">
+      <div className="p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-xl bg-destructive/15 flex items-center justify-center">
+            <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+          </div>
+          <p className="text-xs font-bold text-destructive">⚠️ طلبات متأخرة (+30 دقيقة)</p>
+        </div>
+        {alerts.map(a => (
+          <div key={a.type} className="flex justify-between text-[11px] px-1">
+            <span className="text-muted-foreground">{a.type}</span>
+            <span className="text-destructive font-bold">{a.count} طلب</span>
+          </div>
+        ))}
       </div>
     </Card3D>
   );
@@ -511,6 +544,9 @@ const AdminHomeView: React.FC<Props> = ({
 
             {/* Shift Timer */}
             {(shiftStart || shiftEnd) && <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />}
+
+            {/* Owner Delay Monitor */}
+            {isOwner && <DelayMonitor />}
 
             {/* Service Grid */}
             <div className="grid grid-cols-4 gap-3">

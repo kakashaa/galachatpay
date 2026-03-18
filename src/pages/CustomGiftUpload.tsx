@@ -94,8 +94,8 @@ const CustomGiftUpload: React.FC = () => {
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error("حجم الفيديو يجب أن لا يتجاوز 100MB");
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("حجم الفيديو يجب أن لا يتجاوز 8 ميغابايت");
       return;
     }
     setVideoFile(file);
@@ -467,9 +467,13 @@ const CustomGiftUpload: React.FC = () => {
             <Upload className="w-4 h-4 text-primary" />
             فيديو الهدية *
           </h3>
-          <p className="text-[10px] text-muted-foreground">
-            الحد الأقصى للمدة: <span className="font-bold text-primary">{maxDuration} ثانية</span> | الحجم: 100MB
-          </p>
+          <ul className="text-[11px] text-muted-foreground space-y-1">
+            <li>• صيغة الفيديو: MP4 فقط</li>
+            <li>• الحد الأقصى للحجم: 8 ميغابايت</li>
+            <li>• الحد الأقصى للمدة: {maxDuration} ثانية (حسب مستواك)</li>
+            <li>• هدية واحدة لكل مستوى</li>
+            <li>• سعر الهدية: 20,000 كوينز</li>
+          </ul>
           <input
             type="file"
             accept="video/mp4,video/webm"

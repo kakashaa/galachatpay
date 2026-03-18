@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Gift, User, Shield, Send, CheckCircle, Sparkles, Frame, DoorOpen } from "lucide-react";
+import CustomGiftGallery from "@/components/CustomGiftGallery";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -166,6 +167,15 @@ const GiftRequest: React.FC = () => {
               </>
             )}
           </Button>
+        </div>
+
+        {/* Custom Gift Gallery */}
+        <div className="css-fade-up-d4">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-primary" />
+            هدايا المشاهير
+          </h3>
+          <CustomGiftGallery />
         </div>
       </div>
     </MobileLayout>
