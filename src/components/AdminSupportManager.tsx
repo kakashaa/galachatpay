@@ -372,11 +372,11 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
                 </Button>
                 {canAct && chat.status === 'open' && (
                   <>
-                    <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => handleTransfer(chat.id)}>
-                      <ArrowUpRight className="w-3 h-3 ml-1" /> تحويل
+                    <Button size="sm" variant="outline" className="text-xs h-8" disabled={!!transferringId} onClick={() => handleTransfer(chat.id)}>
+                      {transferringId === chat.id ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <ArrowUpRight className="w-3 h-3 ml-1" />} تحويل
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs h-8 text-destructive hover:text-destructive" onClick={() => handleClose(chat.id)}>
-                      <XCircle className="w-3 h-3 ml-1" /> إغلاق
+                    <Button size="sm" variant="outline" className="text-xs h-8 text-destructive hover:text-destructive" disabled={!!closingId} onClick={() => handleClose(chat.id)}>
+                      {closingId === chat.id ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <XCircle className="w-3 h-3 ml-1" />} إغلاق
                     </Button>
                   </>
                 )}

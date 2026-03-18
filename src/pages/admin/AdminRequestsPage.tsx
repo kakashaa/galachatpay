@@ -147,7 +147,7 @@ const AdminRequestsPage: React.FC = () => {
       toast.dismiss(loadingToast);
       toast.success(isApprove ? "تم القبول بنجاح ✅" : "تم الرفض ✅");
       loadData();
-    } catch (err: any) { toast.error(err?.message || "فشل"); }
+    } catch (err: any) { toast.dismiss(loadingToast); toast.error(err?.message || "فشلت العملية ❌"); }
     finally { setProcessingId(null); }
   };
 

@@ -29,6 +29,7 @@ const AdminIdChangePage: React.FC = () => {
   const executeChange = async () => {
     if (!oldUuid.trim() || !newUuid.trim()) { toast.error("يرجى ملء الحقلين"); return; }
     setChanging(true);
+    const t = toast.loading("جاري تغيير الآيدي...");
     try {
       await adminCall("admin_change_uuid", { old_uuid: oldUuid.trim(), new_uuid: newUuid.trim() });
       await sendUserNotification(
@@ -36,9 +37,10 @@ const AdminIdChangePage: React.FC = () => {
         "تم تغيير المعرف ✅",
         `تم تغيير معرفك إلى ${newUuid.trim()} بنجاح!`
       );
-      toast.success("تم تغيير الآيدي بنجاح");
+      toast.dismiss(t);
+      toast.success("تم تغيير الآيدي بنجاح ✅");
       setOldUuid(""); setNewUuid("");
-    } catch (err: any) { toast.error(err?.message || "فشل التغيير"); }
+    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل التغيير ❌"); }
     finally { setChanging(false); }
   };
 

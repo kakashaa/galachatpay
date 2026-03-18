@@ -31,6 +31,7 @@ const AdminVipPage: React.FC = () => {
   const sendVip = async () => {
     if (!vipUuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
     setSending(true);
+    const t = toast.loading(`جاري إرسال VIP ${vipLevel}...`);
     try {
       await adminCall("admin_give_vip", { uuid: vipUuid.trim(), vip_level: vipLevel });
       await sendUserNotification(
@@ -38,9 +39,10 @@ const AdminVipPage: React.FC = () => {
         "تم قبول طلب VIP ✅",
         `تم تفعيل VIP ${vipLevel} على حسابك بنجاح!`
       );
-      toast.success(`تم إرسال VIP ${vipLevel} بنجاح`);
+      toast.dismiss(t);
+      toast.success(`تم إرسال VIP ${vipLevel} بنجاح ✅`);
       setVipUuid("");
-    } catch (err: any) { toast.error(err?.message || "فشل الإرسال"); }
+    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الإرسال ❌"); }
     finally { setSending(false); }
   };
 

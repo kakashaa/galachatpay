@@ -35,6 +35,7 @@ const AdminBanPage: React.FC = () => {
   const executeBan = async () => {
     if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
     setBanLoading(true);
+    const t = toast.loading("جاري تنفيذ الحظر...");
     try {
       const durationHours = parseInt(banForm.duration_hours) || 24;
       await adminCall("manual_ban_user", { target_uuid: banForm.target_uuid.trim(), ban_type: banForm.ban_type, duration_hours: durationHours, reason: banForm.reason.trim(), banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null });
@@ -44,10 +45,11 @@ const AdminBanPage: React.FC = () => {
         "تم تعليق حسابك ⚠️",
         `تم تعليق حسابك بسبب: ${banForm.reason || "مخالفة"}. المدة: ${durationText}.`
       );
-      toast.success("تم حظر المستخدم بنجاح");
+      toast.dismiss(t);
+      toast.success("تم حظر المستخدم بنجاح ✅");
       setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
       loadData();
-    } catch (err: any) { toast.error(err?.message || "فشل الحظر"); }
+    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الحظر ❌"); }
     finally { setBanLoading(false); }
   };
 
