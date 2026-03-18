@@ -540,7 +540,7 @@ Deno.serve(async (req) => {
       }
       case "reject_animated_photo": {
         const { id } = data;
-        const { error } = await supabase.from("animated_photo_requests").update({ status: "approved" }).eq("id", id);
+        const { error } = await supabase.from("animated_photo_requests").update({ status: "rejected" }).eq("id", id);
         if (error) throw error;
         result = { success: true };
         break;
