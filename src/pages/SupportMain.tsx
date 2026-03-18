@@ -26,6 +26,14 @@ const SupportMain: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("bot");
+  const [quickSupportDismissed, setQuickSupportDismissed] = useState(false);
+
+  const isEligibleForQuickSupport = (() => {
+    if (!user) return false;
+    const vipLevel = (user as any).vip?.vip_level || (user as any).vip?.level || 0;
+    const isHostAgent = ((user as any).agency_id || 0) > 0;
+    return vipLevel >= 6 || isHostAgent;
+  })();
 
   // Live chat state
   const [chatKey, setChatKey] = useState<string | null>(() => {
@@ -157,6 +165,21 @@ const SupportMain: React.FC = () => {
       </header>
 
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        {/* Quick Support Alert for VIP6 / Host Agents */}
+        {isEligibleForQuickSupport && !quickSupportDismissed && activeTab !== "live" && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mx-4 mt-3 rounded-2xl p-4 space-y-3" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+            <p className="text-sm font-bold" style={{ color: 'hsl(38 92% 50%)' }}>
+              {(user as any)?.vip?.vip_level >= 6 || (user as any)?.vip?.level >= 6 ? "أنت تملك VIP 6" : "أنت وكيل مضيفين"} — تقدر تتواصل مباشرة مع سوبر أدمن!
+            </p>
+            <button onClick={() => navigate("/quick-support")} className="w-full py-2.5 rounded-xl font-bold text-sm text-black" style={{ background: 'hsl(38 92% 50%)' }}>
+              نعم، وصّلني بسوبر أدمن
+            </button>
+            <button onClick={() => setQuickSupportDismissed(true)} className="w-full py-2 rounded-xl text-xs text-muted-foreground" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              لا، أكمل بالدعم العادي
+            </button>
+          </motion.div>
+        )}
+
         <AnimatePresence mode="wait">
           {activeTab === "bot" ? (
             <motion.div key="bot" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.2 }} className="flex-1 flex flex-col overflow-hidden">

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, BadgeCheck, Briefcase,
-  Ban, Clock, Construction, Landmark,
+  Ban, Clock, Construction, Landmark, AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
@@ -60,6 +60,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
     { icon: BadgeCheck, label: "مركز الشارة", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400", banKey: "hairs" },
     { icon: Briefcase, label: "works", route: "/bd", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]", banKey: "works" },
     ...(agencyLoggedIn ? [{ icon: Landmark, label: "وكالة الشحن", route: "/agent", bg: "rgba(245,158,11,0.12)", iconColor: "text-amber-400", guestAllowed: true }] : []),
+    { icon: AlertTriangle, label: "بلاغ على أدمن", route: "/admin-complaint", bg: "rgba(239,68,68,0.12)", iconColor: "text-red-400" },
     { icon: FileText, label: "السياسة", route: "/policy", bg: "rgba(100,116,139,0.12)", iconColor: "text-slate-400", guestAllowed: true },
   ];
 

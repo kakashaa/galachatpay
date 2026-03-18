@@ -57,6 +57,7 @@ const BDWithdraw = lazy(() => import("./pages/BDWithdraw"));
 const BanCheckPage = lazy(() => import("./pages/BanCheckPage"));
 const CustomWaresRequest = lazy(() => import("./pages/CustomWaresRequest"));
 const MyWaresRequests = lazy(() => import("./pages/MyWaresRequests"));
+const AdminComplaint = lazy(() => import("./pages/AdminComplaint"));
 
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
@@ -160,6 +161,7 @@ const App = () => {
                   <Route path="/ban-check" element={<BanCheckPage />} />
                   <Route path="/custom-wares" element={<CustomWaresRequest />} />
                   <Route path="/my-wares-requests" element={<MyWaresRequests />} />
+                  <Route path="/admin-complaint" element={<AdminComplaint />} />
                   <Route path="/login/agent" element={<AgentLogin />} />
                   <Route path="/agent/setup" element={<AgentSetup />} />
                   <Route path="/agent" element={<AgentDashboard />} />

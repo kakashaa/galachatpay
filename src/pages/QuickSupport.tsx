@@ -15,7 +15,8 @@ import LiveSupportChat from "@/components/LiveSupportChat";
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
   const vipLevel = user.vip?.vip_level || user.vip?.level || 0;
-  return vipLevel >= 6;
+  const isHostAgent = (user.agency_id || 0) > 0;
+  return vipLevel >= 6 || isHostAgent;
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
@@ -183,7 +184,7 @@ const QuickSupport: React.FC = () => {
               <ShieldX className="w-10 h-10 text-destructive" />
             </div>
             <h2 className="text-lg font-bold text-foreground">ميزة حصرية ⚡</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">الدعم السريع متاح فقط لأصحاب<br /><span className="text-primary font-bold">VIP 6</span></p>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">الدعم السريع متاح فقط لأصحاب<br /><span className="text-primary font-bold">VIP 6</span> أو <span className="text-primary font-bold">وكلاء المضيفين</span></p>
             <div className="glass-card p-3 space-y-1.5 text-[11px] text-muted-foreground">
               <p>🌟 ارفع مستوى VIP الخاص بك للحصول على دعم فوري</p>
               <p>⚡ سوبر أدمن يدخل غرفتك خلال دقائق</p>
