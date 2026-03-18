@@ -36,6 +36,7 @@ const AdminRequestsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ReqTab>("entries");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, [activeTab]);
 
