@@ -225,12 +225,17 @@ const AdminRequestsPage: React.FC = () => {
     const isProcessing = processingId === item.id;
 
     // Build detail rows
-    const details: { icon: React.ElementType; label: string; value: string; copyable?: boolean }[] = [];
+    const details: { icon: React.ElementType; label: string; value: string; copyable?: boolean; link?: boolean }[] = [];
     if (item.user_uuid) details.push({ icon: Hash, label: "UUID", value: item.user_uuid, copyable: true });
     if (item.user_name) details.push({ icon: User, label: "الاسم", value: item.user_name });
+    if (item.friend_uuid) details.push({ icon: Send, label: "صديق", value: item.friend_uuid, copyable: true });
+    if (item.claim_type && item.claim_type !== "self") details.push({ icon: Send, label: "نوع الطلب", value: item.claim_type === "friend" ? "لصديق" : item.claim_type });
+    if (item.ware_type) details.push({ icon: Sparkles, label: "النوع", value: item.ware_type === "entry_room" ? "دخلة غرفة" : item.ware_type === "entry_profile" ? "دخلة ملف" : item.ware_type });
+    if (item.gift_usage) details.push({ icon: Sparkles, label: "الاستخدام", value: item.gift_usage === "room" ? "غرفة" : "ملف شخصي" });
     if (item.duration_label) details.push({ icon: Calendar, label: "المدة", value: item.duration_label });
     if (item.duration_days) details.push({ icon: Calendar, label: "الأيام", value: `${item.duration_days} يوم` });
     if (item.max_level) details.push({ icon: Sparkles, label: "المستوى", value: String(item.max_level) });
+    if (item.charger_level_at_claim) details.push({ icon: Sparkles, label: "لفل الشحن", value: String(item.charger_level_at_claim) });
     if (item.charger_level_at_upload) details.push({ icon: Sparkles, label: "مستوى الشحن", value: String(item.charger_level_at_upload) });
     if (item.video_duration) details.push({ icon: Clock, label: "مدة الفيديو", value: `${item.video_duration}ث` });
 
