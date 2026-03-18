@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Gift, User, Shield, Send, CheckCircle, Sparkles, Frame, DoorOpen } from "lucide-react";
+import CustomGiftGallery from "@/components/CustomGiftGallery";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
