@@ -58,6 +58,7 @@ const BanCheckPage = lazy(() => import("./pages/BanCheckPage"));
 const CustomWaresRequest = lazy(() => import("./pages/CustomWaresRequest"));
 const MyWaresRequests = lazy(() => import("./pages/MyWaresRequests"));
 const AdminComplaint = lazy(() => import("./pages/AdminComplaint"));
+const WorksPage = lazy(() => import("./pages/WorksPage"));
 
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
@@ -82,6 +83,7 @@ const AdminChatPage = lazy(() => import("./pages/admin/AdminChatPage"));
 const AdminLogPage = lazy(() => import("./pages/admin/AdminLogPage"));
 const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
 const AdminRequestsPage = lazy(() => import("./pages/admin/AdminRequestsPage"));
+const AdminWorksPage = lazy(() => import("./pages/admin/AdminWorksPage"));
 
 const queryClient = new QueryClient();
 
@@ -162,6 +164,8 @@ const App = () => {
                   <Route path="/custom-wares" element={<CustomWaresRequest />} />
                   <Route path="/my-wares-requests" element={<MyWaresRequests />} />
                   <Route path="/admin-complaint" element={<AdminComplaint />} />
+                  <Route path="/admin/works" element={<AdminWorksPage />} />
+                  <Route path="/works" element={<WorksPage />} />
                   <Route path="/login/agent" element={<AgentLogin />} />
                   <Route path="/agent/setup" element={<AgentSetup />} />
                   <Route path="/agent" element={<AgentDashboard />} />

@@ -1026,6 +1026,124 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ===== WORKS SYSTEM =====
+      case "works_list_requests": {
+        const { data: reqs, error } = await supabase
+          .from("works_requests").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        result = reqs;
+        break;
+      }
+
+      case "works_approve_request": {
+        const { id } = data;
+        const req2 = await supabase.from("works_requests").select("*").eq("id", id).single();
+        if (!req2.data) throw new Error("Request not found");
+        const code = "WK-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+        await supabase.from("works_accounts").insert({
+          user_uuid: req2.data.user_uuid, user_name: req2.data.user_name,
+          works_code: code, status: "active",
+        });
+        await supabase.from("works_requests").update({ status: "approved" }).eq("id", id);
+        await supabase.from("notifications").insert({
+          user_uuid: req2.data.user_uuid,
+          title: "تم قبول طلب Works ✅",
+          body: `تم تفعيل نظام Works لحسابك! كود Works الخاص بك: ${code}`,
+          is_read: false,
+        });
+        result = { success: true, works_code: code };
+        break;
+      }
+
+      case "works_reject_request": {
+        const { id, reason } = data;
+        await supabase.from("works_requests").update({ status: "rejected", admin_note: reason }).eq("id", id);
+        const reqR = await supabase.from("works_requests").select("user_uuid").eq("id", id).single();
+        if (reqR.data) {
+          await supabase.from("notifications").insert({
+            user_uuid: reqR.data.user_uuid,
+            title: "تم رفض طلب Works ❌",
+            body: reason || "للأسف تم رفض طلبك. تواصل مع الدعم لمزيد من المعلومات.",
+            is_read: false,
+          });
+        }
+        result = { success: true };
+        break;
+      }
+
+      case "works_list_accounts": {
+        const { data: accounts, error } = await supabase
+          .from("works_accounts").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        for (const acc of (accounts || [])) {
+          const { count: supporters } = await supabase
+            .from("works_members").select("*", { count: "exact", head: true })
+            .eq("works_id", acc.id).eq("member_type", "supporter").eq("status", "active");
+          const { count: agents } = await supabase
+            .from("works_members").select("*", { count: "exact", head: true })
+            .eq("works_id", acc.id).eq("member_type", "agent").eq("status", "active");
+          (acc as any).supporter_count = supporters || 0;
+          (acc as any).agent_count = agents || 0;
+        }
+        result = accounts;
+        break;
+      }
+
+      case "works_get_members": {
+        const { works_id } = data;
+        const { data: members, error } = await supabase
+          .from("works_members").select("*").eq("works_id", works_id).order("created_at", { ascending: false });
+        if (error) throw error;
+        result = members;
+        break;
+      }
+
+      case "works_update_account": {
+        const { id: uaId, ...uaUpdates } = data;
+        const { error } = await supabase.from("works_accounts").update(uaUpdates).eq("id", uaId);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      case "works_update_member": {
+        const { id: umId, ...umUpdates } = data;
+        const { error } = await supabase.from("works_members").update(umUpdates).eq("id", umId);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      case "works_list_withdrawals": {
+        const { data: withdrawals, error } = await supabase
+          .from("works_withdrawals").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        result = withdrawals;
+        break;
+      }
+
+      case "works_approve_withdrawal": {
+        const { id: awId } = data;
+        const w = await supabase.from("works_withdrawals").select("*").eq("id", awId).single();
+        if (!w.data) throw new Error("Not found");
+        await supabase.from("works_withdrawals").update({ status: "approved" }).eq("id", awId);
+        const accW = await supabase.from("works_accounts").select("balance_usd").eq("id", w.data.works_id).single();
+        if (accW.data) {
+          await supabase.from("works_accounts").update({
+            balance_usd: Math.max(0, (Number(accW.data.balance_usd) || 0) - Number(w.data.amount_usd))
+          }).eq("id", w.data.works_id);
+        }
+        result = { success: true };
+        break;
+      }
+
+      case "works_reject_withdrawal": {
+        const { id: rwId, reason: rwReason } = data;
+        await supabase.from("works_withdrawals").update({ status: "rejected", admin_note: rwReason }).eq("id", rwId);
+        result = { success: true };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),

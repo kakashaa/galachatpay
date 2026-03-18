@@ -2010,6 +2010,232 @@ export type Database = {
         }
         Relationships: []
       }
+      works_accounts: {
+        Row: {
+          agent_commission_pct: number | null
+          auto_approve_withdrawals: boolean | null
+          balance_usd: number | null
+          can_withdraw: boolean | null
+          created_at: string | null
+          deleted_at: string | null
+          id: string
+          status: string | null
+          supporter_commission_pct: number | null
+          total_earnings_usd: number | null
+          updated_at: string | null
+          user_name: string | null
+          user_uuid: string
+          works_code: string
+        }
+        Insert: {
+          agent_commission_pct?: number | null
+          auto_approve_withdrawals?: boolean | null
+          balance_usd?: number | null
+          can_withdraw?: boolean | null
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          status?: string | null
+          supporter_commission_pct?: number | null
+          total_earnings_usd?: number | null
+          updated_at?: string | null
+          user_name?: string | null
+          user_uuid: string
+          works_code: string
+        }
+        Update: {
+          agent_commission_pct?: number | null
+          auto_approve_withdrawals?: boolean | null
+          balance_usd?: number | null
+          can_withdraw?: boolean | null
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          status?: string | null
+          supporter_commission_pct?: number | null
+          total_earnings_usd?: number | null
+          updated_at?: string | null
+          user_name?: string | null
+          user_uuid?: string
+          works_code?: string
+        }
+        Relationships: []
+      }
+      works_earnings: {
+        Row: {
+          commission_pct: number
+          commission_usd: number
+          created_at: string | null
+          id: string
+          member_activity_usd: number | null
+          member_id: string | null
+          member_uuid: string
+          period_date: string
+          source: string | null
+          works_id: string | null
+        }
+        Insert: {
+          commission_pct: number
+          commission_usd: number
+          created_at?: string | null
+          id?: string
+          member_activity_usd?: number | null
+          member_id?: string | null
+          member_uuid: string
+          period_date: string
+          source?: string | null
+          works_id?: string | null
+        }
+        Update: {
+          commission_pct?: number
+          commission_usd?: number
+          created_at?: string | null
+          id?: string
+          member_activity_usd?: number | null
+          member_id?: string | null
+          member_uuid?: string
+          period_date?: string
+          source?: string | null
+          works_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "works_earnings_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "works_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "works_earnings_works_id_fkey"
+            columns: ["works_id"]
+            isOneToOne: false
+            referencedRelation: "works_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      works_members: {
+        Row: {
+          commission_pct: number | null
+          created_at: string | null
+          id: string
+          joined_at: string | null
+          member_name: string | null
+          member_type: string
+          member_uuid: string
+          status: string | null
+          total_commission_usd: number | null
+          works_id: string | null
+        }
+        Insert: {
+          commission_pct?: number | null
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          member_name?: string | null
+          member_type: string
+          member_uuid: string
+          status?: string | null
+          total_commission_usd?: number | null
+          works_id?: string | null
+        }
+        Update: {
+          commission_pct?: number | null
+          created_at?: string | null
+          id?: string
+          joined_at?: string | null
+          member_name?: string | null
+          member_type?: string
+          member_uuid?: string
+          status?: string | null
+          total_commission_usd?: number | null
+          works_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "works_members_works_id_fkey"
+            columns: ["works_id"]
+            isOneToOne: false
+            referencedRelation: "works_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      works_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string | null
+          id: string
+          status: string | null
+          user_level: number | null
+          user_name: string | null
+          user_uuid: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          user_level?: number | null
+          user_name?: string | null
+          user_uuid: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          user_level?: number | null
+          user_name?: string | null
+          user_uuid?: string
+        }
+        Relationships: []
+      }
+      works_withdrawals: {
+        Row: {
+          admin_note: string | null
+          amount_coins: number
+          amount_usd: number
+          created_at: string | null
+          id: string
+          recipient_uuid: string
+          status: string | null
+          user_uuid: string
+          works_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          amount_coins: number
+          amount_usd: number
+          created_at?: string | null
+          id?: string
+          recipient_uuid: string
+          status?: string | null
+          user_uuid: string
+          works_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          amount_coins?: number
+          amount_usd?: number
+          created_at?: string | null
+          id?: string
+          recipient_uuid?: string
+          status?: string | null
+          user_uuid?: string
+          works_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "works_withdrawals_works_id_fkey"
+            columns: ["works_id"]
+            isOneToOne: false
+            referencedRelation: "works_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
