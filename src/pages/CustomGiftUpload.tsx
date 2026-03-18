@@ -94,8 +94,8 @@ const CustomGiftUpload: React.FC = () => {
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error("حجم الفيديو يجب أن لا يتجاوز 100MB");
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("حجم الفيديو يجب أن لا يتجاوز 8 ميغابايت");
       return;
     }
     setVideoFile(file);
