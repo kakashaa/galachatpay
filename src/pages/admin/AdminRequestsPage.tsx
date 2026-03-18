@@ -422,7 +422,7 @@ const AdminRequestsPage: React.FC = () => {
                     <span className="text-xs font-bold text-admin-amber">معلّقة ({pendingItems.length})</span>
                   </div>
                   {/* Grid: 2 columns for entries/frames/hairs/custom, 1 column for animated photos */}
-                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-2 gap-3"}>
+                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-3 gap-2"}>
                     <AnimatePresence>
                       {pendingItems.map((item, i) => renderVisualCard(item, i))}
                     </AnimatePresence>
