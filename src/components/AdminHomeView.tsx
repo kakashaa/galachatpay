@@ -8,10 +8,11 @@ import {
   Gift, Wallet, Bell, X, Unlock, XCircle, Camera,
   Ban, KeyRound, RotateCcw, BatteryCharging, ImageIcon,
   ShoppingBag, TrendingUp, Building2, Banknote, Package,
-  ShieldAlert, Headphones, CheckCircle, Sparkles
+  ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
+import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 
 /* ─── 3D Card Wrapper ─── */
 const Card3D: React.FC<{ children: React.ReactNode; className?: string; delay?: number; glow?: string }> = ({ children, className = '', delay = 0, glow }) => (
