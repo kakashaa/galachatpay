@@ -192,14 +192,42 @@ const AdminRequestsPage: React.FC = () => {
   const renderItemCard = (item: any, i: number) => {
     const badge = statusBadge(item.status);
     const BadgeIcon = badge.icon;
+    const isProcessing = processingId === item.id;
     return (
       <motion.div key={item.id}
         initial={{ opacity: 0, y: 15, rotateX: 5 }}
         animate={{ opacity: 1, y: 0, rotateX: 0 }}
         transition={{ delay: i * 0.03, duration: 0.35 }}
-        className="rounded-2xl p-4"
+        className="rounded-2xl p-4 relative overflow-hidden"
         style={{ ...glassCard, background: `linear-gradient(145deg, ${currentTab.bg}0.05), rgba(255,255,255,0.02))` }}
       >
+        {/* Processing overlay */}
+        <AnimatePresence>
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 rounded-2xl flex flex-col items-center justify-center gap-3"
+              style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+                className="w-10 h-10 rounded-full border-3 border-transparent"
+                style={{ borderTopColor: 'hsl(160 84% 39%)', borderRightColor: 'hsl(160 84% 50%)', borderWidth: '3px' }}
+              />
+              <motion.p
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xs font-bold text-white"
+              >
+                جاري تنفيذ الطلب...
+              </motion.p>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold truncate">{item.user_name || item.title || "—"}</p>
