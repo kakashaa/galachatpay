@@ -26,7 +26,7 @@ async function authenticateAdmin(
   username: string,
   password: string,
   supabaseClient?: any
-): Promise<{ role: "super_admin" | "admin" | "moderator"; permissions?: string[] } | null> {
+): Promise<{ role: "owner" | "super_admin" | "admin" | "moderator"; permissions?: string[] } | null> {
   // Check primary accounts first
   const account = ADMIN_ACCOUNTS[username];
   if (account) {
