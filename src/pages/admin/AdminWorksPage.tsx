@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Loader2, Check, X, Users } from "lucide-react";
 
 const AdminWorksPage: React.FC = () => {
-  const { handleLogout, adminCall, isModeratorRole } = useAdminSession();
+  const { handleLogout, adminCall } = useAdminSession();
   const [tab, setTab] = useState("requests");
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);

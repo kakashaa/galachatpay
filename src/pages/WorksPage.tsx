@@ -34,7 +34,7 @@ const WorksPage: React.FC = () => {
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [monthEarnings, setMonthEarnings] = useState(0);
 
-  const userLevel = user?.max_level || user?.level || 0;
+  const userLevel = user?.level?.charger_level || 0;
 
   const fetchData = useCallback(async () => {
     if (!user?.uuid) return;
