@@ -80,6 +80,7 @@ const AdminSupportPage = lazy(() => import("./pages/admin/AdminSupportPage"));
 const AdminChatPage = lazy(() => import("./pages/admin/AdminChatPage"));
 const AdminLogPage = lazy(() => import("./pages/admin/AdminLogPage"));
 const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
+const AdminRequestsPage = lazy(() => import("./pages/admin/AdminRequestsPage"));
 
 const queryClient = new QueryClient();
 
@@ -146,6 +147,7 @@ const App = () => {
                   <Route path="/admin/chat" element={<AdminChatPage />} />
                   <Route path="/admin/log" element={<AdminLogPage />} />
                   <Route path="/admin/accounts" element={<AdminAccountsPage />} />
+                  <Route path="/admin/requests" element={<AdminRequestsPage />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/policy" element={<PolicyPage />} />
                   <Route path="/quick-support" element={<QuickSupport />} />
