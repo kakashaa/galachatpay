@@ -188,11 +188,11 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
           <div className="flex gap-1">
             {canAct && !isArchive && (
               <>
-                <button onClick={() => handleTransfer(activeChatId)} className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 font-bold flex items-center gap-0.5">
-                  <ArrowUpRight className="w-3 h-3" />تحويل
+                <button onClick={() => handleTransfer(activeChatId)} disabled={!!transferringId} className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 font-bold flex items-center gap-0.5 disabled:opacity-50">
+                  {transferringId ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpRight className="w-3 h-3" />}تحويل
                 </button>
-                <button onClick={() => handleClose(activeChatId)} className="text-[10px] px-2 py-1 rounded-full bg-destructive/10 text-destructive font-bold flex items-center gap-0.5">
-                  <XCircle className="w-3 h-3" />إغلاق
+                <button onClick={() => handleClose(activeChatId)} disabled={!!closingId} className="text-[10px] px-2 py-1 rounded-full bg-destructive/10 text-destructive font-bold flex items-center gap-0.5 disabled:opacity-50">
+                  {closingId ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}إغلاق
                 </button>
               </>
             )}
