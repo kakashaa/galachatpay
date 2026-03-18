@@ -25,6 +25,7 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
   const [remaining, setRemaining] = useState('');
   const [progress, setProgress] = useState(0);
   const [isOvertime, setIsOvertime] = useState(false);
+  const alertPlayedRef = React.useRef(false);
 
   useEffect(() => {
     if (!shiftEnd) {
