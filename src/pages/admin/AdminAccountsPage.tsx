@@ -55,12 +55,19 @@ const AdminAccountsPage: React.FC = () => {
     setLoadingRatings(false);
   };
 
+  const [complaintActionId, setComplaintActionId] = useState<string | null>(null);
+
   const updateComplaintStatus = async (id: string, status: string, notes?: string) => {
+    if (complaintActionId) return;
+    setComplaintActionId(id);
+    const t = toast.loading("جاري التحديث...");
     try {
       await supabase.from("admin_complaints").update({ status, owner_notes: notes || null }).eq("id", id);
-      toast.success("تم التحديث");
+      toast.dismiss(t);
+      toast.success("تم التحديث ✅");
       loadComplaints();
-    } catch { toast.error("فشل التحديث"); }
+    } catch { toast.dismiss(t); toast.error("فشل التحديث ❌"); }
+    finally { setComplaintActionId(null); }
   };
 
   const addAdmin = async () => {
