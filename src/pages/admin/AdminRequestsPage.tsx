@@ -10,6 +10,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import SvgaPlayer from "@/components/SvgaPlayer";
+import { captureMediaThumbnail } from "@/utils/captureMediaThumbnail";
+import { supabase } from "@/integrations/supabase/client";
 
 type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom";
 
