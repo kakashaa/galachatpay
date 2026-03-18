@@ -172,10 +172,14 @@ const AdminRequestsPage: React.FC = () => {
     );
 
     const thumb = getThumbnail(item);
-    const dim = size === "grid" ? 140 : 260;
+    const dim = size === "grid" ? 110 : 260;
 
     if (isSvga(url)) {
-      return <SvgaPlayer src={url} width={dim} height={dim} className="w-full h-full object-contain" />;
+      return (
+        <div className="w-full h-full flex items-center justify-center" style={{ background: 'radial-gradient(circle, rgba(30,30,40,0.9) 0%, rgba(10,10,15,1) 100%)' }}>
+          <SvgaPlayer src={url} width={dim} height={dim} loop={0} className="object-contain" />
+        </div>
+      );
     }
     if (isVideo(url)) {
       return thumb
@@ -259,9 +263,8 @@ const AdminRequestsPage: React.FC = () => {
           )}
 
           {/* Bottom gradient overlay with title */}
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-10 z-10">
-            <p className="text-white font-bold text-sm truncate">{item.title || item.user_name || "—"}</p>
-            {item.description && <p className="text-white/60 text-[10px] mt-0.5 line-clamp-1">{item.description}</p>}
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2 pt-8 z-10">
+            <p className="text-white font-bold text-[10px] truncate">{item.title || item.user_name || "—"}</p>
           </div>
 
           {/* File link */}
@@ -275,72 +278,54 @@ const AdminRequestsPage: React.FC = () => {
         </div>
 
         {/* User info section */}
-        <div className="p-3 space-y-2">
+        <div className="p-2 space-y-1.5">
           {/* User details */}
-          <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'rgba(0,0,0,0.2)' }}>
+          <div className="rounded-lg p-2 space-y-1" style={{ background: 'rgba(0,0,0,0.2)' }}>
             {item.user_uuid && (
-              <div className="flex items-center gap-2 text-[10px]">
-                <Hash className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                <span className="text-muted-foreground">UUID:</span>
+              <div className="flex items-center gap-1 text-[8px]">
+                <Hash className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
                 <span className="font-mono truncate flex-1">{item.user_uuid}</span>
                 <button onClick={() => copyToClipboard(item.user_uuid)} className="p-0.5 rounded hover:bg-white/10 flex-shrink-0">
-                  <Copy className="w-3 h-3 text-muted-foreground" />
+                  <Copy className="w-2.5 h-2.5 text-muted-foreground" />
                 </button>
               </div>
             )}
             {item.user_name && (
-              <div className="flex items-center gap-2 text-[10px]">
-                <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                <span className="text-muted-foreground">الاسم:</span>
+              <div className="flex items-center gap-1 text-[8px]">
+                <User className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
                 <span className="truncate flex-1">{item.user_name}</span>
               </div>
             )}
             {item.friend_uuid && (
-              <div className="flex items-center gap-2 text-[10px]">
-                <Send className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(330 80% 60%)' }} />
-                <span style={{ color: 'hsl(330 80% 60%)' }}>لصديق:</span>
+              <div className="flex items-center gap-1 text-[8px]">
+                <Send className="w-2.5 h-2.5 flex-shrink-0" style={{ color: 'hsl(330 80% 60%)' }} />
                 <span className="font-mono truncate flex-1" style={{ color: 'hsl(330 80% 60%)' }}>{item.friend_uuid}</span>
-                <button onClick={() => copyToClipboard(item.friend_uuid)} className="p-0.5 rounded hover:bg-white/10 flex-shrink-0">
-                  <Copy className="w-3 h-3 text-muted-foreground" />
-                </button>
               </div>
             )}
             {/* Extra info row */}
-            <div className="flex items-center gap-3 text-[9px] text-muted-foreground pt-1 border-t border-white/5">
-              {item.duration_days && (
-                <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" />{item.duration_days} يوم</span>
-              )}
-              {item.duration_label && (
-                <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" />{item.duration_label}</span>
-              )}
-              {(item.charger_level_at_claim || item.charger_level_at_upload) && (
-                <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" />لفل {item.charger_level_at_claim || item.charger_level_at_upload}</span>
-              )}
-              {item.max_level > 0 && (
-                <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" />مستوى {item.max_level}</span>
-              )}
-              {item.video_duration > 0 && (
-                <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{item.video_duration}ث</span>
-              )}
+            <div className="flex items-center gap-2 text-[7px] text-muted-foreground pt-1 border-t border-white/5 flex-wrap">
+              {item.duration_days && <span>{item.duration_days}يوم</span>}
+              {item.duration_label && <span>{item.duration_label}</span>}
+              {(item.charger_level_at_claim || item.charger_level_at_upload) && <span>لفل {item.charger_level_at_claim || item.charger_level_at_upload}</span>}
               <span className="mr-auto tabular-nums">{new Date(item.created_at).toLocaleDateString("ar-SA")}</span>
             </div>
           </div>
 
           {/* Approve / Reject buttons */}
           {isPending && (
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
                 onClick={() => handleAction(approveAction[activeTab], item.id)}
-                className="flex-1 h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                قبول ورفع
+                className="flex-1 h-8 rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
+                {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                قبول
               </motion.button>
               <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
                 onClick={() => handleAction(rejectAction[activeTab], item.id)}
-                className="flex-1 h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 12px rgba(244,63,94,0.3)' }}>
-                <XCircle className="w-4 h-4" /> رفض
+                className="flex-1 h-8 rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))' }}>
+                <XCircle className="w-3 h-3" /> رفض
               </motion.button>
             </div>
           )}
@@ -418,7 +403,7 @@ const AdminRequestsPage: React.FC = () => {
                     <span className="text-xs font-bold text-admin-amber">معلّقة ({pendingItems.length})</span>
                   </div>
                   {/* Grid: 2 columns for entries/frames/hairs/custom, 1 column for animated photos */}
-                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-2 gap-3"}>
+                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-3 gap-2"}>
                     <AnimatePresence>
                       {pendingItems.map((item, i) => renderVisualCard(item, i))}
                     </AnimatePresence>
@@ -437,7 +422,7 @@ const AdminRequestsPage: React.FC = () => {
                       <span className="text-xs font-bold text-muted-foreground">السابقة</span>
                     </div>
                   )}
-                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-2 gap-3"}>
+                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-3 gap-2"}>
                     {otherItems.slice(0, 20).map((item, i) => renderVisualCard(item, i + pendingItems.length))}
                   </div>
                 </div>
