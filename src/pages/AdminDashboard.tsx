@@ -1134,11 +1134,6 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Chat tab — redirect to chat page */}
-      {!activeTab && !activeSection && bottomTab === 'chat' && (() => {
-        navigate("/admin/chat");
-        return null;
-      })()}
 
       {/* Monitor tab */}
       {!activeTab && !activeSection && bottomTab === 'monitor' && (
