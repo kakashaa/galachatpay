@@ -3,17 +3,18 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Crown, Loader2 } from "lucide-react";
+import { Star, Loader2, Check, X, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import AdminTopAgents from "@/components/AdminTopAgents";
+
+const tabs = ["إرسال VIP", "الطلبات", "TOP وكلاء"];
 
 const AdminVipPage: React.FC = () => {
   const { adminCall, handleLogout, isModeratorRole } = useAdminSession();
   const [loading, setLoading] = useState(false);
   const [vipRequests, setVipRequests] = useState<any[]>([]);
-  const [subTab, setSubTab] = useState<"send" | "requests" | "top_agents">("send");
+  const [activeTab, setActiveTab] = useState(0);
 
   // Send VIP form
   const [vipUuid, setVipUuid] = useState("");
@@ -21,8 +22,8 @@ const AdminVipPage: React.FC = () => {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (subTab === "requests") loadRequests();
-  }, [subTab]);
+    if (activeTab === 1) loadRequests();
+  }, [activeTab]);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -43,70 +44,100 @@ const AdminVipPage: React.FC = () => {
   };
 
   return (
-    <AdminPageLayout title="إدارة VIP" accentColor="#FFD700" onLogout={handleLogout}>
-      <div className="max-w-2xl mx-auto p-4 space-y-4" dir="rtl">
-        {/* Sub-tabs */}
-        <div className="flex gap-1 bg-white/[0.03] rounded-xl p-1 border border-amber-500/10">
-          {[
-            { key: "send" as const, label: "إرسال VIP" },
-            { key: "requests" as const, label: "الطلبات" },
-            { key: "top_agents" as const, label: "TOP وكلاء" },
-          ].map(t => (
-            <button key={t.key} onClick={() => setSubTab(t.key)}
-              className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-colors ${subTab === t.key ? "bg-amber-500/20 text-amber-400" : "text-muted-foreground"}`}>
-              {t.label}
+    <AdminPageLayout title="إدارة VIP" onLogout={handleLogout}>
+      <div className="max-w-[448px] mx-auto px-4 pt-4 space-y-4" dir="rtl">
+        {/* Tabs */}
+        <div className="flex gap-1 bg-muted rounded-xl p-1">
+          {tabs.map((tab, i) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(i)}
+              className={`flex-1 h-9 rounded-lg text-xs font-bold transition-all ${
+                activeTab === i ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {tab}
             </button>
           ))}
         </div>
 
-        {subTab === "send" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-            <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-2xl p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Crown className="w-6 h-6 text-amber-400" />
-                <span className="text-sm font-bold text-amber-400">إرسال VIP</span>
+        {/* Send VIP Tab */}
+        {activeTab === 0 && (
+          <div className="space-y-4">
+            <input
+              value={vipUuid}
+              onChange={(e) => setVipUuid(e.target.value)}
+              placeholder="رقم UUID"
+              className="w-full h-12 bg-muted rounded-xl pr-4 pl-4 text-sm placeholder:text-muted-foreground border border-border focus:outline-none focus:border-admin-amber transition-colors tabular-nums"
+              dir="ltr"
+            />
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">مستوى VIP</p>
+              <div className="grid grid-cols-6 gap-2">
+                {[1, 2, 3, 4, 5, 6].map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => setVipLevel(level)}
+                    className={`h-11 rounded-xl text-sm font-bold transition-all ${
+                      vipLevel === level
+                        ? "bg-admin-amber text-background"
+                        : "bg-muted text-muted-foreground border border-border"
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ))}
               </div>
-              <Input placeholder="معرف المستخدم (UUID)" value={vipUuid} onChange={e => setVipUuid(e.target.value)} className="font-mono" dir="ltr" />
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">مستوى VIP</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3, 4, 5, 6].map(lvl => (
-                    <button key={lvl} onClick={() => setVipLevel(lvl)}
-                      className={`py-3 rounded-xl border text-sm font-bold transition-all ${vipLevel === lvl ? "border-amber-500 bg-amber-500/15 text-amber-400" : "border-white/10 text-muted-foreground"}`}>
-                      VIP {lvl}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Button onClick={sendVip} disabled={sending} className="w-full bg-amber-600 hover:bg-amber-700 text-white">
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Crown className="w-4 h-4 ml-2" />إرسال VIP</>}
-              </Button>
             </div>
-          </motion.div>
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={sendVip}
+              disabled={sending}
+              className="w-full h-12 bg-admin-amber rounded-xl text-background font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {sending ? <Loader2 size={18} className="animate-spin" /> : <><Star size={18} /> إرسال VIP</>}
+            </motion.button>
+          </div>
         )}
 
-        {subTab === "requests" && (
-          <div className="space-y-3">
+        {/* Requests Tab */}
+        {activeTab === 1 && (
+          <div className="space-y-2">
             {loading ? (
-              <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-amber-400" /></div>
+              <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-admin-amber" /></div>
             ) : vipRequests.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground"><Crown className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد طلبات VIP</p></div>
+              <div className="text-center py-10 text-muted-foreground"><Star className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد طلبات VIP</p></div>
             ) : vipRequests.map((req: any) => (
-              <div key={req.id} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
+              <motion.div
+                key={req.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-card rounded-xl border border-border p-3"
+              >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold">{req.user_name}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono">{req.user_uuid}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-admin-amber/10 flex items-center justify-center">
+                      <Star size={18} className="text-admin-amber" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{req.user_name}</p>
+                      <p className="text-[10px] text-muted-foreground tabular-nums">#{req.user_uuid} · VIP {req.vip_level}</p>
+                    </div>
                   </div>
-                  <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold">VIP {req.vip_level}</span>
+                  <span className="px-2 py-1 bg-admin-amber/10 text-admin-amber text-[10px] font-bold rounded-lg border border-admin-amber/20">
+                    VIP {req.vip_level}
+                  </span>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{req.request_month} • {new Date(req.created_at).toLocaleString("ar-EG")}</p>
-              </div>
+                <p className="text-[10px] text-muted-foreground mt-2 tabular-nums">
+                  {req.request_month} · {new Date(req.created_at).toLocaleString("ar-EG")}
+                </p>
+              </motion.div>
             ))}
           </div>
         )}
 
-        {subTab === "top_agents" && (
+        {/* Top Agents Tab */}
+        {activeTab === 2 && (
           <AdminTopAgents readOnly={isModeratorRole} />
         )}
       </div>

@@ -55,6 +55,19 @@
     --gradient-hero: linear-gradient(180deg, hsl(220 30% 10%), hsl(220 30% 5%));
     --shadow-primary: 0 4px 30px -5px hsl(8 88% 62% / 0.25);
     --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.4);
+
+    /* Semantic accent colors (admin design system) */
+    --admin-amber: 38 92% 50%;
+    --admin-rose: 350 89% 60%;
+    --admin-blue: 217 91% 60%;
+    --admin-pink: 330 81% 60%;
+    --admin-cyan: 188 86% 53%;
+    --admin-purple: 271 81% 56%;
+    --admin-emerald: 160 84% 39%;
+    --admin-orange: 25 95% 53%;
+    --admin-teal: 172 66% 50%;
+    --admin-indigo: 239 84% 67%;
+    --admin-emerald-glow: 160 84% 39% / 0.2;
   }
 }
 
