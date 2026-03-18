@@ -513,6 +513,9 @@ const AdminHomeView: React.FC<Props> = ({
             {/* Shift Timer */}
             {(shiftStart || shiftEnd) && <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />}
 
+            {/* Owner Delay Monitor */}
+            {isOwner && <DelayMonitor />}
+
             {/* Service Grid */}
             <div className="grid grid-cols-4 gap-3">
               {visibleServices.map((service, index) => {
