@@ -145,7 +145,7 @@ Deno.serve(async (req) => {
 
       // Audit log (super_admin only)
       case "list_audit_log": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك");
         const { data: logs, error } = await supabase
           .from("admin_audit_log")
           .select("*")
