@@ -267,7 +267,12 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 <p>الرصيد بعد الإهداء: {totalStars - giftAmount} نجمة</p>
               </div>
               <Button onClick={handleGiftStars} disabled={submitting || giftAmount < 1 || giftAmount > totalStars} className="w-full gold-gradient text-primary-foreground font-bold h-11">
-                {submitting ? "جاري الإرسال..." : `إهداء ${giftAmount} نجمة`}
+                {submitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                    <span>جاري الإرسال...</span>
+                  </div>
+                ) : `إهداء ${giftAmount} نجمة`}
               </Button>
               <button onClick={() => setCurrentView("main")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
             </div>

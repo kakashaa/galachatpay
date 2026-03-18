@@ -132,7 +132,7 @@ const EntryRequest: React.FC = () => {
      }
      setSubmitting(true);
      try {
-       // Insert claim record locally
+       // Step 1: Insert claim record (fast - Supabase)
        const { error: claimError } = await supabase.from("entry_gift_claims").insert({
          user_uuid: user.uuid,
          gift_id: selectedGift.id,
@@ -144,58 +144,34 @@ const EntryRequest: React.FC = () => {
        } as any);
        if (claimError) throw claimError;
 
-       // Deduct stars from balance
+       // Step 2: Deduct stars (fast - Supabase)
        const newTotal = totalStars - selectedGift.star_level;
        const carryover = Math.max(0, newTotal);
-       
        const { error: updateError } = await supabase
          .from("user_star_balance")
-         .update({
-           total_stars: newTotal,
-           carryover_stars: carryover,
-         })
+         .update({ total_stars: newTotal, carryover_stars: carryover })
          .eq("id", starBalance.id);
        if (updateError) throw updateError;
 
-       // Send request to wares-api.php via wares-request edge function
+       // Success! Show immediately
+       toast.success(claimType === "self" ? "تم لبس الدخولية بنجاح! 🎉" : "تم إرسال الدخولية لصديقك! 🎉");
+       setShowClaimDialog(false);
+       setSubmitting(false);
+       fetchStarBalance();
+
+       // Step 3+4: Background - user doesn't wait
        const ext = selectedGift.video_url.split(".").pop()?.toLowerCase() || "mp4";
        const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
        const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
        const wareType = giftUsage === "room" ? "entry_room" : "entry_profile";
-       
-       const { error: apiError } = await supabase.functions.invoke("wares-request", {
-         body: {
-           action: "submit-request",
-           uuid: targetUuid,
-           user_name: user.name,
-           ware_type: wareType,
-           image_type: imageType,
-           file_url: selectedGift.video_url,
-           days: 30,
-         },
-       });
-       if (apiError) throw apiError;
-
-       // Send to gala-actions with file URL
-       try {
-         await supabase.functions.invoke("gala-actions?action=submit-request", {
-           body: {
-             user_uuid: user.uuid,
-             user_name: user.name,
-             request_type: "entry_effect",
-             details: { file_url: selectedGift.video_url, title: selectedGift.title, gift_usage: giftUsage, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null },
-             evidence_url: selectedGift.video_url,
-             image_url: selectedGift.thumbnail_url || selectedGift.video_url,
-           },
-         });
-       } catch { /* silent */ }
-
-       toast.success(claimType === "self" ? "تم لبس الدخولية بنجاح!" : "تم إرسال الدخولية لصديقك!");
-       setShowClaimDialog(false);
-       fetchStarBalance();
+       supabase.functions.invoke("wares-request", {
+         body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: wareType, image_type: imageType, file_url: selectedGift.video_url, days: 30 },
+       }).catch(() => {});
+       supabase.functions.invoke("gala-actions?action=submit-request", {
+         body: { user_uuid: user.uuid, user_name: user.name, request_type: "entry_effect", details: { file_url: selectedGift.video_url, title: selectedGift.title, gift_usage: giftUsage, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null }, evidence_url: selectedGift.video_url, image_url: selectedGift.thumbnail_url || selectedGift.video_url },
+       }).catch(() => {});
      } catch (err: any) {
        toast.error(err?.message || "فشل الإرسال");
-     } finally {
        setSubmitting(false);
      }
    };
@@ -523,7 +499,12 @@ const EntryRequest: React.FC = () => {
               disabled={submitting || (claimType === "friend" && !friendUuid.trim())}
               className="w-full gold-gradient text-primary-foreground font-bold h-11"
             >
-              {submitting ? "جاري الإرسال..." : claimType === "self" ? "لبس الدخولية" : "إرسال لصديق"}
+              {submitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  <span>جاري الإرسال...</span>
+                </div>
+              ) : claimType === "self" ? "لبس الدخولية" : "إرسال لصديق"}
             </Button>
 
             <button onClick={() => setShowClaimDialog(false)} className="w-full text-center text-sm text-muted-foreground py-1">

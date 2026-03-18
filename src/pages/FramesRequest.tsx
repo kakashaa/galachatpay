@@ -94,7 +94,7 @@ const FramesRequest: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      // Insert claim record
+      // Step 1: Insert claim record (fast - Supabase)
       const { error: claimError } = await supabase.from("frame_claims").insert({
         user_uuid: user.uuid,
         frame_id: selectedFrame.id,
@@ -105,57 +105,33 @@ const FramesRequest: React.FC = () => {
       } as any);
       if (claimError) throw claimError;
 
-      // Deduct stars from balance
+      // Step 2: Deduct stars (fast - Supabase)
       const newTotal = totalStars - selectedFrame.star_level;
       const carryover = Math.max(0, newTotal);
-      
       const { error: updateError } = await supabase
         .from("user_star_balance")
-        .update({
-          total_stars: newTotal,
-          carryover_stars: carryover,
-        })
+        .update({ total_stars: newTotal, carryover_stars: carryover })
         .eq("id", starBalance.id);
       if (updateError) throw updateError;
 
-      // Send request to wares-api.php via wares-request edge function
+      // Success! Show immediately
+      toast.success(claimType === "self" ? "تم لبس الإطار بنجاح! 🎉" : "تم إرسال الإطار لصديقك! 🎉");
+      setShowClaimDialog(false);
+      setSubmitting(false);
+      fetchStarBalance();
+
+      // Step 3+4: Background - user doesn't wait
       const ext = selectedFrame.file_url.split(".").pop()?.toLowerCase() || "mp4";
       const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
       const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
-      
-      const { error: apiError } = await supabase.functions.invoke("wares-request", {
-        body: {
-          action: "submit-request",
-          uuid: targetUuid,
-          user_name: user.name,
-          ware_type: "frame",
-          image_type: imageType,
-          file_url: selectedFrame.file_url,
-          days: 30,
-        },
-      });
-      if (apiError) throw apiError;
-
-      // Send to gala-actions with file URL
-      try {
-        await supabase.functions.invoke("gala-actions?action=submit-request", {
-          body: {
-            user_uuid: user.uuid,
-            user_name: user.name,
-            request_type: "frame",
-            details: { file_url: selectedFrame.file_url, title: selectedFrame.title, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null },
-            evidence_url: selectedFrame.file_url,
-            image_url: selectedFrame.thumbnail_url || selectedFrame.file_url,
-          },
-        });
-      } catch { /* silent */ }
-
-      toast.success(claimType === "self" ? "تم لبس الإطار بنجاح!" : "تم إرسال الإطار لصديقك!");
-      setShowClaimDialog(false);
-      fetchStarBalance();
+      supabase.functions.invoke("wares-request", {
+        body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: "frame", image_type: imageType, file_url: selectedFrame.file_url, days: 30 },
+      }).catch(() => {});
+      supabase.functions.invoke("gala-actions?action=submit-request", {
+        body: { user_uuid: user.uuid, user_name: user.name, request_type: "frame", details: { file_url: selectedFrame.file_url, title: selectedFrame.title, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null }, evidence_url: selectedFrame.file_url, image_url: selectedFrame.thumbnail_url || selectedFrame.file_url },
+      }).catch(() => {});
     } catch (err: any) {
       toast.error(err?.message || "فشل الإرسال");
-    } finally {
       setSubmitting(false);
     }
   };
@@ -360,7 +336,12 @@ const FramesRequest: React.FC = () => {
             </div>
 
             <Button onClick={handleSubmitClaim} disabled={submitting} className="w-full gold-gradient text-primary-foreground font-bold h-11">
-              {submitting ? "جاري الإرسال..." : claimType === "self" ? "تأكيد اللبس" : "إرسال للصديق"}
+              {submitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  <span>جاري الإرسال...</span>
+                </div>
+              ) : claimType === "self" ? "تأكيد اللبس" : "إرسال للصديق"}
             </Button>
             <button onClick={() => setShowClaimDialog(false)} className="w-full text-center text-sm text-muted-foreground py-1">إلغاء</button>
           </div>
