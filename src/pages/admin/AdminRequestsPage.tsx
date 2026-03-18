@@ -108,6 +108,8 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   const handleAction = async (action: string, id: string, extra?: any) => {
+    if (processingId) return; // prevent double-click
+    setProcessingId(id);
     const item = items.find((i: any) => i.id === id);
     try {
       await adminCall(action, { id, ...extra });
