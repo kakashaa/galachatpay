@@ -22,7 +22,7 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
   const navigate = useNavigate();
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[448px] h-20 bg-background/95 backdrop-blur-md border-t border-border z-50 flex items-center justify-around px-2">
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[448px] h-20 bg-background/95 backdrop-blur-md border-t border-border z-50 flex items-center justify-around px-2 admin-theme">
       {navItems.map((item) => {
         const isActive = active === item.key;
         const Icon = item.icon;

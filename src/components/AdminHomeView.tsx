@@ -273,7 +273,7 @@ const AdminHomeView: React.FC<Props> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-24" dir="rtl">
+    <div className="min-h-screen bg-background pb-24 admin-theme" dir="rtl">
       <div className="max-w-[448px] mx-auto px-4 pt-4 space-y-5">
 
         {/* Welcome Card */}

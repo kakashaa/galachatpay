@@ -15,7 +15,7 @@ const AdminPageLayout: React.FC<Props> = ({ title, children, accentColor, onLogo
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background max-w-[448px] mx-auto relative flex flex-col" style={{ height: '100dvh' }}>
+    <div className="min-h-screen bg-background max-w-[448px] mx-auto relative flex flex-col admin-theme" style={{ height: '100dvh' }}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border px-4 h-14 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
