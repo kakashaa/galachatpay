@@ -838,7 +838,7 @@ Deno.serve(async (req) => {
       }
       
       case "permanent_delete": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك");
         const { table: delTable, id: delId } = data;
         const allowedDelTables = ["video_tutorials", "entry_gifts", "frames", "custom_gifts"];
         if (!allowedDelTables.includes(delTable)) throw new Error("جدول غير مسموح");
