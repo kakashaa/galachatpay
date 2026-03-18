@@ -208,10 +208,11 @@ const AdminBanPage: React.FC = () => {
                           {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
                         </span>
                       </div>
-                      <motion.button whileTap={{ scale: 0.96 }} onClick={async () => { await adminCall("unblock_account", { target_uuid: acc.target_uuid }); toast.success("تم فك الحظر"); loadData(); }}
-                        className="w-full h-10 mt-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+                      <motion.button whileTap={{ scale: 0.96 }} disabled={!!actionInProgress}
+                        onClick={async () => { if (actionInProgress) return; setActionInProgress(acc.id); const t = toast.loading("جاري فك الحظر..."); try { await adminCall("unblock_account", { target_uuid: acc.target_uuid }); toast.dismiss(t); toast.success("تم فك الحظر ✅"); loadData(); } catch { toast.dismiss(t); toast.error("فشل ❌"); } finally { setActionInProgress(null); } }}
+                        className="w-full h-10 mt-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
                         style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                        <Unlock className="w-4 h-4" />فك الحظر
+                        {actionInProgress === acc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
                       </motion.button>
                     </motion.div>
                   ))}
