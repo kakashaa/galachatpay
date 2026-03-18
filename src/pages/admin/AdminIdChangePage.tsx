@@ -31,6 +31,11 @@ const AdminIdChangePage: React.FC = () => {
     setChanging(true);
     try {
       await adminCall("admin_change_uuid", { old_uuid: oldUuid.trim(), new_uuid: newUuid.trim() });
+      await sendUserNotification(
+        newUuid.trim(),
+        "تم تغيير المعرف ✅",
+        `تم تغيير معرفك إلى ${newUuid.trim()} بنجاح!`
+      );
       toast.success("تم تغيير الآيدي بنجاح");
       setOldUuid(""); setNewUuid("");
     } catch (err: any) { toast.error(err?.message || "فشل التغيير"); }

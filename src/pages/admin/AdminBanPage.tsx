@@ -35,7 +35,14 @@ const AdminBanPage: React.FC = () => {
     if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
     setBanLoading(true);
     try {
-      await adminCall("manual_ban_user", { target_uuid: banForm.target_uuid.trim(), ban_type: banForm.ban_type, duration_hours: parseInt(banForm.duration_hours) || 24, reason: banForm.reason.trim(), banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null });
+      const durationHours = parseInt(banForm.duration_hours) || 24;
+      await adminCall("manual_ban_user", { target_uuid: banForm.target_uuid.trim(), ban_type: banForm.ban_type, duration_hours: durationHours, reason: banForm.reason.trim(), banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null });
+      const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
+      await sendUserNotification(
+        banForm.target_uuid.trim(),
+        "تم تعليق حسابك ⚠️",
+        `تم تعليق حسابك بسبب: ${banForm.reason || "مخالفة"}. المدة: ${durationText}.`
+      );
       toast.success("تم حظر المستخدم بنجاح");
       setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
       loadData();
