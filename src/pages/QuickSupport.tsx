@@ -15,7 +15,8 @@ import LiveSupportChat from "@/components/LiveSupportChat";
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
   const vipLevel = user.vip?.vip_level || user.vip?.level || 0;
-  return vipLevel >= 6;
+  const isHostAgent = (user.agency_id || 0) > 0;
+  return vipLevel >= 6 || isHostAgent;
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
