@@ -459,7 +459,7 @@ Deno.serve(async (req) => {
         break;
       }
 
-      // Entry gift claims
+      // Entry gift claims / entry requests
       case "list_entry_claims":
       case "list_entry_requests": {
         const { data: claims, error } = await supabase
