@@ -1,39 +1,33 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
   Loader2, Sparkles, Frame, Scissors, Camera, Gift,
-  CheckCircle, XCircle, Eye, Clock, Copy, Calendar, User, Hash,
-  Send, ExternalLink
+  CheckCircle, XCircle, Clock, Copy, Hash, Send, User,
+  Calendar, ExternalLink, Play
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import SvgaPlayer from "@/components/SvgaPlayer";
 
 type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom";
 
-const tabs: { key: ReqTab; label: string; icon: React.ElementType; color: string; bg: string; gradient: string }[] = [
-  { key: "entries", label: "دخوليات", icon: Sparkles, color: "text-admin-amber", bg: "rgba(245,158,11,", gradient: "from-amber-500/20 to-amber-600/5" },
-  { key: "frames", label: "إطارات", icon: Frame, color: "text-admin-blue", bg: "rgba(59,130,246,", gradient: "from-blue-500/20 to-blue-600/5" },
-  { key: "hairs", label: "شعرات", icon: Scissors, color: "text-admin-pink", bg: "rgba(236,72,153,", gradient: "from-pink-500/20 to-pink-600/5" },
-  { key: "animated", label: "صور", icon: Camera, color: "text-admin-purple", bg: "rgba(139,92,246,", gradient: "from-violet-500/20 to-violet-600/5" },
-  { key: "custom", label: "هدايا", icon: Gift, color: "text-admin-emerald", bg: "rgba(16,185,129,", gradient: "from-emerald-500/20 to-emerald-600/5" },
+const tabs: { key: ReqTab; label: string; icon: React.ElementType; color: string; bg: string }[] = [
+  { key: "entries", label: "دخوليات", icon: Sparkles, color: "text-admin-amber", bg: "rgba(245,158,11," },
+  { key: "frames", label: "إطارات", icon: Frame, color: "text-admin-blue", bg: "rgba(59,130,246," },
+  { key: "hairs", label: "شعرات", icon: Scissors, color: "text-admin-pink", bg: "rgba(236,72,153," },
+  { key: "animated", label: "صور", icon: Camera, color: "text-admin-purple", bg: "rgba(139,92,246," },
+  { key: "custom", label: "هدايا", icon: Gift, color: "text-admin-emerald", bg: "rgba(16,185,129," },
 ];
 
-const statusBadge = (status: string) => {
-  if (status === "pending") return { label: "معلّق", icon: Clock, color: "text-admin-amber", bg: "rgba(245,158,11,0.1)" };
-  if (status === "approved") return { label: "مقبول", icon: CheckCircle, color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)" };
-  return { label: "مرفوض", icon: XCircle, color: "text-admin-rose", bg: "rgba(244,63,94,0.1)" };
-};
-
-const glassCard = {
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.06)',
-  boxShadow: '0 4px 16px -4px rgba(0,0,0,0.3)',
-};
-
-// Store all tab pending counts
 type PendingCounts = Record<ReqTab, number>;
+
+const isSvga = (url: string) => url?.toLowerCase().endsWith(".svga");
+const isVideo = (url: string) => {
+  const l = url?.toLowerCase() || "";
+  return l.endsWith(".mp4") || l.endsWith(".webm") || l.endsWith(".mov");
+};
 
 const AdminRequestsPage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
@@ -45,20 +39,13 @@ const AdminRequestsPage: React.FC = () => {
   const [shakenTab, setShakenTab] = useState<ReqTab | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
 
-  // Load all pending counts on mount
-  useEffect(() => {
-    loadAllCounts();
-  }, []);
-
+  useEffect(() => { loadAllCounts(); }, []);
   useEffect(() => { loadData(); }, [activeTab]);
 
   const loadAllCounts = async () => {
     const actionMap: Record<ReqTab, string> = {
-      entries: "list_entry_requests",
-      frames: "list_frame_claims",
-      hairs: "list_hair_selections",
-      animated: "list_animated_photos",
-      custom: "list_custom_gifts",
+      entries: "list_entry_requests", frames: "list_frame_claims",
+      hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
     };
     try {
       const results = await Promise.allSettled(
@@ -68,9 +55,7 @@ const AdminRequestsPage: React.FC = () => {
         })
       );
       const counts: PendingCounts = { entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0 };
-      results.forEach(r => {
-        if (r.status === "fulfilled") counts[r.value.key] = r.value.count;
-      });
+      results.forEach(r => { if (r.status === "fulfilled") counts[r.value.key] = r.value.count; });
       setPendingCounts(counts);
     } catch { /* silent */ }
   };
@@ -80,21 +65,17 @@ const AdminRequestsPage: React.FC = () => {
     setRemovedIds(new Set());
     try {
       const actionMap: Record<ReqTab, string> = {
-        entries: "list_entry_requests",
-        frames: "list_frame_claims",
-        hairs: "list_hair_selections",
-        animated: "list_animated_photos",
-        custom: "list_custom_gifts",
+        entries: "list_entry_requests", frames: "list_frame_claims",
+        hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
       };
       const data = await adminCall(actionMap[activeTab]);
       setItems(data || []);
-      // Update pending count for this tab
       setPendingCounts(prev => ({ ...prev, [activeTab]: (data || []).filter((i: any) => i.status === "pending").length }));
     } catch { toast.error("فشل تحميل البيانات"); }
     finally { setLoading(false); }
   };
 
-  // --- auto upload logic (kept as-is) ---
+  // --- auto upload logic ---
   const autoUploadToGala = async (item: any, type: ReqTab) => {
     const API = "https://galachat.site/project-z/api.php";
     const ADMIN_KEY = "ghala2026owner";
@@ -104,13 +85,11 @@ const AdminRequestsPage: React.FC = () => {
         if (!gifUrl) return;
         const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "update_user_avatar", admin_key: ADMIN_KEY, uuid: item.user_uuid, avatar_url: gifUrl }) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الصورة لغلا لايف ✅");
-        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الصورة لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "custom") {
         const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_custom_gift", admin_key: ADMIN_KEY, user_name: item.user_name || item.title || "", video_url: item.video_url || "", thumbnail_url: item.thumbnail_url || "", price: "20000" }) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅");
-        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "entries") {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
@@ -118,23 +97,20 @@ const AdminRequestsPage: React.FC = () => {
         const targetUuid = item.friend_uuid || item.user_uuid;
         const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: wareType, name: item.title || item.user_name || "دخولية", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : fileUrl.endsWith(".mp4") ? "mp4" : "svga", expire: String(item.duration_days || 30) }) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الدخولية لغلا لايف ✅");
-        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الدخولية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "frames") {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
         const targetUuid = item.friend_uuid || item.user_uuid;
         const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "frame", name: item.title || item.user_name || "إطار", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4", expire: String(item.duration_days || 30) }) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الإطار لغلا لايف ✅");
-        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الإطار لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "hairs") {
         const fileUrl = item.file_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
         const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "badge", name: item.title || "شعار", file_url: fileUrl, uuid: item.user_uuid, file_format: "svga", expire: "30" }) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الشعار لغلا لايف ✅");
-        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الشعار لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       }
     } catch (err) {
       toast.warning("تم القبول — لكن الرفع التلقائي فشل.");
@@ -152,7 +128,6 @@ const AdminRequestsPage: React.FC = () => {
       await adminCall(action, { id, ...extra });
       if (isApprove && item) await autoUploadToGala(item, activeTab);
 
-      // Send notification
       if (item?.user_uuid) {
         const typeMap: Record<ReqTab, { approveTitle: string; approveBody: string; rejectTitle: string; rejectBody: string }> = {
           entries: { approveTitle: "تم قبول طلب الدخولية ✅", approveBody: `تم تفعيل الدخولية "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الدخولية ❌", rejectBody: "للأسف تم رفض طلب الدخولية الخاص بك." },
@@ -162,185 +137,221 @@ const AdminRequestsPage: React.FC = () => {
           custom: { approveTitle: "تم قبول الهدية المخصصة ✅", approveBody: `تم رفع هديتك "${item.title || ''}" وأصبحت متاحة لجميع المستخدمين!`, rejectTitle: "تم رفض الهدية المخصصة ❌", rejectBody: "للأسف تم رفض الهدية المخصصة. تأكد من استيفاء الشروط." },
         };
         const msgs = typeMap[activeTab];
-        if (msgs) {
-          await sendUserNotification(item.user_uuid, isApprove ? msgs.approveTitle : msgs.rejectTitle, isApprove ? msgs.approveBody : msgs.rejectBody);
-        }
+        if (msgs) await sendUserNotification(item.user_uuid, isApprove ? msgs.approveTitle : msgs.rejectTitle, isApprove ? msgs.approveBody : msgs.rejectBody);
       }
 
       toast.dismiss(loadingToast);
       toast.success(isApprove ? "تم القبول بنجاح ✅" : "تم الرفض ✅");
-
-      // Animate removal + shake the tab icon
       setRemovedIds(prev => new Set(prev).add(id));
       setPendingCounts(prev => ({ ...prev, [activeTab]: Math.max(0, prev[activeTab] - 1) }));
       setShakenTab(activeTab);
       setTimeout(() => setShakenTab(null), 600);
-
-      // Reload after animation
       setTimeout(() => loadData(), 500);
     } catch (err: any) { toast.dismiss(loadingToast); toast.error(err?.message || "فشلت العملية ❌"); }
     finally { setProcessingId(null); }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("تم النسخ ✅");
-  };
+  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("تم النسخ ✅"); };
 
   const currentTab = tabs.find(t => t.key === activeTab)!;
   const visibleItems = items.filter(i => !removedIds.has(i.id));
   const pendingItems = visibleItems.filter((i: any) => i.status === "pending");
   const otherItems = visibleItems.filter((i: any) => i.status !== "pending");
 
-  const getActionButtons = (item: any) => {
-    const approveAction: Record<ReqTab, string> = {
-      entries: "approve_entry_request", frames: "approve_frame_claim",
-      hairs: "approve_hair_selection", animated: "approve_animated_photo", custom: "approve_custom_gift",
-    };
-    const rejectAction: Record<ReqTab, string> = {
-      entries: "reject_entry_request", frames: "reject_frame_claim",
-      hairs: "reject_hair_selection", animated: "reject_animated_photo", custom: "reject_custom_gift",
-    };
-    if (item.status !== "pending") return null;
-    const isProcessing = processingId === item.id;
-    return (
-      <div className="flex gap-2 mt-3">
-        <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
-          onClick={() => handleAction(approveAction[activeTab], item.id)}
-          className="flex-1 h-9 rounded-xl text-[11px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-          {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />} قبول
-        </motion.button>
-        <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
-          onClick={() => handleAction(rejectAction[activeTab], item.id)}
-          className="flex-1 h-9 rounded-xl text-[11px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 12px rgba(244,63,94,0.3)' }}>
-          <XCircle className="w-3.5 h-3.5" /> رفض
-        </motion.button>
+  // Get the preview URL for any item
+  const getPreviewUrl = (item: any) => item.file_url || item.video_url || item.gif_url || item.thumbnail_url || null;
+  const getThumbnail = (item: any) => item.thumbnail_url || item.gif_url || null;
+
+  // Render the visual media preview
+  const renderMediaPreview = (item: any, size: "grid" | "full" = "grid") => {
+    const url = getPreviewUrl(item);
+    if (!url) return (
+      <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+        <Play className="w-8 h-8 text-muted-foreground/40" />
       </div>
     );
+
+    const thumb = getThumbnail(item);
+    const dim = size === "grid" ? 140 : 260;
+
+    if (isSvga(url)) {
+      return <SvgaPlayer src={url} width={dim} height={dim} className="w-full h-full object-contain" />;
+    }
+    if (isVideo(url)) {
+      return thumb
+        ? <img src={thumb} alt="" className="w-full h-full object-cover" />
+        : <video src={url} muted autoPlay loop playsInline className="w-full h-full object-cover" />;
+    }
+    // Image (webp, png, gif, jpg)
+    return <img src={url} alt="" className="w-full h-full object-cover" />;
   };
 
-  const renderItemCard = (item: any, i: number) => {
-    const badge = statusBadge(item.status);
-    const BadgeIcon = badge.icon;
-    const isProcessing = processingId === item.id;
+  const approveAction: Record<ReqTab, string> = {
+    entries: "approve_entry_request", frames: "approve_frame_claim",
+    hairs: "approve_hair_selection", animated: "approve_animated_photo", custom: "approve_custom_gift",
+  };
+  const rejectAction: Record<ReqTab, string> = {
+    entries: "reject_entry_request", frames: "reject_frame_claim",
+    hairs: "reject_hair_selection", animated: "reject_animated_photo", custom: "reject_custom_gift",
+  };
 
-    // Build detail rows
-    const details: { icon: React.ElementType; label: string; value: string; copyable?: boolean; link?: boolean }[] = [];
-    if (item.user_uuid) details.push({ icon: Hash, label: "UUID", value: item.user_uuid, copyable: true });
-    if (item.user_name) details.push({ icon: User, label: "الاسم", value: item.user_name });
-    if (item.friend_uuid) details.push({ icon: Send, label: "صديق", value: item.friend_uuid, copyable: true });
-    if (item.claim_type && item.claim_type !== "self") details.push({ icon: Send, label: "نوع الطلب", value: item.claim_type === "friend" ? "لصديق" : item.claim_type });
-    if (item.ware_type) details.push({ icon: Sparkles, label: "النوع", value: item.ware_type === "entry_room" ? "دخلة غرفة" : item.ware_type === "entry_profile" ? "دخلة ملف" : item.ware_type });
-    if (item.gift_usage) details.push({ icon: Sparkles, label: "الاستخدام", value: item.gift_usage === "room" ? "غرفة" : "ملف شخصي" });
-    if (item.duration_label) details.push({ icon: Calendar, label: "المدة", value: item.duration_label });
-    if (item.duration_days) details.push({ icon: Calendar, label: "الأيام", value: `${item.duration_days} يوم` });
-    if (item.max_level) details.push({ icon: Sparkles, label: "المستوى", value: String(item.max_level) });
-    if (item.charger_level_at_claim) details.push({ icon: Sparkles, label: "لفل الشحن", value: String(item.charger_level_at_claim) });
-    if (item.charger_level_at_upload) details.push({ icon: Sparkles, label: "مستوى الشحن", value: String(item.charger_level_at_upload) });
-    if (item.video_duration) details.push({ icon: Clock, label: "مدة الفيديو", value: `${item.video_duration}ث` });
+  // Visual card like user pages
+  const renderVisualCard = (item: any, i: number) => {
+    const isPending = item.status === "pending";
+    const isProcessing = processingId === item.id;
+    const statusColor = item.status === "approved" ? "hsl(160 84% 39%)" : item.status === "rejected" ? "hsl(350 89% 55%)" : "hsl(40 96% 53%)";
+    const statusLabel = item.status === "approved" ? "مقبول ✅" : item.status === "rejected" ? "مرفوض ❌" : "معلّق ⏳";
+    const wareLabel = item.ware_type === "entry_room" ? "غرفة" : item.ware_type === "entry_profile" ? "ملف" : item.ware_type === "frame" ? "إطار" : null;
 
     return (
       <motion.div key={item.id}
         layout
-        initial={{ opacity: 0, y: 15, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, x: -80, scale: 0.9, transition: { duration: 0.3 } }}
-        transition={{ delay: i * 0.03, duration: 0.35 }}
-        className="rounded-2xl p-4 relative overflow-hidden"
-        style={{ ...glassCard, background: `linear-gradient(145deg, ${currentTab.bg}0.05), rgba(255,255,255,0.02))` }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.25 } }}
+        transition={{ delay: i * 0.04, duration: 0.3 }}
+        className="relative rounded-2xl overflow-hidden"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
       >
         {/* Processing overlay */}
         <AnimatePresence>
           {isProcessing && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 z-10 rounded-2xl flex flex-col items-center justify-center gap-3"
-              style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}>
-              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 z-20 rounded-2xl flex flex-col items-center justify-center gap-3"
+              style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}>
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 className="w-10 h-10 rounded-full" style={{ borderWidth: '3px', borderStyle: 'solid', borderColor: 'transparent', borderTopColor: 'hsl(160 84% 39%)', borderRightColor: 'hsl(160 84% 50%)' }} />
-              <motion.p initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                className="text-xs font-bold text-white">جاري تنفيذ الطلب...</motion.p>
+              <p className="text-xs font-bold text-white">جاري تنفيذ الطلب...</p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Header: title + badges */}
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate">{item.title || item.user_name || "—"}</p>
-            {item.description && (
-              <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
-            )}
+        {/* Media preview - large visual area */}
+        <div className={`relative w-full ${activeTab === "frames" || activeTab === "hairs" ? "aspect-square" : "aspect-[3/4]"} bg-black/40`}>
+          <div className="absolute inset-0 flex items-center justify-center">
+            {renderMediaPreview(item)}
           </div>
-          <div className="flex items-center gap-1.5 mr-2 flex-shrink-0">
-            {item.claim_type === "friend" && (
-              <span className="px-2 py-1 rounded-lg text-[9px] font-bold" style={{ background: 'rgba(236,72,153,0.1)', color: 'hsl(330 80% 60%)' }}>
-                إهداء 🎁
-              </span>
-            )}
-            <span className="px-2 py-1 rounded-lg text-[9px] font-bold flex items-center gap-1" style={{ background: badge.bg }}>
-              <BadgeIcon className={`w-3 h-3 ${badge.color}`} />
-              <span className={badge.color}>{badge.label}</span>
+
+          {/* Status badge - top right */}
+          <div className="absolute top-2 right-2 z-10">
+            <span className="px-2 py-1 rounded-lg text-[9px] font-bold text-white"
+              style={{ background: statusColor, boxShadow: `0 2px 8px ${statusColor}40` }}>
+              {statusLabel}
             </span>
           </div>
+
+          {/* Gift type badge - top left */}
+          {item.claim_type === "friend" && (
+            <div className="absolute top-2 left-2 z-10">
+              <span className="px-2 py-1 rounded-lg text-[9px] font-bold" style={{ background: 'rgba(236,72,153,0.85)', color: 'white' }}>
+                إهداء 🎁
+              </span>
+            </div>
+          )}
+
+          {/* Ware type badge */}
+          {wareLabel && (
+            <div className="absolute top-2 left-2 z-10" style={item.claim_type === "friend" ? { top: '32px' } : {}}>
+              <span className="px-2 py-0.5 rounded-md text-[8px] font-bold" style={{ background: 'rgba(0,0,0,0.6)', color: 'white' }}>
+                {wareLabel}
+              </span>
+            </div>
+          )}
+
+          {/* Bottom gradient overlay with title */}
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-10 z-10">
+            <p className="text-white font-bold text-sm truncate">{item.title || item.user_name || "—"}</p>
+            {item.description && <p className="text-white/60 text-[10px] mt-0.5 line-clamp-1">{item.description}</p>}
+          </div>
+
+          {/* File link */}
+          {getPreviewUrl(item) && (
+            <a href={getPreviewUrl(item)} target="_blank" rel="noopener noreferrer"
+              className="absolute bottom-3 left-3 z-10 w-7 h-7 rounded-full flex items-center justify-center"
+              style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)' }}>
+              <ExternalLink className="w-3.5 h-3.5 text-white/80" />
+            </a>
+          )}
         </div>
 
-        {/* Detail rows */}
-        {details.length > 0 && (
-          <div className="mt-3 space-y-1.5 rounded-xl p-2.5" style={{ background: 'rgba(0,0,0,0.15)' }}>
-            {details.map((d, idx) => {
-              const DIcon = d.icon;
-              return (
-                <div key={idx} className="flex items-center gap-2 text-[10px]">
-                  <DIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-muted-foreground flex-shrink-0">{d.label}:</span>
-                  <span className="font-mono truncate flex-1">{d.value}</span>
-                  {d.copyable && (
-                    <button onClick={() => copyToClipboard(d.value)} className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0">
-                      <Copy className="w-3 h-3 text-muted-foreground" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Preview thumbnail */}
-        {(item.gif_url || item.thumbnail_url || item.video_url || item.file_url) && (
-          <div className="mt-3 rounded-xl overflow-hidden h-20 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.2)' }}>
-            {item.gif_url || item.thumbnail_url ? (
-              <img src={item.gif_url || item.thumbnail_url} alt="" className="h-full object-contain" />
-            ) : (item.file_url || item.video_url) ? (
-              <a href={item.file_url || item.video_url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-emerald-400 text-[10px] hover:underline">
-                <ExternalLink className="w-3.5 h-3.5" /> عرض الملف
-              </a>
-            ) : (
-              <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
-                <Eye className="w-3.5 h-3.5" /> ملف مرفق
+        {/* User info section */}
+        <div className="p-3 space-y-2">
+          {/* User details */}
+          <div className="rounded-xl p-2.5 space-y-1.5" style={{ background: 'rgba(0,0,0,0.2)' }}>
+            {item.user_uuid && (
+              <div className="flex items-center gap-2 text-[10px]">
+                <Hash className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground">UUID:</span>
+                <span className="font-mono truncate flex-1">{item.user_uuid}</span>
+                <button onClick={() => copyToClipboard(item.user_uuid)} className="p-0.5 rounded hover:bg-white/10 flex-shrink-0">
+                  <Copy className="w-3 h-3 text-muted-foreground" />
+                </button>
               </div>
             )}
+            {item.user_name && (
+              <div className="flex items-center gap-2 text-[10px]">
+                <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground">الاسم:</span>
+                <span className="truncate flex-1">{item.user_name}</span>
+              </div>
+            )}
+            {item.friend_uuid && (
+              <div className="flex items-center gap-2 text-[10px]">
+                <Send className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(330 80% 60%)' }} />
+                <span style={{ color: 'hsl(330 80% 60%)' }}>لصديق:</span>
+                <span className="font-mono truncate flex-1" style={{ color: 'hsl(330 80% 60%)' }}>{item.friend_uuid}</span>
+                <button onClick={() => copyToClipboard(item.friend_uuid)} className="p-0.5 rounded hover:bg-white/10 flex-shrink-0">
+                  <Copy className="w-3 h-3 text-muted-foreground" />
+                </button>
+              </div>
+            )}
+            {/* Extra info row */}
+            <div className="flex items-center gap-3 text-[9px] text-muted-foreground pt-1 border-t border-white/5">
+              {item.duration_days && (
+                <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" />{item.duration_days} يوم</span>
+              )}
+              {item.duration_label && (
+                <span className="flex items-center gap-1"><Calendar className="w-2.5 h-2.5" />{item.duration_label}</span>
+              )}
+              {(item.charger_level_at_claim || item.charger_level_at_upload) && (
+                <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" />لفل {item.charger_level_at_claim || item.charger_level_at_upload}</span>
+              )}
+              {item.max_level > 0 && (
+                <span className="flex items-center gap-1"><Sparkles className="w-2.5 h-2.5" />مستوى {item.max_level}</span>
+              )}
+              {item.video_duration > 0 && (
+                <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{item.video_duration}ث</span>
+              )}
+              <span className="mr-auto tabular-nums">{new Date(item.created_at).toLocaleDateString("ar-SA")}</span>
+            </div>
           </div>
-        )}
 
-        {/* Timestamp */}
-        <p className="text-[9px] text-muted-foreground mt-2 tabular-nums">
-          {new Date(item.created_at).toLocaleString("ar-EG")}
-        </p>
-
-        {getActionButtons(item)}
+          {/* Approve / Reject buttons */}
+          {isPending && (
+            <div className="flex gap-2">
+              <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
+                onClick={() => handleAction(approveAction[activeTab], item.id)}
+                className="flex-1 h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                قبول ورفع
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.92 }} disabled={!!processingId}
+                onClick={() => handleAction(rejectAction[activeTab], item.id)}
+                className="flex-1 h-10 rounded-xl text-[12px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 12px rgba(244,63,94,0.3)' }}>
+                <XCircle className="w-4 h-4" /> رفض
+              </motion.button>
+            </div>
+          )}
+        </div>
       </motion.div>
     );
   };
 
-  // Shake animation variants
+  // Shake animation
   const shakeVariants = {
-    shake: {
-      rotate: [0, -12, 12, -8, 8, -4, 4, 0],
-      transition: { duration: 0.5 }
-    },
+    shake: { rotate: [0, -12, 12, -8, 8, -4, 4, 0], transition: { duration: 0.5 } },
     idle: { rotate: 0 }
   };
 
@@ -361,29 +372,19 @@ const AdminRequestsPage: React.FC = () => {
               <motion.button key={t.key} onClick={() => setActiveTab(t.key)} whileTap={{ scale: 0.85 }}
                 className="relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition-all"
                 style={isActive ? { background: `${t.bg}0.12)`, boxShadow: `0 2px 12px ${t.bg}0.2)` } : {}}>
-                <motion.div
-                  variants={shakeVariants}
-                  animate={isShaking ? "shake" : "idle"}
-                >
+                <motion.div variants={shakeVariants} animate={isShaking ? "shake" : "idle"}>
                   <Icon className={`w-5 h-5 transition-colors ${isActive ? t.color : "text-muted-foreground"}`} />
                 </motion.div>
-                <span className={`text-[9px] font-bold transition-colors ${isActive ? t.color : "text-muted-foreground"}`}>
-                  {t.label}
-                </span>
-                {/* Pending count badge */}
+                <span className={`text-[9px] font-bold transition-colors ${isActive ? t.color : "text-muted-foreground"}`}>{t.label}</span>
                 <AnimatePresence>
                   {count > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      exit={{ scale: 0 }}
+                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
                       className="absolute -top-1 -left-1 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold text-white flex items-center justify-center"
                       style={{ background: 'linear-gradient(135deg, hsl(350 89% 55%), hsl(350 89% 45%))', boxShadow: '0 2px 6px rgba(244,63,94,0.4)' }}>
                       {count}
                     </motion.span>
                   )}
                 </AnimatePresence>
-                {/* Active indicator dot */}
                 {isActive && (
                   <motion.div layoutId="activeRequestDot"
                     className="absolute -bottom-0.5 w-1 h-1 rounded-full"
@@ -400,41 +401,45 @@ const AdminRequestsPage: React.FC = () => {
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: `${currentTab.bg}0.8)` }} />
           </div>
         ) : visibleItems.length === 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="text-center py-16 text-muted-foreground">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 text-muted-foreground">
             <currentTab.icon className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm">لا توجد طلبات</p>
           </motion.div>
         ) : (
           <AnimatePresence mode="wait">
-            <motion.div key={activeTab} initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }} className="space-y-4">
+            <motion.div key={activeTab} initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }}>
               {/* Pending section */}
               {pendingItems.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3 mb-6">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.12)' }}>
                       <Clock className="w-3.5 h-3.5 text-admin-amber" />
                     </div>
                     <span className="text-xs font-bold text-admin-amber">معلّقة ({pendingItems.length})</span>
                   </div>
-                  <AnimatePresence>
-                    {pendingItems.map((item, i) => renderItemCard(item, i))}
-                  </AnimatePresence>
+                  {/* Grid: 2 columns for entries/frames/hairs/custom, 1 column for animated photos */}
+                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-2 gap-3"}>
+                    <AnimatePresence>
+                      {pendingItems.map((item, i) => renderVisualCard(item, i))}
+                    </AnimatePresence>
+                  </div>
                 </div>
               )}
 
-              {/* Other items */}
+              {/* Previous items */}
               {otherItems.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {pendingItems.length > 0 && (
-                    <div className="flex items-center gap-2 mt-4">
+                    <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
                         <CheckCircle className="w-3.5 h-3.5 text-muted-foreground" />
                       </div>
                       <span className="text-xs font-bold text-muted-foreground">السابقة</span>
                     </div>
                   )}
-                  {otherItems.slice(0, 20).map((item, i) => renderItemCard(item, i + pendingItems.length))}
+                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-2 gap-3"}>
+                    {otherItems.slice(0, 20).map((item, i) => renderVisualCard(item, i + pendingItems.length))}
+                  </div>
                 </div>
               )}
             </motion.div>
