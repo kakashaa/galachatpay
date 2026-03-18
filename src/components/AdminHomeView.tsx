@@ -317,6 +317,7 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "text-admin-orange", bg: "rgba(249,115,22,0.1)", glowColor: "rgba(249,115,22,0.25)", badge: 0 },
     { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "text-admin-teal", bg: "rgba(20,184,166,0.1)", glowColor: "rgba(20,184,166,0.25)", badge: 0 },
     { icon: ScrollText, label: "السجل", route: "/admin/log", color: "text-admin-indigo", bg: "rgba(99,102,241,0.1)", glowColor: "rgba(99,102,241,0.25)", badge: 0 },
+    { icon: Briefcase, label: "البيدي", route: "/admin/bd", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: 0 },
     { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", glowColor: "rgba(255,255,255,0.1)", badge: 0 },
   ];
 
