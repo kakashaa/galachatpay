@@ -1,5 +1,6 @@
 import React from 'react';
-import { Home, Search, MessageSquare, Eye, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Home, Search, MessageCircle, Eye, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 type BottomTab = 'home' | 'search' | 'chat' | 'monitor' | 'favorites';
@@ -8,86 +9,65 @@ interface Props {
   active: BottomTab;
   onChange: (tab: BottomTab) => void;
   chatBadge?: number;
-  onChatNavigate?: () => void;
 }
 
-const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, onChatNavigate }) => {
+const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
+  const navigate = useNavigate();
+
   const tabs: { key: BottomTab; label: string; icon: React.ElementType }[] = [
-    { key: 'favorites', label: 'المفضلة', icon: Star },
-    { key: 'monitor', label: 'مراقبة', icon: Eye },
-    { key: 'chat', label: 'الدردشة', icon: MessageSquare },
-    { key: 'search', label: 'بحث', icon: Search },
     { key: 'home', label: 'الرئيسية', icon: Home },
+    { key: 'search', label: 'بحث', icon: Search },
+    { key: 'chat', label: 'الدردشة', icon: MessageCircle },
+    { key: 'monitor', label: 'مراقبة', icon: Eye },
+    { key: 'favorites', label: 'المفضلة', icon: Star },
   ];
 
   return (
-    <motion.nav
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", damping: 20, stiffness: 300 }}
-      className="fixed bottom-0 left-0 right-0 z-50"
-    >
-      {/* Blur background */}
-      <div className="absolute inset-0 bg-[hsl(var(--background))]/80 backdrop-blur-xl border-t border-white/5" />
-
-      <div className="relative max-w-2xl mx-auto px-6 py-2 flex items-end justify-between">
+    <div className="fixed bottom-0 left-0 right-0 z-50">
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl border-t border-white/[0.06]" />
+      <div className="relative max-w-md mx-auto flex items-end justify-around px-4 pb-6 pt-2">
         {tabs.map((tab, i) => {
           const Icon = tab.icon;
           const isCenter = i === 2; // الدردشة بالوسط
           const isActive = active === tab.key;
 
-          return (
-            <motion.button
-              key={tab.key}
-              whileTap={{ scale: 0.85 }}
-              onClick={() => {
-                if (tab.key === 'chat' && onChatNavigate) {
-                  onChatNavigate();
-                } else {
-                  onChange(tab.key);
-                }
-              }}
-              className={`flex flex-col items-center gap-0.5 relative ${isCenter ? '-mt-4' : ''}`}
-            >
-              {isCenter ? (
-                /* زر الدردشة — كبير ومميز */
+          if (isCenter) {
+            return (
+              <motion.button
+                key={tab.key}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => navigate("/admin/chat")}
+                className="-mt-6 flex flex-col items-center gap-1"
+              >
                 <div className="relative">
-                  <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                  <div className="w-[52px] h-[52px] rounded-2xl bg-emerald-500 flex items-center justify-center shadow-[0_4px_20px_rgba(34,197,94,0.4)]">
                     <Icon className="w-6 h-6 text-black" />
                   </div>
                   {chatBadge && chatBadge > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-[9px] text-white font-bold flex items-center justify-center shadow-lg shadow-red-500/30"
-                    >
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-[8px] text-white font-bold flex items-center justify-center px-1 shadow-lg shadow-red-500/30">
                       {chatBadge > 99 ? '99+' : chatBadge}
-                    </motion.span>
+                    </span>
                   )}
                 </div>
-              ) : (
-                <div className="relative py-1">
-                  <Icon className={`w-5 h-5 transition-colors duration-200 ${isActive ? 'text-emerald-400' : 'text-muted-foreground'}`} />
-                  {/* Active indicator */}
-                  {isActive && (
-                    <motion.div
-                      layoutId="adminActiveTab"
-                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400"
-                    />
-                  )}
-                </div>
-              )}
-              <span className={`text-[9px] ${isActive || isCenter ? 'text-emerald-400 font-bold' : 'text-muted-foreground'}`}>
+              </motion.button>
+            );
+          }
+
+          return (
+            <button
+              key={tab.key}
+              onClick={() => onChange(tab.key)}
+              className="flex flex-col items-center gap-1"
+            >
+              <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
+              <span className={`text-[8px] ${isActive ? 'text-emerald-400 font-bold' : 'text-zinc-500'}`}>
                 {tab.label}
               </span>
-            </motion.button>
+            </button>
           );
         })}
       </div>
-
-      {/* Safe area for iPhone */}
-      <div className="h-[env(safe-area-inset-bottom)] bg-[hsl(var(--background))]/80" />
-    </motion.nav>
+    </div>
   );
 };
 
