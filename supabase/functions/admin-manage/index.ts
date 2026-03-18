@@ -920,7 +920,7 @@ Deno.serve(async (req) => {
       }
 
       case "add_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { username: modUsername, display_name, password: modPassword, permissions } = data;
         if (!modUsername || !modPassword) throw new Error("اسم المستخدم وكلمة المرور مطلوبان");
         
