@@ -66,10 +66,10 @@ const AdminDashboardPage: React.FC = () => {
   const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
 
   // Session
-  const adminSessionToken = sessionStorage.getItem("admin_session_token");
-  const adminUsername = sessionStorage.getItem("admin_username");
-  const adminDisplayName = sessionStorage.getItem("admin_display_name") || adminUsername;
-  const adminRole = sessionStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
+  const adminSessionToken = localStorage.getItem("admin_session_token");
+  const adminUsername = localStorage.getItem("admin_username");
+  const adminDisplayName = localStorage.getItem("admin_display_name") || adminUsername;
+  const adminRole = localStorage.getItem("admin_role") as "owner" | "super_admin" | "admin" | "moderator" | null;
   const isOwner = adminRole === "owner";
   const isSuperAdmin = adminRole === "super_admin" || isOwner;
 
