@@ -1352,6 +1352,7 @@ export type Database = {
           is_read: boolean
           target: string
           title: string
+          type: string | null
           user_uuid: string | null
         }
         Insert: {
@@ -1361,6 +1362,7 @@ export type Database = {
           is_read?: boolean
           target?: string
           title: string
+          type?: string | null
           user_uuid?: string | null
         }
         Update: {
@@ -1370,6 +1372,7 @@ export type Database = {
           is_read?: boolean
           target?: string
           title?: string
+          type?: string | null
           user_uuid?: string | null
         }
         Relationships: []
