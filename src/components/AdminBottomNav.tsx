@@ -23,30 +23,49 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50">
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl border-t border-white/[0.06]" />
-      <div className="relative max-w-md mx-auto flex items-end justify-around px-4 pb-6 pt-2">
+    <motion.div
+      initial={{ y: 80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.3 }}
+      className="fixed bottom-0 left-0 right-0 z-50"
+    >
+      {/* Glass background */}
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-2xl" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+
+      <div className="relative max-w-md mx-auto flex items-end justify-around px-3 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-1.5">
         {tabs.map((tab, i) => {
           const Icon = tab.icon;
-          const isCenter = i === 2; // الدردشة بالوسط
+          const isCenter = i === 2;
           const isActive = active === tab.key;
 
           if (isCenter) {
             return (
               <motion.button
                 key={tab.key}
-                whileTap={{ scale: 0.9 }}
+                whileTap={{ scale: 0.88, rotate: -5 }}
+                whileHover={{ scale: 1.05 }}
                 onClick={() => navigate("/admin/chat")}
-                className="-mt-6 flex flex-col items-center gap-1"
+                className="-mt-7 flex flex-col items-center"
               >
                 <div className="relative">
-                  <div className="w-[52px] h-[52px] rounded-2xl bg-emerald-500 flex items-center justify-center shadow-[0_4px_20px_rgba(34,197,94,0.4)]">
-                    <Icon className="w-6 h-6 text-black" />
+                  {/* Outer glow ring */}
+                  <div className="absolute inset-0 rounded-[18px] bg-emerald-500/30 blur-lg scale-110" />
+                  <div className="relative w-[54px] h-[54px] rounded-[18px] bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-[0_8px_30px_-4px_rgba(34,197,94,0.5)]"
+                    style={{ transform: 'perspective(200px) rotateX(-3deg)' }}>
+                    {/* Glass shine */}
+                    <div className="absolute inset-0 rounded-[18px] bg-gradient-to-b from-white/20 to-transparent h-1/2 overflow-hidden rounded-b-none" />
+                    <Icon className="relative w-6 h-6 text-black drop-shadow-sm" />
                   </div>
                   {chatBadge && chatBadge > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-[8px] text-white font-bold flex items-center justify-center px-1 shadow-lg shadow-red-500/30">
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 500 }}
+                      className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-[8px] text-white font-black flex items-center justify-center px-1 shadow-lg shadow-red-500/40 border border-red-400/30"
+                    >
                       {chatBadge > 99 ? '99+' : chatBadge}
-                    </span>
+                    </motion.span>
                   )}
                 </div>
               </motion.button>
@@ -54,20 +73,31 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
           }
 
           return (
-            <button
+            <motion.button
               key={tab.key}
+              whileTap={{ scale: 0.85 }}
               onClick={() => onChange(tab.key)}
-              className="flex flex-col items-center gap-1"
+              className="flex flex-col items-center gap-1 py-1.5 px-2 relative"
             >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-400' : 'text-zinc-500'}`} />
-              <span className={`text-[8px] ${isActive ? 'text-emerald-400 font-bold' : 'text-zinc-500'}`}>
+              <div className="relative">
+                <Icon className={`w-[22px] h-[22px] transition-colors duration-200 ${isActive ? 'text-emerald-400 drop-shadow-[0_0_6px_rgba(34,197,94,0.4)]' : 'text-zinc-600'}`} />
+              </div>
+              <span className={`text-[8px] transition-colors duration-200 ${isActive ? 'text-emerald-400 font-black' : 'text-zinc-600 font-medium'}`}>
                 {tab.label}
               </span>
-            </button>
+              {/* Active dot */}
+              {isActive && (
+                <motion.div
+                  layoutId="adminNavDot"
+                  className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50"
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                />
+              )}
+            </motion.button>
           );
         })}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
