@@ -70,7 +70,13 @@ const AdminRequestsPage: React.FC = () => {
             avatar_url: gifUrl,
           }),
         });
-        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        if (data.success) {
+          toast.success("تم رفع الصورة لغلا لايف تلقائياً ✅");
+        } else {
+          toast.warning("تم القبول — لكن الرفع التلقائي فشل. ارفعها يدوياً.");
+          console.error("Auto-upload failed:", data);
+        }
       } else {
         const res = await fetch("https://galachat.site/project-z/api.php", {
           method: "POST",
@@ -86,10 +92,17 @@ const AdminRequestsPage: React.FC = () => {
             gift_type: "special",
           }),
         });
-        if (!res.ok) throw new Error("API error");
+        const data = await res.json();
+        if (data.success) {
+          toast.success("تم رفع الهدية لغلا لايف تلقائياً ✅");
+        } else {
+          toast.warning("تم القبول — لكن الرفع التلقائي فشل. ارفعها يدوياً.");
+          console.error("Auto-upload failed:", data);
+        }
       }
-    } catch {
-      toast.error("الرفع التلقائي غير متاح حالياً — يرجى الرفع يدوياً");
+    } catch (err) {
+      toast.warning("تم القبول — لكن الرفع التلقائي فشل.");
+      console.error("Auto-upload error:", err);
     }
   };
 
