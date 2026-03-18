@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 // Primary admin accounts with roles (hardcoded)
-const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "super_admin" | "admin" }> = {
-  naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "super_admin" },
+const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "owner" | "super_admin" | "admin" }> = {
+  naz: { envKey: "ADMIN_NAZ_PASSWORD", role: "owner" },
   blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
 };
 
