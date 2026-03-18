@@ -599,7 +599,24 @@ Deno.serve(async (req) => {
           .select("*")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        result = claims;
+
+        // Enrich with product info from frames
+        const frameIds = [...new Set((claims || []).map((c: any) => c.frame_id).filter(Boolean))];
+        let framesMap: Record<string, any> = {};
+        if (frameIds.length) {
+          const { data: frames } = await supabase
+            .from("frames")
+            .select("id, title, file_url, thumbnail_url, star_level")
+            .in("id", frameIds);
+          if (frames) frames.forEach((f: any) => framesMap[f.id] = f);
+        }
+
+        result = (claims || []).map((c: any) => ({
+          ...c,
+          title: c.title || framesMap[c.frame_id]?.title || "إطار",
+          file_url: c.file_url || framesMap[c.frame_id]?.file_url,
+          thumbnail_url: c.thumbnail_url || framesMap[c.frame_id]?.thumbnail_url,
+        }));
         break;
       }
 

@@ -123,7 +123,8 @@ const AdminRequestsPage: React.FC = () => {
       } else if (type === "frames") {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
-        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "frame", name: item.title || item.user_name || "إطار", file_url: fileUrl, uuid: item.user_uuid, file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4", expire: String(item.duration_days || 30) }) });
+        const targetUuid = item.friend_uuid || item.user_uuid;
+        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "frame", name: item.title || item.user_name || "إطار", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4", expire: String(item.duration_days || 30) }) });
         const data = await res.json();
         if (data.success) toast.success("تم رفع الإطار لغلا لايف ✅");
         else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
