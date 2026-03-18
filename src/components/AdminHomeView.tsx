@@ -7,7 +7,7 @@ import {
   Search, MessageSquare, Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { getAvatarUrl } from '@/lib/avatarHelper';
+import { getAvatarUrl } from '@/lib/utils';
 
 interface ServiceItem {
   key: string;
