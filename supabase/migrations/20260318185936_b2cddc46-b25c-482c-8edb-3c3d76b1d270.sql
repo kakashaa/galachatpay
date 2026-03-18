@@ -1,0 +1,1 @@
+DELETE FROM animated_photo_requests WHERE id = '12d245f3-438c-49a4-a75c-61427c6e28b6' AND user_uuid = '1000';
