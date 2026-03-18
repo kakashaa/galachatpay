@@ -253,6 +253,38 @@ const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername:
   );
 };
 
+/* ─── Delay Monitor (Owner only) ─── */
+const DelayMonitor: React.FC = () => {
+  const [alerts, setAlerts] = useState<DelayAlert[]>([]);
+
+  useEffect(() => {
+    checkPendingRequests().then(setAlerts);
+    const iv = setInterval(() => checkPendingRequests().then(setAlerts), 10 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  if (alerts.length === 0) return null;
+
+  return (
+    <Card3D glow="rgba(244,63,94,0.15)">
+      <div className="p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-xl bg-destructive/15 flex items-center justify-center">
+            <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
+          </div>
+          <p className="text-xs font-bold text-destructive">⚠️ طلبات متأخرة (+30 دقيقة)</p>
+        </div>
+        {alerts.map(a => (
+          <div key={a.type} className="flex justify-between text-[11px] px-1">
+            <span className="text-muted-foreground">{a.type}</span>
+            <span className="text-destructive font-bold">{a.count} طلب</span>
+          </div>
+        ))}
+      </div>
+    </Card3D>
+  );
+};
+
 /* ─── Types ─── */
 interface Props {
   adminDisplayName: string;

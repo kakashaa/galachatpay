@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, Sparkles, Heart } from "lucide-react";
+import { Upload, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import ItemComments from "@/components/ItemComments";
