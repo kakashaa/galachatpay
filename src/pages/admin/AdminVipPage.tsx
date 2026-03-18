@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Crown, Loader2, Send, Clock, History, Search, Check, X, Filter, Star } from "lucide-react";
+import { Crown, Loader2, Send, Clock, Search, Filter, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminTopAgents from "@/components/AdminTopAgents";
 
