@@ -159,7 +159,7 @@ const AdminRequestsPage: React.FC = () => {
     setProcessingId(id);
     const item = items.find((i: any) => i.id === id);
     const isApprove = action.startsWith("approve_");
-    const loadingToast = toast.loading(isApprove ? "جاري قبول الطلب ورفعه لغلا لايف..." : "جاري تنفيذ الطلب...");
+    const loadingToast = toast.loading(isApprove ? "جاري استخراج الصورة والرفع لغلا لايف..." : "جاري تنفيذ الطلب...");
     try {
       await adminCall(action, { id, ...extra });
       if (isApprove && item) await autoUploadToGala(item, activeTab);
