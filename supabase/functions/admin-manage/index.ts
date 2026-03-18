@@ -908,7 +908,7 @@ Deno.serve(async (req) => {
 
       // ========== MODERATOR MANAGEMENT (super_admin/admin only) ==========
       case "list_moderators": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { data: mods, error } = await supabase
           .from("admin_accounts")
           .select("*")
