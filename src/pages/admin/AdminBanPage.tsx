@@ -183,7 +183,7 @@ const AdminBanPage: React.FC = () => {
                     </div>
                   )}
                   {ban.status === "active" && (
-                    <motion.button whileTap={{ scale: 0.96 }} onClick={async () => { await adminCall("unban_manual", { ban_id: ban.id }); toast.success("تم فك الحظر"); loadData(); }}
+                    <motion.button whileTap={{ scale: 0.96 }} onClick={async () => { await adminCall("unban_manual", { ban_id: ban.id }); await sendUserNotification(ban.target_uuid, "تم إعادة تفعيل حسابك ✅", "تم رفع الحظر عن حسابك. يمكنك استخدام التطبيق بشكل طبيعي."); toast.success("تم فك الحظر"); loadData(); }}
                       className="w-full h-10 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
                       style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
                       <Unlock className="w-4 h-4" />فك الحظر

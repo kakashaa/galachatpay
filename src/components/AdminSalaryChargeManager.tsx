@@ -129,7 +129,13 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`تم شحن ${(amountNum * COINS_PER_USD).toLocaleString()} كوينز بنجاح`);
+        const coinsCharged = (amountNum * COINS_PER_USD).toLocaleString();
+        await sendUserNotification(
+          chargeUuid.trim(),
+          "تم شحن الكوينز ✅",
+          `تم شحن ${coinsCharged} كوينز لحسابك بنجاح!`
+        );
+        toast.success(`تم شحن ${coinsCharged} كوينز بنجاح`);
         setChargeSheet(false);
         setChargeUuid("");
         setChargeAmount("");

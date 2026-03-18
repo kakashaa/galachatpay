@@ -330,6 +330,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
+        await sendUserNotification(
+          rejectSheet.user_uuid,
+          "تم رفض سحب الراتب ❌",
+          `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`
+        );
         toast.success("تم رفض الطلب وإرسال الإشعار");
         setRejectSheet(null); setRejectReason(""); setRejectImage(null);
         fetchData();
