@@ -263,9 +263,8 @@ const AdminRequestsPage: React.FC = () => {
           )}
 
           {/* Bottom gradient overlay with title */}
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-3 pt-10 z-10">
-            <p className="text-white font-bold text-sm truncate">{item.title || item.user_name || "—"}</p>
-            {item.description && <p className="text-white/60 text-[10px] mt-0.5 line-clamp-1">{item.description}</p>}
+          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2 pt-8 z-10">
+            <p className="text-white font-bold text-[10px] truncate">{item.title || item.user_name || "—"}</p>
           </div>
 
           {/* File link */}
