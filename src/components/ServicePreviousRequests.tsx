@@ -179,6 +179,21 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
           }));
           break;
         }
+        case "hair": {
+          const { data } = await supabase
+            .from("hair_selections")
+            .select("id, hair_id, selection_week, status, created_at, admin_note")
+            .eq("user_uuid", userUuid)
+            .order("created_at", { ascending: false })
+            .limit(20);
+          items = (data || []).map((r: any) => ({
+            id: r.id, label: "شعرة",
+            detail: `أسبوع ${r.selection_week}`,
+            status: r.status === "approved" ? "approved" : r.status === "rejected" ? "rejected" : "pending",
+            date: r.created_at, adminNote: r.admin_note,
+          }));
+          break;
+        }
       }
 
       setRequests(items);
