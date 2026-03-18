@@ -16,6 +16,7 @@ const AdminBanPage: React.FC = () => {
   const [subTab, setSubTab] = useState<"ban" | "reports" | "list">("ban");
   const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] as string[] });
   const [banLoading, setBanLoading] = useState(false);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, [subTab]);
 
