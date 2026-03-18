@@ -823,7 +823,7 @@ Deno.serve(async (req) => {
       }
       
       case "restore_item": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك");
         const { table, id } = data;
         const allowedTables = ["video_tutorials", "entry_gifts", "frames", "custom_gifts"];
         if (!allowedTables.includes(table)) throw new Error("جدول غير مسموح");
