@@ -1119,31 +1119,8 @@ const AdminDashboardPage: React.FC = () => {
             requests: animatedPhotos.filter(p => p.status === 'pending').length + allCustomGifts.filter(g => g.status === 'pending').length,
             salary: salaryRequests.filter(r => r.status === 'pending').length,
           }}
-          onServiceClick={(key) => {
-            const serviceMap: Record<string, { section: typeof activeSection; tab: Tab }> = {
-              vip: { section: 'requests', tab: 'all_requests' },
-              protection: { section: 'requests', tab: 'reports' },
-              reports: { section: 'requests', tab: 'all_requests' },
-              support: { section: 'chat', tab: 'admin_support' },
-              requests: { section: 'requests', tab: 'all_requests' },
-              salary: { section: 'requests', tab: 'salary' },
-              change_id: { section: 'requests', tab: 'manual_actions' },
-              store: { section: 'settings', tab: 'entries' },
-              settings: { section: 'settings', tab: 'videos' },
-              agencies: { section: 'finance', tab: 'agencies' },
-              moderators: { section: 'settings', tab: 'moderators' },
-              audit_log: { section: 'settings', tab: 'audit_log' },
-            };
-            const mapping = serviceMap[key];
-            if (mapping) {
-              setActiveSection(mapping.section);
-              setActiveTab(mapping.tab);
-            }
-          }}
-          onChatClick={() => {
-            setActiveSection('chat');
-            setActiveTab('admin_chat');
-          }}
+          onServiceClick={() => {}}
+          onChatClick={() => navigate("/admin/chat")}
           recentLogs={auditLogs.slice(0, 5)}
           isOwner={isOwner}
           isSuperAdmin={isSuperAdmin}
@@ -1157,19 +1134,13 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Chat tab */}
-      {!activeTab && !activeSection && bottomTab === 'chat' && (
-        <div className="max-w-2xl mx-auto p-4">
-          <AdminGroupChat adminUsername={adminUsername || ''} adminRole={adminRole || 'admin'} />
-        </div>
-      )}
 
       {/* Monitor tab */}
       {!activeTab && !activeSection && bottomTab === 'monitor' && (
         <div className="max-w-2xl mx-auto p-4 space-y-4" dir="rtl">
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'معلقة', value: stats.pending, color: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/5', onClick: () => { setActiveSection('requests'); setActiveTab('all_requests'); } },
+              { label: 'معلقة', value: stats.pending, color: 'text-amber-400', border: 'border-amber-500/20', bg: 'bg-amber-500/5', onClick: () => navigate('/admin/gifts') },
               { label: 'مقبولة', value: stats.approved, color: 'text-emerald-400', border: 'border-emerald-500/20', bg: 'bg-emerald-500/5' },
               { label: 'مرفوضة', value: stats.rejected, color: 'text-rose-400', border: 'border-rose-500/20', bg: 'bg-rose-500/5' },
             ].map((card) => (
@@ -1187,20 +1158,20 @@ const AdminDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Favorites tab - shows quick access buttons */}
+      {/* Favorites tab - shows quick access buttons with route navigation */}
       {!activeTab && !activeSection && bottomTab === 'favorites' && (
         <div className="max-w-2xl mx-auto p-4 space-y-3" dir="rtl">
           <p className="text-sm font-bold text-muted-foreground">الوصول السريع</p>
           {[
-            { label: 'طلبات الرواتب', tab: 'salary' as Tab, section: 'requests' as const, count: salaryRequests.filter(r => r.status === 'pending').length },
-            { label: 'الصور المتحركة', tab: 'animated_photos' as Tab, section: 'requests' as const, count: animatedPhotos.filter(p => p.status === 'pending').length },
-            { label: 'هدايا مخصصة', tab: 'custom_gifts' as Tab, section: 'requests' as const, count: allCustomGifts.filter(g => g.status === 'pending').length },
-            { label: 'تذاكر الدعم', tab: 'support_tickets' as Tab, section: 'chat' as const, count: supportTickets.filter((t: any) => t.status === 'open').length },
-            { label: 'البلاغات', tab: 'reports' as Tab, section: 'requests' as const, count: banReports.filter(r => !r.is_verified).length },
+            { label: 'طلبات الرواتب', route: '/admin/salary', count: salaryRequests.filter(r => r.status === 'pending').length },
+            { label: 'الهدايا', route: '/admin/gifts', count: animatedPhotos.filter(p => p.status === 'pending').length + allCustomGifts.filter(g => g.status === 'pending').length },
+            { label: 'الدعم الفني', route: '/admin/support', count: supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length },
+            { label: 'الحماية', route: '/admin/ban', count: banReports.filter(r => !r.is_verified).length },
+            { label: 'تغيير آيدي', route: '/admin/id-change', count: 0 },
           ].map(item => (
             <button
               key={item.label}
-              onClick={() => { setActiveSection(item.section); setActiveTab(item.tab); }}
+              onClick={() => navigate(item.route)}
               className="w-full flex items-center justify-between p-4 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:border-white/10 transition-colors"
             >
               <span className="text-sm font-bold text-foreground">{item.label}</span>
@@ -2910,7 +2881,13 @@ const AdminDashboardPage: React.FC = () => {
       {!activeTab && !activeSection && (
         <AdminBottomNav
           active={bottomTab}
-          onChange={(tab) => setBottomTab(tab)}
+          onChange={(tab) => {
+            if (tab === 'chat') {
+              navigate("/admin/chat");
+            } else {
+              setBottomTab(tab);
+            }
+          }}
           chatBadge={supportTickets.filter((t: any) => t.status === 'open').length + supportChats.filter((c: any) => c.status === 'waiting').length}
         />
       )}
