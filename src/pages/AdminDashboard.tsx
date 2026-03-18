@@ -162,6 +162,50 @@ const AdminDashboardPage: React.FC = () => {
   const [bottomTab, setBottomTab] = useState<'home' | 'search' | 'chat' | 'monitor' | 'favorites'>('home');
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
 
+  // Pull-to-refresh
+  const PULL_THRESHOLD = 80;
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const startYRef = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await loadStats();
+      toast.success("تم تحديث البيانات");
+    } catch {
+      toast.error("فشل التحديث");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) return;
+    startYRef.current = e.touches[0].clientY;
+    setIsPulling(true);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPulling) return;
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) { setPullDistance(0); return; }
+    const deltaY = e.touches[0].clientY - startYRef.current;
+    if (deltaY > 0) setPullDistance(Math.min(deltaY * 0.5, 120));
+  }, [isPulling]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (pullDistance >= PULL_THRESHOLD) handleRefresh();
+    setPullDistance(0);
+    setIsPulling(false);
+  }, [pullDistance, handleRefresh]);
+
+  const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
+
   const tabSlideVariants = {
     enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
     center: { x: 0, opacity: 1 },
