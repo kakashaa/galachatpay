@@ -141,6 +141,11 @@ const EntryRequest: React.FC = () => {
          gift_usage: giftUsage,
          claim_month: currentMonth,
          charger_level_at_claim: chargerLevel,
+         status: "pending",
+         file_url: selectedGift.video_url,
+         title: selectedGift.title,
+         duration_days: 30,
+         ware_type: giftUsage === "room" ? "entry_room" : "entry_profile",
        } as any);
        if (claimError) throw claimError;
 
@@ -154,7 +159,7 @@ const EntryRequest: React.FC = () => {
        if (updateError) throw updateError;
 
        // Success! Show immediately
-       toast.success(claimType === "self" ? "تم لبس الدخولية بنجاح! 🎉" : "تم إرسال الدخولية لصديقك! 🎉");
+       toast.success(claimType === "self" ? "تم إرسال طلب الدخولية بنجاح! ⏳" : "تم إرسال طلب الدخولية لصديقك! ⏳");
        setShowClaimDialog(false);
        setSubmitting(false);
        fetchStarBalance();

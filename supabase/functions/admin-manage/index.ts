@@ -486,14 +486,14 @@ Deno.serve(async (req) => {
       // Approve/reject entry requests
       case "approve_entry_request": {
         const { id } = data;
-        const { error } = await supabase.from("entry_gift_claims").update({ status: "approved" }).eq("id", id);
+        const { error } = await supabase.from("entry_gift_claims").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", id);
         if (error) throw error;
         result = { success: true };
         break;
       }
       case "reject_entry_request": {
-        const { id } = data;
-        const { error } = await supabase.from("entry_gift_claims").update({ status: "rejected" }).eq("id", id);
+        const { id, reason } = data;
+        const { error } = await supabase.from("entry_gift_claims").update({ status: "rejected", admin_note: reason || "" }).eq("id", id);
         if (error) throw error;
         result = { success: true };
         break;
@@ -502,14 +502,14 @@ Deno.serve(async (req) => {
       // Approve/reject frame claims
       case "approve_frame_claim": {
         const { id } = data;
-        const { error } = await supabase.from("frame_claims").update({ status: "approved" }).eq("id", id);
+        const { error } = await supabase.from("frame_claims").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", id);
         if (error) throw error;
         result = { success: true };
         break;
       }
       case "reject_frame_claim": {
-        const { id } = data;
-        const { error } = await supabase.from("frame_claims").update({ status: "rejected" }).eq("id", id);
+        const { id, reason } = data;
+        const { error } = await supabase.from("frame_claims").update({ status: "rejected", admin_note: reason || "" }).eq("id", id);
         if (error) throw error;
         result = { success: true };
         break;
