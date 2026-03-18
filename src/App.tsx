@@ -161,6 +161,7 @@ const App = () => {
                   <Route path="/ban-check" element={<BanCheckPage />} />
                   <Route path="/custom-wares" element={<CustomWaresRequest />} />
                   <Route path="/my-wares-requests" element={<MyWaresRequests />} />
+                  <Route path="/admin-complaint" element={<AdminComplaint />} />
                   <Route path="/login/agent" element={<AgentLogin />} />
                   <Route path="/agent/setup" element={<AgentSetup />} />
                   <Route path="/agent" element={<AgentDashboard />} />
