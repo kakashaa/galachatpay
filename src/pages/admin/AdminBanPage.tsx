@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Ban, Unlock, Loader2, ShieldBan, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 
 const AdminBanPage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
