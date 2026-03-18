@@ -468,7 +468,24 @@ Deno.serve(async (req) => {
           .select("*")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        result = claims;
+
+        // Enrich with product info from entry_gifts
+        const giftIds = [...new Set((claims || []).map((c: any) => c.gift_id).filter(Boolean))];
+        let giftsMap: Record<string, any> = {};
+        if (giftIds.length) {
+          const { data: gifts } = await supabase
+            .from("entry_gifts")
+            .select("id, title, video_url, thumbnail_url, star_level")
+            .in("id", giftIds);
+          if (gifts) gifts.forEach((g: any) => giftsMap[g.id] = g);
+        }
+
+        result = (claims || []).map((c: any) => ({
+          ...c,
+          title: c.title || giftsMap[c.gift_id]?.title || "دخولية",
+          file_url: c.file_url || giftsMap[c.gift_id]?.video_url,
+          thumbnail_url: c.thumbnail_url || giftsMap[c.gift_id]?.thumbnail_url,
+        }));
         break;
       }
 
