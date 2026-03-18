@@ -299,10 +299,15 @@ const AdminRequestsPage: React.FC = () => {
         )}
 
         {/* Preview thumbnail */}
-        {(item.gif_url || item.thumbnail_url || item.video_url) && (
+        {(item.gif_url || item.thumbnail_url || item.video_url || item.file_url) && (
           <div className="mt-3 rounded-xl overflow-hidden h-20 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.2)' }}>
             {item.gif_url || item.thumbnail_url ? (
               <img src={item.gif_url || item.thumbnail_url} alt="" className="h-full object-contain" />
+            ) : (item.file_url || item.video_url) ? (
+              <a href={item.file_url || item.video_url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-emerald-400 text-[10px] hover:underline">
+                <ExternalLink className="w-3.5 h-3.5" /> عرض الملف
+              </a>
             ) : (
               <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
                 <Eye className="w-3.5 h-3.5" /> ملف مرفق
