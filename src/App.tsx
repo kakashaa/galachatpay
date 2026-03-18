@@ -147,6 +147,7 @@ const App = () => {
                   <Route path="/admin/chat" element={<AdminChatPage />} />
                   <Route path="/admin/log" element={<AdminLogPage />} />
                   <Route path="/admin/accounts" element={<AdminAccountsPage />} />
+                  <Route path="/admin/requests" element={<AdminRequestsPage />} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/policy" element={<PolicyPage />} />
                   <Route path="/quick-support" element={<QuickSupport />} />

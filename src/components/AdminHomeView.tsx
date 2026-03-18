@@ -309,7 +309,7 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: Star, label: "VIP", route: "/admin/vip", color: "text-admin-amber", bg: "rgba(245,158,11,0.1)", glowColor: "rgba(245,158,11,0.25)", badge: vipBadge },
     { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: banBadge },
     { icon: Banknote, label: "الرواتب", route: "/admin/salary", color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)", glowColor: "rgba(16,185,129,0.25)", badge: salaryBadge },
-    { icon: Package, label: "الطلبات", route: "/admin/gifts", color: "text-admin-blue", bg: "rgba(59,130,246,0.1)", glowColor: "rgba(59,130,246,0.25)", badge: requestsBadge },
+    { icon: Package, label: "الطلبات", route: "/admin/requests", color: "text-admin-blue", bg: "rgba(59,130,246,0.1)", glowColor: "rgba(59,130,246,0.25)", badge: requestsBadge },
     { icon: ShoppingBag, label: "المتجر", route: "/admin/gifts", color: "text-admin-pink", bg: "rgba(236,72,153,0.1)", glowColor: "rgba(236,72,153,0.25)", badge: 0 },
     { icon: Headphones, label: "الدعم", route: "/admin/support", color: "text-admin-cyan", bg: "rgba(6,182,212,0.1)", glowColor: "rgba(6,182,212,0.25)", badge: supportBadge },
     { icon: KeyRound, label: "الآيدي", route: "/admin/id-change", color: "text-admin-purple", bg: "rgba(139,92,246,0.1)", glowColor: "rgba(139,92,246,0.25)", badge: 0 },
