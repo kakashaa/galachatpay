@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
-import { Scissors, Palette, Clock, Package } from "lucide-react";
+import { Scissors, Palette, Clock, Package, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
@@ -161,6 +161,50 @@ const AdminDashboardPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<"requests" | "settings" | "chat" | "finance" | null>(null);
   const [bottomTab, setBottomTab] = useState<'home' | 'search' | 'chat' | 'monitor' | 'favorites'>('home');
   const [tabDirection, setTabDirection] = useState<1 | -1>(1);
+
+  // Pull-to-refresh
+  const PULL_THRESHOLD = 80;
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const startYRef = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await loadStats();
+      toast.success("تم تحديث البيانات");
+    } catch {
+      toast.error("فشل التحديث");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) return;
+    startYRef.current = e.touches[0].clientY;
+    setIsPulling(true);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPulling) return;
+    const container = scrollContainerRef.current;
+    if (!container || container.scrollTop > 0) { setPullDistance(0); return; }
+    const deltaY = e.touches[0].clientY - startYRef.current;
+    if (deltaY > 0) setPullDistance(Math.min(deltaY * 0.5, 120));
+  }, [isPulling]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (pullDistance >= PULL_THRESHOLD) handleRefresh();
+    setPullDistance(0);
+    setIsPulling(false);
+  }, [pullDistance, handleRefresh]);
+
+  const pullProgress = Math.min(pullDistance / PULL_THRESHOLD, 1);
 
   const tabSlideVariants = {
     enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
@@ -1063,7 +1107,27 @@ const AdminDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative" style={{ background: "#09090b", overflow: 'hidden auto' }}>
+    <div
+      ref={scrollContainerRef}
+      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative"
+      style={{ background: "#09090b", overflow: 'hidden auto' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 0 || refreshing) && (
+        <div
+          className="flex items-center justify-center transition-all duration-200 relative z-20"
+          style={{ height: refreshing ? 48 : pullDistance > 0 ? pullDistance : 0 }}
+        >
+          <RefreshCw
+            className={`w-5 h-5 text-primary transition-transform ${refreshing ? "animate-spin" : ""}`}
+            style={{ transform: `rotate(${pullProgress * 360}deg)`, opacity: pullProgress }}
+          />
+        </div>
+      )}
+
       {/* Background */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full" />
