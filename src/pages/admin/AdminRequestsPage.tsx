@@ -168,17 +168,20 @@ const AdminRequestsPage: React.FC = () => {
     };
 
     if (item.status !== "pending") return null;
+    const isProcessing = processingId === item.id;
     return (
       <div className="flex gap-2 mt-3">
         <motion.button whileTap={{ scale: 0.92 }}
+          disabled={!!processingId}
           onClick={() => handleAction(approveAction[activeTab], item.id)}
-          className="flex-1 h-9 rounded-xl text-[11px] font-bold text-white flex items-center justify-center gap-1.5"
+          className="flex-1 h-9 rounded-xl text-[11px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
-          <CheckCircle className="w-3.5 h-3.5" /> قبول
+          {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />} قبول
         </motion.button>
         <motion.button whileTap={{ scale: 0.92 }}
+          disabled={!!processingId}
           onClick={() => handleAction(rejectAction[activeTab], item.id)}
-          className="flex-1 h-9 rounded-xl text-[11px] font-bold text-white flex items-center justify-center gap-1.5"
+          className="flex-1 h-9 rounded-xl text-[11px] font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 12px rgba(244,63,94,0.3)' }}>
           <XCircle className="w-3.5 h-3.5" /> رفض
         </motion.button>
