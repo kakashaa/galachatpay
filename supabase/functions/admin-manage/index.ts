@@ -980,7 +980,7 @@ Deno.serve(async (req) => {
       }
 
       case "delete_moderator": {
-        if (auth.role !== "super_admin" && auth.role !== "admin") throw new Error("غير مصرح لك");
+        if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
         const { id: delModId } = data;
         if (!delModId) throw new Error("معرف المسؤول مطلوب");
         const { error } = await supabase
