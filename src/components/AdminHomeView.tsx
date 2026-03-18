@@ -2,10 +2,10 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Crown, Shield, Headset, ClipboardList, DollarSign,
+  Shield, Headset, ClipboardList, DollarSign,
   Hash, Settings, Briefcase, Users, ScrollText,
-  Search, Loader2, Clock, Zap, Star, ShieldBan,
-  Gift, Wallet, Bell, MoreHorizontal
+  Search, Loader2, Clock, Star, ShieldBan,
+  Gift, Wallet, Bell
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
