@@ -145,7 +145,6 @@ const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername:
 
   return (
     <Card3D glow="rgba(16,185,129,0.15)">
-      {/* Header */}
       <div className="p-4 flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -194,7 +193,6 @@ const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername:
         </motion.button>
       </div>
 
-      {/* Stats */}
       <div className="px-4 grid grid-cols-4 gap-2">
         {stats.map((stat, i) => (
           <motion.div
@@ -203,10 +201,7 @@ const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername:
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.05 }}
             className="flex flex-col items-center p-2.5 rounded-xl"
-            style={{
-              background: stat.glow,
-              border: '1px solid rgba(255,255,255,0.06)',
-            }}
+            style={{ background: stat.glow, border: '1px solid rgba(255,255,255,0.06)' }}
           >
             <span className="text-[10px] text-muted-foreground mb-1">{stat.label}</span>
             <span className={`text-sm font-bold tabular-nums ${stat.color}`}>{stat.value}</span>
@@ -214,7 +209,6 @@ const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername:
         ))}
       </div>
 
-      {/* Details */}
       <div className="px-4 mt-3 space-y-1.5">
         {[
           { label: "صافي الراتب", value: `$${user.net_salary || 0}` },
@@ -235,7 +229,6 @@ const UserControlCard: React.FC<{ user: any; onClose: () => void; adminUsername:
         )}
       </div>
 
-      {/* Actions */}
       <div className="p-4 grid grid-cols-2 gap-2 mt-2">
         {actions.map((action, i) => {
           const Icon = action.icon;
@@ -282,6 +275,7 @@ const AdminHomeView: React.FC<Props> = ({
   const [searching, setSearching] = useState(false);
 
   const adminUsername = sessionStorage.getItem("admin_username") || '';
+  const adminRole = sessionStorage.getItem("admin_role") as string | null;
   const shiftStart = sessionStorage.getItem("admin_shift_start");
   const shiftEnd = sessionStorage.getItem("admin_shift_end");
 
@@ -305,27 +299,24 @@ const AdminHomeView: React.FC<Props> = ({
   const supportBadge = badges.support || 0;
   const totalBadge = vipBadge + banBadge + salaryBadge + requestsBadge + supportBadge;
 
-  const services = [
-    { icon: Star, label: "VIP", route: "/admin/vip", color: "text-admin-amber", bg: "rgba(245,158,11,0.1)", glowColor: "rgba(245,158,11,0.25)", badge: vipBadge },
-    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: banBadge },
-    { icon: Banknote, label: "الرواتب", route: "/admin/salary", color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)", glowColor: "rgba(16,185,129,0.25)", badge: salaryBadge },
-    { icon: Package, label: "الطلبات", route: "/admin/requests", color: "text-admin-blue", bg: "rgba(59,130,246,0.1)", glowColor: "rgba(59,130,246,0.25)", badge: requestsBadge },
-    { icon: ShoppingBag, label: "المتجر", route: "/admin/gifts", color: "text-admin-pink", bg: "rgba(236,72,153,0.1)", glowColor: "rgba(236,72,153,0.25)", badge: 0 },
-    { icon: Headphones, label: "الدعم", route: "/admin/support", color: "text-admin-cyan", bg: "rgba(6,182,212,0.1)", glowColor: "rgba(6,182,212,0.25)", badge: supportBadge },
-    { icon: KeyRound, label: "الآيدي", route: "/admin/id-change", color: "text-admin-purple", bg: "rgba(139,92,246,0.1)", glowColor: "rgba(139,92,246,0.25)", badge: 0 },
-    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)", glowColor: "rgba(16,185,129,0.25)", badge: 0 },
-    { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "text-admin-orange", bg: "rgba(249,115,22,0.1)", glowColor: "rgba(249,115,22,0.25)", badge: 0 },
-    { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "text-admin-teal", bg: "rgba(20,184,166,0.1)", glowColor: "rgba(20,184,166,0.25)", badge: 0 },
-    { icon: ScrollText, label: "السجل", route: "/admin/log", color: "text-admin-indigo", bg: "rgba(99,102,241,0.1)", glowColor: "rgba(99,102,241,0.25)", badge: 0 },
-    { icon: Briefcase, label: "البيدي", route: "/admin/bd", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: 0 },
-    { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", glowColor: "rgba(255,255,255,0.1)", badge: 0 },
+  // ─── Role-based service filtering ───
+  const allServices = [
+    { icon: Star, label: "VIP", route: "/admin/vip", color: "text-admin-amber", bg: "rgba(245,158,11,0.1)", glowColor: "rgba(245,158,11,0.25)", badge: vipBadge, roles: ["owner", "super_admin"] },
+    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: banBadge, roles: ["owner", "super_admin"] },
+    { icon: Banknote, label: "الرواتب", route: "/admin/salary", color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)", glowColor: "rgba(16,185,129,0.25)", badge: salaryBadge, roles: ["owner"] },
+    { icon: Package, label: "الطلبات", route: "/admin/requests", color: "text-admin-blue", bg: "rgba(59,130,246,0.1)", glowColor: "rgba(59,130,246,0.25)", badge: requestsBadge, roles: ["owner", "super_admin", "admin"] },
+    { icon: ShoppingBag, label: "المتجر", route: "/admin/gifts", color: "text-admin-pink", bg: "rgba(236,72,153,0.1)", glowColor: "rgba(236,72,153,0.25)", badge: 0, roles: ["owner"] },
+    { icon: Headphones, label: "الدعم", route: "/admin/support", color: "text-admin-cyan", bg: "rgba(6,182,212,0.1)", glowColor: "rgba(6,182,212,0.25)", badge: supportBadge, roles: ["owner", "super_admin", "admin"] },
+    { icon: KeyRound, label: "الآيدي", route: "/admin/id-change", color: "text-admin-purple", bg: "rgba(139,92,246,0.1)", glowColor: "rgba(139,92,246,0.25)", badge: 0, roles: ["owner", "super_admin"] },
+    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", color: "text-admin-emerald", bg: "rgba(16,185,129,0.1)", glowColor: "rgba(16,185,129,0.25)", badge: 0, roles: ["owner"] },
+    { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "text-admin-orange", bg: "rgba(249,115,22,0.1)", glowColor: "rgba(249,115,22,0.25)", badge: 0, roles: ["owner"] },
+    { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "text-admin-teal", bg: "rgba(20,184,166,0.1)", glowColor: "rgba(20,184,166,0.25)", badge: 0, roles: ["owner"] },
+    { icon: ScrollText, label: "السجل", route: "/admin/log", color: "text-admin-indigo", bg: "rgba(99,102,241,0.1)", glowColor: "rgba(99,102,241,0.25)", badge: 0, roles: ["owner", "super_admin"] },
+    { icon: Briefcase, label: "البيدي", route: "/admin/bd", color: "text-admin-rose", bg: "rgba(244,63,94,0.1)", glowColor: "rgba(244,63,94,0.25)", badge: 0, roles: ["owner"] },
+    { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", glowColor: "rgba(255,255,255,0.1)", badge: 0, roles: ["owner"] },
   ];
 
-  const visibleServices = services.filter((_, i) => {
-    if (i < 4 && !isSuperAdmin) return false;
-    if (i >= 8 && !isOwner) return false;
-    return true;
-  });
+  const visibleServices = allServices.filter(s => adminRole && s.roles.includes(adminRole));
 
   const { pending, approved, rejected } = stats;
 
@@ -339,12 +330,11 @@ const AdminHomeView: React.FC<Props> = ({
     <div className="min-h-screen bg-background pb-28 admin-theme" dir="rtl">
       <div className="max-w-[448px] mx-auto px-4 pt-4 space-y-4">
 
-        {/* Welcome Card — 3D Hero */}
+        {/* Welcome Card */}
         <Card3D delay={0} glow="rgba(16,185,129,0.1)">
           <div className="p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {/* Avatar */}
                 <motion.div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center"
                   style={{
@@ -452,7 +442,6 @@ const AdminHomeView: React.FC<Props> = ({
           </AnimatePresence>
         </motion.div>
 
-        {/* Rest of dashboard — hidden when search result is shown */}
         {!searchResult && (
           <>
             {/* Chat Bubbles */}
@@ -489,7 +478,7 @@ const AdminHomeView: React.FC<Props> = ({
               </motion.button>
             </div>
 
-            {/* Stats Cards — 3D */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-3 gap-2">
               {statsCards.map((stat, i) => {
                 const Icon = stat.icon;
@@ -523,7 +512,7 @@ const AdminHomeView: React.FC<Props> = ({
             {/* Shift Timer */}
             {(shiftStart || shiftEnd) && <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />}
 
-            {/* Service Grid — 3D Icons */}
+            {/* Service Grid */}
             <div className="grid grid-cols-4 gap-3">
               {visibleServices.map((service, index) => {
                 const Icon = service.icon;
@@ -546,7 +535,6 @@ const AdminHomeView: React.FC<Props> = ({
                         boxShadow: `0 4px 16px -4px ${service.glowColor}`,
                       }}
                     >
-                      {/* Shimmer overlay */}
                       <div
                         className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500"
                         style={{
