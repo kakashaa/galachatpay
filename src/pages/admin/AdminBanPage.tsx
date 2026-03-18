@@ -147,13 +147,15 @@ const AdminBanPage: React.FC = () => {
                   <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
                   {!report.is_verified && (
                     <div className="flex gap-2 mt-1">
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { await adminCall("update_ban_report", { id: report.id, is_verified: true }); toast.success("تم التأكيد"); loadData(); }}
-                        className="flex-1 h-9 rounded-xl text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                        ✓ تأكيد
+                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                        onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id); const t = toast.loading("جاري التأكيد..."); try { await adminCall("update_ban_report", { id: report.id, is_verified: true }); toast.dismiss(t); toast.success("تم التأكيد ✅"); loadData(); } catch { toast.dismiss(t); toast.error("فشل التأكيد ❌"); } finally { setActionInProgress(null); } }}
+                        className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
+                        {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "✓ تأكيد"}
                       </motion.button>
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" }); toast.success("تم الرفض"); loadData(); }}
-                        className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        ✗ رفض
+                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                        onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id + "_r"); const t = toast.loading("جاري الرفض..."); try { await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" }); toast.dismiss(t); toast.success("تم الرفض ✅"); loadData(); } catch { toast.dismiss(t); toast.error("فشل ❌"); } finally { setActionInProgress(null); } }}
+                        className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "✗ رفض"}
                       </motion.button>
                     </div>
                   )}
