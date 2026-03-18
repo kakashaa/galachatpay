@@ -360,7 +360,12 @@ const FramesRequest: React.FC = () => {
             </div>
 
             <Button onClick={handleSubmitClaim} disabled={submitting} className="w-full gold-gradient text-primary-foreground font-bold h-11">
-              {submitting ? "جاري الإرسال..." : claimType === "self" ? "تأكيد اللبس" : "إرسال للصديق"}
+              {submitting ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  <span>جاري الإرسال...</span>
+                </div>
+              ) : claimType === "self" ? "تأكيد اللبس" : "إرسال للصديق"}
             </Button>
             <button onClick={() => setShowClaimDialog(false)} className="w-full text-center text-sm text-muted-foreground py-1">إلغاء</button>
           </div>

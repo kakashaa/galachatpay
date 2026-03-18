@@ -340,7 +340,12 @@ const HairsPage: React.FC = () => {
               disabled={saving}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-lg shadow-primary/30 disabled:opacity-50"
             >
-              {saving ? "جاري الحفظ..." : (
+              {saving ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  <span>جاري الحفظ...</span>
+                </div>
+              ) : (
                 <>حفظ الاختيارات ({selectedIds.size}){newSelectionCost > 0 && ` — ${newSelectionCost} ⭐`}</>
               )}
             </button>
