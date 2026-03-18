@@ -55,12 +55,19 @@ const AdminAccountsPage: React.FC = () => {
     setLoadingRatings(false);
   };
 
+  const [complaintActionId, setComplaintActionId] = useState<string | null>(null);
+
   const updateComplaintStatus = async (id: string, status: string, notes?: string) => {
+    if (complaintActionId) return;
+    setComplaintActionId(id);
+    const t = toast.loading("جاري التحديث...");
     try {
       await supabase.from("admin_complaints").update({ status, owner_notes: notes || null }).eq("id", id);
-      toast.success("تم التحديث");
+      toast.dismiss(t);
+      toast.success("تم التحديث ✅");
       loadComplaints();
-    } catch { toast.error("فشل التحديث"); }
+    } catch { toast.dismiss(t); toast.error("فشل التحديث ❌"); }
+    finally { setComplaintActionId(null); }
   };
 
   const addAdmin = async () => {
@@ -245,13 +252,15 @@ const AdminAccountsPage: React.FC = () => {
                   </div>
                   {c.status === "pending" && (
                     <div className="flex gap-2">
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => updateComplaintStatus(c.id, "reviewed")}
-                        className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(59,130,246,0.12)', color: 'hsl(217 91% 60%)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                        تمت المراجعة
+                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!complaintActionId}
+                        onClick={() => updateComplaintStatus(c.id, "reviewed")}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(59,130,246,0.12)', color: 'hsl(217 91% 60%)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                        {complaintActionId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "تمت المراجعة"}
                       </motion.button>
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => updateComplaintStatus(c.id, "resolved")}
-                        className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: 'rgba(34,197,94,0.12)', color: 'hsl(142 71% 45%)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                        محلول
+                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!complaintActionId}
+                        onClick={() => updateComplaintStatus(c.id, "resolved")}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(34,197,94,0.12)', color: 'hsl(142 71% 45%)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                        {complaintActionId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "محلول"}
                       </motion.button>
                     </div>
                   )}

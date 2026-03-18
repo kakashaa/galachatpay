@@ -108,13 +108,16 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   const handleAction = async (action: string, id: string, extra?: any) => {
-    if (processingId) return; // prevent double-click
+    if (processingId) return;
     setProcessingId(id);
     const item = items.find((i: any) => i.id === id);
+    const isApprove = action.startsWith("approve_");
+    const needsUpload = isApprove && (activeTab === "animated" || activeTab === "custom");
+    const loadingToast = needsUpload
+      ? toast.loading(activeTab === "animated" ? "جاري قبول الصورة ورفعها لغلا لايف..." : "جاري قبول الهدية ورفعها لغلا لايف...")
+      : toast.loading("جاري تنفيذ الطلب...");
     try {
       await adminCall(action, { id, ...extra });
-
-      const isApprove = action.startsWith("approve_");
 
       // Auto-upload on approval
       if (isApprove && item) {
@@ -141,9 +144,10 @@ const AdminRequestsPage: React.FC = () => {
         }
       }
       
-      toast.success("تم التنفيذ ✅");
+      toast.dismiss(loadingToast);
+      toast.success(isApprove ? "تم القبول بنجاح ✅" : "تم الرفض ✅");
       loadData();
-    } catch (err: any) { toast.error(err?.message || "فشل"); }
+    } catch (err: any) { toast.dismiss(loadingToast); toast.error(err?.message || "فشلت العملية ❌"); }
     finally { setProcessingId(null); }
   };
 

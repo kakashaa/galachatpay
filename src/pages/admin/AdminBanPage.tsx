@@ -16,6 +16,7 @@ const AdminBanPage: React.FC = () => {
   const [subTab, setSubTab] = useState<"ban" | "reports" | "list">("ban");
   const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] as string[] });
   const [banLoading, setBanLoading] = useState(false);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   useEffect(() => { loadData(); }, [subTab]);
 
@@ -34,6 +35,7 @@ const AdminBanPage: React.FC = () => {
   const executeBan = async () => {
     if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
     setBanLoading(true);
+    const t = toast.loading("جاري تنفيذ الحظر...");
     try {
       const durationHours = parseInt(banForm.duration_hours) || 24;
       await adminCall("manual_ban_user", { target_uuid: banForm.target_uuid.trim(), ban_type: banForm.ban_type, duration_hours: durationHours, reason: banForm.reason.trim(), banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null });
@@ -43,10 +45,11 @@ const AdminBanPage: React.FC = () => {
         "تم تعليق حسابك ⚠️",
         `تم تعليق حسابك بسبب: ${banForm.reason || "مخالفة"}. المدة: ${durationText}.`
       );
-      toast.success("تم حظر المستخدم بنجاح");
+      toast.dismiss(t);
+      toast.success("تم حظر المستخدم بنجاح ✅");
       setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
       loadData();
-    } catch (err: any) { toast.error(err?.message || "فشل الحظر"); }
+    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الحظر ❌"); }
     finally { setBanLoading(false); }
   };
 
@@ -146,13 +149,15 @@ const AdminBanPage: React.FC = () => {
                   <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
                   {!report.is_verified && (
                     <div className="flex gap-2 mt-1">
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { await adminCall("update_ban_report", { id: report.id, is_verified: true }); toast.success("تم التأكيد"); loadData(); }}
-                        className="flex-1 h-9 rounded-xl text-xs font-bold text-white" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                        ✓ تأكيد
+                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                        onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id); const t = toast.loading("جاري التأكيد..."); try { await adminCall("update_ban_report", { id: report.id, is_verified: true }); toast.dismiss(t); toast.success("تم التأكيد ✅"); loadData(); } catch { toast.dismiss(t); toast.error("فشل التأكيد ❌"); } finally { setActionInProgress(null); } }}
+                        className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
+                        {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "✓ تأكيد"}
                       </motion.button>
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" }); toast.success("تم الرفض"); loadData(); }}
-                        className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        ✗ رفض
+                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                        onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id + "_r"); const t = toast.loading("جاري الرفض..."); try { await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" }); toast.dismiss(t); toast.success("تم الرفض ✅"); loadData(); } catch { toast.dismiss(t); toast.error("فشل ❌"); } finally { setActionInProgress(null); } }}
+                        className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "✗ رفض"}
                       </motion.button>
                     </div>
                   )}
@@ -183,10 +188,11 @@ const AdminBanPage: React.FC = () => {
                     </div>
                   )}
                   {ban.status === "active" && (
-                    <motion.button whileTap={{ scale: 0.96 }} onClick={async () => { await adminCall("unban_manual", { ban_id: ban.id }); await sendUserNotification(ban.target_uuid, "تم إعادة تفعيل حسابك ✅", "تم رفع الحظر عن حسابك. يمكنك استخدام التطبيق بشكل طبيعي."); toast.success("تم فك الحظر"); loadData(); }}
-                      className="w-full h-10 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+                    <motion.button whileTap={{ scale: 0.96 }} disabled={!!actionInProgress}
+                      onClick={async () => { if (actionInProgress) return; setActionInProgress(ban.id); const t = toast.loading("جاري فك الحظر..."); try { await adminCall("unban_manual", { ban_id: ban.id }); await sendUserNotification(ban.target_uuid, "تم إعادة تفعيل حسابك ✅", "تم رفع الحظر عن حسابك. يمكنك استخدام التطبيق بشكل طبيعي."); toast.dismiss(t); toast.success("تم فك الحظر ✅"); loadData(); } catch { toast.dismiss(t); toast.error("فشل فك الحظر ❌"); } finally { setActionInProgress(null); } }}
+                      className="w-full h-10 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
                       style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                      <Unlock className="w-4 h-4" />فك الحظر
+                      {actionInProgress === ban.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
                     </motion.button>
                   )}
                 </motion.div>
@@ -204,10 +210,11 @@ const AdminBanPage: React.FC = () => {
                           {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
                         </span>
                       </div>
-                      <motion.button whileTap={{ scale: 0.96 }} onClick={async () => { await adminCall("unblock_account", { target_uuid: acc.target_uuid }); toast.success("تم فك الحظر"); loadData(); }}
-                        className="w-full h-10 mt-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5"
+                      <motion.button whileTap={{ scale: 0.96 }} disabled={!!actionInProgress}
+                        onClick={async () => { if (actionInProgress) return; setActionInProgress(acc.id); const t = toast.loading("جاري فك الحظر..."); try { await adminCall("unblock_account", { target_uuid: acc.target_uuid }); toast.dismiss(t); toast.success("تم فك الحظر ✅"); loadData(); } catch { toast.dismiss(t); toast.error("فشل ❌"); } finally { setActionInProgress(null); } }}
+                        className="w-full h-10 mt-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
                         style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                        <Unlock className="w-4 h-4" />فك الحظر
+                        {actionInProgress === acc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
                       </motion.button>
                     </motion.div>
                   ))}

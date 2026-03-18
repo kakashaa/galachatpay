@@ -125,21 +125,34 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
     finally { setSending(false); }
   };
 
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const [transferringId, setTransferringId] = useState<string | null>(null);
+
   const handleClose = async (chatId: string) => {
+    if (closingId) return;
+    setClosingId(chatId);
+    const t = toast.loading("جاري إغلاق المحادثة...");
     try {
       await apiPost({ action: 'support_close', chat_id: chatId });
-      toast.success('تم إغلاق المحادثة');
+      toast.dismiss(t);
+      toast.success('تم إغلاق المحادثة ✅');
       setActiveChatId(null);
       loadChats();
-    } catch { toast.error('فشل الإغلاق'); }
+    } catch { toast.dismiss(t); toast.error('فشل الإغلاق ❌'); }
+    finally { setClosingId(null); }
   };
 
   const handleTransfer = async (chatId: string) => {
+    if (transferringId) return;
+    setTransferringId(chatId);
+    const t = toast.loading("جاري التحويل...");
     try {
       await apiPost({ action: 'support_transfer', chat_id: chatId });
-      toast.success('تم التحويل للسوبر أدمن');
+      toast.dismiss(t);
+      toast.success('تم التحويل للسوبر أدمن ✅');
       loadChats();
-    } catch { toast.error('فشل التحويل'); }
+    } catch { toast.dismiss(t); toast.error('فشل التحويل ❌'); }
+    finally { setTransferringId(null); }
   };
 
   const handleSearch = async () => {
@@ -175,11 +188,11 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
           <div className="flex gap-1">
             {canAct && !isArchive && (
               <>
-                <button onClick={() => handleTransfer(activeChatId)} className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 font-bold flex items-center gap-0.5">
-                  <ArrowUpRight className="w-3 h-3" />تحويل
+                <button onClick={() => handleTransfer(activeChatId)} disabled={!!transferringId} className="text-[10px] px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 font-bold flex items-center gap-0.5 disabled:opacity-50">
+                  {transferringId ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpRight className="w-3 h-3" />}تحويل
                 </button>
-                <button onClick={() => handleClose(activeChatId)} className="text-[10px] px-2 py-1 rounded-full bg-destructive/10 text-destructive font-bold flex items-center gap-0.5">
-                  <XCircle className="w-3 h-3" />إغلاق
+                <button onClick={() => handleClose(activeChatId)} disabled={!!closingId} className="text-[10px] px-2 py-1 rounded-full bg-destructive/10 text-destructive font-bold flex items-center gap-0.5 disabled:opacity-50">
+                  {closingId ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}إغلاق
                 </button>
               </>
             )}
@@ -359,11 +372,11 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
                 </Button>
                 {canAct && chat.status === 'open' && (
                   <>
-                    <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => handleTransfer(chat.id)}>
-                      <ArrowUpRight className="w-3 h-3 ml-1" /> تحويل
+                    <Button size="sm" variant="outline" className="text-xs h-8" disabled={!!transferringId} onClick={() => handleTransfer(chat.id)}>
+                      {transferringId === chat.id ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <ArrowUpRight className="w-3 h-3 ml-1" />} تحويل
                     </Button>
-                    <Button size="sm" variant="outline" className="text-xs h-8 text-destructive hover:text-destructive" onClick={() => handleClose(chat.id)}>
-                      <XCircle className="w-3 h-3 ml-1" /> إغلاق
+                    <Button size="sm" variant="outline" className="text-xs h-8 text-destructive hover:text-destructive" disabled={!!closingId} onClick={() => handleClose(chat.id)}>
+                      {closingId === chat.id ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <XCircle className="w-3 h-3 ml-1" />} إغلاق
                     </Button>
                   </>
                 )}
