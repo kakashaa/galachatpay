@@ -168,6 +168,15 @@ const GiftRequest: React.FC = () => {
             )}
           </Button>
         </div>
+
+        {/* Custom Gift Gallery */}
+        <div className="css-fade-up-d4">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-3">
+            <Sparkles className="w-4 h-4 text-primary" />
+            هدايا المشاهير
+          </h3>
+          <CustomGiftGallery />
+        </div>
       </div>
     </MobileLayout>
   );
