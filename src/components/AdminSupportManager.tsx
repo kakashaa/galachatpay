@@ -125,21 +125,34 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
     finally { setSending(false); }
   };
 
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const [transferringId, setTransferringId] = useState<string | null>(null);
+
   const handleClose = async (chatId: string) => {
+    if (closingId) return;
+    setClosingId(chatId);
+    const t = toast.loading("جاري إغلاق المحادثة...");
     try {
       await apiPost({ action: 'support_close', chat_id: chatId });
-      toast.success('تم إغلاق المحادثة');
+      toast.dismiss(t);
+      toast.success('تم إغلاق المحادثة ✅');
       setActiveChatId(null);
       loadChats();
-    } catch { toast.error('فشل الإغلاق'); }
+    } catch { toast.dismiss(t); toast.error('فشل الإغلاق ❌'); }
+    finally { setClosingId(null); }
   };
 
   const handleTransfer = async (chatId: string) => {
+    if (transferringId) return;
+    setTransferringId(chatId);
+    const t = toast.loading("جاري التحويل...");
     try {
       await apiPost({ action: 'support_transfer', chat_id: chatId });
-      toast.success('تم التحويل للسوبر أدمن');
+      toast.dismiss(t);
+      toast.success('تم التحويل للسوبر أدمن ✅');
       loadChats();
-    } catch { toast.error('فشل التحويل'); }
+    } catch { toast.dismiss(t); toast.error('فشل التحويل ❌'); }
+    finally { setTransferringId(null); }
   };
 
   const handleSearch = async () => {
