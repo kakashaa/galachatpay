@@ -804,7 +804,7 @@ Deno.serve(async (req) => {
 
       // ========== TRASH MANAGEMENT (super_admin only) ==========
       case "list_trash": {
-        if (auth.role !== "super_admin") throw new Error("غير مصرح لك بالوصول للمحذوفات");
+        if (!isSuperAdmin) throw new Error("غير مصرح لك بالوصول للمحذوفات");
         
         const [videos, entries, frames, customs] = await Promise.all([
           supabase.from("video_tutorials").select("*").eq("is_deleted", true).order("deleted_at", { ascending: false }),
