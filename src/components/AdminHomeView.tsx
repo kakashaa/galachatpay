@@ -97,6 +97,7 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
 };
 
 interface Props {
+  adminDisplayName: string;
   adminRole: string | null;
   stats: { pending: number; approved: number; rejected: number };
   badges: Record<string, number>;
