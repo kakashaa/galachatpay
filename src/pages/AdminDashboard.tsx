@@ -1119,31 +1119,8 @@ const AdminDashboardPage: React.FC = () => {
             requests: animatedPhotos.filter(p => p.status === 'pending').length + allCustomGifts.filter(g => g.status === 'pending').length,
             salary: salaryRequests.filter(r => r.status === 'pending').length,
           }}
-          onServiceClick={(key) => {
-            const serviceMap: Record<string, { section: typeof activeSection; tab: Tab }> = {
-              vip: { section: 'requests', tab: 'all_requests' },
-              protection: { section: 'requests', tab: 'reports' },
-              reports: { section: 'requests', tab: 'all_requests' },
-              support: { section: 'chat', tab: 'admin_support' },
-              requests: { section: 'requests', tab: 'all_requests' },
-              salary: { section: 'requests', tab: 'salary' },
-              change_id: { section: 'requests', tab: 'manual_actions' },
-              store: { section: 'settings', tab: 'entries' },
-              settings: { section: 'settings', tab: 'videos' },
-              agencies: { section: 'finance', tab: 'agencies' },
-              moderators: { section: 'settings', tab: 'moderators' },
-              audit_log: { section: 'settings', tab: 'audit_log' },
-            };
-            const mapping = serviceMap[key];
-            if (mapping) {
-              setActiveSection(mapping.section);
-              setActiveTab(mapping.tab);
-            }
-          }}
-          onChatClick={() => {
-            setActiveSection('chat');
-            setActiveTab('admin_chat');
-          }}
+          onServiceClick={() => {}}
+          onChatClick={() => navigate("/admin/chat")}
           recentLogs={auditLogs.slice(0, 5)}
           isOwner={isOwner}
           isSuperAdmin={isSuperAdmin}
