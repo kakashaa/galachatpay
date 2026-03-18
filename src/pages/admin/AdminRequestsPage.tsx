@@ -56,50 +56,103 @@ const AdminRequestsPage: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  const autoUploadToGala = async (item: any, type: "animated" | "custom") => {
+  const autoUploadToGala = async (item: any, type: ReqTab) => {
+    const API = "https://galachat.site/project-z/api.php";
+    const ADMIN_KEY = "ghala2026owner";
     try {
       if (type === "animated") {
         const gifUrl = item.gif_url || item.details?.gif_url;
         if (!gifUrl) return;
-        const res = await fetch("https://galachat.site/project-z/api.php", {
+        const res = await fetch(API, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({
             action: "update_user_avatar",
-            admin_key: "ghala2026owner",
+            admin_key: ADMIN_KEY,
             uuid: item.user_uuid,
             avatar_url: gifUrl,
           }),
         });
         const data = await res.json();
-        if (data.success) {
-          toast.success("تم رفع الصورة لغلا لايف تلقائياً ✅");
-        } else {
-          toast.warning("تم القبول — لكن الرفع التلقائي فشل. ارفعها يدوياً.");
-          console.error("Auto-upload failed:", data);
-        }
-      } else {
-        const res = await fetch("https://galachat.site/project-z/api.php", {
+        if (data.success) toast.success("تم رفع الصورة لغلا لايف ✅");
+        else { toast.warning("تم القبول — الرفع التلقائي فشل. ارفعها يدوياً."); console.error("Auto-upload failed:", data); }
+      } else if (type === "custom") {
+        const res = await fetch(API, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({
             action: "upload_custom_gift",
-            admin_key: "ghala2026owner",
-            user_uuid: item.user_uuid,
+            admin_key: ADMIN_KEY,
             user_name: item.user_name || item.title || "",
             video_url: item.video_url || "",
             thumbnail_url: item.thumbnail_url || "",
             price: "20000",
-            gift_type: "special",
           }),
         });
         const data = await res.json();
-        if (data.success) {
-          toast.success("تم رفع الهدية لغلا لايف تلقائياً ✅");
-        } else {
-          toast.warning("تم القبول — لكن الرفع التلقائي فشل. ارفعها يدوياً.");
-          console.error("Auto-upload failed:", data);
-        }
+        if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅");
+        else { toast.warning("تم القبول — الرفع التلقائي فشل. ارفعها يدوياً."); console.error("Auto-upload failed:", data); }
+      } else if (type === "entries") {
+        const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
+        if (!fileUrl || !item.user_uuid) return;
+        const wareType = item.ware_type === "entry_profile" ? "entry" : "room_entry";
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            action: "upload_ware",
+            admin_key: ADMIN_KEY,
+            ware_type: wareType,
+            name: item.title || item.user_name || "دخولية",
+            file_url: fileUrl,
+            uuid: item.user_uuid,
+            file_format: fileUrl.endsWith(".svga") ? "svga" : fileUrl.endsWith(".mp4") ? "mp4" : "svga",
+            expire: String(item.duration_days || 30),
+          }),
+        });
+        const data = await res.json();
+        if (data.success) toast.success("تم رفع الدخولية لغلا لايف ✅");
+        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+      } else if (type === "frames") {
+        const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
+        if (!fileUrl || !item.user_uuid) return;
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            action: "upload_ware",
+            admin_key: ADMIN_KEY,
+            ware_type: "frame",
+            name: item.title || item.user_name || "إطار",
+            file_url: fileUrl,
+            uuid: item.user_uuid,
+            file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4",
+            expire: String(item.duration_days || 30),
+          }),
+        });
+        const data = await res.json();
+        if (data.success) toast.success("تم رفع الإطار لغلا لايف ✅");
+        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+      } else if (type === "hairs") {
+        const fileUrl = item.file_url || item.details?.file_url;
+        if (!fileUrl || !item.user_uuid) return;
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            action: "upload_ware",
+            admin_key: ADMIN_KEY,
+            ware_type: "badge",
+            name: item.title || "شعار",
+            file_url: fileUrl,
+            uuid: item.user_uuid,
+            file_format: "svga",
+            expire: "30",
+          }),
+        });
+        const data = await res.json();
+        if (data.success) toast.success("تم رفع الشعار لغلا لايف ✅");
+        else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       }
     } catch (err) {
       toast.warning("تم القبول — لكن الرفع التلقائي فشل.");
@@ -112,17 +165,13 @@ const AdminRequestsPage: React.FC = () => {
     setProcessingId(id);
     const item = items.find((i: any) => i.id === id);
     const isApprove = action.startsWith("approve_");
-    const needsUpload = isApprove && (activeTab === "animated" || activeTab === "custom");
-    const loadingToast = needsUpload
-      ? toast.loading(activeTab === "animated" ? "جاري قبول الصورة ورفعها لغلا لايف..." : "جاري قبول الهدية ورفعها لغلا لايف...")
-      : toast.loading("جاري تنفيذ الطلب...");
+    const loadingToast = toast.loading(isApprove ? "جاري قبول الطلب ورفعه لغلا لايف..." : "جاري تنفيذ الطلب...");
     try {
       await adminCall(action, { id, ...extra });
 
-      // Auto-upload on approval
+      // Auto-upload on approval for ALL types
       if (isApprove && item) {
-        if (activeTab === "animated") await autoUploadToGala(item, "animated");
-        if (activeTab === "custom") await autoUploadToGala(item, "custom");
+        await autoUploadToGala(item, activeTab);
       }
       
       // Send notification to user
