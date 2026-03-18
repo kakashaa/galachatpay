@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Crown, Shield, BarChart3, Headset, ClipboardList, DollarSign,
   Hash, ShoppingBag, Settings, Briefcase, Users, ScrollText,
-  Search, MessageSquare, Loader2
+  Search, MessageSquare, Loader2, Clock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getAvatarUrl } from '@/lib/utils';
