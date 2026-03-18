@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getAvatarUrl } from '@/lib/utils';
+import { playUrgentSound } from '@/lib/notificationSound';
 
 interface ServiceItem {
   key: string;
