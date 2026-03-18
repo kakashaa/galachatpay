@@ -58,6 +58,14 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
         return;
       }
 
+      // Alert at 5 minutes remaining
+      if (remainMs <= 5 * 60 * 1000 && remainMs > 0 && !alertPlayedRef.current) {
+        alertPlayedRef.current = true;
+        playUrgentSound();
+        // Play again after 2 seconds for emphasis
+        setTimeout(() => playUrgentSound(), 2000);
+      }
+
       setIsOvertime(false);
       const elapsedPct = Math.min(100, ((totalMs - remainMs) / totalMs) * 100);
       setProgress(elapsedPct);
