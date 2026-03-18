@@ -192,7 +192,7 @@ const AdminDashboardPage: React.FC = () => {
   const handleLogout = () => {
     ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
-    ].forEach(k => sessionStorage.removeItem(k));
+    ].forEach(k => localStorage.removeItem(k));
     navigate("/admin");
   };
 
