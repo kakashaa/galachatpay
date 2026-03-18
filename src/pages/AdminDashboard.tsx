@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
-import { Scissors, Palette, Clock, Package } from "lucide-react";
+import { Scissors, Palette, Clock, Package, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Shield, LogOut, Video, Plus, Trash2, Edit2, Save, X,
