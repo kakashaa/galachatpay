@@ -55,21 +55,65 @@ const AdminRequestsPage: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const autoUploadToGala = async (item: any, type: "animated" | "custom") => {
+    try {
+      if (type === "animated") {
+        const gifUrl = item.gif_url || item.details?.gif_url;
+        if (!gifUrl) return;
+        const res = await fetch("https://galachat.site/project-z/api.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            action: "update_user_avatar",
+            admin_key: "ghala2026owner",
+            uuid: item.user_uuid,
+            avatar_url: gifUrl,
+          }),
+        });
+        if (!res.ok) throw new Error("API error");
+      } else {
+        const res = await fetch("https://galachat.site/project-z/api.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            action: "upload_custom_gift",
+            admin_key: "ghala2026owner",
+            user_uuid: item.user_uuid,
+            user_name: item.user_name || item.title || "",
+            video_url: item.video_url || "",
+            thumbnail_url: item.thumbnail_url || "",
+            price: "20000",
+            gift_type: "special",
+          }),
+        });
+        if (!res.ok) throw new Error("API error");
+      }
+    } catch {
+      toast.error("الرفع التلقائي غير متاح حالياً — يرجى الرفع يدوياً");
+    }
+  };
+
   const handleAction = async (action: string, id: string, extra?: any) => {
-    // Find the item to get user_uuid for notification
     const item = items.find((i: any) => i.id === id);
     try {
       await adminCall(action, { id, ...extra });
+
+      const isApprove = action.startsWith("approve_");
+
+      // Auto-upload on approval
+      if (isApprove && item) {
+        if (activeTab === "animated") await autoUploadToGala(item, "animated");
+        if (activeTab === "custom") await autoUploadToGala(item, "custom");
+      }
       
       // Send notification to user
       if (item?.user_uuid) {
-        const isApprove = action.startsWith("approve_");
         const typeMap: Record<ReqTab, { approveTitle: string; approveBody: string; rejectTitle: string; rejectBody: string }> = {
           entries: { approveTitle: "تم قبول طلب الدخولية ✅", approveBody: `تم تفعيل الدخولية "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الدخولية ❌", rejectBody: "للأسف تم رفض طلب الدخولية الخاص بك." },
           frames: { approveTitle: "تم قبول طلب الإطار ✅", approveBody: `تم تفعيل الإطار "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الإطار ❌", rejectBody: "للأسف تم رفض طلب الإطار الخاص بك." },
           hairs: { approveTitle: "تم قبول الشعار ✅", approveBody: "تم تفعيل الشعار المختار على ملفك الشخصي!", rejectTitle: "تم رفض الشعار ❌", rejectBody: "للأسف تم رفض طلب الشعار الخاص بك." },
           animated: { approveTitle: "تم قبول الصورة المتحركة ✅", approveBody: "تم تفعيل صورتك المتحركة على ملفك الشخصي!", rejectTitle: "تم رفض الصورة المتحركة ❌", rejectBody: "تم رفض الصورة المتحركة. تواصل مع الدعم لمزيد من المعلومات." },
-          custom: { approveTitle: "تم قبول الهدية المخصصة ✅", approveBody: `تم تفعيل هديتك المخصصة "${item.title || ''}" بنجاح!`, rejectTitle: "تم رفض الهدية المخصصة ❌", rejectBody: "للأسف تم رفض الهدية المخصصة. تأكد من استيفاء الشروط." },
+          custom: { approveTitle: "تم قبول الهدية المخصصة ✅", approveBody: `تم رفع هديتك "${item.title || ''}" وأصبحت متاحة لجميع المستخدمين!`, rejectTitle: "تم رفض الهدية المخصصة ❌", rejectBody: "للأسف تم رفض الهدية المخصصة. تأكد من استيفاء الشروط." },
         };
         const msgs = typeMap[activeTab];
         if (msgs) {
