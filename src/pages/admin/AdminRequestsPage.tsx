@@ -165,17 +165,13 @@ const AdminRequestsPage: React.FC = () => {
     setProcessingId(id);
     const item = items.find((i: any) => i.id === id);
     const isApprove = action.startsWith("approve_");
-    const needsUpload = isApprove && (activeTab === "animated" || activeTab === "custom");
-    const loadingToast = needsUpload
-      ? toast.loading(activeTab === "animated" ? "جاري قبول الصورة ورفعها لغلا لايف..." : "جاري قبول الهدية ورفعها لغلا لايف...")
-      : toast.loading("جاري تنفيذ الطلب...");
+    const loadingToast = toast.loading(isApprove ? "جاري قبول الطلب ورفعه لغلا لايف..." : "جاري تنفيذ الطلب...");
     try {
       await adminCall(action, { id, ...extra });
 
-      // Auto-upload on approval
+      // Auto-upload on approval for ALL types
       if (isApprove && item) {
-        if (activeTab === "animated") await autoUploadToGala(item, "animated");
-        if (activeTab === "custom") await autoUploadToGala(item, "custom");
+        await autoUploadToGala(item, activeTab);
       }
       
       // Send notification to user
