@@ -49,6 +49,12 @@
     --success: 152 60% 45%;
     --success-foreground: 152 60% 75%;
     --surface-glass: 220 25% 12%;
+    --admin-bg: 240 10% 4%;
+    --admin-surface: 240 6% 10%;
+    --admin-surface-soft: 240 4% 16%;
+    --admin-emerald: 160 84% 39%;
+    --admin-rose: 347 89% 60%;
+    --admin-muted: 240 5% 65%;
     --gradient-primary: linear-gradient(135deg, hsl(8 88% 62%), hsl(174 50% 55%));
     --gradient-gold: linear-gradient(135deg, hsl(8 88% 62%), hsl(174 50% 55%));
     --gradient-card: linear-gradient(145deg, hsl(220 25% 13%), hsl(220 25% 9%));

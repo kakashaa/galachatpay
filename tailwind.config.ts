@@ -66,6 +66,14 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        admin: {
+          bg: "hsl(var(--admin-bg))",
+          surface: "hsl(var(--admin-surface))",
+          "surface-soft": "hsl(var(--admin-surface-soft))",
+          emerald: "hsl(var(--admin-emerald))",
+          rose: "hsl(var(--admin-rose))",
+          muted: "hsl(var(--admin-muted))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
