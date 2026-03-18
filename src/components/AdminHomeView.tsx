@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getAvatarUrl } from '@/lib/utils';
+import { playUrgentSound } from '@/lib/notificationSound';
 
 interface ServiceItem {
   key: string;
@@ -24,6 +25,7 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
   const [remaining, setRemaining] = useState('');
   const [progress, setProgress] = useState(0);
   const [isOvertime, setIsOvertime] = useState(false);
+  const alertPlayedRef = React.useRef(false);
 
   useEffect(() => {
     if (!shiftEnd) {
@@ -54,6 +56,14 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
         setProgress(100);
         setIsOvertime(true);
         return;
+      }
+
+      // Alert at 5 minutes remaining
+      if (remainMs <= 5 * 60 * 1000 && remainMs > 0 && !alertPlayedRef.current) {
+        alertPlayedRef.current = true;
+        playUrgentSound();
+        // Play again after 2 seconds for emphasis
+        setTimeout(() => playUrgentSound(), 2000);
       }
 
       setIsOvertime(false);
