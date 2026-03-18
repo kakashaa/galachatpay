@@ -46,6 +46,7 @@ const serviceRoutes: Record<string, string> = {
   entry_gift: "/entry-request",
   gift: "/gift",
   change_id: "/change-id",
+  hair: "/hairs",
 };
 
 const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userUuid, serviceType }) => {
