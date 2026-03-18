@@ -10,6 +10,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import SvgaPlayer from "@/components/SvgaPlayer";
+import { captureMediaThumbnail } from "@/utils/captureMediaThumbnail";
+import { supabase } from "@/integrations/supabase/client";
 
 type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom";
 
@@ -75,6 +77,23 @@ const AdminRequestsPage: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  // --- capture thumbnail helper ---
+  const captureThumbnailUrl = async (fileUrl: string, itemId: string): Promise<string> => {
+    try {
+      const blob = await captureMediaThumbnail(fileUrl);
+      if (!blob) return "";
+      const thumbPath = `thumbnails/${itemId}_thumb.png`;
+      const { data: uploadData } = await supabase.storage
+        .from("attachments")
+        .upload(thumbPath, blob, { contentType: "image/png", upsert: true });
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(thumbPath);
+        return urlData.publicUrl;
+      }
+    } catch (e) { console.error("Thumbnail capture failed:", e); }
+    return "";
+  };
+
   // --- auto upload logic ---
   const autoUploadToGala = async (item: any, type: ReqTab) => {
     const API = "https://galachat.site/project-z/api.php";
@@ -87,7 +106,12 @@ const AdminRequestsPage: React.FC = () => {
         const data = await res.json();
         if (data.success) toast.success("تم رفع الصورة لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "custom") {
-        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_custom_gift", admin_key: ADMIN_KEY, user_name: item.user_name || item.title || "", video_url: item.video_url || "", thumbnail_url: item.thumbnail_url || "", price: "20000" }) });
+        // Capture thumbnail for custom gifts
+        let thumbnailUrl = item.thumbnail_url || "";
+        if (!thumbnailUrl && item.video_url) {
+          thumbnailUrl = await captureThumbnailUrl(item.video_url, item.id);
+        }
+        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_custom_gift", admin_key: ADMIN_KEY, user_name: item.user_name || item.title || "", video_url: item.video_url || "", thumbnail_url: thumbnailUrl, price: "20000" }) });
         const data = await res.json();
         if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "entries") {
@@ -95,20 +119,32 @@ const AdminRequestsPage: React.FC = () => {
         if (!fileUrl || !item.user_uuid) return;
         const wareType = item.ware_type === "entry_profile" ? "entry" : "room_entry";
         const targetUuid = item.friend_uuid || item.user_uuid;
-        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: wareType, name: item.title || item.user_name || "دخولية", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : fileUrl.endsWith(".mp4") ? "mp4" : "svga", expire: String(item.duration_days || 30) }) });
+        // Capture thumbnail
+        const thumbnailUrl = await captureThumbnailUrl(fileUrl, item.id);
+        const params: Record<string, string> = { action: "upload_ware", admin_key: ADMIN_KEY, ware_type: wareType, name: item.title || item.user_name || "دخولية", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : fileUrl.endsWith(".mp4") ? "mp4" : "svga", expire: String(item.duration_days || 30) };
+        if (thumbnailUrl) params.show_img = thumbnailUrl;
+        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) });
         const data = await res.json();
         if (data.success) toast.success("تم رفع الدخولية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "frames") {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
         const targetUuid = item.friend_uuid || item.user_uuid;
-        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "frame", name: item.title || item.user_name || "إطار", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4", expire: String(item.duration_days || 30) }) });
+        // Capture thumbnail
+        const thumbnailUrl = await captureThumbnailUrl(fileUrl, item.id);
+        const params: Record<string, string> = { action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "frame", name: item.title || item.user_name || "إطار", file_url: fileUrl, uuid: targetUuid, file_format: fileUrl.endsWith(".svga") ? "svga" : "mp4", expire: String(item.duration_days || 30) };
+        if (thumbnailUrl) params.show_img = thumbnailUrl;
+        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) });
         const data = await res.json();
         if (data.success) toast.success("تم رفع الإطار لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       } else if (type === "hairs") {
         const fileUrl = item.file_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
-        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "badge", name: item.title || "شعار", file_url: fileUrl, uuid: item.user_uuid, file_format: "svga", expire: "30" }) });
+        // Capture thumbnail
+        const thumbnailUrl = await captureThumbnailUrl(fileUrl, item.id);
+        const params: Record<string, string> = { action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "badge", name: item.title || "شعار", file_url: fileUrl, uuid: item.user_uuid, file_format: "svga", expire: "30" };
+        if (thumbnailUrl) params.show_img = thumbnailUrl;
+        const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) });
         const data = await res.json();
         if (data.success) toast.success("تم رفع الشعار لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       }
@@ -123,7 +159,7 @@ const AdminRequestsPage: React.FC = () => {
     setProcessingId(id);
     const item = items.find((i: any) => i.id === id);
     const isApprove = action.startsWith("approve_");
-    const loadingToast = toast.loading(isApprove ? "جاري قبول الطلب ورفعه لغلا لايف..." : "جاري تنفيذ الطلب...");
+    const loadingToast = toast.loading(isApprove ? "جاري استخراج الصورة والرفع لغلا لايف..." : "جاري تنفيذ الطلب...");
     try {
       await adminCall(action, { id, ...extra });
       if (isApprove && item) await autoUploadToGala(item, activeTab);
