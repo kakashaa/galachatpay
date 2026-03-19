@@ -343,11 +343,12 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
 
           {/* 6 & 7. أزرار التنفيذ وفك الحظر */}
           <div className="flex gap-2">
-            <Button variant="destructive" className="flex-1" onClick={() => {
+            <Button variant="destructive" className="flex-1" onClick={async () => {
               if (!banUuid.trim()) { toast.error('أدخل UUID'); return; }
               const reason = banReason === 'other' ? banCustomReason : banReason;
               if (!reason.trim()) { toast.error('أدخل السبب'); return; }
-              if (confirm('هل أنت متأكد من تنفيذ الحظر؟')) handleBan();
+              const ok = await confirm({ title: "تأكيد الحظر", message: `حظر UUID ${banUuid}؟`, danger: true, confirmText: "تنفيذ الحظر" });
+              if (ok) handleBan();
             }} disabled={banLoading}>
               {banLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <ShieldBan className="w-4 h-4 ml-2" />}
               تنفيذ الحظر
