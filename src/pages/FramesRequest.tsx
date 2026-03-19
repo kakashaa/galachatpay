@@ -124,18 +124,8 @@ const FramesRequest: React.FC = () => {
       setSubmitting(false);
       fetchStarBalance();
 
-      // Step 3+4: Background - user doesn't wait
-      // IMPORTANT: avoid duplicate uploads. The actual wares upload happens from admin approval only.
-      const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
-      const enableDirectWaresSubmit = true;
-
-      if (enableDirectWaresSubmit) {
-        const ext = selectedFrame.file_url.split(".").pop()?.toLowerCase() || "mp4";
-        const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
-        supabase.functions.invoke("wares-request", {
-          body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: "frame", image_type: imageType, file_url: selectedFrame.file_url, days: 30 },
-        }).catch(() => {});
-      }
+      // Wares upload is handled exclusively by admin approval (AdminRequestsPage autoUploadToGala)
+      // No user-side submit-request to avoid duplicate uploads
 
     } catch (err: any) {
       toast.error(err?.message || "فشل الإرسال");
