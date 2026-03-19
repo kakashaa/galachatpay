@@ -14,7 +14,7 @@ import SvgaPlayer from "@/components/SvgaPlayer";
 import { captureMediaThumbnail } from "@/utils/captureMediaThumbnail";
 import { supabase } from "@/integrations/supabase/client";
 
-type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom";
+type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom" | "rooms";
 
 const tabs: { key: ReqTab; label: string; icon: React.ElementType; color: string; bg: string }[] = [
   { key: "entries", label: "دخوليات", icon: Sparkles, color: "text-admin-amber", bg: "rgba(245,158,11," },
@@ -22,6 +22,7 @@ const tabs: { key: ReqTab; label: string; icon: React.ElementType; color: string
   { key: "hairs", label: "شعرات", icon: Scissors, color: "text-admin-pink", bg: "rgba(236,72,153," },
   { key: "animated", label: "صور", icon: Camera, color: "text-admin-purple", bg: "rgba(139,92,246," },
   { key: "custom", label: "هدايا", icon: Gift, color: "text-admin-emerald", bg: "rgba(16,185,129," },
+  { key: "rooms", label: "خلفيات", icon: MonitorPlay, color: "text-admin-cyan", bg: "rgba(6,182,212," },
 ];
 
 type PendingCounts = Record<ReqTab, number>;
