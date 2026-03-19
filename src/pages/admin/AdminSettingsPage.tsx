@@ -188,6 +188,7 @@ const StarsSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
 
 /* ─── Trash Sub-page ─── */
 const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
+  const { confirm: confirmDelete, ConfirmDialog: TrashConfirmDialog } = useConfirmModal();
   const [data, setData] = useState<{ videos: any[]; entries: any[]; frames: any[]; customs: any[] }>({ videos: [], entries: [], frames: [], customs: [] });
   const [loading, setLoading] = useState(true);
 
