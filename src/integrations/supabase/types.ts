@@ -185,6 +185,54 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_host_requests: {
+        Row: {
+          assigned_to: string | null
+          assigned_to_name: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          notes: string | null
+          reject_reason: string | null
+          request_type: string
+          status: string
+          submitted_by: string
+          submitted_by_name: string
+          updated_at: string
+          user_uuid: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          reject_reason?: string | null
+          request_type?: string
+          status?: string
+          submitted_by?: string
+          submitted_by_name?: string
+          updated_at?: string
+          user_uuid: string
+        }
+        Update: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          reject_reason?: string | null
+          request_type?: string
+          status?: string
+          submitted_by?: string
+          submitted_by_name?: string
+          updated_at?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       admin_posts: {
         Row: {
           caption: string | null
