@@ -194,6 +194,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
   }
 
   return (
+    <>
     <div className="space-y-4">
       <Button onClick={() => setShowAdd(!showAdd)} className="w-full" variant={showAdd ? "outline" : "default"}>
         {showAdd ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><UserPlus className="w-4 h-4 ml-2" />إضافة أدمن جديد</>}
