@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Bot, Ticket, MessageSquare, Headphones, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
