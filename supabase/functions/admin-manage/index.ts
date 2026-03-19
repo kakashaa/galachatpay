@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     // For actions after login, validate session token instead of password
     let auth: { role: "owner" | "super_admin" | "admin" | "moderator"; permissions?: string[] } | null = null;
     
-    if (session_token && action !== "auth_check") {
+    if (session_token) {
       // Validate existing session token
       try {
         let decoded: any;
