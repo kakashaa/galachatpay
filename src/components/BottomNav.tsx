@@ -29,6 +29,7 @@ const BottomNav: React.FC = () => {
   const [tappedIndex, setTappedIndex] = useState<number | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingTickets, setPendingTickets] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const fetchBadges = useCallback(async () => {
     if (!user?.uuid) return;
