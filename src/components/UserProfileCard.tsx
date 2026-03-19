@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
-import { getAvatar, fixAvatarUrl } from "@/lib/avatarHelper";
+import { getAvatar, fixAvatarUrl, getAvatarUrl } from "@/lib/avatarHelper";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
