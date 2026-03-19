@@ -48,21 +48,36 @@ const AdminRequestsPage: React.FC = () => {
   useEffect(() => { loadAllCounts(); }, []);
   useEffect(() => { loadData(); }, [activeTab]);
 
+  const HOLA_API = "https://hola-chat.com/wares-api.php";
+  const HOLA_KEY = "ghala2026actions";
+
+  // Fetch room bg requests from external dashboard
+  const fetchRoomRequests = async (): Promise<any[]> => {
+    try {
+      const res = await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=list-room-bg-requests`);
+      const data = await res.json();
+      return data.requests || [];
+    } catch { return []; }
+  };
+
   const loadAllCounts = async () => {
-    const actionMap: Record<ReqTab, string> = {
+    const actionMap: Record<Exclude<ReqTab, "rooms">, string> = {
       entries: "list_entry_requests", frames: "list_frame_claims",
       hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
-      rooms: "list_room_backgrounds",
     };
     try {
-      const results = await Promise.allSettled(
-        (Object.keys(actionMap) as ReqTab[]).map(async (key) => {
-          const data = await adminCall(actionMap[key]);
-          return { key, count: (data || []).filter((i: any) => i.status === "pending").length };
-        })
-      );
+      const [supaResults, roomRequests] = await Promise.all([
+        Promise.allSettled(
+          (Object.keys(actionMap) as Exclude<ReqTab, "rooms">[]).map(async (key) => {
+            const data = await adminCall(actionMap[key]);
+            return { key, count: (data || []).filter((i: any) => i.status === "pending").length };
+          })
+        ),
+        fetchRoomRequests(),
+      ]);
       const counts: PendingCounts = { entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0, rooms: 0 };
-      results.forEach(r => { if (r.status === "fulfilled") counts[r.value.key] = r.value.count; });
+      supaResults.forEach(r => { if (r.status === "fulfilled") counts[r.value.key] = r.value.count; });
+      counts.rooms = roomRequests.filter((i: any) => i.status === "pending").length;
       setPendingCounts(counts);
     } catch { /* silent */ }
   };
@@ -71,14 +86,19 @@ const AdminRequestsPage: React.FC = () => {
     setLoading(true);
     setRemovedIds(new Set());
     try {
-      const actionMap: Record<ReqTab, string> = {
-        entries: "list_entry_requests", frames: "list_frame_claims",
-        hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
-        rooms: "list_room_backgrounds",
-      };
-      const data = await adminCall(actionMap[activeTab]);
-      setItems(data || []);
-      setPendingCounts(prev => ({ ...prev, [activeTab]: (data || []).filter((i: any) => i.status === "pending").length }));
+      if (activeTab === "rooms") {
+        const data = await fetchRoomRequests();
+        setItems(data || []);
+        setPendingCounts(prev => ({ ...prev, rooms: (data || []).filter((i: any) => i.status === "pending").length }));
+      } else {
+        const actionMap: Record<Exclude<ReqTab, "rooms">, string> = {
+          entries: "list_entry_requests", frames: "list_frame_claims",
+          hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
+        };
+        const data = await adminCall(actionMap[activeTab as Exclude<ReqTab, "rooms">]);
+        setItems(data || []);
+        setPendingCounts(prev => ({ ...prev, [activeTab]: (data || []).filter((i: any) => i.status === "pending").length }));
+      }
     } catch { toast.error("فشل تحميل البيانات"); }
     finally { setLoading(false); }
   };
@@ -209,8 +229,25 @@ const AdminRequestsPage: React.FC = () => {
     const isApprove = action.startsWith("approve_");
     const loadingToast = toast.loading(isApprove ? "جاري استخراج الصورة والرفع لغلا لايف..." : "جاري تنفيذ الطلب...");
     try {
-      await adminCall(action, { id, ...extra });
-      if (isApprove && item) await autoUploadToGala(item, activeTab);
+      if (activeTab === "rooms") {
+        // Use external API for rooms
+        const endpoint = isApprove ? "approve-room-bg" : "reject-room-bg";
+        const res = await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=${endpoint}&id=${id}`);
+        const result = await res.json();
+        if (!result.ok && !result.success) throw new Error(result.error || "فشلت العملية");
+        // Also upload to gala if approving
+        if (isApprove && item) {
+          const imageUrl = item.image_url || item.file_url;
+          if (imageUrl && item.user_uuid) {
+            try {
+              await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=upload-room-background&uuid=${item.user_uuid}&image_url=${encodeURIComponent(imageUrl)}`);
+            } catch { /* silent */ }
+          }
+        }
+      } else {
+        await adminCall(action, { id, ...extra });
+        if (isApprove && item) await autoUploadToGala(item, activeTab);
+      }
 
       if (item?.user_uuid) {
         const typeMap: Record<ReqTab, { approveTitle: string; approveBody: string; rejectTitle: string; rejectBody: string }> = {
