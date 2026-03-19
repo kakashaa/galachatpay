@@ -173,7 +173,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   };
 
   const deleteBd = async (bdUuid: string) => {
-    if (!confirm("هل تريد حذف هذا البيدي وجميع أعضائه؟")) return;
+    const ok = await confirm({ title: "حذف البيدي", message: "هل تريد حذف هذا البيدي وجميع أعضائه؟", danger: true, confirmText: "حذف" });
+    if (!ok) return;
     try {
       await bdCall("admin_delete_bd", { bd_uuid: bdUuid });
       toast.success("تم الحذف");
