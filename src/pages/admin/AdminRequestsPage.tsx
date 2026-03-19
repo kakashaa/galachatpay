@@ -231,8 +231,8 @@ const AdminRequestsPage: React.FC = () => {
   const otherItems = visibleItems.filter((i: any) => i.status !== "pending");
 
   // Get the preview URL for any item
-  const getPreviewUrl = (item: any) => item.file_url || item.video_url || item.gif_url || item.thumbnail_url || null;
-  const getThumbnail = (item: any) => item.thumbnail_url || item.gif_url || null;
+  const getPreviewUrl = (item: any) => item.file_url || item.video_url || item.gif_url || item.thumbnail_url || item.image_url || null;
+  const getThumbnail = (item: any) => item.thumbnail_url || item.gif_url || item.image_url || null;
 
   // Render the visual media preview
   const renderMediaPreview = (item: any, size: "grid" | "full" = "grid") => {
