@@ -218,7 +218,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    await sb.from("edge_function_cache").delete().eq("key", "bd_sync_lock").catch(() => {});
+    try { await sb.from("edge_function_cache").delete().eq("key", "bd_sync_lock"); } catch { /* ignore */ }
     console.error("[SYNC] fatal error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,

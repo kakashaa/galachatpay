@@ -47,7 +47,7 @@ export function useAdminSession() {
         const uname = localStorage.getItem("admin_username");
         if (uname) {
           supabase.functions.invoke("admin-manage", {
-            body: { session_token: token, action: "auth_check" }
+            body: { username: uname, session_token: token, action: "auth_check" }
           }).then(({ data }) => {
             if (data?.session_token) {
               localStorage.setItem("admin_session_token", data.session_token);

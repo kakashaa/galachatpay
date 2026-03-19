@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
     // For actions after login, validate session token instead of password
     let auth: { role: "owner" | "super_admin" | "admin" | "moderator"; permissions?: string[] } | null = null;
     
-    if (session_token && action !== "auth_check") {
+    if (session_token) {
       // Validate existing session token
       try {
         let decoded: any;
@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
 
         const { error } = await supabase
           .from("manual_bans")
-          .update({ status: "unbanned", unbanned_at: new Date().toISOString(), unbanned_by: auth.username })
+          .update({ status: "unbanned", unbanned_at: new Date().toISOString(), unbanned_by: username || "" })
           .eq("id", ban_id);
         if (error) throw error;
         result = { success: true };
