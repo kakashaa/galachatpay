@@ -153,7 +153,8 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
 
   const handleDelete = async (admin: AdminAccount) => {
     if (admin.role === "owner") { toast.error("لا يمكن حذف حساب المالك"); return; }
-    if (!confirm(`هل تريد حذف حساب ${admin.display_name}؟`)) return;
+    const ok = await confirm({ title: "حذف حساب", message: `هل تريد حذف حساب ${admin.display_name}؟`, danger: true, confirmText: "حذف" });
+    if (!ok) return;
     try {
       const { error } = await supabase.from("admin_accounts").delete().eq("id", admin.id);
       if (error) throw error;
