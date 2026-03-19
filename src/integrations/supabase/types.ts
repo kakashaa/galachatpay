@@ -260,6 +260,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_shifts: {
+        Row: {
+          admin_display_name: string
+          admin_username: string
+          created_at: string
+          id: string
+          is_active: boolean
+          phone_number: string | null
+          role_type: string
+          shift_end: string
+          shift_start: string
+          updated_at: string
+        }
+        Insert: {
+          admin_display_name?: string
+          admin_username: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          phone_number?: string | null
+          role_type?: string
+          shift_end: string
+          shift_start: string
+          updated_at?: string
+        }
+        Update: {
+          admin_display_name?: string
+          admin_username?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          phone_number?: string | null
+          role_type?: string
+          shift_end?: string
+          shift_start?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_stories: {
         Row: {
           created_at: string | null
@@ -1936,6 +1975,189 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      support_ratings: {
+        Row: {
+          admin_username: string
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          session_id: string | null
+          ticket_id: string | null
+          user_uuid: string
+        }
+        Insert: {
+          admin_username: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          session_id?: string | null
+          ticket_id?: string | null
+          user_uuid: string
+        }
+        Update: {
+          admin_username?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          session_id?: string | null
+          ticket_id?: string | null
+          user_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_ratings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "support_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_session_messages: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_name: string
+          sender_type: string
+          sender_uuid: string
+          session_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_name?: string
+          sender_type?: string
+          sender_uuid: string
+          session_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_name?: string
+          sender_type?: string
+          sender_uuid?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_session_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "support_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_session_participants: {
+        Row: {
+          admin_display_name: string
+          admin_username: string
+          id: string
+          joined_at: string
+          role_type: string
+          session_id: string
+        }
+        Insert: {
+          admin_display_name?: string
+          admin_username: string
+          id?: string
+          joined_at?: string
+          role_type?: string
+          session_id: string
+        }
+        Update: {
+          admin_display_name?: string
+          admin_username?: string
+          id?: string
+          joined_at?: string
+          role_type?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_session_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "support_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_sessions: {
+        Row: {
+          admin_note: string | null
+          assigned_admin: string | null
+          assigned_admin_name: string | null
+          created_at: string
+          escalation_level: number
+          file_type: string | null
+          file_url: string | null
+          id: string
+          last_message_at: string | null
+          notes: string | null
+          request_type: string | null
+          resolved_at: string | null
+          room_name: string | null
+          status: string
+          support_level: number
+          updated_at: string
+          user_name: string
+          user_uuid: string
+        }
+        Insert: {
+          admin_note?: string | null
+          assigned_admin?: string | null
+          assigned_admin_name?: string | null
+          created_at?: string
+          escalation_level?: number
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          last_message_at?: string | null
+          notes?: string | null
+          request_type?: string | null
+          resolved_at?: string | null
+          room_name?: string | null
+          status?: string
+          support_level?: number
+          updated_at?: string
+          user_name?: string
+          user_uuid: string
+        }
+        Update: {
+          admin_note?: string | null
+          assigned_admin?: string | null
+          assigned_admin_name?: string | null
+          created_at?: string
+          escalation_level?: number
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          last_message_at?: string | null
+          notes?: string | null
+          request_type?: string | null
+          resolved_at?: string | null
+          room_name?: string | null
+          status?: string
+          support_level?: number
+          updated_at?: string
+          user_name?: string
+          user_uuid?: string
+        }
+        Relationships: []
       }
       support_tickets: {
         Row: {
