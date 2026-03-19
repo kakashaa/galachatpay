@@ -18,7 +18,6 @@ serve(async (req) => {
     const { action, ...params } = await req.json();
 
     if (action === "submit-request") {
-      // POST with URLSearchParams
       const formData = new URLSearchParams();
       for (const [key, value] of Object.entries(params)) {
         if (value !== undefined && value !== null) {
@@ -33,7 +32,6 @@ serve(async (req) => {
       });
 
       const data = await res.json();
-
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -49,6 +47,23 @@ serve(async (req) => {
       }
 
       const url = `${BASE_URL}?key=${API_KEY}&action=approve&id=${encodeURIComponent(id)}&ware_type=${encodeURIComponent(ware_type || "")}`;
+      const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+      const data = await res.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "upload-room-background") {
+      const { uuid, image_url } = params;
+      if (!uuid || !image_url) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing uuid or image_url" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const url = `${BASE_URL}?key=${API_KEY}&action=upload-room-background&uuid=${encodeURIComponent(uuid)}&image_url=${encodeURIComponent(image_url)}`;
       const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
       const data = await res.json();
       return new Response(JSON.stringify(data), {

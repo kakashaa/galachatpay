@@ -175,9 +175,11 @@ const AdminRequestsPage: React.FC = () => {
       } else if (type === "rooms") {
         const imageUrl = item.image_url || item.file_url || item.details?.image_url;
         if (!imageUrl || !item.user_uuid) return;
-        const res = await fetch(GALA_API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_room_background", admin_key: ADMIN_KEY, uuid: item.user_uuid, image_url: imageUrl }) });
-        const data = await res.json();
-        if (data.success) toast.success("تم تغيير خلفية الغرفة ✅"); else { toast.warning("تم القبول — تغيير الخلفية فشل."); console.error("Room bg upload failed:", data); }
+        const data = await callWaresApi("upload-room-background", {
+          uuid: item.user_uuid,
+          image_url: imageUrl,
+        });
+        if (data.ok || data.success) toast.success("تم تغيير خلفية الغرفة ✅"); else { toast.warning("تم القبول — تغيير الخلفية فشل."); console.error("Room bg upload failed:", data); }
 
       } else if (type === "hairs") {
         // Hairs still use upload_ware (badge type)
