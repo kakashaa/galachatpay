@@ -57,14 +57,11 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchNotifCount();
-    // Poll for new notifications every 15s
     const interval = setInterval(fetchNotifCount, 15_000);
-    // Refresh user data on dashboard mount
     if (isAuthenticated) {
       refreshUser();
     }
     return () => clearInterval(interval);
-    }
   }, [fetchNotifCount, isAuthenticated, refreshUser]);
 
   const handleRefresh = useCallback(async () => {
