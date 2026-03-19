@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { useConfirmModal } from '@/hooks/use-confirm-modal';
 
 const API = "https://galachat.site/project-z/api.php";
 const ADMIN_KEY = "ghala2026owner";
