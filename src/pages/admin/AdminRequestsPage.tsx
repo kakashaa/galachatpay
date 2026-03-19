@@ -44,6 +44,44 @@ const AdminRequestsPage: React.FC = () => {
   const [shakenTab, setShakenTab] = useState<ReqTab | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [previewItem, setPreviewItem] = useState<any | null>(null);
+  const [showDirectUpload, setShowDirectUpload] = useState(false);
+  const [directUuid, setDirectUuid] = useState("");
+  const [directFile, setDirectFile] = useState<File | null>(null);
+  const [directUploading, setDirectUploading] = useState(false);
+  const directFileRef = useRef<HTMLInputElement>(null);
+
+  const handleDirectUpload = async () => {
+    if (!directUuid.trim() || !directFile) {
+      toast.error("أدخل UUID واختر صورة");
+      return;
+    }
+    setDirectUploading(true);
+    try {
+      const path = `room-backgrounds/direct/${directUuid.trim()}_${Date.now()}.png`;
+      const { data: uploadData } = await supabase.storage
+        .from("attachments")
+        .upload(path, directFile, { contentType: directFile.type, upsert: true });
+      if (!uploadData) { toast.error("فشل رفع الصورة"); return; }
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+      const imageUrl = urlData.publicUrl;
+      const res = await fetch(
+        `${HOLA_API}?key=${HOLA_KEY}&action=upload-room-background&uuid=${directUuid.trim()}&image_url=${encodeURIComponent(imageUrl)}`
+      );
+      const data = await res.json();
+      if (data.ok || data.success) {
+        toast.success("تم تغيير خلفية الغرفة!");
+        setShowDirectUpload(false);
+        setDirectUuid("");
+        setDirectFile(null);
+      } else {
+        toast.error("فشل: " + (data.error || "خطأ غير معروف"));
+      }
+    } catch (e: any) {
+      toast.error("خطأ: " + (e.message || "غير معروف"));
+    } finally {
+      setDirectUploading(false);
+    }
+  };
 
   useEffect(() => { loadAllCounts(); }, []);
   useEffect(() => { loadData(); }, [activeTab]);
