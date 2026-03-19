@@ -123,6 +123,43 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
           const isBdItem = item.route === "/bd";
           const showLock = isBdItem && bdBanned;
           const isBanned = item.banKey ? isElementBanned(item.banKey) : false;
+          const isSpecialEligible = item.isSpecial && isEligibleForQuickSupport(user);
+
+          if (isSpecialEligible && !isBanned) {
+            return (
+              <button
+                key={index}
+                onClick={() => handleClick(item)}
+                className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
+              >
+                <motion.div
+                  animate={{
+                    boxShadow: [
+                      "0 0 0 0 rgba(59,130,246,0.5)",
+                      "0 0 0 10px rgba(59,130,246,0)",
+                      "0 0 0 0 rgba(59,130,246,0)",
+                    ],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="relative w-12 h-12 rounded-[14px] flex items-center justify-center"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(59,130,246,0.25), rgba(139,92,246,0.25))",
+                    border: "1px solid rgba(99,102,241,0.4)",
+                  }}
+                >
+                  <Icon className="w-5 h-5 text-blue-300" />
+                  <div className="absolute -top-1.5 -left-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full"
+                    style={{ background: "linear-gradient(135deg, hsl(217 91% 60%), hsl(271 81% 56%))", boxShadow: "0 2px 8px rgba(99,102,241,0.4)" }}>
+                    <Zap className="w-2 h-2 text-white" />
+                    <span className="text-[7px] font-black text-white leading-none">فوري</span>
+                  </div>
+                </motion.div>
+                <span className="text-[9px] font-bold leading-tight text-center text-blue-300">
+                  {item.label}
+                </span>
+              </button>
+            );
+          }
 
           return (
             <button
