@@ -90,6 +90,8 @@ const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
 const AdminRequestsPage = lazy(() => import("./pages/admin/AdminRequestsPage"));
 const AdminWorksPage = lazy(() => import("./pages/admin/AdminWorksPage"));
 const AdminHostRequestsPage = lazy(() => import("./pages/admin/AdminHostRequestsPage"));
+const SupportTicketsEmbed = lazy(() => import("./pages/SupportTicketsEmbed"));
+const SupportChatEmbed = lazy(() => import("./pages/SupportChatEmbed"));
 
 const queryClient = new QueryClient();
 
