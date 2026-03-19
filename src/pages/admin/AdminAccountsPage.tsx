@@ -33,7 +33,14 @@ const AdminAccountsPage: React.FC = () => {
 
   const loadAdmins = async () => {
     setLoading(true);
-    try { setAdmins(await adminCall("admin_list") || []); } catch { }
+    try {
+      const { data, error } = await supabase
+        .from("admin_accounts")
+        .select("id, username, display_name, role, is_active, created_at")
+        .order("role", { ascending: true });
+      if (error) throw error;
+      setAdmins(data || []);
+    } catch { }
     finally { setLoading(false); }
   };
 
