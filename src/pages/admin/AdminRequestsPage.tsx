@@ -56,7 +56,16 @@ const AdminRequestsPage: React.FC = () => {
     try {
       const res = await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=list-room-bg-requests`);
       const data = await res.json();
-      return data.requests || [];
+      const raw = data.data?.requests || data.requests || [];
+      return raw.map((r: any) => ({
+        id: String(r.id),
+        user_uuid: r.uuid || r.user_uuid,
+        user_name: r.uuid || r.user_uuid,
+        file_url: r.image_url,
+        image_url: r.image_url,
+        status: r.status === "قيد الانتظار" ? "pending" : r.status === "مقبول" ? "approved" : r.status === "مرفوض" ? "rejected" : (r.status || "pending"),
+        created_at: r.created_at,
+      }));
     } catch { return []; }
   };
 
