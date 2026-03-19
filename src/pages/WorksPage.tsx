@@ -51,7 +51,8 @@ const WorksPage: React.FC = () => {
   const [salaryLoading, setSalaryLoading] = useState(false);
 
   // StatusModal
-  const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string } | null>(null);
+  const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
+  const [isBanned, setIsBanned] = useState(false);
 
   const userLevel = user?.level?.charger_level || 0;
 
