@@ -97,14 +97,14 @@ const AdminProfilePage = () => {
         return;
       }
 
-      const { error } = await supabase.from("admin_posts").insert({
+      const { error } = await (supabase as any).from("admin_posts").insert({
         user_uuid: profileUuid,
         username: adminSession.display_name || adminSession.username,
         content_type: newPostType,
         media_url: mediaUrl,
         thumbnail_url: thumbnailUrl,
         caption: caption.trim() || null,
-      } as any);
+      });
 
       if (error) throw error;
       toast.success("تم النشر!");
