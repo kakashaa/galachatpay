@@ -196,7 +196,7 @@ const WorksPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
         {/* Works Code */}
         <div className="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl p-4">
-          <p className="text-[10px] text-muted-foreground">كود Works</p>
+          <p className="text-[10px] text-muted-foreground">كود البيدي</p>
           <p className="text-lg font-mono font-bold text-emerald-400">{myWorks.works_code}</p>
         </div>
 
