@@ -32,6 +32,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
   const [banReason, setBanReason] = useState('promo');
   const [banCustomReason, setBanCustomReason] = useState('');
   const [banDuration, setBanDuration] = useState('24h');
+  const [banType, setBanType] = useState<'normal' | 'device'>('normal');
   const [banImage, setBanImage] = useState<File | null>(null);
   const [banLoading, setBanLoading] = useState(false);
   const banFileRef = useRef<HTMLInputElement>(null);
