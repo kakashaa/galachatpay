@@ -4,6 +4,7 @@ import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, BadgeCheck, Briefcase,
   Ban, Clock, Construction, Landmark, AlertTriangle,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
@@ -11,6 +12,7 @@ import { useElementSettings } from "@/hooks/use-element-settings";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { motion } from "framer-motion";
 
 interface MenuItem {
   icon: React.ElementType;
