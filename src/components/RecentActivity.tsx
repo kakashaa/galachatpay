@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, Sparkles, Frame, Crown, Camera, Scissors, Hash, FileText, Clock, CheckCircle, XCircle, ChevronLeft,
+  Wallet, Sparkles, Frame, Crown, Camera, Scissors, Clock, CheckCircle, XCircle, ChevronLeft,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 

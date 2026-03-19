@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText, Clock, CheckCircle, XCircle, ChevronLeft,
-  Wallet, Zap, Globe, CreditCard, User, Image as ImageIcon, Sparkles, Frame, RefreshCw, Headset,
-  ArrowUpRight, Hash, Link2, Crown, Camera, Scissors, Eye, X,
+  Wallet, Zap, Image as ImageIcon, Sparkles, Frame, RefreshCw, Headset,
+  Hash, Crown, Camera, Scissors, X,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";

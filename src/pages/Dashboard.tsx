@@ -188,6 +188,8 @@ const Dashboard: React.FC = () => {
             <h3 className="text-xs font-black text-foreground">الخدمات</h3>
           </div>
 
+          {isAuthenticated && user?.uuid && <RecentActivity userUuid={user.uuid} />}
+
           <MenuGrid
             extraButton={
               <button
