@@ -34,11 +34,14 @@ const AdminBanPage: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
   const executeBan = async () => {
     if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
     const reason = banForm.reason === 'other' ? banForm.custom_reason : banForm.reason;
     if (!reason.trim()) { toast.error("أدخل السبب"); return; }
-    if (!confirm('هل أنت متأكد من تنفيذ الحظر؟')) return;
+    const ok = await confirm({ title: "تأكيد الحظر", message: `هل أنت متأكد من حظر UUID ${banForm.target_uuid}؟`, danger: true, confirmText: "تنفيذ الحظر" });
+    if (!ok) return;
 
     setBanLoading(true);
     const t = toast.loading("جاري تنفيذ الحظر...");
