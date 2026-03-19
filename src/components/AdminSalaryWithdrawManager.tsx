@@ -131,7 +131,7 @@ const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
     checks.push({ status: sec.no_manual ? "safe" : "danger", text: sec.no_manual ? "لا يوجد مبالغ يدوية" : `يوجد مبلغ يدوي: $${data.manual_amount || 0}` });
     checks.push({ status: sec.transfer_verified ? "safe" : "warning", text: sec.transfer_verified ? "الحوالة موجودة ومؤكدة" : "الحوالة غير مؤكدة" });
     checks.push({ status: sec.reference_new ? "safe" : "warning", text: sec.reference_new ? "الرقم المرجعي جديد" : "الرقم المرجعي مستخدم سابقاً" });
-    if (data.is_suspicious) checks.push({ status: "danger", text: "🔴 الراتب مشبوه — يحتاج مراجعة" });
+    if (data.is_suspicious) checks.push({ status: "danger", text: "الراتب مشبوه — يحتاج مراجعة" });
   } else {
     const hs = data?.host_salary;
     if (hs) {
@@ -307,7 +307,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       if (data.success) {
         await sendUserNotification(
           approveSheet.user_uuid,
-          "تم قبول سحب الراتب ✅",
+          "تم قبول سحب الراتب",
           `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`
         );
         toast.success("تم قبول الطلب وإرسال الإشعار");
@@ -332,7 +332,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       if (data.success) {
         await sendUserNotification(
           rejectSheet.user_uuid,
-          "تم رفض سحب الراتب ❌",
+          "تم رفض سحب الراتب",
           `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`
         );
         toast.success("تم رفض الطلب وإرسال الإشعار");

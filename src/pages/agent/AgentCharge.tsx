@@ -159,7 +159,7 @@ const AgentCharge: React.FC = () => {
               </motion.div>
 
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                <h2 className="text-xl font-black text-green-400">تم الشحن بنجاح! ✅</h2>
+                <h2 className="text-xl font-black text-green-400">تم الشحن بنجاح!</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   تم شحن <span className="font-bold text-foreground">{parseInt(coins).toLocaleString()}</span> كوينز لـ <span className="font-bold text-foreground">{userName}</span>
                 </p>
@@ -219,7 +219,7 @@ const AgentCharge: React.FC = () => {
               >
                 <X className="w-12 h-12 text-destructive" />
               </motion.div>
-              <h2 className="text-xl font-black text-destructive">فشل الشحن ❌</h2>
+              <h2 className="text-xl font-black text-destructive">فشل الشحن</h2>
               <p className="text-muted-foreground">{chargeResult.message}</p>
               <button onClick={() => setChargeResult(null)} className="h-12 px-8 rounded-2xl bg-white/5 border border-white/10 text-foreground font-bold mt-4">
                 حاول مرة أخرى
@@ -380,13 +380,13 @@ const AgentCharge: React.FC = () => {
                     onClick={() => setReceiptConfirmed(true)}
                     className={`flex-1 h-12 rounded-xl font-bold transition-all ${receiptConfirmed ? "bg-green-500/20 border border-green-500/40 text-green-400" : "bg-white/5 border border-white/10 text-muted-foreground"}`}
                   >
-                    ✅ نعم
+                    نعم
                   </button>
                   <button
                     onClick={() => setReceiptConfirmed(false)}
                     className={`flex-1 h-12 rounded-xl font-bold transition-all ${!receiptConfirmed && selectedPayment ? "bg-destructive/10 border border-destructive/30 text-destructive" : "bg-white/5 border border-white/10 text-muted-foreground"}`}
                   >
-                    ❌ لا
+                    لا
                   </button>
                 </div>
               </div>
@@ -446,14 +446,14 @@ const AgentCharge: React.FC = () => {
           <div className="space-y-4">
             <div className="glass-card rounded-2xl p-5 border border-amber-500/30">
               <div className="text-center mb-3">
-                <p className="text-sm font-bold text-amber-400">⚠️ تأكيد عملية الشحن</p>
+                <p className="text-sm font-bold text-amber-400">تأكيد عملية الشحن</p>
               </div>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">👤 المستخدم</span><span className="font-bold text-foreground">{userName} ({uuid})</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">💰 الكوينز</span><span className="font-bold text-foreground" dir="ltr">{parseInt(coins).toLocaleString()}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">💵 المبلغ</span><span className="font-bold text-amber-400" dir="ltr">${usdAmount.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">🏦 الدفع</span><span className="font-bold text-foreground">{AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.label}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">📎 الإيصال</span><span className="font-bold">{receiptImage ? "✅ مرفق" : "❌ غير مرفق"}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">المستخدم</span><span className="font-bold text-foreground">{userName} ({uuid})</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">الكوينز</span><span className="font-bold text-foreground" dir="ltr">{parseInt(coins).toLocaleString()}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">المبلغ</span><span className="font-bold text-amber-400" dir="ltr">${usdAmount.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">الدفع</span><span className="font-bold text-foreground">{AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.label}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">الإيصال</span><span className="font-bold">{receiptImage ? "مرفق" : "غير مرفق"}</span></div>
               </div>
             </div>
 

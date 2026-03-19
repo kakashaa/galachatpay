@@ -6,7 +6,7 @@ interface MarqueeBannerProps {
 }
 
 const MarqueeBanner: React.FC<MarqueeBannerProps> = ({
-  text = "🎉 مرحباً بكم في غلا شات — أسرع منصة لإدارة حسابك بسهولة وأمان! 🌟",
+  text = "مرحباً بكم في غلا شات — أسرع منصة لإدارة حسابك بسهولة وأمان!",
 }) => {
   return (
     <div

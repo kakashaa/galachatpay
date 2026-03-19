@@ -124,7 +124,7 @@ const SalaryHistory: React.FC<Props> = ({ userUuid }) => {
                     </div>
                     <div>
                       <p className="text-xs font-bold text-foreground">{monthNames[s.month]} {s.year}</p>
-                      <p className="text-[10px] text-muted-foreground">{s.is_paid ? "مدفوع ✅" : "بانتظار الدفع"}</p>
+                      <p className="text-[10px] text-muted-foreground">{s.is_paid ? "مدفوع" : "بانتظار الدفع"}</p>
                     </div>
                   </div>
                   <div className="text-left">

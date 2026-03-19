@@ -65,7 +65,7 @@ const SupportSessionChat: React.FC<Props> = ({
 
   const isResolved = session?.status === "resolved" || session?.status === "closed";
 
-  const levelEmoji = session?.support_level === 2 ? "🆘" : session?.support_level === 3 ? "📋" : "💬";
+  const levelEmoji = session?.support_level === 2 ? "" : session?.support_level === 3 ? "" : "";
 
   return (
     <div className="flex flex-col h-full" dir="rtl" style={{ background: "hsl(var(--chat-bg))" }}>
@@ -83,7 +83,7 @@ const SupportSessionChat: React.FC<Props> = ({
                 boxShadow: isResolved ? "none" : "0 0 6px hsl(var(--chat-online))"
               }} />
               <p className="text-[10px] text-muted-foreground">
-                {isResolved ? "✅ تم الحل" : session?.status === "escalated" ? "⚠️ تم التصعيد" : "نشط"}
+                {isResolved ? "تم الحل" : session?.status === "escalated" ? "تم التصعيد" : "نشط"}
               </p>
             </div>
           </div>
@@ -162,7 +162,7 @@ const RatingPrompt: React.FC<{ sessionId: string; userUuid: string; adminUsernam
   if (submitted) {
     return (
       <div className="p-4 text-center" style={{ borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
-        <p className="text-sm font-bold" style={{ color: "hsl(var(--chat-online))" }}>✅ شكراً لتقييمك!</p>
+        <p className="text-sm font-bold" style={{ color: "hsl(var(--chat-online))" }}>شكراً لتقييمك!</p>
       </div>
     );
   }
@@ -188,7 +188,7 @@ const RatingPrompt: React.FC<{ sessionId: string; userUuid: string; adminUsernam
         {[1, 2, 3, 4, 5].map((star) => (
           <button key={star} onClick={() => setRating(star)}
             className={`text-2xl transition-transform ${rating >= star ? "scale-110" : "opacity-30"}`}>
-            ⭐
+           
           </button>
         ))}
       </div>

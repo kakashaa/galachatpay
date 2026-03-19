@@ -128,7 +128,7 @@ const HairsPage: React.FC = () => {
               return sum + (h?.star_cost || 0);
             }, 0);
           if (otherNewCost + cost > totalStars) {
-            toast.error(`رصيد النجوم غير كافي (${totalStars} ⭐)`);
+            toast.error(`رصيد النجوم غير كافي (${totalStars})`);
             return prev;
           }
         }
@@ -150,7 +150,7 @@ const HairsPage: React.FC = () => {
     }, 0);
 
     if (totalCost > 0 && (starBalance?.total_stars || 0) < totalCost) {
-      toast.error(`رصيد النجوم غير كافي! تحتاج ${totalCost} ⭐`);
+      toast.error(`رصيد النجوم غير كافي! تحتاج ${totalCost}`);
       setSaving(false);
       return;
     }
@@ -177,7 +177,7 @@ const HairsPage: React.FC = () => {
       // Success! Show immediately
       setSavedIds(new Set(selectedIds));
       setSaving(false);
-      toast.success(`✅ تم حفظ ${selectedIds.size} شعرة لهذا الأسبوع`);
+      toast.success(`تم حفظ ${selectedIds.size} شعرة لهذا الأسبوع`);
 
       // Step 4: Background notifications - user doesn't wait
       for (const hairId of Array.from(selectedIds)) {
@@ -275,9 +275,9 @@ const HairsPage: React.FC = () => {
 
         {/* Level info */}
         <div className="bg-card border border-border/40 rounded-xl p-3 text-xs text-muted-foreground space-y-1">
-          <p>🔓 مفتوح لك: <span className="text-foreground font-bold">{unlockCount === Infinity ? "الكل" : unlockCount}</span> شعرة (لفل شحن {chargerLevel})</p>
+          <p>مفتوح لك: <span className="text-foreground font-bold">{unlockCount === Infinity ? "الكل" : unlockCount}</span> شعرة (لفل شحن {chargerLevel})</p>
           {nextTier && (
-            <p>⬆️ لفل {nextTier.minLevel} يفتح {nextTier.count === Infinity ? "الكل" : nextTier.count} شعرة</p>
+            <p>لفل {nextTier.minLevel} يفتح {nextTier.count === Infinity ? "الكل" : nextTier.count} شعرة</p>
           )}
         </div>
 
@@ -346,7 +346,7 @@ const HairsPage: React.FC = () => {
                   <span>جاري الحفظ...</span>
                 </div>
               ) : (
-                <>حفظ الاختيارات ({selectedIds.size}){newSelectionCost > 0 && ` — ${newSelectionCost} ⭐`}</>
+                <>حفظ الاختيارات ({selectedIds.size}){newSelectionCost > 0 && ` — ${newSelectionCost}`}</>
               )}
             </button>
           </motion.div>

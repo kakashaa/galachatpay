@@ -257,7 +257,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
                         {shift.shift_start?.slice(0, 5)} - {shift.shift_end?.slice(0, 5)}
                       </span>
                     )}
-                    {inShift && admin.is_active && <span className="text-[9px] text-emerald-400 font-bold">🟢 أونلاين</span>}
+                    {inShift && admin.is_active && <span className="text-[9px] text-emerald-400 font-bold">أونلاين</span>}
                   </div>
                 </div>
               </div>
@@ -312,7 +312,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                     {inShift && admin.is_active
                       ? <>ملتزم بوقت الدوام</>
-                      : <><span className="text-amber-400">⚠️</span> خارج وقت الدوام</>}
+                      : <><span className="text-amber-400"></span> خارج وقت الدوام</>}
                   </p>
                 </motion.div>
               )}

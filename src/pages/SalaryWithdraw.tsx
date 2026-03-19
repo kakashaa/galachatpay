@@ -98,19 +98,19 @@ const COUNTRY_FLAGS: Record<string, string> = {
 };
 
 const BANK_ICONS: Record<string, { icon: string; color: string }> = {
-  jeeppay: { icon: "🟢", color: "from-green-600/20 to-green-700/10 border-green-500/20" },
-  kuraimi: { icon: "🔵", color: "from-blue-600/20 to-blue-700/10 border-blue-500/20" },
-  najm: { icon: "⭐", color: "from-yellow-600/20 to-yellow-700/10 border-yellow-500/20" },
-  rajhi: { icon: "🏦", color: "from-emerald-600/20 to-emerald-700/10 border-emerald-500/20" },
+  jeeppay: { icon: "", color: "from-green-600/20 to-green-700/10 border-green-500/20" },
+  kuraimi: { icon: "", color: "from-blue-600/20 to-blue-700/10 border-blue-500/20" },
+  najm: { icon: "", color: "from-yellow-600/20 to-yellow-700/10 border-yellow-500/20" },
+  rajhi: { icon: "", color: "from-emerald-600/20 to-emerald-700/10 border-emerald-500/20" },
   ahli: { icon: "🏛", color: "from-teal-600/20 to-teal-700/10 border-teal-500/20" },
-  stcpay: { icon: "📱", color: "from-purple-600/20 to-purple-700/10 border-purple-500/20" },
-  zelle: { icon: "⚡", color: "from-violet-600/20 to-violet-700/10 border-violet-500/20" },
-  cashapp: { icon: "💵", color: "from-green-500/20 to-green-600/10 border-green-400/20" },
-  chime: { icon: "🔔", color: "from-cyan-600/20 to-cyan-700/10 border-cyan-500/20" },
+  stcpay: { icon: "", color: "from-purple-600/20 to-purple-700/10 border-purple-500/20" },
+  zelle: { icon: "", color: "from-violet-600/20 to-violet-700/10 border-violet-500/20" },
+  cashapp: { icon: "", color: "from-green-500/20 to-green-600/10 border-green-400/20" },
+  chime: { icon: "", color: "from-cyan-600/20 to-cyan-700/10 border-cyan-500/20" },
   applepay: { icon: "🍎", color: "from-gray-600/20 to-gray-700/10 border-gray-500/20" },
   usdt: { icon: "₮", color: "from-green-600/20 to-green-700/10 border-green-500/20" },
-  western_union: { icon: "🌐", color: "from-yellow-600/20 to-yellow-700/10 border-yellow-500/20" },
-  moneygram: { icon: "💸", color: "from-orange-600/20 to-orange-700/10 border-orange-500/20" },
+  western_union: { icon: "", color: "from-yellow-600/20 to-yellow-700/10 border-yellow-500/20" },
+  moneygram: { icon: "", color: "from-orange-600/20 to-orange-700/10 border-orange-500/20" },
 };
 
 const countryCodes = [
@@ -446,7 +446,7 @@ const SalaryWithdraw: React.FC = () => {
               className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-5">
               <CheckCircle className="w-10 h-10 text-emerald-400" />
             </motion.div>
-            <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل ✅</h2>
+            <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل</h2>
             <p className="text-xs text-muted-foreground">سحبت {usedCount} من {maxTotal} هذا الشهر</p>
           </div>
           <SalaryRequestsHistory userUuid={user.uuid} />
@@ -481,7 +481,7 @@ const SalaryWithdraw: React.FC = () => {
             <CheckCircle className="w-10 h-10 text-emerald-400" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center w-full">
-            <h2 className="text-lg font-bold text-foreground mb-2">✅ تم رفع طلب سحب الراتب!</h2>
+            <h2 className="text-lg font-bold text-foreground mb-2">تم رفع طلب سحب الراتب!</h2>
             <p className="text-xs text-muted-foreground mb-4">سيتم مراجعته خلال 1-3 أيام</p>
             {submitResult.request_id && (
               <div className="mt-4 rounded-xl p-4 bg-muted/30 border border-border/20 space-y-2">
@@ -504,7 +504,7 @@ const SalaryWithdraw: React.FC = () => {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">الحالة</span>
-                <span className="font-bold text-amber-400">⏳ قيد المراجعة</span>
+                <span className="font-bold text-amber-400">قيد المراجعة</span>
               </div>
             </div>
           </motion.div>
@@ -527,7 +527,7 @@ const SalaryWithdraw: React.FC = () => {
             <Coins className="w-10 h-10 text-emerald-400" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center w-full space-y-4">
-            <h2 className="text-lg font-bold text-foreground">✅ تم شحن الكوينز لحسابك!</h2>
+            <h2 className="text-lg font-bold text-foreground">تم شحن الكوينز لحسابك!</h2>
             <div className="rounded-xl p-5 bg-emerald-500/10 border border-emerald-500/20">
               <p className="text-3xl font-black text-emerald-400">{coinsCharged.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground mt-1">كوينز</p>
@@ -563,9 +563,9 @@ const SalaryWithdraw: React.FC = () => {
             <p className="text-[10px] text-muted-foreground">
               {cashLeft > 0
                 ? (canWithdrawCash
-                  ? `💵 سحب نقدي متاح (${cashLeft} سحبة متبقية)`
+                  ? `سحب نقدي متاح (${cashLeft} سحبة متبقية)`
                   : `⏰ السحب النقدي يفتح يوم ${startDay}/${new Date().getMonth() + 1}`)
-                : "🪙 شحن كوينز فقط"
+                : "شحن كوينز فقط"
               }
             </p>
           </div>
@@ -583,7 +583,7 @@ const SalaryWithdraw: React.FC = () => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">🟢</span>
+                      <span className="text-lg"></span>
                       <span className="text-sm font-mono font-bold text-foreground">#{t.reference_id}</span>
                     </div>
                     <span className="text-lg font-black text-emerald-400" dir="ltr">${t.amount_usd.toFixed(2)}</span>
@@ -598,7 +598,7 @@ const SalaryWithdraw: React.FC = () => {
                         size="sm"
                         className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        💵 سحب نقدي
+                        سحب نقدي
                       </Button>
                     )}
                     <Button
@@ -610,7 +610,7 @@ const SalaryWithdraw: React.FC = () => {
                         cashLeft > 0 ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10" : "gold-gradient text-primary-foreground"
                       )}
                     >
-                      🪙 شحن كوينز
+                      شحن كوينز
                     </Button>
                   </div>
                 </motion.div>
@@ -626,7 +626,7 @@ const SalaryWithdraw: React.FC = () => {
                 <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-muted/20 opacity-50 space-y-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">🔴</span>
+                      <span className="text-lg"></span>
                       <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
                     </div>
                     <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
@@ -648,7 +648,7 @@ const SalaryWithdraw: React.FC = () => {
                 <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-red-500/10 opacity-60 space-y-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">🔴</span>
+                      <span className="text-lg"></span>
                       <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
                     </div>
                     <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
@@ -674,7 +674,7 @@ const SalaryWithdraw: React.FC = () => {
             <DialogContent className="max-w-[360px] rounded-2xl" dir="rtl">
               <DialogHeader>
                 <DialogTitle className="text-center text-base flex items-center justify-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-destructive" /> ⚠️ تحذير أمان
+                  <AlertCircle className="w-5 h-5 text-destructive" /> تحذير أمان
                 </DialogTitle>
                 <DialogDescription className="text-center text-sm text-muted-foreground pt-2">
                   {salaryWarning?.message}
@@ -751,7 +751,7 @@ const SalaryWithdraw: React.FC = () => {
             </Button>
             <Button onClick={chargeCoins} disabled={chargingCoins}
               className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
-              {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : "✅ تأكيد الشحن"}
+              {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : "تأكيد الشحن"}
             </Button>
           </div>
         </div>
@@ -829,7 +829,7 @@ const SalaryWithdraw: React.FC = () => {
                               transition={{ duration: 0.2, ease: "easeInOut" }} className="overflow-hidden">
                               <div className="grid grid-cols-2 gap-2 pt-2.5 pr-3">
                                 {c.banks.map(b => {
-                                  const bankStyle = BANK_ICONS[b.id] || { icon: "🏦", color: "from-white/5 to-white/[0.02] border-white/10" };
+                                  const bankStyle = BANK_ICONS[b.id] || { icon: "", color: "from-white/5 to-white/[0.02] border-white/10" };
                                   const isSelected = selectedBank === b.id;
                                   return (
                                     <button key={b.id} onClick={() => { setSelectedBank(b.id); setCustomBankName(""); }}
@@ -912,22 +912,22 @@ const SalaryWithdraw: React.FC = () => {
               {/* Summary */}
               {canProceedAccount && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
-                  <h3 className="text-sm font-bold text-foreground text-center">📋 ملخص الطلب</h3>
+                  <h3 className="text-sm font-bold text-foreground text-center">ملخص الطلب</h3>
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                      <span className="text-muted-foreground">💰 المبلغ</span>
+                      <span className="text-muted-foreground">المبلغ</span>
                       <span className="font-bold text-primary">${withdrawAmount}</span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                      <span className="text-muted-foreground">📋 الحوالة</span>
+                      <span className="text-muted-foreground">الحوالة</span>
                       <span className="font-bold text-foreground">#{selectedTransfer?.reference_id}</span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                      <span className="text-muted-foreground">🏦 البنك</span>
+                      <span className="text-muted-foreground">البنك</span>
                       <span className="font-bold text-foreground">{effectiveBankLabel} — {country?.name}</span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                      <span className="text-muted-foreground">👤 المستلم</span>
+                      <span className="text-muted-foreground">المستلم</span>
                       <span className="font-bold text-foreground">{recipientName}</span>
                     </div>
                     {accountNumber && (
@@ -946,7 +946,7 @@ const SalaryWithdraw: React.FC = () => {
                 </Button>
                 <Button onClick={handleSubmit} disabled={!canProceedAccount || submitting}
                   className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
-                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "✅ تأكيد السحب"}
+                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "تأكيد السحب"}
                 </Button>
               </div>
             </motion.div>

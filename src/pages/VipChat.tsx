@@ -127,12 +127,12 @@ const VipChat: React.FC = () => {
         sender_type: "system",
         sender_name: "النظام",
         sender_uuid: "system",
-        message: `مرحباً ${user.name}! 👑\nتم فتح جلسة دعم سريع.\nرقم الغرفة: ${roomId.trim()}\nسيتم توصيلك بالسوبر أدمن قريباً...`,
+        message: `مرحباً ${user.name}!\nتم فتح جلسة دعم سريع.\nرقم الغرفة: ${roomId.trim()}\nسيتم توصيلك بالسوبر أدمن قريباً...`,
       });
 
       // Send notification to admin
       await supabase.from("notifications").insert({
-        title: "🔴 طلب دعم سريع VIP",
+        title: "طلب دعم سريع VIP",
         body: `${user.name} (VIP ${vipLevel}) يطلب دعم سريع في الغرفة ${roomId.trim()}`,
         target: "admin",
         user_uuid: user.uuid,
@@ -184,7 +184,7 @@ const VipChat: React.FC = () => {
           </div>
 
           <div className="text-center space-y-2">
-            <h2 className="text-lg font-bold text-foreground">مرحباً {user.name}! 👑</h2>
+            <h2 className="text-lg font-bold text-foreground">مرحباً {user.name}!</h2>
             <p className="text-sm text-muted-foreground">
               اكتب رقم الغرفة عشان السوبر أدمن يجي يساعدك
             </p>

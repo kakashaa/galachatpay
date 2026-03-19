@@ -2,17 +2,17 @@ import { ShieldBan, Clock, Ban } from "lucide-react";
 import { motion } from "framer-motion";
 
 const ELEMENT_LABELS: Record<string, string> = {
-  entries: "🎁 دخوليات",
-  frames: "🖼️ إطارات",
-  gifts: "🎀 هدايا مخصصة",
-  animated_photos: "📸 صور متحركة",
-  change_id: "🔄 تغيير آيدي",
-  hairs: "💇 تسريحات",
-  vip: "⭐ VIP",
-  salary: "💰 رواتب",
+  entries: "دخوليات",
+  frames: "إطارات",
+  gifts: "هدايا مخصصة",
+  animated_photos: "صور متحركة",
+  change_id: "تغيير آيدي",
+  hairs: "تسريحات",
+  vip: "VIP",
+  salary: "رواتب",
   quick_support: "🎧 دعم سريع",
-  works: "💼 works",
-  stars: "🌟 نجومي",
+  works: "works",
+  stars: "نجومي",
 };
 
 interface BanOverlayProps {
@@ -46,7 +46,7 @@ const BanOverlay: React.FC<BanOverlayProps> = ({ reason, remainingTime, banType,
         </motion.div>
 
         <div>
-          <h2 className="text-xl font-bold text-destructive mb-2">🚫 تم حظرك</h2>
+          <h2 className="text-xl font-bold text-destructive mb-2">تم حظرك</h2>
           <p className="text-muted-foreground text-sm">
             {isElementBan
               ? "تم حظرك من استخدام بعض عناصر التطبيق"
@@ -81,7 +81,7 @@ const BanOverlay: React.FC<BanOverlayProps> = ({ reason, remainingTime, banType,
         </div>
 
         <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
-          {isElementBan ? "🧩 حظر عناصر" : "🚫 حظر كامل"}
+          {isElementBan ? "حظر عناصر" : "حظر كامل"}
         </span>
 
         <p className="text-xs text-muted-foreground">

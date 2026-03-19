@@ -33,7 +33,7 @@ const bankLabels: Record<string, string> = {
 };
 
 const countryLabels: Record<string, string> = {
-  sa: "السعودية 🇸🇦", ye: "اليمن 🇾🇪", us: "أمريكا 🇺🇸", agent: "الوكيل 💼",
+  sa: "السعودية 🇸🇦", ye: "اليمن 🇾🇪", us: "أمريكا 🇺🇸", agent: "الوكيل",
 };
 
 interface Transaction {
@@ -156,7 +156,7 @@ const AgentHistory: React.FC = () => {
                     {/* Transaction ID */}
                     <div className="flex items-center justify-between mb-2">
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${tx.status === "success" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
-                        {tx.status === "success" ? "✅ ناجحة" : "❌ فشلت"}
+                        {tx.status === "success" ? "ناجحة" : "فشلت"}
                       </span>
                       <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">🔖 {tx.id}</span>
                     </div>
@@ -168,7 +168,7 @@ const AgentHistory: React.FC = () => {
                         <p className="text-[10px] text-muted-foreground">{tx.coins?.toLocaleString()} كوينز</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-foreground">👤 {tx.user_name}</p>
+                        <p className="text-sm font-bold text-foreground">{tx.user_name}</p>
                         <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">UUID: {tx.uuid}</p>
                       </div>
                     </div>
@@ -176,7 +176,7 @@ const AgentHistory: React.FC = () => {
                     {/* Bank & Date */}
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       <span>📅 {formatTime(tx.time)}</span>
-                      <span>🏦 {bankLabels[tx.payment_method] || tx.payment_method} — {countryLabels[tx.payment_country] || tx.payment_country}</span>
+                      <span>{bankLabels[tx.payment_method] || tx.payment_method} — {countryLabels[tx.payment_country] || tx.payment_country}</span>
                     </div>
 
                     {/* Details button */}
@@ -210,7 +210,7 @@ const AgentHistory: React.FC = () => {
 
               {/* User */}
               <div className="bg-muted/10 rounded-xl p-3">
-                <p className="text-xs font-bold text-foreground mb-2">👤 المستخدم</p>
+                <p className="text-xs font-bold text-foreground mb-2">المستخدم</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-muted-foreground">الاسم:</span> <span className="font-bold">{selectedTx.user_name}</span></div>
                   <div><span className="text-muted-foreground">UUID:</span> <span className="font-mono" dir="ltr">{selectedTx.uuid}</span></div>
@@ -219,7 +219,7 @@ const AgentHistory: React.FC = () => {
 
               {/* Amount */}
               <div className="bg-muted/10 rounded-xl p-3">
-                <p className="text-xs font-bold text-foreground mb-2">💰 المبلغ</p>
+                <p className="text-xs font-bold text-foreground mb-2">المبلغ</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-muted-foreground">الكوينز:</span> <span className="font-bold font-mono">{selectedTx.coins?.toLocaleString()}</span></div>
                   <div><span className="text-muted-foreground">بالدولار:</span> <span className="font-bold font-mono text-amber-400" dir="ltr">${selectedTx.amount_usd?.toLocaleString()}</span></div>
@@ -228,19 +228,19 @@ const AgentHistory: React.FC = () => {
 
               {/* Payment */}
               <div className="bg-muted/10 rounded-xl p-3">
-                <p className="text-xs font-bold text-foreground mb-2">🏦 الدفع</p>
+                <p className="text-xs font-bold text-foreground mb-2">الدفع</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-muted-foreground">الطريقة:</span> <span className="font-bold">{bankLabels[selectedTx.payment_method] || selectedTx.payment_method}</span></div>
                   <div><span className="text-muted-foreground">البلد:</span> <span className="font-bold">{countryLabels[selectedTx.payment_country] || selectedTx.payment_country}</span></div>
                 </div>
                 <div className="mt-2 text-xs">
-                  <span className="text-muted-foreground">تأكيد الاستلام:</span> <span className="font-bold">{selectedTx.receipt_confirmed ? "✅ نعم" : "❌ لا"}</span>
+                  <span className="text-muted-foreground">تأكيد الاستلام:</span> <span className="font-bold">{selectedTx.receipt_confirmed ? "نعم" : "لا"}</span>
                 </div>
               </div>
 
               {/* Receipt Image */}
               <div className="bg-muted/10 rounded-xl p-3">
-                <p className="text-xs font-bold text-foreground mb-2">📎 صورة الإيصال</p>
+                <p className="text-xs font-bold text-foreground mb-2">صورة الإيصال</p>
                 {selectedTx.receipt_path ? (
                   <button
                     onClick={() => setImageViewer(`${RECEIPT_BASE}${selectedTx.receipt_path}`)}
@@ -265,7 +265,7 @@ const AgentHistory: React.FC = () => {
               {/* Notes */}
               {selectedTx.notes && (
                 <div className="bg-muted/10 rounded-xl p-3">
-                  <p className="text-xs font-bold text-foreground mb-1">📝 ملاحظات</p>
+                  <p className="text-xs font-bold text-foreground mb-1">ملاحظات</p>
                   <p className="text-xs text-muted-foreground">{selectedTx.notes}</p>
                 </div>
               )}
@@ -274,9 +274,9 @@ const AgentHistory: React.FC = () => {
               <div className="bg-muted/10 rounded-xl p-3 space-y-1 text-xs">
                 <div className="flex justify-between"><span className="text-muted-foreground">📅 التاريخ</span><span className="font-mono">{formatTime(selectedTx.time)}</span></div>
                 {selectedTx.balance_after !== undefined && (
-                  <div className="flex justify-between"><span className="text-muted-foreground">💼 الرصيد بعد الشحن</span><span className="font-mono font-bold">{selectedTx.balance_after?.toLocaleString()} كوينز</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">الرصيد بعد الشحن</span><span className="font-mono font-bold">{selectedTx.balance_after?.toLocaleString()} كوينز</span></div>
                 )}
-                <div className="flex justify-between"><span className="text-muted-foreground">الحالة</span><span className={`font-bold ${selectedTx.status === "success" ? "text-green-400" : "text-red-400"}`}>{selectedTx.status === "success" ? "✅ ناجحة" : "❌ فاشلة"}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">الحالة</span><span className={`font-bold ${selectedTx.status === "success" ? "text-green-400" : "text-red-400"}`}>{selectedTx.status === "success" ? "ناجحة" : "فاشلة"}</span></div>
               </div>
             </div>
           )}

@@ -132,7 +132,7 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
         const coinsCharged = (amountNum * COINS_PER_USD).toLocaleString();
         await sendUserNotification(
           chargeUuid.trim(),
-          "تم شحن الكوينز ✅",
+          "تم شحن الكوينز",
           `تم شحن ${coinsCharged} كوينز لحسابك بنجاح!`
         );
         toast.success(`تم شحن ${coinsCharged} كوينز بنجاح`);

@@ -190,7 +190,7 @@ const DirectMessages: React.FC = () => {
       <Dialog open={showNewChat} onOpenChange={setShowNewChat}>
         <DialogContent className="max-w-sm" dir="rtl" style={{ background: "hsl(var(--chat-bg))", border: "1px solid hsl(0 0% 100% / 0.08)" }}>
           <div className="p-4 space-y-4">
-            <p className="text-sm font-bold text-center">محادثة جديدة 💬</p>
+            <p className="text-sm font-bold text-center">محادثة جديدة</p>
             <Input
               placeholder="UUID أو اسم المستخدم"
               value={targetUuid}

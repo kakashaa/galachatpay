@@ -46,7 +46,7 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
           return [...prev, newReply];
         });
         if (newReply.sender_type === "user") {
-          toast.info("💬 رسالة جديدة من المستخدم");
+          toast.info("رسالة جديدة من المستخدم");
         }
       })
       .subscribe();
@@ -119,7 +119,7 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
       // Send notification to user
       await supabase.from("notifications").insert({
         user_uuid: ticket.user_uuid,
-        title: "💬 رد على تذكرتك",
+        title: "رد على تذكرتك",
         body: `تم الرد على تذكرة "${ticket.subject}" من فريق الدعم.`,
         target: "personal",
       });
@@ -145,7 +145,7 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
       }).eq("id", ticket.id);
       await supabase.from("notifications").insert({
         user_uuid: ticket.user_uuid,
-        title: "✅ تم إغلاق التذكرة",
+        title: "تم إغلاق التذكرة",
         body: `تم إنهاء تذكرة "${ticket.subject}". شكراً لتواصلك.`,
         target: "personal",
       });
@@ -182,7 +182,7 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
                 }`}
               >
                 <p className={`text-[10px] font-bold mb-0.5 ${reply.sender_type === 'admin' ? 'text-emerald-400' : 'text-primary'}`}>
-                  {reply.sender_type === "admin" ? `⭐ ${reply.sender_name}` : `👤 ${reply.sender_name}`}
+                  {reply.sender_type === "admin" ? `${reply.sender_name}` : `${reply.sender_name}`}
                 </p>
                 {reply.attachment_url && (
                   isImageUrl(reply.attachment_url) ? (
@@ -260,7 +260,7 @@ const TicketRepliesSection: React.FC<Props> = ({ ticket, canAct, adminUsername, 
       )}
 
       {ticket.status === "closed" && (
-        <p className="text-center text-xs text-muted-foreground bg-muted/10 rounded-lg py-2">✅ تم إغلاق هذه التذكرة</p>
+        <p className="text-center text-xs text-muted-foreground bg-muted/10 rounded-lg py-2">تم إغلاق هذه التذكرة</p>
       )}
     </div>
   );

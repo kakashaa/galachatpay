@@ -25,9 +25,9 @@ const getTimeBasedGreeting = (userName: string, isVip: boolean, isGuest: boolean
   if (hour >= 5 && hour < 12) { timeGreeting = "صباح الخير"; emoji = "🌅"; }
   else if (hour >= 12 && hour < 17) { timeGreeting = "ظهرك بألف خير"; emoji = "☀️"; }
   else if (hour >= 17 && hour < 21) { timeGreeting = "مساء الخير"; emoji = "🌆"; }
-  else { timeGreeting = "ليل الخير"; emoji = "🌙"; }
+  else { timeGreeting = "ليل الخير"; emoji = ""; }
   if (isGuest) return `${timeGreeting}! ${emoji}\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
-  if (isVip) return `${timeGreeting} يا عضو VIP! 👑✨\n${userName}، شكراً على ولائك!\n\nأنا هنا لأخدمك بأفضل طريقة. كيف أقدر أساعدك؟`;
+  if (isVip) return `${timeGreeting} يا عضو VIP!\n${userName}، شكراً على ولائك!\n\nأنا هنا لأخدمك بأفضل طريقة. كيف أقدر أساعدك؟`;
   return `${timeGreeting} ${userName}! ${emoji}\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
 };
 
@@ -36,7 +36,7 @@ interface FAQ { question: string; answer: string; keywords: string[]; topic?: st
 const FAQ_LIST: FAQ[] = [
   { question: "كيف أغير آيديي؟", answer: "تقدر تغير آيديك من صفحة تغيير الآيدي. لازم تكون لفل 20 على الأقل، والتغيير متاح مرة وحدة كل 10 مستويات.", keywords: ["آيدي", "ايدي", "id", "تغيير", "رقم", "معرف"], topic: "change_id" },
   { question: "كيف أطلب إطار؟", answer: "الإطارات تتطلب لفل 30 على الأقل. لفل 30+ (30 يوم)، لفل 40+ (60 يوم)، لفل 50+ (دائم).", keywords: ["إطار", "اطار", "فريم", "frame"], topic: "frame" },
-  { question: "كيف أسحب راتبي؟", answer: "عندك طريقتين:\n🗓️ سحب شهري: يفتح آخر يوم بالشهر فقط.\n⚡ سحب فوري: متاح دائماً.\n\nسعر الصرف: $1 = 7,500 كونز للمستخدم، $1 = 8,500 كونز لوكيل الشحن.", keywords: ["راتب", "سحب", "كوين", "فلوس", "رصيد", "تحويل", "بنك"], topic: "salary" },
+  { question: "كيف أسحب راتبي؟", answer: "عندك طريقتين:\nسحب شهري: يفتح آخر يوم بالشهر فقط.\nسحب فوري: متاح دائماً.\n\nسعر الصرف: $1 = 7,500 كونز للمستخدم، $1 = 8,500 كونز لوكيل الشحن.", keywords: ["راتب", "سحب", "كوين", "فلوس", "رصيد", "تحويل", "بنك"], topic: "salary" },
   { question: "كيف أطلب هدية مخصصة؟", answer: "الهدايا المخصصة متاحة من لفل 40+.", keywords: ["هدية", "مخصص", "تصميم", "فيديو", "gift"], topic: "gift" },
   { question: "كيف أطلب دخولية؟", answer: "الدخولية تتطلب لفل 40 على الأقل.", keywords: ["دخولية", "دخول", "entry", "انيميشن"], topic: "entry" },
   { question: "كيف أطلب صورة متحركة؟", answer: "ارفع ملف GIF (حتى 10 ميجابايت). المدة حسب لفلك.", keywords: ["صورة", "متحركة", "gif", "animated"], topic: "animated" },
@@ -167,30 +167,30 @@ const SupportChatEmbed: React.FC = () => {
     switch (topic) {
       case "change_id": {
         const formats = getFormatsForLevel(chargerLevel);
-        addBotMessage(`تقدر تغير آيديك مرة وحدة كل 10 مستويات 📝\nلفلك الحالي: ${chargerLevel}\nالصيغ المتاحة:\n${formats}`, [{ label: "غيّر آيديك الآن ←", value: "nav:/change-id" }, { label: "القائمة الرئيسية", value: "main_menu" }]);
+        addBotMessage(`تقدر تغير آيديك مرة وحدة كل 10 مستويات\nلفلك الحالي: ${chargerLevel}\nالصيغ المتاحة:\n${formats}`, [{ label: "غيّر آيديك الآن ←", value: "nav:/change-id" }, { label: "القائمة الرئيسية", value: "main_menu" }]);
         break;
       }
-      case "frame": addBotMessage("الإطارات تخلي بروفايلك مميز! 🖼️\n• لفل 30+: 30 يوم\n• لفل 40+: 60 يوم\n• لفل 50+: دائم", [{ label: "اختر إطارك ←", value: "nav:/frames" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "entry": addBotMessage("الدخولية تظهر لما تدخل أي غرفة! ✨\n• لفل 40 على الأقل", [{ label: "اختر دخوليتك ←", value: "nav:/entry-request" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "animated": addBotMessage("حوّل صورتك لصورة متحركة GIF! 🎬", [{ label: "اطلب صورة متحركة ←", value: "nav:/animated-photo" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "frame": addBotMessage("الإطارات تخلي بروفايلك مميز!\n• لفل 30+: 30 يوم\n• لفل 40+: 60 يوم\n• لفل 50+: دائم", [{ label: "اختر إطارك ←", value: "nav:/frames" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "entry": addBotMessage("الدخولية تظهر لما تدخل أي غرفة!\n• لفل 40 على الأقل", [{ label: "اختر دخوليتك ←", value: "nav:/entry-request" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "animated": addBotMessage("حوّل صورتك لصورة متحركة GIF!", [{ label: "اطلب صورة متحركة ←", value: "nav:/animated-photo" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
       case "vip": {
         const vipInfo = user?.vip && Object.keys(user.vip).length > 0 ? JSON.stringify(user.vip) : "ما عندك VIP";
-        addBotMessage(`VIP يعطيك مميزات حصرية! 👑\nVIP الحالي: ${vipInfo}`, [{ label: "اطلب VIP ←", value: "nav:/request-vip" }, { label: "القائمة الرئيسية", value: "main_menu" }]);
+        addBotMessage(`VIP يعطيك مميزات حصرية!\nVIP الحالي: ${vipInfo}`, [{ label: "اطلب VIP ←", value: "nav:/request-vip" }, { label: "القائمة الرئيسية", value: "main_menu" }]);
         break;
       }
       case "salary": {
         const coins = user?.my_store?.coins ?? 0;
         const usd = user?.my_store?.usd ?? 0;
-        addBotMessage(`💰 رصيدك: ${coins.toLocaleString()} كونز | ${usd.toLocaleString()} دولار\n\n🗓️ سحب شهري: آخر يوم بالشهر\n⚡ سحب فوري: متاح دائماً`, [{ label: "اسحب راتبك ←", value: "nav:/salary" }, { label: "القائمة الرئيسية", value: "main_menu" }]);
+        addBotMessage(`رصيدك: ${coins.toLocaleString()} كونز | ${usd.toLocaleString()} دولار\n\nسحب شهري: آخر يوم بالشهر\nسحب فوري: متاح دائماً`, [{ label: "اسحب راتبك ←", value: "nav:/salary" }, { label: "القائمة الرئيسية", value: "main_menu" }]);
         break;
       }
-      case "gift": addBotMessage("🎁 اطلب تصميم هدية خاصة فيك!", [{ label: "اطلب هدية ←", value: "nav:/gift" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "tech_issue": addBotMessage("🔧 وش نوع المشكلة اللي عندك؟", TECH_ISSUES); break;
+      case "gift": addBotMessage("اطلب تصميم هدية خاصة فيك!", [{ label: "اطلب هدية ←", value: "nav:/gift" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "tech_issue": addBotMessage("وش نوع المشكلة اللي عندك؟", TECH_ISSUES); break;
       case "issue_audio": case "issue_charge": case "issue_login": case "issue_banned": case "issue_other": {
-        const labels: Record<string, string> = { issue_audio: "مشكلة بالصوت 🔊", issue_charge: "مشكلة بالشحن ⚡", issue_login: "مشكلة بالدخول 🔐", issue_banned: "حساب محظور 🚫", issue_other: "مشكلة أخرى 📋" };
+        const labels: Record<string, string> = { issue_audio: "مشكلة بالصوت 🔊", issue_charge: "مشكلة بالشحن", issue_login: "مشكلة بالدخول 🔐", issue_banned: "حساب محظور", issue_other: "مشكلة أخرى" };
         const issueLabel = labels[topic] ?? topic;
         setWaitingFor(`tech_desc:${issueLabel}`);
-        addBotMessage(`🆘 ${issueLabel}\n\nوصّف المشكلة بالتفصيل`, [{ label: "← رجوع للخيارات", value: "tech_issue" }]);
+        addBotMessage(`${issueLabel}\n\nوصّف المشكلة بالتفصيل`, [{ label: "← رجوع للخيارات", value: "tech_issue" }]);
         break;
       }
       case "admin_talk": setWaitingFor("room_id"); addBotMessage("🎙️ اكتب رقم الغرفة اللي تبي الإداري يدخلها", [{ label: "← رجوع للخيارات", value: "main_menu" }]); break;
@@ -199,17 +199,17 @@ const SupportChatEmbed: React.FC = () => {
         addBotMessage(`📖 الأسئلة الشائعة:\n\n${faqText}\n\n✍️ اكتب رقم السؤال!`, [{ label: "القائمة الرئيسية", value: "main_menu" }]);
         break;
       }
-      case "policy": addBotMessage("📋 **سياسة التطبيق**\n\n🏢 فتح الوكالات: 3 داعمين + 10 مستخدمين، تارجت 500$ شهرياً\n💵 الرواتب: $1 = 7,500 كونز (مستخدم) / 8,500 (وكيل شحن)\n📅 رفع الراتب: من 1 إلى 5 من الشهر\n⚠️ خصم 20% عند عدم إكمال الأيام\n🏆 مكافأة الغرفة: أسبوعياً من LV1 (20K) إلى LV8 (750K)", [{ label: "شوف كل السياسات ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "salary_table": addBotMessage("💰 **سعر الصرف:**\n$1 = 7,500 كونز (مستخدم عادي)\n$1 = 8,500 كونز (وكيل شحن)\n\n**طرق السحب:**\n🗓️ شهري: آخر يوم بالشهر فقط (طلب واحد)\n⚡ فوري: متاح دائماً عبر حسابات الدفع\n⭐ نجوم: 10 نجوم = $50\n\n📅 رفع الراتب: من 1 إلى 5 من الشهر\n⚠️ خصم 20% عند عدم إكمال الأيام/الساعات", [{ label: "اسحب راتبك ←", value: "nav:/salary" }, { label: "شوف جدول الرواتب", value: "policy_salaries" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "policy_salaries": addBotMessage("📊 **جدول رواتب المضيفين:**\n\n💎 250K ألماس = $22 مضيف / $4 وكالة\n💎 500K = $44 / $8\n💎 1M = $87 / $16\n💎 2.5M = $205 / $40\n💎 5M = $405 / $80\n💎 10M = $805 / $160\n💎 25M = $1,950 / $400\n💎 50M = $3,900 / $750\n💎 100M = $7,700 / $1,250\n💎 200M = $15,450 / $2,600\n\n📌 الشروط: 22 يوم عمل / 2 ساعة يومياً كحد أدنى", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "policy_charge": addBotMessage("⚡ **سياسة وكالات الشحن:**\n\n$1,000 = 8.5M كونز + بونص $100\n$3,000 = 25.5M + بونص $360\n$5,000 = 42.5M + بونص $750\n$10,000 = 85M + بونص $1,800\n$15,000 = 127.5M + بونص $2,800\n$20,000 = 170M + بونص $4,000\n\n⚠️ ممنوع بيع أسعار صرف منخفضة/مرتفعة جداً\n⚠️ ممنوع خداع المستخدمين وإلا إنهاء التعاون", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "policy_agency": addBotMessage("🏢 **كيف تفتح وكالة؟**\n\n📋 الشروط:\n• أحضر 3 داعمين + 10 مستخدمين\n• يمكن فتحها بأقل إذا ضمنت التارجت\n• تعبئة: اسم الوكالة / الهاتف / ID الوكيل / الاسم\n\n⚠️ تقييم بعد شهر: إذا لم تحقق $500 يحق للإدارة سحبها\n\n🎁 مكافآت أول شهر:\n• VIP4 للوكيل والداعمين (أسبوع)\n• VIP3 لـ5 مشرفين\n• VIP2 لـ10 مستخدمين", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "policy_room": addBotMessage("🏆 **مكافآت الغرفة الأسبوعية:**\n\nLV1: هدف 500K = مكافأة 20K\nLV2: هدف 1M = مكافأة 40K\nLV3: هدف 3M = مكافأة 90K\nLV4: هدف 5M = مكافأة 145K\nLV5: هدف 7M = مكافأة 200K\nLV6: هدف 10M = مكافأة 290K\nLV7: هدف 16M = مكافأة 450K\nLV8: هدف 25M = مكافأة 750K\n\n📌 المكافأة تُحسب أسبوعياً لصاحب الغرفة", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "recharge": addBotMessage("تقدر تشحن حسابك من داخل التطبيق 💳", [{ label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "banned": addBotMessage("إذا حسابك محظور، تواصل مع الإدارة مباشرة 🚫", [{ label: "تكلم مع إداري", value: "admin_talk", icon: Shield }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
-      case "greeting": addBotMessage(`أهلاً ${user?.name || "زائر"}! 👋😊\nكيف أقدر أخدمك؟`, MAIN_MENU); break;
-      case "thanks": addBotMessage("العفو! 😊 إذا تحتاج أي شي أنا هنا", MAIN_MENU); break;
-      case "main_menu": addBotMessage("كيف أقدر أساعدك؟ 😊", MAIN_MENU); break;
+      case "policy": addBotMessage("**سياسة التطبيق**\n\nفتح الوكالات: 3 داعمين + 10 مستخدمين، تارجت 500$ شهرياً\nالرواتب: $1 = 7,500 كونز (مستخدم) / 8,500 (وكيل شحن)\n📅 رفع الراتب: من 1 إلى 5 من الشهر\nخصم 20% عند عدم إكمال الأيام\nمكافأة الغرفة: أسبوعياً من LV1 (20K) إلى LV8 (750K)", [{ label: "شوف كل السياسات ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "salary_table": addBotMessage("**سعر الصرف:**\n$1 = 7,500 كونز (مستخدم عادي)\n$1 = 8,500 كونز (وكيل شحن)\n\n**طرق السحب:**\nشهري: آخر يوم بالشهر فقط (طلب واحد)\nفوري: متاح دائماً عبر حسابات الدفع\nنجوم: 10 نجوم = $50\n\n📅 رفع الراتب: من 1 إلى 5 من الشهر\nخصم 20% عند عدم إكمال الأيام/الساعات", [{ label: "اسحب راتبك ←", value: "nav:/salary" }, { label: "شوف جدول الرواتب", value: "policy_salaries" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "policy_salaries": addBotMessage("**جدول رواتب المضيفين:**\n\n250K ألماس = $22 مضيف / $4 وكالة\n500K = $44 / $8\n1M = $87 / $16\n2.5M = $205 / $40\n5M = $405 / $80\n10M = $805 / $160\n25M = $1,950 / $400\n50M = $3,900 / $750\n100M = $7,700 / $1,250\n200M = $15,450 / $2,600\n\nالشروط: 22 يوم عمل / 2 ساعة يومياً كحد أدنى", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "policy_charge": addBotMessage("**سياسة وكالات الشحن:**\n\n$1,000 = 8.5M كونز + بونص $100\n$3,000 = 25.5M + بونص $360\n$5,000 = 42.5M + بونص $750\n$10,000 = 85M + بونص $1,800\n$15,000 = 127.5M + بونص $2,800\n$20,000 = 170M + بونص $4,000\n\nممنوع بيع أسعار صرف منخفضة/مرتفعة جداً\nممنوع خداع المستخدمين وإلا إنهاء التعاون", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "policy_agency": addBotMessage("**كيف تفتح وكالة؟**\n\nالشروط:\n• أحضر 3 داعمين + 10 مستخدمين\n• يمكن فتحها بأقل إذا ضمنت التارجت\n• تعبئة: اسم الوكالة / الهاتف / ID الوكيل / الاسم\n\nتقييم بعد شهر: إذا لم تحقق $500 يحق للإدارة سحبها\n\nمكافآت أول شهر:\n• VIP4 للوكيل والداعمين (أسبوع)\n• VIP3 لـ5 مشرفين\n• VIP2 لـ10 مستخدمين", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "policy_room": addBotMessage("**مكافآت الغرفة الأسبوعية:**\n\nLV1: هدف 500K = مكافأة 20K\nLV2: هدف 1M = مكافأة 40K\nLV3: هدف 3M = مكافأة 90K\nLV4: هدف 5M = مكافأة 145K\nLV5: هدف 7M = مكافأة 200K\nLV6: هدف 10M = مكافأة 290K\nLV7: هدف 16M = مكافأة 450K\nLV8: هدف 25M = مكافأة 750K\n\nالمكافأة تُحسب أسبوعياً لصاحب الغرفة", [{ label: "شوف السياسة كاملة ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "recharge": addBotMessage("تقدر تشحن حسابك من داخل التطبيق", [{ label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "banned": addBotMessage("إذا حسابك محظور، تواصل مع الإدارة مباشرة", [{ label: "تكلم مع إداري", value: "admin_talk", icon: Shield }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;
+      case "greeting": addBotMessage(`أهلاً ${user?.name || "زائر"}! 👋\nكيف أقدر أخدمك؟`, MAIN_MENU); break;
+      case "thanks": addBotMessage("العفو! إذا تحتاج أي شي أنا هنا", MAIN_MENU); break;
+      case "main_menu": addBotMessage("كيف أقدر أساعدك؟", MAIN_MENU); break;
       default: addBotMessage("ما قدرت أفهم سؤالك 🤔\nاختر من الخيارات:", MAIN_MENU);
     }
   }, [addBotMessage, chargerLevel, user]);
@@ -226,8 +226,8 @@ const SupportChatEmbed: React.FC = () => {
       try {
         const res = await supabase.functions.invoke("gala-actions", { body: { action: "submit-request", uuid: userUuid, request_type: "admin_support", description: `طلب تكلم مع إداري - غرفة: ${text.trim()}`, room_id: text.trim() } });
         if (res.error) throw res.error;
-        addBotMessage("✅ تم إرسال طلبك! إداري بيدخل غرفتك قريباً.", [{ label: "القائمة الرئيسية", value: "main_menu" }]);
-      } catch { addBotMessage("❌ حصل خطأ. حاول مرة ثانية.", [{ label: "تكلم مع إداري", value: "admin_talk" }, { label: "القائمة الرئيسية", value: "main_menu" }]); }
+        addBotMessage("تم إرسال طلبك! إداري بيدخل غرفتك قريباً.", [{ label: "القائمة الرئيسية", value: "main_menu" }]);
+      } catch { addBotMessage("حصل خطأ. حاول مرة ثانية.", [{ label: "تكلم مع إداري", value: "admin_talk" }, { label: "القائمة الرئيسية", value: "main_menu" }]); }
       return;
     }
 
@@ -237,8 +237,8 @@ const SupportChatEmbed: React.FC = () => {
       try {
         const res = await supabase.functions.invoke("gala-actions", { body: { action: "submit-request", uuid: userUuid, request_type: "support", description: `${issueType}: ${text.trim()}` } });
         if (res.error) throw res.error;
-        addBotMessage("✅ تم إرسال مشكلتك! بنتواصل معك قريباً.", [{ label: "القائمة الرئيسية", value: "main_menu" }]);
-      } catch { addBotMessage("❌ حصل خطأ. حاول مرة ثانية.", [{ label: "مشكلة تقنية", value: "tech_issue" }, { label: "القائمة الرئيسية", value: "main_menu" }]); }
+        addBotMessage("تم إرسال مشكلتك! بنتواصل معك قريباً.", [{ label: "القائمة الرئيسية", value: "main_menu" }]);
+      } catch { addBotMessage("حصل خطأ. حاول مرة ثانية.", [{ label: "مشكلة تقنية", value: "tech_issue" }, { label: "القائمة الرئيسية", value: "main_menu" }]); }
       return;
     }
 
@@ -280,7 +280,7 @@ const SupportChatEmbed: React.FC = () => {
     setSubmittingFeedback(true);
     try {
       await supabase.from("support_chat_feedback").insert({ user_uuid: userUuid || "guest", rating: feedback.rating, comment: feedback.comment || "" });
-      addBotMessage("شكراً على تقييمك! 😊", MAIN_MENU);
+      addBotMessage("شكراً على تقييمك!", MAIN_MENU);
       setShowFeedbackForm(false);
       setFeedback({ rating: 0, comment: "" });
     } catch { addBotMessage("حصل خطأ بحفظ التقييم.", MAIN_MENU); }
@@ -347,7 +347,7 @@ const SupportChatEmbed: React.FC = () => {
 
         {showFeedbackForm && (
           <div className="max-w-xs mx-auto bg-card border border-border/50 rounded-2xl p-4 space-y-3">
-            <p className="text-sm font-semibold text-foreground">كيف كانت الخدمة؟ 😊</p>
+            <p className="text-sm font-semibold text-foreground">كيف كانت الخدمة؟</p>
             <div className="flex gap-2 justify-center">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button key={star} onClick={() => setFeedback({ ...feedback, rating: star })} className="transition-transform active:scale-90">
@@ -366,7 +366,7 @@ const SupportChatEmbed: React.FC = () => {
 
         {messages.length > 0 && !showFeedbackForm && (
           <div className="flex justify-center mt-4">
-            <button onClick={() => setShowFeedbackForm(true)} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline">📝 قيّم الخدمة</button>
+            <button onClick={() => setShowFeedbackForm(true)} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline">قيّم الخدمة</button>
           </div>
         )}
       </div>

@@ -17,13 +17,13 @@ const InstantIntro: React.FC = () => {
   const [understood, setUnderstood] = useState(false);
 
   return (
-    <MobileLayout showHeader headerTitle="السحب الفوري ⚡" onBack={() => navigate("/dashboard")}>
+    <MobileLayout showHeader headerTitle="السحب الفوري" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-4 space-y-5 pb-32">
         <div className="text-center space-y-3 css-fade-up">
           <div className="w-20 h-20 mx-auto rounded-2xl gold-gradient flex items-center justify-center shadow-lg">
             <Zap className="w-10 h-10 text-primary-foreground" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">بيع راتبك بسهولة! 💰</h2>
+          <h2 className="text-xl font-bold text-foreground">بيع راتبك بسهولة!</h2>
           <p className="text-sm text-muted-foreground">نساعدك تبيع كوينزاتك لأي داعم ونوفر له كل طرق الدفع</p>
         </div>
 
@@ -34,7 +34,7 @@ const InstantIntro: React.FC = () => {
             <strong className="text-foreground">نسهّل عليك!</strong> إحنا نوفر للداعم جميع طرق الدفع،
             الداعم يحوّل الفلوس على حساباتنا، وأنت تحوّل الكوينزات لوكالتنا{" "}
             <strong className="text-primary">(10000)</strong>،
-            ونحن نحولها للداعم ونحوّل لك المبلغ على بنكك فوراً! 💸
+            ونحن نحولها للداعم ونحوّل لك المبلغ على بنكك فوراً!
           </p>
         </div>
 
@@ -48,7 +48,7 @@ const InstantIntro: React.FC = () => {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 لو حوّلت الكوينزات للداعم مباشرة تحصل على <strong className="text-destructive">7,500</strong> كوينز للدولار فقط!
                 <br />
-                لكن لما تحوّل لوكالتنا <strong className="text-primary">(10000)</strong> تحصل على <strong className="text-emerald-400">8,500</strong> كوينز للدولار! 🎉
+                لكن لما تحوّل لوكالتنا <strong className="text-primary">(10000)</strong> تحصل على <strong className="text-emerald-400">8,500</strong> كوينز للدولار!
               </p>
             </div>
           </div>
@@ -84,7 +84,7 @@ const InstantIntro: React.FC = () => {
         <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-2xl css-fade-up-d8">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="w-5 h-5 text-destructive" />
-            <h3 className="font-bold text-destructive text-sm">⚠️ تنبيه مهم جداً!</h3>
+            <h3 className="font-bold text-destructive text-sm">تنبيه مهم جداً!</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             لا تحوّل الكوينزات لوكالتنا إلا بعد ما تتأكد إن الداعم حوّل الفلوس وأرسلك الإيصال!

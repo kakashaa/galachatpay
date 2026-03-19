@@ -163,7 +163,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
       try {
         // Step 1: Upload file
-        setUploadStatus(`📤 رفع ${i + 1}/${svgaFiles.length}`);
+        setUploadStatus(`رفع ${i + 1}/${svgaFiles.length}`);
         const formData = new FormData();
         formData.append("session_token", adminSessionToken);
         formData.append("username", adminUsername);
@@ -222,9 +222,9 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
 
     if (successCount > 0) {
       const aiMsg = aiEnabled && aiExtracted > 0 ? ` (🧠 ${aiExtracted} اسم بالذكاء)` : "";
-      toast.success(`✅ تم رفع ${successCount} شعرة بنجاح${aiMsg}`);
+      toast.success(`تم رفع ${successCount} شعرة بنجاح${aiMsg}`);
     }
-    if (failCount > 0) toast.error(`❌ فشل رفع ${failCount} ملف`);
+    if (failCount > 0) toast.error(`فشل رفع ${failCount} ملف`);
 
     e.target.value = "";
     loadHairs();
@@ -418,7 +418,7 @@ const HairSelectionsPanel: React.FC<{ hairs: HairItem[]; readOnly?: boolean }> =
       .eq("id", id);
     if (!error) {
       setSelections(prev => prev.filter(s => s.id !== id));
-      toast.success(status === "approved" ? "✅ تم قبول الطلب" : "❌ تم رفض الطلب");
+      toast.success(status === "approved" ? "تم قبول الطلب" : "تم رفض الطلب");
     }
   };
 

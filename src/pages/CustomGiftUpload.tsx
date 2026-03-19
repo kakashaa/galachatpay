@@ -467,7 +467,7 @@ const CustomGiftUpload: React.FC = () => {
               {videoDuration > 0 && (
                 <span className={`font-bold ${videoDuration > maxDuration ? "text-destructive" : "text-green-500"}`}>
                   {videoDuration}ث
-                  {videoDuration > maxDuration && " ⚠️ يتجاوز الحد"}
+                  {videoDuration > maxDuration && " يتجاوز الحد"}
                 </span>
               )}
             </div>

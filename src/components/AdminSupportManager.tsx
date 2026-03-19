@@ -42,9 +42,9 @@ interface Props {
 }
 
 const LEVEL_LABELS: Record<number, { label: string; emoji: string; color: string }> = {
-  1: { label: "عادي", emoji: "💬", color: "text-blue-400" },
-  2: { label: "SOS", emoji: "🆘", color: "text-red-400" },
-  3: { label: "طلب مضيفة", emoji: "📋", color: "text-purple-400" },
+  1: { label: "عادي", emoji: "", color: "text-blue-400" },
+  2: { label: "SOS", emoji: "", color: "text-red-400" },
+  3: { label: "طلب مضيفة", emoji: "", color: "text-purple-400" },
 };
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; text: string }> = {
@@ -194,7 +194,7 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
         body: { action: "resolve_session", session_id: sessionId },
       });
       toast.dismiss(t);
-      toast.success('تم إغلاق المحادثة ✅');
+      toast.success('تم إغلاق المحادثة');
       setActiveSessionId(null);
       loadSessions();
     } catch { toast.dismiss(t); toast.error('فشل الإغلاق'); }
@@ -207,7 +207,7 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
         body: { action: "escalate", session_id: sessionId },
       });
       toast.dismiss(t);
-      toast.success('تم التصعيد ✅');
+      toast.success('تم التصعيد');
       loadSessions();
     } catch { toast.dismiss(t); toast.error('فشل التصعيد'); }
   };
@@ -265,17 +265,17 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
         {/* Session info bar */}
         {activeSession?.notes && (
           <div className="px-3 py-2 text-[10px] text-muted-foreground border-b border-border/20" style={{ background: 'rgba(255,255,255,0.02)' }}>
-            📝 {activeSession.notes}
+            {activeSession.notes}
           </div>
         )}
         {activeSession?.file_url && (
           <div className="px-3 py-2 border-b border-border/20" style={{ background: 'rgba(255,255,255,0.02)' }}>
-            <a href={activeSession.file_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline">📎 عرض المرفق</a>
+            <a href={activeSession.file_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline">عرض المرفق</a>
           </div>
         )}
         {activeSession?.room_name && (
           <div className="px-3 py-2 text-[10px] text-muted-foreground border-b border-border/20" style={{ background: 'rgba(255,255,255,0.02)' }}>
-            🏠 الغرفة: <span className="font-bold text-foreground">{activeSession.room_name}</span>
+            الغرفة: <span className="font-bold text-foreground">{activeSession.room_name}</span>
           </div>
         )}
 
@@ -383,7 +383,7 @@ const AdminSupportManager: React.FC<Props> = ({ adminUsername, adminDisplayName,
                 </div>
 
                 {session.notes && (
-                  <p className="text-[10px] text-muted-foreground truncate">📝 {session.notes}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{session.notes}</p>
                 )}
 
                 {session.escalation_level > 0 && (

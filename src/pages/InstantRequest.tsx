@@ -175,7 +175,7 @@ const InstantRequest: React.FC = () => {
       } as any);
       if (insertError) {
         if (insertError.code === "23505") {
-          setError("⚠️ تم رفع هذا الطلب مسبقاً. لا يمكن استخدام نفس التحويل مرتين.");
+          setError("تم رفع هذا الطلب مسبقاً. لا يمكن استخدام نفس التحويل مرتين.");
         } else {
           console.error("Insert error:", insertError);
           setError("حدث خطأ في حفظ الطلب.");
@@ -202,7 +202,7 @@ const InstantRequest: React.FC = () => {
             <CheckCircle className="w-10 h-10 text-emerald-400" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلب السحب الفوري بنجاح ⚡</h2>
+            <h2 className="text-lg font-bold text-foreground mb-2">تم إرسال طلب السحب الفوري بنجاح</h2>
             <p className="text-sm text-muted-foreground">سيتم معالجة طلبك والتواصل معك قريباً</p>
             {requestId && (
               <div className="mt-4 rounded-xl p-3 bg-muted/30 border border-border/20">
@@ -225,7 +225,7 @@ const InstantRequest: React.FC = () => {
   const stepIndex = { supporter: 0, verify: 1, details: 2, confirm: 3 };
 
   return (
-    <MobileLayout showHeader headerTitle="طلب سحب فوري ⚡" onBack={handleExitAttempt}>
+    <MobileLayout showHeader headerTitle="طلب سحب فوري" onBack={handleExitAttempt}>
       <div className="px-5 py-4 space-y-5">
         {/* Progress */}
         <div className="flex gap-1.5">
@@ -408,7 +408,7 @@ const InstantRequest: React.FC = () => {
               </h3>
               <div className="space-y-2 text-xs">
                 {[
-                  { label: "نوع السحب", value: "فوري ⚡" },
+                  { label: "نوع السحب", value: "فوري" },
                   { label: "اسم الداعم", value: supporterName },
                   { label: "آيدي الداعم", value: supporterAccountId },
                   { label: "مبلغ الداعم", value: `$${supporterAmountUsd}` },

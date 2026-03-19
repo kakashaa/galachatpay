@@ -10,10 +10,10 @@ import { supabase } from '@/integrations/supabase/client';
 import AdminPageLayout from '@/components/AdminPageLayout';
 
 const REQUEST_TYPES = [
-  { id: 'change_id', label: 'تغيير آيدي', emoji: '🔑' },
-  { id: 'room_bg', label: 'خلفية غرفة', emoji: '🖼️' },
-  { id: 'custom_gift', label: 'هدية مخصصة', emoji: '🎁' },
-  { id: 'other', label: 'طلب آخر', emoji: '📝' },
+  { id: 'change_id', label: 'تغيير آيدي', emoji: '' },
+  { id: 'room_bg', label: 'خلفية غرفة', emoji: '' },
+  { id: 'custom_gift', label: 'هدية مخصصة', emoji: '' },
+  { id: 'other', label: 'طلب آخر', emoji: '' },
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -163,7 +163,7 @@ const AdminHostRequestsPage: React.FC = () => {
       await supabase.from('notifications').insert({
         user_uuid: selectedAdmin,
         target: 'admin',
-        title: '📋 طلب مضيفة جديد',
+        title: 'طلب مضيفة جديد',
         body: `${adminDisplayName} أرسلت طلب (${REQUEST_TYPES.find(t => t.id === requestType)?.label}) للمستخدم ${userUuid.trim()}`,
         type: 'host_request',
       });
@@ -190,7 +190,7 @@ const AdminHostRequestsPage: React.FC = () => {
       await supabase.from('notifications').insert({
         user_uuid: req.submitted_by,
         target: 'admin',
-        title: action === 'approved' ? '✅ تم قبول طلبك' : '❌ تم رفض طلبك',
+        title: action === 'approved' ? 'تم قبول طلبك' : 'تم رفض طلبك',
         body: action === 'approved'
           ? `طلب ${REQUEST_TYPES.find(t => t.id === req.request_type)?.label} للمستخدم ${req.user_uuid} تم قبوله`
           : `طلب ${REQUEST_TYPES.find(t => t.id === req.request_type)?.label} رُفض: ${reason || 'بدون سبب'}`,
@@ -289,7 +289,7 @@ const AdminHostRequestsPage: React.FC = () => {
                     className="bg-card border border-border/40 rounded-2xl p-4 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span>{typeInfo?.emoji || '📋'}</span>
+                        <span>{typeInfo?.emoji || ''}</span>
                         <span className="text-xs font-bold">{typeInfo?.label || req.request_type}</span>
                       </div>
                       <span className={`text-[10px] font-bold flex items-center gap-1 ${statusInfo.color}`}>
@@ -344,7 +344,7 @@ const AdminHostRequestsPage: React.FC = () => {
         {/* ─── My Sent Requests (for admin) ─── */}
         {isAdmin && myRequests.length > 0 && (
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-foreground">📤 طلباتي المرسلة</h3>
+            <h3 className="text-sm font-bold text-foreground">طلباتي المرسلة</h3>
             {myRequests.map((req, i) => {
               const typeInfo = REQUEST_TYPES.find(t => t.id === req.request_type);
               const statusInfo = STATUS_CONFIG[req.status] || STATUS_CONFIG.pending;
@@ -361,7 +361,7 @@ const AdminHostRequestsPage: React.FC = () => {
                   </div>
                   <p className="text-[10px] text-muted-foreground">UUID: {req.user_uuid} • إلى: {req.assigned_to_name}</p>
                   {req.status === 'rejected' && req.reject_reason && (
-                    <p className="text-[10px] text-destructive">❌ {req.reject_reason}</p>
+                    <p className="text-[10px] text-destructive">{req.reject_reason}</p>
                   )}
                 </motion.div>
               );

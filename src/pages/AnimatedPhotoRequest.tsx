@@ -270,7 +270,7 @@ const AnimatedPhotoRequest: React.FC = () => {
           </div>
           <div className="text-center css-fade-up-d3">
             <h2 className="text-lg font-bold text-foreground mb-2">
-              {isExecuted ? "تم تغيير الصورة بنجاح ✅" : isRejected ? "تم رفض الطلب ❌" : "تم إرسال الطلب ⏳"}
+              {isExecuted ? "تم تغيير الصورة بنجاح" : isRejected ? "تم رفض الطلب" : "تم إرسال الطلب"}
             </h2>
             {isExecuted && <p className="text-sm text-muted-foreground mb-1">تم تركيب الصورة المتحركة على حسابك</p>}
             {isRejected && <p className="text-sm text-muted-foreground mb-1">يمكنك المحاولة مرة أخرى</p>}

@@ -44,8 +44,8 @@ const getNotifIcon = (notif: Notification) => {
   if (match) return match;
   // Fallback: try to detect from title
   const t = notif.title || "";
-  if (t.includes("VIP")) return t.includes("✅") ? notificationIcons.vip_approved : notificationIcons.vip_rejected;
-  if (t.includes("راتب") || t.includes("سحب")) return t.includes("✅") ? notificationIcons.salary_approved : notificationIcons.salary_rejected;
+  if (t.includes("VIP")) return t.includes("") ? notificationIcons.vip_approved : notificationIcons.vip_rejected;
+  if (t.includes("راتب") || t.includes("سحب")) return t.includes("") ? notificationIcons.salary_approved : notificationIcons.salary_rejected;
   if (t.includes("كوينز")) return notificationIcons.salary_charged;
   if (t.includes("حظر") || t.includes("تعليق")) return notificationIcons.account_banned;
   if (t.includes("تفعيل حسابك")) return notificationIcons.account_unbanned;
@@ -159,9 +159,9 @@ const Notifications: React.FC = () => {
           </div>
         ) : (
           notifications.map((notif) => {
-            const receiptMatch = notif.body.match(/📎 إيصال الشحن: (https?:\/\/[^\s]+)/);
+            const receiptMatch = notif.body.match(/إيصال الشحن: (https?:\/\/[^\s]+)/);
             const receiptUrl = receiptMatch ? receiptMatch[1] : null;
-            const displayBody = receiptUrl ? notif.body.replace(/\n?📎 إيصال الشحن: https?:\/\/[^\s]+/, "") : notif.body;
+            const displayBody = receiptUrl ? notif.body.replace(/\n?إيصال الشحن: https?:\/\/[^\s]+/, "") : notif.body;
             const { icon: NotifIcon, color: iconColor } = getNotifIcon(notif);
 
             return (
@@ -194,7 +194,7 @@ const Notifications: React.FC = () => {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-primary font-bold bg-primary/10 rounded-lg px-2.5 py-1.5 hover:bg-primary/20 transition-colors"
                       >
-                        📎 فتح إيصال الشحن
+                        فتح إيصال الشحن
                         <ArrowRight className="w-3 h-3" />
                       </a>
                     )}

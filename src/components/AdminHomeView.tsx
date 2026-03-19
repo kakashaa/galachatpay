@@ -202,7 +202,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
 
           <div className="flex items-center gap-3">
             <span className={`text-[11px] font-bold ${isBanned ? 'text-admin-rose' : 'text-admin-emerald'}`}>
-              {isBanned ? '⛔ محظور' : '● نشط'}
+              {isBanned ? 'محظور' : '● نشط'}
             </span>
             {user.created_at && (
               <span className="text-[10px] text-muted-foreground">
@@ -339,31 +339,31 @@ const DelayMonitor: React.FC = () => {
 /* ─── Types ─── */
 /* ─── Action Info Helper ─── */
 const actionInfoMap: Record<string, { label: string; emoji: string; color: string; bgColor: string }> = {
-  approve_frame_claim: { label: "موافقة على إطار", emoji: "🖼️", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  reject_frame_claim: { label: "رفض إطار", emoji: "🖼️", color: "text-red-400", bgColor: "bg-red-500/10" },
-  approve_entry_claim: { label: "موافقة على دخولية", emoji: "✨", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  approve_entry_request: { label: "موافقة على دخولية", emoji: "✨", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  reject_entry_claim: { label: "رفض دخولية", emoji: "✨", color: "text-red-400", bgColor: "bg-red-500/10" },
-  reject_entry_request: { label: "رفض دخولية", emoji: "✨", color: "text-red-400", bgColor: "bg-red-500/10" },
-  approve_hair: { label: "موافقة على تسريحة", emoji: "💇", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  reject_hair: { label: "رفض تسريحة", emoji: "💇", color: "text-red-400", bgColor: "bg-red-500/10" },
-  approve_salary: { label: "موافقة على سحب", emoji: "💰", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  reject_salary: { label: "رفض سحب", emoji: "💰", color: "text-red-400", bgColor: "bg-red-500/10" },
-  approve_vip: { label: "تفعيل VIP", emoji: "👑", color: "text-amber-400", bgColor: "bg-amber-500/10" },
-  approve_animated_photo: { label: "موافقة صورة متحركة", emoji: "📸", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  reject_animated_photo: { label: "رفض صورة متحركة", emoji: "📸", color: "text-red-400", bgColor: "bg-red-500/10" },
-  approve_custom_gift: { label: "موافقة هدية مخصصة", emoji: "🎁", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  reject_custom_gift: { label: "رفض هدية مخصصة", emoji: "🎁", color: "text-red-400", bgColor: "bg-red-500/10" },
-  ban_user: { label: "حظر مستخدم", emoji: "🚫", color: "text-red-400", bgColor: "bg-red-500/10" },
-  unban_user: { label: "فك حظر", emoji: "✅", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  change_id: { label: "تغيير آيدي", emoji: "🔄", color: "text-sky-400", bgColor: "bg-sky-500/10" },
-  change_account_type: { label: "تغيير نوع حساب", emoji: "👤", color: "text-purple-400", bgColor: "bg-purple-500/10" },
-  delete_message: { label: "حذف رسالة", emoji: "🗑️", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_frame_claim: { label: "موافقة على إطار", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_frame_claim: { label: "رفض إطار", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_entry_claim: { label: "موافقة على دخولية", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  approve_entry_request: { label: "موافقة على دخولية", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_entry_claim: { label: "رفض دخولية", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  reject_entry_request: { label: "رفض دخولية", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_hair: { label: "موافقة على تسريحة", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_hair: { label: "رفض تسريحة", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_salary: { label: "موافقة على سحب", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_salary: { label: "رفض سحب", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_vip: { label: "تفعيل VIP", emoji: "", color: "text-amber-400", bgColor: "bg-amber-500/10" },
+  approve_animated_photo: { label: "موافقة صورة متحركة", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_animated_photo: { label: "رفض صورة متحركة", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_custom_gift: { label: "موافقة هدية مخصصة", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_custom_gift: { label: "رفض هدية مخصصة", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  ban_user: { label: "حظر مستخدم", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  unban_user: { label: "فك حظر", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  change_id: { label: "تغيير آيدي", emoji: "", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+  change_account_type: { label: "تغيير نوع حساب", emoji: "", color: "text-purple-400", bgColor: "bg-purple-500/10" },
+  delete_message: { label: "حذف رسالة", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
   login: { label: "تسجيل دخول", emoji: "🔐", color: "text-sky-400", bgColor: "bg-sky-500/10" },
-  works_approve_request: { label: "موافقة طلب وركس", emoji: "🏢", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-  works_reject_request: { label: "رفض طلب وركس", emoji: "🏢", color: "text-red-400", bgColor: "bg-red-500/10" },
-  works_list_accounts: { label: "عرض حسابات وركس", emoji: "📋", color: "text-sky-400", bgColor: "bg-sky-500/10" },
-  works_list_requests: { label: "عرض طلبات وركس", emoji: "📋", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+  works_approve_request: { label: "موافقة طلب وركس", emoji: "", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  works_reject_request: { label: "رفض طلب وركس", emoji: "", color: "text-red-400", bgColor: "bg-red-500/10" },
+  works_list_accounts: { label: "عرض حسابات وركس", emoji: "", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+  works_list_requests: { label: "عرض طلبات وركس", emoji: "", color: "text-sky-400", bgColor: "bg-sky-500/10" },
 };
 
 const getActionInfo = (action: string) => {
@@ -374,7 +374,7 @@ const getActionInfo = (action: string) => {
   }
   if (!info) {
     const isNeg = action.includes("reject") || action.includes("ban") || action.includes("delete");
-    info = { label: action || "عملية", emoji: isNeg ? "⚠️" : "📋", color: isNeg ? "text-red-400" : "text-primary", bgColor: isNeg ? "bg-red-500/10" : "bg-primary/10" };
+    info = { label: action || "عملية", emoji: isNeg ? "" : "", color: isNeg ? "text-red-400" : "text-primary", bgColor: isNeg ? "bg-red-500/10" : "bg-primary/10" };
   }
   return info;
 };

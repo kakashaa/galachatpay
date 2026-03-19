@@ -34,7 +34,7 @@ const AdminIdChangePage: React.FC = () => {
       await adminCall("admin_change_uuid", { old_uuid: oldUuid.trim(), new_uuid: newUuid.trim() });
       await sendUserNotification(
         newUuid.trim(),
-        "تم تغيير المعرف ✅",
+        "تم تغيير المعرف",
         `تم تغيير معرفك إلى ${newUuid.trim()} بنجاح!`
       );
       toast.dismiss(t);

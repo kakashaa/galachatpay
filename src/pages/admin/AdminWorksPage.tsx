@@ -72,7 +72,7 @@ const AdminWorksPage: React.FC = () => {
 
   const approveRequest = async (id: string) => {
     if (processingId) return; setProcessingId(id);
-    try { await adminCall("works_approve_request", { id }); toast.success("تم القبول ✅"); fetchRequests(); }
+    try { await adminCall("works_approve_request", { id }); toast.success("تم القبول"); fetchRequests(); }
     catch { toast.error("فشل"); }
     setProcessingId(null);
   };
@@ -86,7 +86,7 @@ const AdminWorksPage: React.FC = () => {
 
   const approveWithdrawal = async (id: string) => {
     if (processingId) return; setProcessingId(id);
-    try { await adminCall("works_approve_withdrawal", { id }); toast.success("تم قبول السحب ✅"); fetchWithdrawals(); }
+    try { await adminCall("works_approve_withdrawal", { id }); toast.success("تم قبول السحب"); fetchWithdrawals(); }
     catch { toast.error("فشل"); }
     setProcessingId(null);
   };
@@ -121,7 +121,7 @@ const AdminWorksPage: React.FC = () => {
         member_uuid: manualTargetUuid.trim(),
         member_type: manualAddType,
       });
-      toast.success("تم إضافة العضو يدوياً ✅");
+      toast.success("تم إضافة العضو يدوياً");
       setShowManualAdd(false);
       setManualTargetUuid("");
       if (selectedWorksId) fetchMembers(selectedWorksId);
@@ -143,7 +143,7 @@ const AdminWorksPage: React.FC = () => {
         id: editMember.id,
         commission_pct: pct,
       });
-      toast.success("تم تحديث النسبة ✅");
+      toast.success("تم تحديث النسبة");
       setEditMember(null);
       if (selectedWorksId) fetchMembers(selectedWorksId);
     } catch (err: any) {
@@ -160,7 +160,7 @@ const AdminWorksPage: React.FC = () => {
           status: "frozen",
           freeze_reason: freezeReason || "تجميد بواسطة المالك",
         });
-        toast.success("تم تجميد حساب البيدي ✅");
+        toast.success("تم تجميد حساب البيدي");
         fetchAccounts();
       } else {
         // Freeze user - insert into manual_bans
@@ -172,7 +172,7 @@ const AdminWorksPage: React.FC = () => {
           duration_hours: 8760, // 1 year
           banned_elements: ["services"],
         });
-        toast.success("تم تجميد خدمات المستخدم ✅");
+        toast.success("تم تجميد خدمات المستخدم");
       }
       setShowFreezeDialog(false);
       setFreezeTarget(null);

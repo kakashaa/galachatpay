@@ -110,7 +110,7 @@ const AdminGiftsPage: React.FC = () => {
                         <p className="text-sm font-bold">{gift.sender_name}</p>
                         <p className="text-[10px] text-muted-foreground tabular-nums">{gift.sender_uuid} → {gift.recipient_uuid}</p>
                       </div>
-                      <span className="text-lg font-bold text-admin-amber">⭐ {gift.amount}</span>
+                      <span className="text-lg font-bold text-admin-amber">{gift.amount}</span>
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">{new Date(gift.created_at).toLocaleString("ar-EG")}</p>
                   </motion.div>

@@ -177,7 +177,7 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
               >
                 <Lock className="w-12 h-12 text-red-500" />
               </motion.div>
-              <h2 className="text-xl font-bold text-red-400">⛔ تم إيقاف البيدي</h2>
+              <h2 className="text-xl font-bold text-red-400">تم إيقاف البيدي</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 تم رفضك كبيدي لأنك خالفت الشروط والأحكام الخاصة بنظام البيدي.
               </p>
@@ -226,7 +226,7 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
 
             <div className="bg-muted/30 border border-border/40 rounded-xl p-3">
               <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                💡 بعد انتهاء فترة الإيقاف، ستتمكن من استخدام نظام البيدي مجدداً. يرجى الالتزام بالشروط لتجنب الإيقاف مرة أخرى.
+                بعد انتهاء فترة الإيقاف، ستتمكن من استخدام نظام البيدي مجدداً. يرجى الالتزام بالشروط لتجنب الإيقاف مرة أخرى.
               </p>
             </div>
 

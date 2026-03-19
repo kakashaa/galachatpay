@@ -439,7 +439,7 @@ const ReportPage = () => {
       resetForm();
       setViewMode("menu");
 
-      toast.success("✅ تم إرسال البلاغ بنجاح!\nسيتم مراجعته من الإدارة وتنفيذ الحظر بعد الموافقة", {
+      toast.success("تم إرسال البلاغ بنجاح!\nسيتم مراجعته من الإدارة وتنفيذ الحظر بعد الموافقة", {
         duration: 6000,
       });
     } catch (error) {
@@ -639,7 +639,7 @@ const ReportPage = () => {
 
     const normalizedType = String(report.ban_type || "").toLowerCase();
     if (normalizedType === "promotion") {
-      return { label: "🔒 دائم", className: "bg-purple-500/20 text-purple-500" };
+      return { label: "دائم", className: "bg-purple-500/20 text-purple-500" };
     }
 
     return { label: "⏰ 24 ساعة", className: "bg-warning/20 text-warning" };
@@ -762,7 +762,7 @@ const ReportPage = () => {
                       </div>
                       {report.description && (
                         <p className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
-                          📝 {report.description}
+                          {report.description}
                         </p>
                       )}
                       {report.evidence_url && (
@@ -1014,12 +1014,12 @@ const ReportPage = () => {
                           ⏰ ينتهي: {new Date(report.expires_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
                         </div>
                       )}
-                      {report.description && <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">📝 {report.description}</p>}
+                      {report.description && <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">{report.description}</p>}
                       <div className="relative rounded-lg overflow-hidden border border-border cursor-pointer group" onClick={() => setSelectedReport(report)}>
                         {report.evidence_type === "video" ? (
                           <div className="relative bg-muted/50 p-6 flex flex-col items-center justify-center gap-2">
                             <Video className="w-10 h-10 text-destructive" />
-                            <span className="text-sm text-muted-foreground">🎬 فيديو - اضغط للمشاهدة</span>
+                            <span className="text-sm text-muted-foreground">فيديو - اضغط للمشاهدة</span>
                           </div>
                         ) : (
                           <div className="relative">

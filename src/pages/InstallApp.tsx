@@ -60,7 +60,7 @@ const InstallApp: React.FC = () => {
           <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center">
             <Check className="w-8 h-8 text-emerald-400" />
           </div>
-          <p className="text-emerald-400 font-bold">التطبيق مثبّت بالفعل! ✨</p>
+          <p className="text-emerald-400 font-bold">التطبيق مثبّت بالفعل!</p>
           <Button variant="outline" className="mt-4" onClick={() => navigate("/dashboard")}>
             الذهاب للرئيسية
           </Button>

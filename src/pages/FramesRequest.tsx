@@ -119,7 +119,7 @@ const FramesRequest: React.FC = () => {
       if (updateError) throw updateError;
 
       // Success! Show immediately
-      toast.success(claimType === "self" ? "تم إرسال طلب الإطار بنجاح! ⏳" : "تم إرسال طلب الإطار لصديقك! ⏳");
+      toast.success(claimType === "self" ? "تم إرسال طلب الإطار بنجاح!" : "تم إرسال طلب الإطار لصديقك!");
       setShowClaimDialog(false);
       setSubmitting(false);
       fetchStarBalance();
@@ -167,7 +167,7 @@ const FramesRequest: React.FC = () => {
               </div>
               <div>
                 <p className="text-[10px] text-muted-foreground">محفظة النجوم</p>
-                <p className="text-base font-black text-accent leading-none">{totalStars} <span className="text-[10px] font-normal text-muted-foreground">⭐</span></p>
+                <p className="text-base font-black text-accent leading-none">{totalStars} <span className="text-[10px] font-normal text-muted-foreground"></span></p>
               </div>
             </div>
             <button onClick={() => setShowTutorial(true)} className="p-1.5 rounded-full bg-destructive/10 shadow-[0_0_8px_hsl(var(--destructive)/0.4)]">

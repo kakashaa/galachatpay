@@ -230,7 +230,7 @@ const BanCheckPage = () => {
                 <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <ShieldBan className="w-8 h-8 text-destructive" />
-                    <span className="text-lg font-bold text-destructive">🚫 محظور</span>
+                    <span className="text-lg font-bold text-destructive">محظور</span>
                   </div>
                   <div className="space-y-1.5 text-sm text-foreground">
                     <p>الآيدي: <span className="font-mono text-muted-foreground">{result.uuid}</span></p>
@@ -241,13 +241,13 @@ const BanCheckPage = () => {
                   {/* Ban type badges */}
                    <div className="flex flex-wrap gap-2 mt-4">
                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_device_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                       🚫 حظر كامل
+                       حظر كامل
                      </span>
                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_ip_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                       🌐 حظر IP
+                       حظر IP
                      </span>
                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${result.summary?.has_normal_ban ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                       🧩 حظر عناصر
+                       حظر عناصر
                      </span>
                    </div>
                 </div>
@@ -255,7 +255,7 @@ const BanCheckPage = () => {
                 <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <ShieldCheck className="w-8 h-8 text-emerald-500" />
-                    <span className="text-lg font-bold text-emerald-400">✅ غير محظور</span>
+                    <span className="text-lg font-bold text-emerald-400">غير محظور</span>
                   </div>
                   <p className="text-sm text-foreground">الآيدي: <span className="font-mono text-muted-foreground">{result.uuid}</span></p>
                   <p className="text-sm text-muted-foreground mt-1">هذا المستخدم ليس لديه أي حظر فعال</p>
@@ -296,7 +296,7 @@ const BanCheckPage = () => {
                             <td className="px-3 py-2.5 text-foreground">{ban.type || "—"}</td>
                             <td className="px-3 py-2.5 text-foreground">
                               {ban.is_permanent ? (
-                                <span className="text-destructive font-semibold">أبدي ♾️</span>
+                                <span className="text-destructive font-semibold">أبدي</span>
                               ) : ban.duration_hours ? (
                                 `${ban.duration_hours} ساعة`
                               ) : (

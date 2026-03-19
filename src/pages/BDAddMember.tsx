@@ -168,13 +168,13 @@ const BDAddMember: React.FC = () => {
 
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
               <p className="text-xs text-amber-400">
-                💡 لن تتم إضافة العضو مباشرة. سيتلقى العضو إشعار الدعوة ويجب عليه الموافقة قبل أن يُضاف إلى حسابك.
+                لن تتم إضافة العضو مباشرة. سيتلقى العضو إشعار الدعوة ويجب عليه الموافقة قبل أن يُضاف إلى حسابك.
               </p>
             </div>
 
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
               <p className="text-xs text-blue-400">
-                📱 <strong>ملاحظة مهمة:</strong> لا يمكن أن يكون الجهاز الواحد حساب بيدي وعضو ضمن بيدي آخر في نفس الوقت. يجب على كل جهاز اختيار أحدهما فقط.
+                <strong>ملاحظة مهمة:</strong> لا يمكن أن يكون الجهاز الواحد حساب بيدي وعضو ضمن بيدي آخر في نفس الوقت. يجب على كل جهاز اختيار أحدهما فقط.
               </p>
             </div>
 
@@ -253,7 +253,7 @@ const BDAddMember: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-400">
               <AlertTriangle className="w-6 h-6" />
-              {violationDialog?.banned ? "⛔ تم إيقاف البيدي" : "⚠️ تحذير - مخالفة"}
+              {violationDialog?.banned ? "تم إيقاف البيدي" : "تحذير - مخالفة"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -296,7 +296,7 @@ const BDAddMember: React.FC = () => {
             )}
             {!violationDialog?.banned && (
               <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 text-center">
-                <p className="text-xs text-red-400 font-bold">⚡ متبقي {3 - (violationDialog?.count || 0)} إنذار(ات) قبل إيقاف البيدي نهائياً</p>
+                <p className="text-xs text-red-400 font-bold">متبقي {3 - (violationDialog?.count || 0)} إنذار(ات) قبل إيقاف البيدي نهائياً</p>
               </div>
             )}
             <Button onClick={() => { setViolationDialog(null); if (violationDialog?.banned) navigate("/bd", { replace: true }); }} variant={violationDialog?.banned ? "destructive" : "outline"} className="w-full">
@@ -338,7 +338,7 @@ const BDAddMember: React.FC = () => {
 
             <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3">
               <p className="text-xs text-red-400 font-bold">
-                ⚠️ إذا الوكيل ما عنده وكالة أو مستوياته مو أصفار، الدعوة بتنرفض وبتحسب عليك إنذار!
+                إذا الوكيل ما عنده وكالة أو مستوياته مو أصفار، الدعوة بتنرفض وبتحسب عليك إنذار!
               </p>
             </div>
 
@@ -371,7 +371,7 @@ const BDAddMember: React.FC = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-amber-400">
               <AlertTriangle className="w-6 h-6" />
-              ⚠️ لا يمكن إرسال الدعوة
+              لا يمكن إرسال الدعوة
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -381,7 +381,7 @@ const BDAddMember: React.FC = () => {
               </p>
             </div>
             <div className="bg-muted/30 rounded-xl p-3 space-y-2">
-              <p className="text-xs text-muted-foreground font-bold">✅ خطوات الحل:</p>
+              <p className="text-xs text-muted-foreground font-bold">خطوات الحل:</p>
               <ul className="space-y-1.5 text-xs text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="text-amber-400 font-bold shrink-0">1.</span>

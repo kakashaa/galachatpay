@@ -98,12 +98,12 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
 
       await supabase.from("notifications").insert({
         user_uuid: friendUuid.trim(),
-        title: "نجوم مهداة 🎁",
+        title: "نجوم مهداة",
         body: `تم إهداؤك ${giftAmount} نجمة من ${user.name}`,
         target: "user",
       });
 
-      toast.success(`تم إهداء ${giftAmount} نجمة لصديقك بنجاح! ⭐`);
+      toast.success(`تم إهداء ${giftAmount} نجمة لصديقك بنجاح!`);
       setCurrentView("main");
       setFriendUuid("");
       setGiftAmount(1);
@@ -257,7 +257,7 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                   <button onClick={() => setGiftAmount(Math.max(1, giftAmount - 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">-</button>
                   <div className="flex-1 text-center">
                     <span className="text-2xl font-black text-accent">{giftAmount}</span>
-                    <span className="text-xs text-muted-foreground mr-1">⭐</span>
+                    <span className="text-xs text-muted-foreground mr-1"></span>
                   </div>
                   <button onClick={() => setGiftAmount(Math.min(totalStars, giftAmount + 1))} className="w-9 h-9 rounded-xl bg-muted/30 border border-border/30 flex items-center justify-center text-lg font-bold">+</button>
                 </div>
@@ -289,11 +289,11 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
               <div className="rounded-xl p-3" style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}>
                 <div className="flex justify-between items-center text-sm mb-2">
                   <span className="text-muted-foreground">نجومك الحالية</span>
-                  <span className="font-black text-foreground">{totalStars} ⭐</span>
+                  <span className="font-black text-foreground">{totalStars}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm mb-2">
                   <span className="text-muted-foreground">سيتم خصم</span>
-                  <span className="font-black text-foreground">10 ⭐</span>
+                  <span className="font-black text-foreground">10</span>
                 </div>
                 <div className="border-t border-border/20 pt-2 flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">ستحصل على</span>
@@ -303,13 +303,13 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
 
               {totalStars < 10 && (
                 <div className="bg-destructive/10 rounded-xl p-2.5 text-[10px] text-destructive text-center">
-                  <p className="font-bold">❌ لا يمكنك التحويل</p>
+                  <p className="font-bold">لا يمكنك التحويل</p>
                   <p>تحتاج 10 نجوم على الأقل. لديك {totalStars} فقط.</p>
                 </div>
               )}
 
               <div className="bg-yellow-500/10 rounded-xl p-2.5 text-[10px] text-muted-foreground">
-                <p className="font-bold text-yellow-400 mb-0.5">📋 كيف يعمل؟</p>
+                <p className="font-bold text-yellow-400 mb-0.5">كيف يعمل؟</p>
                 <p>1. اضغط "تحويل" وسيتم إنشاء كود خاص</p>
                 <p>2. انسخ الكود واذهب لصفحة سحب الراتب</p>
                 <p>3. اختر "سحب عبر كود النجوم" وأدخل الكود</p>
@@ -327,7 +327,7 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
             <div className="space-y-4 pt-2 animate-fade-in" dir="rtl">
               <div className="text-center py-3">
                 <div className="w-14 h-14 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center mb-2">
-                  <span className="text-3xl">⚠️</span>
+                  <span className="text-3xl"></span>
                 </div>
                 <p className="text-sm font-bold text-foreground">تأكيد التحويل</p>
                 <p className="text-[10px] text-muted-foreground mt-1">هل تريد تحويل نجومك إلى كاش؟</p>
@@ -336,7 +336,7 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
               <div className="rounded-xl p-3" style={{ background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.25)" }}>
                 <div className="flex justify-between items-center text-sm mb-2">
                   <span className="text-muted-foreground">سيتم خصم</span>
-                  <span className="font-black text-foreground">10 ⭐</span>
+                  <span className="font-black text-foreground">10</span>
                 </div>
                 <div className="flex justify-between items-center text-sm mb-2">
                   <span className="text-muted-foreground">ستحصل على</span>
@@ -344,17 +344,17 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 </div>
                 <div className="border-t border-border/20 pt-2 flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">الرصيد بعد التحويل</span>
-                  <span className="font-black text-foreground">{totalStars - 10} ⭐</span>
+                  <span className="font-black text-foreground">{totalStars - 10}</span>
                 </div>
               </div>
 
               <div className="bg-destructive/10 rounded-xl p-2.5 text-[10px] text-center text-muted-foreground">
-                <p className="font-bold text-destructive mb-0.5">⚠️ تنبيه</p>
+                <p className="font-bold text-destructive mb-0.5">تنبيه</p>
                 <p>هذا الإجراء لا يمكن التراجع عنه بعد التأكيد</p>
               </div>
 
               <Button onClick={handleCashout} disabled={submitting} className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white">
-                {submitting ? "جاري الإنشاء..." : "✅ نعم، حوّل النجوم إلى كاش"}
+                {submitting ? "جاري الإنشاء..." : "نعم، حوّل النجوم إلى كاش"}
               </Button>
               <button onClick={() => setCurrentView("cashout")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
             </div>
@@ -366,7 +366,7 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-2">
                   <DollarSign className="w-8 h-8 text-emerald-400" />
                 </div>
-                <p className="text-sm font-bold text-foreground">تم إنشاء الكود بنجاح! 🎉</p>
+                <p className="text-sm font-bold text-foreground">تم إنشاء الكود بنجاح!</p>
                 <p className="text-[10px] text-muted-foreground">قيمة الكود: ${generatedAmount}</p>
               </div>
 
@@ -383,11 +383,11 @@ const StarWalletDialog: React.FC<Props> = ({ open, onClose, initialView = "main"
                 variant="outline"
                 className="w-full border-emerald-500/30 text-emerald-400"
               >
-                📋 نسخ الكود
+                نسخ الكود
               </Button>
 
               <div className="bg-yellow-500/10 rounded-xl p-2.5 text-[10px] text-muted-foreground">
-                <p className="font-bold text-yellow-400 mb-0.5">📌 الخطوة التالية</p>
+                <p className="font-bold text-yellow-400 mb-0.5">الخطوة التالية</p>
                 <p>اذهب إلى صفحة "سحب الراتب" واختر "سحب عبر كود النجوم" وأدخل الكود لإكمال عملية السحب.</p>
               </div>
 

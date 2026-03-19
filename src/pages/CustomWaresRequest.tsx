@@ -10,9 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronRight, ChevronLeft, Upload, Frame, DoorOpen, User, Gem, Loader2, X, FileVideo, Image as ImageIcon } from "lucide-react";
 
 const WARE_TYPES = [
-  { value: "frame", label: "إطار", icon: Frame, emoji: "🖼" },
+  { value: "frame", label: "إطار", icon: Frame, emoji: "" },
   { value: "entry_room", label: "دخلة غرفة", icon: DoorOpen, emoji: "🚪" },
-  { value: "entry_profile", label: "دخلة ملف شخصي", icon: User, emoji: "👤" },
+  { value: "entry_profile", label: "دخلة ملف شخصي", icon: User, emoji: "" },
   { value: "necklace", label: "قلادة", icon: Gem, emoji: "📿" },
 ] as const;
 
@@ -431,7 +431,7 @@ const CustomWaresRequest: React.FC = () => {
               </Button>
               <Button onClick={handleSubmit} disabled={submitting} className="flex-1 rounded-xl">
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
-                إرسال الطلب ✨
+                إرسال الطلب
               </Button>
             </div>
           </div>

@@ -88,7 +88,7 @@ const SupportTicketsEmbed: React.FC = () => {
             if (updated.status === "closed" && selectedTicketRef.current.status !== "closed") {
               setReplies([]);
               setSelectedTicket(null);
-              toast.info("✅ تم إغلاق هذه التذكرة من قبل فريق الدعم");
+              toast.info("تم إغلاق هذه التذكرة من قبل فريق الدعم");
               loadTickets();
             } else {
               setSelectedTicket((prev) => prev ? { ...prev, ...updated } : prev);
@@ -402,7 +402,7 @@ const SupportTicketsEmbed: React.FC = () => {
           </div>
         ) : (
           <div className="px-4 py-3 border-t border-border/10 bg-card/50 text-center">
-            <p className="text-xs text-muted-foreground">✅ تم إنهاء هذه التذكرة</p>
+            <p className="text-xs text-muted-foreground">تم إنهاء هذه التذكرة</p>
           </div>
         )}
       </div>
@@ -485,7 +485,7 @@ const SupportTicketsEmbed: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0 text-right">
                     <p className="text-xs font-bold text-foreground truncate">{ticket.subject}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{ticket.status === "closed" ? "✅ تم إغلاق التذكرة" : ticket.admin_reply ? "تم الرد — اضغط للعرض" : "بانتظار الرد..."}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{ticket.status === "closed" ? "تم إغلاق التذكرة" : ticket.admin_reply ? "تم الرد — اضغط للعرض" : "بانتظار الرد..."}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mr-2">

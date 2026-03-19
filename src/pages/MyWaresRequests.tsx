@@ -8,17 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Search, Loader2, PackageOpen, Frame, DoorOpen, User, Gem } from "lucide-react";
 
 const TYPE_MAP: Record<string, { label: string; emoji: string; icon: React.ElementType }> = {
-  frame: { label: "إطار", emoji: "🖼", icon: Frame },
+  frame: { label: "إطار", emoji: "", icon: Frame },
   entry_room: { label: "دخلة غرفة", emoji: "🚪", icon: DoorOpen },
-  entry_profile: { label: "دخلة ملف شخصي", emoji: "👤", icon: User },
+  entry_profile: { label: "دخلة ملف شخصي", emoji: "", icon: User },
   necklace: { label: "قلادة", emoji: "📿", icon: Gem },
 };
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: "🟡 قيد المراجعة", color: "text-yellow-400", bg: "bg-yellow-500/10" },
-  approved: { label: "🟢 تمت الموافقة", color: "text-emerald-400", bg: "bg-emerald-500/10" },
-  rejected: { label: "🔴 مرفوض", color: "text-red-400", bg: "bg-red-500/10" },
-  failed: { label: "🟠 فشل التنفيذ", color: "text-orange-400", bg: "bg-orange-500/10" },
+  pending: { label: "قيد المراجعة", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+  approved: { label: "تمت الموافقة", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  rejected: { label: "مرفوض", color: "text-red-400", bg: "bg-red-500/10" },
+  failed: { label: "فشل التنفيذ", color: "text-orange-400", bg: "bg-orange-500/10" },
 };
 
 interface WareRequest {
@@ -95,7 +95,7 @@ const MyWaresRequests: React.FC = () => {
         {!loading && requests.length > 0 && (
           <div className="space-y-3">
             {requests.map((req, idx) => {
-              const typeInfo = TYPE_MAP[req.ware_type] || { label: req.ware_type, emoji: "📦", icon: Frame };
+              const typeInfo = TYPE_MAP[req.ware_type] || { label: req.ware_type, emoji: "", icon: Frame };
               const statusInfo = STATUS_MAP[req.status] || STATUS_MAP.pending;
               return (
                 <div key={req.id || idx} className="bg-card rounded-2xl border border-border/50 p-4 space-y-2">

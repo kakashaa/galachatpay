@@ -42,21 +42,21 @@ const userTypeLabels: Record<number, string> = {
 const LEVEL_MILESTONES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
 const API_ERROR_MAP: Array<[RegExp, string]> = [
-  [/taken|already.?in.?use|used/i, "🚫 هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر."],
-  [/uuid.?is.?invalid|invalid.?uuid|selected.?uuid/i, "🚫 سيرفر Gala رفض هذا الـ ID. الرقم قد يكون محجوز أو غير متاح. جرّب رقم مختلف تماماً."],
-  [/type.?is.?invalid/i, "❌ نوع الطلب غير صحيح. حاول مرة أخرى."],
+  [/taken|already.?in.?use|used/i, "هذا المعرف مستخدم بالفعل. اختر معرّفاً آخر."],
+  [/uuid.?is.?invalid|invalid.?uuid|selected.?uuid/i, "سيرفر Gala رفض هذا الـ ID. الرقم قد يكون محجوز أو غير متاح. جرّب رقم مختلف تماماً."],
+  [/type.?is.?invalid/i, "نوع الطلب غير صحيح. حاول مرة أخرى."],
   [/too.?short|too.?long|length/i, "📏 طول الـ ID غير مناسب. راجع الصيغ المتاحة."],
-  [/not.?allowed|forbidden|permission/i, "🔒 لا تملك صلاحية لهذا التغيير."],
-  [/rate.?limit|too.?many/i, "⏳ طلبات كثيرة. انتظر قليلاً وحاول مرة أخرى."],
-  [/server|internal/i, "🔧 خطأ في السيرفر. حاول مرة أخرى لاحقاً."],
+  [/not.?allowed|forbidden|permission/i, "لا تملك صلاحية لهذا التغيير."],
+  [/rate.?limit|too.?many/i, "طلبات كثيرة. انتظر قليلاً وحاول مرة أخرى."],
+  [/server|internal/i, "خطأ في السيرفر. حاول مرة أخرى لاحقاً."],
 ];
 
 function translateApiError(msg: string): string {
-  if (!msg) return "❌ فشل الطلب. حاول مرة أخرى بعد قليل.";
+  if (!msg) return "فشل الطلب. حاول مرة أخرى بعد قليل.";
   for (const [pattern, arabic] of API_ERROR_MAP) {
     if (pattern.test(msg)) return arabic;
   }
-  return `❌ ${msg}`;
+  return `${msg}`;
 }
 
 function getCurrentMilestone(level: number): number {
@@ -206,12 +206,12 @@ const ChangeId: React.FC = () => {
      if (alreadyChanged.changed) {
        const next = getNextMilestone(maxLevel);
        setStatus("error");
-       setErrorMsg(next ? `⏸️ تغيير الـ ID متاح مرة واحدة فقط لكل 10 مستويات. الفل الحالي: ${maxLevel} • الفل المطلوب: ${next}` : "✅ وصلت لأعلى مستوى، لا يمكن تغيير الـ ID.");
+       setErrorMsg(next ? `⏸️ تغيير الـ ID متاح مرة واحدة فقط لكل 10 مستويات. الفل الحالي: ${maxLevel} • الفل المطلوب: ${next}` : "وصلت لأعلى مستوى، لا يمكن تغيير الـ ID.");
        return;
      }
      if (maxLevel < 20) { 
        setStatus("ineligible"); 
-       setErrorMsg("📊 يمكنك تغيير الـ ID من الفل 20 فما فوق. الفل الحالي: " + maxLevel);
+       setErrorMsg("يمكنك تغيير الـ ID من الفل 20 فما فوق. الفل الحالي: " + maxLevel);
        return; 
      }
      if (!/^\d+$/.test(trimmedId)) { 
@@ -234,7 +234,7 @@ const ChangeId: React.FC = () => {
        const matchesAny = allPatterns.some(p => matchesPattern(trimmedId, p));
        if (!matchesAny) {
          setStatus("error");
-         setErrorMsg("🚫 الـ ID لا يطابق أي صيغة متاحة لمستواك. راجع الصيغ المعروضة واختر رقم يناسب إحداها.");
+         setErrorMsg("الـ ID لا يطابق أي صيغة متاحة لمستواك. راجع الصيغ المعروضة واختر رقم يناسب إحداها.");
          return;
        }
      }
@@ -266,7 +266,7 @@ const ChangeId: React.FC = () => {
         // Send notification
         await supabase.from("notifications").insert({
           user_uuid: user.uuid,
-          title: "تم تغيير الـ ID بنجاح ✅",
+          title: "تم تغيير الـ ID بنجاح",
           body: `تم تغيير معرّفك من ${user.uuid} إلى ${trimmedId}. هذا التغيير نهائي حتى تصل للفل التالي.`,
           target: "user",
         });
@@ -279,7 +279,7 @@ const ChangeId: React.FC = () => {
         setStatus("success");
      } catch { 
        setStatus("error"); 
-       setErrorMsg("⚠️ حدث خطأ في الاتصال. تأكد من الاتصال بالإنترنت وحاول مرة أخرى."); 
+       setErrorMsg("حدث خطأ في الاتصال. تأكد من الاتصال بالإنترنت وحاول مرة أخرى."); 
      }
   };
 
@@ -290,7 +290,7 @@ const ChangeId: React.FC = () => {
 
     if (alreadyGifted) {
       setStatus("error");
-      setErrorMsg(`🚫 لقد استخدمت جميع فرص الإهداء (${maxGifts} من ${maxGifts}). ${maxLevel < 90 ? `فرصة جديدة عند لفل ${maxLevel < 80 ? 80 : 90}.` : ""}`);
+      setErrorMsg(`لقد استخدمت جميع فرص الإهداء (${maxGifts} من ${maxGifts}). ${maxLevel < 90 ? `فرصة جديدة عند لفل ${maxLevel < 80 ? 80 : 90}.` : ""}`);
       return;
     }
 
@@ -308,7 +308,7 @@ const ChangeId: React.FC = () => {
 
     if (trimmedRecipient === user.uuid) {
       setStatus("error");
-      setErrorMsg("🚫 لا يمكنك إهداء آيدي لنفسك.");
+      setErrorMsg("لا يمكنك إهداء آيدي لنفسك.");
       return;
     }
 
@@ -326,7 +326,7 @@ const ChangeId: React.FC = () => {
     const matchesAny = giftPatterns.some(p => matchesPattern(trimmedId, p));
     if (!matchesAny) {
       setStatus("error");
-      setErrorMsg("🚫 الـ ID لا يطابق أي صيغة إهداء متاحة. راجع الصيغ المعروضة.");
+      setErrorMsg("الـ ID لا يطابق أي صيغة إهداء متاحة. راجع الصيغ المعروضة.");
       return;
     }
 
@@ -340,7 +340,7 @@ const ChangeId: React.FC = () => {
         // In gift mode, "uuid is invalid" means the RECIPIENT doesn't exist
         if (/uuid.?is.?invalid|invalid.?uuid|selected.?uuid/i.test(msg)) {
           setStatus("error");
-          setErrorMsg("🚫 آيدي المستلم غير موجود في نظام Gala. تأكد من صحة آيدي المستلم وحاول مرة أخرى.");
+          setErrorMsg("آيدي المستلم غير موجود في نظام Gala. تأكد من صحة آيدي المستلم وحاول مرة أخرى.");
           return;
         }
         setStatus(msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("used") ? "taken" : "error");
@@ -358,7 +358,7 @@ const ChangeId: React.FC = () => {
       // Notification to sender
       await supabase.from("notifications").insert({
         user_uuid: user.uuid,
-        title: "تم إهداء آيدي بنجاح 🎁",
+        title: "تم إهداء آيدي بنجاح",
         body: `تم إهداء الآيدي ${trimmedId} للمستخدم ${trimmedRecipient}.`,
         target: "user",
       });
@@ -368,13 +368,13 @@ const ChangeId: React.FC = () => {
       await supabase.from("notifications").insert([
         {
           user_uuid: trimmedRecipient,
-          title: "🎁 هدية آيدي جديد!",
+          title: "هدية آيدي جديد!",
           body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${trimmedId}.`,
           target: "user",
         },
         {
           user_uuid: trimmedId,
-          title: "🎁 هدية آيدي جديد!",
+          title: "هدية آيدي جديد!",
           body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${trimmedId}.`,
           target: "user",
         },
@@ -387,7 +387,7 @@ const ChangeId: React.FC = () => {
       setStatus("success");
     } catch {
       setStatus("error");
-      setErrorMsg("⚠️ حدث خطأ في الاتصال. تأكد من الاتصال بالإنترنت وحاول مرة أخرى.");
+      setErrorMsg("حدث خطأ في الاتصال. تأكد من الاتصال بالإنترنت وحاول مرة أخرى.");
     }
   };
 
@@ -399,7 +399,7 @@ const ChangeId: React.FC = () => {
             <CheckCircle className="w-8 h-8 text-emerald-400" />
           </div>
           <h2 className="text-base font-bold text-foreground mb-1">
-            {isGiftMode ? "تم إهداء الـ ID بنجاح! 🎁" : "تم تغيير الـ ID بنجاح! 🎉"}
+            {isGiftMode ? "تم إهداء الـ ID بنجاح!" : "تم تغيير الـ ID بنجاح!"}
           </h2>
           <p className="text-xs text-muted-foreground">
             {isGiftMode

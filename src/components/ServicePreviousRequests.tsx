@@ -30,7 +30,7 @@ interface ServicePreviousRequestsProps {
 
 const statusConfig: Record<string, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
   pending: { label: "قيد المراجعة", bg: "bg-amber-500/10", text: "text-amber-400", icon: <Clock className="w-3 h-3" /> },
-  approved: { label: "مقبول ✅", bg: "bg-emerald-500/10", text: "text-emerald-400", icon: <CheckCircle className="w-3 h-3" /> },
+  approved: { label: "مقبول", bg: "bg-emerald-500/10", text: "text-emerald-400", icon: <CheckCircle className="w-3 h-3" /> },
   rejected: { label: "مرفوض", bg: "bg-red-500/10", text: "text-red-400", icon: <XCircle className="w-3 h-3" /> },
   completed: { label: "مكتمل", bg: "bg-emerald-500/10", text: "text-emerald-400", icon: <CheckCircle className="w-3 h-3" /> },
   done: { label: "تم", bg: "bg-emerald-500/10", text: "text-emerald-400", icon: <CheckCircle className="w-3 h-3" /> },
@@ -281,7 +281,7 @@ const ServicePreviousRequests: React.FC<ServicePreviousRequestsProps> = ({ userU
                       <div className="flex items-center gap-2">
                         <span className={`flex items-center gap-1 text-[10px] font-bold ${st.text}`}>
                           {isRejected && req.isFinalRejection ? (
-                            <><Ban className="w-3 h-3" /> مرفوض نهائياً ⛔</>
+                            <><Ban className="w-3 h-3" /> مرفوض نهائياً</>
                           ) : (
                             <>{st.icon} {st.label}</>
                           )}

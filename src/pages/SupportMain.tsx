@@ -13,12 +13,12 @@ const SupportTicketsEmbed = React.lazy(() => import("./SupportTicketsEmbed"));
 type Tab = "bot" | "tickets" | "live";
 
 const TICKET_TYPES = [
-  { id: "tech", label: "مشكلة تقنية", emoji: "🔧" },
-  { id: "balance", label: "رصيد/شحن", emoji: "💰" },
-  { id: "account", label: "حساب", emoji: "👤" },
-  { id: "gifts", label: "هدايا", emoji: "🎁" },
+  { id: "tech", label: "مشكلة تقنية", emoji: "" },
+  { id: "balance", label: "رصيد/شحن", emoji: "" },
+  { id: "account", label: "حساب", emoji: "" },
+  { id: "gifts", label: "هدايا", emoji: "" },
   { id: "voice", label: "صوت/غرف", emoji: "🎙️" },
-  { id: "report", label: "بلاغ", emoji: "🚨" },
+  { id: "report", label: "بلاغ", emoji: "" },
   { id: "inquiry", label: "استفسار", emoji: "❓" },
 ];
 
@@ -200,11 +200,11 @@ function LiveChatStarter({ issueTypes, selectedType, onSelectType, onStart, star
           <div><p className="text-xs font-bold text-foreground">عادي: مجاني</p><p className="text-[10px] text-muted-foreground">24-48 ساعة</p></div>
         </div>
         <div className="glass-card p-3 flex items-center gap-3 border border-primary/20 bg-primary/5">
-          <span className="text-lg">⚡</span>
+          <span className="text-lg"></span>
           <div><p className="text-xs font-bold text-primary">VIP 4+: أسرع</p><p className="text-[10px] text-muted-foreground">1-4 ساعات</p></div>
         </div>
         <div className="glass-card p-3 flex items-center gap-3 border border-primary/30 bg-primary/10">
-          <span className="text-lg">🔥</span>
+          <span className="text-lg"></span>
           <div><p className="text-xs font-bold text-primary">VIP 6: فوري</p><p className="text-[10px] text-muted-foreground">أدمن يدخل غرفتك</p></div>
         </div>
       </div>

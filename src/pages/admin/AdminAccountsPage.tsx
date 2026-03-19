@@ -71,9 +71,9 @@ const AdminAccountsPage: React.FC = () => {
     try {
       await supabase.from("admin_complaints").update({ status, owner_notes: notes || null }).eq("id", id);
       toast.dismiss(t);
-      toast.success("تم التحديث ✅");
+      toast.success("تم التحديث");
       loadComplaints();
-    } catch { toast.dismiss(t); toast.error("فشل التحديث ❌"); }
+    } catch { toast.dismiss(t); toast.error("فشل التحديث"); }
     finally { setComplaintActionId(null); }
   };
 

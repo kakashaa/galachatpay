@@ -88,11 +88,11 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
       if (fnError || !data?.success) {
         const msg = data?.error || "";
         if (/taken|already.?in.?use|used/i.test(msg)) {
-          setError("🚫 هذا الآيدي مستخدم بالفعل. اختر آخر.");
+          setError("هذا الآيدي مستخدم بالفعل. اختر آخر.");
         } else if (/uuid.?is.?invalid|invalid.?uuid|selected.?uuid/i.test(msg)) {
-          setError(isGift ? "🚫 آيدي المستلم غير موجود في النظام." : "🚫 الآيدي غير متاح. جرّب رقم مختلف.");
+          setError(isGift ? "آيدي المستلم غير موجود في النظام." : "الآيدي غير متاح. جرّب رقم مختلف.");
         } else {
-          setError(`❌ ${msg || "فشل الطلب. حاول مرة أخرى."}`);
+          setError(`${msg || "فشل الطلب. حاول مرة أخرى."}`);
         }
         setStep("form");
         setSubmitting(false);
@@ -130,13 +130,13 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
         await supabase.from("notifications").insert([
           {
             user_uuid: recipientUuid.trim(),
-            title: "🎁 هدية آيدي جديد!",
+            title: "هدية آيدي جديد!",
             body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${newId.trim()} عبر النجوم.`,
             target: "user",
           },
           {
             user_uuid: newId.trim(),
-            title: "🎁 هدية آيدي جديد!",
+            title: "هدية آيدي جديد!",
             body: `قام ${user.name} (${user.uuid}) بإهدائك الآيدي ${newId.trim()} عبر النجوم.`,
             target: "user",
           },
@@ -144,7 +144,7 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
         // Notify sender
         await supabase.from("notifications").insert({
           user_uuid: user.uuid,
-          title: "تم إهداء آيدي بنجاح ⭐",
+          title: "تم إهداء آيدي بنجاح",
           body: `تم إهداء الآيدي ${newId.trim()} للمستخدم ${recipientUuid.trim()} مقابل ${selectedOption.stars} نجوم.`,
           target: "user",
         });
@@ -154,14 +154,14 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
         setUser({ ...user, uuid: newId.trim() });
         await supabase.from("notifications").insert({
           user_uuid: newId.trim(),
-          title: "تم شراء آيدي بالنجوم ⭐",
+          title: "تم شراء آيدي بالنجوم",
           body: `تم تغيير آيديك إلى ${newId.trim()} مقابل ${selectedOption.stars} نجوم.`,
           target: "user",
         });
       }
 
       fetchStarBalance();
-      toast.success(isGift ? `تم إهداء الآيدي ${newId.trim()} بنجاح! 🎁` : `تم تغيير آيديك إلى ${newId.trim()} بنجاح! ⭐`);
+      toast.success(isGift ? `تم إهداء الآيدي ${newId.trim()} بنجاح!` : `تم تغيير آيديك إلى ${newId.trim()} بنجاح!`);
       onSuccess();
     } catch (err: any) {
       setError(err?.message || "حدث خطأ. حاول مرة أخرى.");
@@ -209,7 +209,7 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
             );
           })}
         </div>
-        <p className="text-[10px] text-center text-muted-foreground">رصيدك: {totalStars} نجمة ⭐</p>
+        <p className="text-[10px] text-center text-muted-foreground">رصيدك: {totalStars} نجمة</p>
         <button onClick={onBack} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
       </div>
     );
@@ -300,7 +300,7 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
     <div className="space-y-3 pt-2 animate-fade-in" dir="rtl">
       <div className="text-center py-2">
         <div className="w-14 h-14 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center mb-2">
-          <span className="text-3xl">⚠️</span>
+          <span className="text-3xl"></span>
         </div>
         <p className="text-sm font-bold text-foreground">تأكيد {isGift ? "إهداء" : "شراء"} الآيدي</p>
       </div>
@@ -322,16 +322,16 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
         )}
         <div className="border-t border-border/20 pt-2 flex justify-between items-center text-sm">
           <span className="text-muted-foreground">التكلفة</span>
-          <span className="font-black text-accent">{selectedOption?.stars} ⭐</span>
+          <span className="font-black text-accent">{selectedOption?.stars}</span>
         </div>
         <div className="flex justify-between items-center text-sm">
           <span className="text-muted-foreground">الرصيد بعد الشراء</span>
-          <span className="font-black text-foreground">{totalStars - (selectedOption?.stars || 0)} ⭐</span>
+          <span className="font-black text-foreground">{totalStars - (selectedOption?.stars || 0)}</span>
         </div>
       </div>
 
       <div className="bg-destructive/10 rounded-xl p-2.5 text-[10px] text-center text-muted-foreground">
-        <p className="font-bold text-destructive mb-0.5">⚠️ تنبيه</p>
+        <p className="font-bold text-destructive mb-0.5">تنبيه</p>
         <p>هذا الإجراء لا يمكن التراجع عنه بعد التأكيد</p>
       </div>
 
@@ -347,7 +347,7 @@ const StarIdPurchase: React.FC<Props> = ({ totalStars, onBack, onSuccess, fetchS
         disabled={submitting}
         className="w-full font-bold h-11 bg-emerald-600 hover:bg-emerald-700 text-white"
       >
-        {submitting ? "جاري التنفيذ..." : `✅ تأكيد ${isGift ? "الإهداء" : "الشراء"}`}
+        {submitting ? "جاري التنفيذ..." : `تأكيد ${isGift ? "الإهداء" : "الشراء"}`}
       </Button>
       <button onClick={() => setStep("form")} className="w-full text-center text-sm text-muted-foreground py-1">رجوع</button>
     </div>
