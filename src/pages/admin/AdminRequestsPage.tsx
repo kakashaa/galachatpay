@@ -125,15 +125,17 @@ const AdminRequestsPage: React.FC = () => {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
         const targetUuid = item.friend_uuid || item.user_uuid;
-        const wareType = type === "frames" ? "frame" : (item.ware_type === "entry_room" ? "room_entry" : "entry");
+        // Use the item's ware_type directly to match what was originally submitted
+        const wareType = item.ware_type || (type === "frames" ? "frame" : "entry_profile");
         const imageType = fileUrl.toLowerCase().endsWith(".svga") ? "svga" : "mp4";
 
         // 1. Check for existing pending request on wares-api
         let pendingReqId: string | null = null;
         try {
           const myReqs = await fetch(`${WARES_API}?key=${WARES_KEY}&action=my-requests&uuid=${targetUuid}`).then(r => r.json());
+          // Match by ware_type OR by file_url to catch any naming differences
           const pendingReq = myReqs.data?.requests?.find((r: any) =>
-            r.status === 'pending' && r.ware_type === wareType
+            r.status === 'pending' && (r.ware_type === wareType || r.file_url === fileUrl)
           );
           if (pendingReq) pendingReqId = pendingReq.id;
         } catch { /* continue to submit */ }
@@ -163,7 +165,7 @@ const AdminRequestsPage: React.FC = () => {
           }
         }
 
-        // 3. Approve — single upload + assign to user
+        // 3. Approve — single upload + assign to user UUID
         const approveRes = await fetch(`${WARES_API}?key=${WARES_KEY}&action=approve&id=${pendingReqId}`).then(r => r.json());
         if (approveRes.ok) {
           toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف ✅`);
