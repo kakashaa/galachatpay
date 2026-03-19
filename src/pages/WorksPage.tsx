@@ -164,11 +164,11 @@ const WorksPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
-        <h1 className="text-lg font-bold">Works</h1>
+        <h1 className="text-lg font-bold">البيدي</h1>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center space-y-4">
         <Briefcase className="w-16 h-16 text-emerald-400" />
-        <p className="text-lg font-bold">انضم لنظام Works</p>
+        <p className="text-lg font-bold">انضم لنظام البيدي</p>
         <p className="text-sm text-muted-foreground">ادعُ أعضاء واحصل على عمولة من نشاطهم</p>
         {pendingRequest ? (
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl px-6 py-3">
