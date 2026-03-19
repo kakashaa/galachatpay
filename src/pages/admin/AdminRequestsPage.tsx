@@ -3,7 +3,7 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
-  Loader2, Sparkles, Frame, Scissors, Camera, Gift,
+  Loader2, Sparkles, Frame, Scissors, Camera, Gift, MonitorPlay,
   CheckCircle, XCircle, Clock, Copy, Hash, Send, User,
   Calendar, ExternalLink, Play, Eye, Timer
 } from "lucide-react";
