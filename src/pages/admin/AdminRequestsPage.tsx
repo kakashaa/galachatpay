@@ -269,7 +269,7 @@ const AdminRequestsPage: React.FC = () => {
       setShakenTab(activeTab);
       setTimeout(() => setShakenTab(null), 600);
       setTimeout(() => loadData(), 500);
-    } catch (err: any) { toast.dismiss(loadingToast); toast.error(err?.message || "فشلت العملية ❌"); }
+    } catch (err: any) { toast.dismiss(loadingToast); toast.error(err?.message || "فشلت العملية"); }
     finally { setProcessingId(null); }
   };
 
