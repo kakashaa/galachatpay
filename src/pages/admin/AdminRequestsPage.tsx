@@ -332,7 +332,7 @@ const AdminRequestsPage: React.FC = () => {
     const isPending = item.status === "pending";
     const isProcessing = processingId === item.id;
     const statusColor = item.status === "approved" ? "hsl(160 84% 39%)" : item.status === "rejected" ? "hsl(350 89% 55%)" : "hsl(40 96% 53%)";
-    const statusLabel = item.status === "approved" ? "مقبول ✅" : item.status === "rejected" ? "مرفوض ❌" : "معلّق ⏳";
+    const statusLabel = item.status === "approved" ? "مقبول" : item.status === "rejected" ? "مرفوض" : "معلّق";
     const wareLabel = item.ware_type === "entry_room" ? "غرفة" : item.ware_type === "entry_profile" ? "ملف" : item.ware_type === "frame" ? "إطار" : null;
 
     return (
