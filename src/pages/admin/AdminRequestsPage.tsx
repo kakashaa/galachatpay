@@ -3,7 +3,7 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
-  Loader2, Sparkles, Frame, Scissors, Camera, Gift,
+  Loader2, Sparkles, Frame, Scissors, Camera, Gift, MonitorPlay,
   CheckCircle, XCircle, Clock, Copy, Hash, Send, User,
   Calendar, ExternalLink, Play, Eye, Timer
 } from "lucide-react";
@@ -14,7 +14,7 @@ import SvgaPlayer from "@/components/SvgaPlayer";
 import { captureMediaThumbnail } from "@/utils/captureMediaThumbnail";
 import { supabase } from "@/integrations/supabase/client";
 
-type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom";
+type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom" | "rooms";
 
 const tabs: { key: ReqTab; label: string; icon: React.ElementType; color: string; bg: string }[] = [
   { key: "entries", label: "دخوليات", icon: Sparkles, color: "text-admin-amber", bg: "rgba(245,158,11," },
@@ -22,9 +22,11 @@ const tabs: { key: ReqTab; label: string; icon: React.ElementType; color: string
   { key: "hairs", label: "شعرات", icon: Scissors, color: "text-admin-pink", bg: "rgba(236,72,153," },
   { key: "animated", label: "صور", icon: Camera, color: "text-admin-purple", bg: "rgba(139,92,246," },
   { key: "custom", label: "هدايا", icon: Gift, color: "text-admin-emerald", bg: "rgba(16,185,129," },
+  { key: "rooms", label: "خلفيات", icon: MonitorPlay, color: "text-admin-cyan", bg: "rgba(6,182,212," },
 ];
 
 type PendingCounts = Record<ReqTab, number>;
+
 
 const isSvga = (url: string) => url?.toLowerCase().endsWith(".svga");
 const isVideo = (url: string) => {
@@ -38,7 +40,7 @@ const AdminRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [pendingCounts, setPendingCounts] = useState<PendingCounts>({ entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0 });
+  const [pendingCounts, setPendingCounts] = useState<PendingCounts>({ entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0, rooms: 0 });
   const [shakenTab, setShakenTab] = useState<ReqTab | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [previewItem, setPreviewItem] = useState<any | null>(null);
@@ -50,6 +52,7 @@ const AdminRequestsPage: React.FC = () => {
     const actionMap: Record<ReqTab, string> = {
       entries: "list_entry_requests", frames: "list_frame_claims",
       hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
+      rooms: "list_room_backgrounds",
     };
     try {
       const results = await Promise.allSettled(
@@ -58,7 +61,7 @@ const AdminRequestsPage: React.FC = () => {
           return { key, count: (data || []).filter((i: any) => i.status === "pending").length };
         })
       );
-      const counts: PendingCounts = { entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0 };
+      const counts: PendingCounts = { entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0, rooms: 0 };
       results.forEach(r => { if (r.status === "fulfilled") counts[r.value.key] = r.value.count; });
       setPendingCounts(counts);
     } catch { /* silent */ }
@@ -71,6 +74,7 @@ const AdminRequestsPage: React.FC = () => {
       const actionMap: Record<ReqTab, string> = {
         entries: "list_entry_requests", frames: "list_frame_claims",
         hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
+        rooms: "list_room_backgrounds",
       };
       const data = await adminCall(actionMap[activeTab]);
       setItems(data || []);
@@ -202,6 +206,7 @@ const AdminRequestsPage: React.FC = () => {
           hairs: { approveTitle: "تم قبول الشعار ✅", approveBody: "تم تفعيل الشعار المختار على ملفك الشخصي!", rejectTitle: "تم رفض الشعار ❌", rejectBody: "للأسف تم رفض طلب الشعار الخاص بك." },
           animated: { approveTitle: "تم قبول الصورة المتحركة ✅", approveBody: "تم تفعيل صورتك المتحركة على ملفك الشخصي!", rejectTitle: "تم رفض الصورة المتحركة ❌", rejectBody: "تم رفض الصورة المتحركة. تواصل مع الدعم لمزيد من المعلومات." },
           custom: { approveTitle: "تم قبول الهدية المخصصة ✅", approveBody: `تم رفع هديتك "${item.title || ''}" وأصبحت متاحة لجميع المستخدمين!`, rejectTitle: "تم رفض الهدية المخصصة ❌", rejectBody: "للأسف تم رفض الهدية المخصصة. تأكد من استيفاء الشروط." },
+          rooms: { approveTitle: "تم قبول خلفية الغرفة ✅", approveBody: "تم تغيير خلفية غرفتك بنجاح!", rejectTitle: "تم رفض خلفية الغرفة ❌", rejectBody: "للأسف تم رفض طلب تغيير خلفية الغرفة." },
         };
         const msgs = typeMap[activeTab];
         if (msgs) await sendUserNotification(item.user_uuid, isApprove ? msgs.approveTitle : msgs.rejectTitle, isApprove ? msgs.approveBody : msgs.rejectBody);
@@ -226,8 +231,8 @@ const AdminRequestsPage: React.FC = () => {
   const otherItems = visibleItems.filter((i: any) => i.status !== "pending");
 
   // Get the preview URL for any item
-  const getPreviewUrl = (item: any) => item.file_url || item.video_url || item.gif_url || item.thumbnail_url || null;
-  const getThumbnail = (item: any) => item.thumbnail_url || item.gif_url || null;
+  const getPreviewUrl = (item: any) => item.file_url || item.video_url || item.gif_url || item.thumbnail_url || item.image_url || null;
+  const getThumbnail = (item: any) => item.thumbnail_url || item.gif_url || item.image_url || null;
 
   // Render the visual media preview
   const renderMediaPreview = (item: any, size: "grid" | "full" = "grid") => {
@@ -260,10 +265,12 @@ const AdminRequestsPage: React.FC = () => {
   const approveAction: Record<ReqTab, string> = {
     entries: "approve_entry_request", frames: "approve_frame_claim",
     hairs: "approve_hair_selection", animated: "approve_animated_photo", custom: "approve_custom_gift",
+    rooms: "approve_room_background",
   };
   const rejectAction: Record<ReqTab, string> = {
     entries: "reject_entry_request", frames: "reject_frame_claim",
     hairs: "reject_hair_selection", animated: "reject_animated_photo", custom: "reject_custom_gift",
+    rooms: "reject_room_background",
   };
 
   // Visual card like user pages

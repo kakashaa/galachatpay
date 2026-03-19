@@ -596,6 +596,32 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // Room background requests
+      case "list_room_backgrounds": {
+        const { data: bgs, error } = await supabase
+          .from("room_background_requests")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        result = bgs;
+        break;
+      }
+      case "approve_room_background": {
+        const { id } = data;
+        const { error } = await supabase.from("room_background_requests").update({ status: "approved" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+      case "reject_room_background": {
+        const { id, reason } = data;
+        const { error } = await supabase.from("room_background_requests").update({ status: "rejected", admin_note: reason || "" }).eq("id", id);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       // Star gift logs
       case "list_star_gifts": {
         const { data: gifts, error } = await supabase
