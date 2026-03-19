@@ -279,6 +279,7 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
   }
 
   return (
+    <>
     <motion.div key="hairs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
       {/* Upload Section */}
       {!readOnly && (
