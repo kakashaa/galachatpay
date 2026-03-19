@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Send, CheckCircle2, ArrowRight, Zap, ShieldX,
+  Send, ArrowRight, Zap, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone, Upload, X,
-  Crown, Clock, Sparkles
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
-import LiveSupportChat from "@/components/LiveSupportChat";
+import SupportSessionChat from "@/components/SupportSessionChat";
+import { startSupportSession } from "@/hooks/use-support-session";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -19,15 +20,6 @@ const isEligibleForQuickSupport = (user: any): boolean => {
   const typeUser = user.type_user || 0;
   const isAgentType = [2, 4, 5, 6].includes(typeUser);
   return vipLevel >= 5 || isHostAgent || isAgentType;
-};
-
-/** Returns the on-duty super admin username based on Saudi time (UTC+3) */
-const getOnDutySuperAdmin = (): string => {
-  const now = new Date();
-  const saudiHour = (now.getUTCHours() + 3) % 24;
-  if (saudiHour >= 9 && saudiHour < 17) return "relax";
-  if (saudiHour >= 17 || saudiHour < 1) return "janjoon";
-  return "mars";
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
@@ -59,15 +51,14 @@ const QuickSupport: React.FC = () => {
   const [description, setDescription] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting] = useState(false);
 
-  // Live chat state
-  const [chatKey, setChatKey] = useState<string | null>(null);
-  const [queuePosition, setQueuePosition] = useState(0);
+  // New support session state
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
 
-  // Disable auto-resume: chat should only open after explicit user action
-
+  // Check if this was opened as SOS (from URL param)
+  const isSOS = new URLSearchParams(window.location.search).get("sos") === "1";
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,56 +76,33 @@ const QuickSupport: React.FC = () => {
     return urlData.publicUrl;
   };
 
-  const startChat = async () => {
+  const startChat = async (requestType?: string, notes?: string) => {
     if (!authUser) return;
     setStartingChat(true);
     try {
-      // Start chat via API
-      const result = await supabase.functions.invoke("support-chat", {
-        body: {
-          action: "start",
-          user_uuid: authUser.uuid,
-          user_name: authUser.name,
-          chat_type: "quick",
-        },
+      let fileUrl: string | null = null;
+      if (attachment) {
+        fileUrl = await uploadAttachment(attachment);
+      }
+
+      const supportLevel = isSOS ? 2 : 1;
+
+      const session = await startSupportSession({
+        user_uuid: authUser.uuid,
+        user_name: authUser.name,
+        support_level: supportLevel,
+        request_type: requestType || (isSOS ? "sos" : "quick_support"),
+        notes: notes || undefined,
+        file_url: fileUrl || undefined,
+        file_type: attachment ? (attachment.type.startsWith("image") ? "image" : "video") : undefined,
       });
 
-      const data = result.data;
-      if (data?.ok && data?.chat_key) {
-        setChatKey(data.chat_key);
-        setQueuePosition(data.queue_position || 0);
-        localStorage.setItem(`gala_quick_chat_${authUser.uuid}`, data.chat_key);
-
-        // Send first message — auto for direct entry, or form-based
-        const superAdmin = getOnDutySuperAdmin();
-        let firstMsg = "";
-        if (selectedType) {
-          if (selectedType === "admin_visit") firstMsg = `طلب إداري - رقم الغرفة: ${roomCode}${description ? `\n${description}` : ""}`;
-          else if (selectedType === "direct_contact") firstMsg = `طلب تواصل مباشر - رقم الهاتف: ${phoneNumber}${description ? `\n${description}` : ""}`;
-          else firstMsg = description;
-        } else {
-          // Auto-started — send SOS greeting
-          firstMsg = `🆘 طلب دعم سريع من ${authUser.name} — المناوب: @${superAdmin}`;
-        }
-
-        let attachUrl: string | null = null;
-        if (attachment) attachUrl = await uploadAttachment(attachment);
-
-        await supabase.functions.invoke("support-chat", {
-          body: {
-            action: "send",
-            chat_key: data.chat_key,
-            message: firstMsg || "طلب جديد",
-            sender_type: "user",
-            sender_name: authUser.name,
-            attachment_url: attachUrl,
-          },
-        });
-
+      if (session?.id) {
+        setSessionId(session.id);
         playSuccessChime();
         toast.success("تم بدء المحادثة!");
       } else {
-        toast.error(data?.error || "فشل بدء المحادثة");
+        toast.error("فشل بدء المحادثة");
       }
     } catch {
       toast.error("فشل الاتصال بالخادم");
@@ -148,19 +116,21 @@ const QuickSupport: React.FC = () => {
     if (selectedType === "admin_visit" && !roomCode.trim()) return;
     if ((selectedType === "report" || selectedType === "complaint") && !description.trim()) return;
     if (selectedType === "direct_contact" && !phoneNumber.trim()) return;
-    await startChat();
+
+    let notes = "";
+    if (selectedType === "admin_visit") notes = `طلب إداري - رقم الغرفة: ${roomCode}${description ? `\n${description}` : ""}`;
+    else if (selectedType === "direct_contact") notes = `طلب تواصل مباشر - رقم الهاتف: ${phoneNumber}${description ? `\n${description}` : ""}`;
+    else notes = description;
+
+    await startChat(selectedType, notes);
   };
 
-  const handleChatBack = () => {
-    setChatKey(null);
+  const handleChatClose = () => {
+    setSessionId(null);
     navigate(-1);
   };
 
-  const handleChatEnded = () => {
-    if (authUser) localStorage.removeItem(`gala_quick_chat_${authUser.uuid}`);
-  };
-
-  // Access control: VIP 6 only
+  // Access control
   if (!isEligibleForQuickSupport(authUser)) {
     return (
       <div className="mobile-container bg-background flex flex-col" dir="rtl">
@@ -178,11 +148,7 @@ const QuickSupport: React.FC = () => {
               <ShieldX className="w-10 h-10 text-destructive" />
             </div>
             <h2 className="text-lg font-bold text-foreground">ميزة حصرية ⚡</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">الدعم السريع متاح فقط لأصحاب<br /><span className="text-primary font-bold">VIP 6</span> أو <span className="text-primary font-bold">وكلاء المضيفين</span></p>
-            <div className="glass-card p-3 space-y-1.5 text-[11px] text-muted-foreground">
-              <p>🌟 ارفع مستوى VIP الخاص بك للحصول على دعم فوري</p>
-              <p>⚡ سوبر أدمن يدخل غرفتك خلال دقائق</p>
-            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">الدعم السريع متاح فقط لأصحاب<br /><span className="text-primary font-bold">VIP 5+</span> أو <span className="text-primary font-bold">وكلاء المضيفين</span></p>
             <button onClick={() => navigate("/dashboard")} className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm">العودة للرئيسية</button>
           </motion.div>
         </div>
@@ -190,18 +156,17 @@ const QuickSupport: React.FC = () => {
     );
   }
 
-  // Active chat view
-  if (chatKey) {
+  // Active session chat view
+  if (sessionId) {
     return (
       <div className="mobile-container bg-background flex flex-col overflow-hidden" dir="rtl">
-        <LiveSupportChat
-          chatKey={chatKey}
+        <SupportSessionChat
+          sessionId={sessionId}
           userUuid={authUser?.uuid || ""}
           userName={authUser?.name || ""}
-          chatType="quick"
-          queuePosition={queuePosition}
-          onBack={handleChatBack}
-          onEnded={handleChatEnded}
+          senderType="user"
+          showTimer={true}
+          onClose={handleChatClose}
         />
       </div>
     );
@@ -217,7 +182,7 @@ const QuickSupport: React.FC = () => {
           <ArrowRight className="w-5 h-5 text-primary" />
           <span className="text-sm font-semibold text-primary">رجوع</span>
         </motion.button>
-        <h1 className="text-sm font-bold text-foreground">دعم سريع ⚡</h1>
+        <h1 className="text-sm font-bold text-foreground">{isSOS ? "🆘 SOS دعم طوارئ" : "دعم سريع ⚡"}</h1>
         <div className="w-16" />
       </header>
 
@@ -225,31 +190,49 @@ const QuickSupport: React.FC = () => {
         <AnimatePresence mode="wait">
           {!selectedType ? (
             <motion.div key="selector-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 py-4 overflow-y-auto space-y-4">
-              {/* Support tiers info */}
-              <div className="space-y-2">
+              {isSOS && (
+                <div className="glass-card p-3 flex items-center gap-3 bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20">
+                  <span className="text-xl">🆘</span>
+                  <div>
+                    <p className="text-xs font-bold text-red-400">وضع الطوارئ</p>
+                    <p className="text-[10px] text-muted-foreground">سيتم تصعيد طلبك للسوبر أدمن والمشرفين فوراً</p>
+                  </div>
+                </div>
+              )}
+
+              {!isSOS && (
                 <div className="glass-card p-3 flex items-center gap-3 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
                   <Sparkles className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="text-xs font-bold text-primary">VIP 6 — دعم فوري</p>
+                    <p className="text-xs font-bold text-primary">دعم فوري</p>
                     <p className="text-[10px] text-muted-foreground">أدمن يتواصل معك خلال دقائق</p>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Quick start chat button */}
               <motion.button
                 onClick={() => startChat()}
                 disabled={startingChat}
                 animate={{
-                  boxShadow: [
+                  boxShadow: isSOS ? [
+                    "0 0 0 0 rgba(239,68,68,0.4)",
+                    "0 0 20px 4px rgba(239,68,68,0.15)",
+                    "0 0 0 0 rgba(239,68,68,0.4)",
+                  ] : [
                     "0 0 0 0 rgba(59,130,246,0.4)",
                     "0 0 20px 4px rgba(59,130,246,0.15)",
                     "0 0 0 0 rgba(59,130,246,0.4)",
                   ],
                 }}
                 transition={{ duration: 2.5, repeat: Infinity }}
-                className="w-full rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.97] transition-transform border border-primary/40"
-                style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.15))" }}
+                className="w-full rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.97] transition-transform border"
+                style={{
+                  background: isSOS
+                    ? "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(249,115,22,0.15))"
+                    : "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.15))",
+                  borderColor: isSOS ? "rgba(239,68,68,0.4)" : "rgba(59,130,246,0.4)",
+                }}
               >
                 {startingChat ? (
                   <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -257,19 +240,26 @@ const QuickSupport: React.FC = () => {
                   <>
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5 text-primary" />
-                      <span className="text-base font-black text-primary">تكلّم مع أدمن الحين</span>
+                      <span className="text-base font-black text-primary">
+                        {isSOS ? "🆘 طلب مساعدة فورية" : "تكلّم مع أدمن الحين"}
+                      </span>
                       <Zap className="w-5 h-5 text-primary" />
                     </div>
-                    <span className="text-[11px] text-muted-foreground">رد فوري خلال دقائق — بدون انتظار ⚡</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {isSOS ? "سيتم إرسال إشعار فوري للسوبر أدمن والمشرفين" : "رد فوري خلال دقائق — بدون انتظار ⚡"}
+                    </span>
                   </>
                 )}
               </motion.button>
 
-              <div className="text-center">
-                <p className="text-[10px] text-muted-foreground">— أو اختر نوع الطلب —</p>
-              </div>
-
-              <ServiceSelector options={serviceOptions} onSelect={setSelectedType} />
+              {!isSOS && (
+                <>
+                  <div className="text-center">
+                    <p className="text-[10px] text-muted-foreground">— أو اختر نوع الطلب —</p>
+                  </div>
+                  <ServiceSelector options={serviceOptions} onSelect={setSelectedType} />
+                </>
+              )}
             </motion.div>
           ) : (
             <div className="px-5 py-4 overflow-y-auto">

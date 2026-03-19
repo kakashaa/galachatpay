@@ -29,7 +29,7 @@ const SOSButton: React.FC = () => {
         ],
       }}
       transition={{ duration: 1.5, repeat: Infinity }}
-      onClick={() => navigate("/quick-support")}
+      onClick={() => navigate("/quick-support?sos=1")}
       className="fixed bottom-20 left-4 z-40 w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-transform"
       style={{
         background: "linear-gradient(135deg, hsl(350 89% 55%), hsl(20 90% 50%))",

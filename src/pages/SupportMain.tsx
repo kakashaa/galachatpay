@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Bot, Ticket, MessageSquare, Headphones, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import LiveSupportChat from "@/components/LiveSupportChat";
+import SupportSessionChat from "@/components/SupportSessionChat";
+import { startSupportSession } from "@/hooks/use-support-session";
 
 const SupportChatEmbed = React.lazy(() => import("./SupportChatEmbed"));
 const SupportTicketsEmbed = React.lazy(() => import("./SupportTicketsEmbed"));
@@ -35,65 +35,31 @@ const SupportMain: React.FC = () => {
     return vipLevel >= 6 || isHostAgent;
   })();
 
-  // Live chat state
-  const [chatKey, setChatKey] = useState<string | null>(() => {
-    if (!user) return null;
-    return localStorage.getItem(`gala_normal_chat_${user.uuid}`) || null;
-  });
-  const [queuePosition, setQueuePosition] = useState(0);
+  // New support session state
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
   const [selectedIssueType, setSelectedIssueType] = useState<string | null>(null);
-
-  // Check existing chat on tab switch
-  const checkExistingChat = useCallback(async () => {
-    if (!user || !chatKey) return;
-    try {
-      const result = await supabase.functions.invoke("support-chat", {
-        body: { action: "status", chat_key: chatKey },
-      });
-      if (!result.data?.ok || result.data?.status === "ended" || result.data?.status === "closed") {
-        setChatKey(null);
-        localStorage.removeItem(`gala_normal_chat_${user.uuid}`);
-      }
-    } catch {
-      setChatKey(null);
-      if (user) localStorage.removeItem(`gala_normal_chat_${user.uuid}`);
-    }
-  }, [user, chatKey]);
-
-  React.useEffect(() => {
-    if (activeTab === "live" && chatKey) checkExistingChat();
-  }, [activeTab, chatKey, checkExistingChat]);
 
   const startLiveChat = async (issueType?: string) => {
     if (!user) { toast.error("يجب تسجيل الدخول أولاً"); return; }
     setStartingChat(true);
     try {
-      const result = await supabase.functions.invoke("support-chat", {
-        body: { action: "start", user_uuid: user.uuid, user_name: user.name, chat_type: "normal" },
-      });
-      const data = result.data;
-      if (data?.ok && data?.chat_key) {
-        setChatKey(data.chat_key);
-        setQueuePosition(data.queue_position || 0);
-        localStorage.setItem(`gala_normal_chat_${user.uuid}`, data.chat_key);
+      const typeLabel = issueType ? TICKET_TYPES.find(t => t.id === issueType) : null;
+      const notes = typeLabel ? `نوع المشكلة: ${typeLabel.emoji} ${typeLabel.label}` : undefined;
 
-        // Send issue type as first auto message
-        if (issueType) {
-          const typeLabel = TICKET_TYPES.find(t => t.id === issueType);
-          await supabase.functions.invoke("support-chat", {
-            body: {
-              action: "send",
-              chat_key: data.chat_key,
-              message: `نوع المشكلة: ${typeLabel?.emoji || ""} ${typeLabel?.label || issueType}`,
-              sender_type: "user",
-              sender_name: user.name,
-            },
-          });
-        }
+      const session = await startSupportSession({
+        user_uuid: user.uuid,
+        user_name: user.name,
+        support_level: 1,
+        request_type: issueType || "general",
+        notes,
+      });
+
+      if (session?.id) {
+        setSessionId(session.id);
         toast.success("تم بدء المحادثة!");
       } else {
-        toast.error(data?.error || "فشل بدء المحادثة");
+        toast.error("فشل بدء المحادثة");
       }
     } catch {
       toast.error("فشل الاتصال بالخادم");
@@ -101,13 +67,9 @@ const SupportMain: React.FC = () => {
     setStartingChat(false);
   };
 
-  const handleChatBack = () => {
-    setChatKey(null);
+  const handleChatClose = () => {
+    setSessionId(null);
     setSelectedIssueType(null);
-  };
-
-  const handleChatEnded = () => {
-    if (user) localStorage.removeItem(`gala_normal_chat_${user.uuid}`);
   };
 
   const tabs = [
@@ -133,8 +95,8 @@ const SupportMain: React.FC = () => {
           <div className="w-16" />
         </div>
 
-        {/* Tabs - only show when not in active live chat */}
-        {!(activeTab === "live" && chatKey) && (
+        {/* Tabs - only show when not in active session */}
+        {!(activeTab === "live" && sessionId) && (
           <div className="flex gap-2 px-4 pb-3">
             {tabs.map((tab, i) => {
               const isActive = activeTab === tab.id;
@@ -189,15 +151,14 @@ const SupportMain: React.FC = () => {
             </motion.div>
           ) : activeTab === "live" ? (
             <motion.div key="live" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="flex-1 flex flex-col overflow-hidden">
-              {chatKey ? (
-                <LiveSupportChat
-                  chatKey={chatKey}
+              {sessionId ? (
+                <SupportSessionChat
+                  sessionId={sessionId}
                   userUuid={user?.uuid || ""}
                   userName={user?.name || ""}
-                  chatType="normal"
-                  queuePosition={queuePosition}
-                  onBack={handleChatBack}
-                  onEnded={handleChatEnded}
+                  senderType="user"
+                  showTimer={true}
+                  onClose={handleChatClose}
                 />
               ) : (
                 <LiveChatStarter
