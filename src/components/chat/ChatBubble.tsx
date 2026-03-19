@@ -119,8 +119,15 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         {imgSrc && mediaType === "video" && (
           <video src={imgSrc} className="rounded-lg max-h-52 mb-1" controls muted playsInline />
         )}
-        {imgSrc && !isImageUrl(imgSrc) && mediaType !== "video" && mediaType !== "photo" && (
-          <a href={imgSrc} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline block mb-1">📎 مرفق</a>
+        {imgSrc && !isImageUrl(imgSrc) && mediaType !== "video" && mediaType !== "photo" && mediaType !== "voice" && (
+          <a href={imgSrc} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary underline block mb-1 flex items-center gap-1">
+            <Paperclip className="w-3 h-3" /> مرفق
+          </a>
+        )}
+
+        {/* Voice message */}
+        {mediaType === "voice" && imgSrc && (
+          <VoiceMessage url={imgSrc} duration={voiceDuration || 0} isMine={isMine} />
         )}
 
         {/* Content */}
