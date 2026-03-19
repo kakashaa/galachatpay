@@ -609,6 +609,35 @@ const AdminRequestsPage: React.FC = () => {
           </AnimatePresence>
         )}
       </div>
+
+      {/* Preview Dialog for approved/rejected items */}
+      <Dialog open={!!previewItem} onOpenChange={() => setPreviewItem(null)}>
+        <DialogContent className="max-w-sm p-0 bg-background border-0 rounded-2xl overflow-hidden [&>button]:hidden">
+          <DialogHeader className="p-3 pb-0">
+            <DialogTitle className="text-sm text-center font-bold">{previewItem?.title || "عرض الملف"}</DialogTitle>
+          </DialogHeader>
+          {previewItem && (
+            <div className="space-y-3 p-3">
+              <div className="w-full aspect-square rounded-xl overflow-hidden bg-black/50 flex items-center justify-center">
+                {renderMediaPreview(previewItem, "full")}
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
+                {previewItem.user_uuid && (
+                  <span className="flex items-center gap-1 font-mono">
+                    <Hash className="w-3 h-3" /> {previewItem.user_uuid}
+                  </span>
+                )}
+                <span>{new Date(previewItem.created_at).toLocaleDateString("ar-SA")}</span>
+              </div>
+              <button onClick={() => setPreviewItem(null)}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-foreground"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                إغلاق
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminPageLayout>
   );
 };
