@@ -38,7 +38,7 @@ export default function AdminChatPage() {
   const [recording, setRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const messagesEnd = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<any>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const adminName = adminUsername || 'naz';
@@ -106,7 +106,7 @@ export default function AdminChatPage() {
   const handleVoiceToggle = () => {
     if (recording) {
       setRecording(false);
-      clearInterval(timerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
       const duration = recordingTime;
       setRecordingTime(0);
       sendMessage(`🎤 رسالة صوتية (${duration}ث)`, 'voice');
@@ -135,6 +135,8 @@ export default function AdminChatPage() {
       return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     } catch { return t; }
   };
+
+  const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 
   // Room list view
   if (!activeRoom) {
@@ -246,19 +248,35 @@ export default function AdminChatPage() {
         <AnimatePresence>
           {messages.map((msg, i) => {
             const isMe = msg.sender === adminName;
+            const prevMsg = i > 0 ? messages[i - 1] : null;
+            const showSender = !isMe && (!prevMsg || prevMsg.sender !== msg.sender);
+            const initial = getInitial(msg.sender_name || msg.sender);
+
             return (
               <motion.div
                 key={msg.id || i}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex ${isMe ? 'justify-start' : 'justify-end'}`}
+                className={`flex ${isMe ? 'justify-start' : 'justify-end'} mb-1.5`}
               >
+                {/* Avatar for incoming */}
+                {!isMe && showSender && (
+                  <div className="flex-shrink-0 ml-2 self-end mb-1">
+                    <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/10">
+                      <span className="text-[10px] font-bold text-emerald-400">{initial}</span>
+                    </div>
+                  </div>
+                )}
+                {!isMe && !showSender && <div className="w-9 flex-shrink-0" />}
+
                 <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${
                   isMe
                     ? 'bg-emerald-500/20 border border-emerald-500/10'
                     : 'bg-white/[0.06] border border-white/5'
-                }`}>
-                  {!isMe && (
+                }`} style={{
+                  borderRadius: isMe ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+                }}>
+                  {showSender && !isMe && (
                     <p className="text-[9px] font-bold text-emerald-400 mb-0.5">{msg.sender_name}</p>
                   )}
                   {msg.type === 'voice' ? (
@@ -284,6 +302,15 @@ export default function AdminChatPage() {
                   )}
                   <p className="text-[8px] text-muted-foreground mt-1 text-left">{formatTime(msg.time)}</p>
                 </div>
+
+                {/* Avatar for mine */}
+                {isMe && (
+                  <div className="flex-shrink-0 mr-2 self-end mb-1">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center border border-emerald-500/10" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))' }}>
+                      <span className="text-[10px] font-bold text-white/80">{getInitial(adminName)}</span>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             );
           })}
