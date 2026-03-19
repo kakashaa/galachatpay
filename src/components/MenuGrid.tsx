@@ -11,8 +11,16 @@ import { useBanCheck } from "@/hooks/use-ban-check";
 import { useElementSettings } from "@/hooks/use-element-settings";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
+
+const isEligibleForQuickSupport = (user: any): boolean => {
+  if (!user) return false;
+  const vipLevel = user.vip?.vip_level || user.vip?.level || 0;
+  const isHostAgent = (user.agency_id || 0) > 0;
+  const typeUser = user.type_user || 0;
+  const isAgentType = [2, 4, 5, 6].includes(typeUser);
+  return vipLevel >= 5 || isHostAgent || isAgentType;
+};
 
 interface MenuItem {
   icon: React.ElementType;
@@ -22,6 +30,7 @@ interface MenuItem {
   iconColor: string;
   guestAllowed?: boolean;
   banKey?: string;
+  isSpecial?: boolean;
 }
 
 const ELEMENT_LABELS: Record<string, string> = {
