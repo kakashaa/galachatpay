@@ -35,6 +35,7 @@ interface Props {
 }
 
 const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
   const [shifts, setShifts] = useState<ShiftInfo[]>([]);
   const [loading, setLoading] = useState(true);
