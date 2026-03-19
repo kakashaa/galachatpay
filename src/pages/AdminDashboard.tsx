@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 import { RefreshCw } from "lucide-react";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 import AdminNotificationListener from "@/components/AdminNotificationListener";
 import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime";
