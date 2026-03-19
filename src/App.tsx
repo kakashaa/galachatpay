@@ -60,6 +60,7 @@ const MyWaresRequests = lazy(() => import("./pages/MyWaresRequests"));
 const AdminComplaint = lazy(() => import("./pages/AdminComplaint"));
 const WorksPage = lazy(() => import("./pages/WorksPage"));
 const AdminProfilePage = lazy(() => import("./pages/AdminProfilePage"));
+const RoomBackgroundPage = lazy(() => import("./pages/RoomBackgroundPage"));
 
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
@@ -167,6 +168,7 @@ const App = () => {
                   <Route path="/admin-complaint" element={<AdminComplaint />} />
                   <Route path="/admin/works" element={<AdminWorksPage />} />
                   <Route path="/works" element={<WorksPage />} />
+                  <Route path="/room-background" element={<RoomBackgroundPage />} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/login/agent" element={<AgentLogin />} />
