@@ -208,6 +208,7 @@ const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
   if (totalItems === 0) return <p className="text-center py-10 text-muted-foreground text-sm">لا توجد عناصر محذوفة</p>;
 
   return (
+    <>
     <div className="space-y-6">
       {sections.filter(s => s.items.length > 0).map(section => (
         <div key={section.key} className="space-y-3">
