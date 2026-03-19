@@ -125,13 +125,19 @@ const FramesRequest: React.FC = () => {
       fetchStarBalance();
 
       // Step 3+4: Background - user doesn't wait
-      const ext = selectedFrame.file_url.split(".").pop()?.toLowerCase() || "mp4";
-      const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
+      // IMPORTANT: avoid duplicate uploads. The actual wares upload happens from admin approval only.
       const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
-      supabase.functions.invoke("wares-request", {
-        body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: "frame", image_type: imageType, file_url: selectedFrame.file_url, days: 30 },
-      }).catch(() => {});
-      // DISABLED: duplicate upload // supabase.functions.invoke("gala-actions?action=submit-request", {
+      const enableDirectWaresSubmit = false;
+
+      if (enableDirectWaresSubmit) {
+        const ext = selectedFrame.file_url.split(".").pop()?.toLowerCase() || "mp4";
+        const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
+        supabase.functions.invoke("wares-request", {
+          body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: "frame", image_type: imageType, file_url: selectedFrame.file_url, days: 30 },
+        }).catch(() => {});
+      }
+
+      supabase.functions.invoke("gala-actions?action=submit-request", {
         body: { user_uuid: user.uuid, user_name: user.name, request_type: "frame", details: { file_url: selectedFrame.file_url, title: selectedFrame.title, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null }, evidence_url: selectedFrame.file_url, image_url: selectedFrame.thumbnail_url || selectedFrame.file_url },
       }).catch(() => {});
     } catch (err: any) {
