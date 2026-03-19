@@ -109,7 +109,7 @@ export default function AdminChatPage() {
       if (timerRef.current) clearInterval(timerRef.current);
       const duration = recordingTime;
       setRecordingTime(0);
-      sendMessage(`🎤 رسالة صوتية (${duration}ث)`, 'voice');
+      sendMessage('رسالة صوتية', 'voice');
     } else {
       setRecording(true);
       setRecordingTime(0);
@@ -121,12 +121,12 @@ export default function AdminChatPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) sendMessage(`📷 صورة: ${file.name}`, 'image');
+    if (file) sendMessage(`صورة: ${file.name}`, 'image');
   };
 
   const handleCall = () => {
-    toast.info('🔊 جاري بدء المكالمة الصوتية...');
-    sendMessage('📞 بدأ مكالمة صوتية', 'call');
+    toast.info('جاري بدء المكالمة الصوتية...');
+    sendMessage('بدأ مكالمة صوتية', 'call');
   };
 
   const formatTime = (t: string) => {
