@@ -137,8 +137,8 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
       svgaFiles.push(file);
     }
 
-    if (hawaSkipped.length > 0) toast.info(`⏭️ تم تخطي ${hawaSkipped.length} ملف يحتوي "hawa"`);
-    if (dupSkipped > 0) toast.info(`⏭️ تم تخطي ${dupSkipped} ملف مكرر`);
+    if (hawaSkipped.length > 0) toast.info(`⏭ تم تخطي ${hawaSkipped.length} ملف يحتوي "hawa"`);
+    if (dupSkipped > 0) toast.info(`⏭ تم تخطي ${dupSkipped} ملف مكرر`);
 
     if (svgaFiles.length === 0) {
       toast.warning("لا توجد ملفات جديدة للرفع بعد الفلترة");

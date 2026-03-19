@@ -805,7 +805,7 @@ const SalaryWithdraw: React.FC = () => {
                 </h3>
                 <div className="space-y-2">
                   {SALARY_COUNTRIES.map(c => {
-                    const flag = COUNTRY_FLAGS[c.id] || "🏳️";
+                    const flag = COUNTRY_FLAGS[c.id] || "🏳";
                     const isOpen = selectedCountry === c.id;
                     return (
                       <div key={c.id}>

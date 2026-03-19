@@ -221,7 +221,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                   }}
                   className="w-full gold-gradient text-primary-foreground font-bold h-12"
                 >
-                  ✏️ تعديل وإعادة الإرسال
+                  ✏ تعديل وإعادة الإرسال
                 </Button>
               )}
             </div>

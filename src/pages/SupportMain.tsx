@@ -17,7 +17,7 @@ const TICKET_TYPES = [
   { id: "balance", label: "رصيد/شحن", emoji: "" },
   { id: "account", label: "حساب", emoji: "" },
   { id: "gifts", label: "هدايا", emoji: "" },
-  { id: "voice", label: "صوت/غرف", emoji: "🎙️" },
+  { id: "voice", label: "صوت/غرف", emoji: "🎙" },
   { id: "report", label: "بلاغ", emoji: "" },
   { id: "inquiry", label: "استفسار", emoji: "❓" },
 ];

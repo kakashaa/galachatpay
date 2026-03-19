@@ -305,7 +305,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
                       <p className="text-[10px] text-muted-foreground">الصلاحية</p>
                     </div>
                     <div className="bg-muted/20 rounded-lg p-2 text-center">
-                      <p className="text-sm font-bold">{admin.is_active ? "نشط" : "مجمّد ❄️"}</p>
+                      <p className="text-sm font-bold">{admin.is_active ? "نشط" : "مجمّد ❄"}</p>
                       <p className="text-[10px] text-muted-foreground">الحالة</p>
                     </div>
                   </div>

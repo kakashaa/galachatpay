@@ -23,7 +23,7 @@ const getTimeBasedGreeting = (userName: string, isVip: boolean, isGuest: boolean
   const hour = new Date().getHours();
   let timeGreeting = "", emoji = "";
   if (hour >= 5 && hour < 12) { timeGreeting = "صباح الخير"; emoji = "🌅"; }
-  else if (hour >= 12 && hour < 17) { timeGreeting = "ظهرك بألف خير"; emoji = "☀️"; }
+  else if (hour >= 12 && hour < 17) { timeGreeting = "ظهرك بألف خير"; emoji = "☀"; }
   else if (hour >= 17 && hour < 21) { timeGreeting = "مساء الخير"; emoji = "🌆"; }
   else { timeGreeting = "ليل الخير"; emoji = ""; }
   if (isGuest) return `${timeGreeting}! ${emoji}\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`;
@@ -193,10 +193,10 @@ const SupportChatEmbed: React.FC = () => {
         addBotMessage(`${issueLabel}\n\nوصّف المشكلة بالتفصيل`, [{ label: "← رجوع للخيارات", value: "tech_issue" }]);
         break;
       }
-      case "admin_talk": setWaitingFor("room_id"); addBotMessage("🎙️ اكتب رقم الغرفة اللي تبي الإداري يدخلها", [{ label: "← رجوع للخيارات", value: "main_menu" }]); break;
+      case "admin_talk": setWaitingFor("room_id"); addBotMessage("🎙 اكتب رقم الغرفة اللي تبي الإداري يدخلها", [{ label: "← رجوع للخيارات", value: "main_menu" }]); break;
       case "show_faq": {
         const faqText = FAQ_LIST.map((f, i) => `${i + 1}. ${f.question}`).join("\n");
-        addBotMessage(`📖 الأسئلة الشائعة:\n\n${faqText}\n\n✍️ اكتب رقم السؤال!`, [{ label: "القائمة الرئيسية", value: "main_menu" }]);
+        addBotMessage(`📖 الأسئلة الشائعة:\n\n${faqText}\n\n✍ اكتب رقم السؤال!`, [{ label: "القائمة الرئيسية", value: "main_menu" }]);
         break;
       }
       case "policy": addBotMessage("**سياسة التطبيق**\n\nفتح الوكالات: 3 داعمين + 10 مستخدمين، تارجت 500$ شهرياً\nالرواتب: $1 = 7,500 كونز (مستخدم) / 8,500 (وكيل شحن)\n📅 رفع الراتب: من 1 إلى 5 من الشهر\nخصم 20% عند عدم إكمال الأيام\nمكافأة الغرفة: أسبوعياً من LV1 (20K) إلى LV8 (750K)", [{ label: "شوف كل السياسات ←", value: "nav:/policy" }, { label: "القائمة الرئيسية", value: "main_menu" }]); break;

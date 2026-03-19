@@ -262,7 +262,7 @@ const BanCheckPage = () => {
 
                   {(result.summary?.total_bans ?? 0) > 0 && (result.summary?.active_bans ?? 0) === 0 && (
                     <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/20">
-                      <p className="text-xs text-accent">ℹ️ يوجد {result.summary.total_bans} حظر سابق منتهي الصلاحية</p>
+                      <p className="text-xs text-accent">ℹ يوجد {result.summary.total_bans} حظر سابق منتهي الصلاحية</p>
                     </div>
                   )}
                 </div>

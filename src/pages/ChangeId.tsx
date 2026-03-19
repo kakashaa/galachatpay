@@ -206,7 +206,7 @@ const ChangeId: React.FC = () => {
      if (alreadyChanged.changed) {
        const next = getNextMilestone(maxLevel);
        setStatus("error");
-       setErrorMsg(next ? `⏸️ تغيير الـ ID متاح مرة واحدة فقط لكل 10 مستويات. الفل الحالي: ${maxLevel} • الفل المطلوب: ${next}` : "وصلت لأعلى مستوى، لا يمكن تغيير الـ ID.");
+       setErrorMsg(next ? `⏸ تغيير الـ ID متاح مرة واحدة فقط لكل 10 مستويات. الفل الحالي: ${maxLevel} • الفل المطلوب: ${next}` : "وصلت لأعلى مستوى، لا يمكن تغيير الـ ID.");
        return;
      }
      if (maxLevel < 20) { 
