@@ -51,7 +51,7 @@ const QuickSupport: React.FC = () => {
   const [description, setDescription] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting] = useState(false);
 
   // New support session state
   const [sessionId, setSessionId] = useState<string | null>(null);
