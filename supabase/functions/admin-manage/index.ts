@@ -503,10 +503,16 @@ Deno.serve(async (req) => {
       case "list_hair_selections": {
         const { data: hairs, error } = await supabase
           .from("hair_selections")
-          .select("*")
+          .select("*, hairs(title, file_url, thumbnail_url)")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        result = hairs;
+        // Flatten joined hair data onto each selection
+        result = (hairs || []).map((s: any) => ({
+          ...s,
+          title: s.hairs?.title || s.title || "",
+          file_url: s.hairs?.file_url || s.file_url || "",
+          thumbnail_url: s.hairs?.thumbnail_url || s.thumbnail_url || null,
+        }));
         break;
       }
 

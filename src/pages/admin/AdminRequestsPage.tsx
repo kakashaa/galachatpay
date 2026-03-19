@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import {
   Loader2, Sparkles, Frame, Scissors, Camera, Gift,
   CheckCircle, XCircle, Clock, Copy, Hash, Send, User,
-  Calendar, ExternalLink, Play
+  Calendar, ExternalLink, Play, Eye, Timer
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import SvgaPlayer from "@/components/SvgaPlayer";
@@ -40,6 +41,7 @@ const AdminRequestsPage: React.FC = () => {
   const [pendingCounts, setPendingCounts] = useState<PendingCounts>({ entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0 });
   const [shakenTab, setShakenTab] = useState<ReqTab | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const [previewItem, setPreviewItem] = useState<any | null>(null);
 
   useEffect(() => { loadAllCounts(); }, []);
   useEffect(() => { loadData(); }, [activeTab]);
@@ -530,8 +532,76 @@ const AdminRequestsPage: React.FC = () => {
                       <span className="text-xs font-bold text-muted-foreground">السابقة</span>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 gap-3">
-                    {otherItems.slice(0, 20).map((item, i) => renderVisualCard(item, i + pendingItems.length))}
+                  <div className="space-y-2">
+                    {otherItems.slice(0, 20).map((item, i) => {
+                      const isApproved = item.status === "approved";
+                      const isRejected = item.status === "rejected";
+                      const statusColor = isApproved ? "hsl(160 84% 39%)" : "hsl(350 89% 55%)";
+                      const statusLabel = isApproved ? "مقبول ✅" : "مرفوض ❌";
+                      const previewUrl = getPreviewUrl(item);
+
+                      return (
+                        <motion.div key={item.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          className="rounded-xl overflow-hidden"
+                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                        >
+                          {/* Compact status header */}
+                          <div className="px-3 py-1.5 flex items-center justify-between"
+                            style={{ background: isApproved ? 'rgba(16,185,129,0.08)' : 'rgba(244,63,94,0.08)' }}>
+                            <span className="text-[9px] font-bold" style={{ color: statusColor }}>
+                              {statusLabel}
+                            </span>
+                            <span className="text-[8px] text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-2.5 h-2.5" />
+                              {new Date(item.created_at).toLocaleDateString("ar-SA")}
+                            </span>
+                          </div>
+
+                          {/* Compact info */}
+                          <div className="px-3 py-2 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] font-bold text-foreground truncate flex-1">{item.title || item.user_name || "—"}</p>
+                              {item.duration_days && (
+                                <span className="text-[8px] text-muted-foreground flex items-center gap-0.5 mr-2">
+                                  <Timer className="w-2.5 h-2.5" /> {item.duration_days} يوم
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[8px] text-muted-foreground">
+                              {item.user_uuid && (
+                                <span className="flex items-center gap-0.5">
+                                  <Hash className="w-2.5 h-2.5" />
+                                  <span className="font-mono">{item.user_uuid}</span>
+                                  <button onClick={() => copyToClipboard(item.user_uuid)} className="p-0.5 rounded hover:bg-white/10">
+                                    <Copy className="w-2 h-2" />
+                                  </button>
+                                </span>
+                              )}
+                              {item.friend_uuid && (
+                                <span className="flex items-center gap-0.5" style={{ color: 'hsl(330 80% 60%)' }}>
+                                  <Send className="w-2.5 h-2.5" /> {item.friend_uuid}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* View button */}
+                            {previewUrl && (
+                              <button
+                                onClick={() => setPreviewItem(item)}
+                                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-bold transition-all active:scale-[0.98]"
+                                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', color: 'hsl(217 91% 60%)' }}
+                              >
+                                <Eye className="w-3 h-3" /> اضغط للعرض
+                              </button>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -539,6 +609,35 @@ const AdminRequestsPage: React.FC = () => {
           </AnimatePresence>
         )}
       </div>
+
+      {/* Preview Dialog for approved/rejected items */}
+      <Dialog open={!!previewItem} onOpenChange={() => setPreviewItem(null)}>
+        <DialogContent className="max-w-sm p-0 bg-background border-0 rounded-2xl overflow-hidden [&>button]:hidden">
+          <DialogHeader className="p-3 pb-0">
+            <DialogTitle className="text-sm text-center font-bold">{previewItem?.title || "عرض الملف"}</DialogTitle>
+          </DialogHeader>
+          {previewItem && (
+            <div className="space-y-3 p-3">
+              <div className="w-full aspect-square rounded-xl overflow-hidden bg-black/50 flex items-center justify-center">
+                {renderMediaPreview(previewItem, "full")}
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
+                {previewItem.user_uuid && (
+                  <span className="flex items-center gap-1 font-mono">
+                    <Hash className="w-3 h-3" /> {previewItem.user_uuid}
+                  </span>
+                )}
+                <span>{new Date(previewItem.created_at).toLocaleDateString("ar-SA")}</span>
+              </div>
+              <button onClick={() => setPreviewItem(null)}
+                className="w-full py-2.5 rounded-xl text-xs font-bold text-foreground"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                إغلاق
+              </button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminPageLayout>
   );
 };
