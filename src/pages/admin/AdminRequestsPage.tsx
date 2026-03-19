@@ -121,26 +121,60 @@ const AdminRequestsPage: React.FC = () => {
         if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
 
       } else if (type === "entries" || type === "frames") {
-        // Use wares-api.php: submit-request → approve (single upload + assigns to user)
+        // Use wares-api.php only: submit-request → approve (single upload + assign UUID)
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
-        const targetUuid = item.friend_uuid || item.user_uuid;
-        // Use the item's ware_type directly to match what was originally submitted
-        const wareType = item.ware_type || (type === "frames" ? "frame" : "entry_profile");
-        const imageType = fileUrl.toLowerCase().endsWith(".svga") ? "svga" : "mp4";
 
-        // 1. Check for existing pending request on wares-api
+        const targetUuid = item.friend_uuid || item.user_uuid;
+        const wareType = item.ware_type || (type === "frames" ? "frame" : "entry_profile");
+
+        const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
+        const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
+
+        const toTimestamp = (value: unknown): number | null => {
+          if (!value) return null;
+          const text = String(value).trim();
+          if (!text) return null;
+          const isoLike = text.includes("T") ? text : text.replace(" ", "T") + "Z";
+          const ts = Date.parse(isoLike);
+          if (!Number.isNaN(ts)) return ts;
+          const fallbackTs = Date.parse(text);
+          return Number.isNaN(fallbackTs) ? null : fallbackTs;
+        };
+
+        // 1) Try to reuse pending request created for this claim (legacy flow)
         let pendingReqId: string | null = null;
         try {
-          const myReqs = await fetch(`${WARES_API}?key=${WARES_KEY}&action=my-requests&uuid=${targetUuid}`).then(r => r.json());
-          // Match by ware_type OR by file_url to catch any naming differences
-          const pendingReq = myReqs.data?.requests?.find((r: any) =>
-            r.status === 'pending' && (r.ware_type === wareType || r.file_url === fileUrl)
-          );
-          if (pendingReq) pendingReqId = pendingReq.id;
-        } catch { /* continue to submit */ }
+          const myReqs = await fetch(`${WARES_API}?key=${WARES_KEY}&action=my-requests&uuid=${encodeURIComponent(targetUuid)}`).then(r => r.json());
+          const requestList = Array.isArray(myReqs?.data?.requests)
+            ? myReqs.data.requests
+            : Array.isArray(myReqs?.requests)
+              ? myReqs.requests
+              : [];
 
-        // 2. If no pending request found, submit one
+          const claimTs = toTimestamp(item.created_at);
+          const candidates = requestList.filter((r: any) => {
+            if (String(r?.status || "").toLowerCase() !== "pending") return false;
+            if (r?.ware_type !== wareType) return false;
+            if (!claimTs) return false;
+            const reqTs = toTimestamp(r?.created_at);
+            if (!reqTs) return false;
+            return Math.abs(reqTs - claimTs) <= 12 * 60 * 1000;
+          });
+
+          if (candidates.length > 0) {
+            candidates.sort((a: any, b: any) => {
+              const aTs = toTimestamp(a?.created_at) ?? 0;
+              const bTs = toTimestamp(b?.created_at) ?? 0;
+              return bTs - aTs;
+            });
+            pendingReqId = String(candidates[0].id);
+          }
+        } catch {
+          // Continue with submit-request fallback
+        }
+
+        // 2) If we didn't find a matching pending request, create exactly one then approve it
         if (!pendingReqId) {
           const submitRes = await fetch(WARES_API, {
             method: "POST",
@@ -156,8 +190,9 @@ const AdminRequestsPage: React.FC = () => {
               days: String(item.duration_days || 30),
             }),
           }).then(r => r.json());
+
           if (submitRes.ok && submitRes.data?.request_id) {
-            pendingReqId = submitRes.data.request_id;
+            pendingReqId = String(submitRes.data.request_id);
           } else {
             toast.warning("تم القبول — لكن إنشاء الطلب فشل.");
             console.error("Submit-request failed:", submitRes);
@@ -165,8 +200,8 @@ const AdminRequestsPage: React.FC = () => {
           }
         }
 
-        // 3. Approve — single upload + assign to user UUID
-        const approveRes = await fetch(`${WARES_API}?key=${WARES_KEY}&action=approve&id=${pendingReqId}`).then(r => r.json());
+        // 3) Approve: this is the only upload point on wares-api
+        const approveRes = await fetch(`${WARES_API}?key=${WARES_KEY}&action=approve&id=${encodeURIComponent(pendingReqId)}&ware_type=${encodeURIComponent(wareType)}`).then(r => r.json());
         if (approveRes.ok) {
           toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف ✅`);
         } else {
