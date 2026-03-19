@@ -490,8 +490,6 @@ const HairSelectionsPanel: React.FC<{ hairs: HairItem[]; readOnly?: boolean }> =
         </div>
       )}
     </div>
-    {ConfirmDialog}
-    </>
   );
 };
 
