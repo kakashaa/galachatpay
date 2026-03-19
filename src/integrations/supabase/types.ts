@@ -2010,6 +2010,33 @@ export type Database = {
         }
         Relationships: []
       }
+      works_abuse_log: {
+        Row: {
+          action: string
+          attempt_number: number | null
+          created_at: string | null
+          id: string
+          reason: string | null
+          user_uuid: string
+        }
+        Insert: {
+          action: string
+          attempt_number?: number | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          user_uuid: string
+        }
+        Update: {
+          action?: string
+          attempt_number?: number | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       works_accounts: {
         Row: {
           agent_commission_pct: number | null
@@ -2058,6 +2085,36 @@ export type Database = {
           user_name?: string | null
           user_uuid?: string
           works_code?: string
+        }
+        Relationships: []
+      }
+      works_ban_requests: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          id: string
+          reason: string | null
+          reviewed_by: string | null
+          status: string | null
+          user_uuid: string
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_uuid: string
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          user_uuid?: string
         }
         Relationships: []
       }
