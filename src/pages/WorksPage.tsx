@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2 } from "lucide-react";
+import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -17,11 +17,13 @@ interface MemberWithSalary {
   total_commission_usd: number | null;
   status: string | null;
   works_id: string | null;
-  // Live salary data
   monthly_charges?: number;
   agency_salary?: number;
   commission?: number;
 }
+
+const WARN_THRESHOLD = 3;
+const BAN_THRESHOLD = 5;
 
 const WorksPage: React.FC = () => {
   const navigate = useNavigate();
@@ -54,9 +56,78 @@ const WorksPage: React.FC = () => {
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
   const [isBanned, setIsBanned] = useState(false);
 
-  const WARN_THRESHOLD = 3;
-  const BAN_THRESHOLD = 5;
+  const userLevel = user?.level?.charger_level || 0;
 
+  // Anti-abuse: handle failed attempt
+  const handleFailedAttempt = useCallback(async (reason: string) => {
+    if (!user?.uuid) return;
+
+    // Get attempts in last 24h
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: attempts } = await supabase
+      .from("works_abuse_log")
+      .select("id")
+      .eq("user_uuid", user.uuid)
+      .gte("created_at", since);
+
+    const count = (attempts?.length || 0) + 1;
+
+    // Log attempt
+    await supabase.from("works_abuse_log").insert({
+      user_uuid: user.uuid,
+      action: "add_member_failed",
+      reason,
+      attempt_number: count,
+    } as any);
+
+    if (count >= BAN_THRESHOLD) {
+      // Submit ban request for owner review
+      await supabase.from("works_ban_requests").insert({
+        user_uuid: user.uuid,
+        reason: `محاولة إضافة أعضاء غير مؤهلين ${count} مرات خلال 24 ساعة`,
+        attempts: count,
+        status: "pending",
+      } as any);
+
+      setIsBanned(true);
+      setModal({
+        type: "error",
+        message: `⛔ تم إيقاف حسابك مؤقتاً\n\nحاولت إضافة أعضاء غير مؤهلين ${count} مرات.\nتم إرسال طلب حظر للإدارة.\n\nالسبب: ${reason}`,
+        vibrate: true,
+      });
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+
+    } else if (count >= WARN_THRESHOLD) {
+      setModal({
+        type: "error",
+        message: `⚠️ تحذير أخير!\n\nحاولت ${count} مرات إضافة أعضاء غير مؤهلين.\nمحاولة أخرى وسيتم حظرك!\n\nالسبب: ${reason}`,
+        vibrate: true,
+      });
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+
+    } else {
+      setModal({
+        type: "error",
+        message: `❌ فشلت الإضافة\n\n${reason}\n\n⚠️ تحذير ${count}/5 — بعد 5 محاولات سيتم حظرك`,
+      });
+    }
+  }, [user?.uuid]);
+
+  // Check if user is banned
+  const checkBanStatus = useCallback(async () => {
+    if (!user?.uuid) return false;
+    const { data: ban } = await supabase
+      .from("works_ban_requests")
+      .select("id")
+      .eq("user_uuid", user.uuid)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (ban) {
+      setIsBanned(true);
+      return true;
+    }
+    return false;
+  }, [user?.uuid]);
 
   // Auto-fetch salary data for all members
   const fetchSalaryData = useCallback(async (worksId: string, membersList: MemberWithSalary[]) => {
@@ -101,6 +172,10 @@ const WorksPage: React.FC = () => {
     if (!user?.uuid) return;
     setLoading(true);
     try {
+      // Check ban status first
+      const banned = await checkBanStatus();
+      if (banned) { setLoading(false); return; }
+
       const { data: works } = await supabase
         .from("works_accounts").select("*")
         .eq("user_uuid", user.uuid).eq("status", "active").maybeSingle();
@@ -145,7 +220,7 @@ const WorksPage: React.FC = () => {
       }
     } catch { /* silent */ }
     setLoading(false);
-  }, [user?.uuid, fetchSalaryData]);
+  }, [user?.uuid, fetchSalaryData, checkBanStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -226,7 +301,6 @@ const WorksPage: React.FC = () => {
       return { ok: false, reason: `هذه الوكالة مسجّلة بفريق بيدي آخر` };
     }
 
-    // Run same validations on agency owner
     const memberCheck = await validateSupporter(ownerUuid);
     if (!memberCheck.ok) {
       return { ok: false, reason: `صاحب الوكالة (${ownerUuid}):\n${memberCheck.reason}` };
@@ -236,7 +310,7 @@ const WorksPage: React.FC = () => {
   };
 
   const sendInvitation = async () => {
-    if (!memberInput.trim() || !myWorks || sending) return;
+    if (!memberInput.trim() || !myWorks || sending || isBanned) return;
     setSending(true);
     setModal({ type: "loading", message: memberType === "agent" ? "جاري التحقق من الوكالة..." : "جاري التحقق من المستخدم..." });
 
@@ -244,12 +318,11 @@ const WorksPage: React.FC = () => {
       if (memberType === "supporter") {
         const result = await validateSupporter(memberInput.trim());
         if (!result.ok) {
-          setModal({ type: "error", message: result.reason! });
+          await handleFailedAttempt(result.reason!);
           setSending(false);
           return;
         }
 
-        // Check not already in this team
         const { data: alreadyInTeam } = await supabase
           .from("works_members").select("id")
           .eq("works_id", myWorks.id).eq("member_uuid", memberInput.trim()).maybeSingle();
@@ -270,15 +343,13 @@ const WorksPage: React.FC = () => {
           type: "works_invitation", is_read: false,
         } as any);
       } else {
-        // Agent — use agency code
         const result = await validateAgent(memberInput.trim());
         if (!result.ok) {
-          setModal({ type: "error", message: result.reason! });
+          await handleFailedAttempt(result.reason!);
           setSending(false);
           return;
         }
 
-        // Check not already in this team
         const { data: alreadyInTeam } = await supabase
           .from("works_members").select("id")
           .eq("works_id", myWorks.id).eq("member_uuid", result.uuid!).maybeSingle();
@@ -348,6 +419,23 @@ const WorksPage: React.FC = () => {
     </div>
   );
 
+  // Banned state
+  if (isBanned) return (
+    <div className="min-h-screen bg-background flex flex-col" dir="rtl">
+      <div className="flex items-center gap-3 p-4 border-b border-border">
+        <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
+        <h1 className="text-lg font-bold">البيدي</h1>
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center space-y-4">
+        <ShieldAlert className="w-16 h-16 text-destructive" />
+        <p className="text-lg font-bold text-destructive">تم إيقاف حسابك مؤقتاً</p>
+        <p className="text-sm text-muted-foreground">تم رصد محاولات متكررة لإضافة أعضاء غير مؤهلين.</p>
+        <p className="text-xs text-muted-foreground">طلب الحظر بانتظار مراجعة الإدارة.</p>
+      </div>
+      <BottomNav />
+    </div>
+  );
+
   // State 1: Level < 10
   if (userLevel < 10 && !myWorks) return (
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
@@ -387,7 +475,7 @@ const WorksPage: React.FC = () => {
           </button>
         )}
       </div>
-      {modal && <StatusModal type={modal.type} message={modal.message} onClose={() => setModal(null)} />}
+      {modal && <StatusModal type={modal.type} message={modal.message} vibrate={modal.vibrate} onClose={() => setModal(null)} />}
       <BottomNav />
     </div>
   );
@@ -516,7 +604,6 @@ const WorksPage: React.FC = () => {
             </div>
           ) : (
             <div className="p-4 space-y-3" dir="rtl">
-              {/* Toggle type first */}
               <div className="flex gap-2">
                 <button onClick={() => { setMemberType("supporter"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "supporter" ? "bg-pink-500/20 text-pink-400 border border-pink-500/20" : "bg-muted text-muted-foreground"}`}>
@@ -565,7 +652,7 @@ const WorksPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {modal && <StatusModal type={modal.type} message={modal.message} onClose={() => setModal(null)} />}
+      {modal && <StatusModal type={modal.type} message={modal.message} vibrate={modal.vibrate} onClose={() => setModal(null)} />}
       <BottomNav />
     </div>
   );
