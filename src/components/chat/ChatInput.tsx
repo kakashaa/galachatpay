@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Send, Paperclip, Mic, Image, Video, X, Play, Pause, StopCircle } from "lucide-react";
+import { Send, Paperclip, Mic, Image, Video, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
