@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Ban, Unlock, Loader2, ShieldBan, Shield, Image, Play, ExternalLink } from "lucide-react";
+import { Ban, Unlock, Loader2, ShieldBan, Shield, Image as ImageIcon, Play, ExternalLink, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 
@@ -14,9 +15,11 @@ const AdminBanPage: React.FC = () => {
   const [blockedAccounts, setBlockedAccounts] = useState<any[]>([]);
   const [banReports, setBanReports] = useState<any[]>([]);
   const [subTab, setSubTab] = useState<"ban" | "reports" | "list">("ban");
-  const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] as string[] });
+  const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "promo", custom_reason: "", banned_elements: [] as string[], ban_scope: "normal" as "normal" | "device" });
   const [banLoading, setBanLoading] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [banImage, setBanImage] = useState<File | null>(null);
+  const banFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadData(); }, [subTab]);
 
@@ -34,23 +37,54 @@ const AdminBanPage: React.FC = () => {
 
   const executeBan = async () => {
     if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
+    const reason = banForm.reason === 'other' ? banForm.custom_reason : banForm.reason;
+    if (!reason.trim()) { toast.error("أدخل السبب"); return; }
+    if (!confirm('هل أنت متأكد من تنفيذ الحظر؟')) return;
+
     setBanLoading(true);
     const t = toast.loading("جاري تنفيذ الحظر...");
     try {
-      const durationHours = parseInt(banForm.duration_hours) || 24;
-      await adminCall("manual_ban_user", { target_uuid: banForm.target_uuid.trim(), ban_type: banForm.ban_type, duration_hours: durationHours, reason: banForm.reason.trim(), banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null });
+      const effectiveBanScope = banForm.reason === 'promo' ? 'device' : banForm.ban_scope;
+      const durationHours = banForm.reason === 'promo' ? 999999 : (parseInt(banForm.duration_hours) || 24);
+
+      await adminCall("manual_ban_user", {
+        target_uuid: banForm.target_uuid.trim(),
+        ban_type: banForm.ban_type,
+        duration_hours: durationHours,
+        reason: reason.trim(),
+        banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null,
+      });
+
+      // Execute real ban on external server
+      try {
+        await fetch(
+          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${banForm.target_uuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${durationHours}&ban_type=${effectiveBanScope}`
+        );
+      } catch (e) { console.error("Real ban failed:", e); }
+
       const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
       await sendUserNotification(
         banForm.target_uuid.trim(),
         "تم تعليق حسابك ⚠️",
-        `تم تعليق حسابك بسبب: ${banForm.reason || "مخالفة"}. المدة: ${durationText}.`
+        `تم تعليق حسابك بسبب: ${reason || "مخالفة"}. المدة: ${durationText}.`
       );
       toast.dismiss(t);
       toast.success("تم حظر المستخدم بنجاح");
-      setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "", banned_elements: [] });
+      setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "promo", custom_reason: "", banned_elements: [], ban_scope: "normal" });
+      setBanImage(null);
       loadData();
     } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الحظر"); }
     finally { setBanLoading(false); }
+  };
+
+  const handleUnban = async () => {
+    if (!banForm.target_uuid.trim()) { toast.error('أدخل UUID'); return; }
+    const t = toast.loading("جاري فك الحظر...");
+    try {
+      await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banForm.target_uuid.trim()}`);
+      toast.dismiss(t);
+      toast.success("تم فك الحظر!");
+    } catch { toast.dismiss(t); toast.error("فشل فك الحظر"); }
   };
 
   const ELEMENT_OPTIONS = [
