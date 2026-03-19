@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ interface Props {
 }
 
 const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
   const [shifts, setShifts] = useState<ShiftInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -151,7 +153,8 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
 
   const handleDelete = async (admin: AdminAccount) => {
     if (admin.role === "owner") { toast.error("لا يمكن حذف حساب المالك"); return; }
-    if (!confirm(`هل تريد حذف حساب ${admin.display_name}؟`)) return;
+    const ok = await confirm({ title: "حذف حساب", message: `هل تريد حذف حساب ${admin.display_name}؟`, danger: true, confirmText: "حذف" });
+    if (!ok) return;
     try {
       const { error } = await supabase.from("admin_accounts").delete().eq("id", admin.id);
       if (error) throw error;
@@ -191,6 +194,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
   }
 
   return (
+    <>
     <div className="space-y-4">
       <Button onClick={() => setShowAdd(!showAdd)} className="w-full" variant={showAdd ? "outline" : "default"}>
         {showAdd ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><UserPlus className="w-4 h-4 ml-2" />إضافة أدمن جديد</>}
@@ -350,6 +354,8 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
         );
       })}
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 

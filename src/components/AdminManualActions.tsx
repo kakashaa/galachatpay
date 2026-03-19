@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import { useConfirmModal } from '@/hooks/use-confirm-modal';
 
 const API = "https://galachat.site/project-z/api.php";
 const ADMIN_KEY = "ghala2026owner";
@@ -14,6 +15,7 @@ interface Props {
 }
 
 const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [activeAction, setActiveAction] = useState<'vip' | 'change_id' | 'ban' | 'user_search' | 'action_log' | null>(null);
 
   // VIP
@@ -162,6 +164,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
 
   if (!activeAction) {
     return (
+      <>
       <div className="grid grid-cols-2 gap-3" dir="rtl">
         {actions.map((a, i) => (
           <motion.button
@@ -177,12 +180,15 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           </motion.button>
         ))}
       </div>
+      {ConfirmDialog}
+      </>
     );
   }
 
   const selectClass = "w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground";
 
   return (
+    <>
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4" dir="rtl">
       <button onClick={() => setActiveAction(null)} className="text-xs text-primary font-bold flex items-center gap-1">
         ← رجوع للأدوات
@@ -341,11 +347,12 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
 
           {/* 6 & 7. أزرار التنفيذ وفك الحظر */}
           <div className="flex gap-2">
-            <Button variant="destructive" className="flex-1" onClick={() => {
+            <Button variant="destructive" className="flex-1" onClick={async () => {
               if (!banUuid.trim()) { toast.error('أدخل UUID'); return; }
               const reason = banReason === 'other' ? banCustomReason : banReason;
               if (!reason.trim()) { toast.error('أدخل السبب'); return; }
-              if (confirm('هل أنت متأكد من تنفيذ الحظر؟')) handleBan();
+              const ok = await confirm({ title: "تأكيد الحظر", message: `حظر UUID ${banUuid}؟`, danger: true, confirmText: "تنفيذ الحظر" });
+              if (ok) handleBan();
             }} disabled={banLoading}>
               {banLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <ShieldBan className="w-4 h-4 ml-2" />}
               تنفيذ الحظر
@@ -355,6 +362,8 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
               className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
               onClick={async () => {
                 if (!banUuid.trim()) { toast.error('أدخل UUID'); return; }
+                const ok = await confirm({ title: "تأكيد فك الحظر", message: `فك الحظر عن UUID ${banUuid}؟`, danger: false, confirmText: "فك الحظر" });
+                if (!ok) return;
                 try {
                   await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banUuid.trim()}`);
                   toast.success('تم فك الحظر!');
@@ -461,6 +470,8 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
         </div>
       )}
     </motion.div>
+    {ConfirmDialog}
+    </>
   );
 };
 

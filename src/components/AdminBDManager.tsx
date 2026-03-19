@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ interface AdminBDManagerProps {
 }
 
 const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [subTab, setSubTab] = useState<SubTab>("registrations");
   const [loading, setLoading] = useState(false);
 
@@ -171,7 +173,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   };
 
   const deleteBd = async (bdUuid: string) => {
-    if (!confirm("هل تريد حذف هذا البيدي وجميع أعضائه؟")) return;
+    const ok = await confirm({ title: "حذف البيدي", message: "هل تريد حذف هذا البيدي وجميع أعضائه؟", danger: true, confirmText: "حذف" });
+    if (!ok) return;
     try {
       await bdCall("admin_delete_bd", { bd_uuid: bdUuid });
       toast.success("تم الحذف");
@@ -180,7 +183,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   };
 
   const restoreBd = async (bdUuid: string) => {
-    if (!confirm("هل تريد استعادة هذا البيدي وجميع أعضائه؟")) return;
+    const ok = await confirm({ title: "استعادة البيدي", message: "هل تريد استعادة هذا البيدي وجميع أعضائه؟", danger: false, confirmText: "استعادة" });
+    if (!ok) return;
     try {
       await bdCall("admin_restore_bd", { bd_uuid: bdUuid });
       toast.success("تم استعادة البيدي بنجاح");
@@ -300,6 +304,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   const bannedCount = bannedBds.length;
 
   return (
+    <>
     <div className="space-y-4">
       {/* Sub tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -1126,7 +1131,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
 
                     <Button
                       onClick={async () => {
-                        if (!confirm("هل تريد فك الحظر عن هذا البيدي؟")) return;
+                        if (!(await confirm({ title: "فك الحظر", message: "هل تريد فك الحظر عن هذا البيدي؟", danger: false, confirmText: "فك الحظر" }))) return;
                         try {
                           await supabase
                             .from("bd_commission_settings")
@@ -1283,6 +1288,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
         </>
       )}
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 

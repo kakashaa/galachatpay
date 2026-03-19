@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Ban, Unlock, Loader2, ShieldBan, Shield, Image as LucideImage, Play, ExternalLink, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 const AdminBanPage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
@@ -33,11 +34,14 @@ const AdminBanPage: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
   const executeBan = async () => {
     if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
     const reason = banForm.reason === 'other' ? banForm.custom_reason : banForm.reason;
     if (!reason.trim()) { toast.error("أدخل السبب"); return; }
-    if (!confirm('هل أنت متأكد من تنفيذ الحظر؟')) return;
+    const ok = await confirm({ title: "تأكيد الحظر", message: `هل أنت متأكد من حظر UUID ${banForm.target_uuid}؟`, danger: true, confirmText: "تنفيذ الحظر" });
+    if (!ok) return;
 
     setBanLoading(true);
     const t = toast.loading("جاري تنفيذ الحظر...");
@@ -77,6 +81,8 @@ const AdminBanPage: React.FC = () => {
 
   const handleUnban = async () => {
     if (!banForm.target_uuid.trim()) { toast.error('أدخل UUID'); return; }
+    const ok = await confirm({ title: "تأكيد فك الحظر", message: `هل تريد فك الحظر عن UUID ${banForm.target_uuid}؟`, danger: false, confirmText: "فك الحظر" });
+    if (!ok) return;
     const t = toast.loading("جاري فك الحظر...");
     try {
       await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banForm.target_uuid.trim()}`);
@@ -97,6 +103,7 @@ const AdminBanPage: React.FC = () => {
   const glassCard = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.3)' };
 
   return (
+    <>
     <AdminPageLayout title="إدارة الحظر" accentColor="hsl(350 89% 60%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
         {/* Tabs */}
@@ -383,6 +390,8 @@ const AdminBanPage: React.FC = () => {
         </AnimatePresence>
       </div>
     </AdminPageLayout>
+    {ConfirmDialog}
+    </>
   );
 };
 

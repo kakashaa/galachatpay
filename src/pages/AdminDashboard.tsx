@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 import { RefreshCw } from "lucide-react";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 import AdminNotificationListener from "@/components/AdminNotificationListener";
 import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime";
@@ -189,7 +190,11 @@ const AdminDashboardPage: React.FC = () => {
   useSupportTicketsRealtime(() => loadStats());
   useSupportChatSessionsRealtime(() => loadStats());
 
-  const handleLogout = () => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
+  const handleLogout = async () => {
+    const ok = await confirm({ title: "تسجيل الخروج", message: "هل تريد تسجيل الخروج من لوحة الإدارة؟", danger: true, confirmText: "خروج" });
+    if (!ok) return;
     ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
     ].forEach(k => localStorage.removeItem(k));
@@ -199,6 +204,7 @@ const AdminDashboardPage: React.FC = () => {
   if (!adminSessionToken) return null;
 
   return (
+    <>
     <div
       ref={scrollContainerRef}
       className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative admin-theme"
@@ -321,6 +327,8 @@ const AdminDashboardPage: React.FC = () => {
         chatBadge={badgeData.supportOpen + badgeData.chatWaiting}
       />
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 

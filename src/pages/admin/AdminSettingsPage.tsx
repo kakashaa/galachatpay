@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminModeratorManager from "@/components/AdminModeratorManager";
@@ -16,6 +17,7 @@ type SubPage = null | "videos" | "banners" | "elements" | "stars" | "moderators"
 
 const AdminSettingsPage: React.FC = () => {
   const { handleLogout, adminCall, adminSessionToken, adminUsername, uploadFile } = useAdminSession();
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [activeSub, setActiveSub] = useState<SubPage>(null);
 
   const sections = [
@@ -186,6 +188,7 @@ const StarsSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
 
 /* ─── Trash Sub-page ─── */
 const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
+  const { confirm: confirmDelete, ConfirmDialog: TrashConfirmDialog } = useConfirmModal();
   const [data, setData] = useState<{ videos: any[]; entries: any[]; frames: any[]; customs: any[] }>({ videos: [], entries: [], frames: [], customs: [] });
   const [loading, setLoading] = useState(true);
 
@@ -205,6 +208,7 @@ const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
   if (totalItems === 0) return <p className="text-center py-10 text-muted-foreground text-sm">لا توجد عناصر محذوفة</p>;
 
   return (
+    <>
     <div className="space-y-6">
       {sections.filter(s => s.items.length > 0).map(section => (
         <div key={section.key} className="space-y-3">
@@ -224,7 +228,7 @@ const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
                   <CheckCircle className="w-4 h-4 ml-1" />استعادة
                 </Button>
                 <Button size="sm" variant="destructive" className="flex-1"
-                  onClick={async () => { if (!confirm("حذف نهائي؟")) return; try { await adminCall("permanent_delete", { table: section.table, id: item.id }); toast.success("تم"); load(); } catch { toast.error("فشل"); } }}>
+                  onClick={async () => { const ok = await confirmDelete({ title: "حذف نهائي", message: "هل أنت متأكد من الحذف النهائي؟ لا يمكن التراجع.", danger: true, confirmText: "حذف نهائي" }); if (!ok) return; try { await adminCall("permanent_delete", { table: section.table, id: item.id }); toast.success("تم"); load(); } catch { toast.error("فشل"); } }}>
                   <Trash2 className="w-4 h-4 ml-1" />حذف نهائي
                 </Button>
               </div>
@@ -233,6 +237,8 @@ const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
         </div>
       ))}
     </div>
+    {TrashConfirmDialog}
+    </>
   );
 };
 

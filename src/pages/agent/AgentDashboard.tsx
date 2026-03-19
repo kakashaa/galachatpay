@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, Wallet, TrendingUp, Hash, Clock, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import AgentBottomNav from "@/components/AgentBottomNav";
 import { BANK_LABELS } from "@/lib/constants";
 
@@ -35,6 +36,7 @@ interface DashboardData {
 
 const AgentDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const { token, agentName, logout } = useAgentAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,7 @@ const AgentDashboard: React.FC = () => {
       <div className="mobile-container text-foreground pb-32 overflow-y-auto bg-background">
         {/* Header */}
         <header className="flex justify-between items-center px-4 pt-6 pb-3">
-          <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10">
+          <button onClick={async () => { const ok = await confirm({ title: "تسجيل الخروج", message: "هل تريد الخروج من حساب الوكيل؟", danger: true, confirmText: "خروج" }); if (ok) logout(); }} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10">
             <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           <div className="text-center">
@@ -254,6 +256,7 @@ const AgentDashboard: React.FC = () => {
         </main>
       </div>
       <AgentBottomNav />
+      {ConfirmDialog}
     </>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ interface AdminTopAgentsProps {
 }
 
 const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [agents, setAgents] = useState<AgentOverride[]>([]);
   const [usageMap, setUsageMap] = useState<Record<string, AgentUsage>>({});
   const [loading, setLoading] = useState(true);
@@ -125,7 +127,8 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
   };
 
   const handleDelete = async (agent: AgentOverride) => {
-    if (!confirm(`حذف الوكيل ${agent.agent_name}؟`)) return;
+    const ok = await confirm({ title: "حذف وكيل", message: `حذف الوكيل ${agent.agent_name}؟`, danger: true, confirmText: "حذف" });
+    if (!ok) return;
     const { error } = await supabase.from("agent_vip_overrides").delete().eq("id", agent.id);
     if (error) { toast.error("فشل الحذف"); return; }
     toast.success("تم الحذف");
@@ -138,6 +141,7 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
   };
 
   return (
+    <>
     <div className="space-y-4" dir="rtl">
       {/* Add agent */}
       {!readOnly && (
@@ -245,6 +249,8 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         </div>
       )}
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 

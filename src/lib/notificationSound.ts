@@ -1,5 +1,6 @@
-// Notification sound utility using AudioContext
+// Notification sound utility - uses MP3 file with AudioContext fallback
 let audioCtx: AudioContext | null = null;
+let notifAudio: HTMLAudioElement | null = null;
 
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
@@ -8,12 +9,31 @@ function getAudioContext(): AudioContext {
   return audioCtx;
 }
 
-// Main notification sound - pleasant two-tone chime
+function getNotifAudio(): HTMLAudioElement {
+  if (!notifAudio) {
+    notifAudio = new Audio("/notification.mp3");
+    notifAudio.volume = 0.5;
+  }
+  return notifAudio;
+}
+
+// Main notification sound - tries MP3 first, falls back to AudioContext chime
 export function playNotificationSound() {
   try {
+    const audio = getNotifAudio();
+    audio.currentTime = 0;
+    audio.play().catch(() => {
+      // Fallback to AudioContext
+      playChimeFallback();
+    });
+  } catch {
+    playChimeFallback();
+  }
+}
+
+function playChimeFallback() {
+  try {
     const ctx = getAudioContext();
-    
-    // First tone
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
     osc1.connect(gain1);
@@ -25,7 +45,6 @@ export function playNotificationSound() {
     osc1.start(ctx.currentTime);
     osc1.stop(ctx.currentTime + 0.4);
 
-    // Second tone (higher, delayed)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.connect(gain2);

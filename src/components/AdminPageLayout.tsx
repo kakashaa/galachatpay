@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 interface Props {
   title: string;
@@ -13,8 +14,16 @@ interface Props {
 
 const AdminPageLayout: React.FC<Props> = ({ title, children, accentColor, onLogout, rightContent }) => {
   const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
+  const handleLogoutClick = async () => {
+    if (!onLogout) return;
+    const ok = await confirm({ title: "تسجيل الخروج", message: "هل تريد تسجيل الخروج؟", danger: true, confirmText: "خروج" });
+    if (ok) onLogout();
+  };
 
   return (
+    <>
     <div className="min-h-screen bg-background max-w-[448px] mx-auto relative flex flex-col admin-theme" style={{ height: '100dvh' }}>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border px-4 h-14 flex items-center justify-between flex-shrink-0">
@@ -35,7 +44,7 @@ const AdminPageLayout: React.FC<Props> = ({ title, children, accentColor, onLogo
         <div className="flex items-center gap-2">
           {rightContent}
           {onLogout && (
-            <button onClick={onLogout} className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center active:scale-95 transition-transform">
+            <button onClick={handleLogoutClick} className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center active:scale-95 transition-transform">
               <LogOut size={16} className="text-muted-foreground" />
             </button>
           )}
@@ -55,6 +64,8 @@ const AdminPageLayout: React.FC<Props> = ({ title, children, accentColor, onLogo
         </motion.main>
       </AnimatePresence>
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 
