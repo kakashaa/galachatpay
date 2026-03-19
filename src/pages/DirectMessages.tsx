@@ -48,15 +48,20 @@ const DirectMessages: React.FC = () => {
       return parts.includes(myUuid);
     });
 
-    // Count unread for each
+    // Batch unread count - single query for all unread messages not sent by me
+    const { data: unreadData } = await (supabase as any)
+      .from('direct_messages')
+      .select('conversation_id')
+      .neq('sender_uuid', myUuid)
+      .eq('status', 'sent');
+
+    const unreadMap = new Map<string, number>();
+    for (const msg of (unreadData || [])) {
+      unreadMap.set(msg.conversation_id, (unreadMap.get(msg.conversation_id) || 0) + 1);
+    }
+
     for (const c of convos) {
-      const { count } = await (supabase as any)
-        .from('direct_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('conversation_id', c.id)
-        .neq('sender_uuid', myUuid)
-        .eq('status', 'sent');
-      c.unreadCount = count || 0;
+      c.unreadCount = unreadMap.get(c.id) || 0;
       const parts = c.participants || [];
       c.otherName = parts.find((p: string) => p !== myUuid) || 'محادثة';
     }
