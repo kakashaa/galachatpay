@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, MessageSquare, User, ShieldBan } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 
 interface NavItem {
@@ -9,11 +10,12 @@ interface NavItem {
   label: string;
   path: string;
   requiresAuth?: boolean;
+  badgeKey?: string;
 }
 
 const navItems: NavItem[] = [
-  { icon: User, label: "حسابي", path: "/my-requests" },
-  { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true },
+  { icon: User, label: "حسابي", path: "/my-requests", badgeKey: "requests" },
+  { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true, badgeKey: "support" },
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
   { icon: ShieldBan, label: "حظر", path: "/report" },
 ];
@@ -21,9 +23,51 @@ const navItems: NavItem[] = [
 const BottomNav: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [tappedIndex, setTappedIndex] = useState<number | null>(null);
+  const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingTickets, setPendingTickets] = useState(0);
+
+  const fetchBadges = useCallback(async () => {
+    if (!user?.uuid) return;
+    try {
+      // Count pending requests across tables
+      const tables = [
+        { table: "salary_requests" as const, col: "user_uuid" },
+        { table: "frame_claims" as const, col: "user_uuid" },
+        { table: "entry_gift_claims" as const, col: "user_uuid" },
+        { table: "animated_photo_requests" as const, col: "user_uuid" },
+        { table: "custom_gifts" as const, col: "user_uuid" },
+      ];
+      let total = 0;
+      for (const t of tables) {
+        const { count } = await supabase
+          .from(t.table)
+          .select("*", { count: "exact", head: true })
+          .eq(t.col, user.uuid)
+          .eq("status", "pending");
+        total += count || 0;
+      }
+      setPendingRequests(total);
+
+      // Pending support tickets
+      const { count: ticketCount } = await supabase
+        .from("support_tickets")
+        .select("*", { count: "exact", head: true })
+        .eq("user_uuid", user.uuid)
+        .eq("status", "open");
+      setPendingTickets(ticketCount || 0);
+    } catch {
+      // silent
+    }
+  }, [user?.uuid]);
+
+  useEffect(() => {
+    fetchBadges();
+    const interval = setInterval(fetchBadges, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchBadges]);
 
   const handleNav = (item: NavItem, index: number) => {
     if (item.requiresAuth && !isAuthenticated) {
@@ -34,18 +78,22 @@ const BottomNav: React.FC = () => {
     navigate(item.path);
   };
 
-  // Only highlight if user navigated via dock (tappedIndex set) AND path matches
   const isActive = (item: NavItem, index: number) => {
     return tappedIndex === index && location.pathname === item.path;
   };
 
-  // Reset tapped state when navigating away from dock destinations
   React.useEffect(() => {
     const dockPaths = navItems.map(i => i.path);
     if (!dockPaths.includes(location.pathname)) {
       setTappedIndex(null);
     }
   }, [location.pathname]);
+
+  const getBadge = (key?: string) => {
+    if (key === "requests") return pendingRequests;
+    if (key === "support") return pendingTickets;
+    return 0;
+  };
 
   return (
     <>
@@ -61,6 +109,7 @@ const BottomNav: React.FC = () => {
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item, index);
+            const badge = getBadge(item.badgeKey);
 
             return (
               <button
@@ -71,12 +120,17 @@ const BottomNav: React.FC = () => {
                 }`}
                 style={active ? { boxShadow: "0 0 14px hsl(8 88% 62% / 0.25)" } : undefined}
               >
-                <div className={`transition-transform duration-300 ${active ? "animate-dock-bounce" : "group-hover:animate-dock-wiggle"}`}>
+                <div className={`relative transition-transform duration-300 ${active ? "animate-dock-bounce" : "group-hover:animate-dock-wiggle"}`}>
                   <Icon
                     className={`w-5 h-5 transition-colors duration-200 ${
                       active ? "text-primary" : "text-muted-foreground"
                     }`}
                   />
+                  {badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] px-0.5 rounded-full bg-destructive text-[8px] font-black text-white flex items-center justify-center">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </div>
                 <span
                   className={`text-[9px] font-bold transition-colors duration-200 ${
