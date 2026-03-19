@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
   Loader2, Sparkles, Frame, Scissors, Camera, Gift, MonitorPlay,
   CheckCircle, XCircle, Clock, Copy, Hash, Send, User,
-  Calendar, ExternalLink, Play, Eye, Timer
+  Calendar, ExternalLink, Play, Eye, Timer, Upload, ImagePlus
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
