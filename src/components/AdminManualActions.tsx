@@ -275,14 +275,13 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           </div>
           <div>
             <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
-            <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass}>
+            <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass} disabled={banReason === 'promo'}>
               <option value="3h">3 ساعات</option>
-              <option value="24h">يوم</option>
-              <option value="48h">يومين</option>
-              <option value="168h">أسبوع</option>
-              <option value="720h">شهر</option>
-              <option value="8760h">سنة</option>
+              <option value="6h">6 ساعات</option>
+              <option value="12h">12 ساعة</option>
+              <option value="24h">24 ساعة</option>
             </select>
+            {banReason === 'promo' && <p className="text-[10px] text-amber-400 mt-1">⚠️ الترويج = حظر دائم تلقائي</p>}
           </div>
           {/* Image/Video upload */}
           <div>
