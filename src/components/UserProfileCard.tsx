@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
-import { getAvatar, fixAvatarUrl } from "@/lib/avatarHelper";
+import { getAvatar, fixAvatarUrl, getAvatarUrl } from "@/lib/avatarHelper";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
@@ -132,7 +132,8 @@ const UserProfileCard: React.FC = () => {
 
   const typeLabel = getUserTypeLabel(user.type_user);
   const badgeStyle = getUserTypeBadgeStyle(user.type_user);
-  const avatarSrc = avatarUrl || fixAvatarUrl(user.profile?.image) || (user.profile?.gender === 2 ? avatarFemale : avatarMale);
+  const defaultAvatar = user.profile?.gender === 2 ? avatarFemale : avatarMale;
+  const avatarSrc = avatarUrl || fixAvatarUrl(user.profile?.image) || getAvatarUrl(user.uuid, user.profile?.image) || defaultAvatar;
 
   
 

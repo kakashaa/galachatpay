@@ -1,6 +1,13 @@
 const AVATAR_CACHE: Record<string, string> = {};
 const API = "https://galachat.site/project-z/api.php";
 
+/** Build the correct avatar URL from uuid + optional avatar path */
+export function getAvatarUrl(uuid: string, avatar?: string | null): string {
+  if (avatar && avatar.startsWith("http")) return avatar;
+  if (avatar) return `https://storage.googleapis.com/galalivechat-bucket-01/avatars/${avatar}`;
+  return `https://galalivechat.com/api/newWebsite/user/avatar?uuid=${uuid}`;
+}
+
 export async function getAvatar(uuid: string): Promise<string> {
   if (!uuid) return "";
 
@@ -19,18 +26,19 @@ export async function getAvatar(uuid: string): Promise<string> {
     const res = await fetch(`${API}?action=get_avatar&uuid=${uuid}`);
     const data = await res.json();
     if (data.success && data.avatar) {
-      AVATAR_CACHE[uuid] = data.avatar;
-      localStorage.setItem(`avatar_${uuid}`, data.avatar);
-      return data.avatar;
+      const url = getAvatarUrl(uuid, data.avatar);
+      AVATAR_CACHE[uuid] = url;
+      localStorage.setItem(`avatar_${uuid}`, url);
+      return url;
     }
   } catch {
     // silent
   }
 
-  return "";
+  return getAvatarUrl(uuid);
 }
 
-// Helper for fixing relative avatar URLs
+// Legacy helper — kept for backward compat
 export function fixAvatarUrl(path?: string | null): string {
   if (!path) return "";
   if (path.startsWith("http")) return path;
