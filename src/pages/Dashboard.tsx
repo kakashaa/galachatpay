@@ -14,7 +14,7 @@ import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
 import BDInvitationBanner from "@/components/BDInvitationBanner";
 import BottomNav from "@/components/BottomNav";
-import RecentActivity from "@/components/RecentActivity";
+
 import { toast } from "sonner";
 
 const PULL_THRESHOLD = 80;
