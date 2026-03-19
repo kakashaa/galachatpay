@@ -11,6 +11,7 @@ import { useBanCheck } from "@/hooks/use-ban-check";
 import { useElementSettings } from "@/hooks/use-element-settings";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { motion } from "framer-motion";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
