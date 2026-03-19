@@ -90,17 +90,6 @@ const QuickSupport: React.FC = () => {
     }
   }, [authUser]);
 
-  // Auto-start chat for eligible users who don't have an active one
-  const autoStartedRef = React.useRef(false);
-  useEffect(() => {
-    if (!authUser || chatKey || autoStartedRef.current || !isEligibleForQuickSupport(authUser)) return;
-    const saved = localStorage.getItem(`gala_quick_chat_${authUser.uuid}`);
-    if (saved) return; // will be restored by the other effect
-    autoStartedRef.current = true;
-    // Small delay for UI to render
-    const timer = setTimeout(() => startChat(), 400);
-    return () => clearTimeout(timer);
-  }, [authUser, chatKey]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
