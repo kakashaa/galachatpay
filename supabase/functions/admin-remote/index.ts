@@ -42,6 +42,11 @@ serve(async (req) => {
 
     switch (command) {
       case "query": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data, error } = await supabase
           .from(params.table)
           .select(params.select || "*")
@@ -51,6 +56,11 @@ serve(async (req) => {
       }
 
       case "update": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data: uData, error: uError } = await supabase
           .from(params.table)
           .update(params.data)
