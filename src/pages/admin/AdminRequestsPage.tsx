@@ -141,7 +141,7 @@ const AdminRequestsPage: React.FC = () => {
         if (!gifUrl) return;
         const res = await fetch(GALA_API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "update_user_avatar", admin_key: ADMIN_KEY, uuid: item.user_uuid, avatar_url: gifUrl }) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الصورة لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الصورة لغلا لايف"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
 
       } else if (type === "custom") {
         // Only upload_custom_gift — nothing else
@@ -151,7 +151,7 @@ const AdminRequestsPage: React.FC = () => {
         }
         const res = await fetch(GALA_API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_custom_gift", admin_key: ADMIN_KEY, user_name: item.user_name || item.title || "", video_url: item.video_url || "", thumbnail_url: thumbnailUrl, price: "20000" }) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الهدية لغلا لايف"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
 
       } else if (type === "entries" || type === "frames") {
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
@@ -186,7 +186,7 @@ const AdminRequestsPage: React.FC = () => {
         });
 
         if (approveRes.ok || approveRes.success) {
-          toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف ✅`);
+          toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف`);
         } else {
           toast.warning("تم القبول — لكن الرفع لغلا لايف فشل.");
           console.error("Approve failed:", approveRes);
@@ -203,7 +203,7 @@ const AdminRequestsPage: React.FC = () => {
         try {
           await fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=upload-room-background&uuid=" + item.user_uuid + "&image_url=" + encodeURIComponent(imageUrl));
         } catch { /* silent fallback */ }
-        if (data.ok || data.success) toast.success("تم تغيير خلفية الغرفة ✅"); else { toast.warning("تم القبول — تغيير الخلفية فشل."); console.error("Room bg upload failed:", data); }
+        if (data.ok || data.success) toast.success("تم تغيير خلفية الغرفة"); else { toast.warning("تم القبول — تغيير الخلفية فشل."); console.error("Room bg upload failed:", data); }
 
       } else if (type === "hairs") {
         // Hairs still use upload_ware (badge type)
@@ -214,7 +214,7 @@ const AdminRequestsPage: React.FC = () => {
         if (thumbnailUrl) params.show_img = thumbnailUrl;
         const res = await fetch(GALA_API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) });
         const data = await res.json();
-        if (data.success) toast.success("تم رفع الشعار لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
+        if (data.success) toast.success("تم رفع الشعار لغلا لايف"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       }
     } catch (err) {
       toast.warning("تم القبول — لكن الرفع التلقائي فشل.");
@@ -273,7 +273,7 @@ const AdminRequestsPage: React.FC = () => {
     finally { setProcessingId(null); }
   };
 
-  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("تم النسخ ✅"); };
+  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text); toast.success("تم النسخ"); };
 
   const currentTab = tabs.find(t => t.key === activeTab)!;
   const visibleItems = items.filter(i => !removedIds.has(i.id));
@@ -376,7 +376,7 @@ const AdminRequestsPage: React.FC = () => {
           {item.claim_type === "friend" && (
             <div className="absolute top-2 left-2 z-10">
               <span className="px-2 py-1 rounded-lg text-[9px] font-bold" style={{ background: 'rgba(236,72,153,0.85)', color: 'white' }}>
-                إهداء 🎁
+                إهداء
               </span>
             </div>
           )}
@@ -555,7 +555,7 @@ const AdminRequestsPage: React.FC = () => {
                       const isApproved = item.status === "approved";
                       const isRejected = item.status === "rejected";
                       const statusColor = isApproved ? "hsl(160 84% 39%)" : "hsl(350 89% 55%)";
-                      const statusLabel = isApproved ? "مقبول ✅" : "مرفوض ❌";
+                      const statusLabel = isApproved ? "مقبول" : "مرفوض";
                       const previewUrl = getPreviewUrl(item);
 
                       return (
