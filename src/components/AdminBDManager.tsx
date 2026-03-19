@@ -20,6 +20,7 @@ interface AdminBDManagerProps {
 }
 
 const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [subTab, setSubTab] = useState<SubTab>("registrations");
   const [loading, setLoading] = useState(false);
 
