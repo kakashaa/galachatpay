@@ -188,6 +188,7 @@ const Dashboard: React.FC = () => {
           <BDInvitationBanner />
           <MarqueeBanner />
           <BannerCarousel />
+          <AdminStoryCircle />
           <VideoStoryCircle />
           <div className="mt-3" />
           
