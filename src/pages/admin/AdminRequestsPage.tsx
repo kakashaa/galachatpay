@@ -164,7 +164,7 @@ const AdminRequestsPage: React.FC = () => {
           id: pendingReqId,
           ware_type: wareType,
         });
-        if (approveRes.ok) {
+        if (approveRes.ok || approveRes.success) {
           toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف ✅`);
         } else {
           toast.warning("تم القبول — لكن الرفع لغلا لايف فشل.");
