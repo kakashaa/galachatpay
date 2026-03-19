@@ -473,30 +473,45 @@ const AdminHomeView: React.FC<Props> = ({
               <p className="text-[11px] text-muted-foreground">لوحة التحكم</p>
             </div>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            className="relative w-10 h-10 rounded-2xl flex items-center justify-center"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <Bell size={17} />
-            {totalBadge > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              className="relative w-10 h-10 rounded-2xl flex items-center justify-center"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <Bell size={17} />
+              {totalBadge > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
+                    boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
+                    border: '2px solid hsl(240 10% 3.9%)',
+                  }}
+                >
+                  {totalBadge > 99 ? '99+' : totalBadge}
+                </motion.span>
+              )}
+            </motion.button>
+            {onLogout && (
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={onLogout}
+                className="w-10 h-10 rounded-2xl flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
-                  boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
-                  border: '2px solid hsl(240 10% 3.9%)',
+                  background: 'rgba(244,63,94,0.1)',
+                  border: '1px solid rgba(244,63,94,0.15)',
                 }}
               >
-                {totalBadge > 99 ? '99+' : totalBadge}
-              </motion.span>
+                <LogOut size={17} className="text-red-400" />
+              </motion.button>
             )}
-          </motion.button>
+          </div>
         </motion.div>
 
         {/* ═══ Search Bar ═══ */}
