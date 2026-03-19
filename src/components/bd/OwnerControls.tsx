@@ -54,14 +54,15 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ system, accountId, onRefr
     setLoading(true);
     try {
       if (system === "works") {
-        await supabase.from("works_members").insert({
+        const payload: Record<string, unknown> = {
           works_id: accountId,
           member_uuid: addUuid.trim(),
           member_name: addName.trim() || "عضو يدوي",
           member_type: addType,
           status: "active",
-          ...(addType === "agent" && addAgencyId ? { agency_id: addAgencyId.trim() } : {}),
-        } as any);
+        };
+        if (addType === "agent" && addAgencyId) payload.agency_id = addAgencyId.trim();
+        await (supabase.from("works_members") as any).insert(payload);
       } else {
         await supabase.from("bd_members").insert({
           bd_uuid: accountId,
@@ -69,7 +70,7 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ system, accountId, onRefr
           member_name: addName.trim() || "عضو يدوي",
           member_type: addType,
           is_active: true,
-        } as any);
+        });
       }
       toast.success("تمت الإضافة بنجاح");
       setAction(null);
