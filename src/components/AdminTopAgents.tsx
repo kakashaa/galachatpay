@@ -248,6 +248,8 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         </div>
       )}
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 
