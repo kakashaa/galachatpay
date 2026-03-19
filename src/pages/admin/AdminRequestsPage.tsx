@@ -97,10 +97,17 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   // --- auto upload logic ---
-  const WARES_API = "https://hola-chat.com/wares-api.php";
-  const WARES_KEY = "ghala2026actions";
   const GALA_API = "https://galachat.site/project-z/api.php";
   const ADMIN_KEY = "ghala2026owner";
+
+  // Helper to call wares-api through edge function proxy
+  const callWaresApi = async (action: string, params: Record<string, string>) => {
+    const { data, error } = await supabase.functions.invoke("wares-request", {
+      body: { action, ...params },
+    });
+    if (error) throw error;
+    return data;
+  };
 
   const autoUploadToGala = async (item: any, type: ReqTab) => {
     try {
@@ -133,45 +140,31 @@ const AdminRequestsPage: React.FC = () => {
         const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
         const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
 
-        const toTimestamp = (value: unknown): number | null => {
-          if (!value) return null;
-          const text = String(value).trim();
-          if (!text) return null;
-          const isoLike = text.includes("T") ? text : text.replace(" ", "T") + "Z";
-          const ts = Date.parse(isoLike);
-          if (!Number.isNaN(ts)) return ts;
-          const fallbackTs = Date.parse(text);
-          return Number.isNaN(fallbackTs) ? null : fallbackTs;
-        };
-
         // Always create a fresh request then approve it (single upload)
-        const submitRes = await fetch(WARES_API, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            key: WARES_KEY,
-            action: "submit-request",
-            uuid: targetUuid,
-            user_name: item.title || item.user_name || (type === "frames" ? "إطار" : "دخولية"),
-            ware_type: wareType,
-            image_type: imageType,
-            file_url: fileUrl,
-            days: String(item.duration_days || 30),
-          }),
-        }).then(r => r.json());
+        const submitRes = await callWaresApi("submit-request", {
+          uuid: targetUuid,
+          user_name: item.title || item.user_name || (type === "frames" ? "إطار" : "دخولية"),
+          ware_type: wareType,
+          image_type: imageType,
+          file_url: fileUrl,
+          days: String(item.duration_days || 30),
+        });
 
         let pendingReqId: string | null = null;
-        if (submitRes.ok && submitRes.data?.request_id) {
-          pendingReqId = String(submitRes.data.request_id);
+        if ((submitRes.ok || submitRes.success) && (submitRes.data?.request_id || submitRes.request_id)) {
+          pendingReqId = String(submitRes.data?.request_id || submitRes.request_id);
         } else {
           toast.warning("تم القبول — لكن إنشاء الطلب فشل.");
           console.error("Submit-request failed:", submitRes);
           return;
         }
 
-        // 3) Approve: this is the only upload point on wares-api
-        const approveRes = await fetch(`${WARES_API}?key=${WARES_KEY}&action=approve&id=${encodeURIComponent(pendingReqId)}&ware_type=${encodeURIComponent(wareType)}`).then(r => r.json());
-        if (approveRes.ok) {
+        // Approve: this is the only upload point on wares-api
+        const approveRes = await callWaresApi("approve", {
+          id: pendingReqId,
+          ware_type: wareType,
+        });
+        if (approveRes.ok || approveRes.success) {
           toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف ✅`);
         } else {
           toast.warning("تم القبول — لكن الرفع لغلا لايف فشل.");
