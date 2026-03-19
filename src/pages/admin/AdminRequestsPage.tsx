@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
   Loader2, Sparkles, Frame, Scissors, Camera, Gift, MonitorPlay,
   CheckCircle, XCircle, Clock, Copy, Hash, Send, User,
-  Calendar, ExternalLink, Play, Eye, Timer
+  Calendar, ExternalLink, Play, Eye, Timer, Upload, ImagePlus
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,6 +44,44 @@ const AdminRequestsPage: React.FC = () => {
   const [shakenTab, setShakenTab] = useState<ReqTab | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [previewItem, setPreviewItem] = useState<any | null>(null);
+  const [showDirectUpload, setShowDirectUpload] = useState(false);
+  const [directUuid, setDirectUuid] = useState("");
+  const [directFile, setDirectFile] = useState<File | null>(null);
+  const [directUploading, setDirectUploading] = useState(false);
+  const directFileRef = useRef<HTMLInputElement>(null);
+
+  const handleDirectUpload = async () => {
+    if (!directUuid.trim() || !directFile) {
+      toast.error("أدخل UUID واختر صورة");
+      return;
+    }
+    setDirectUploading(true);
+    try {
+      const path = `room-backgrounds/direct/${directUuid.trim()}_${Date.now()}.png`;
+      const { data: uploadData } = await supabase.storage
+        .from("attachments")
+        .upload(path, directFile, { contentType: directFile.type, upsert: true });
+      if (!uploadData) { toast.error("فشل رفع الصورة"); return; }
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+      const imageUrl = urlData.publicUrl;
+      const res = await fetch(
+        `${HOLA_API}?key=${HOLA_KEY}&action=upload-room-background&uuid=${directUuid.trim()}&image_url=${encodeURIComponent(imageUrl)}`
+      );
+      const data = await res.json();
+      if (data.ok || data.success) {
+        toast.success("تم تغيير خلفية الغرفة!");
+        setShowDirectUpload(false);
+        setDirectUuid("");
+        setDirectFile(null);
+      } else {
+        toast.error("فشل: " + (data.error || "خطأ غير معروف"));
+      }
+    } catch (e: any) {
+      toast.error("خطأ: " + (e.message || "غير معروف"));
+    } finally {
+      setDirectUploading(false);
+    }
+  };
 
   useEffect(() => { loadAllCounts(); }, []);
   useEffect(() => { loadData(); }, [activeTab]);
@@ -518,6 +556,18 @@ const AdminRequestsPage: React.FC = () => {
           })}
         </motion.div>
 
+        {/* Direct upload button for rooms tab */}
+        {activeTab === "rooms" && (
+          <button
+            onClick={() => setShowDirectUpload(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] mb-4"
+            style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)', color: 'hsl(187 92% 43%)' }}
+          >
+            <Upload className="w-4 h-4" />
+            رفع مباشر
+          </button>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: `${currentTab.bg}0.8)` }} />
@@ -663,6 +713,80 @@ const AdminRequestsPage: React.FC = () => {
               </button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Direct Upload Modal */}
+      <Dialog open={showDirectUpload} onOpenChange={setShowDirectUpload}>
+        <DialogContent className="max-w-sm bg-background border-0 rounded-2xl [&>button]:hidden"
+          style={{ background: 'rgba(20,20,30,0.97)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <DialogHeader>
+            <DialogTitle className="text-sm text-center font-bold flex items-center justify-center gap-2">
+              <Upload className="w-4 h-4" style={{ color: 'hsl(187 92% 43%)' }} />
+              رفع خلفية غرفة مباشر
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-muted-foreground">UUID صاحب الغرفة</label>
+              <input
+                type="number"
+                value={directUuid}
+                onChange={(e) => setDirectUuid(e.target.value)}
+                placeholder="مثال: 123456"
+                className="w-full h-10 rounded-xl px-3 text-sm bg-transparent outline-none"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-muted-foreground">صورة الخلفية</label>
+              <input
+                ref={directFileRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => setDirectFile(e.target.files?.[0] || null)}
+                className="hidden"
+              />
+              <button
+                onClick={() => directFileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all active:scale-[0.98]"
+                style={{
+                  background: directFile ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)',
+                  border: directFile ? '1px solid rgba(16,185,129,0.3)' : '1px dashed rgba(255,255,255,0.15)',
+                  color: directFile ? 'hsl(160 84% 39%)' : 'inherit',
+                }}
+              >
+                {directFile ? (
+                  <><CheckCircle className="w-4 h-4" /> {directFile.name}</>
+                ) : (
+                  <><ImagePlus className="w-4 h-4 text-muted-foreground" /> اختر صورة</>
+                )}
+              </button>
+              {directFile && (
+                <div className="w-full aspect-video rounded-lg overflow-hidden bg-black/30 mt-2">
+                  <img src={URL.createObjectURL(directFile)} alt="معاينة" className="w-full h-full object-contain" />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setShowDirectUpload(false); setDirectUuid(""); setDirectFile(null); }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-foreground"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleDirectUpload}
+                disabled={directUploading || !directUuid.trim() || !directFile}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-40 flex items-center justify-center gap-1.5"
+                style={{ background: 'hsl(187 92% 43%)' }}
+              >
+                {directUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {directUploading ? "جاري الرفع..." : "حفظ"}
+              </button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </AdminPageLayout>
