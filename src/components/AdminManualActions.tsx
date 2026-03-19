@@ -236,54 +236,89 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
 
       {/* Ban User */}
       {activeAction === 'ban' && (
-        <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
+        <div className="bg-card border border-border/40 rounded-xl p-4 space-y-4">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <ShieldBan className="w-4 h-4 text-red-400" /> حظر مستخدم
           </h3>
+
+          {/* 1. UUID */}
           <Input value={banUuid} onChange={(e) => setBanUuid(e.target.value)} placeholder="UUID المستخدم" dir="ltr" />
+
+          {/* 2. سبب الحظر */}
           <div>
-            <label className="text-[11px] text-muted-foreground mb-1 block">السبب</label>
-            <select value={banReason} onChange={(e) => setBanReason(e.target.value)} className={selectClass}>
-              <option value="promo">ترويج</option>
-              <option value="insult">سب</option>
-              <option value="other">أخرى</option>
-            </select>
+            <label className="text-[11px] text-muted-foreground mb-2 block font-bold">سبب الحظر</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { value: 'promo', label: '🔴 ترويج', color: 'border-red-500 bg-red-500/10 text-red-300' },
+                { value: 'insult', label: '🟡 سب / إساءة', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-300' },
+                { value: 'other', label: '🟠 أخرى', color: 'border-orange-500 bg-orange-500/10 text-orange-300' },
+              ].map((r) => (
+                <button
+                  key={r.value}
+                  onClick={() => setBanReason(r.value)}
+                  className={`py-2 px-2 rounded-lg border text-xs font-bold transition-all ${banReason === r.value ? r.color + ' ring-1 ring-offset-1 ring-offset-background' : 'border-border/40 text-muted-foreground hover:border-border'}`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
           </div>
+
           {banReason === 'other' && (
             <Textarea value={banCustomReason} onChange={(e) => setBanCustomReason(e.target.value)} placeholder="اكتب السبب..." rows={2} />
           )}
-          {/* Ban type selection */}
-          <div>
-            <label className="text-[11px] text-muted-foreground mb-1.5 block">نوع الحظر</label>
-            <div className="flex gap-3">
-              <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${banType === 'normal' ? 'border-primary bg-primary/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
-                <input type="radio" name="banType" checked={banType === 'normal'} onChange={() => setBanType('normal')} className="sr-only" />
-                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${banType === 'normal' ? 'border-primary' : 'border-muted-foreground/50'}`}>
-                  {banType === 'normal' && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                </div>
-                <span className="text-xs font-bold">عادي (حساب)</span>
-              </label>
-              <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${banType === 'device' ? 'border-destructive bg-destructive/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
-                <input type="radio" name="banType" checked={banType === 'device'} onChange={() => setBanType('device')} className="sr-only" />
-                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${banType === 'device' ? 'border-destructive' : 'border-muted-foreground/50'}`}>
-                  {banType === 'device' && <div className="w-1.5 h-1.5 rounded-full bg-destructive" />}
-                </div>
-                <span className="text-xs font-bold">جهاز (كامل)</span>
-              </label>
+
+          {/* 3. نوع الحظر */}
+          {banReason !== 'promo' ? (
+            <div>
+              <label className="text-[11px] text-muted-foreground mb-2 block font-bold">نوع الحظر</label>
+              <div className="flex gap-3">
+                <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${banType === 'normal' ? 'border-primary bg-primary/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
+                  <input type="radio" name="banType" checked={banType === 'normal'} onChange={() => setBanType('normal')} className="sr-only" />
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${banType === 'normal' ? 'border-primary' : 'border-muted-foreground/50'}`}>
+                    {banType === 'normal' && <div className="w-2 h-2 rounded-full bg-primary" />}
+                  </div>
+                  <span className="text-xs font-bold">⚡ حساب فقط</span>
+                </label>
+                <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${banType === 'device' ? 'border-destructive bg-destructive/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
+                  <input type="radio" name="banType" checked={banType === 'device'} onChange={() => setBanType('device')} className="sr-only" />
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${banType === 'device' ? 'border-destructive' : 'border-muted-foreground/50'}`}>
+                    {banType === 'device' && <div className="w-2 h-2 rounded-full bg-destructive" />}
+                  </div>
+                  <span className="text-xs font-bold">🔒 جهاز كامل</span>
+                </label>
+              </div>
             </div>
-            {banReason === 'promo' && <p className="text-[10px] text-amber-400 mt-1">⚠️ الترويج يُفعّل حظر الجهاز تلقائياً</p>}
-          </div>
-          <div>
-            <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
-            <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass} disabled={banReason === 'promo'}>
-              <option value="3h">3 ساعات</option>
-              <option value="6h">6 ساعات</option>
-              <option value="12h">12 ساعة</option>
-              <option value="24h">24 ساعة</option>
-            </select>
-            {banReason === 'promo' && <p className="text-[10px] text-amber-400 mt-1">⚠️ الترويج = حظر دائم تلقائي</p>}
-          </div>
-          {/* Image/Video upload */}
+          ) : (
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 text-center">
+              <p className="text-xs text-red-400 font-bold">⚠️ الترويج = حظر جهاز دائم تلقائي (999,999 ساعة)</p>
+            </div>
+          )}
+
+          {/* 4. مدة الحظر */}
+          {banReason !== 'promo' && (
+            <div>
+              <label className="text-[11px] text-muted-foreground mb-2 block font-bold">مدة الحظر</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { value: '3h', label: '3 ساعات' },
+                  { value: '6h', label: '6 ساعات' },
+                  { value: '12h', label: '12 ساعة' },
+                  { value: '24h', label: '24 ساعة' },
+                ].map((d) => (
+                  <button
+                    key={d.value}
+                    onClick={() => setBanDuration(d.value)}
+                    className={`py-2 rounded-lg border text-xs font-bold transition-all ${banDuration === d.value ? 'border-primary bg-primary/10 text-primary' : 'border-border/40 text-muted-foreground hover:border-border'}`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 5. صورة إثبات */}
           <div>
             <input type="file" ref={banFileRef} className="hidden" accept="image/*,video/*"
               onChange={(e) => {
@@ -299,14 +334,36 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
               {banImage ? (
                 <><Image className="w-4 h-4 text-primary" /> {banImage.name}</>
               ) : (
-                <><Upload className="w-4 h-4" /> رفع صورة أو فيديو (اختياري)</>
+                <><Upload className="w-4 h-4" /> رفع صورة أو فيديو إثبات (اختياري)</>
               )}
             </button>
           </div>
-          <Button variant="destructive" className="w-full" onClick={handleBan} disabled={banLoading}>
-            {banLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <ShieldBan className="w-4 h-4 ml-2" />}
-            حظر
-          </Button>
+
+          {/* 6 & 7. أزرار التنفيذ وفك الحظر */}
+          <div className="flex gap-2">
+            <Button variant="destructive" className="flex-1" onClick={() => {
+              if (!banUuid.trim()) { toast.error('أدخل UUID'); return; }
+              const reason = banReason === 'other' ? banCustomReason : banReason;
+              if (!reason.trim()) { toast.error('أدخل السبب'); return; }
+              if (confirm('هل أنت متأكد من تنفيذ الحظر؟')) handleBan();
+            }} disabled={banLoading}>
+              {banLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <ShieldBan className="w-4 h-4 ml-2" />}
+              تنفيذ الحظر
+            </Button>
+            <Button
+              variant="outline"
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+              onClick={async () => {
+                if (!banUuid.trim()) { toast.error('أدخل UUID'); return; }
+                try {
+                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banUuid.trim()}`);
+                  toast.success('تم فك الحظر!');
+                } catch { toast.error('فشل فك الحظر'); }
+              }}
+            >
+              فك الحظر
+            </Button>
+          </div>
         </div>
       )}
 
