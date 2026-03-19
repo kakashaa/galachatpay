@@ -32,6 +32,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
   const [banReason, setBanReason] = useState('promo');
   const [banCustomReason, setBanCustomReason] = useState('');
   const [banDuration, setBanDuration] = useState('24h');
+  const [banType, setBanType] = useState<'normal' | 'device'>('normal');
   const [banImage, setBanImage] = useState<File | null>(null);
   const [banLoading, setBanLoading] = useState(false);
   const banFileRef = useRef<HTMLInputElement>(null);
@@ -99,6 +100,9 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     if (!reason.trim()) { toast.error('أدخل السبب'); return; }
     setBanLoading(true);
     try {
+      const effectiveBanType = banReason === 'promo' ? 'device' : banType;
+      const hours = banReason === 'promo' ? 999999 : parseInt(banDuration) || 24;
+
       const body: any = {
         action: 'admin_ban_user',
         uuid: banUuid.trim(),
@@ -111,6 +115,14 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
         body.image = await fileToBase64(banImage);
       }
       const data = await apiPost(body);
+
+      // Execute actual ban on the server
+      try {
+        await fetch(
+          `http://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=ban-user&uuid=${banUuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${effectiveBanType}`
+        );
+      } catch {}
+
       if (data.success) { toast.success('تم الحظر'); setBanUuid(''); setBanCustomReason(''); setBanImage(null); }
       else toast.error(data.error || 'فشلت العملية');
     } catch { toast.error('فشل الاتصال'); }
@@ -240,6 +252,27 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           {banReason === 'other' && (
             <Textarea value={banCustomReason} onChange={(e) => setBanCustomReason(e.target.value)} placeholder="اكتب السبب..." rows={2} />
           )}
+          {/* Ban type selection */}
+          <div>
+            <label className="text-[11px] text-muted-foreground mb-1.5 block">نوع الحظر</label>
+            <div className="flex gap-3">
+              <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${banType === 'normal' ? 'border-primary bg-primary/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
+                <input type="radio" name="banType" checked={banType === 'normal'} onChange={() => setBanType('normal')} className="sr-only" />
+                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${banType === 'normal' ? 'border-primary' : 'border-muted-foreground/50'}`}>
+                  {banType === 'normal' && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                </div>
+                <span className="text-xs font-bold">عادي (حساب)</span>
+              </label>
+              <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${banType === 'device' ? 'border-destructive bg-destructive/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
+                <input type="radio" name="banType" checked={banType === 'device'} onChange={() => setBanType('device')} className="sr-only" />
+                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${banType === 'device' ? 'border-destructive' : 'border-muted-foreground/50'}`}>
+                  {banType === 'device' && <div className="w-1.5 h-1.5 rounded-full bg-destructive" />}
+                </div>
+                <span className="text-xs font-bold">جهاز (كامل)</span>
+              </label>
+            </div>
+            {banReason === 'promo' && <p className="text-[10px] text-amber-400 mt-1">⚠️ الترويج يُفعّل حظر الجهاز تلقائياً</p>}
+          </div>
           <div>
             <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
             <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass}>
