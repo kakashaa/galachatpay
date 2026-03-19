@@ -266,8 +266,8 @@ const AdminRequestsPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Media preview - large visual area */}
-        <div className="relative w-full aspect-square bg-black/40">
+        {/* Media preview - proportional visual area */}
+        <div className="relative w-full aspect-[4/3] bg-black/40">
           <div className="absolute inset-0 flex items-center justify-center">
             {renderMediaPreview(item)}
           </div>
