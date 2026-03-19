@@ -249,6 +249,10 @@ const AdminRequestsPage: React.FC = () => {
 
   // Render the visual media preview
   const renderMediaPreview = (item: any, size: "grid" | "full" = "grid") => {
+    // Rooms: always show image_url as <img>
+    if (activeTab === "rooms" && item.image_url) {
+      return <img src={item.image_url} alt="خلفية" className="w-full h-full object-contain" />;
+    }
     const url = getPreviewUrl(item);
     if (!url) return (
       <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
