@@ -32,31 +32,22 @@ const BottomNav: React.FC = () => {
   const fetchBadges = useCallback(async () => {
     if (!user?.uuid) return;
     try {
-      // Count pending requests across tables
-      const tables = [
-        { table: "salary_requests" as const, col: "user_uuid" },
-        { table: "frame_claims" as const, col: "user_uuid" },
-        { table: "entry_gift_claims" as const, col: "user_uuid" },
-        { table: "animated_photo_requests" as const, col: "user_uuid" },
-        { table: "custom_gifts" as const, col: "user_uuid" },
-      ];
       let total = 0;
-      for (const t of tables) {
-        const { count } = await supabase
-          .from(t.table)
-          .select("*", { count: "exact", head: true })
-          .eq(t.col, user.uuid)
-          .eq("status", "pending");
-        total += count || 0;
-      }
+
+      const { count: c1 } = await supabase.from("salary_requests").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "pending");
+      total += c1 || 0;
+      const { count: c2 } = await supabase.from("frame_claims").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "pending");
+      total += c2 || 0;
+      const { count: c3 } = await supabase.from("entry_gift_claims").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "pending");
+      total += c3 || 0;
+      const { count: c4 } = await supabase.from("animated_photo_requests").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "pending");
+      total += c4 || 0;
+      const { count: c5 } = await supabase.from("custom_gifts").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "pending");
+      total += c5 || 0;
+
       setPendingRequests(total);
 
-      // Pending support tickets
-      const { count: ticketCount } = await supabase
-        .from("support_tickets")
-        .select("*", { count: "exact", head: true })
-        .eq("user_uuid", user.uuid)
-        .eq("status", "open");
+      const { count: ticketCount } = await supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "open");
       setPendingTickets(ticketCount || 0);
     } catch {
       // silent
