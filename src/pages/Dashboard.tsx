@@ -152,7 +152,7 @@ const Dashboard: React.FC = () => {
         <header className="relative z-10 flex justify-between items-center px-4 pt-6 pb-2">
           {isAuthenticated ? (
             <button
-              onClick={() => { logout(); navigate("/"); }}
+              onClick={async () => { const ok = await confirm({ title: "تسجيل الخروج", message: "هل تريد تسجيل الخروج؟", danger: true, confirmText: "خروج" }); if (ok) { logout(); navigate("/"); } }}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
             >
               <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
