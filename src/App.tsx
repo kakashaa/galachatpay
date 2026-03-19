@@ -187,6 +187,8 @@ const App = () => {
                   <Route path="/agent/charge" element={<AgentCharge />} />
                   <Route path="/agent/history" element={<AgentHistory />} />
                   <Route path="/agent/stats" element={<AgentStats />} />
+                  <Route path="/embed/support-tickets" element={<SupportTicketsEmbed />} />
+                  <Route path="/embed/support-chat" element={<SupportChatEmbed />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
