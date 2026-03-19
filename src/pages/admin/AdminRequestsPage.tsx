@@ -144,62 +144,29 @@ const AdminRequestsPage: React.FC = () => {
           return Number.isNaN(fallbackTs) ? null : fallbackTs;
         };
 
-        // 1) Try to reuse pending request created for this claim (legacy flow)
+        // Always create a fresh request then approve it (single upload)
+        const submitRes = await fetch(WARES_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            key: WARES_KEY,
+            action: "submit-request",
+            uuid: targetUuid,
+            user_name: item.title || item.user_name || (type === "frames" ? "إطار" : "دخولية"),
+            ware_type: wareType,
+            image_type: imageType,
+            file_url: fileUrl,
+            days: String(item.duration_days || 30),
+          }),
+        }).then(r => r.json());
+
         let pendingReqId: string | null = null;
-        try {
-          const myReqs = await fetch(`${WARES_API}?key=${WARES_KEY}&action=my-requests&uuid=${encodeURIComponent(targetUuid)}`).then(r => r.json());
-          const requestList = Array.isArray(myReqs?.data?.requests)
-            ? myReqs.data.requests
-            : Array.isArray(myReqs?.requests)
-              ? myReqs.requests
-              : [];
-
-          const claimTs = toTimestamp(item.created_at);
-          const candidates = requestList.filter((r: any) => {
-            if (String(r?.status || "").toLowerCase() !== "pending") return false;
-            if (r?.ware_type !== wareType) return false;
-            if (!claimTs) return false;
-            const reqTs = toTimestamp(r?.created_at);
-            if (!reqTs) return false;
-            return true;
-          });
-
-          if (candidates.length > 0) {
-            candidates.sort((a: any, b: any) => {
-              const aTs = toTimestamp(a?.created_at) ?? 0;
-              const bTs = toTimestamp(b?.created_at) ?? 0;
-              return bTs - aTs;
-            });
-            pendingReqId = String(candidates[0].id);
-          }
-        } catch {
-          // Continue with submit-request fallback
-        }
-
-        // 2) If we didn't find a matching pending request, create exactly one then approve it
-        if (!pendingReqId) {
-          const submitRes = await fetch(WARES_API, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              key: WARES_KEY,
-              action: "submit-request",
-              uuid: targetUuid,
-              user_name: item.title || item.user_name || (type === "frames" ? "إطار" : "دخولية"),
-              ware_type: wareType,
-              image_type: imageType,
-              file_url: fileUrl,
-              days: String(item.duration_days || 30),
-            }),
-          }).then(r => r.json());
-
-          if (submitRes.ok && submitRes.data?.request_id) {
-            pendingReqId = String(submitRes.data.request_id);
-          } else {
-            toast.warning("تم القبول — لكن إنشاء الطلب فشل.");
-            console.error("Submit-request failed:", submitRes);
-            return;
-          }
+        if (submitRes.ok && submitRes.data?.request_id) {
+          pendingReqId = String(submitRes.data.request_id);
+        } else {
+          toast.warning("تم القبول — لكن إنشاء الطلب فشل.");
+          console.error("Submit-request failed:", submitRes);
+          return;
         }
 
         // 3) Approve: this is the only upload point on wares-api
