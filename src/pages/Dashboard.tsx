@@ -228,6 +228,7 @@ const Dashboard: React.FC = () => {
         </main>
       </div>
       <BottomNav />
+      {ConfirmDialog}
     </>
   );
 };
