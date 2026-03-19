@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Loader2, MessageCircle, Archive, ArrowRight, ArrowUpRight, XCircle, User, Clock, Hash, Shield, Crown, Star, AlertTriangle } from 'lucide-react';
+import { Send, Loader2, MessageCircle, ArrowRight, ArrowUpRight, XCircle, User, Clock, Shield, Crown, Star, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
