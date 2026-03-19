@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, Wallet, TrendingUp, Hash, Clock, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAgentAuth } from "@/hooks/use-agent-auth";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import AgentBottomNav from "@/components/AgentBottomNav";
 import { BANK_LABELS } from "@/lib/constants";
 

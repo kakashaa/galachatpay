@@ -204,6 +204,7 @@ const AdminDashboardPage: React.FC = () => {
   if (!adminSessionToken) return null;
 
   return (
+    <>
     <div
       ref={scrollContainerRef}
       className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative admin-theme"
