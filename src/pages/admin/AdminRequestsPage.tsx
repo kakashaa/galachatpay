@@ -458,7 +458,7 @@ const AdminRequestsPage: React.FC = () => {
                       <span className="text-xs font-bold text-muted-foreground">السابقة</span>
                     </div>
                   )}
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     {otherItems.slice(0, 20).map((item, i) => renderVisualCard(item, i + pendingItems.length))}
                   </div>
                 </div>
