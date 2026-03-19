@@ -70,6 +70,11 @@ serve(async (req) => {
       }
 
       case "insert": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data: iData, error: iError } = await supabase
           .from(params.table)
           .insert(params.data);
@@ -78,6 +83,11 @@ serve(async (req) => {
       }
 
       case "delete": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { error: dError } = await supabase
           .from(params.table)
           .delete()

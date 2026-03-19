@@ -117,17 +117,21 @@ export function useSupportSession(sessionId: string | null) {
     attachmentUrl?: string
   ) => {
     if (!sessionId) return;
-    await supabase.functions.invoke("support-system", {
-      body: {
-        action: "send_message",
-        session_id: sessionId,
-        sender_uuid: senderUuid,
-        sender_name: senderName,
-        sender_type: senderType,
-        message,
-        attachment_url: attachmentUrl,
-      },
-    });
+    try {
+      await supabase.functions.invoke("support-system", {
+        body: {
+          action: "send_message",
+          session_id: sessionId,
+          sender_uuid: senderUuid,
+          sender_name: senderName,
+          sender_type: senderType,
+          message,
+          attachment_url: attachmentUrl,
+        },
+      });
+    } catch (err) {
+      console.error("sendMessage error:", err);
+    }
   }, [sessionId]);
 
   return { messages, session, loading, sendMessage, refetch: fetchMessages };

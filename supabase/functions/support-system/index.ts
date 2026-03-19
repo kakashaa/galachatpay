@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const GALA_API = "https://galachat.site/project-z/api.php";
-const ADMIN_KEY = "ghala2026owner";
+const ADMIN_KEY = Deno.env.get("ADMIN_KEY") || "ghala2026owner";
 
 // Get current Saudi time (UTC+3)
 function getSaudiTime(): { hours: number; minutes: number; timeStr: string } {

@@ -94,20 +94,21 @@ const MyRequests: React.FC = () => {
     setLoading(true);
     const unified: UnifiedRequest[] = [];
 
-    const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    try {
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    const [salaryRes, entryRes, frameRes, vipRes, animatedRes, customGiftRes, hairRes, idRes, extRequestsRes] = await Promise.all([
-      supabase.from("salary_requests").select("*").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(30),
-      supabase.from("entry_gift_claims").select("id, claim_type, gift_usage, claim_month, created_at, status, admin_note, title, duration_days").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
-      supabase.from("frame_claims").select("id, claim_type, claim_month, created_at, status, admin_note, title, duration_days").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
-      supabase.from("vip_requests").select("id, vip_level, created_at, request_month, recipient_uuid").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
-      supabase.from("animated_photo_requests").select("id, status, duration_label, created_at, admin_note, rejection_image_url, is_final_rejection").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
-      supabase.from("custom_gifts").select("id, title, status, created_at, admin_note, rejection_image_url, is_final_rejection").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
-      supabase.from("hair_selections").select("id, selection_week, status, created_at, admin_note, hairs(title)").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
-      supabase.from("id_changes").select("id, new_id, level_milestone, created_at").or(`user_uuid.eq.${user.uuid},new_id.eq.${user.uuid}`).order("created_at", { ascending: false }).limit(10),
-      fetch(`${EXT_API}?action=my_salary_requests&uuid=${user.uuid}&month=${month}`).then(r => r.json()).catch(() => ({ requests: [] })),
-    ]);
+      const [salaryRes, entryRes, frameRes, vipRes, animatedRes, customGiftRes, hairRes, idRes, extRequestsRes] = await Promise.all([
+        supabase.from("salary_requests").select("*").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(30),
+        supabase.from("entry_gift_claims").select("id, claim_type, gift_usage, claim_month, created_at, status, admin_note, title, duration_days").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
+        supabase.from("frame_claims").select("id, claim_type, claim_month, created_at, status, admin_note, title, duration_days").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
+        supabase.from("vip_requests").select("id, vip_level, created_at, request_month, recipient_uuid").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
+        supabase.from("animated_photo_requests").select("id, status, duration_label, created_at, admin_note, rejection_image_url, is_final_rejection").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
+        supabase.from("custom_gifts").select("id, title, status, created_at, admin_note, rejection_image_url, is_final_rejection").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
+        supabase.from("hair_selections").select("id, selection_week, status, created_at, admin_note, hairs(title)").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
+        supabase.from("id_changes").select("id, new_id, level_milestone, created_at").or(`user_uuid.eq.${user.uuid},new_id.eq.${user.uuid}`).order("created_at", { ascending: false }).limit(10),
+        fetch(`${EXT_API}?action=my_salary_requests&uuid=${user.uuid}&month=${month}`).then(r => r.json()).catch(() => ({ requests: [] })),
+      ]);
 
     // Salary
     for (const r of (salaryRes.data || []) as any[]) {
