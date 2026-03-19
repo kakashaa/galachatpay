@@ -304,6 +304,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   const bannedCount = bannedBds.length;
 
   return (
+    <>
     <div className="space-y-4">
       {/* Sub tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1">

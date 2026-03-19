@@ -430,6 +430,7 @@ const HairSelectionsPanel: React.FC<{ hairs: HairItem[]; readOnly?: boolean }> =
   };
 
   return (
+    <>
     <div className="bg-card border border-border/40 rounded-xl overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
