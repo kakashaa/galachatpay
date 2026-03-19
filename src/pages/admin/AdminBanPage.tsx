@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Ban, Unlock, Loader2, ShieldBan, Shield, Image as ImageIcon, Play, ExternalLink, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
