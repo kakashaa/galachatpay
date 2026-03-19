@@ -128,7 +128,7 @@ const RoomBackgroundPage: React.FC = () => {
     if (error) { setStatus({ type: "error", message: "فشل الإرسال" }); }
     else {
       // Sync with official dashboard
-      try { await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=upload-room-background&uuid=${user.uuid}&image_url=${encodeURIComponent(url)}`); } catch {}
+      try { await supabase.functions.invoke("wares-request", { body: { action: "upload-room-background", uuid: user.uuid, image_url: url } }); } catch {}
       setStatus({ type: "success", message: "تم إرسال الطلب!\nسيتم مراجعته من الإدارة" }); setFile(null); setRedeemCode(""); fetchData();
     }
     setSubmitting(false);
