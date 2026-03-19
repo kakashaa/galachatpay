@@ -21,7 +21,7 @@ const AdminComplaint: React.FC = () => {
     const load = async () => {
       try {
         const { data } = await supabase.from("admin_accounts").select("username, display_name, role").eq("is_active", true);
-        setAdmins((data || []).filter((a: any) => a.role !== "owner"));
+        setAdmins(data || []);
       } catch { }
       setLoading(false);
     };
