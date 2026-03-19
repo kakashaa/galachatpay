@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
 
         const { error } = await supabase
           .from("manual_bans")
-          .update({ status: "unbanned", unbanned_at: new Date().toISOString(), unbanned_by: auth.username })
+          .update({ status: "unbanned", unbanned_at: new Date().toISOString(), unbanned_by: username || "" })
           .eq("id", ban_id);
         if (error) throw error;
         result = { success: true };
