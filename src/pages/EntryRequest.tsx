@@ -165,13 +165,19 @@ const EntryRequest: React.FC = () => {
        fetchStarBalance();
 
        // Step 3+4: Background - user doesn't wait
-       const ext = selectedGift.video_url.split(".").pop()?.toLowerCase() || "mp4";
-       const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
+       // IMPORTANT: avoid duplicate uploads. The actual wares upload happens from admin approval only.
        const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
        const wareType = giftUsage === "room" ? "entry_room" : "entry_profile";
-       supabase.functions.invoke("wares-request", {
-         body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: wareType, image_type: imageType, file_url: selectedGift.video_url, days: 30 },
-       }).catch(() => {});
+       const enableDirectWaresSubmit = false;
+
+       if (enableDirectWaresSubmit) {
+         const ext = selectedGift.video_url.split(".").pop()?.toLowerCase() || "mp4";
+         const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
+         supabase.functions.invoke("wares-request", {
+           body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: wareType, image_type: imageType, file_url: selectedGift.video_url, days: 30 },
+         }).catch(() => {});
+       }
+
        supabase.functions.invoke("gala-actions?action=submit-request", {
          body: { user_uuid: user.uuid, user_name: user.name, request_type: "entry_effect", details: { file_url: selectedGift.video_url, title: selectedGift.title, gift_usage: giftUsage, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null }, evidence_url: selectedGift.video_url, image_url: selectedGift.thumbnail_url || selectedGift.video_url },
        }).catch(() => {});
