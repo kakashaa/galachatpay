@@ -282,22 +282,22 @@ const AdminRequestsPage: React.FC = () => {
     );
 
     const thumb = getThumbnail(item);
-    const dim = size === "grid" ? 280 : 340;
+    const dim = size === "grid" ? 140 : 200;
 
     if (isSvga(url)) {
       return (
-        <div className="w-full h-full flex items-center justify-center" style={{ background: 'radial-gradient(circle, rgba(30,30,40,0.9) 0%, rgba(10,10,15,1) 100%)' }}>
-          <SvgaPlayer src={url} width={dim} height={dim} loop={0} className="object-contain" />
+        <div className="w-full h-full flex items-center justify-center p-2" style={{ background: 'radial-gradient(circle, rgba(30,30,40,0.9) 0%, rgba(10,10,15,1) 100%)' }}>
+          <SvgaPlayer src={url} width={dim} height={dim} loop={0} className="object-contain max-w-full max-h-full" />
         </div>
       );
     }
     if (isVideo(url)) {
       return thumb
-        ? <img src={thumb} alt="" className="w-full h-full object-cover" />
-        : <video src={url} muted autoPlay loop playsInline className="w-full h-full object-cover" />;
+        ? <img src={thumb} alt="" className="w-full h-full object-contain p-1" />
+        : <video src={url} muted autoPlay loop playsInline className="w-full h-full object-contain p-1" />;
     }
     // Image (webp, png, gif, jpg)
-    return <img src={url} alt="" className="w-full h-full object-cover" />;
+    return <img src={url} alt="" className="w-full h-full object-contain p-1" />;
   };
 
   const approveAction: Record<ReqTab, string> = {
@@ -341,7 +341,7 @@ const AdminRequestsPage: React.FC = () => {
         </AnimatePresence>
 
         {/* Media preview - proportional visual area */}
-        <div className="relative w-full aspect-[4/3] bg-black/40">
+        <div className="relative w-full aspect-[16/9] bg-black/40">
           <div className="absolute inset-0 flex items-center justify-center">
             {renderMediaPreview(item)}
           </div>
