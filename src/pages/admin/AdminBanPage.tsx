@@ -81,6 +81,8 @@ const AdminBanPage: React.FC = () => {
 
   const handleUnban = async () => {
     if (!banForm.target_uuid.trim()) { toast.error('أدخل UUID'); return; }
+    const ok = await confirm({ title: "تأكيد فك الحظر", message: `هل تريد فك الحظر عن UUID ${banForm.target_uuid}؟`, danger: false, confirmText: "فك الحظر" });
+    if (!ok) return;
     const t = toast.loading("جاري فك الحظر...");
     try {
       await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banForm.target_uuid.trim()}`);

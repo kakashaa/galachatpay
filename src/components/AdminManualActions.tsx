@@ -358,6 +358,8 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
               className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
               onClick={async () => {
                 if (!banUuid.trim()) { toast.error('أدخل UUID'); return; }
+                const ok = await confirm({ title: "تأكيد فك الحظر", message: `فك الحظر عن UUID ${banUuid}؟`, danger: false, confirmText: "فك الحظر" });
+                if (!ok) return;
                 try {
                   await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banUuid.trim()}`);
                   toast.success('تم فك الحظر!');
