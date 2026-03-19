@@ -244,7 +244,8 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
   };
 
   const deleteHair = async (id: string) => {
-    if (!confirm("هل تريد حذف هذه الشعرة؟")) return;
+    const ok = await confirm({ title: "حذف الشعرة", message: "هل تريد حذف هذه الشعرة؟", danger: true, confirmText: "حذف" });
+    if (!ok) return;
     const { error } = await supabase
       .from("hairs")
       .update({ is_deleted: true, deleted_at: new Date().toISOString() })
