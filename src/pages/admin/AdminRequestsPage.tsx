@@ -556,6 +556,18 @@ const AdminRequestsPage: React.FC = () => {
           })}
         </motion.div>
 
+        {/* Direct upload button for rooms tab */}
+        {activeTab === "rooms" && (
+          <button
+            onClick={() => setShowDirectUpload(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] mb-4"
+            style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)', color: 'hsl(187 92% 43%)' }}
+          >
+            <Upload className="w-4 h-4" />
+            رفع مباشر
+          </button>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: `${currentTab.bg}0.8)` }} />
