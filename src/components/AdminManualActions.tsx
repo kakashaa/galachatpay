@@ -245,7 +245,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
             <label className="text-[11px] text-muted-foreground mb-1 block">السبب</label>
             <select value={banReason} onChange={(e) => setBanReason(e.target.value)} className={selectClass}>
               <option value="promo">ترويج</option>
-              <option value="abuse">سب</option>
+              <option value="insult">سب</option>
               <option value="other">أخرى</option>
             </select>
           </div>
