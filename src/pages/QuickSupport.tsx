@@ -16,10 +16,18 @@ const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
   const vipLevel = user.vip?.vip_level || user.vip?.level || 0;
   const isHostAgent = (user.agency_id || 0) > 0;
-  // type_user 2=وكيل مضيفين, 4=وكيل شحن ومضيفين, 5=وكيل شحن ومضيف, 6=الكل
   const typeUser = user.type_user || 0;
   const isAgentType = [2, 4, 5, 6].includes(typeUser);
-  return vipLevel >= 6 || isHostAgent || isAgentType;
+  return vipLevel >= 5 || isHostAgent || isAgentType;
+};
+
+/** Returns the on-duty super admin username based on Saudi time (UTC+3) */
+const getOnDutySuperAdmin = (): string => {
+  const now = new Date();
+  const saudiHour = (now.getUTCHours() + 3) % 24;
+  if (saudiHour >= 9 && saudiHour < 17) return "relax";
+  if (saudiHour >= 17 || saudiHour < 1) return "janjoon";
+  return "mars";
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
@@ -82,6 +90,18 @@ const QuickSupport: React.FC = () => {
     }
   }, [authUser]);
 
+  // Auto-start chat for eligible users who don't have an active one
+  const autoStartedRef = React.useRef(false);
+  useEffect(() => {
+    if (!authUser || chatKey || autoStartedRef.current || !isEligibleForQuickSupport(authUser)) return;
+    const saved = localStorage.getItem(`gala_quick_chat_${authUser.uuid}`);
+    if (saved) return; // will be restored by the other effect
+    autoStartedRef.current = true;
+    // Small delay for UI to render
+    const timer = setTimeout(() => startChat(), 400);
+    return () => clearTimeout(timer);
+  }, [authUser, chatKey]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -118,27 +138,31 @@ const QuickSupport: React.FC = () => {
         setQueuePosition(data.queue_position || 0);
         localStorage.setItem(`gala_quick_chat_${authUser.uuid}`, data.chat_key);
 
-        // If there's a selected type, send first message
+        // Send first message — auto for direct entry, or form-based
+        const superAdmin = getOnDutySuperAdmin();
+        let firstMsg = "";
         if (selectedType) {
-          let firstMsg = "";
           if (selectedType === "admin_visit") firstMsg = `طلب إداري - رقم الغرفة: ${roomCode}${description ? `\n${description}` : ""}`;
           else if (selectedType === "direct_contact") firstMsg = `طلب تواصل مباشر - رقم الهاتف: ${phoneNumber}${description ? `\n${description}` : ""}`;
           else firstMsg = description;
-
-          let attachUrl: string | null = null;
-          if (attachment) attachUrl = await uploadAttachment(attachment);
-
-          await supabase.functions.invoke("support-chat", {
-            body: {
-              action: "send",
-              chat_key: data.chat_key,
-              message: firstMsg || "طلب جديد",
-              sender_type: "user",
-              sender_name: authUser.name,
-              attachment_url: attachUrl,
-            },
-          });
+        } else {
+          // Auto-started — send SOS greeting
+          firstMsg = `🆘 طلب دعم سريع من ${authUser.name} — المناوب: @${superAdmin}`;
         }
+
+        let attachUrl: string | null = null;
+        if (attachment) attachUrl = await uploadAttachment(attachment);
+
+        await supabase.functions.invoke("support-chat", {
+          body: {
+            action: "send",
+            chat_key: data.chat_key,
+            message: firstMsg || "طلب جديد",
+            sender_type: "user",
+            sender_name: authUser.name,
+            attachment_url: attachUrl,
+          },
+        });
 
         playSuccessChime();
         toast.success("تم بدء المحادثة!");
