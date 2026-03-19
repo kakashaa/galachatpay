@@ -283,7 +283,7 @@ const AdminBanPage: React.FC = () => {
                       </a>
                       <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[9px] font-bold text-white"
                         style={{ background: report.evidence_type === "video" ? 'rgba(139,92,246,0.85)' : 'rgba(59,130,246,0.85)' }}>
-                        {report.evidence_type === "video" ? <span className="flex items-center gap-1"><Play className="w-3 h-3" /> فيديو</span> : <span className="flex items-center gap-1"><Image className="w-3 h-3" /> صورة</span>}
+                        {report.evidence_type === "video" ? <span className="flex items-center gap-1"><Play className="w-3 h-3" /> فيديو</span> : <span className="flex items-center gap-1"><LucideImage className="w-3 h-3" /> صورة</span>}
                       </div>
                     </div>
                   )}
