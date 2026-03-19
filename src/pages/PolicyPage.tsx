@@ -119,7 +119,7 @@ const PolicyPage: React.FC = () => {
             <Rule num="8" title="خصم عدم الإكمال:" desc="في حال عدم إكمال الأيام أو الساعات المطلوبة يتم خصم 20% من الراتب الشهري المستحق." />
             <Rule num="12" title="رفع الراتب:" desc="يقوم المضيف برفع راتبه لوكيل شحن معتمد من تاريخ 1 وحتى 5 من الشهر. على وكيل الشحن تسليمه الراتب في مدة أقصاها تاريخ 10." />
             <div className="p-3 rounded-xl bg-primary/5 border border-primary/15 mt-2">
-              <p className="text-[11px] text-primary font-bold mb-1">💡 طرق السحب المتاحة:</p>
+              <p className="text-[11px] text-primary font-bold mb-1">طرق السحب المتاحة:</p>
               <p className="text-[10px] text-muted-foreground">• سحب شهري: متاح آخر يوم من الشهر فقط</p>
               <p className="text-[10px] text-muted-foreground">• سحب فوري: متاح دائماً عبر حسابات الدفع</p>
             </div>
@@ -200,7 +200,7 @@ const PolicyPage: React.FC = () => {
             </table>
           </div>
           <div className="mt-3 space-y-1 bg-destructive/5 border border-destructive/15 rounded-xl p-3" dir="rtl">
-            <p className="text-[10px] text-destructive font-bold">⚠️ ملاحظات هامة:</p>
+            <p className="text-[10px] text-destructive font-bold">ملاحظات هامة:</p>
             <p className="text-[10px] text-muted-foreground">• لا يمكن لوكلاء الشحن بيع أسعار صرف منخفضة أو مرتفعة جداً لتعطيل الخدمة</p>
             <p className="text-[10px] text-muted-foreground">• لا يمكن لوكلاء الشحن خداع المستخدمين، وعند اكتشاف ذلك سيتم إنهاء التعاون</p>
           </div>

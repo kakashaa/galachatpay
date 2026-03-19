@@ -45,7 +45,7 @@ const BDDashboard: React.FC = () => {
         const parts: string[] = [];
         if (infoUpdates > 0) parts.push(`${infoUpdates} تحديث معلومات`);
         if (profitSynced > 0) parts.push(`${profitSynced} ربح BD`);
-        toast.success(`✅ تم التحديث${parts.length > 0 ? ': ' + parts.join('، ') : ''}`);
+        toast.success(`تم التحديث${parts.length > 0 ? ': ' + parts.join('، ') : ''}`);
       }
     } catch {
       toast.error("فشل التحديث، حاول مرة أخرى");
@@ -504,7 +504,7 @@ const BDDashboard: React.FC = () => {
               </div>
               <div className="space-y-1.5 text-[11px]">
                 {[
-                  { label: 'الحالة', val: bd.is_active ? '✅ نشط' : '❌ غير نشط', cls: bd.is_active ? 'text-emerald-400' : 'text-red-400' },
+                  { label: 'الحالة', val: bd.is_active ? 'نشط' : 'غير نشط', cls: bd.is_active ? 'text-emerald-400' : 'text-red-400' },
                   { label: 'الهدف الشهري', val: `$${bd.monthly_goal || 0}`, cls: 'text-foreground' },
                   { label: 'عدد الداعمين', val: supporters.length, cls: 'text-foreground' },
                   { label: 'عدد الوكالات', val: agents.length, cls: 'text-foreground' },

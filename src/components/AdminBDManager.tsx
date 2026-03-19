@@ -461,7 +461,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                               <span className={`text-[10px] font-bold ${
                                 pct >= 80 ? "text-green-400" : pct >= 50 ? "text-blue-400" : "text-red-400"
                               }`}>
-                                👥 {active}/{total} ({pct}%)
+                                {active}/{total} ({pct}%)
                               </span>
                             </div>
                           ) : null;
@@ -661,7 +661,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                               return (
                                 <div className="bg-muted/20 rounded-lg p-3 space-y-1.5">
                                   <div className="flex items-center justify-between text-[10px]">
-                                    <span className="font-bold">🎯 هدف الشهر</span>
+                                    <span className="font-bold">هدف الشهر</span>
                                     <span className="text-muted-foreground">${earnings.toFixed(2)} / ${goal.toFixed(2)}</span>
                                   </div>
                                   <div className="w-full bg-muted/40 h-2 rounded-full overflow-hidden">
@@ -673,7 +673,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                     />
                                   </div>
                                   <p className={`text-center text-xs font-bold ${pct >= 100 ? "text-green-400" : "text-primary"}`}>
-                                    {pct.toFixed(0)}%{pct >= 100 ? " 🎉" : ""}
+                                    {pct.toFixed(0)}%{pct >= 100 ? "" : ""}
                                   </p>
                                 </div>
                               );
@@ -705,7 +705,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
                                     onChange={(e) => setEditBdData({ ...editBdData, current_month_earnings: Number(e.target.value) })} />
                                 </div>
                                 <div>
-                                  <label className="text-[10px] text-muted-foreground">🎯 هدف العمولات الشهري $</label>
+                                  <label className="text-[10px] text-muted-foreground">هدف العمولات الشهري $</label>
                                   <Input type="number" step="1" value={editBdData.monthly_goal ?? bd.monthly_goal ?? 500}
                                     onChange={(e) => setEditBdData({ ...editBdData, monthly_goal: Number(e.target.value) })} />
                                 </div>

@@ -130,7 +130,7 @@ const Login: React.FC = () => {
       }
 
       if (data?.remaining_attempts !== undefined && data?.remaining_attempts <= 2) {
-        setWarning(data.warning || `⚠️ تبقى لك ${data.remaining_attempts} محاولة فقط!`);
+        setWarning(data.warning || `تبقى لك ${data.remaining_attempts} محاولة فقط!`);
       }
 
       if (fnError || !data?.success) {
@@ -331,7 +331,7 @@ const Login: React.FC = () => {
               <div className="flex items-center gap-2 justify-end">
                 <div className="text-right">
                   <p className={`text-sm font-bold ${blockInfo.permanent ? "text-destructive" : "text-warning"}`}>
-                    {blockInfo.permanent ? "🚫 حظر نهائي" : "⏳ حظر مؤقت"}
+                    {blockInfo.permanent ? "حظر نهائي" : "حظر مؤقت"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {blockInfo.permanent

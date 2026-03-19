@@ -147,7 +147,7 @@ const QuickSupport: React.FC = () => {
             <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-destructive/10 border border-destructive/20">
               <ShieldX className="w-10 h-10 text-destructive" />
             </div>
-            <h2 className="text-lg font-bold text-foreground">ميزة حصرية ⚡</h2>
+            <h2 className="text-lg font-bold text-foreground">ميزة حصرية</h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">الدعم السريع متاح فقط لأصحاب<br /><span className="text-primary font-bold">VIP 5+</span> أو <span className="text-primary font-bold">وكلاء المضيفين</span></p>
             <button onClick={() => navigate("/dashboard")} className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm">العودة للرئيسية</button>
           </motion.div>
@@ -182,7 +182,7 @@ const QuickSupport: React.FC = () => {
           <ArrowRight className="w-5 h-5 text-primary" />
           <span className="text-sm font-semibold text-primary">رجوع</span>
         </motion.button>
-        <h1 className="text-sm font-bold text-foreground">{isSOS ? "🆘 SOS دعم طوارئ" : "دعم سريع ⚡"}</h1>
+        <h1 className="text-sm font-bold text-foreground">{isSOS ? "SOS دعم طوارئ" : "دعم سريع"}</h1>
         <div className="w-16" />
       </header>
 
@@ -192,7 +192,7 @@ const QuickSupport: React.FC = () => {
             <motion.div key="selector-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 py-4 overflow-y-auto space-y-4">
               {isSOS && (
                 <div className="glass-card p-3 flex items-center gap-3 bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20">
-                  <span className="text-xl">🆘</span>
+                  <span className="text-xl"></span>
                   <div>
                     <p className="text-xs font-bold text-red-400">وضع الطوارئ</p>
                     <p className="text-[10px] text-muted-foreground">سيتم تصعيد طلبك للسوبر أدمن والمشرفين فوراً</p>
@@ -241,12 +241,12 @@ const QuickSupport: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5 text-primary" />
                       <span className="text-base font-black text-primary">
-                        {isSOS ? "🆘 طلب مساعدة فورية" : "تكلّم مع أدمن الحين"}
+                        {isSOS ? "طلب مساعدة فورية" : "تكلّم مع أدمن الحين"}
                       </span>
                       <Zap className="w-5 h-5 text-primary" />
                     </div>
                     <span className="text-[11px] text-muted-foreground">
-                      {isSOS ? "سيتم إرسال إشعار فوري للسوبر أدمن والمشرفين" : "رد فوري خلال دقائق — بدون انتظار ⚡"}
+                      {isSOS ? "سيتم إرسال إشعار فوري للسوبر أدمن والمشرفين" : "رد فوري خلال دقائق — بدون انتظار"}
                     </span>
                   </>
                 )}
@@ -320,7 +320,7 @@ function RequestForm({ type, roomCode, setRoomCode, description, setDescription,
 
       {type === "admin_visit" && (
         <div className="glass-card p-4 space-y-3">
-          <label className="text-sm font-bold text-foreground flex items-center gap-2">🏠 رقم الغرفة</label>
+          <label className="text-sm font-bold text-foreground flex items-center gap-2">رقم الغرفة</label>
           <input type="text" value={roomCode} onChange={(e) => setRoomCode(e.target.value)} placeholder="اكتب رقم أو كود الغرفة..." required autoFocus maxLength={20} className="w-full h-14 px-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none text-base text-center tracking-wider font-bold" dir="ltr" />
         </div>
       )}
@@ -328,11 +328,11 @@ function RequestForm({ type, roomCode, setRoomCode, description, setDescription,
       {(type === "report" || type === "complaint") && (
         <>
           <div className="glass-card p-4 space-y-3">
-            <label className="text-sm font-bold text-foreground flex items-center gap-2">📝 {type === "report" ? "تفاصيل البلاغ" : "تفاصيل الشكوى"}</label>
+            <label className="text-sm font-bold text-foreground flex items-center gap-2">{type === "report" ? "تفاصيل البلاغ" : "تفاصيل الشكوى"}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={type === "report" ? "اكتب تفاصيل البلاغ..." : "اكتب تفاصيل الشكوى..."} required autoFocus maxLength={1000} rows={4} className="w-full px-4 py-3 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none text-sm resize-none" />
           </div>
           <div className="glass-card p-4 space-y-3">
-            <label className="text-sm font-bold text-foreground flex items-center gap-2">📎 مرفق (اختياري)</label>
+            <label className="text-sm font-bold text-foreground flex items-center gap-2">مرفق (اختياري)</label>
             {attachment ? (
               <div className="flex items-center gap-2 p-2 bg-input rounded-lg border border-border/50">
                 <span className="text-xs text-foreground truncate flex-1">{attachment.name}</span>
@@ -352,11 +352,11 @@ function RequestForm({ type, roomCode, setRoomCode, description, setDescription,
       {type === "direct_contact" && (
         <>
           <div className="glass-card p-4 space-y-3">
-            <label className="text-sm font-bold text-foreground flex items-center gap-2">📞 رقم الهاتف</label>
+            <label className="text-sm font-bold text-foreground flex items-center gap-2">رقم الهاتف</label>
             <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="أدخل رقم الهاتف مع رمز الدولة..." required autoFocus maxLength={20} className="w-full h-14 px-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none text-base text-center tracking-wider font-bold" dir="ltr" />
           </div>
           <div className="glass-card p-4 space-y-3">
-            <label className="text-sm font-bold text-foreground flex items-center gap-2">📝 ملاحظة (اختياري)</label>
+            <label className="text-sm font-bold text-foreground flex items-center gap-2">ملاحظة (اختياري)</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="أضف ملاحظة للإداري..." maxLength={500} rows={3} className="w-full px-4 py-3 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none text-sm resize-none" />
           </div>
         </>

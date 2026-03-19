@@ -87,7 +87,7 @@ const QuickSupportChat: React.FC<Props> = ({ requestId, userUuid, userName, onBa
           <ArrowRight className="w-4 h-4" /> رجوع
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm" style={{ background: "hsl(217 91% 40% / 0.15)" }}>💬</div>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm" style={{ background: "hsl(217 91% 40% / 0.15)" }}></div>
           <span className="text-xs font-bold text-foreground">محادثة الدعم</span>
         </div>
         <div className="w-12" />

@@ -11,19 +11,19 @@ import SupportSessionChat from "@/components/SupportSessionChat";
 import { startSupportSession } from "@/hooks/use-support-session";
 
 const REQUEST_TYPES = [
-  { id: "room_bg", label: "تغيير خلفية غرفتي", emoji: "🖼️", icon: Image },
+  { id: "room_bg", label: "تغيير خلفية غرفتي", emoji: "", icon: Image },
   { id: "frame", label: "طلب إطار", emoji: "🎨", icon: Frame },
-  { id: "entry", label: "طلب دخولية", emoji: "✨", icon: Sparkles },
-  { id: "custom_gift", label: "طلب هدية مخصصة", emoji: "🎁", icon: Gift },
-  { id: "other", label: "طلب آخر", emoji: "📝", icon: FileText },
+  { id: "entry", label: "طلب دخولية", emoji: "", icon: Sparkles },
+  { id: "custom_gift", label: "طلب هدية مخصصة", emoji: "", icon: Gift },
+  { id: "other", label: "طلب آخر", emoji: "", icon: FileText },
 ];
 
 const STATUS_MAP: Record<string, { label: string; color: string; emoji: string }> = {
-  waiting: { label: "قيد المراجعة", color: "text-yellow-400", emoji: "⏳" },
-  active: { label: "قيد المعالجة", color: "text-blue-400", emoji: "🔄" },
-  resolved: { label: "تم", color: "text-green-400", emoji: "✅" },
+  waiting: { label: "قيد المراجعة", color: "text-yellow-400", emoji: "" },
+  active: { label: "قيد المعالجة", color: "text-blue-400", emoji: "" },
+  resolved: { label: "تم", color: "text-green-400", emoji: "" },
   closed: { label: "مغلق", color: "text-muted-foreground", emoji: "📁" },
-  escalated: { label: "تم التصعيد", color: "text-orange-400", emoji: "⚠️" },
+  escalated: { label: "تم التصعيد", color: "text-orange-400", emoji: "" },
 };
 
 const HostRequestPage: React.FC = () => {
@@ -191,7 +191,7 @@ const HostRequestPage: React.FC = () => {
                     className="w-full rounded-2xl p-3 text-right" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span>{typeInfo?.emoji || "📋"}</span>
+                        <span>{typeInfo?.emoji || ""}</span>
                         <span className="text-sm font-bold">{typeInfo?.label || req.request_type}</span>
                       </div>
                       <span className={`text-[10px] font-bold ${statusInfo.color}`}>

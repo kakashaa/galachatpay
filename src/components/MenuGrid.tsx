@@ -35,17 +35,17 @@ interface MenuItem {
 }
 
 const ELEMENT_LABELS: Record<string, string> = {
-  entries: "🎁 دخوليات",
-  frames: "🖼️ إطارات",
-  gifts: "🎀 هدايا مخصصة",
-  animated_photos: "📸 صور متحركة",
-  change_id: "🔄 تغيير آيدي",
-  hairs: "💇 تسريحات",
-  vip: "⭐ VIP",
-  salary: "💰 رواتب",
+  entries: "دخوليات",
+  frames: "إطارات",
+  gifts: "هدايا مخصصة",
+  animated_photos: "صور متحركة",
+  change_id: "تغيير آيدي",
+  hairs: "تسريحات",
+  vip: "VIP",
+  salary: "رواتب",
   quick_support: "🎧 دعم سريع",
-  works: "💼 works",
-  stars: "🌟 نجومي",
+  works: "works",
+  stars: "نجومي",
 };
 
 const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) => {
@@ -202,7 +202,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
           <div className="mx-auto w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mb-3">
             <Ban className="w-8 h-8 text-destructive" />
           </div>
-          <h3 className="text-lg font-bold text-destructive mb-1">🚫 محظور</h3>
+          <h3 className="text-lg font-bold text-destructive mb-1">محظور</h3>
           <p className="text-sm text-muted-foreground mb-3">
             تم حظرك من استخدام <span className="font-bold text-foreground">{ELEMENT_LABELS[banDialog.elementKey] || banDialog.elementKey}</span>
           </p>

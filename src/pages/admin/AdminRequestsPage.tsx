@@ -298,12 +298,12 @@ const AdminRequestsPage: React.FC = () => {
 
       if (item?.user_uuid) {
         const typeMap: Record<ReqTab, { approveTitle: string; approveBody: string; rejectTitle: string; rejectBody: string }> = {
-          entries: { approveTitle: "تم قبول طلب الدخولية ✅", approveBody: `تم تفعيل الدخولية "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الدخولية ❌", rejectBody: "للأسف تم رفض طلب الدخولية الخاص بك." },
-          frames: { approveTitle: "تم قبول طلب الإطار ✅", approveBody: `تم تفعيل الإطار "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الإطار ❌", rejectBody: "للأسف تم رفض طلب الإطار الخاص بك." },
-          hairs: { approveTitle: "تم قبول الشعار ✅", approveBody: "تم تفعيل الشعار المختار على ملفك الشخصي!", rejectTitle: "تم رفض الشعار ❌", rejectBody: "للأسف تم رفض طلب الشعار الخاص بك." },
-          animated: { approveTitle: "تم قبول الصورة المتحركة ✅", approveBody: "تم تفعيل صورتك المتحركة على ملفك الشخصي!", rejectTitle: "تم رفض الصورة المتحركة ❌", rejectBody: "تم رفض الصورة المتحركة. تواصل مع الدعم لمزيد من المعلومات." },
-          custom: { approveTitle: "تم قبول الهدية المخصصة ✅", approveBody: `تم رفع هديتك "${item.title || ''}" وأصبحت متاحة لجميع المستخدمين!`, rejectTitle: "تم رفض الهدية المخصصة ❌", rejectBody: "للأسف تم رفض الهدية المخصصة. تأكد من استيفاء الشروط." },
-          rooms: { approveTitle: "تم قبول خلفية الغرفة ✅", approveBody: "تم تغيير خلفية غرفتك بنجاح!", rejectTitle: "تم رفض خلفية الغرفة ❌", rejectBody: "للأسف تم رفض طلب تغيير خلفية الغرفة." },
+          entries: { approveTitle: "تم قبول طلب الدخولية", approveBody: `تم تفعيل الدخولية "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الدخولية", rejectBody: "للأسف تم رفض طلب الدخولية الخاص بك." },
+          frames: { approveTitle: "تم قبول طلب الإطار", approveBody: `تم تفعيل الإطار "${item.title || ''}" على حسابك!`, rejectTitle: "تم رفض طلب الإطار", rejectBody: "للأسف تم رفض طلب الإطار الخاص بك." },
+          hairs: { approveTitle: "تم قبول الشعار", approveBody: "تم تفعيل الشعار المختار على ملفك الشخصي!", rejectTitle: "تم رفض الشعار", rejectBody: "للأسف تم رفض طلب الشعار الخاص بك." },
+          animated: { approveTitle: "تم قبول الصورة المتحركة", approveBody: "تم تفعيل صورتك المتحركة على ملفك الشخصي!", rejectTitle: "تم رفض الصورة المتحركة", rejectBody: "تم رفض الصورة المتحركة. تواصل مع الدعم لمزيد من المعلومات." },
+          custom: { approveTitle: "تم قبول الهدية المخصصة", approveBody: `تم رفع هديتك "${item.title || ''}" وأصبحت متاحة لجميع المستخدمين!`, rejectTitle: "تم رفض الهدية المخصصة", rejectBody: "للأسف تم رفض الهدية المخصصة. تأكد من استيفاء الشروط." },
+          rooms: { approveTitle: "تم قبول خلفية الغرفة", approveBody: "تم تغيير خلفية غرفتك بنجاح!", rejectTitle: "تم رفض خلفية الغرفة", rejectBody: "للأسف تم رفض طلب تغيير خلفية الغرفة." },
         };
         const msgs = typeMap[activeTab];
         if (msgs) await sendUserNotification(item.user_uuid, isApprove ? msgs.approveTitle : msgs.rejectTitle, isApprove ? msgs.approveBody : msgs.rejectBody);

@@ -61,9 +61,9 @@ const LevelBars: React.FC = () => {
 
   return (
     <div className="grid grid-cols-3 gap-3 mb-10">
-      <LevelBar level={user.level.charger_level} color="green" icon="⚡" percentage={chargerPct} />
-      <LevelBar level={user.level.receiver_level} color="pink" icon="💎" percentage={receiverPct} />
-      <LevelBar level={user.level.sender_level} color="yellow" icon="🎁" percentage={senderPct} />
+      <LevelBar level={user.level.charger_level} color="green" icon="" percentage={chargerPct} />
+      <LevelBar level={user.level.receiver_level} color="pink" icon="" percentage={receiverPct} />
+      <LevelBar level={user.level.sender_level} color="yellow" icon="" percentage={senderPct} />
     </div>
   );
 };

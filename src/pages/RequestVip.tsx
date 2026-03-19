@@ -299,8 +299,8 @@ const RequestVip: React.FC = () => {
                 <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1" />
                 <p className="text-xs font-bold text-foreground">
                   {mode === "gift"
-                    ? `تم إهداء VIP ${selectedVip} للمستخدم ${recipientId} بنجاح! 🎁`
-                    : `تم تفعيل VIP ${selectedVip} بنجاح! 🎉`}
+                    ? `تم إهداء VIP ${selectedVip} للمستخدم ${recipientId} بنجاح!`
+                    : `تم تفعيل VIP ${selectedVip} بنجاح!`}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">المدة: 10 أيام</p>
               </div>

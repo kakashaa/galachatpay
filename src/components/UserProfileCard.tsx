@@ -227,7 +227,7 @@ const UserProfileCard: React.FC = () => {
                 <Sparkles className="w-3 h-3 text-white" />
               </div>
               <span className="text-sm font-black text-yellow-400">{totalStars}</span>
-              <span className="text-[8px] text-muted-foreground">⭐</span>
+              <span className="text-[8px] text-muted-foreground"></span>
             </div>
             <div className="flex items-center gap-1">
               <button onClick={() => handleOpenWallet("main")}
@@ -253,7 +253,7 @@ const UserProfileCard: React.FC = () => {
               <div key={i}
                 className={`flex-1 rounded py-px text-center ${totalStars >= r.stars ? 'opacity-100' : 'opacity-35'}`}
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-[7px] font-bold text-foreground">{r.stars}⭐ <span className="font-mono">{r.format}</span></p>
+                <p className="text-[7px] font-bold text-foreground">{r.stars}<span className="font-mono">{r.format}</span></p>
               </div>
             ))}
           </div>

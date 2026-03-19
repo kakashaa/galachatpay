@@ -261,7 +261,7 @@ export const AdminStoryCircle = () => {
         media_type: mediaType,
         expires_at: expiresAt,
       });
-      toast.success('تم نشر الستوري ✅');
+      toast.success('تم نشر الستوري');
       fetchStories();
     } catch { toast.error('فشل الرفع'); }
     setUploading(false);

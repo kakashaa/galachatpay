@@ -34,19 +34,19 @@ interface Props {
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string; bg: string }> = {
   pending: {
     icon: <Clock className="w-4 h-4" />,
-    label: "⏳ قيد المراجعة",
+    label: "قيد المراجعة",
     color: "text-amber-400",
     bg: "bg-amber-500/10 border-amber-500/20",
   },
   approved: {
     icon: <CheckCircle className="w-4 h-4" />,
-    label: "✅ تم التسليم",
+    label: "تم التسليم",
     color: "text-emerald-400",
     bg: "bg-emerald-500/10 border-emerald-500/20",
   },
   rejected: {
     icon: <XCircle className="w-4 h-4" />,
-    label: "❌ مرفوض",
+    label: "مرفوض",
     color: "text-red-400",
     bg: "bg-red-500/10 border-red-500/20",
   },
@@ -221,7 +221,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                   }}
                   className="w-full gold-gradient text-primary-foreground font-bold h-12"
                 >
-                  ✏️ تعديل وإعادة الإرسال
+                  ✏ تعديل وإعادة الإرسال
                 </Button>
               )}
             </div>

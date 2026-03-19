@@ -92,7 +92,7 @@ const WorksPage: React.FC = () => {
       setIsBanned(true);
       setModal({
         type: "error",
-        message: `⛔ تم إيقاف حسابك مؤقتاً\n\nحاولت إضافة أعضاء غير مؤهلين ${count} مرات.\nتم إرسال طلب حظر للإدارة.\n\nالسبب: ${reason}`,
+        message: `تم إيقاف حسابك مؤقتاً\n\nحاولت إضافة أعضاء غير مؤهلين ${count} مرات.\nتم إرسال طلب حظر للإدارة.\n\nالسبب: ${reason}`,
         vibrate: true,
       });
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
@@ -100,7 +100,7 @@ const WorksPage: React.FC = () => {
     } else if (count >= WARN_THRESHOLD) {
       setModal({
         type: "error",
-        message: `⚠️ تحذير أخير!\n\nحاولت ${count} مرات إضافة أعضاء غير مؤهلين.\nمحاولة أخرى وسيتم حظرك!\n\nالسبب: ${reason}`,
+        message: `تحذير أخير!\n\nحاولت ${count} مرات إضافة أعضاء غير مؤهلين.\nمحاولة أخرى وسيتم حظرك!\n\nالسبب: ${reason}`,
         vibrate: true,
       });
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
@@ -108,7 +108,7 @@ const WorksPage: React.FC = () => {
     } else {
       setModal({
         type: "error",
-        message: `❌ فشلت الإضافة\n\n${reason}\n\n⚠️ تحذير ${count}/5 — بعد 5 محاولات سيتم حظرك`,
+        message: `فشلت الإضافة\n\n${reason}\n\nتحذير ${count}/5 — بعد 5 محاولات سيتم حظرك`,
       });
     }
   }, [user?.uuid]);
@@ -232,7 +232,7 @@ const WorksPage: React.FC = () => {
       await supabase.from("works_requests").insert({
         user_uuid: user.uuid, user_name: user.name || "", user_level: userLevel,
       } as any);
-      setModal({ type: "success", message: "تم تقديم الطلب بنجاح ✅\nسيتم مراجعته من الإدارة" });
+      setModal({ type: "success", message: "تم تقديم الطلب بنجاح\nسيتم مراجعته من الإدارة" });
       setPendingRequest(true);
     } catch {
       setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
@@ -371,7 +371,7 @@ const WorksPage: React.FC = () => {
         } as any);
       }
 
-      setModal({ type: "success", message: "تم إرسال الدعوة بنجاح ✅" });
+      setModal({ type: "success", message: "تم إرسال الدعوة بنجاح" });
       setShowAddMember(false); setMemberInput(""); setAcceptedTerms(false);
       fetchData();
     } catch (e: any) {
@@ -398,7 +398,7 @@ const WorksPage: React.FC = () => {
         works_id: myWorks.id, user_uuid: user!.uuid, amount_usd: amt,
         amount_coins: Math.floor(amt * 8500), recipient_uuid: recipientUuid.trim(),
       } as any);
-      setModal({ type: "success", message: `تم تقديم طلب السحب ✅\n$${amt.toFixed(2)} = ${Math.floor(amt * 8500).toLocaleString()} كوينز` });
+      setModal({ type: "success", message: `تم تقديم طلب السحب\n$${amt.toFixed(2)} = ${Math.floor(amt * 8500).toLocaleString()} كوينز` });
       setShowWithdraw(false); setWithdrawAmount(""); setRecipientUuid("");
     } catch {
       setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
@@ -466,7 +466,7 @@ const WorksPage: React.FC = () => {
         <p className="text-sm text-muted-foreground">ادعُ أعضاء واحصل على عمولة من نشاطهم</p>
         {pendingRequest ? (
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl px-6 py-3">
-            <p className="text-sm text-amber-400 font-bold">طلبك قيد المراجعة ⏳</p>
+            <p className="text-sm text-amber-400 font-bold">طلبك قيد المراجعة</p>
           </div>
         ) : (
           <button onClick={submitRequest} disabled={submitting}

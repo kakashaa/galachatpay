@@ -128,7 +128,7 @@ const StarTransactionHistory: React.FC<Props> = ({ userUuid, onBack }) => {
 
   return (
     <div className="space-y-3 pt-2 animate-fade-in" dir="rtl">
-      <p className="text-sm font-bold text-center text-foreground">📋 سجل العمليات</p>
+      <p className="text-sm font-bold text-center text-foreground">سجل العمليات</p>
 
       {loading ? (
         <div className="flex justify-center py-8">
@@ -156,7 +156,7 @@ const StarTransactionHistory: React.FC<Props> = ({ userUuid, onBack }) => {
               <div className="text-left shrink-0">
                 {tx.amount > 0 && (
                   <p className={`text-xs font-black ${tx.type === "gift_received" ? "text-emerald-400" : "text-red-400"}`}>
-                    {tx.type === "gift_received" ? "+" : "-"}{tx.amount} ⭐
+                    {tx.type === "gift_received" ? "+" : "-"}{tx.amount}
                   </p>
                 )}
                 <p className="text-[9px] text-muted-foreground">

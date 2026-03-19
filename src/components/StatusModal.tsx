@@ -47,8 +47,8 @@ const StatusModal: React.FC<StatusModalProps> = ({ type, message, onClose, vibra
               }}
             />
           )}
-          {type === "success" && <div className="text-4xl">✅</div>}
-          {type === "error" && <div className="text-4xl">❌</div>}
+          {type === "success" && <div className="text-4xl"></div>}
+          {type === "error" && <div className="text-4xl"></div>}
 
           <p className="text-white font-bold text-sm whitespace-pre-line">{message}</p>
 

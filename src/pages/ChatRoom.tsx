@@ -107,7 +107,7 @@ const ChatRoom: React.FC = () => {
         message_type: mediaType, media_url: urlData.publicUrl, status: 'sent',
       });
       await (supabase as any).from('conversations').update({
-        last_message: `📎 ${mediaType === 'photo' ? 'صورة' : 'فيديو'}`,
+        last_message: `${mediaType === 'photo' ? 'صورة' : 'فيديو'}`,
         last_message_at: new Date().toISOString(),
       }).eq('id', conversationId);
     } catch { toast.error('فشل الرفع'); }
@@ -149,7 +149,7 @@ const ChatRoom: React.FC = () => {
         ))}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
-            <span className="text-4xl">💬</span>
+            <span className="text-4xl"></span>
             <p className="text-sm text-muted-foreground">ابدأ المحادثة</p>
           </div>
         )}

@@ -249,9 +249,9 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
             <label className="text-[11px] text-muted-foreground mb-2 block font-bold">سبب الحظر</label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { value: 'promo', label: '🔴 ترويج', color: 'border-red-500 bg-red-500/10 text-red-300' },
-                { value: 'insult', label: '🟡 سب / إساءة', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-300' },
-                { value: 'other', label: '🟠 أخرى', color: 'border-orange-500 bg-orange-500/10 text-orange-300' },
+                { value: 'promo', label: 'ترويج', color: 'border-red-500 bg-red-500/10 text-red-300' },
+                { value: 'insult', label: 'سب / إساءة', color: 'border-yellow-500 bg-yellow-500/10 text-yellow-300' },
+                { value: 'other', label: 'أخرى', color: 'border-orange-500 bg-orange-500/10 text-orange-300' },
               ].map((r) => (
                 <button
                   key={r.value}
@@ -278,20 +278,20 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${banType === 'normal' ? 'border-primary' : 'border-muted-foreground/50'}`}>
                     {banType === 'normal' && <div className="w-2 h-2 rounded-full bg-primary" />}
                   </div>
-                  <span className="text-xs font-bold">⚡ حساب فقط</span>
+                  <span className="text-xs font-bold">حساب فقط</span>
                 </label>
                 <label className={`flex-1 flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${banType === 'device' ? 'border-destructive bg-destructive/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
                   <input type="radio" name="banType" checked={banType === 'device'} onChange={() => setBanType('device')} className="sr-only" />
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${banType === 'device' ? 'border-destructive' : 'border-muted-foreground/50'}`}>
                     {banType === 'device' && <div className="w-2 h-2 rounded-full bg-destructive" />}
                   </div>
-                  <span className="text-xs font-bold">🔒 جهاز كامل</span>
+                  <span className="text-xs font-bold">جهاز كامل</span>
                 </label>
               </div>
             </div>
           ) : (
             <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3 text-center">
-              <p className="text-xs text-red-400 font-bold">⚠️ الترويج = حظر جهاز دائم تلقائي (999,999 ساعة)</p>
+              <p className="text-xs text-red-400 font-bold">الترويج = حظر جهاز دائم تلقائي (999,999 ساعة)</p>
             </div>
           )}
 

@@ -124,12 +124,12 @@ const LiveSupportChat: React.FC<Props> = ({
     const tempId = `temp-${Date.now()}` as any;
     const optimisticMsg: Message = {
       id: tempId, sender_type: "user", sender_name: userName,
-      message: msgText || (attachmentUrl ? "📷 صورة" : ""), attachment_url: attachmentUrl, created_at: new Date().toISOString(),
+      message: msgText || (attachmentUrl ? "صورة" : ""), attachment_url: attachmentUrl, created_at: new Date().toISOString(),
     };
     setMessages(prev => [...prev, optimisticMsg]);
     try {
       await supabase.functions.invoke("support-chat", {
-        body: { action: "send", chat_key: chatKey, message: msgText || (attachmentUrl ? "📷 صورة" : ""),
+        body: { action: "send", chat_key: chatKey, message: msgText || (attachmentUrl ? "صورة" : ""),
           sender_type: "user", sender_name: userName, user_uuid: userUuid, attachment_url: attachmentUrl },
       });
     } catch {
@@ -205,7 +205,7 @@ const LiveSupportChat: React.FC<Props> = ({
             isMine={msg.sender_type === "user"}
             senderName={msg.sender_type === "admin" ? (msg.sender_name || "فريق الدعم") : undefined}
             senderType={msg.sender_type}
-            content={msg.message !== "📷 صورة" ? msg.message : undefined}
+            content={msg.message !== "صورة" ? msg.message : undefined}
             attachmentUrl={msg.attachment_url}
             time={msg.created_at}
             showSender={msg.sender_type !== "user"}
@@ -219,13 +219,13 @@ const LiveSupportChat: React.FC<Props> = ({
         )}
         {messages.length === 0 && !ended && initialLoaded && (
           <div className="text-center py-8">
-            <p className="text-xs text-muted-foreground">ابدأ المحادثة بإرسال رسالة 💬</p>
+            <p className="text-xs text-muted-foreground">ابدأ المحادثة بإرسال رسالة</p>
           </div>
         )}
         {ended && (
           <div className="text-center py-6">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "hsl(0 0% 100% / 0.04)" }}>
-              <span className="text-2xl">✅</span>
+              <span className="text-2xl"></span>
             </div>
             <p className="text-sm font-bold text-foreground mb-1">انتهت المحادثة</p>
             <p className="text-xs text-muted-foreground">شكراً لتواصلك مع فريق الدعم</p>

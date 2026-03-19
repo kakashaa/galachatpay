@@ -63,7 +63,7 @@ const AdminBanPage: React.FC = () => {
       const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
       await sendUserNotification(
         banForm.target_uuid.trim(),
-        "تم تعليق حسابك ⚠️",
+        "تم تعليق حسابك",
         `تم تعليق حسابك بسبب: ${reason || "مخالفة"}. المدة: ${durationText}.`
       );
       toast.dismiss(t);
@@ -137,9 +137,9 @@ const AdminBanPage: React.FC = () => {
                 <p className="text-[11px] text-muted-foreground mb-2 font-bold">سبب الحظر</p>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'promo', label: '🔴 ترويج', active: 'rgba(244,63,94,0.15)', border: 'rgba(244,63,94,0.3)' },
-                    { value: 'insult', label: '🟡 سب / إساءة', active: 'rgba(234,179,8,0.15)', border: 'rgba(234,179,8,0.3)' },
-                    { value: 'other', label: '🟠 أخرى', active: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.3)' },
+                    { value: 'promo', label: 'ترويج', active: 'rgba(244,63,94,0.15)', border: 'rgba(244,63,94,0.3)' },
+                    { value: 'insult', label: 'سب / إساءة', active: 'rgba(234,179,8,0.15)', border: 'rgba(234,179,8,0.3)' },
+                    { value: 'other', label: 'أخرى', active: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.3)' },
                   ].map(r => (
                     <motion.button key={r.value} whileTap={{ scale: 0.95 }}
                       onClick={() => setBanForm(p => ({ ...p, reason: r.value }))}
@@ -186,8 +186,8 @@ const AdminBanPage: React.FC = () => {
                   <p className="text-[11px] text-muted-foreground mb-2 font-bold">نوع الحظر</p>
                   <div className="flex gap-3">
                     {[
-                      { key: 'normal' as const, label: '⚡ حساب فقط', activeColor: 'rgba(59,130,246,0.12)', activeBorder: 'rgba(59,130,246,0.3)' },
-                      { key: 'device' as const, label: '🔒 جهاز كامل', activeColor: 'rgba(244,63,94,0.12)', activeBorder: 'rgba(244,63,94,0.3)' },
+                      { key: 'normal' as const, label: 'حساب فقط', activeColor: 'rgba(59,130,246,0.12)', activeBorder: 'rgba(59,130,246,0.3)' },
+                      { key: 'device' as const, label: 'جهاز كامل', activeColor: 'rgba(244,63,94,0.12)', activeBorder: 'rgba(244,63,94,0.3)' },
                     ].map(s => (
                       <motion.button key={s.key} whileTap={{ scale: 0.95 }}
                         onClick={() => setBanForm(p => ({ ...p, ban_scope: s.key }))}
@@ -200,7 +200,7 @@ const AdminBanPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)' }}>
-                  <p className="text-xs text-admin-rose font-bold">⚠️ الترويج = حظر جهاز دائم تلقائي (999,999 ساعة)</p>
+                  <p className="text-xs text-admin-rose font-bold">الترويج = حظر جهاز دائم تلقائي (999,999 ساعة)</p>
                 </div>
               )}
 
@@ -344,7 +344,7 @@ const AdminBanPage: React.FC = () => {
                   )}
                   {ban.status === "active" && (
                     <motion.button whileTap={{ scale: 0.96 }} disabled={!!actionInProgress}
-                      onClick={async () => { if (actionInProgress) return; setActionInProgress(ban.id); const t = toast.loading("جاري فك الحظر..."); try { await adminCall("unban_manual", { ban_id: ban.id }); await sendUserNotification(ban.target_uuid, "تم إعادة تفعيل حسابك ✅", "تم رفع الحظر عن حسابك. يمكنك استخدام التطبيق بشكل طبيعي."); toast.dismiss(t); toast.success("تم فك الحظر"); loadData(); } catch { toast.dismiss(t); toast.error("فشل فك الحظر"); } finally { setActionInProgress(null); } }}
+                      onClick={async () => { if (actionInProgress) return; setActionInProgress(ban.id); const t = toast.loading("جاري فك الحظر..."); try { await adminCall("unban_manual", { ban_id: ban.id }); await sendUserNotification(ban.target_uuid, "تم إعادة تفعيل حسابك", "تم رفع الحظر عن حسابك. يمكنك استخدام التطبيق بشكل طبيعي."); toast.dismiss(t); toast.success("تم فك الحظر"); loadData(); } catch { toast.dismiss(t); toast.error("فشل فك الحظر"); } finally { setActionInProgress(null); } }}
                       className="w-full h-10 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
                       style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
                       {actionInProgress === ban.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}

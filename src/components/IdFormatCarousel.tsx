@@ -153,7 +153,7 @@ const IdFormatCarousel: React.FC<IdFormatCarouselProps> = ({
           {/* Legend */}
           <div className="flex items-center gap-3 px-2 py-1.5 bg-muted/10 rounded-lg text-[9px] text-muted-foreground" dir="rtl">
             <span>🔤 <strong>حروف متشابهة</strong> = أرقام متشابهة</span>
-            <span>✖️ <strong>X</strong> = أي رقم</span>
+            <span>✖ <strong>X</strong> = أي رقم</span>
           </div>
 
           {/* Digit groups */}

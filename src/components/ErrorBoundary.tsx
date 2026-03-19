@@ -49,7 +49,7 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background p-6" dir="rtl">
           <div className="text-center space-y-4">
-            <div className="text-4xl">⚠️</div>
+            <div className="text-4xl"></div>
             <h2 className="text-lg font-bold text-foreground">حدث خطأ غير متوقع</h2>
             <p className="text-sm text-muted-foreground">يرجى إعادة المحاولة</p>
             <button

@@ -157,7 +157,7 @@ const RoomBackgroundPage: React.FC = () => {
           <p className="text-sm text-muted-foreground leading-relaxed max-w-[280px] mx-auto">
             هذه الخدمة متاحة لـ:<br />
             <span className="text-primary font-bold">VIP 6</span> أو <span className="text-primary font-bold">مستوى شحن 50+</span><br />
-            أو <span className="text-primary font-bold">وكيل مضيفين</span> أو بـ <span className="text-primary font-bold">⭐ نجمتين</span>
+            أو <span className="text-primary font-bold">وكيل مضيفين</span> أو بـ <span className="text-primary font-bold">نجمتين</span>
           </p>
           <button onClick={() => navigate(-1)} className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm">رجوع</button>
         </motion.div>
@@ -208,7 +208,7 @@ const RoomBackgroundPage: React.FC = () => {
                         {r.gift_code && <p className="text-[10px] text-muted-foreground">الكود: {r.gift_code}</p>}
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${r.status === "approved" ? "bg-emerald-500/20 text-emerald-400" : r.status === "rejected" ? "bg-red-500/20 text-red-400" : "bg-yellow-500/20 text-yellow-400"}`}>
-                        {r.status === "approved" ? "مقبول ✅" : r.status === "rejected" ? "مرفوض ❌" : "معلق ⏳"}
+                        {r.status === "approved" ? "مقبول" : r.status === "rejected" ? "مرفوض" : "معلق"}
                       </span>
                     </div>
                   ))}
@@ -220,7 +220,7 @@ const RoomBackgroundPage: React.FC = () => {
           {view === "self" && (
             <motion.div key="self" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-4">
               <div className="glass-card p-4 space-y-3">
-                <label className="text-sm font-bold text-foreground">📸 اختر صورة الخلفية</label>
+                <label className="text-sm font-bold text-foreground">اختر صورة الخلفية</label>
                 {file ? (
                   <div className="flex items-center gap-2 p-2 bg-input rounded-lg border border-border/50">
                     <span className="text-xs text-foreground truncate flex-1">{file.name}</span>
@@ -264,11 +264,11 @@ const RoomBackgroundPage: React.FC = () => {
           {view === "gift_redeem" && (
             <motion.div key="redeem" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="space-y-4">
               <div className="glass-card p-4 space-y-3">
-                <label className="text-sm font-bold text-foreground">🔑 أدخل الكود</label>
+                <label className="text-sm font-bold text-foreground">أدخل الكود</label>
                 <input type="text" value={redeemCode} onChange={e => setRedeemCode(e.target.value.toUpperCase())} placeholder="XXXXXX" maxLength={6} className="w-full h-14 px-4 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none text-xl text-center tracking-[0.3em] font-black" dir="ltr" />
               </div>
               <div className="glass-card p-4 space-y-3">
-                <label className="text-sm font-bold text-foreground">📸 صورة الخلفية</label>
+                <label className="text-sm font-bold text-foreground">صورة الخلفية</label>
                 {file ? (
                   <div className="flex items-center gap-2 p-2 bg-input rounded-lg border border-border/50">
                     <span className="text-xs text-foreground truncate flex-1">{file.name}</span>

@@ -36,7 +36,7 @@ const AdminVipPage: React.FC = () => {
       await adminCall("admin_give_vip", { uuid: vipUuid.trim(), vip_level: vipLevel });
       await sendUserNotification(
         vipUuid.trim(),
-        "تم قبول طلب VIP ✅",
+        "تم قبول طلب VIP",
         `تم تفعيل VIP ${vipLevel} على حسابك بنجاح!`
       );
       toast.dismiss(t);
