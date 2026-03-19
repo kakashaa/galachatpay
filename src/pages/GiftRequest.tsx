@@ -45,7 +45,7 @@ const GiftRequest: React.FC = () => {
           request_type: "gift",
           details: { gift_type: giftType, description: description.trim() },
         },
-      });
+      }).catch(() => ({ data: null, error: null }));
       if (error) throw error;
       setSubmitted(true);
       toast.success("تم إرسال الطلب بنجاح");

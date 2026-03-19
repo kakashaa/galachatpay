@@ -31,7 +31,13 @@ const AdminIdChangePage: React.FC = () => {
     setChanging(true);
     const t = toast.loading("جاري تغيير الآيدي...");
     try {
-      await adminCall("admin_change_uuid", { old_uuid: oldUuid.trim(), new_uuid: newUuid.trim() });
+      const res = await fetch("https://galachat.site/project-z/api.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "admin_change_uuid", admin_key: "ghala2026owner", uuid: oldUuid.trim(), new_uuid: newUuid.trim() }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "فشل التغيير");
       await sendUserNotification(
         newUuid.trim(),
         "تم تغيير المعرف",

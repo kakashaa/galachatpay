@@ -33,7 +33,13 @@ const AdminVipPage: React.FC = () => {
     setSending(true);
     const t = toast.loading(`جاري إرسال VIP ${vipLevel}...`);
     try {
-      await adminCall("admin_give_vip", { uuid: vipUuid.trim(), vip_level: vipLevel });
+      const res = await fetch("https://galachat.site/project-z/api.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "admin_give_vip", admin_key: "ghala2026owner", uuid: vipUuid.trim(), level: vipLevel, duration: "30d" }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "فشل");
       await sendUserNotification(
         vipUuid.trim(),
         "تم قبول طلب VIP",
