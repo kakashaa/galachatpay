@@ -387,6 +387,8 @@ const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, 
         </div>
       )}
     </motion.div>
+    {ConfirmDialog}
+    </>
   );
 };
 
