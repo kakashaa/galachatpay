@@ -15,6 +15,7 @@ interface Props {
 }
 
 const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [activeAction, setActiveAction] = useState<'vip' | 'change_id' | 'ban' | 'user_search' | 'action_log' | null>(null);
 
   // VIP
