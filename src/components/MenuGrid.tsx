@@ -72,6 +72,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
     { icon: BadgeCheck, label: "مركز الشارة", route: "/hairs", bg: "rgba(251,191,36,0.12)", iconColor: "text-amber-400", banKey: "hairs" },
     { icon: Briefcase, label: "البيدي", route: "/works", bg: "rgba(212,165,116,0.15)", iconColor: "text-[#D4A574]", banKey: "works" },
     { icon: Image, label: "خلفيات الغرف", route: "/room-background", bg: "rgba(147,51,234,0.12)", iconColor: "text-violet-400" },
+    { icon: ClipboardList, label: "طلبات المضيفات", route: "/host-requests", bg: "rgba(16,185,129,0.12)", iconColor: "text-teal-400" },
     ...(agencyLoggedIn ? [{ icon: Landmark, label: "وكالة الشحن", route: "/agent", bg: "rgba(245,158,11,0.12)", iconColor: "text-amber-400", guestAllowed: true }] : []),
     { icon: AlertTriangle, label: "بلاغ على أدمن", route: "/admin-complaint", bg: "rgba(239,68,68,0.12)", iconColor: "text-red-400" },
     { icon: FileText, label: "السياسة", route: "/policy", bg: "rgba(100,116,139,0.12)", iconColor: "text-slate-400", guestAllowed: true },
