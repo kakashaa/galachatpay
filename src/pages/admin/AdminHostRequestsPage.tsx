@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ClipboardList, Loader2, Upload, Image, Send, CheckCircle, XCircle, Clock, ChevronDown, Circle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ClipboardList, Loader2, Upload, Image, Send, CheckCircle, XCircle, Clock, Circle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
