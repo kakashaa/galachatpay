@@ -81,7 +81,15 @@ const AdminAccountsPage: React.FC = () => {
     if (!newAdmin.username || !newAdmin.password) { toast.error("يرجى ملء الحقول"); return; }
     setAdding(true);
     try {
-      await adminCall("admin_create", { username: newAdmin.username, password: newAdmin.password, display_name: newAdmin.display_name || newAdmin.username, role: newAdmin.role });
+      const { error } = await supabase.from("admin_accounts").insert({
+        username: newAdmin.username,
+        password_hash: newAdmin.password,
+        display_name: newAdmin.display_name || newAdmin.username,
+        role: newAdmin.role,
+        is_active: true,
+        permissions: {},
+      });
+      if (error) throw error;
       toast.success("تم إضافة المسؤول");
       setNewAdmin({ username: "", password: "", display_name: "", role: "admin" }); setShowAdd(false);
       loadAdmins();
