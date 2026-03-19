@@ -17,6 +17,7 @@ type SubPage = null | "videos" | "banners" | "elements" | "stars" | "moderators"
 
 const AdminSettingsPage: React.FC = () => {
   const { handleLogout, adminCall, adminSessionToken, adminUsername, uploadFile } = useAdminSession();
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [activeSub, setActiveSub] = useState<SubPage>(null);
 
   const sections = [
