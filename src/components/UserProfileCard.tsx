@@ -75,18 +75,22 @@ const UserProfileCard: React.FC = () => {
     if (!user?.uuid) return;
     let cancelled = false;
     const fetchStars = async () => {
-      const currentMonth = getCurrentMonth();
-      const { data } = await supabase
-        .from("user_star_balance")
-        .select("total_stars")
-        .eq("user_uuid", user.uuid)
-        .eq("current_month", currentMonth)
-        .maybeSingle();
-      if (cancelled) return;
-      if (data) setTotalStars((data as any).total_stars ?? 0);
-      else {
-        const monthly = getMonthlyStars(user.level?.charger_level ?? 0);
-        setTotalStars(monthly);
+      try {
+        const currentMonth = getCurrentMonth();
+        const { data } = await supabase
+          .from("user_star_balance")
+          .select("total_stars")
+          .eq("user_uuid", user.uuid)
+          .eq("current_month", currentMonth)
+          .maybeSingle();
+        if (cancelled) return;
+        if (data) setTotalStars((data as any).total_stars ?? 0);
+        else {
+          const monthly = getMonthlyStars(user.level?.charger_level ?? 0);
+          setTotalStars(monthly);
+        }
+      } catch (err) {
+        console.error("fetchStars error:", err);
       }
     };
     fetchStars();

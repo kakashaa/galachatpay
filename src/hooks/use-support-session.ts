@@ -38,22 +38,30 @@ export function useSupportSession(sessionId: string | null) {
 
   const fetchMessages = useCallback(async () => {
     if (!sessionId) return;
-    const { data } = await supabase
-      .from("support_session_messages" as any)
-      .select("*")
-      .eq("session_id", sessionId)
-      .order("created_at", { ascending: true });
-    if (data) setMessages(data as any);
+    try {
+      const { data } = await supabase
+        .from("support_session_messages" as any)
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+      if (data) setMessages(data as any);
+    } catch (err) {
+      console.error("fetchMessages error:", err);
+    }
   }, [sessionId]);
 
   const fetchSession = useCallback(async () => {
     if (!sessionId) return;
-    const { data } = await supabase
-      .from("support_sessions" as any)
-      .select("*")
-      .eq("id", sessionId)
-      .single();
-    if (data) setSession(data as any);
+    try {
+      const { data } = await supabase
+        .from("support_sessions" as any)
+        .select("*")
+        .eq("id", sessionId)
+        .single();
+      if (data) setSession(data as any);
+    } catch (err) {
+      console.error("fetchSession error:", err);
+    }
   }, [sessionId]);
 
   // Initial load + polling
@@ -109,17 +117,21 @@ export function useSupportSession(sessionId: string | null) {
     attachmentUrl?: string
   ) => {
     if (!sessionId) return;
-    await supabase.functions.invoke("support-system", {
-      body: {
-        action: "send_message",
-        session_id: sessionId,
-        sender_uuid: senderUuid,
-        sender_name: senderName,
-        sender_type: senderType,
-        message,
-        attachment_url: attachmentUrl,
-      },
-    });
+    try {
+      await supabase.functions.invoke("support-system", {
+        body: {
+          action: "send_message",
+          session_id: sessionId,
+          sender_uuid: senderUuid,
+          sender_name: senderName,
+          sender_type: senderType,
+          message,
+          attachment_url: attachmentUrl,
+        },
+      });
+    } catch (err) {
+      console.error("sendMessage error:", err);
+    }
   }, [sessionId]);
 
   return { messages, session, loading, sendMessage, refetch: fetchMessages };

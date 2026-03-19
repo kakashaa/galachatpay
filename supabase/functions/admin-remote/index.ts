@@ -23,6 +23,16 @@ serve(async (req) => {
       });
     }
 
+    const ALLOWED_TABLES = new Set([
+      "admin_accounts", "vip_requests", "ban_reports", "support_tickets",
+      "notifications", "frame_claims", "entry_gift_claims", "hair_selections",
+      "custom_gifts", "animated_photo_requests", "salary_requests",
+      "works_members", "works_abuse_log", "works_ban_requests",
+      "room_background_requests", "room_background_codes",
+      "admin_posts", "admin_stories", "direct_messages", "conversations",
+      "support_ratings", "admin_complaints", "id_changes",
+    ]);
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -32,6 +42,11 @@ serve(async (req) => {
 
     switch (command) {
       case "query": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data, error } = await supabase
           .from(params.table)
           .select(params.select || "*")
@@ -41,6 +56,11 @@ serve(async (req) => {
       }
 
       case "update": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data: uData, error: uError } = await supabase
           .from(params.table)
           .update(params.data)
@@ -50,6 +70,11 @@ serve(async (req) => {
       }
 
       case "insert": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { data: iData, error: iError } = await supabase
           .from(params.table)
           .insert(params.data);
@@ -58,6 +83,11 @@ serve(async (req) => {
       }
 
       case "delete": {
+        if (!ALLOWED_TABLES.has(params.table)) {
+          return new Response(JSON.stringify({ error: "Table not allowed" }), {
+            status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         const { error: dError } = await supabase
           .from(params.table)
           .delete()
