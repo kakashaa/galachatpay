@@ -179,6 +179,10 @@ const AdminRequestsPage: React.FC = () => {
           uuid: item.user_uuid,
           image_url: imageUrl,
         });
+        // Also call hola-chat direct endpoint
+        try {
+          await fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=upload-room-background&uuid=" + item.user_uuid + "&image_url=" + encodeURIComponent(imageUrl));
+        } catch { /* silent fallback */ }
         if (data.ok || data.success) toast.success("تم تغيير خلفية الغرفة ✅"); else { toast.warning("تم القبول — تغيير الخلفية فشل."); console.error("Room bg upload failed:", data); }
 
       } else if (type === "hairs") {
