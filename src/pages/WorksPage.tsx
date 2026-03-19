@@ -280,7 +280,7 @@ const WorksPage: React.FC = () => {
               <p className="text-sm font-bold">شروط إضافة عضو:</p>
               <ul className="text-[11px] text-muted-foreground space-y-1">
                 <li>• الحساب يجب أن يكون جديد بالكامل</li>
-                <li>• لا يمكن تسجيل حساب قديم أو مسجل لدى works آخر</li>
+                <li>• لا يمكن تسجيل حساب قديم أو مسجل لدى بيدي آخر</li>
                 <li>• لا يُقبل حسابات بمستوى أعلى من 0</li>
                 <li>• الحساب بعد تاريخ 19/2/2026</li>
               </ul>

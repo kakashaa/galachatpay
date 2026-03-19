@@ -90,7 +90,7 @@ const AdminWorksPage: React.FC = () => {
   };
 
   return (
-    <AdminPageLayout title="إدارة Works" onLogout={handleLogout}>
+    <AdminPageLayout title="إدارة البيدي" onLogout={handleLogout}>
       <div className="max-w-3xl mx-auto p-4" dir="rtl">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full grid grid-cols-4 mb-4">
