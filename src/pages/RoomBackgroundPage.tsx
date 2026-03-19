@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Image, Gift, KeyRound, Upload, X, Send, Loader2, CheckCircle2, Copy } from "lucide-react";
+import { ArrowRight, Image, Gift, KeyRound, Upload, X, Send, Loader2, Copy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";

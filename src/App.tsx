@@ -168,6 +168,7 @@ const App = () => {
                   <Route path="/admin-complaint" element={<AdminComplaint />} />
                   <Route path="/admin/works" element={<AdminWorksPage />} />
                   <Route path="/works" element={<WorksPage />} />
+                  <Route path="/room-background" element={<RoomBackgroundPage />} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/login/agent" element={<AgentLogin />} />
