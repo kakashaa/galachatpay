@@ -127,7 +127,7 @@ const FramesRequest: React.FC = () => {
       // Step 3+4: Background - user doesn't wait
       // IMPORTANT: avoid duplicate uploads. The actual wares upload happens from admin approval only.
       const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
-      const enableDirectWaresSubmit = false;
+      const enableDirectWaresSubmit = true;
 
       if (enableDirectWaresSubmit) {
         const ext = selectedFrame.file_url.split(".").pop()?.toLowerCase() || "mp4";

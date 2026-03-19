@@ -168,7 +168,7 @@ const EntryRequest: React.FC = () => {
        // IMPORTANT: avoid duplicate uploads. The actual wares upload happens from admin approval only.
        const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
        const wareType = giftUsage === "room" ? "entry_room" : "entry_profile";
-       const enableDirectWaresSubmit = false;
+       const enableDirectWaresSubmit = true;
 
        if (enableDirectWaresSubmit) {
          const ext = selectedGift.video_url.split(".").pop()?.toLowerCase() || "mp4";
