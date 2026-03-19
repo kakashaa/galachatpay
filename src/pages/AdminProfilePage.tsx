@@ -51,7 +51,7 @@ const AdminProfilePage = () => {
 
   const fetchPosts = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("admin_posts")
       .select("*")
       .eq("user_uuid", profileUuid)
