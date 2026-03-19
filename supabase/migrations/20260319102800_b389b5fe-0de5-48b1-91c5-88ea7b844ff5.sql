@@ -1,0 +1,1 @@
+ALTER TABLE public.works_members ADD COLUMN IF NOT EXISTS agency_id text;

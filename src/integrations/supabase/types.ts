@@ -2117,6 +2117,7 @@ export type Database = {
       }
       works_members: {
         Row: {
+          agency_id: string | null
           commission_pct: number | null
           created_at: string | null
           id: string
@@ -2129,6 +2130,7 @@ export type Database = {
           works_id: string | null
         }
         Insert: {
+          agency_id?: string | null
           commission_pct?: number | null
           created_at?: string | null
           id?: string
@@ -2141,6 +2143,7 @@ export type Database = {
           works_id?: string | null
         }
         Update: {
+          agency_id?: string | null
           commission_pct?: number | null
           created_at?: string | null
           id?: string
