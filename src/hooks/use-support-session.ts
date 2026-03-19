@@ -52,12 +52,16 @@ export function useSupportSession(sessionId: string | null) {
 
   const fetchSession = useCallback(async () => {
     if (!sessionId) return;
-    const { data } = await supabase
-      .from("support_sessions" as any)
-      .select("*")
-      .eq("id", sessionId)
-      .single();
-    if (data) setSession(data as any);
+    try {
+      const { data } = await supabase
+        .from("support_sessions" as any)
+        .select("*")
+        .eq("id", sessionId)
+        .single();
+      if (data) setSession(data as any);
+    } catch (err) {
+      console.error("fetchSession error:", err);
+    }
   }, [sessionId]);
 
   // Initial load + polling
