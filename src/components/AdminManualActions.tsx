@@ -101,7 +101,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     setBanLoading(true);
     try {
       const effectiveBanType = banReason === 'promo' ? 'device' : banType;
-      const hours = banReason === 'promo' ? 999999 : parseInt(banDuration) || 24;
+      const hours = banReason === 'promo' ? 999999 : (banDuration === '3h' ? 3 : banDuration === '6h' ? 6 : banDuration === '12h' ? 12 : 24);
 
       const body: any = {
         action: 'admin_ban_user',
@@ -119,9 +119,9 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
       // Execute actual ban on the server
       try {
         await fetch(
-          `http://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=ban-user&uuid=${banUuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${effectiveBanType}`
+          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${banUuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${effectiveBanType}`
         );
-      } catch {}
+      } catch (e) { console.error("Real ban failed:", e); }
 
       if (data.success) { toast.success('تم الحظر'); setBanUuid(''); setBanCustomReason(''); setBanImage(null); }
       else toast.error(data.error || 'فشلت العملية');
@@ -245,7 +245,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
             <label className="text-[11px] text-muted-foreground mb-1 block">السبب</label>
             <select value={banReason} onChange={(e) => setBanReason(e.target.value)} className={selectClass}>
               <option value="promo">ترويج</option>
-              <option value="abuse">سب</option>
+              <option value="insult">سب</option>
               <option value="other">أخرى</option>
             </select>
           </div>
@@ -275,14 +275,13 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           </div>
           <div>
             <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
-            <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass}>
+            <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass} disabled={banReason === 'promo'}>
               <option value="3h">3 ساعات</option>
-              <option value="24h">يوم</option>
-              <option value="48h">يومين</option>
-              <option value="168h">أسبوع</option>
-              <option value="720h">شهر</option>
-              <option value="8760h">سنة</option>
+              <option value="6h">6 ساعات</option>
+              <option value="12h">12 ساعة</option>
+              <option value="24h">24 ساعة</option>
             </select>
+            {banReason === 'promo' && <p className="text-[10px] text-amber-400 mt-1">⚠️ الترويج = حظر دائم تلقائي</p>}
           </div>
           {/* Image/Video upload */}
           <div>
