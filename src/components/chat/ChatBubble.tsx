@@ -44,7 +44,7 @@ const DEFAULT_AVATAR = "/placeholder.svg";
 
 const ChatBubble: React.FC<ChatBubbleProps> = ({
   isMine, senderName, senderType, senderAvatar, content, mediaUrl, mediaType,
-  attachmentUrl, time, status, showSender = true, children,
+  attachmentUrl, voiceDuration, time, status, showSender = true, children,
 }) => {
   const isSystem = senderType === "system";
 
