@@ -1287,6 +1287,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
         </>
       )}
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 
