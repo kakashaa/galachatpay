@@ -138,27 +138,31 @@ const QuickSupport: React.FC = () => {
         setQueuePosition(data.queue_position || 0);
         localStorage.setItem(`gala_quick_chat_${authUser.uuid}`, data.chat_key);
 
-        // If there's a selected type, send first message
+        // Send first message — auto for direct entry, or form-based
+        const superAdmin = getOnDutySuperAdmin();
+        let firstMsg = "";
         if (selectedType) {
-          let firstMsg = "";
           if (selectedType === "admin_visit") firstMsg = `طلب إداري - رقم الغرفة: ${roomCode}${description ? `\n${description}` : ""}`;
           else if (selectedType === "direct_contact") firstMsg = `طلب تواصل مباشر - رقم الهاتف: ${phoneNumber}${description ? `\n${description}` : ""}`;
           else firstMsg = description;
-
-          let attachUrl: string | null = null;
-          if (attachment) attachUrl = await uploadAttachment(attachment);
-
-          await supabase.functions.invoke("support-chat", {
-            body: {
-              action: "send",
-              chat_key: data.chat_key,
-              message: firstMsg || "طلب جديد",
-              sender_type: "user",
-              sender_name: authUser.name,
-              attachment_url: attachUrl,
-            },
-          });
+        } else {
+          // Auto-started — send SOS greeting
+          firstMsg = `🆘 طلب دعم سريع من ${authUser.name} — المناوب: @${superAdmin}`;
         }
+
+        let attachUrl: string | null = null;
+        if (attachment) attachUrl = await uploadAttachment(attachment);
+
+        await supabase.functions.invoke("support-chat", {
+          body: {
+            action: "send",
+            chat_key: data.chat_key,
+            message: firstMsg || "طلب جديد",
+            sender_type: "user",
+            sender_name: authUser.name,
+            attachment_url: attachUrl,
+          },
+        });
 
         playSuccessChime();
         toast.success("تم بدء المحادثة!");
