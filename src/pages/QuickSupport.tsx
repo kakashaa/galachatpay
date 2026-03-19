@@ -66,29 +66,7 @@ const QuickSupport: React.FC = () => {
   const [queuePosition, setQueuePosition] = useState(0);
   const [startingChat, setStartingChat] = useState(false);
 
-  // Check for existing active chat on mount
-  useEffect(() => {
-    if (!authUser) return;
-    const savedKey = localStorage.getItem(`gala_quick_chat_${authUser.uuid}`);
-    if (savedKey) {
-      // Verify it's still active
-      const checkChat = async () => {
-        try {
-          const result = await supabase.functions.invoke("support-chat", {
-            body: { action: "status", chat_key: savedKey },
-          });
-          if (result.data?.ok && result.data?.status !== "ended" && result.data?.status !== "closed") {
-            setChatKey(savedKey);
-          } else {
-            localStorage.removeItem(`gala_quick_chat_${authUser.uuid}`);
-          }
-        } catch {
-          localStorage.removeItem(`gala_quick_chat_${authUser.uuid}`);
-        }
-      };
-      checkChat();
-    }
-  }, [authUser]);
+  // Disable auto-resume: chat should only open after explicit user action
 
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
