@@ -5,7 +5,7 @@ const corsHeaders = {
 };
 
 const ALLOWED_ACTIONS = new Set([
-  "list-wares", "list-requests", "submit-request", "update-request", "ban-user", "request-status",
+  "list-wares", "list-requests", "update-request", "ban-user", "request-status",
 ]);
 
 Deno.serve(async (req) => {
