@@ -102,7 +102,7 @@ const AgentDashboard: React.FC = () => {
       <div className="mobile-container text-foreground pb-32 overflow-y-auto bg-background">
         {/* Header */}
         <header className="flex justify-between items-center px-4 pt-6 pb-3">
-          <button onClick={logout} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10">
+          <button onClick={async () => { const ok = await confirm({ title: "تسجيل الخروج", message: "هل تريد الخروج من حساب الوكيل؟", danger: true, confirmText: "خروج" }); if (ok) logout(); }} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10">
             <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           <div className="text-center">
