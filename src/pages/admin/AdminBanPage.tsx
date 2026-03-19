@@ -3,7 +3,7 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Ban, Unlock, Loader2, ShieldBan, Shield } from "lucide-react";
+import { Ban, Unlock, Loader2, ShieldBan, Shield, Image, Play, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 
