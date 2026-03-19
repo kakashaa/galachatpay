@@ -161,7 +161,7 @@ const AdminRequestsPage: React.FC = () => {
             if (!claimTs) return false;
             const reqTs = toTimestamp(r?.created_at);
             if (!reqTs) return false;
-            return Math.abs(reqTs - claimTs) <= 12 * 60 * 1000;
+            return true;
           });
 
           if (candidates.length > 0) {
