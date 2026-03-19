@@ -390,6 +390,7 @@ interface Props {
   recentLogs: any[];
   isOwner: boolean;
   isSuperAdmin: boolean;
+  onLogout?: () => void;
 }
 
 const AdminHomeView: React.FC<Props> = ({
