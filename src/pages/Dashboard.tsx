@@ -43,7 +43,13 @@ const Dashboard: React.FC = () => {
         .select("*", { count: "exact", head: true })
         .eq("is_read", false)
         .or(`target.eq.all,user_uuid.eq.${user.uuid}`);
-      setNotifCount(count ?? 0);
+      const newCount = count ?? 0;
+      // Play sound if count increased
+      if (newCount > prevNotifCountRef.current && prevNotifCountRef.current > 0) {
+        playNotificationSound();
+      }
+      prevNotifCountRef.current = newCount;
+      setNotifCount(newCount);
     } catch {
       // silent
     }
