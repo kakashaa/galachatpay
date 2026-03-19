@@ -229,8 +229,25 @@ const AdminRequestsPage: React.FC = () => {
     const isApprove = action.startsWith("approve_");
     const loadingToast = toast.loading(isApprove ? "جاري استخراج الصورة والرفع لغلا لايف..." : "جاري تنفيذ الطلب...");
     try {
-      await adminCall(action, { id, ...extra });
-      if (isApprove && item) await autoUploadToGala(item, activeTab);
+      if (activeTab === "rooms") {
+        // Use external API for rooms
+        const endpoint = isApprove ? "approve-room-bg" : "reject-room-bg";
+        const res = await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=${endpoint}&id=${id}`);
+        const result = await res.json();
+        if (!result.ok && !result.success) throw new Error(result.error || "فشلت العملية");
+        // Also upload to gala if approving
+        if (isApprove && item) {
+          const imageUrl = item.image_url || item.file_url;
+          if (imageUrl && item.user_uuid) {
+            try {
+              await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=upload-room-background&uuid=${item.user_uuid}&image_url=${encodeURIComponent(imageUrl)}`);
+            } catch { /* silent */ }
+          }
+        }
+      } else {
+        await adminCall(action, { id, ...extra });
+        if (isApprove && item) await autoUploadToGala(item, activeTab);
+      }
 
       if (item?.user_uuid) {
         const typeMap: Record<ReqTab, { approveTitle: string; approveBody: string; rejectTitle: string; rejectBody: string }> = {
