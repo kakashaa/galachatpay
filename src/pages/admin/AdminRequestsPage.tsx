@@ -52,6 +52,7 @@ const AdminRequestsPage: React.FC = () => {
     const actionMap: Record<ReqTab, string> = {
       entries: "list_entry_requests", frames: "list_frame_claims",
       hairs: "list_hair_selections", animated: "list_animated_photos", custom: "list_custom_gifts",
+      rooms: "list_room_backgrounds",
     };
     try {
       const results = await Promise.allSettled(
