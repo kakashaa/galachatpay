@@ -6,6 +6,7 @@ interface ChatBubbleProps {
   isMine: boolean;
   senderName?: string | null;
   senderType?: string;
+  senderAvatar?: string | null;
   content?: string | null;
   mediaUrl?: string | null;
   mediaType?: string;
@@ -25,6 +26,19 @@ const SENDER_COLORS: Record<string, string> = {
   user: "text-purple-400",
 };
 
+// Deterministic color for sender name based on username
+const NAME_COLORS = [
+  "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
+  "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F",
+  "#BB8FCE", "#85C1E9", "#F0B27A", "#82E0AA",
+];
+
+const getNameColor = (name: string): string => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return NAME_COLORS[Math.abs(hash) % NAME_COLORS.length];
+};
+
 const formatTime = (d: string) => {
   try {
     return new Date(d).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
@@ -33,8 +47,10 @@ const formatTime = (d: string) => {
 
 const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
 
+const DEFAULT_AVATAR = "/placeholder.svg";
+
 const ChatBubble: React.FC<ChatBubbleProps> = ({
-  isMine, senderName, senderType, content, mediaUrl, mediaType,
+  isMine, senderName, senderType, senderAvatar, content, mediaUrl, mediaType,
   attachmentUrl, time, status, showSender = true, children,
 }) => {
   const isSystem = senderType === "system";
@@ -49,18 +65,35 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
     );
   }
 
-  // Large emoji detection
   const isEmojiOnly = content && /^[\p{Emoji}\s]{1,6}$/u.test(content) && content.length <= 6;
-
   const imgSrc = mediaUrl || attachmentUrl;
+  const avatarSrc = senderAvatar || DEFAULT_AVATAR;
+  const nameColor = senderName ? getNameColor(senderName) : undefined;
+  const initials = senderName ? senderName.charAt(0).toUpperCase() : "?";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={`flex ${isMine ? "justify-start" : "justify-end"} mb-1.5`}
+      className={`flex ${isMine ? "justify-start" : "justify-end"} mb-2`}
     >
+      {/* Avatar for non-mine messages */}
+      {!isMine && showSender && (
+        <div className="flex-shrink-0 ml-2 self-end mb-1">
+          <div className="w-7 h-7 rounded-full overflow-hidden border border-white/10" style={{ background: "hsl(var(--chat-bubble-in))" }}>
+            <img
+              src={avatarSrc}
+              alt={senderName || ""}
+              className="w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerHTML = `<span class="flex items-center justify-center w-full h-full text-[10px] font-bold text-white/70">${initials}</span>`; }}
+            />
+          </div>
+        </div>
+      )}
+      {/* Spacer when no avatar shown for incoming */}
+      {!isMine && !showSender && <div className="w-9 flex-shrink-0" />}
+
       <div
         className={`relative max-w-[75%] ${isEmojiOnly ? "" : "px-3 py-2"}`}
         style={isEmojiOnly ? {} : {
@@ -73,7 +106,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
       >
         {/* Sender name */}
         {showSender && !isMine && senderName && !isEmojiOnly && (
-          <p className={`text-[10px] font-bold mb-0.5 ${SENDER_COLORS[senderType || "user"] || "text-primary"}`}>
+          <p className="text-[10px] font-bold mb-0.5" style={{ color: nameColor || "hsl(217 91% 70%)" }}>
             {senderName}
           </p>
         )}
@@ -112,6 +145,15 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
           )}
         </div>
       </div>
+
+      {/* Avatar for mine messages */}
+      {isMine && (
+        <div className="flex-shrink-0 mr-2 self-end mb-1">
+          <div className="w-7 h-7 rounded-full overflow-hidden border border-white/10" style={{ background: "linear-gradient(135deg, hsl(217 91% 40%), hsl(217 91% 30%))" }}>
+            <span className="flex items-center justify-center w-full h-full text-[10px] font-bold text-white/80">{initials}</span>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };
