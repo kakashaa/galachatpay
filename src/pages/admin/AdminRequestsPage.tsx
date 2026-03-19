@@ -263,7 +263,7 @@ const AdminRequestsPage: React.FC = () => {
       }
 
       toast.dismiss(loadingToast);
-      toast.success(isApprove ? "تم القبول بنجاح ✅" : "تم الرفض ✅");
+      toast.success(isApprove ? "تم القبول بنجاح" : "تم الرفض");
       setRemovedIds(prev => new Set(prev).add(id));
       setPendingCounts(prev => ({ ...prev, [activeTab]: Math.max(0, prev[activeTab] - 1) }));
       setShakenTab(activeTab);
