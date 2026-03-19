@@ -273,8 +273,6 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
             </div>
             {banReason === 'promo' && <p className="text-[10px] text-amber-400 mt-1">⚠️ الترويج يُفعّل حظر الجهاز تلقائياً</p>}
           </div>
-            <Textarea value={banCustomReason} onChange={(e) => setBanCustomReason(e.target.value)} placeholder="اكتب السبب..." rows={2} />
-          )}
           <div>
             <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
             <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass}>
