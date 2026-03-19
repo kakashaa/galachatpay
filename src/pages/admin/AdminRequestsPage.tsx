@@ -130,7 +130,7 @@ const AdminRequestsPage: React.FC = () => {
         if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
 
       } else if (type === "entries" || type === "frames") {
-        // Use wares-api.php only: submit-request → approve (single upload + assign UUID)
+        // Single-call upload to avoid duplicate files on external dashboard
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
 
@@ -140,7 +140,6 @@ const AdminRequestsPage: React.FC = () => {
         const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
         const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
 
-        // Always create a fresh request then approve it (single upload)
         const submitRes = await callWaresApi("submit-request", {
           uuid: targetUuid,
           user_name: item.title || item.user_name || (type === "frames" ? "إطار" : "دخولية"),
@@ -150,25 +149,11 @@ const AdminRequestsPage: React.FC = () => {
           days: String(item.duration_days || 30),
         });
 
-        let pendingReqId: string | null = null;
         if ((submitRes.ok || submitRes.success) && (submitRes.data?.request_id || submitRes.request_id)) {
-          pendingReqId = String(submitRes.data?.request_id || submitRes.request_id);
-        } else {
-          toast.warning("تم القبول — لكن إنشاء الطلب فشل.");
-          console.error("Submit-request failed:", submitRes);
-          return;
-        }
-
-        // Approve: this is the only upload point on wares-api
-        const approveRes = await callWaresApi("approve", {
-          id: pendingReqId,
-          ware_type: wareType,
-        });
-        if (approveRes.ok || approveRes.success) {
           toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف ✅`);
         } else {
           toast.warning("تم القبول — لكن الرفع لغلا لايف فشل.");
-          console.error("Wares approve failed:", approveRes);
+          console.error("Submit-request failed:", submitRes);
         }
 
       } else if (type === "hairs") {
