@@ -100,6 +100,9 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     if (!reason.trim()) { toast.error('أدخل السبب'); return; }
     setBanLoading(true);
     try {
+      const effectiveBanType = banReason === 'promo' ? 'device' : banType;
+      const hours = banReason === 'promo' ? 999999 : parseInt(banDuration) || 24;
+
       const body: any = {
         action: 'admin_ban_user',
         uuid: banUuid.trim(),
@@ -112,6 +115,14 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
         body.image = await fileToBase64(banImage);
       }
       const data = await apiPost(body);
+
+      // Execute actual ban on the server
+      try {
+        await fetch(
+          `http://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=ban-user&uuid=${banUuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${effectiveBanType}`
+        );
+      } catch {}
+
       if (data.success) { toast.success('تم الحظر'); setBanUuid(''); setBanCustomReason(''); setBanImage(null); }
       else toast.error(data.error || 'فشلت العملية');
     } catch { toast.error('فشل الاتصال'); }
