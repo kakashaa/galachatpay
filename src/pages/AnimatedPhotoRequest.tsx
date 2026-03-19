@@ -125,8 +125,8 @@ const AnimatedPhotoRequest: React.FC = () => {
         throw dbError;
       }
 
-      // Send to admin API
-      await supabase.functions.invoke("gala-actions?action=submit-request", {
+      // Send to admin API (non-critical backup)
+      supabase.functions.invoke("gala-actions?action=submit-request", {
         body: {
           user_uuid: authUser.uuid,
           user_name: authUser.name,
@@ -135,7 +135,7 @@ const AnimatedPhotoRequest: React.FC = () => {
           evidence_url: gifUrl,
           image_url: gifUrl,
         },
-      });
+      }).catch(() => {});
 
       // Send telegram notification with GIF
       try {
