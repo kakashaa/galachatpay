@@ -190,7 +190,7 @@ const WorksPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
-        <h1 className="text-lg font-bold">Works</h1>
+        <h1 className="text-lg font-bold">البيدي</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
