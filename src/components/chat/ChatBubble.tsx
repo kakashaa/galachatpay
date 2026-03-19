@@ -17,15 +17,6 @@ interface ChatBubbleProps {
   children?: React.ReactNode;
 }
 
-const SENDER_COLORS: Record<string, string> = {
-  owner: "text-red-400",
-  super_admin: "text-green-400",
-  admin: "text-blue-400",
-  moderator: "text-yellow-400",
-  system: "text-muted-foreground",
-  user: "text-purple-400",
-};
-
 // Deterministic color for sender name based on username
 const NAME_COLORS = [
   "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
@@ -86,7 +77,13 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
               src={avatarSrc}
               alt={senderName || ""}
               className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerHTML = `<span class="flex items-center justify-center w-full h-full text-[10px] font-bold text-white/70">${initials}</span>`; }}
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                if (target.parentElement) {
+                  target.parentElement.innerHTML = `<span style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:10px;font-weight:bold;color:rgba(255,255,255,0.7)">${initials}</span>`;
+                }
+              }}
             />
           </div>
         </div>
@@ -149,8 +146,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
       {/* Avatar for mine messages */}
       {isMine && (
         <div className="flex-shrink-0 mr-2 self-end mb-1">
-          <div className="w-7 h-7 rounded-full overflow-hidden border border-white/10" style={{ background: "linear-gradient(135deg, hsl(217 91% 40%), hsl(217 91% 30%))" }}>
-            <span className="flex items-center justify-center w-full h-full text-[10px] font-bold text-white/80">{initials}</span>
+          <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center border border-white/10" style={{ background: "linear-gradient(135deg, hsl(217 91% 40%), hsl(217 91% 30%))" }}>
+            <span className="text-[10px] font-bold text-white/80">{initials}</span>
           </div>
         </div>
       )}
