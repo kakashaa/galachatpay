@@ -185,6 +185,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_posts: {
+        Row: {
+          caption: string | null
+          content_type: string
+          created_at: string | null
+          id: string
+          likes_count: number | null
+          media_url: string | null
+          thumbnail_url: string | null
+          user_uuid: string
+          username: string
+          views_count: number | null
+        }
+        Insert: {
+          caption?: string | null
+          content_type: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          media_url?: string | null
+          thumbnail_url?: string | null
+          user_uuid: string
+          username: string
+          views_count?: number | null
+        }
+        Update: {
+          caption?: string | null
+          content_type?: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          media_url?: string | null
+          thumbnail_url?: string | null
+          user_uuid?: string
+          username?: string
+          views_count?: number | null
+        }
+        Relationships: []
+      }
       admin_ratings: {
         Row: {
           admin_name: string | null
@@ -218,6 +257,42 @@ export type Database = {
           service_type?: string | null
           user_name?: string | null
           user_uuid?: string
+        }
+        Relationships: []
+      }
+      admin_stories: {
+        Row: {
+          created_at: string | null
+          duration: number | null
+          expires_at: string
+          id: string
+          media_type: string
+          media_url: string
+          user_uuid: string
+          username: string
+          views: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration?: number | null
+          expires_at: string
+          id?: string
+          media_type: string
+          media_url: string
+          user_uuid: string
+          username: string
+          views?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          duration?: number | null
+          expires_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          user_uuid?: string
+          username?: string
+          views?: Json | null
         }
         Relationships: []
       }
