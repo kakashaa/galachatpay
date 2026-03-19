@@ -183,7 +183,8 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
   };
 
   const restoreBd = async (bdUuid: string) => {
-    if (!confirm("هل تريد استعادة هذا البيدي وجميع أعضائه؟")) return;
+    const ok = await confirm({ title: "استعادة البيدي", message: "هل تريد استعادة هذا البيدي وجميع أعضائه؟", danger: false, confirmText: "استعادة" });
+    if (!ok) return;
     try {
       await bdCall("admin_restore_bd", { bd_uuid: bdUuid });
       toast.success("تم استعادة البيدي بنجاح");
