@@ -470,6 +470,8 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
         </div>
       )}
     </motion.div>
+    {ConfirmDialog}
+    </>
   );
 };
 
