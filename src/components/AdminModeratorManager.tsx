@@ -355,6 +355,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
       })}
     </div>
     {ConfirmDialog}
+    </>
   );
 };
 

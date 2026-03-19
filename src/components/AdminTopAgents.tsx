@@ -141,6 +141,7 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
   };
 
   return (
+    <>
     <div className="space-y-4" dir="rtl">
       {/* Add agent */}
       {!readOnly && (
