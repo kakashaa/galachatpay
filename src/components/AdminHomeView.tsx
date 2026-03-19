@@ -428,20 +428,20 @@ const AdminHomeView: React.FC<Props> = ({
   const totalBadge = vipBadge + banBadge + salaryBadge + requestsBadge + supportBadge;
 
   const allServices = [
-    { icon: Star, label: "VIP", route: "/admin/vip", color: "#f59e0b", roles: ["owner", "super_admin"], badge: vipBadge },
+    { icon: Crown, label: "VIP", route: "/admin/vip", color: "#f59e0b", roles: ["owner", "super_admin"], badge: vipBadge },
     { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "#f43f5e", roles: ["owner", "super_admin"], badge: banBadge },
-    { icon: Banknote, label: "الرواتب", route: "/admin/salary", color: "#10b981", roles: ["owner"], badge: salaryBadge },
-    { icon: Package, label: "الطلبات", route: "/admin/requests", color: "#3b82f6", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
-    { icon: ShoppingBag, label: "المتجر", route: "/admin/gifts", color: "#ec4899", roles: ["owner"], badge: 0 },
+    { icon: Wallet, label: "الرواتب", route: "/admin/salary", color: "#10b981", roles: ["owner"], badge: salaryBadge },
+    { icon: Inbox, label: "الطلبات", route: "/admin/requests", color: "#3b82f6", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
+    { icon: Store, label: "المتجر", route: "/admin/gifts", color: "#ec4899", roles: ["owner"], badge: 0 },
     { icon: Headphones, label: "الدعم", route: "/admin/support", color: "#06b6d4", roles: ["owner", "super_admin", "admin"], badge: supportBadge },
-    { icon: KeyRound, label: "الآيدي", route: "/admin/id-change", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0 },
     { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", color: "#10b981", roles: ["owner"], badge: 0 },
-    { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "#f97316", roles: ["owner"], badge: 0 },
+    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", color: "#f97316", roles: ["owner"], badge: 0 },
     { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "#14b8a6", roles: ["owner"], badge: 0 },
-    { icon: ScrollText, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Briefcase, label: "البيدي", route: "/admin/works", color: "#f43f5e", roles: ["owner"], badge: 0 },
+    { icon: ClipboardList, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Building2, label: "البيدي", route: "/admin/works", color: "#f43f5e", roles: ["owner"], badge: 0 },
     { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "#71717a", roles: ["owner"], badge: 0 },
-    { icon: ClipboardList, label: "طلبات المضيفات", route: "/admin/host-requests", color: "#14b8a6", roles: ["owner", "super_admin", "admin"], badge: 0 },
+    { icon: FileText, label: "طلبات المضيفات", route: "/admin/host-requests", color: "#14b8a6", roles: ["owner", "super_admin", "admin"], badge: 0 },
   ];
 
   const visibleServices = allServices.filter(s => adminRole && s.roles.includes(adminRole));
