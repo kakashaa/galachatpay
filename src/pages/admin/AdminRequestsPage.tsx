@@ -208,7 +208,7 @@ const AdminRequestsPage: React.FC = () => {
     );
 
     const thumb = getThumbnail(item);
-    const dim = size === "grid" ? 110 : 260;
+    const dim = size === "grid" ? 280 : 340;
 
     if (isSvga(url)) {
       return (
