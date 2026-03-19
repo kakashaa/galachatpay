@@ -238,22 +238,40 @@ const LiveSupportChat: React.FC<Props> = ({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border/20 bg-card/50 flex items-center justify-between">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-primary text-sm font-bold">
-          <ArrowRight className="w-4 h-4" /> رجوع
-        </button>
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${ended ? "bg-muted-foreground" : chatStatus === "active" ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"}`} />
-          <span className="text-xs font-bold text-foreground">
-            {ended ? "انتهت المحادثة" : chatStatus === "waiting" ? "بالانتظار..." : "محادثة مباشرة"}
-          </span>
-        </div>
-        {!ended && (
-          <button onClick={handleEnd} className="text-[10px] text-destructive font-bold px-2 py-1 rounded-lg bg-destructive/10 border border-destructive/20">
-            إنهاء
+      <div className="px-4 py-3 border-b border-border/20 bg-card/50 space-y-2">
+        <div className="flex items-center justify-between">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-primary text-sm font-bold">
+            <ArrowRight className="w-4 h-4" /> رجوع
           </button>
-        )}
-        {ended && <div className="w-12" />}
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${ended ? "bg-muted-foreground" : chatStatus === "active" ? "bg-emerald-400 animate-pulse" : "bg-amber-400 animate-pulse"}`} />
+            <span className="text-xs font-bold text-foreground">
+              {ended ? "انتهت المحادثة" : chatStatus === "waiting" ? "بالانتظار..." : "محادثة مباشرة"}
+            </span>
+          </div>
+          {!ended && (
+            <button onClick={handleEnd} className="text-[10px] text-destructive font-bold px-2 py-1 rounded-lg bg-destructive/10 border border-destructive/20">
+              إنهاء
+            </button>
+          )}
+          {ended && <div className="w-12" />}
+        </div>
+        {/* Admin profile bar */}
+        {(() => {
+          const adminMsg = messages.find(m => m.sender_type === "admin");
+          if (!adminMsg) return null;
+          return (
+            <div className="flex items-center gap-2 bg-muted/20 rounded-xl px-3 py-2 border border-border/10">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
+                <span className="text-xs font-bold text-foreground">{(adminMsg.sender_name || "A").charAt(0).toUpperCase()}</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">{adminMsg.sender_name || "فريق الدعم"}</p>
+                <p className="text-[9px] text-muted-foreground">أدمن الدعم</p>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Queue banner */}

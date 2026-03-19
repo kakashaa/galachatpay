@@ -25,7 +25,9 @@ const isEligible = (user: any): boolean => {
   if (!user) return false;
   const vipLevel = user.vip?.vip_level || user.vip?.level || 0;
   const chargerLevel = user.charger_level || user.level || 0;
-  const isHostAgent = (user.agency_id || 0) > 0;
+  const typeUser = user.type_user ?? user.type ?? 0;
+  // type_user: 1=host, 2=host_agent, 3=charge_agent, 4=both_agent, 5=charge+host, 6=all
+  const isHostAgent = (user.agency_id || 0) > 0 || typeUser >= 1;
   const starBalance = user.star_balance || 0;
   return vipLevel >= 6 || chargerLevel >= 50 || isHostAgent || starBalance >= 2;
 };

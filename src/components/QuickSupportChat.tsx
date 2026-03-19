@@ -101,12 +101,30 @@ const QuickSupportChat: React.FC<Props> = ({ requestId, userUuid, userName, onBa
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border/20 bg-card/50 flex items-center justify-between">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-primary text-sm font-bold">
-          <ArrowRight className="w-4 h-4" /> رجوع
-        </button>
-        <span className="text-xs font-bold text-foreground">محادثة الدعم</span>
-        <div className="w-12" />
+      <div className="px-4 py-3 border-b border-border/20 bg-card/50 space-y-2">
+        <div className="flex items-center justify-between">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-primary text-sm font-bold">
+            <ArrowRight className="w-4 h-4" /> رجوع
+          </button>
+          <span className="text-xs font-bold text-foreground">محادثة الدعم</span>
+          <div className="w-12" />
+        </div>
+        {/* Admin profile bar */}
+        {(() => {
+          const adminMsg = messages.find(m => m.sender_type === "admin");
+          if (!adminMsg) return null;
+          return (
+            <div className="flex items-center gap-2 bg-muted/20 rounded-xl px-3 py-2 border border-border/10">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
+                <span className="text-xs font-bold text-foreground">{(adminMsg.sender_name || "A").charAt(0).toUpperCase()}</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">{adminMsg.sender_name || "فريق الدعم"}</p>
+                <p className="text-[9px] text-muted-foreground">أدمن الدعم</p>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Messages */}

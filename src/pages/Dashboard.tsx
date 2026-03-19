@@ -16,7 +16,7 @@ import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
 import BDInvitationBanner from "@/components/BDInvitationBanner";
 import BottomNav from "@/components/BottomNav";
-import SOSButton from "@/components/SOSButton";
+
 
 import { toast } from "sonner";
 
@@ -225,7 +225,6 @@ const Dashboard: React.FC = () => {
           />
         </main>
       </div>
-      {isAuthenticated && <SOSButton />}
       <BottomNav />
     </>
   );
