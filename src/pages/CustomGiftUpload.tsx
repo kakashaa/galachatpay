@@ -429,40 +429,8 @@ const CustomGiftUpload: React.FC = () => {
           />
         </div>
 
-        {/* Thumbnail */}
-        <div className="glass-card p-4 space-y-3 css-fade-up-d2">
-          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-primary" />
-            صورة الهدية (اختياري)
-          </h3>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleThumbnailChange}
-            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
-          />
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="h-px flex-1 bg-border/30" />
-            <span>+ رابط إضافي</span>
-            <span className="h-px flex-1 bg-border/30" />
-          </div>
-          <Input
-            value={thumbnailUrl}
-            onChange={(e) => setThumbnailUrl(e.target.value)}
-            placeholder="https://example.com/image.png"
-            className="bg-muted/30 border-border/30 text-xs"
-            dir="ltr"
-          />
-          {thumbnailPreview && (
-            <img src={thumbnailPreview} alt="preview" className="w-20 h-20 rounded-lg object-cover" />
-          )}
-          {!thumbnailPreview && thumbnailUrl.trim() && (
-            <img src={thumbnailUrl.trim()} alt="preview" className="w-20 h-20 rounded-lg object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
-          )}
-        </div>
-
         {/* Video upload */}
-        <div className="glass-card p-4 space-y-3 css-fade-up-d3">
+        <div className="glass-card p-4 space-y-3 css-fade-up-d2">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Upload className="w-4 h-4 text-primary" />
             فيديو الهدية *
@@ -503,6 +471,38 @@ const CustomGiftUpload: React.FC = () => {
                 </span>
               )}
             </div>
+          )}
+        </div>
+
+        {/* Thumbnail */}
+        <div className="glass-card p-4 space-y-3 css-fade-up-d3">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <ImageIcon className="w-4 h-4 text-primary" />
+            صورة الهدية (اختياري)
+          </h3>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleThumbnailChange}
+            className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
+          />
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="h-px flex-1 bg-border/30" />
+            <span>+ رابط إضافي</span>
+            <span className="h-px flex-1 bg-border/30" />
+          </div>
+          <Input
+            value={thumbnailUrl}
+            onChange={(e) => setThumbnailUrl(e.target.value)}
+            placeholder="https://example.com/image.png"
+            className="bg-muted/30 border-border/30 text-xs"
+            dir="ltr"
+          />
+          {thumbnailPreview && (
+            <img src={thumbnailPreview} alt="preview" className="w-20 h-20 rounded-lg object-cover" />
+          )}
+          {!thumbnailPreview && thumbnailUrl.trim() && (
+            <img src={thumbnailUrl.trim()} alt="preview" className="w-20 h-20 rounded-lg object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
           )}
         </div>
 
