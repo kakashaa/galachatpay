@@ -58,6 +58,8 @@ Deno.serve(async (req) => {
   try {
     const { username, password, action, data, session_token } = await req.json();
 
+    console.log("[ADMIN-DEBUG] action:", action, "username:", username, "has_token:", !!session_token, "token_len:", session_token?.length);
+
     // auto_ban_report action removed — bans now require admin approval
 
     const supabase = createClient(
