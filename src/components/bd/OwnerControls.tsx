@@ -125,9 +125,8 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ system, accountId, onRefr
     setLoading(true);
     try {
       if (system === "works") {
-        await supabase
-          .from("works_members")
-          .update({ status: "frozen" } as any)
+        await (supabase.from("works_members") as any)
+          .update({ status: "frozen" })
           .eq("member_uuid", freezeUuid.trim())
           .eq("works_id", accountId);
       } else {
