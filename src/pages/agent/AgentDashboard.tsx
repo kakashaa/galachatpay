@@ -256,6 +256,7 @@ const AgentDashboard: React.FC = () => {
         </main>
       </div>
       <AgentBottomNav />
+      {ConfirmDialog}
     </>
   );
 };
