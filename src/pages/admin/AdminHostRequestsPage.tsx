@@ -41,7 +41,7 @@ const AdminHostRequestsPage: React.FC = () => {
   // Super admin list for assignment
   const [superAdmins, setSuperAdmins] = useState<any[]>([]);
   const [selectedAdmin, setSelectedAdmin] = useState('');
-  const [showAdminPicker, setShowAdminPicker] = useState(false);
+  
 
   // Incoming requests (for super admin)
   const [requests, setRequests] = useState<any[]>([]);
