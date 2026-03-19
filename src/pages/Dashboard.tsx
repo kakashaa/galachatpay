@@ -225,7 +225,6 @@ const Dashboard: React.FC = () => {
           />
         </main>
       </div>
-      {isAuthenticated && <SOSButton />}
       <BottomNav />
     </>
   );
