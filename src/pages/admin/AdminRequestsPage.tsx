@@ -97,10 +97,17 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   // --- auto upload logic ---
-  const WARES_API = "https://hola-chat.com/wares-api.php";
-  const WARES_KEY = "ghala2026actions";
   const GALA_API = "https://galachat.site/project-z/api.php";
   const ADMIN_KEY = "ghala2026owner";
+
+  // Helper to call wares-api through edge function proxy
+  const callWaresApi = async (action: string, params: Record<string, string>) => {
+    const { data, error } = await supabase.functions.invoke("wares-request", {
+      body: { action, params },
+    });
+    if (error) throw error;
+    return data;
+  };
 
   const autoUploadToGala = async (item: any, type: ReqTab) => {
     try {
