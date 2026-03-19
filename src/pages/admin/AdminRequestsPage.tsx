@@ -40,7 +40,7 @@ const AdminRequestsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [pendingCounts, setPendingCounts] = useState<PendingCounts>({ entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0 });
+  const [pendingCounts, setPendingCounts] = useState<PendingCounts>({ entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0, rooms: 0 });
   const [shakenTab, setShakenTab] = useState<ReqTab | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const [previewItem, setPreviewItem] = useState<any | null>(null);
