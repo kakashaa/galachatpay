@@ -61,6 +61,8 @@ const AdminComplaint = lazy(() => import("./pages/AdminComplaint"));
 const WorksPage = lazy(() => import("./pages/WorksPage"));
 const AdminProfilePage = lazy(() => import("./pages/AdminProfilePage"));
 const RoomBackgroundPage = lazy(() => import("./pages/RoomBackgroundPage"));
+const DirectMessages = lazy(() => import("./pages/DirectMessages"));
+const ChatRoom = lazy(() => import("./pages/ChatRoom"));
 
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
@@ -171,6 +173,9 @@ const App = () => {
                   <Route path="/room-background" element={<RoomBackgroundPage />} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
+                  <Route path="/messages" element={<DirectMessages />} />
+                  <Route path="/admin/messages" element={<DirectMessages />} />
+                  <Route path="/messages/:conversationId" element={<ChatRoom />} />
                   <Route path="/login/agent" element={<AgentLogin />} />
                   <Route path="/agent/setup" element={<AgentSetup />} />
                   <Route path="/agent" element={<AgentDashboard />} />
