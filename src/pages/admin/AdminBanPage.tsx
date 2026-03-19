@@ -127,8 +127,36 @@ const AdminBanPage: React.FC = () => {
                 </div>
                 <span className="text-sm font-bold text-admin-rose">حظر مستخدم</span>
               </div>
+
+              {/* 1. UUID */}
               <input placeholder="UUID المستخدم" value={banForm.target_uuid} onChange={e => setBanForm(p => ({ ...p, target_uuid: e.target.value }))}
                 className="w-full h-12 rounded-xl px-4 text-sm tabular-nums focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} dir="ltr" />
+
+              {/* 2. سبب الحظر */}
+              <div>
+                <p className="text-[11px] text-muted-foreground mb-2 font-bold">سبب الحظر</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'promo', label: '🔴 ترويج', active: 'rgba(244,63,94,0.15)', border: 'rgba(244,63,94,0.3)' },
+                    { value: 'insult', label: '🟡 سب / إساءة', active: 'rgba(234,179,8,0.15)', border: 'rgba(234,179,8,0.3)' },
+                    { value: 'other', label: '🟠 أخرى', active: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.3)' },
+                  ].map(r => (
+                    <motion.button key={r.value} whileTap={{ scale: 0.95 }}
+                      onClick={() => setBanForm(p => ({ ...p, reason: r.value }))}
+                      className={`py-2.5 rounded-xl text-xs font-bold transition-all ${banForm.reason === r.value ? 'text-foreground' : 'text-muted-foreground'}`}
+                      style={banForm.reason === r.value ? { background: r.active, border: `1px solid ${r.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      {r.label}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              {banForm.reason === 'other' && (
+                <input placeholder="اكتب السبب..." value={banForm.custom_reason} onChange={e => setBanForm(p => ({ ...p, custom_reason: e.target.value }))}
+                  className="w-full h-12 rounded-xl px-4 text-sm focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
+              )}
+
+              {/* 3. نوع الحظر الداخلي (كامل / عناصر) */}
               <div className="grid grid-cols-2 gap-2">
                 {[{ key: "full", label: "حظر كامل", color: "rgba(244,63,94,0.12)" }, { key: "elements", label: "حظر عناصر", color: "rgba(139,92,246,0.12)" }].map(t => (
                   <motion.button key={t.key} whileTap={{ scale: 0.95 }}
@@ -144,22 +172,91 @@ const AdminBanPage: React.FC = () => {
                   {ELEMENT_OPTIONS.map((el, i) => (
                     <motion.button key={el.key} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}
                       onClick={() => setBanForm(p => ({ ...p, banned_elements: p.banned_elements.includes(el.key) ? p.banned_elements.filter(e => e !== el.key) : [...p.banned_elements, el.key] }))}
-                      className={`py-2 px-2 rounded-xl text-[11px] font-bold transition-all`}
+                      className="py-2 px-2 rounded-xl text-[11px] font-bold transition-all"
                       style={banForm.banned_elements.includes(el.key) ? { background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.2)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'hsl(var(--muted-foreground))' }}>
                       {el.label}
                     </motion.button>
                   ))}
                 </motion.div>
               )}
-              <input type="number" placeholder="مدة الحظر (ساعات)" value={banForm.duration_hours} onChange={e => setBanForm(p => ({ ...p, duration_hours: e.target.value }))}
-                className="w-full h-12 rounded-xl px-4 text-sm tabular-nums focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} dir="ltr" />
-              <input placeholder="سبب الحظر (اختياري)" value={banForm.reason} onChange={e => setBanForm(p => ({ ...p, reason: e.target.value }))}
-                className="w-full h-12 rounded-xl px-4 text-sm focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
-              <motion.button whileTap={{ scale: 0.96 }} onClick={executeBan} disabled={banLoading || !banForm.target_uuid.trim()}
-                className="w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 text-white disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 16px rgba(244,63,94,0.35)' }}>
-                {banLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Ban className="w-4 h-4" />تنفيذ الحظر</>}
-              </motion.button>
+
+              {/* 4. نوع البند (حساب / جهاز) */}
+              {banForm.reason !== 'promo' ? (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-2 font-bold">نوع الحظر</p>
+                  <div className="flex gap-3">
+                    {[
+                      { key: 'normal' as const, label: '⚡ حساب فقط', activeColor: 'rgba(59,130,246,0.12)', activeBorder: 'rgba(59,130,246,0.3)' },
+                      { key: 'device' as const, label: '🔒 جهاز كامل', activeColor: 'rgba(244,63,94,0.12)', activeBorder: 'rgba(244,63,94,0.3)' },
+                    ].map(s => (
+                      <motion.button key={s.key} whileTap={{ scale: 0.95 }}
+                        onClick={() => setBanForm(p => ({ ...p, ban_scope: s.key }))}
+                        className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${banForm.ban_scope === s.key ? 'text-foreground' : 'text-muted-foreground'}`}
+                        style={banForm.ban_scope === s.key ? { background: s.activeColor, border: `1px solid ${s.activeBorder}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        {s.label}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)' }}>
+                  <p className="text-xs text-admin-rose font-bold">⚠️ الترويج = حظر جهاز دائم تلقائي (999,999 ساعة)</p>
+                </div>
+              )}
+
+              {/* 5. مدة الحظر */}
+              {banForm.reason !== 'promo' && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-2 font-bold">مدة الحظر</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: '3', label: '3 ساعات' },
+                      { value: '6', label: '6 ساعات' },
+                      { value: '12', label: '12 ساعة' },
+                      { value: '24', label: '24 ساعة' },
+                    ].map(d => (
+                      <motion.button key={d.value} whileTap={{ scale: 0.95 }}
+                        onClick={() => setBanForm(p => ({ ...p, duration_hours: d.value }))}
+                        className={`py-2 rounded-xl text-xs font-bold transition-all ${banForm.duration_hours === d.value ? 'text-foreground' : 'text-muted-foreground'}`}
+                        style={banForm.duration_hours === d.value ? { background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        {d.label}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 6. صورة إثبات */}
+              <input type="file" ref={banFileRef} className="hidden" accept="image/*,video/*"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f && f.size <= 10 * 1024 * 1024) setBanImage(f);
+                  else if (f) toast.error('الحد الأقصى 10MB');
+                }}
+              />
+              <button onClick={() => banFileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs text-muted-foreground transition-all hover:text-foreground"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                {banImage ? (
+                  <><LucideImage className="w-4 h-4 text-admin-rose" /> {banImage.name}</>
+                ) : (
+                  <><Upload className="w-4 h-4" /> رفع صورة أو فيديو إثبات (اختياري)</>
+                )}
+              </button>
+
+              {/* 7. أزرار التنفيذ + فك الحظر */}
+              <div className="flex gap-2">
+                <motion.button whileTap={{ scale: 0.96 }} onClick={executeBan} disabled={banLoading || !banForm.target_uuid.trim()}
+                  className="flex-1 h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 text-white disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 16px rgba(244,63,94,0.35)' }}>
+                  {banLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Ban className="w-4 h-4" />تنفيذ الحظر</>}
+                </motion.button>
+                <motion.button whileTap={{ scale: 0.96 }} onClick={handleUnban} disabled={!banForm.target_uuid.trim()}
+                  className="h-12 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: 'hsl(160 84% 39%)' }}>
+                  <Unlock className="w-4 h-4" /> فك الحظر
+                </motion.button>
+              </div>
             </motion.div>
           )}
 
