@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, MessageSquare, User, ShieldBan } from "lucide-react";
+import { Home, MessageSquare, User, ShieldBan, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import GuestLoginPrompt from "./GuestLoginPrompt";
@@ -15,8 +15,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: User, label: "حسابي", path: "/my-requests", badgeKey: "requests" },
-  { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true, badgeKey: "support" },
+  { icon: MessageCircle, label: "الرسائل", path: "/messages", requiresAuth: true, badgeKey: "messages" },
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
+  { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true, badgeKey: "support" },
   { icon: ShieldBan, label: "حظر", path: "/report" },
 ];
 
@@ -28,6 +29,7 @@ const BottomNav: React.FC = () => {
   const [tappedIndex, setTappedIndex] = useState<number | null>(null);
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingTickets, setPendingTickets] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const fetchBadges = useCallback(async () => {
     if (!user?.uuid) return;
@@ -49,6 +51,10 @@ const BottomNav: React.FC = () => {
 
       const { count: ticketCount } = await supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "open");
       setPendingTickets(ticketCount || 0);
+
+      // Unread DM count
+      const { count: dmCount } = await (supabase as any).from("direct_messages").select("*", { count: "exact", head: true }).neq("sender_uuid", user.uuid).eq("status", "sent");
+      setUnreadMessages(dmCount || 0);
     } catch {
       // silent
     }
@@ -83,6 +89,7 @@ const BottomNav: React.FC = () => {
   const getBadge = (key?: string) => {
     if (key === "requests") return pendingRequests;
     if (key === "support") return pendingTickets;
+    if (key === "messages") return unreadMessages;
     return 0;
   };
 
