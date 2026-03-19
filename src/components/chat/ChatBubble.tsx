@@ -12,6 +12,7 @@ interface ChatBubbleProps {
   mediaUrl?: string | null;
   mediaType?: string;
   attachmentUrl?: string | null;
+  voiceDuration?: number;
   time: string;
   status?: string;
   showSender?: boolean;
