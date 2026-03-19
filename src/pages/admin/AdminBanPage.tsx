@@ -18,6 +18,7 @@ const AdminBanPage: React.FC = () => {
   const [banLoading, setBanLoading] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [banImage, setBanImage] = useState<File | null>(null);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const banFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadData(); }, [subTab]);
