@@ -326,6 +326,8 @@ const AdminDashboardPage: React.FC = () => {
         chatBadge={badgeData.supportOpen + badgeData.chatWaiting}
       />
     </div>
+    {ConfirmDialog}
+    </>
   );
 };
 
