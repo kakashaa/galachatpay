@@ -439,7 +439,7 @@ const AdminRequestsPage: React.FC = () => {
                     <span className="text-xs font-bold text-admin-amber">معلّقة ({pendingItems.length})</span>
                   </div>
                   {/* Grid: 2 columns for entries/frames/hairs/custom, 1 column for animated photos */}
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <AnimatePresence>
                       {pendingItems.map((item, i) => renderVisualCard(item, i))}
                     </AnimatePresence>
