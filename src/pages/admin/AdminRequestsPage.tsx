@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import {
   Loader2, Sparkles, Frame, Scissors, Camera, Gift,
   CheckCircle, XCircle, Clock, Copy, Hash, Send, User,
-  Calendar, ExternalLink, Play
+  Calendar, ExternalLink, Play, Eye, Timer
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import SvgaPlayer from "@/components/SvgaPlayer";
