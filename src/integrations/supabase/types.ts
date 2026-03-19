@@ -925,6 +925,33 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message: string | null
+          last_message_at: string | null
+          participants: Json
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          participants?: Json
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          last_message_at?: string | null
+          participants?: Json
+          type?: string
+        }
+        Relationships: []
+      }
       custom_gifts: {
         Row: {
           admin_note: string | null
@@ -982,6 +1009,48 @@ export type Database = {
           user_uuid?: string
           video_duration?: number
           video_url?: string
+        }
+        Relationships: []
+      }
+      direct_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          media_url: string | null
+          message_type: string
+          reply_to: string | null
+          sender_avatar: string | null
+          sender_name: string | null
+          sender_uuid: string
+          status: string
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          media_url?: string | null
+          message_type?: string
+          reply_to?: string | null
+          sender_avatar?: string | null
+          sender_name?: string | null
+          sender_uuid: string
+          status?: string
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          media_url?: string | null
+          message_type?: string
+          reply_to?: string | null
+          sender_avatar?: string | null
+          sender_name?: string | null
+          sender_uuid?: string
+          status?: string
         }
         Relationships: []
       }
