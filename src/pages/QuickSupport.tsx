@@ -237,20 +237,33 @@ const QuickSupport: React.FC = () => {
               </div>
 
               {/* Quick start chat button */}
-              <button
+              <motion.button
                 onClick={() => startChat()}
                 disabled={startingChat}
-                className="w-full glass-card p-4 flex items-center justify-center gap-3 bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/30 active:scale-[0.98] transition-transform"
+                animate={{
+                  boxShadow: [
+                    "0 0 0 0 rgba(59,130,246,0.4)",
+                    "0 0 20px 4px rgba(59,130,246,0.15)",
+                    "0 0 0 0 rgba(59,130,246,0.4)",
+                  ],
+                }}
+                transition={{ duration: 2.5, repeat: Infinity }}
+                className="w-full rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.97] transition-transform border border-primary/40"
+                style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.15))" }}
               >
                 {startingChat ? (
-                  <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Zap className="w-5 h-5 text-primary" />
-                    <span className="text-sm font-bold text-primary">بدء محادثة فورية</span>
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-primary" />
+                      <span className="text-base font-black text-primary">تكلّم مع أدمن الحين</span>
+                      <Zap className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">رد فوري خلال دقائق — بدون انتظار ⚡</span>
                   </>
                 )}
-              </button>
+              </motion.button>
 
               <div className="text-center">
                 <p className="text-[10px] text-muted-foreground">— أو اختر نوع الطلب —</p>
