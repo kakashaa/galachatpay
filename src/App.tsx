@@ -64,7 +64,6 @@ const RoomBackgroundPage = lazy(() => import("./pages/RoomBackgroundPage"));
 const DirectMessages = lazy(() => import("./pages/DirectMessages"));
 const ChatRoom = lazy(() => import("./pages/ChatRoom"));
 
-
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
 const AgentSetup = lazy(() => import("./pages/agent/AgentSetup"));
