@@ -22,19 +22,37 @@ const AdminBanPage: React.FC = () => {
 
   useEffect(() => { loadData(); }, [subTab]);
 
+  const safeListCall = async (action: string, timeoutMs = 10000): Promise<any[]> => {
+    try {
+      const result = await Promise.race([
+        adminCall(action),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
+      ]);
+      return Array.isArray(result) ? result : [];
+    } catch {
+      return [];
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
       if (subTab === "list" || subTab === "ban") {
         const [bans, blocked] = await Promise.all([
-          adminCall("list_manual_bans").catch(() => []),
-          adminCall("list_blocked_accounts").catch(() => []),
+          safeListCall("list_manual_bans"),
+          safeListCall("list_blocked_accounts"),
         ]);
-        setManualBans(bans || []); setBlockedAccounts(blocked || []);
+        setManualBans(bans);
+        setBlockedAccounts(blocked);
       }
-      if (subTab === "reports") setBanReports(await adminCall("list_ban_reports") || []);
-    } catch { }
-    finally { setLoading(false); }
+
+      if (subTab === "reports") {
+        const reports = await safeListCall("list_ban_reports");
+        setBanReports(reports);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const { confirm, ConfirmDialog } = useConfirmModal();
