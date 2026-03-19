@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, AlertTriangle, Upload, X, Send, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowRight, AlertTriangle, Upload, X, Send, Loader2, CheckCircle2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ const AdminComplaint: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -27,6 +28,12 @@ const AdminComplaint: React.FC = () => {
     };
     load();
   }, []);
+
+  const filteredAdmins = admins.filter(a => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (a.display_name || "").toLowerCase().includes(q) || a.username.toLowerCase().includes(q);
+  });
 
   const uploadFile = async (file: File): Promise<string | null> => {
     const ext = file.name.split(".").pop();
@@ -62,6 +69,12 @@ const AdminComplaint: React.FC = () => {
       toast.success("تم إرسال البلاغ بنجاح");
     } catch (err: any) { toast.error(err?.message || "فشل الإرسال"); }
     setSubmitting(false);
+  };
+
+  const getRoleBadge = (role: string) => {
+    if (role === "owner") return { label: "مالك", color: "bg-amber-500/20 text-amber-400" };
+    if (role === "super_admin") return { label: "سوبر أدمن", color: "bg-purple-500/20 text-purple-400" };
+    return { label: "أدمن", color: "bg-blue-500/20 text-blue-400" };
   };
 
   if (submitted) {
@@ -104,16 +117,42 @@ const AdminComplaint: React.FC = () => {
         {/* Select Admin */}
         <div className="glass-card p-4 space-y-3">
           <label className="text-sm font-bold text-foreground">اختر الأدمن</label>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="بحث بالاسم..."
+              className="w-full h-9 pr-9 pl-3 bg-input rounded-xl text-sm text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none"
+            />
+          </div>
           {loading ? (
             <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {admins.map(admin => (
-                <button key={admin.username} onClick={() => setSelectedAdmin(admin.username)}
-                  className={`p-3 rounded-xl text-xs font-bold border transition-all ${selectedAdmin === admin.username ? "border-primary bg-primary/10 text-primary" : "border-border/30 bg-card/50 text-muted-foreground"}`}>
-                  {admin.display_name || admin.username}
-                </button>
-              ))}
+            <div className="max-h-[200px] overflow-y-auto space-y-1.5 scrollbar-hide">
+              {filteredAdmins.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">لا يوجد نتائج</p>
+              ) : (
+                filteredAdmins.map(admin => {
+                  const badge = getRoleBadge(admin.role);
+                  return (
+                    <button key={admin.username} onClick={() => setSelectedAdmin(admin.username)}
+                      className={`w-full p-3 rounded-xl text-right flex items-center justify-between border transition-all ${selectedAdmin === admin.username ? "border-primary bg-primary/10" : "border-border/30 bg-card/50"}`}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                          <span className="text-xs font-bold">{(admin.display_name || admin.username).charAt(0).toUpperCase()}</span>
+                        </div>
+                        <span className={`text-xs font-bold ${selectedAdmin === admin.username ? "text-primary" : "text-foreground"}`}>
+                          {admin.display_name || admin.username}
+                        </span>
+                      </div>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${badge.color}`}>{badge.label}</span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           )}
         </div>
