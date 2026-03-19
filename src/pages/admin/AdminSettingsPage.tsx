@@ -236,6 +236,8 @@ const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
         </div>
       ))}
     </div>
+    {TrashConfirmDialog}
+    </>
   );
 };
 
