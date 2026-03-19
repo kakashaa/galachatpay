@@ -33,7 +33,14 @@ const AdminAccountsPage: React.FC = () => {
 
   const loadAdmins = async () => {
     setLoading(true);
-    try { setAdmins(await adminCall("admin_list") || []); } catch { }
+    try {
+      const { data, error } = await supabase
+        .from("admin_accounts")
+        .select("id, username, display_name, role, is_active, created_at")
+        .order("role", { ascending: true });
+      if (error) throw error;
+      setAdmins(data || []);
+    } catch { }
     finally { setLoading(false); }
   };
 
@@ -74,7 +81,15 @@ const AdminAccountsPage: React.FC = () => {
     if (!newAdmin.username || !newAdmin.password) { toast.error("يرجى ملء الحقول"); return; }
     setAdding(true);
     try {
-      await adminCall("admin_create", { username: newAdmin.username, password: newAdmin.password, display_name: newAdmin.display_name || newAdmin.username, role: newAdmin.role });
+      const { error } = await supabase.from("admin_accounts").insert({
+        username: newAdmin.username,
+        password_hash: newAdmin.password,
+        display_name: newAdmin.display_name || newAdmin.username,
+        role: newAdmin.role,
+        is_active: true,
+        permissions: {},
+      });
+      if (error) throw error;
       toast.success("تم إضافة المسؤول");
       setNewAdmin({ username: "", password: "", display_name: "", role: "admin" }); setShowAdd(false);
       loadAdmins();
