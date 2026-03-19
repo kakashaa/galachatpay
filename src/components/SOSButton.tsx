@@ -171,7 +171,9 @@ const SOSButton: React.FC = () => {
                 chatKey={chatKey}
                 userUuid={user?.uuid || ""}
                 userName={user?.name || ""}
-                onEnd={endChat}
+                chatType="quick"
+                onBack={closeChat}
+                onEnded={endChat}
               />
             </div>
           </motion.div>

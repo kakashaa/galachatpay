@@ -214,6 +214,7 @@ const Dashboard: React.FC = () => {
           />
         </main>
       </div>
+      <SOSButton />
       <BottomNav />
     </>
   );
