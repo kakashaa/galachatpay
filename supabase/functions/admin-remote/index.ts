@@ -23,6 +23,16 @@ serve(async (req) => {
       });
     }
 
+    const ALLOWED_TABLES = new Set([
+      "admin_accounts", "vip_requests", "ban_reports", "support_tickets",
+      "notifications", "frame_claims", "entry_gift_claims", "hair_selections",
+      "custom_gifts", "animated_photo_requests", "salary_requests",
+      "works_members", "works_abuse_log", "works_ban_requests",
+      "room_background_requests", "room_background_codes",
+      "admin_posts", "admin_stories", "direct_messages", "conversations",
+      "support_ratings", "admin_complaints", "id_changes",
+    ]);
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
