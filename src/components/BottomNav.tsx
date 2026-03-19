@@ -51,6 +51,10 @@ const BottomNav: React.FC = () => {
 
       const { count: ticketCount } = await supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("user_uuid", user.uuid).eq("status", "open");
       setPendingTickets(ticketCount || 0);
+
+      // Unread DM count
+      const { count: dmCount } = await (supabase as any).from("direct_messages").select("*", { count: "exact", head: true }).neq("sender_uuid", user.uuid).eq("status", "sent");
+      setUnreadMessages(dmCount || 0);
     } catch {
       // silent
     }
