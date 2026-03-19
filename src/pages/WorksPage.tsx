@@ -99,7 +99,7 @@ const WorksPage: React.FC = () => {
       } as any);
       await supabase.from("notifications").insert({
         user_uuid: memberUuid,
-        title: "دعوة للانضمام لـ Works 🤝",
+        title: "دعوة للانضمام لـ البيدي 🤝",
         body: `${user?.name || "مستخدم"} يدعوك للانضمام لفريقه كـ ${memberType === "supporter" ? "داعم" : "وكيل"}`,
         type: "works_invitation", is_read: false,
       } as any);
@@ -147,11 +147,11 @@ const WorksPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
-        <h1 className="text-lg font-bold">Works</h1>
+        <h1 className="text-lg font-bold">البيدي</h1>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center space-y-4">
         <Lock className="w-16 h-16 text-muted-foreground" />
-        <p className="text-lg font-bold">نظام Works غير متاح</p>
+        <p className="text-lg font-bold">نظام البيدي غير متاح</p>
         <p className="text-sm text-muted-foreground">يتطلب الوصول للمستوى 10 على الأقل</p>
         <p className="text-xs text-muted-foreground">مستواك الحالي: {userLevel}</p>
       </div>
@@ -164,11 +164,11 @@ const WorksPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
-        <h1 className="text-lg font-bold">Works</h1>
+        <h1 className="text-lg font-bold">البيدي</h1>
       </div>
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center space-y-4">
         <Briefcase className="w-16 h-16 text-emerald-400" />
-        <p className="text-lg font-bold">انضم لنظام Works</p>
+        <p className="text-lg font-bold">انضم لنظام البيدي</p>
         <p className="text-sm text-muted-foreground">ادعُ أعضاء واحصل على عمولة من نشاطهم</p>
         {pendingRequest ? (
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl px-6 py-3">
@@ -190,13 +190,13 @@ const WorksPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
-        <h1 className="text-lg font-bold">Works</h1>
+        <h1 className="text-lg font-bold">البيدي</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
         {/* Works Code */}
         <div className="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl p-4">
-          <p className="text-[10px] text-muted-foreground">كود Works</p>
+          <p className="text-[10px] text-muted-foreground">كود البيدي</p>
           <p className="text-lg font-mono font-bold text-emerald-400">{myWorks.works_code}</p>
         </div>
 
@@ -280,7 +280,7 @@ const WorksPage: React.FC = () => {
               <p className="text-sm font-bold">شروط إضافة عضو:</p>
               <ul className="text-[11px] text-muted-foreground space-y-1">
                 <li>• الحساب يجب أن يكون جديد بالكامل</li>
-                <li>• لا يمكن تسجيل حساب قديم أو مسجل لدى works آخر</li>
+                <li>• لا يمكن تسجيل حساب قديم أو مسجل لدى بيدي آخر</li>
                 <li>• لا يُقبل حسابات بمستوى أعلى من 0</li>
                 <li>• الحساب بعد تاريخ 19/2/2026</li>
               </ul>

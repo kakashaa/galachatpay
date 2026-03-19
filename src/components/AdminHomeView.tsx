@@ -395,7 +395,7 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "#f97316", roles: ["owner"], badge: 0 },
     { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "#14b8a6", roles: ["owner"], badge: 0 },
     { icon: ScrollText, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Briefcase, label: "البيدي", route: "/admin/bd", color: "#f43f5e", roles: ["owner"], badge: 0 },
+    { icon: Briefcase, label: "البيدي", route: "/admin/works", color: "#f43f5e", roles: ["owner"], badge: 0 },
     { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "#71717a", roles: ["owner"], badge: 0 },
   ];
 
