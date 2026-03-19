@@ -97,9 +97,8 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ system, accountId, onRefr
     setLoading(true);
     try {
       const table = system === "works" ? "works_members" : "bd_members";
-      const { error } = await supabase
-        .from(table)
-        .update({ custom_commission_pct: pct } as any)
+      const { error } = await (supabase.from(table) as any)
+        .update({ custom_commission_pct: pct })
         .eq("member_uuid", editUuid.trim())
         .eq(system === "works" ? "works_id" : "bd_uuid", accountId);
       if (error) throw error;
