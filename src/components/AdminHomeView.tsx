@@ -635,42 +635,88 @@ const AdminHomeView: React.FC<Props> = ({
                 transition={{ delay: 0.4 }}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[11px] font-bold text-muted-foreground">آخر العمليات</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3.5 rounded-full gold-gradient" />
+                    <p className="text-[11px] font-bold text-foreground">آخر العمليات</p>
+                  </div>
                   {isOwner && (
                     <motion.button
                       onClick={() => navigate("/admin/log")}
                       whileTap={{ scale: 0.95 }}
-                      className="text-[10px] font-bold px-2.5 py-1 rounded-lg"
-                      style={{ color: '#10b981', background: 'rgba(16,185,129,0.08)' }}
+                      className="text-[10px] font-bold px-2.5 py-1 rounded-lg text-primary bg-primary/10"
                     >
                       عرض الكل
                     </motion.button>
                   )}
                 </div>
                 <div className="space-y-2">
-                  {recentLogs.slice(0, 4).map((log: any, i: number) => {
-                    const isNegative = log.action?.includes('reject') || log.action?.includes('ban') || log.action?.includes('delete');
+                  {recentLogs.slice(0, 5).map((log: any, i: number) => {
+                    const actionLabels: Record<string, { label: string; emoji: string; color: string; bgColor: string }> = {
+                      approve_frame_claim: { label: "موافقة على إطار", emoji: "🖼️", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+                      reject_frame_claim: { label: "رفض إطار", emoji: "🖼️", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      approve_entry_claim: { label: "موافقة على دخولية", emoji: "✨", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+                      reject_entry_claim: { label: "رفض دخولية", emoji: "✨", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      approve_hair: { label: "موافقة على شعر", emoji: "💇", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+                      reject_hair: { label: "رفض شعر", emoji: "💇", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      approve_salary: { label: "موافقة على راتب", emoji: "💰", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+                      reject_salary: { label: "رفض راتب", emoji: "💰", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      approve_vip: { label: "تفعيل VIP", emoji: "👑", color: "text-amber-400", bgColor: "bg-amber-500/10" },
+                      approve_animated_photo: { label: "موافقة صورة متحركة", emoji: "📸", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+                      reject_animated_photo: { label: "رفض صورة متحركة", emoji: "📸", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      approve_custom_gift: { label: "موافقة هدية مخصصة", emoji: "🎁", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+                      reject_custom_gift: { label: "رفض هدية مخصصة", emoji: "🎁", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      ban_user: { label: "حظر مستخدم", emoji: "🚫", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      unban_user: { label: "فك حظر مستخدم", emoji: "✅", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+                      change_id: { label: "تغيير آيدي", emoji: "🔄", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+                      change_account_type: { label: "تغيير نوع حساب", emoji: "👤", color: "text-purple-400", bgColor: "bg-purple-500/10" },
+                      delete_message: { label: "حذف رسالة", emoji: "🗑️", color: "text-red-400", bgColor: "bg-red-500/10" },
+                      login: { label: "تسجيل دخول", emoji: "🔐", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+                    };
+
+                    const action = log.action || "";
+                    // Try exact match first, then partial
+                    let info = actionLabels[action];
+                    if (!info) {
+                      const key = Object.keys(actionLabels).find(k => action.includes(k));
+                      info = key ? actionLabels[key] : null;
+                    }
+                    if (!info) {
+                      const isNeg = action.includes("reject") || action.includes("ban") || action.includes("delete");
+                      info = { label: log.action_label || action || "عملية", emoji: isNeg ? "⚠️" : "📋", color: isNeg ? "text-red-400" : "text-primary", bgColor: isNeg ? "bg-red-500/10" : "bg-primary/10" };
+                    }
+
+                    const details = log.details || {};
+                    const userName = details.user_name || details.target_name || details.member_name || "";
+                    const userUuid = details.user_uuid || details.target_uuid || "";
+                    const adminName = log.admin_username || "";
+
                     return (
                       <motion.div
                         key={log.id || i}
                         initial={{ opacity: 0, x: 8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.45 + i * 0.04 }}
-                        className="rounded-xl p-3 flex items-center gap-3"
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.05)',
-                        }}
+                        className="rounded-xl p-3 flex items-center gap-3 border border-border/10 bg-card/30 backdrop-blur-sm active:scale-[0.98] transition-transform cursor-pointer"
+                        dir="rtl"
+                        onClick={() => isOwner && navigate("/admin/log")}
                       >
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: isNegative ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)' }}
-                        >
-                          <Clock size={13} style={{ color: isNegative ? '#f43f5e' : '#10b981' }} />
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${info.bgColor}`}>
+                          <span className="text-sm">{info.emoji}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[11px] font-bold truncate">{log.action_label || log.action || 'عملية'}</p>
-                          <p className="text-[10px] text-muted-foreground tabular-nums">
+                          <p className={`text-[11px] font-bold ${info.color}`}>{info.label}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {userName && (
+                              <span className="text-[9px] text-foreground/70 font-bold truncate max-w-[100px]">{userName}</span>
+                            )}
+                            {userName && <span className="text-[8px] text-muted-foreground/40">•</span>}
+                            {adminName && (
+                              <span className="text-[9px] text-muted-foreground truncate max-w-[60px]">بواسطة {adminName}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-left shrink-0">
+                          <p className="text-[9px] text-muted-foreground tabular-nums">
                             {log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
                           </p>
                         </div>
