@@ -9,6 +9,7 @@ import { useBanCheck } from "@/hooks/use-ban-check";
 import BanOverlay from "@/components/BanOverlay";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { VideoStoryCircle } from "@/components/VideoStoryCircle";
+import { AdminStoryCircle } from "@/components/AdminStoryCircle";
 import BannerCarousel from "@/components/BannerCarousel";
 import UserProfileCard from "@/components/UserProfileCard";
 import GuestProfileCard from "@/components/GuestProfileCard";
