@@ -61,6 +61,8 @@ const AdminComplaint = lazy(() => import("./pages/AdminComplaint"));
 const WorksPage = lazy(() => import("./pages/WorksPage"));
 const AdminProfilePage = lazy(() => import("./pages/AdminProfilePage"));
 const RoomBackgroundPage = lazy(() => import("./pages/RoomBackgroundPage"));
+const DirectMessages = lazy(() => import("./pages/DirectMessages"));
+const ChatRoom = lazy(() => import("./pages/ChatRoom"));
 
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
