@@ -103,7 +103,7 @@ const AdminRequestsPage: React.FC = () => {
   // Helper to call wares-api through edge function proxy
   const callWaresApi = async (action: string, params: Record<string, string>) => {
     const { data, error } = await supabase.functions.invoke("wares-request", {
-      body: { action, params },
+      body: { action, ...params },
     });
     if (error) throw error;
     return data;
