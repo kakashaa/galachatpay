@@ -58,6 +58,8 @@ Deno.serve(async (req) => {
   try {
     const { username, password, action, data, session_token } = await req.json();
 
+    console.log("[ADMIN-DEBUG] action:", action, "username:", username, "has_token:", !!session_token, "token_len:", session_token?.length);
+
     // auto_ban_report action removed — bans now require admin approval
 
     const supabase = createClient(
@@ -81,9 +83,11 @@ Deno.serve(async (req) => {
             { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+        console.log("[ADMIN-DEBUG] decoded token:", JSON.stringify(decoded));
         if (decoded.username) {
           if (ADMIN_ACCOUNTS[decoded.username]) {
             auth = { role: ADMIN_ACCOUNTS[decoded.username].role };
+            console.log("[ADMIN-DEBUG] auth via ADMIN_ACCOUNTS:", decoded.username, auth.role);
           } else {
             // Check moderator from DB
             const { data: mod } = await supabase
@@ -94,8 +98,13 @@ Deno.serve(async (req) => {
               .single();
             if (mod) {
               auth = { role: "moderator", permissions: mod.permissions || [] };
+              console.log("[ADMIN-DEBUG] auth via DB mod:", decoded.username);
+            } else {
+              console.log("[ADMIN-DEBUG] mod not found for:", decoded.username);
             }
           }
+        } else {
+          console.log("[ADMIN-DEBUG] no username in decoded token");
         }
       } catch (e) {
         console.error("Invalid session token:", e);
@@ -108,6 +117,7 @@ Deno.serve(async (req) => {
     }
     
     if (!auth) {
+      console.log("[ADMIN-DEBUG] AUTH FAILED — no session_token match and no password match. username:", username, "action:", action);
       return new Response(
         JSON.stringify({ error: "بيانات الدخول غير صحيحة" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
