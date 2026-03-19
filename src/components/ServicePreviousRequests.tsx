@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, FileText, Image as ImageIcon, Ban, RefreshCw, Eye, Calendar, User, Timer } from "lucide-react";
+import { ChevronDown, Clock, CheckCircle, XCircle, FileText, Image as ImageIcon, Ban, RefreshCw, Eye, Calendar, User, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
