@@ -439,6 +439,7 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: ScrollText, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0 },
     { icon: Briefcase, label: "البيدي", route: "/admin/works", color: "#f43f5e", roles: ["owner"], badge: 0 },
     { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "#71717a", roles: ["owner"], badge: 0 },
+    { icon: ClipboardList, label: "طلبات المضيفات", route: "/admin/host-requests", color: "#14b8a6", roles: ["owner", "super_admin", "admin"], badge: 0 },
   ];
 
   const visibleServices = allServices.filter(s => adminRole && s.roles.includes(adminRole));
