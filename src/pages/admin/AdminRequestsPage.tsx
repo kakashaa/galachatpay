@@ -151,8 +151,8 @@ const AdminRequestsPage: React.FC = () => {
         });
 
         let pendingReqId: string | null = null;
-        if (submitRes.ok && submitRes.data?.request_id) {
-          pendingReqId = String(submitRes.data.request_id);
+        if ((submitRes.ok || submitRes.success) && (submitRes.data?.request_id || submitRes.request_id)) {
+          pendingReqId = String(submitRes.data?.request_id || submitRes.request_id);
         } else {
           toast.warning("تم القبول — لكن إنشاء الطلب فشل.");
           console.error("Submit-request failed:", submitRes);
