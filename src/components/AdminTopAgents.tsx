@@ -32,6 +32,7 @@ interface AdminTopAgentsProps {
 }
 
 const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [agents, setAgents] = useState<AgentOverride[]>([]);
   const [usageMap, setUsageMap] = useState<Record<string, AgentUsage>>({});
   const [loading, setLoading] = useState(true);
