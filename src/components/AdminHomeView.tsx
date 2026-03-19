@@ -9,7 +9,8 @@ import {
   Ban, KeyRound, RotateCcw, BatteryCharging, ImageIcon,
   ShoppingBag, TrendingUp, Building2, Banknote, Package,
   ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle,
-  Copy, ChevronLeft
+  Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
+  Inbox, FileText, Landmark
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
