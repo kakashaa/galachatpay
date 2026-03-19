@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, MessageSquare, User, ShieldBan } from "lucide-react";
+import { Home, MessageSquare, User, ShieldBan, MessageCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import GuestLoginPrompt from "./GuestLoginPrompt";
