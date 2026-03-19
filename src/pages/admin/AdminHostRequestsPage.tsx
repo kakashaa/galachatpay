@@ -204,7 +204,7 @@ const AdminHostRequestsPage: React.FC = () => {
   };
 
   return (
-    <AdminPageLayout title="طلبات المضيفات" onBack={() => navigate('/admin/dashboard')}>
+    <AdminPageLayout title="طلبات المضيفات">
       <div className="space-y-5 pb-20" dir="rtl">
 
         {/* ─── Submit Form (for admins) ─── */}
