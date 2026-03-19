@@ -26,7 +26,10 @@ const AdminBanPage: React.FC = () => {
     setLoading(true);
     try {
       if (subTab === "list" || subTab === "ban") {
-        const [bans, blocked] = await Promise.all([adminCall("list_manual_bans"), adminCall("list_blocked_accounts")]);
+        const [bans, blocked] = await Promise.all([
+          adminCall("list_manual_bans").catch(() => []),
+          adminCall("list_blocked_accounts").catch(() => []),
+        ]);
         setManualBans(bans || []); setBlockedAccounts(blocked || []);
       }
       if (subTab === "reports") setBanReports(await adminCall("list_ban_reports") || []);
