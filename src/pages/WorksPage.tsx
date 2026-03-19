@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert } from "lucide-react";
+import OwnerControls from "@/components/bd/OwnerControls";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -490,6 +491,10 @@ const WorksPage: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+        {/* Owner Controls */}
+        {localStorage.getItem("admin_username") === "naz" && myWorks?.id && (
+          <OwnerControls system="works" accountId={myWorks.id} onRefresh={fetchData} />
+        )}
         {/* Works Code */}
         <div className="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl p-4">
           <p className="text-[10px] text-muted-foreground">كود البيدي</p>
