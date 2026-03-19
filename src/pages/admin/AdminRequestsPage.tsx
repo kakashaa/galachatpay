@@ -208,7 +208,7 @@ const AdminRequestsPage: React.FC = () => {
     );
 
     const thumb = getThumbnail(item);
-    const dim = size === "grid" ? 110 : 260;
+    const dim = size === "grid" ? 280 : 340;
 
     if (isSvga(url)) {
       return (
@@ -267,7 +267,7 @@ const AdminRequestsPage: React.FC = () => {
         </AnimatePresence>
 
         {/* Media preview - large visual area */}
-        <div className={`relative w-full ${activeTab === "frames" || activeTab === "hairs" ? "aspect-square" : "aspect-[3/4]"} bg-black/40`}>
+        <div className="relative w-full aspect-square bg-black/40">
           <div className="absolute inset-0 flex items-center justify-center">
             {renderMediaPreview(item)}
           </div>
@@ -439,7 +439,7 @@ const AdminRequestsPage: React.FC = () => {
                     <span className="text-xs font-bold text-admin-amber">معلّقة ({pendingItems.length})</span>
                   </div>
                   {/* Grid: 2 columns for entries/frames/hairs/custom, 1 column for animated photos */}
-                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-3 gap-2"}>
+                  <div className="space-y-3">
                     <AnimatePresence>
                       {pendingItems.map((item, i) => renderVisualCard(item, i))}
                     </AnimatePresence>
@@ -458,7 +458,7 @@ const AdminRequestsPage: React.FC = () => {
                       <span className="text-xs font-bold text-muted-foreground">السابقة</span>
                     </div>
                   )}
-                  <div className={activeTab === "animated" ? "space-y-3" : "grid grid-cols-3 gap-2"}>
+                  <div className="space-y-3">
                     {otherItems.slice(0, 20).map((item, i) => renderVisualCard(item, i + pendingItems.length))}
                   </div>
                 </div>
