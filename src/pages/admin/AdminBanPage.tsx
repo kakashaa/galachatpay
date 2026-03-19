@@ -389,6 +389,8 @@ const AdminBanPage: React.FC = () => {
         </AnimatePresence>
       </div>
     </AdminPageLayout>
+    {ConfirmDialog}
+    </>
   );
 };
 
