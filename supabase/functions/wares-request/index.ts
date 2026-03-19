@@ -34,60 +34,6 @@ serve(async (req) => {
 
       const data = await res.json();
 
-      // Send telegram notification on success
-      if (data.success || data.request_id) {
-        try {
-          const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-          const CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
-          if (BOT_TOKEN && CHAT_ID) {
-            const typeLabels: Record<string, string> = {
-              frame: "🖼 إطار",
-              entry_room: "🚪 دخلة غرفة",
-              entry_profile: "👤 دخلة ملف شخصي",
-              necklace: "📿 قلادة",
-            };
-            const time = new Date().toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" });
-            const message =
-              `📦 <b>طلب مخصص جديد</b>\n` +
-              `👤 ${params.user_name || params.uuid}\n` +
-              `📋 النوع: ${typeLabels[params.ware_type] || params.ware_type}\n` +
-              `📁 الصيغة: ${params.image_type || "-"}\n` +
-              `⏱ المدة: ${params.days || "-"} يوم\n` +
-              `🔢 رقم الطلب: #${data.request_id || "-"}\n` +
-              `⏰ ${time}`;
-
-            // Send text message first
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: "HTML" }),
-            });
-
-            // Send the file if file_url exists
-            const fileUrl = params.file_url;
-            if (fileUrl) {
-              const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
-              const isVideo = ["mp4", "webm", "mov"].includes(ext);
-              const endpoint = isVideo ? "sendVideo" : "sendDocument";
-              const fieldName = isVideo ? "video" : "document";
-
-              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${endpoint}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  chat_id: CHAT_ID,
-                  [fieldName]: fileUrl,
-                  caption: `📎 ملف الطلب #${data.request_id || "-"}\n${typeLabels[params.ware_type] || params.ware_type} — ${params.user_name || params.uuid}`,
-                  parse_mode: "HTML",
-                }),
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Telegram notify failed:", e);
-        }
-      }
-
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
