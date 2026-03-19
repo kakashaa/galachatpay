@@ -1,6 +1,8 @@
 const AVATAR_CACHE: Record<string, string> = {};
 const API = "https://galachat.site/project-z/api.php";
 
+const DEFAULT_AVATAR = "/placeholder.svg";
+
 /** Build the correct avatar URL from uuid + optional avatar path */
 export function getAvatarUrl(uuid: string, avatar?: string | null): string {
   if (avatar && avatar.startsWith("http")) return avatar;
@@ -8,8 +10,14 @@ export function getAvatarUrl(uuid: string, avatar?: string | null): string {
   return `https://galalivechat.com/api/newWebsite/user/avatar?uuid=${uuid}`;
 }
 
+/** onError handler for avatar images — falls back to default */
+export function handleAvatarError(e: React.SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.src = DEFAULT_AVATAR;
+  e.currentTarget.onerror = null; // prevent loop
+}
+
 export async function getAvatar(uuid: string): Promise<string> {
-  if (!uuid) return "";
+  if (!uuid) return DEFAULT_AVATAR;
 
   // Check memory cache
   if (AVATAR_CACHE[uuid]) return AVATAR_CACHE[uuid];
@@ -40,7 +48,7 @@ export async function getAvatar(uuid: string): Promise<string> {
 
 // Legacy helper — kept for backward compat
 export function fixAvatarUrl(path?: string | null): string {
-  if (!path) return "";
+  if (!path) return DEFAULT_AVATAR;
   if (path.startsWith("http")) return path;
   if (path.startsWith("avatars/")) return `https://storage.googleapis.com/galalivechat-bucket-01/${path}`;
   return `https://storage.googleapis.com/galalivechat-bucket-01/avatars/${path}`;
