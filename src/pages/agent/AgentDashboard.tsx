@@ -36,6 +36,7 @@ interface DashboardData {
 
 const AgentDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const { token, agentName, logout } = useAgentAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
