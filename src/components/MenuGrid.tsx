@@ -4,7 +4,7 @@ import {
   Wallet, Headset, Fingerprint, Crown, Gift,
   Sparkles, PlayCircle, Frame, FileText, BadgeCheck, Briefcase,
   Ban, Clock, Construction, Landmark, AlertTriangle,
-  Zap,
+  Zap, Image,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
