@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Ban, Unlock, Loader2, ShieldBan, Shield, Image as LucideImage, Play, ExternalLink, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 const AdminBanPage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
