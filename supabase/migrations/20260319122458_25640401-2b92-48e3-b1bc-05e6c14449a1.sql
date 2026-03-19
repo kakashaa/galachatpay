@@ -1,0 +1,1 @@
+ALTER TABLE support_session_participants ADD CONSTRAINT support_session_participants_session_admin_unique UNIQUE (session_id, admin_username);
