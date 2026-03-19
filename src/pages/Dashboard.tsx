@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Bell, LogIn, RefreshCw, ShieldBan } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { playNotificationSound } from "@/lib/notificationSound";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
 import BanOverlay from "@/components/BanOverlay";
@@ -25,6 +26,7 @@ const Dashboard: React.FC = () => {
   const { user, logout, isAuthenticated, refreshUser } = useAuth();
   const { activeBan, getRemainingTime, isFullBan } = useBanCheck(user?.uuid);
   const [notifCount, setNotifCount] = useState(0);
+  const prevNotifCountRef = useRef(0);
   const [refreshing, setRefreshing] = useState(false);
 
   // Pull-to-refresh state
@@ -41,7 +43,13 @@ const Dashboard: React.FC = () => {
         .select("*", { count: "exact", head: true })
         .eq("is_read", false)
         .or(`target.eq.all,user_uuid.eq.${user.uuid}`);
-      setNotifCount(count ?? 0);
+      const newCount = count ?? 0;
+      // Play sound if count increased
+      if (newCount > prevNotifCountRef.current && prevNotifCountRef.current > 0) {
+        playNotificationSound();
+      }
+      prevNotifCountRef.current = newCount;
+      setNotifCount(newCount);
     } catch {
       // silent
     }
@@ -49,10 +57,11 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchNotifCount();
-    // Refresh user data on dashboard mount
+    const interval = setInterval(fetchNotifCount, 15_000);
     if (isAuthenticated) {
       refreshUser();
     }
+    return () => clearInterval(interval);
   }, [fetchNotifCount, isAuthenticated, refreshUser]);
 
   const handleRefresh = useCallback(async () => {
