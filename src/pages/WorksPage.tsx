@@ -91,14 +91,79 @@ const WorksPage: React.FC = () => {
   };
 
   const sendInvitation = async () => {
-    if (!memberUuid || !myWorks || sending) return;
+    if (!memberUuid.trim() || !myWorks || sending) return;
     setSending(true);
     try {
+      // 1. Fetch user info from API
+      const userRes = await fetch(
+        `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${memberUuid.trim()}`
+      );
+      const userData = await userRes.json();
+
+      if (!userData.success || !userData.name) {
+        toast.error("المستخدم غير موجود");
+        setSending(false);
+        return;
+      }
+
+      // 2. Level must be 0
+      if (userData.sender_level > 0 || userData.receiver_level > 0 || userData.charger_level > 0) {
+        toast.error("لا يمكن إضافة هذا المستخدم — مستوى حسابه أعلى من 0");
+        setSending(false);
+        return;
+      }
+
+      // 3. Account created after 19/2/2026
+      const minDate = new Date("2026-02-19T00:00:00");
+      const createdAt = new Date(userData.created_at);
+      if (createdAt < minDate) {
+        toast.error("لا يمكن إضافة هذا المستخدم — حساب قديم (قبل 19/2/2026)");
+        setSending(false);
+        return;
+      }
+
+      // 4. No agency
+      if (userData.agency_id > 0) {
+        toast.error("لا يمكن إضافة هذا المستخدم — مسجل بوكالة");
+        setSending(false);
+        return;
+      }
+
+      // 5. Not in another works team
+      const { data: existingMember } = await supabase
+        .from("works_members")
+        .select("id")
+        .eq("member_uuid", memberUuid.trim())
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (existingMember) {
+        toast.error("هذا المستخدم مسجل بفريق بيدي آخر");
+        setSending(false);
+        return;
+      }
+
+      // 6. Not already in this team
+      const { data: alreadyInTeam } = await supabase
+        .from("works_members")
+        .select("id")
+        .eq("works_id", myWorks.id)
+        .eq("member_uuid", memberUuid.trim())
+        .maybeSingle();
+
+      if (alreadyInTeam) {
+        toast.error("هذا المستخدم موجود بفريقك بالفعل");
+        setSending(false);
+        return;
+      }
+
+      // 7. All checks passed — send invitation
       await supabase.from("works_members").insert({
-        works_id: myWorks.id, member_uuid: memberUuid, member_type: memberType, status: "pending",
+        works_id: myWorks.id, member_uuid: memberUuid.trim(), member_name: userData.name,
+        member_type: memberType, status: "pending",
       } as any);
       await supabase.from("notifications").insert({
-        user_uuid: memberUuid,
+        user_uuid: memberUuid.trim(),
         title: "دعوة للانضمام لـ البيدي 🤝",
         body: `${user?.name || "مستخدم"} يدعوك للانضمام لفريقه كـ ${memberType === "supporter" ? "داعم" : "وكيل"}`,
         type: "works_invitation", is_read: false,
