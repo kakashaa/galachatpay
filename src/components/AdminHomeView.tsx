@@ -395,7 +395,7 @@ interface Props {
 
 const AdminHomeView: React.FC<Props> = ({
   adminDisplayName, adminRole: _adminRole, stats, badges,
-  onServiceClick: _onServiceClick, onChatClick: _onChatClick, recentLogs, isOwner, isSuperAdmin,
+  onServiceClick: _onServiceClick, onChatClick: _onChatClick, recentLogs, isOwner, isSuperAdmin, onLogout,
 }: any) => {
   const navigate = useNavigate();
   const [searchUuid, setSearchUuid] = useState("");
