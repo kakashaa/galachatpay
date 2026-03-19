@@ -89,6 +89,7 @@ const BottomNav: React.FC = () => {
   const getBadge = (key?: string) => {
     if (key === "requests") return pendingRequests;
     if (key === "support") return pendingTickets;
+    if (key === "messages") return unreadMessages;
     return 0;
   };
 
