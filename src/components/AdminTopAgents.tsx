@@ -127,7 +127,8 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
   };
 
   const handleDelete = async (agent: AgentOverride) => {
-    if (!confirm(`حذف الوكيل ${agent.agent_name}؟`)) return;
+    const ok = await confirm({ title: "حذف وكيل", message: `حذف الوكيل ${agent.agent_name}؟`, danger: true, confirmText: "حذف" });
+    if (!ok) return;
     const { error } = await supabase.from("agent_vip_overrides").delete().eq("id", agent.id);
     if (error) { toast.error("فشل الحذف"); return; }
     toast.success("تم الحذف");
