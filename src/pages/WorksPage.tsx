@@ -99,7 +99,7 @@ const WorksPage: React.FC = () => {
       } as any);
       await supabase.from("notifications").insert({
         user_uuid: memberUuid,
-        title: "دعوة للانضمام لـ Works 🤝",
+        title: "دعوة للانضمام لـ البيدي 🤝",
         body: `${user?.name || "مستخدم"} يدعوك للانضمام لفريقه كـ ${memberType === "supporter" ? "داعم" : "وكيل"}`,
         type: "works_invitation", is_read: false,
       } as any);
