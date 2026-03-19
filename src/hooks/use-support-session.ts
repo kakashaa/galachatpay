@@ -38,12 +38,16 @@ export function useSupportSession(sessionId: string | null) {
 
   const fetchMessages = useCallback(async () => {
     if (!sessionId) return;
-    const { data } = await supabase
-      .from("support_session_messages" as any)
-      .select("*")
-      .eq("session_id", sessionId)
-      .order("created_at", { ascending: true });
-    if (data) setMessages(data as any);
+    try {
+      const { data } = await supabase
+        .from("support_session_messages" as any)
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+      if (data) setMessages(data as any);
+    } catch (err) {
+      console.error("fetchMessages error:", err);
+    }
   }, [sessionId]);
 
   const fetchSession = useCallback(async () => {
