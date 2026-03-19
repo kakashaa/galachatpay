@@ -15,8 +15,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: User, label: "حسابي", path: "/my-requests", badgeKey: "requests" },
-  { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true, badgeKey: "support" },
+  { icon: MessageCircle, label: "الرسائل", path: "/messages", requiresAuth: true, badgeKey: "messages" },
   { icon: Home, label: "الرئيسية", path: "/dashboard" },
+  { icon: MessageSquare, label: "الدعم", path: "/support-main", requiresAuth: true, badgeKey: "support" },
   { icon: ShieldBan, label: "حظر", path: "/report" },
 ];
 
