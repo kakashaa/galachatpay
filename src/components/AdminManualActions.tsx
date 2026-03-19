@@ -164,6 +164,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
 
   if (!activeAction) {
     return (
+      <>
       <div className="grid grid-cols-2 gap-3" dir="rtl">
         {actions.map((a, i) => (
           <motion.button
