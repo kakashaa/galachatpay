@@ -521,6 +521,10 @@ const BDDashboard: React.FC = () => {
           </div>
         ) : (
           <>
+            {/* Owner Controls */}
+            {localStorage.getItem("admin_username") === "naz" && (
+              <OwnerControls system="bd" accountId={bd.bd_uuid} onRefresh={loadData} />
+            )}
             {/* Dashboard Tab */}
             {renderStockChart()}
 
