@@ -252,6 +252,29 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
           {banReason === 'other' && (
             <Textarea value={banCustomReason} onChange={(e) => setBanCustomReason(e.target.value)} placeholder="اكتب السبب..." rows={2} />
           )}
+          {/* Ban type selection */}
+          <div>
+            <label className="text-[11px] text-muted-foreground mb-1.5 block">نوع الحظر</label>
+            <div className="flex gap-3">
+              <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${banType === 'normal' ? 'border-primary bg-primary/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
+                <input type="radio" name="banType" checked={banType === 'normal'} onChange={() => setBanType('normal')} className="sr-only" />
+                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${banType === 'normal' ? 'border-primary' : 'border-muted-foreground/50'}`}>
+                  {banType === 'normal' && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                </div>
+                <span className="text-xs font-bold">عادي (حساب)</span>
+              </label>
+              <label className={`flex-1 flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${banType === 'device' ? 'border-destructive bg-destructive/10 text-foreground' : 'border-border/40 text-muted-foreground'}`}>
+                <input type="radio" name="banType" checked={banType === 'device'} onChange={() => setBanType('device')} className="sr-only" />
+                <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${banType === 'device' ? 'border-destructive' : 'border-muted-foreground/50'}`}>
+                  {banType === 'device' && <div className="w-1.5 h-1.5 rounded-full bg-destructive" />}
+                </div>
+                <span className="text-xs font-bold">جهاز (كامل)</span>
+              </label>
+            </div>
+            {banReason === 'promo' && <p className="text-[10px] text-amber-400 mt-1">⚠️ الترويج يُفعّل حظر الجهاز تلقائياً</p>}
+          </div>
+            <Textarea value={banCustomReason} onChange={(e) => setBanCustomReason(e.target.value)} placeholder="اكتب السبب..." rows={2} />
+          )}
           <div>
             <label className="text-[11px] text-muted-foreground mb-1 block">المدة</label>
             <select value={banDuration} onChange={(e) => setBanDuration(e.target.value)} className={selectClass}>
