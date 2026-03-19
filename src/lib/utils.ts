@@ -8,5 +8,5 @@ export function cn(...inputs: ClassValue[]) {
 export function getAvatarUrl(path: string): string {
   if (!path) return "";
   if (path.startsWith("http")) return path;
-  return `https://galalivechat.com/storage/${path}`;
+  return `https://storage.googleapis.com/galalivechat-bucket-01/avatars/${path}`;
 }
