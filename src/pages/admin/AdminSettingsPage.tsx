@@ -226,7 +226,7 @@ const TrashSection: React.FC<{ adminCall: any }> = ({ adminCall }) => {
                   <CheckCircle className="w-4 h-4 ml-1" />استعادة
                 </Button>
                 <Button size="sm" variant="destructive" className="flex-1"
-                  onClick={async () => { if (!confirm("حذف نهائي؟")) return; try { await adminCall("permanent_delete", { table: section.table, id: item.id }); toast.success("تم"); load(); } catch { toast.error("فشل"); } }}>
+                  onClick={async () => { const ok = await confirm({ title: "حذف نهائي", message: "هل أنت متأكد من الحذف النهائي؟ لا يمكن التراجع.", danger: true, confirmText: "حذف نهائي" }); if (!ok) return; try { await adminCall("permanent_delete", { table: section.table, id: item.id }); toast.success("تم"); load(); } catch { toast.error("فشل"); } }}>
                   <Trash2 className="w-4 h-4 ml-1" />حذف نهائي
                 </Button>
               </div>
