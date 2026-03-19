@@ -25,6 +25,7 @@ const PULL_THRESHOLD = 80;
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const { user, logout, isAuthenticated, refreshUser } = useAuth();
   const { activeBan, getRemainingTime, isFullBan } = useBanCheck(user?.uuid);
   const [notifCount, setNotifCount] = useState(0);
