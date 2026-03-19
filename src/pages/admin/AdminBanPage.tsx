@@ -3,7 +3,7 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Ban, Unlock, Loader2, ShieldBan, Shield } from "lucide-react";
+import { Ban, Unlock, Loader2, ShieldBan, Shield, Image, Play, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 
@@ -132,35 +132,61 @@ const AdminBanPage: React.FC = () => {
           )}
 
           {!loading && subTab === "reports" && (
-            <motion.div key="reports" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+                <motion.div key="reports" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
               {banReports.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground"><ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات</p></div>
               ) : banReports.map((report: any, i: number) => (
                 <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                  className="rounded-2xl p-4 space-y-2" style={glassCard}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
-                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold`}
-                      style={report.is_verified ? { background: 'rgba(16,185,129,0.12)', color: 'hsl(160 84% 39%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
-                      {report.is_verified ? "مؤكد" : "معلق"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{report.description}</p>
-                  <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
-                  {!report.is_verified && (
-                    <div className="flex gap-2 mt-1">
-                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
-                        onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id); const t = toast.loading("جاري التأكيد..."); try { await adminCall("update_ban_report", { id: report.id, is_verified: true }); toast.dismiss(t); toast.success("تم التأكيد"); loadData(); } catch { toast.dismiss(t); toast.error("فشل التأكيد"); } finally { setActionInProgress(null); } }}
-                        className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                        {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "✓ تأكيد"}
-                      </motion.button>
-                      <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
-                        onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id + "_r"); const t = toast.loading("جاري الرفض..."); try { await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" }); toast.dismiss(t); toast.success("تم الرفض"); loadData(); } catch { toast.dismiss(t); toast.error("فشل"); } finally { setActionInProgress(null); } }}
-                        className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "✗ رفض"}
-                      </motion.button>
+                  className="rounded-2xl overflow-hidden" style={glassCard}>
+                  
+                  {/* Evidence preview */}
+                  {report.evidence_url && (
+                    <div className="relative w-full aspect-video bg-black/40">
+                      {report.evidence_type === "video" ? (
+                        <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
+                      ) : (
+                        <img src={report.evidence_url} alt="دليل" className="w-full h-full object-contain" />
+                      )}
+                      <a href={report.evidence_url} target="_blank" rel="noopener noreferrer"
+                        className="absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center"
+                        style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+                        <ExternalLink className="w-3.5 h-3.5 text-white/80" />
+                      </a>
+                      <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[9px] font-bold text-white"
+                        style={{ background: report.evidence_type === "video" ? 'rgba(139,92,246,0.85)' : 'rgba(59,130,246,0.85)' }}>
+                        {report.evidence_type === "video" ? <span className="flex items-center gap-1"><Play className="w-3 h-3" /> فيديو</span> : <span className="flex items-center gap-1"><Image className="w-3 h-3" /> صورة</span>}
+                      </div>
                     </div>
                   )}
+
+                  <div className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
+                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold`}
+                        style={report.is_verified ? { background: 'rgba(16,185,129,0.12)', color: 'hsl(160 84% 39%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
+                        {report.is_verified ? "مؤكد" : "معلق"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{report.description}</p>
+                    <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
+                    {report.voice_url && (
+                      <audio src={report.voice_url} controls className="w-full h-8 mt-1" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
+                    )}
+                    {!report.is_verified && (
+                      <div className="flex gap-2 mt-1">
+                        <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                          onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id); const t = toast.loading("جاري التأكيد..."); try { await adminCall("update_ban_report", { id: report.id, is_verified: true }); toast.dismiss(t); toast.success("تم التأكيد"); loadData(); } catch { toast.dismiss(t); toast.error("فشل التأكيد"); } finally { setActionInProgress(null); } }}
+                          className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
+                          {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "تأكيد"}
+                        </motion.button>
+                        <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                          onClick={async () => { if (actionInProgress) return; setActionInProgress(report.id + "_r"); const t = toast.loading("جاري الرفض..."); try { await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" }); toast.dismiss(t); toast.success("تم الرفض"); loadData(); } catch { toast.dismiss(t); toast.error("فشل"); } finally { setActionInProgress(null); } }}
+                          className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                          {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "رفض"}
+                        </motion.button>
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </motion.div>
