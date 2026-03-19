@@ -188,6 +188,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
   const selectClass = "w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground";
 
   return (
+    <>
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4" dir="rtl">
       <button onClick={() => setActiveAction(null)} className="text-xs text-primary font-bold flex items-center gap-1">
         ← رجوع للأدوات
