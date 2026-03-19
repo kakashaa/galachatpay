@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -8,25 +9,24 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = "https://galachat.site/project-z/api.php";
-const ADMIN_KEY = "ghala2026owner";
-
 interface AdminAccount {
   id: string;
   username: string;
-  name: string;
+  display_name: string;
   role: string;
   is_active: boolean;
-  phone: string;
+  created_at: string;
+  permissions: any;
+}
+
+interface ShiftInfo {
+  admin_username: string;
+  admin_display_name: string;
   shift_start: string;
   shift_end: string;
-  is_online: boolean;
-  last_login: string | null;
-  operations_today: number;
-  operations_week: number;
-  operations_month: number;
-  created_at: string;
-  must_change_password: boolean;
+  phone_number: string | null;
+  is_active: boolean;
+  role_type: string;
 }
 
 interface Props {
@@ -35,130 +35,129 @@ interface Props {
 
 const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
+  const [shifts, setShifts] = useState<ShiftInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // New admin form
   const [newName, setNewName] = useState("");
+  const [newUsername, setNewUsername] = useState("");
   const [newRole, setNewRole] = useState<"super_admin" | "admin">("admin");
   const [newShiftStart, setNewShiftStart] = useState("09:00");
   const [newShiftEnd, setNewShiftEnd] = useState("17:00");
 
-  // Edit form
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<"super_admin" | "admin">("admin");
   const [editShiftStart, setEditShiftStart] = useState("");
   const [editShiftEnd, setEditShiftEnd] = useState("");
   const [editPassword, setEditPassword] = useState("");
 
-  const apiCall = useCallback(async (action: string, data: any = {}) => {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, admin_key: ADMIN_KEY, ...data }),
-    });
-    const result = await res.json();
-    if (!result.success) throw new Error(result.message || "فشل العملية");
-    return result;
-  }, []);
-
   const loadAdmins = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await apiCall("admin_list");
-      setAdmins(result.admins || []);
+      const [accountsRes, shiftsRes] = await Promise.all([
+        supabase.from("admin_accounts").select("*").order("role", { ascending: true }),
+        supabase.from("admin_shifts").select("*"),
+      ]);
+      if (accountsRes.error) throw accountsRes.error;
+      if (shiftsRes.error) throw shiftsRes.error;
+      setAdmins(accountsRes.data || []);
+      setShifts(shiftsRes.data || []);
     } catch (err: any) {
       toast.error(err?.message || "فشل تحميل قائمة الأدمن");
     } finally {
       setLoading(false);
     }
-  }, [apiCall]);
+  }, []);
 
-  useEffect(() => {
-    loadAdmins();
-  }, [loadAdmins]);
+  useEffect(() => { loadAdmins(); }, [loadAdmins]);
+
+  const getShift = (username: string) => shifts.find(s => s.admin_username === username);
 
   const handleAdd = async () => {
-    if (!newName.trim()) {
-      toast.error("الاسم مطلوب");
-      return;
-    }
+    const uname = newUsername.trim() || newName.trim().toLowerCase().replace(/\s+/g, "_");
+    if (!newName.trim() || !uname) { toast.error("الاسم مطلوب"); return; }
     setActionLoading(true);
     try {
-      await apiCall("admin_create", {
-        username: newName.trim(),
-        name: newName.trim(),
+      const { error } = await supabase.from("admin_accounts").insert({
+        username: uname,
+        display_name: newName.trim(),
         role: newRole,
-        password: "1122",
-        phone: "",
+        password_hash: "1122",
+        is_active: true,
+        permissions: {},
+      });
+      if (error) throw error;
+
+      // Also create shift entry
+      await supabase.from("admin_shifts").upsert({
+        admin_username: uname,
+        admin_display_name: newName.trim(),
         shift_start: newShiftStart,
         shift_end: newShiftEnd,
-      });
-      toast.success("تمت إضافة الأدمن بنجاح (كلمة المرور: 1122)");
+        role_type: newRole,
+        is_active: true,
+      }, { onConflict: "admin_username" });
+
+      toast.success(`تمت إضافة ${newName.trim()} (كلمة المرور: 1122)`);
       setShowAdd(false);
-      setNewName("");
-      setNewRole("admin");
-      setNewShiftStart("09:00");
-      setNewShiftEnd("17:00");
+      setNewName(""); setNewUsername(""); setNewRole("admin");
+      setNewShiftStart("09:00"); setNewShiftEnd("17:00");
       loadAdmins();
     } catch (err: any) {
       toast.error(err?.message || "فشل الإضافة");
-    } finally {
-      setActionLoading(false);
-    }
+    } finally { setActionLoading(false); }
   };
 
   const handleUpdate = async (admin: AdminAccount) => {
     setActionLoading(true);
     try {
       const updateData: any = {
-        username: admin.username,
-        name: editName.trim() || admin.name,
+        display_name: editName.trim() || admin.display_name,
         role: editRole,
-        shift_start: editShiftStart,
-        shift_end: editShiftEnd,
       };
-      if (editPassword.trim()) {
-        updateData.password = editPassword.trim();
-      }
-      await apiCall("admin_update", updateData);
+      if (editPassword.trim()) updateData.password_hash = editPassword.trim();
+
+      const { error } = await supabase.from("admin_accounts").update(updateData).eq("id", admin.id);
+      if (error) throw error;
+
+      // Update shift
+      await supabase.from("admin_shifts").upsert({
+        admin_username: admin.username,
+        admin_display_name: editName.trim() || admin.display_name,
+        shift_start: editShiftStart || "09:00",
+        shift_end: editShiftEnd || "17:00",
+        role_type: editRole,
+      }, { onConflict: "admin_username" });
+
       toast.success("تم تحديث الأدمن");
-      setEditingId(null);
-      setEditPassword("");
+      setEditingId(null); setEditPassword("");
       loadAdmins();
     } catch (err: any) {
       toast.error(err?.message || "فشل التحديث");
-    } finally {
-      setActionLoading(false);
-    }
+    } finally { setActionLoading(false); }
   };
 
   const handleToggleActive = async (admin: AdminAccount) => {
     try {
-      await apiCall("admin_toggle", { username: admin.username, is_active: !admin.is_active });
+      const { error } = await supabase.from("admin_accounts").update({ is_active: !admin.is_active }).eq("id", admin.id);
+      if (error) throw error;
       toast.success(admin.is_active ? "تم تجميد الحساب" : "تم تفعيل الحساب");
       loadAdmins();
-    } catch (err: any) {
-      toast.error(err?.message || "فشل التحديث");
-    }
+    } catch (err: any) { toast.error(err?.message || "فشل التحديث"); }
   };
 
   const handleDelete = async (admin: AdminAccount) => {
-    if (admin.role === "owner") {
-      toast.error("لا يمكن حذف حساب المالك");
-      return;
-    }
-    if (!confirm(`هل تريد حذف حساب ${admin.name}؟`)) return;
+    if (admin.role === "owner") { toast.error("لا يمكن حذف حساب المالك"); return; }
+    if (!confirm(`هل تريد حذف حساب ${admin.display_name}؟`)) return;
     try {
-      await apiCall("admin_delete", { username: admin.username });
+      const { error } = await supabase.from("admin_accounts").delete().eq("id", admin.id);
+      if (error) throw error;
       toast.success("تم حذف الحساب");
       loadAdmins();
-    } catch (err: any) {
-      toast.error(err?.message || "فشل الحذف");
-    }
+    } catch (err: any) { toast.error(err?.message || "فشل الحذف"); }
   };
 
   const getRoleBadge = (role: string) => {
@@ -169,17 +168,18 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
     }
   };
 
-  const isInShift = (admin: AdminAccount) => {
-    if (!admin.shift_start || !admin.shift_end) return false;
+  const isInShift = (username: string) => {
+    const shift = getShift(username);
+    if (!shift?.shift_start || !shift?.shift_end) return false;
     const now = new Date();
     const riyadhTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
     const currentMinutes = riyadhTime.getHours() * 60 + riyadhTime.getMinutes();
-    const [sh, sm] = admin.shift_start.split(":").map(Number);
-    const [eh, em] = admin.shift_end.split(":").map(Number);
+    const [sh, sm] = shift.shift_start.split(":").map(Number);
+    const [eh, em] = shift.shift_end.split(":").map(Number);
     const startMin = sh * 60 + sm;
     const endMin = eh * 60 + em;
     if (endMin > startMin) return currentMinutes >= startMin && currentMinutes < endMin;
-    return currentMinutes >= startMin || currentMinutes < endMin; // crosses midnight
+    return currentMinutes >= startMin || currentMinutes < endMin;
   };
 
   if (loading) {
@@ -192,38 +192,18 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
 
   return (
     <div className="space-y-4">
-      {/* Add Button */}
       <Button onClick={() => setShowAdd(!showAdd)} className="w-full" variant={showAdd ? "outline" : "default"}>
         {showAdd ? <><X className="w-4 h-4 ml-2" />إلغاء</> : <><UserPlus className="w-4 h-4 ml-2" />إضافة أدمن جديد</>}
       </Button>
 
-      {/* Add Form */}
       <AnimatePresence>
         {showAdd && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="bg-card border rounded-xl p-4 space-y-3"
-          >
-            <Input
-              placeholder="الاسم (بالعربي — يُستخدم كاسم مستخدم)"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="bg-card border rounded-xl p-4 space-y-3">
+            <Input placeholder="الاسم المعروض (بالعربي)" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <Input placeholder="اسم المستخدم (إنجليزي)" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} dir="ltr" />
             <div className="flex gap-2">
-              <button
-                onClick={() => setNewRole("admin")}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newRole === "admin" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-border/40"}`}
-              >
-                أدمن عادي
-              </button>
-              <button
-                onClick={() => setNewRole("super_admin")}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newRole === "super_admin" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/40"}`}
-              >
-                سوبر أدمن
-              </button>
+              <button onClick={() => setNewRole("admin")} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newRole === "admin" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-border/40"}`}>أدمن عادي</button>
+              <button onClick={() => setNewRole("super_admin")} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${newRole === "super_admin" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/40"}`}>سوبر أدمن</button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -237,14 +217,12 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
             </div>
             <p className="text-[10px] text-muted-foreground">كلمة المرور الافتراضية: <span className="font-mono font-bold">1122</span> (سيُجبر على تغييرها عند أول دخول)</p>
             <Button onClick={handleAdd} disabled={actionLoading} className="w-full">
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}
-              حفظ
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Save className="w-4 h-4 ml-2" />}حفظ
             </Button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Admins List */}
       {admins.length === 0 && !showAdd && (
         <div className="text-center py-10 text-muted-foreground">
           <Shield className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -254,67 +232,50 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
 
       {admins.map((admin) => {
         const roleBadge = getRoleBadge(admin.role);
-        const inShift = isInShift(admin);
+        const inShift = isInShift(admin.username);
         const isOwnerAccount = admin.role === "owner";
+        const shift = getShift(admin.username);
 
         return (
-          <motion.div
-            key={admin.id || admin.username}
-            layout
-            className={`bg-card border rounded-xl overflow-hidden ${!admin.is_active ? "opacity-60" : ""}`}
-          >
-            {/* Header */}
+          <motion.div key={admin.id} layout className={`bg-card border rounded-xl overflow-hidden ${!admin.is_active ? "opacity-60" : ""}`}>
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`relative w-10 h-10 rounded-xl flex items-center justify-center ${admin.is_active ? "bg-primary/10" : "bg-muted"}`}>
                   <Shield className={`w-5 h-5 ${admin.is_active ? "text-primary" : "text-muted-foreground"}`} />
-                  {inShift && admin.is_active && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card" />
-                  )}
+                  {inShift && admin.is_active && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card" />}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm">{admin.name}</p>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold border ${roleBadge.cls}`}>
-                      {roleBadge.label}
-                    </span>
+                    <p className="font-bold text-sm">{admin.display_name || admin.username}</p>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold border ${roleBadge.cls}`}>{roleBadge.label}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    {admin.shift_start && admin.shift_end && (
+                    <span className="text-[10px] text-muted-foreground font-mono">@{admin.username}</span>
+                    {shift && (
                       <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        {admin.shift_start} - {admin.shift_end}
+                        {shift.shift_start?.slice(0, 5)} - {shift.shift_end?.slice(0, 5)}
                       </span>
                     )}
-                    {inShift && admin.is_active && (
-                      <span className="text-[9px] text-emerald-400 font-bold">🟢 أونلاين</span>
-                    )}
+                    {inShift && admin.is_active && <span className="text-[9px] text-emerald-400 font-bold">🟢 أونلاين</span>}
                   </div>
                 </div>
               </div>
               {!isOwnerAccount && (
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setDetailId(detailId === admin.username ? null : admin.username)}
-                    className="p-2 rounded-lg hover:bg-muted"
-                  >
+                  <button onClick={() => setDetailId(detailId === admin.id ? null : admin.id)} className="p-2 rounded-lg hover:bg-muted">
                     <Activity className="w-4 h-4 text-blue-400" />
                   </button>
-                  <button
-                    onClick={() => {
-                      if (editingId === admin.username) {
-                        setEditingId(null);
-                      } else {
-                        setEditingId(admin.username);
-                        setEditName(admin.name);
-                        setEditRole(admin.role as "super_admin" | "admin");
-                        setEditShiftStart(admin.shift_start || "");
-                        setEditShiftEnd(admin.shift_end || "");
-                        setEditPassword("");
-                      }
-                    }}
-                    className="p-2 rounded-lg hover:bg-muted"
-                  >
+                  <button onClick={() => {
+                    if (editingId === admin.id) { setEditingId(null); } else {
+                      setEditingId(admin.id);
+                      setEditName(admin.display_name);
+                      setEditRole(admin.role as "super_admin" | "admin");
+                      setEditShiftStart(shift?.shift_start?.slice(0, 5) || "");
+                      setEditShiftEnd(shift?.shift_end?.slice(0, 5) || "");
+                      setEditPassword("");
+                    }
+                  }} className="p-2 rounded-lg hover:bg-muted">
                     <Pencil className="w-4 h-4 text-primary" />
                   </button>
                   <button onClick={() => handleToggleActive(admin)} className="p-2 rounded-lg hover:bg-muted">
@@ -327,84 +288,43 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
               )}
             </div>
 
-            {/* Stats row */}
             <div className="px-4 pb-3 flex items-center gap-3 text-[10px] text-muted-foreground">
-              <span>عمليات اليوم: <span className="font-bold text-foreground">{admin.operations_today || 0}</span></span>
-              {admin.phone && (
-                <span className="flex items-center gap-0.5">
-                  <Phone className="w-3 h-3" />
-                  <span dir="ltr">{admin.phone}</span>
-                </span>
+              {shift?.phone_number && (
+                <span className="flex items-center gap-0.5"><Phone className="w-3 h-3" /><span dir="ltr">{shift.phone_number}</span></span>
               )}
-              {admin.last_login && (
-                <span>آخر دخول: {new Date(admin.last_login).toLocaleDateString("ar-EG")}</span>
-              )}
+              <span>تاريخ الإنشاء: {new Date(admin.created_at).toLocaleDateString("ar-EG")}</span>
             </div>
 
-            {/* Detail Panel */}
             <AnimatePresence>
-              {detailId === admin.username && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="border-t border-border p-4 space-y-2"
-                >
-                  <p className="text-xs font-bold text-foreground mb-2">إحصائيات العمليات</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { label: "اليوم", value: admin.operations_today || 0 },
-                      { label: "الأسبوع", value: admin.operations_week || 0 },
-                      { label: "الشهر", value: admin.operations_month || 0 },
-                    ].map(s => (
-                      <div key={s.label} className="bg-muted/20 rounded-lg p-2 text-center">
-                        <p className="text-lg font-bold font-mono">{s.value}</p>
-                        <p className="text-[10px] text-muted-foreground">{s.label}</p>
-                      </div>
-                    ))}
+              {detailId === admin.id && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="border-t border-border p-4 space-y-2">
+                  <p className="text-xs font-bold text-foreground mb-2">معلومات الحساب</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-muted/20 rounded-lg p-2 text-center">
+                      <p className="text-sm font-bold">{admin.role}</p>
+                      <p className="text-[10px] text-muted-foreground">الصلاحية</p>
+                    </div>
+                    <div className="bg-muted/20 rounded-lg p-2 text-center">
+                      <p className="text-sm font-bold">{admin.is_active ? "نشط ✅" : "مجمّد ❄️"}</p>
+                      <p className="text-[10px] text-muted-foreground">الحالة</p>
+                    </div>
                   </div>
-                  {admin.last_login && (
-                    <p className="text-[10px] text-muted-foreground">
-                      آخر دخول: {new Date(admin.last_login).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}
-                    </p>
-                  )}
                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                     {inShift && admin.is_active
                       ? <><span className="text-emerald-400">✅</span> ملتزم بوقت الدوام</>
-                      : <><span className="text-amber-400">⚠️</span> خارج وقت الدوام</>
-                    }
+                      : <><span className="text-amber-400">⚠️</span> خارج وقت الدوام</>}
                   </p>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Edit Panel */}
             <AnimatePresence>
-              {editingId === admin.username && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="border-t border-border p-4 space-y-3"
-                >
-                  <Input
-                    placeholder="الاسم المعروض"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
+              {editingId === admin.id && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="border-t border-border p-4 space-y-3">
+                  <Input placeholder="الاسم المعروض" value={editName} onChange={(e) => setEditName(e.target.value)} />
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditRole("admin")}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editRole === "admin" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-border/40"}`}
-                    >
-                      أدمن عادي
-                    </button>
-                    <button
-                      onClick={() => setEditRole("super_admin")}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editRole === "super_admin" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/40"}`}
-                    >
-                      سوبر أدمن
-                    </button>
+                    <button onClick={() => setEditRole("admin")} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editRole === "admin" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-border/40"}`}>أدمن عادي</button>
+                    <button onClick={() => setEditRole("super_admin")} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${editRole === "super_admin" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/40"}`}>سوبر أدمن</button>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -416,22 +336,12 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
                       <Input type="time" value={editShiftEnd} onChange={(e) => setEditShiftEnd(e.target.value)} dir="ltr" />
                     </div>
                   </div>
-                  <Input
-                    type="password"
-                    placeholder="كلمة مرور جديدة (اتركه فارغ للإبقاء)"
-                    value={editPassword}
-                    onChange={(e) => setEditPassword(e.target.value)}
-                    dir="ltr"
-                  />
-
+                  <Input type="password" placeholder="كلمة مرور جديدة (اتركه فارغ للإبقاء)" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} dir="ltr" />
                   <div className="flex gap-2">
                     <Button onClick={() => handleUpdate(admin)} disabled={actionLoading} className="flex-1">
-                      {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <Save className="w-4 h-4 ml-1" />}
-                      حفظ
+                      {actionLoading ? <Loader2 className="w-4 h-4 animate-spin ml-1" /> : <Save className="w-4 h-4 ml-1" />}حفظ
                     </Button>
-                    <Button onClick={() => setEditingId(null)} variant="outline" className="flex-1">
-                      <X className="w-4 h-4 ml-1" />إلغاء
-                    </Button>
+                    <Button onClick={() => setEditingId(null)} variant="outline" className="flex-1"><X className="w-4 h-4 ml-1" />إلغاء</Button>
                   </div>
                 </motion.div>
               )}
