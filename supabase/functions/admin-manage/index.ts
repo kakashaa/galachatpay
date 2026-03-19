@@ -117,6 +117,7 @@ Deno.serve(async (req) => {
     }
     
     if (!auth) {
+      console.log("[ADMIN-DEBUG] AUTH FAILED — no session_token match and no password match. username:", username, "action:", action);
       return new Response(
         JSON.stringify({ error: "بيانات الدخول غير صحيحة" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
