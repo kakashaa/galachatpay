@@ -137,6 +137,9 @@ const FramesRequest: React.FC = () => {
         }).catch(() => {});
       }
 
+      supabase.functions.invoke("gala-actions?action=submit-request", {
+        body: { user_uuid: user.uuid, user_name: user.name, request_type: "frame", details: { file_url: selectedFrame.file_url, title: selectedFrame.title, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null }, evidence_url: selectedFrame.file_url, image_url: selectedFrame.thumbnail_url || selectedFrame.file_url },
+      }).catch(() => {});
     } catch (err: any) {
       toast.error(err?.message || "فشل الإرسال");
       setSubmitting(false);

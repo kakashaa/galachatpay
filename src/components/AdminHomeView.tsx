@@ -337,6 +337,48 @@ const DelayMonitor: React.FC = () => {
 };
 
 /* ─── Types ─── */
+/* ─── Action Info Helper ─── */
+const actionInfoMap: Record<string, { label: string; emoji: string; color: string; bgColor: string }> = {
+  approve_frame_claim: { label: "موافقة على إطار", emoji: "🖼️", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_frame_claim: { label: "رفض إطار", emoji: "🖼️", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_entry_claim: { label: "موافقة على دخولية", emoji: "✨", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  approve_entry_request: { label: "موافقة على دخولية", emoji: "✨", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_entry_claim: { label: "رفض دخولية", emoji: "✨", color: "text-red-400", bgColor: "bg-red-500/10" },
+  reject_entry_request: { label: "رفض دخولية", emoji: "✨", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_hair: { label: "موافقة على تسريحة", emoji: "💇", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_hair: { label: "رفض تسريحة", emoji: "💇", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_salary: { label: "موافقة على سحب", emoji: "💰", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_salary: { label: "رفض سحب", emoji: "💰", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_vip: { label: "تفعيل VIP", emoji: "👑", color: "text-amber-400", bgColor: "bg-amber-500/10" },
+  approve_animated_photo: { label: "موافقة صورة متحركة", emoji: "📸", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_animated_photo: { label: "رفض صورة متحركة", emoji: "📸", color: "text-red-400", bgColor: "bg-red-500/10" },
+  approve_custom_gift: { label: "موافقة هدية مخصصة", emoji: "🎁", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  reject_custom_gift: { label: "رفض هدية مخصصة", emoji: "🎁", color: "text-red-400", bgColor: "bg-red-500/10" },
+  ban_user: { label: "حظر مستخدم", emoji: "🚫", color: "text-red-400", bgColor: "bg-red-500/10" },
+  unban_user: { label: "فك حظر", emoji: "✅", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  change_id: { label: "تغيير آيدي", emoji: "🔄", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+  change_account_type: { label: "تغيير نوع حساب", emoji: "👤", color: "text-purple-400", bgColor: "bg-purple-500/10" },
+  delete_message: { label: "حذف رسالة", emoji: "🗑️", color: "text-red-400", bgColor: "bg-red-500/10" },
+  login: { label: "تسجيل دخول", emoji: "🔐", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+  works_approve_request: { label: "موافقة طلب وركس", emoji: "🏢", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
+  works_reject_request: { label: "رفض طلب وركس", emoji: "🏢", color: "text-red-400", bgColor: "bg-red-500/10" },
+  works_list_accounts: { label: "عرض حسابات وركس", emoji: "📋", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+  works_list_requests: { label: "عرض طلبات وركس", emoji: "📋", color: "text-sky-400", bgColor: "bg-sky-500/10" },
+};
+
+const getActionInfo = (action: string) => {
+  let info = actionInfoMap[action];
+  if (!info) {
+    const key = Object.keys(actionInfoMap).find(k => action.includes(k));
+    info = key ? actionInfoMap[key] : undefined;
+  }
+  if (!info) {
+    const isNeg = action.includes("reject") || action.includes("ban") || action.includes("delete");
+    info = { label: action || "عملية", emoji: isNeg ? "⚠️" : "📋", color: isNeg ? "text-red-400" : "text-primary", bgColor: isNeg ? "bg-red-500/10" : "bg-primary/10" };
+  }
+  return info;
+};
+
 interface Props {
   adminDisplayName: string;
   adminRole: string | null;
@@ -651,44 +693,11 @@ const AdminHomeView: React.FC<Props> = ({
                 </div>
                 <div className="space-y-2">
                   {recentLogs.slice(0, 5).map((log: any, i: number) => {
-                    const actionLabels: Record<string, { label: string; emoji: string; color: string; bgColor: string }> = {
-                      approve_frame_claim: { label: "موافقة على إطار", emoji: "🖼️", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-                      reject_frame_claim: { label: "رفض إطار", emoji: "🖼️", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      approve_entry_claim: { label: "موافقة على دخولية", emoji: "✨", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-                      reject_entry_claim: { label: "رفض دخولية", emoji: "✨", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      approve_hair: { label: "موافقة على شعر", emoji: "💇", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-                      reject_hair: { label: "رفض شعر", emoji: "💇", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      approve_salary: { label: "موافقة على راتب", emoji: "💰", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-                      reject_salary: { label: "رفض راتب", emoji: "💰", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      approve_vip: { label: "تفعيل VIP", emoji: "👑", color: "text-amber-400", bgColor: "bg-amber-500/10" },
-                      approve_animated_photo: { label: "موافقة صورة متحركة", emoji: "📸", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-                      reject_animated_photo: { label: "رفض صورة متحركة", emoji: "📸", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      approve_custom_gift: { label: "موافقة هدية مخصصة", emoji: "🎁", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-                      reject_custom_gift: { label: "رفض هدية مخصصة", emoji: "🎁", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      ban_user: { label: "حظر مستخدم", emoji: "🚫", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      unban_user: { label: "فك حظر مستخدم", emoji: "✅", color: "text-emerald-400", bgColor: "bg-emerald-500/10" },
-                      change_id: { label: "تغيير آيدي", emoji: "🔄", color: "text-sky-400", bgColor: "bg-sky-500/10" },
-                      change_account_type: { label: "تغيير نوع حساب", emoji: "👤", color: "text-purple-400", bgColor: "bg-purple-500/10" },
-                      delete_message: { label: "حذف رسالة", emoji: "🗑️", color: "text-red-400", bgColor: "bg-red-500/10" },
-                      login: { label: "تسجيل دخول", emoji: "🔐", color: "text-sky-400", bgColor: "bg-sky-500/10" },
-                    };
-
-                    const action = log.action || "";
-                    // Try exact match first, then partial
-                    let info = actionLabels[action];
-                    if (!info) {
-                      const key = Object.keys(actionLabels).find(k => action.includes(k));
-                      info = key ? actionLabels[key] : null;
-                    }
-                    if (!info) {
-                      const isNeg = action.includes("reject") || action.includes("ban") || action.includes("delete");
-                      info = { label: log.action_label || action || "عملية", emoji: isNeg ? "⚠️" : "📋", color: isNeg ? "text-red-400" : "text-primary", bgColor: isNeg ? "bg-red-500/10" : "bg-primary/10" };
-                    }
-
+                    const info = getActionInfo(log.action || "");
                     const details = log.details || {};
-                    const userName = details.user_name || details.target_name || details.member_name || "";
-                    const userUuid = details.user_uuid || details.target_uuid || "";
-                    const adminName = log.admin_username || "";
+                    const targetName = details.user_name || details.target_name || details.member_name || details.bd_name || "";
+                    const targetId = details.user_uuid || details.target_uuid || details.member_uuid || details.uuid || "";
+                    const extraInfo = details.title || details.new_id || details.vip_level ? `VIP ${details.vip_level}` : details.amount_usd ? `$${details.amount_usd}` : "";
 
                     return (
                       <motion.div
@@ -700,26 +709,27 @@ const AdminHomeView: React.FC<Props> = ({
                         dir="rtl"
                         onClick={() => isOwner && navigate("/admin/log")}
                       >
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${info.bgColor}`}>
-                          <span className="text-sm">{info.emoji}</span>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${info.bgColor}`}>
+                          <span className="text-base">{info.emoji}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-[11px] font-bold ${info.color}`}>{info.label}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {userName && (
-                              <span className="text-[9px] text-foreground/70 font-bold truncate max-w-[100px]">{userName}</span>
-                            )}
-                            {userName && <span className="text-[8px] text-muted-foreground/40">•</span>}
-                            {adminName && (
-                              <span className="text-[9px] text-muted-foreground truncate max-w-[60px]">بواسطة {adminName}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-left shrink-0">
-                          <p className="text-[9px] text-muted-foreground tabular-nums">
+                          <p className={`text-[11px] font-black ${info.color}`}>{info.label}</p>
+                          {targetName && (
+                            <p className="text-[10px] text-foreground/80 font-bold truncate mt-0.5">
+                              👤 {targetName}
+                              {targetId && <span className="text-muted-foreground/50 font-normal mr-1">({targetId.slice(0, 8)}…)</span>}
+                            </p>
+                          )}
+                          {extraInfo && (
+                            <p className="text-[9px] text-foreground/60 truncate">{extraInfo}</p>
+                          )}
+                          <p className="text-[9px] text-muted-foreground mt-0.5">
+                            بواسطة <span className="font-bold text-foreground/60">{log.admin_username}</span>
+                            <span className="text-muted-foreground/40 mx-1">•</span>
                             {log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
                           </p>
                         </div>
+                        <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
                       </motion.div>
                     );
                   })}

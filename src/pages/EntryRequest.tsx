@@ -177,6 +177,10 @@ const EntryRequest: React.FC = () => {
            body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: wareType, image_type: imageType, file_url: selectedGift.video_url, days: 30 },
          }).catch(() => {});
        }
+
+       supabase.functions.invoke("gala-actions?action=submit-request", {
+         body: { user_uuid: user.uuid, user_name: user.name, request_type: "entry_effect", details: { file_url: selectedGift.video_url, title: selectedGift.title, gift_usage: giftUsage, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null }, evidence_url: selectedGift.video_url, image_url: selectedGift.thumbnail_url || selectedGift.video_url },
+       }).catch(() => {});
      } catch (err: any) {
        toast.error(err?.message || "فشل الإرسال");
        setSubmitting(false);
