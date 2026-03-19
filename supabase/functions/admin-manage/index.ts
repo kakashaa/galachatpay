@@ -1186,6 +1186,39 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "list_room_backgrounds": {
+        const { data: rooms, error } = await supabase
+          .from("room_background_requests")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (error) throw error;
+        result = rooms;
+        break;
+      }
+
+      case "approve_room_background": {
+        const { id: rbId } = data;
+        const { error } = await supabase
+          .from("room_background_requests")
+          .update({ status: "approved" })
+          .eq("id", rbId);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
+      case "reject_room_background": {
+        const { id: rrId, admin_note: rrNote } = data;
+        const { error } = await supabase
+          .from("room_background_requests")
+          .update({ status: "rejected", admin_note: rrNote || "مرفوض" })
+          .eq("id", rrId);
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),
