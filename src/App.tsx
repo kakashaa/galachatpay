@@ -59,6 +59,7 @@ const CustomWaresRequest = lazy(() => import("./pages/CustomWaresRequest"));
 const MyWaresRequests = lazy(() => import("./pages/MyWaresRequests"));
 const AdminComplaint = lazy(() => import("./pages/AdminComplaint"));
 const WorksPage = lazy(() => import("./pages/WorksPage"));
+const AdminProfilePage = lazy(() => import("./pages/AdminProfilePage"));
 
 // Agent pages
 const AgentLogin = lazy(() => import("./pages/agent/AgentLogin"));
