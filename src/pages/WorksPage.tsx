@@ -6,21 +6,36 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import BottomNav from "@/components/BottomNav";
-import { toast } from "sonner";
+import StatusModal from "@/components/StatusModal";
+
+interface MemberWithSalary {
+  id: string;
+  member_uuid: string;
+  member_name: string | null;
+  member_type: string;
+  agency_id?: string | null;
+  total_commission_usd: number | null;
+  status: string | null;
+  works_id: string | null;
+  // Live salary data
+  monthly_charges?: number;
+  agency_salary?: number;
+  commission?: number;
+}
 
 const WorksPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [myWorks, setMyWorks] = useState<any>(null);
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<MemberWithSalary[]>([]);
   const [pendingRequest, setPendingRequest] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Add member dialog
   const [showAddMember, setShowAddMember] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [memberUuid, setMemberUuid] = useState("");
+  const [memberInput, setMemberInput] = useState("");
   const [memberType, setMemberType] = useState<"supporter" | "agent">("supporter");
   const [sending, setSending] = useState(false);
 
@@ -33,24 +48,66 @@ const WorksPage: React.FC = () => {
   // Earnings
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [monthEarnings, setMonthEarnings] = useState(0);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+
+  // StatusModal
+  const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string } | null>(null);
 
   const userLevel = user?.level?.charger_level || 0;
+
+  // Auto-fetch salary data for all members
+  const fetchSalaryData = useCallback(async (worksId: string, membersList: MemberWithSalary[]) => {
+    const month = new Date().toISOString().slice(0, 7);
+    const year = new Date().getFullYear();
+    const monthNum = new Date().getMonth() + 1;
+
+    let totalMonthCommission = 0;
+    const updatedMembers = [...membersList];
+
+    for (let i = 0; i < updatedMembers.length; i++) {
+      const member = updatedMembers[i];
+      try {
+        if (member.member_type === "supporter") {
+          const res = await fetch(
+            `https://galachat.site/project-z/api.php?action=user_monthly_charges&admin_key=ghala2026owner&uuid=${member.member_uuid}&month=${month}`
+          );
+          const data = await res.json();
+          const charges = data.total_charges || 0;
+          const commission = charges * 0.02;
+          updatedMembers[i] = { ...member, monthly_charges: charges, commission };
+          totalMonthCommission += commission;
+        }
+
+        if (member.member_type === "agent" && member.agency_id) {
+          const res = await fetch(
+            `https://galachat.site/project-z/api.php?action=agency_salary&admin_key=ghala2026owner&agency_id=${member.agency_id}&year=${year}&month=${monthNum}`
+          );
+          const data = await res.json();
+          const salary = data.salary || 0;
+          const commission = salary * 0.02;
+          updatedMembers[i] = { ...member, agency_salary: salary, commission };
+          totalMonthCommission += commission;
+        }
+      } catch { /* silent */ }
+    }
+
+    return { totalMonthCommission, updatedMembers };
+  }, []);
 
   const fetchData = useCallback(async () => {
     if (!user?.uuid) return;
     setLoading(true);
     try {
-      // Check for active works account
       const { data: works } = await supabase
         .from("works_accounts").select("*")
         .eq("user_uuid", user.uuid).eq("status", "active").maybeSingle();
 
       if (works) {
         setMyWorks(works);
-        // Fetch members
         const { data: m } = await supabase
           .from("works_members").select("*").eq("works_id", works.id).eq("status", "active");
-        setMembers(m || []);
+        const rawMembers = (m || []) as any as MemberWithSalary[];
+        setMembers(rawMembers);
 
         // Fetch today earnings
         const today = new Date().toISOString().split("T")[0];
@@ -64,8 +121,20 @@ const WorksPage: React.FC = () => {
           .from("works_earnings").select("commission_usd").eq("works_id", works.id)
           .gte("period_date", monthStart.toISOString().split("T")[0]);
         setMonthEarnings((me || []).reduce((s: number, e: any) => s + Number(e.commission_usd), 0));
+
+        // Auto-fetch salary data
+        if (rawMembers.length > 0) {
+          setSalaryLoading(true);
+          try {
+            const { totalMonthCommission, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
+            setMembers(updatedMembers);
+            if (totalMonthCommission > 0) {
+              setMonthEarnings(prev => Math.max(prev, totalMonthCommission));
+            }
+          } catch { /* silent */ }
+          setSalaryLoading(false);
+        }
       } else {
-        // Check pending request
         const { data: req } = await supabase
           .from("works_requests").select("status").eq("user_uuid", user.uuid)
           .eq("status", "pending").maybeSingle();
@@ -73,106 +142,166 @@ const WorksPage: React.FC = () => {
       }
     } catch { /* silent */ }
     setLoading(false);
-  }, [user?.uuid]);
+  }, [user?.uuid, fetchSalaryData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const submitRequest = async () => {
     if (!user?.uuid || submitting) return;
     setSubmitting(true);
+    setModal({ type: "loading", message: "جاري تقديم الطلب..." });
     try {
       await supabase.from("works_requests").insert({
         user_uuid: user.uuid, user_name: user.name || "", user_level: userLevel,
       } as any);
-      toast.success("تم تقديم الطلب بنجاح ✅");
+      setModal({ type: "success", message: "تم تقديم الطلب بنجاح ✅\nسيتم مراجعته من الإدارة" });
       setPendingRequest(true);
-    } catch { toast.error("فشل تقديم الطلب"); }
+    } catch {
+      setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
+    }
     setSubmitting(false);
   };
 
+  // Validate supporter
+  const validateSupporter = async (uuid: string): Promise<{ ok: boolean; reason?: string; name?: string }> => {
+    const userRes = await fetch(
+      `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${uuid}`
+    );
+    const userData = await userRes.json();
+
+    if (!userData.success || !userData.name) {
+      return { ok: false, reason: "المستخدم غير موجود" };
+    }
+
+    if (userData.sender_level > 0 || userData.receiver_level > 0 || userData.charger_level > 0) {
+      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nمستوى حسابه: إرسال ${userData.sender_level} / استقبال ${userData.receiver_level} / شحن ${userData.charger_level}\nلازم يكون مستوى 0` };
+    }
+
+    const minDate = new Date("2026-02-19T00:00:00");
+    if (new Date(userData.created_at) < minDate) {
+      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nتاريخ إنشاء الحساب: ${new Date(userData.created_at).toLocaleDateString("ar-SA")}\nلازم يكون حساب جديد (بعد 19/2/2026)` };
+    }
+
+    if (userData.agency_id > 0) {
+      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nمسجّل بوكالة (ID: ${userData.agency_id})` };
+    }
+
+    const { data: existingMember } = await supabase
+      .from("works_members").select("id, works_id")
+      .eq("member_uuid", uuid).eq("status", "active").maybeSingle();
+    if (existingMember) {
+      return { ok: false, reason: `هذا المستخدم مسجّل بفريق بيدي آخر` };
+    }
+
+    const { data: otherSupporter } = await supabase
+      .from("works_members").select("id")
+      .eq("member_uuid", uuid).eq("member_type", "supporter").maybeSingle();
+    if (otherSupporter) {
+      return { ok: false, reason: "هذا المستخدم مسجّل كداعم عند شخص ثاني" };
+    }
+
+    return { ok: true, name: userData.name };
+  };
+
+  // Validate agent by agency code
+  const validateAgent = async (agencyId: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
+    const agencyRes = await fetch(
+      `https://galachat.site/project-z/api.php?action=agency_detail&admin_key=ghala2026owner&agency_id=${agencyId}`
+    );
+    const agencyData = await agencyRes.json();
+
+    if (!agencyData.success) {
+      return { ok: false, reason: "الوكالة غير موجودة" };
+    }
+
+    const ownerUuid = agencyData.owner_uuid;
+
+    const { data: existingAgent } = await supabase
+      .from("works_members").select("id, works_id")
+      .eq("agency_id", agencyId).eq("status", "active").maybeSingle();
+    if (existingAgent) {
+      return { ok: false, reason: `هذه الوكالة مسجّلة بفريق بيدي آخر` };
+    }
+
+    // Run same validations on agency owner
+    const memberCheck = await validateSupporter(ownerUuid);
+    if (!memberCheck.ok) {
+      return { ok: false, reason: `صاحب الوكالة (${ownerUuid}):\n${memberCheck.reason}` };
+    }
+
+    return { ok: true, uuid: ownerUuid, name: memberCheck.name || agencyData.name, agency_id: agencyId };
+  };
+
   const sendInvitation = async () => {
-    if (!memberUuid.trim() || !myWorks || sending) return;
+    if (!memberInput.trim() || !myWorks || sending) return;
     setSending(true);
+    setModal({ type: "loading", message: memberType === "agent" ? "جاري التحقق من الوكالة..." : "جاري التحقق من المستخدم..." });
+
     try {
-      // 1. Fetch user info from API
-      const userRes = await fetch(
-        `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${memberUuid.trim()}`
-      );
-      const userData = await userRes.json();
+      if (memberType === "supporter") {
+        const result = await validateSupporter(memberInput.trim());
+        if (!result.ok) {
+          setModal({ type: "error", message: result.reason! });
+          setSending(false);
+          return;
+        }
 
-      if (!userData.success || !userData.name) {
-        toast.error("المستخدم غير موجود");
-        setSending(false);
-        return;
+        // Check not already in this team
+        const { data: alreadyInTeam } = await supabase
+          .from("works_members").select("id")
+          .eq("works_id", myWorks.id).eq("member_uuid", memberInput.trim()).maybeSingle();
+        if (alreadyInTeam) {
+          setModal({ type: "error", message: "هذا المستخدم موجود بفريقك بالفعل" });
+          setSending(false);
+          return;
+        }
+
+        await supabase.from("works_members").insert({
+          works_id: myWorks.id, member_uuid: memberInput.trim(), member_name: result.name,
+          member_type: "supporter", status: "pending",
+        } as any);
+        await supabase.from("notifications").insert({
+          user_uuid: memberInput.trim(),
+          title: "دعوة للانضمام لـ البيدي 🤝",
+          body: `${user?.name || "مستخدم"} يدعوك للانضمام لفريقه كـ داعم`,
+          type: "works_invitation", is_read: false,
+        } as any);
+      } else {
+        // Agent — use agency code
+        const result = await validateAgent(memberInput.trim());
+        if (!result.ok) {
+          setModal({ type: "error", message: result.reason! });
+          setSending(false);
+          return;
+        }
+
+        // Check not already in this team
+        const { data: alreadyInTeam } = await supabase
+          .from("works_members").select("id")
+          .eq("works_id", myWorks.id).eq("member_uuid", result.uuid!).maybeSingle();
+        if (alreadyInTeam) {
+          setModal({ type: "error", message: "هذه الوكالة موجودة بفريقك بالفعل" });
+          setSending(false);
+          return;
+        }
+
+        await supabase.from("works_members").insert({
+          works_id: myWorks.id, member_uuid: result.uuid!, member_name: result.name,
+          member_type: "agent", status: "pending", agency_id: result.agency_id,
+        } as any);
+        await supabase.from("notifications").insert({
+          user_uuid: result.uuid!,
+          title: "دعوة للانضمام لـ البيدي 🤝",
+          body: `${user?.name || "مستخدم"} يدعوك للانضمام لفريقه كـ وكيل`,
+          type: "works_invitation", is_read: false,
+        } as any);
       }
 
-      // 2. Level must be 0
-      if (userData.sender_level > 0 || userData.receiver_level > 0 || userData.charger_level > 0) {
-        toast.error("لا يمكن إضافة هذا المستخدم — مستوى حسابه أعلى من 0");
-        setSending(false);
-        return;
-      }
-
-      // 3. Account created after 19/2/2026
-      const minDate = new Date("2026-02-19T00:00:00");
-      const createdAt = new Date(userData.created_at);
-      if (createdAt < minDate) {
-        toast.error("لا يمكن إضافة هذا المستخدم — حساب قديم (قبل 19/2/2026)");
-        setSending(false);
-        return;
-      }
-
-      // 4. No agency
-      if (userData.agency_id > 0) {
-        toast.error("لا يمكن إضافة هذا المستخدم — مسجل بوكالة");
-        setSending(false);
-        return;
-      }
-
-      // 5. Not in another works team
-      const { data: existingMember } = await supabase
-        .from("works_members")
-        .select("id")
-        .eq("member_uuid", memberUuid.trim())
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (existingMember) {
-        toast.error("هذا المستخدم مسجل بفريق بيدي آخر");
-        setSending(false);
-        return;
-      }
-
-      // 6. Not already in this team
-      const { data: alreadyInTeam } = await supabase
-        .from("works_members")
-        .select("id")
-        .eq("works_id", myWorks.id)
-        .eq("member_uuid", memberUuid.trim())
-        .maybeSingle();
-
-      if (alreadyInTeam) {
-        toast.error("هذا المستخدم موجود بفريقك بالفعل");
-        setSending(false);
-        return;
-      }
-
-      // 7. All checks passed — send invitation
-      await supabase.from("works_members").insert({
-        works_id: myWorks.id, member_uuid: memberUuid.trim(), member_name: userData.name,
-        member_type: memberType, status: "pending",
-      } as any);
-      await supabase.from("notifications").insert({
-        user_uuid: memberUuid.trim(),
-        title: "دعوة للانضمام لـ البيدي 🤝",
-        body: `${user?.name || "مستخدم"} يدعوك للانضمام لفريقه كـ ${memberType === "supporter" ? "داعم" : "وكيل"}`,
-        type: "works_invitation", is_read: false,
-      } as any);
-      toast.success("تم إرسال الدعوة ✅");
-      setShowAddMember(false); setMemberUuid(""); setAcceptedTerms(false);
+      setModal({ type: "success", message: "تم إرسال الدعوة بنجاح ✅" });
+      setShowAddMember(false); setMemberInput(""); setAcceptedTerms(false);
       fetchData();
     } catch (e: any) {
-      toast.error(e.message?.includes("duplicate") ? "هذا العضو مسجل بالفعل" : "فشل الإرسال");
+      setModal({ type: "error", message: e.message?.includes("duplicate") ? "هذا العضو مسجل بالفعل" : "فشل الإرسال\nحاول مرة أخرى" });
     }
     setSending(false);
   };
@@ -180,17 +309,26 @@ const WorksPage: React.FC = () => {
   const submitWithdraw = async () => {
     if (!myWorks || withdrawing) return;
     const amt = parseFloat(withdrawAmount);
-    if (!amt || amt <= 0 || amt > Number(myWorks.balance_usd)) { toast.error("مبلغ غير صحيح"); return; }
-    if (!recipientUuid.trim()) { toast.error("أدخل UUID المستلم"); return; }
+    if (!amt || amt <= 0 || amt > Number(myWorks.balance_usd)) {
+      setModal({ type: "error", message: "مبلغ غير صحيح" });
+      return;
+    }
+    if (!recipientUuid.trim()) {
+      setModal({ type: "error", message: "أدخل UUID المستلم" });
+      return;
+    }
     setWithdrawing(true);
+    setModal({ type: "loading", message: "جاري تقديم طلب السحب..." });
     try {
       await supabase.from("works_withdrawals").insert({
         works_id: myWorks.id, user_uuid: user!.uuid, amount_usd: amt,
         amount_coins: Math.floor(amt * 8500), recipient_uuid: recipientUuid.trim(),
       } as any);
-      toast.success("تم تقديم طلب السحب ✅");
+      setModal({ type: "success", message: `تم تقديم طلب السحب ✅\n$${amt.toFixed(2)} = ${Math.floor(amt * 8500).toLocaleString()} كوينز` });
       setShowWithdraw(false); setWithdrawAmount(""); setRecipientUuid("");
-    } catch { toast.error("فشل تقديم الطلب"); }
+    } catch {
+      setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
+    }
     setWithdrawing(false);
   };
 
@@ -246,6 +384,7 @@ const WorksPage: React.FC = () => {
           </button>
         )}
       </div>
+      {modal && <StatusModal type={modal.type} message={modal.message} onClose={() => setModal(null)} />}
       <BottomNav />
     </div>
   );
@@ -256,6 +395,7 @@ const WorksPage: React.FC = () => {
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
         <h1 className="text-lg font-bold">البيدي</h1>
+        {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400 mr-auto" />}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
@@ -285,6 +425,7 @@ const WorksPage: React.FC = () => {
           <div className="bg-card border border-border rounded-xl p-2 text-center">
             <p className="text-lg font-mono font-bold text-blue-400">${monthEarnings.toFixed(2)}</p>
             <p className="text-[8px] text-muted-foreground">أرباح الشهر</p>
+            <p className="text-[7px] text-muted-foreground">~{Math.floor(monthEarnings * 7500).toLocaleString()} عملة</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-2 text-center">
             <p className="text-lg font-mono font-bold">{supporterCount + agentCount}</p>
@@ -300,9 +441,17 @@ const WorksPage: React.FC = () => {
             <span className="text-[9px] text-muted-foreground mr-auto">عمولة {supporterPct}%</span>
           </div>
           {members.filter(m => m.member_type === "supporter").map(m => (
-            <div key={m.id} className="flex items-center justify-between bg-background/50 rounded-xl px-3 py-2">
-              <span className="text-xs">{m.member_name || m.member_uuid.slice(0, 8)}</span>
-              <span className="text-[10px] text-muted-foreground">${Number(m.total_commission_usd || 0).toFixed(2)}</span>
+            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs">{m.member_name || m.member_uuid.slice(0, 8)}</span>
+                <span className="text-[10px] text-muted-foreground">${Number(m.total_commission_usd || 0).toFixed(2)}</span>
+              </div>
+              {m.monthly_charges !== undefined && (
+                <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                  <span>شحن الشهر: {m.monthly_charges?.toLocaleString()} عملة</span>
+                  <span className="text-emerald-400">${(m.commission || 0).toFixed(2)} عمولة</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -315,9 +464,17 @@ const WorksPage: React.FC = () => {
             <span className="text-[9px] text-muted-foreground mr-auto">عمولة {agentPct}%</span>
           </div>
           {members.filter(m => m.member_type === "agent").map(m => (
-            <div key={m.id} className="flex items-center justify-between bg-background/50 rounded-xl px-3 py-2">
-              <span className="text-xs">{m.member_name || m.member_uuid.slice(0, 8)}</span>
-              <span className="text-[10px] text-muted-foreground">${Number(m.total_commission_usd || 0).toFixed(2)}</span>
+            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs">{m.member_name || m.member_uuid.slice(0, 8)}</span>
+                <span className="text-[10px] text-muted-foreground">${Number(m.total_commission_usd || 0).toFixed(2)}</span>
+              </div>
+              {m.agency_salary !== undefined && (
+                <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                  <span>راتب الوكالة: ${m.agency_salary?.toFixed(2)}</span>
+                  <span className="text-emerald-400">${(m.commission || 0).toFixed(2)} عمولة</span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -338,7 +495,7 @@ const WorksPage: React.FC = () => {
       </div>
 
       {/* Add Member Dialog */}
-      <Dialog open={showAddMember} onOpenChange={v => { if (!v) { setShowAddMember(false); setAcceptedTerms(false); } }}>
+      <Dialog open={showAddMember} onOpenChange={v => { if (!v) { setShowAddMember(false); setAcceptedTerms(false); setMemberInput(""); } }}>
         <DialogContent className="max-w-sm">
           {!acceptedTerms ? (
             <div className="p-4 space-y-3" dir="rtl">
@@ -356,21 +513,28 @@ const WorksPage: React.FC = () => {
             </div>
           ) : (
             <div className="p-4 space-y-3" dir="rtl">
-              <Input placeholder="معرف المستخدم (UUID)" value={memberUuid}
-                onChange={e => setMemberUuid(e.target.value)} dir="ltr" />
+              {/* Toggle type first */}
               <div className="flex gap-2">
-                <button onClick={() => setMemberType("supporter")}
+                <button onClick={() => { setMemberType("supporter"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "supporter" ? "bg-pink-500/20 text-pink-400 border border-pink-500/20" : "bg-muted text-muted-foreground"}`}>
                   داعم
                 </button>
-                <button onClick={() => setMemberType("agent")}
+                <button onClick={() => { setMemberType("agent"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "agent" ? "bg-orange-500/20 text-orange-400 border border-orange-500/20" : "bg-muted text-muted-foreground"}`}>
                   وكيل
                 </button>
               </div>
-              <button onClick={sendInvitation} disabled={!memberUuid || sending}
+
+              <Input
+                placeholder={memberType === "agent" ? "كود الوكالة (Agency ID)" : "معرف المستخدم (UUID)"}
+                value={memberInput}
+                onChange={e => setMemberInput(e.target.value)}
+                dir="ltr"
+              />
+
+              <button onClick={sendInvitation} disabled={!memberInput || sending}
                 className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50">
-                {sending ? "جاري الإرسال..." : "إرسال دعوة"}
+                {sending ? "جاري التحقق..." : "إرسال دعوة"}
               </button>
             </div>
           )}
@@ -398,6 +562,7 @@ const WorksPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {modal && <StatusModal type={modal.type} message={modal.message} onClose={() => setModal(null)} />}
       <BottomNav />
     </div>
   );
