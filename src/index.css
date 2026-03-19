@@ -56,6 +56,18 @@
     --shadow-primary: 0 4px 30px -5px hsl(8 88% 62% / 0.25);
     --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.4);
 
+    /* Chat design tokens */
+    --chat-bg: 240 15% 4%;
+    --chat-bubble-out: 217 91% 35%;
+    --chat-bubble-out-border: 217 91% 45%;
+    --chat-bubble-in: 0 0% 100% / 0.06;
+    --chat-bubble-in-border: 0 0% 100% / 0.08;
+    --chat-input-bg: 0 0% 100% / 0.06;
+    --chat-header-bg: 240 15% 5% / 0.95;
+    --chat-online: 160 84% 39%;
+    --chat-away: 40 96% 53%;
+    --chat-offline: 350 89% 55%;
+
     /* Semantic accent colors (admin design system) */
     --admin-amber: 38 92% 50%;
     --admin-rose: 350 89% 60%;

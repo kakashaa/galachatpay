@@ -3,6 +3,7 @@ import { Send, Paperclip, X, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import ChatBubble from "@/components/chat/ChatBubble";
 
 interface Message {
   id: string;
@@ -33,12 +34,7 @@ const QuickSupportChat: React.FC<Props> = ({ requestId, userUuid, userName, onBa
     loadMessages();
     const channel = supabase
       .channel(`support-msg-${requestId}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "support_messages",
-        filter: `request_id=eq.${requestId}`,
-      }, (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "support_messages", filter: `request_id=eq.${requestId}` }, (payload) => {
         const msg = payload.new as Message;
         setMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
@@ -55,11 +51,7 @@ const QuickSupportChat: React.FC<Props> = ({ requestId, userUuid, userName, onBa
   }, [messages]);
 
   const loadMessages = async () => {
-    const { data } = await supabase
-      .from("support_messages" as any)
-      .select("*")
-      .eq("request_id", requestId)
-      .order("created_at", { ascending: true });
+    const { data } = await supabase.from("support_messages" as any).select("*").eq("request_id", requestId).order("created_at", { ascending: true });
     if (data) setMessages(data as any);
   };
 
@@ -77,87 +69,60 @@ const QuickSupportChat: React.FC<Props> = ({ requestId, userUuid, userName, onBa
     setSending(true);
     try {
       let attachUrl: string | null = null;
-      if (attachment) {
-        attachUrl = await uploadFile(attachment);
-      }
+      if (attachment) { attachUrl = await uploadFile(attachment); }
       await supabase.from("support_messages" as any).insert({
-        request_id: requestId,
-        sender_type: "user",
-        sender_name: userName,
-        message: input.trim() || (attachment ? "مرفق" : ""),
-        attachment_url: attachUrl,
+        request_id: requestId, sender_type: "user", sender_name: userName,
+        message: input.trim() || (attachment ? "مرفق" : ""), attachment_url: attachUrl,
       } as any);
-      setInput("");
-      setAttachment(null);
-    } catch {
-      toast.error("فشل إرسال الرسالة");
-    }
+      setInput(""); setAttachment(null);
+    } catch { toast.error("فشل إرسال الرسالة"); }
     setSending(false);
   };
 
-  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
-  const formatTime = (d: string) => new Date(d).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" });
-
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ background: "hsl(var(--chat-bg))" }}>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border/20 bg-card/50 space-y-2">
-        <div className="flex items-center justify-between">
-          <button onClick={onBack} className="flex items-center gap-1.5 text-primary text-sm font-bold">
-            <ArrowRight className="w-4 h-4" /> رجوع
-          </button>
+      <div className="px-4 py-3 flex items-center justify-between" style={{ background: "hsl(var(--chat-header-bg))", backdropFilter: "blur(20px)", borderBottom: "1px solid hsl(0 0% 100% / 0.06)" }}>
+        <button onClick={onBack} className="flex items-center gap-1.5 text-sm font-bold" style={{ color: "hsl(160 84% 39%)" }}>
+          <ArrowRight className="w-4 h-4" /> رجوع
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm" style={{ background: "hsl(217 91% 40% / 0.15)" }}>💬</div>
           <span className="text-xs font-bold text-foreground">محادثة الدعم</span>
-          <div className="w-12" />
         </div>
-        {/* Admin profile bar */}
-        {(() => {
-          const adminMsg = messages.find(m => m.sender_type === "admin");
-          if (!adminMsg) return null;
-          return (
-            <div className="flex items-center gap-2 bg-muted/20 rounded-xl px-3 py-2 border border-border/10">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
-                <span className="text-xs font-bold text-foreground">{(adminMsg.sender_name || "A").charAt(0).toUpperCase()}</span>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-foreground">{adminMsg.sender_name || "فريق الدعم"}</p>
-                <p className="text-[9px] text-muted-foreground">أدمن الدعم</p>
-              </div>
-            </div>
-          );
-        })()}
+        <div className="w-12" />
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.sender_type === "user" ? "justify-end" : "justify-start"}`}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className={`max-w-[80%] rounded-2xl p-3 ${
-                msg.sender_type === "user"
-                  ? "bg-primary/15 border border-primary/25 rounded-tr-md"
-                  : "bg-muted/30 border border-border/20 rounded-tl-md"
-              }`}
-            >
-              {msg.sender_type === "admin" && (
-                <p className="text-[10px] font-bold text-emerald-400 mb-1">فريق الدعم</p>
-              )}
-              {msg.attachment_url && (
-                isImage(msg.attachment_url) ? (
-                  <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="block mb-2">
-                    <img src={msg.attachment_url} alt="مرفق" className="max-w-full rounded-lg max-h-48 object-cover" />
-                  </a>
-                ) : (
-                  <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary underline mb-2">
-                    <Paperclip className="w-3 h-3" /> عرض المرفق
-                  </a>
-                )
-              )}
-              {msg.message && <p className="text-xs text-foreground whitespace-pre-line">{msg.message}</p>}
-              <p className="text-[9px] text-muted-foreground mt-1">{formatTime(msg.created_at)}</p>
-            </motion.div>
+      {/* Admin bar */}
+      {(() => {
+        const adminMsg = messages.find(m => m.sender_type === "admin");
+        if (!adminMsg) return null;
+        return (
+          <div className="flex items-center gap-2 mx-4 mt-2 px-3 py-2 rounded-xl" style={{ background: "hsl(0 0% 100% / 0.04)", border: "1px solid hsl(0 0% 100% / 0.06)" }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(217 91% 40% / 0.2), hsl(160 84% 39% / 0.2))" }}>
+              <span className="text-xs font-bold">{(adminMsg.sender_name || "A").charAt(0).toUpperCase()}</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-foreground">{adminMsg.sender_name || "فريق الدعم"}</p>
+              <p className="text-[9px] text-muted-foreground">أدمن الدعم</p>
+            </div>
           </div>
+        );
+      })()}
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-3 py-2" dir="rtl">
+        {messages.map((msg) => (
+          <ChatBubble
+            key={msg.id}
+            isMine={msg.sender_type === "user"}
+            senderName={msg.sender_type === "admin" ? (msg.sender_name || "فريق الدعم") : undefined}
+            senderType={msg.sender_type}
+            content={msg.message}
+            attachmentUrl={msg.attachment_url}
+            time={msg.created_at}
+            showSender={msg.sender_type === "admin"}
+          />
         ))}
         {messages.length === 0 && (
           <div className="text-center py-8">
@@ -168,38 +133,40 @@ const QuickSupportChat: React.FC<Props> = ({ requestId, userUuid, userName, onBa
       </div>
 
       {/* Input */}
-      <div className="px-4 py-2 border-t border-border/10 bg-card/50 space-y-2">
+      <div className="px-3 py-2.5 space-y-2" style={{ borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
         {attachment && (
-          <div className="flex items-center gap-2 bg-muted/20 rounded-lg p-2">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "hsl(0 0% 100% / 0.04)" }}>
             <span className="text-xs text-foreground flex-1 truncate">{attachment.name}</span>
-            <button onClick={() => setAttachment(null)} className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
-              <X className="w-3 h-3 text-destructive" />
+            <button onClick={() => setAttachment(null)} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "hsl(350 89% 55% / 0.2)" }}>
+              <X className="w-3 h-3 text-red-400" />
             </button>
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input type="file" ref={fileRef} onChange={(e) => {
             const f = e.target.files?.[0];
             if (f && f.size <= 10 * 1024 * 1024) setAttachment(f);
             else if (f) toast.error("الحد الأقصى 10MB");
           }} accept="image/*,video/*" className="hidden" />
-          <button onClick={() => fileRef.current?.click()} className="w-10 h-10 rounded-xl bg-muted/20 border border-border/30 flex items-center justify-center">
+          <button onClick={() => fileRef.current?.click()} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "hsl(var(--chat-input-bg))" }}>
             <Paperclip className="w-4 h-4 text-muted-foreground" />
           </button>
           <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
             placeholder="اكتب رسالتك..."
-            className="flex-1 h-10 px-3 bg-muted/20 rounded-xl text-foreground placeholder:text-muted-foreground border border-border/30 focus:border-primary outline-none text-sm"
+            className="flex-1 py-2.5 px-4 rounded-3xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            style={{ background: "hsl(var(--chat-input-bg))" }}
           />
-          <button
+          <motion.button
+            whileTap={{ scale: 0.85 }}
             onClick={handleSend}
             disabled={(!input.trim() && !attachment) || sending}
-            className="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-95 transition-transform"
+            className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}
           >
-            {sending ? <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <Send className="w-4 h-4 text-primary-foreground" />}
-          </button>
+            {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-4 h-4 text-white rotate-180" />}
+          </motion.button>
         </div>
       </div>
     </div>
