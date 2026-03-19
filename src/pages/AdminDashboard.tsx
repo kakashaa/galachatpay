@@ -190,7 +190,11 @@ const AdminDashboardPage: React.FC = () => {
   useSupportTicketsRealtime(() => loadStats());
   useSupportChatSessionsRealtime(() => loadStats());
 
-  const handleLogout = () => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
+  const handleLogout = async () => {
+    const ok = await confirm({ title: "تسجيل الخروج", message: "هل تريد تسجيل الخروج من لوحة الإدارة؟", danger: true, confirmText: "خروج" });
+    if (!ok) return;
     ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
     ].forEach(k => localStorage.removeItem(k));
