@@ -240,6 +240,9 @@ const MyRequests: React.FC = () => {
     // Sort by date descending
     unified.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setAllRequests(unified);
+    } catch (err) {
+      console.error("fetchAll error:", err);
+    }
     setLoading(false);
   };
 
