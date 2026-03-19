@@ -72,6 +72,7 @@ async function extractNameWithAI(imageBase64: string): Promise<string> {
 }
 
 const AdminHairManager: React.FC<AdminHairManagerProps> = ({ adminSessionToken, adminUsername, readOnly = false }) => {
+  const { confirm, ConfirmDialog } = useConfirmModal();
   const [hairs, setHairs] = useState<HairItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
