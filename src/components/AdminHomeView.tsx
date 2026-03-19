@@ -691,45 +691,70 @@ const AdminHomeView: React.FC<Props> = ({
                     </motion.button>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {recentLogs.slice(0, 5).map((log: any, i: number) => {
                     const info = getActionInfo(log.action || "");
                     const details = log.details || {};
                     const targetName = details.user_name || details.target_name || details.member_name || details.bd_name || "";
                     const targetId = details.user_uuid || details.target_uuid || details.member_uuid || details.uuid || "";
-                    const extraInfo = details.title || details.new_id || details.vip_level ? `VIP ${details.vip_level}` : details.amount_usd ? `$${details.amount_usd}` : "";
+                    const thumbUrl = details.image_url || details.thumbnail_url || details.file_url || details.evidence_url || details.gif_url || "";
+                    const extraInfo = details.title || (details.vip_level ? `VIP ${details.vip_level}` : "") || (details.amount_usd ? `$${details.amount_usd}` : "") || (details.new_id ? `آيدي: ${details.new_id}` : "");
+                    const timeStr = log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
 
                     return (
                       <motion.div
                         key={log.id || i}
-                        initial={{ opacity: 0, x: 8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.45 + i * 0.04 }}
-                        className="rounded-xl p-3 flex items-center gap-3 border border-border/10 bg-card/30 backdrop-blur-sm active:scale-[0.98] transition-transform cursor-pointer"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.45 + i * 0.05 }}
+                        className="rounded-2xl overflow-hidden active:scale-[0.97] transition-transform cursor-pointer"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          boxShadow: '0 4px 20px -6px rgba(0,0,0,0.4)',
+                        }}
                         dir="rtl"
                         onClick={() => isOwner && navigate("/admin/log")}
                       >
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${info.bgColor}`}>
-                          <span className="text-base">{info.emoji}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-[11px] font-black ${info.color}`}>{info.label}</p>
-                          {targetName && (
-                            <p className="text-[10px] text-foreground/80 font-bold truncate mt-0.5">
-                              👤 {targetName}
-                              {targetId && <span className="text-muted-foreground/50 font-normal mr-1">({targetId.slice(0, 8)}…)</span>}
-                            </p>
+                        <div className="flex items-stretch gap-0">
+                          {/* Thumbnail / Icon area */}
+                          {thumbUrl ? (
+                            <div className="w-[72px] shrink-0 relative overflow-hidden">
+                              <img src={thumbUrl} alt="" className="w-full h-full object-cover min-h-[80px]" />
+                              <div className="absolute inset-0" style={{ background: 'linear-gradient(to left, rgba(0,0,0,0.6), transparent)' }} />
+                              <div className={`absolute top-2 right-2 w-6 h-6 rounded-lg flex items-center justify-center ${info.bgColor}`}>
+                                <span className="text-xs">{info.emoji}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`w-[56px] shrink-0 flex items-center justify-center ${info.bgColor}`}>
+                              <span className="text-xl">{info.emoji}</span>
+                            </div>
                           )}
-                          {extraInfo && (
-                            <p className="text-[9px] text-foreground/60 truncate">{extraInfo}</p>
-                          )}
-                          <p className="text-[9px] text-muted-foreground mt-0.5">
-                            بواسطة <span className="font-bold text-foreground/60">{log.admin_username}</span>
-                            <span className="text-muted-foreground/40 mx-1">•</span>
-                            {log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
-                          </p>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0 p-3 flex flex-col justify-center">
+                            <p className={`text-[12px] font-black ${info.color} leading-tight`}>{info.label}</p>
+                            {targetName && (
+                              <p className="text-[10px] text-foreground/80 font-bold truncate mt-1">
+                                {targetName}
+                                {targetId && <span className="text-muted-foreground/40 font-normal mr-1 text-[9px]">#{targetId.slice(0, 6)}</span>}
+                              </p>
+                            )}
+                            {extraInfo && (
+                              <p className="text-[9px] text-foreground/50 truncate mt-0.5">{extraInfo}</p>
+                            )}
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <span className="text-[9px] text-muted-foreground/60">{log.admin_username}</span>
+                              <span className="w-0.5 h-0.5 rounded-full bg-muted-foreground/30" />
+                              <span className="text-[9px] text-muted-foreground/50 tabular-nums">{timeStr}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center pr-2">
+                            <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground/20" />
+                          </div>
                         </div>
-                        <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
                       </motion.div>
                     );
                   })}
