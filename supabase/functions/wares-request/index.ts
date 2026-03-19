@@ -93,6 +93,23 @@ serve(async (req) => {
       });
     }
 
+    if (action === "approve") {
+      const { id, ware_type } = params;
+      if (!id) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const url = `${BASE_URL}?key=${API_KEY}&action=approve&id=${encodeURIComponent(id)}&ware_type=${encodeURIComponent(ware_type || "")}`;
+      const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+      const data = await res.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "my-requests") {
       const uuid = params.uuid;
       if (!uuid) {
