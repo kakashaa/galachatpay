@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Bell, LogIn, RefreshCw, ShieldBan } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { playNotificationSound } from "@/lib/notificationSound";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanCheck } from "@/hooks/use-ban-check";
 import BanOverlay from "@/components/BanOverlay";
