@@ -54,7 +54,9 @@ const WorksPage: React.FC = () => {
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
   const [isBanned, setIsBanned] = useState(false);
 
-  const userLevel = user?.level?.charger_level || 0;
+  const WARN_THRESHOLD = 3;
+  const BAN_THRESHOLD = 5;
+
 
   // Auto-fetch salary data for all members
   const fetchSalaryData = useCallback(async (worksId: string, membersList: MemberWithSalary[]) => {
