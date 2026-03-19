@@ -126,7 +126,11 @@ const RoomBackgroundPage: React.FC = () => {
       user_uuid: user.uuid, user_name: user.name || "", request_type: "gift_redeem", gift_code: redeemCode.trim().toUpperCase(), image_url: url, month,
     });
     if (error) { setStatus({ type: "error", message: "فشل الإرسال" }); }
-    else { setStatus({ type: "success", message: "تم إرسال الطلب!\nسيتم مراجعته من الإدارة" }); setFile(null); setRedeemCode(""); fetchData(); }
+    else {
+      // Sync with official dashboard
+      try { await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=upload-room-background&uuid=${user.uuid}&image_url=${encodeURIComponent(url)}`); } catch {}
+      setStatus({ type: "success", message: "تم إرسال الطلب!\nسيتم مراجعته من الإدارة" }); setFile(null); setRedeemCode(""); fetchData();
+    }
     setSubmitting(false);
   };
 
