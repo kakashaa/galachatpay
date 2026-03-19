@@ -1130,7 +1130,7 @@ const AdminBDManager: React.FC<AdminBDManagerProps> = ({ readOnly = false }) => 
 
                     <Button
                       onClick={async () => {
-                        if (!confirm("هل تريد فك الحظر عن هذا البيدي؟")) return;
+                        if (!(await confirm({ title: "فك الحظر", message: "هل تريد فك الحظر عن هذا البيدي؟", danger: false, confirmText: "فك الحظر" }))) return;
                         try {
                           await supabase
                             .from("bd_commission_settings")
