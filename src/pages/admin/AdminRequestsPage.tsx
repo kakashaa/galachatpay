@@ -61,7 +61,7 @@ const AdminRequestsPage: React.FC = () => {
           return { key, count: (data || []).filter((i: any) => i.status === "pending").length };
         })
       );
-      const counts: PendingCounts = { entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0 };
+      const counts: PendingCounts = { entries: 0, frames: 0, hairs: 0, animated: 0, custom: 0, rooms: 0 };
       results.forEach(r => { if (r.status === "fulfilled") counts[r.value.key] = r.value.count; });
       setPendingCounts(counts);
     } catch { /* silent */ }
