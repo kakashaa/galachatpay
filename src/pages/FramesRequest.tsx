@@ -131,7 +131,7 @@ const FramesRequest: React.FC = () => {
       supabase.functions.invoke("wares-request", {
         body: { action: "submit-request", uuid: targetUuid, user_name: user.name, ware_type: "frame", image_type: imageType, file_url: selectedFrame.file_url, days: 30 },
       }).catch(() => {});
-      supabase.functions.invoke("gala-actions?action=submit-request", {
+      // DISABLED: duplicate upload // supabase.functions.invoke("gala-actions?action=submit-request", {
         body: { user_uuid: user.uuid, user_name: user.name, request_type: "frame", details: { file_url: selectedFrame.file_url, title: selectedFrame.title, claim_type: claimType, friend_uuid: claimType === "friend" ? friendUuid.trim() : null }, evidence_url: selectedFrame.file_url, image_url: selectedFrame.thumbnail_url || selectedFrame.file_url },
       }).catch(() => {});
     } catch (err: any) {
