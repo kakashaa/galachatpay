@@ -130,16 +130,15 @@ const AdminRequestsPage: React.FC = () => {
         if (data.success) toast.success("تم رفع الهدية لغلا لايف ✅"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
 
       } else if (type === "entries" || type === "frames") {
-        // Single-call upload to avoid duplicate files on external dashboard
         const fileUrl = item.file_url || item.animation_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
 
         const targetUuid = item.friend_uuid || item.user_uuid;
         const wareType = item.ware_type || (type === "frames" ? "frame" : "entry_profile");
-
         const ext = (fileUrl.split(".").pop() || "").toLowerCase().split("?")[0];
         const imageType = ext === "svga" ? "svga" : (ext === "webp" || ext === "png") ? "alpha" : "mp4";
 
+        // Step 1: Submit request (downloads file to server)
         const submitRes = await callWaresApi("submit-request", {
           uuid: targetUuid,
           user_name: item.title || item.user_name || (type === "frames" ? "إطار" : "دخولية"),
@@ -149,11 +148,24 @@ const AdminRequestsPage: React.FC = () => {
           days: String(item.duration_days || 30),
         });
 
-        if ((submitRes.ok || submitRes.success) && (submitRes.data?.request_id || submitRes.request_id)) {
+        const requestId = submitRes.data?.request_id || submitRes.request_id;
+        if (!requestId) {
+          toast.warning("تم القبول — لكن الرفع لغلا لايف فشل.");
+          console.error("Submit-request failed:", submitRes);
+          return;
+        }
+
+        // Step 2: Approve (uploads to dashboard + assigns to user)
+        const approveRes = await callWaresApi("approve", {
+          id: String(requestId),
+          ware_type: wareType,
+        });
+
+        if (approveRes.ok || approveRes.success) {
           toast.success(`تم رفع ${type === "frames" ? "الإطار" : "الدخولية"} لغلا لايف ✅`);
         } else {
           toast.warning("تم القبول — لكن الرفع لغلا لايف فشل.");
-          console.error("Submit-request failed:", submitRes);
+          console.error("Approve failed:", approveRes);
         }
 
       } else if (type === "hairs") {
