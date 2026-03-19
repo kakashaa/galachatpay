@@ -1530,6 +1530,75 @@ export type Database = {
         }
         Relationships: []
       }
+      room_background_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          creator_uuid: string
+          id: string
+          month: string
+          used_at: string | null
+          used_by_uuid: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          creator_uuid: string
+          id?: string
+          month: string
+          used_at?: string | null
+          used_by_uuid?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          creator_uuid?: string
+          id?: string
+          month?: string
+          used_at?: string | null
+          used_by_uuid?: string | null
+        }
+        Relationships: []
+      }
+      room_background_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string | null
+          gift_code: string | null
+          id: string
+          image_url: string | null
+          month: string
+          request_type: string
+          status: string | null
+          user_name: string | null
+          user_uuid: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string | null
+          gift_code?: string | null
+          id?: string
+          image_url?: string | null
+          month: string
+          request_type: string
+          status?: string | null
+          user_name?: string | null
+          user_uuid: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string | null
+          gift_code?: string | null
+          id?: string
+          image_url?: string | null
+          month?: string
+          request_type?: string
+          status?: string | null
+          user_name?: string | null
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       salary_requests: {
         Row: {
           admin_note: string | null
