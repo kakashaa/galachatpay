@@ -181,7 +181,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (user?.uuid) {
-      verifyTimerRef.current = setInterval(verifyPassword, 30 * 1000);
+      verifyTimerRef.current = setInterval(verifyPassword, 5 * 60 * 1000);
       // Also verify on visibility change (when user comes back to app)
       const handleVisibility = () => {
         if (document.visibilityState === "visible") {
