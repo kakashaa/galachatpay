@@ -715,6 +715,80 @@ const AdminRequestsPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Direct Upload Modal */}
+      <Dialog open={showDirectUpload} onOpenChange={setShowDirectUpload}>
+        <DialogContent className="max-w-sm bg-background border-0 rounded-2xl [&>button]:hidden"
+          style={{ background: 'rgba(20,20,30,0.97)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <DialogHeader>
+            <DialogTitle className="text-sm text-center font-bold flex items-center justify-center gap-2">
+              <Upload className="w-4 h-4" style={{ color: 'hsl(187 92% 43%)' }} />
+              رفع خلفية غرفة مباشر
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-muted-foreground">UUID صاحب الغرفة</label>
+              <input
+                type="number"
+                value={directUuid}
+                onChange={(e) => setDirectUuid(e.target.value)}
+                placeholder="مثال: 123456"
+                className="w-full h-10 rounded-xl px-3 text-sm bg-transparent outline-none"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-muted-foreground">صورة الخلفية</label>
+              <input
+                ref={directFileRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => setDirectFile(e.target.files?.[0] || null)}
+                className="hidden"
+              />
+              <button
+                onClick={() => directFileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all active:scale-[0.98]"
+                style={{
+                  background: directFile ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.04)',
+                  border: directFile ? '1px solid rgba(16,185,129,0.3)' : '1px dashed rgba(255,255,255,0.15)',
+                  color: directFile ? 'hsl(160 84% 39%)' : 'inherit',
+                }}
+              >
+                {directFile ? (
+                  <><CheckCircle className="w-4 h-4" /> {directFile.name}</>
+                ) : (
+                  <><ImagePlus className="w-4 h-4 text-muted-foreground" /> اختر صورة</>
+                )}
+              </button>
+              {directFile && (
+                <div className="w-full aspect-video rounded-lg overflow-hidden bg-black/30 mt-2">
+                  <img src={URL.createObjectURL(directFile)} alt="معاينة" className="w-full h-full object-contain" />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setShowDirectUpload(false); setDirectUuid(""); setDirectFile(null); }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-foreground"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleDirectUpload}
+                disabled={directUploading || !directUuid.trim() || !directFile}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white disabled:opacity-40 flex items-center justify-center gap-1.5"
+                style={{ background: 'hsl(187 92% 43%)' }}
+              >
+                {directUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {directUploading ? "جاري الرفع..." : "حفظ"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminPageLayout>
   );
 };
