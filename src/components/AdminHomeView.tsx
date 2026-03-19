@@ -9,7 +9,8 @@ import {
   Ban, KeyRound, RotateCcw, BatteryCharging, ImageIcon,
   ShoppingBag, TrendingUp, Building2, Banknote, Package,
   ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle,
-  Copy, ChevronLeft
+  Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
+  Inbox, FileText, Landmark
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
@@ -389,11 +390,12 @@ interface Props {
   recentLogs: any[];
   isOwner: boolean;
   isSuperAdmin: boolean;
+  onLogout?: () => void;
 }
 
 const AdminHomeView: React.FC<Props> = ({
   adminDisplayName, adminRole: _adminRole, stats, badges,
-  onServiceClick: _onServiceClick, onChatClick: _onChatClick, recentLogs, isOwner, isSuperAdmin,
+  onServiceClick: _onServiceClick, onChatClick: _onChatClick, recentLogs, isOwner, isSuperAdmin, onLogout,
 }: any) => {
   const navigate = useNavigate();
   const [searchUuid, setSearchUuid] = useState("");
@@ -426,20 +428,20 @@ const AdminHomeView: React.FC<Props> = ({
   const totalBadge = vipBadge + banBadge + salaryBadge + requestsBadge + supportBadge;
 
   const allServices = [
-    { icon: Star, label: "VIP", route: "/admin/vip", color: "#f59e0b", roles: ["owner", "super_admin"], badge: vipBadge },
+    { icon: Crown, label: "VIP", route: "/admin/vip", color: "#f59e0b", roles: ["owner", "super_admin"], badge: vipBadge },
     { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "#f43f5e", roles: ["owner", "super_admin"], badge: banBadge },
-    { icon: Banknote, label: "الرواتب", route: "/admin/salary", color: "#10b981", roles: ["owner"], badge: salaryBadge },
-    { icon: Package, label: "الطلبات", route: "/admin/requests", color: "#3b82f6", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
-    { icon: ShoppingBag, label: "المتجر", route: "/admin/gifts", color: "#ec4899", roles: ["owner"], badge: 0 },
+    { icon: Wallet, label: "الرواتب", route: "/admin/salary", color: "#10b981", roles: ["owner"], badge: salaryBadge },
+    { icon: Inbox, label: "الطلبات", route: "/admin/requests", color: "#3b82f6", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
+    { icon: Store, label: "المتجر", route: "/admin/gifts", color: "#ec4899", roles: ["owner"], badge: 0 },
     { icon: Headphones, label: "الدعم", route: "/admin/support", color: "#06b6d4", roles: ["owner", "super_admin", "admin"], badge: supportBadge },
-    { icon: KeyRound, label: "الآيدي", route: "/admin/id-change", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0 },
     { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", color: "#10b981", roles: ["owner"], badge: 0 },
-    { icon: Building2, label: "الوكالات", route: "/admin/agencies", color: "#f97316", roles: ["owner"], badge: 0 },
+    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", color: "#f97316", roles: ["owner"], badge: 0 },
     { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "#14b8a6", roles: ["owner"], badge: 0 },
-    { icon: ScrollText, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Briefcase, label: "البيدي", route: "/admin/works", color: "#f43f5e", roles: ["owner"], badge: 0 },
+    { icon: ClipboardList, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Building2, label: "البيدي", route: "/admin/works", color: "#f43f5e", roles: ["owner"], badge: 0 },
     { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "#71717a", roles: ["owner"], badge: 0 },
-    { icon: ClipboardList, label: "طلبات المضيفات", route: "/admin/host-requests", color: "#14b8a6", roles: ["owner", "super_admin", "admin"], badge: 0 },
+    { icon: FileText, label: "طلبات المضيفات", route: "/admin/host-requests", color: "#14b8a6", roles: ["owner", "super_admin", "admin"], badge: 0 },
   ];
 
   const visibleServices = allServices.filter(s => adminRole && s.roles.includes(adminRole));
@@ -471,30 +473,45 @@ const AdminHomeView: React.FC<Props> = ({
               <p className="text-[11px] text-muted-foreground">لوحة التحكم</p>
             </div>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            className="relative w-10 h-10 rounded-2xl flex items-center justify-center"
-            style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <Bell size={17} />
-            {totalBadge > 0 && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              className="relative w-10 h-10 rounded-2xl flex items-center justify-center"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <Bell size={17} />
+              {totalBadge > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 h-[18px] min-w-[18px] rounded-full text-[9px] font-bold flex items-center justify-center px-1"
+                  style={{
+                    background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
+                    boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
+                    border: '2px solid hsl(240 10% 3.9%)',
+                  }}
+                >
+                  {totalBadge > 99 ? '99+' : totalBadge}
+                </motion.span>
+              )}
+            </motion.button>
+            {onLogout && (
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={onLogout}
+                className="w-10 h-10 rounded-2xl flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
-                  boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
-                  border: '2px solid hsl(240 10% 3.9%)',
+                  background: 'rgba(244,63,94,0.1)',
+                  border: '1px solid rgba(244,63,94,0.15)',
                 }}
               >
-                {totalBadge > 99 ? '99+' : totalBadge}
-              </motion.span>
+                <LogOut size={17} className="text-red-400" />
+              </motion.button>
             )}
-          </motion.button>
+          </div>
         </motion.div>
 
         {/* ═══ Search Bar ═══ */}

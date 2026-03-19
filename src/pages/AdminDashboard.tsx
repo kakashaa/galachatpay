@@ -253,6 +253,7 @@ const AdminDashboardPage: React.FC = () => {
             recentLogs={recentLogs}
             isOwner={isOwner}
             isSuperAdmin={isSuperAdmin}
+            onLogout={handleLogout}
           />
         )}
 
