@@ -173,7 +173,7 @@ const App = () => {
                   <Route path="/admin/works" element={<AdminWorksPage />} />
                   <Route path="/works" element={<WorksPage />} />
                   <Route path="/room-background" element={<RoomBackgroundPage />} />
-                  <Route path="/host-requests" element={<HostRequestPage />} />
+                  <Route path="/admin/host-requests" element={<AdminHostRequestsPage />} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/messages" element={<DirectMessages />} />
