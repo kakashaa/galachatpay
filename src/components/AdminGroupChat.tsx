@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Loader2, Users } from 'lucide-react';
+import { Send, Loader2, Users, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -189,7 +189,7 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
-            <span className="text-4xl">💬</span>
+            <MessageCircle className="w-10 h-10 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">لا توجد رسائل بعد</p>
           </div>
         ) : (

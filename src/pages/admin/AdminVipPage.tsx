@@ -40,9 +40,9 @@ const AdminVipPage: React.FC = () => {
         `تم تفعيل VIP ${vipLevel} على حسابك بنجاح!`
       );
       toast.dismiss(t);
-      toast.success(`تم إرسال VIP ${vipLevel} بنجاح ✅`);
+      toast.success(`تم إرسال VIP ${vipLevel} بنجاح`);
       setVipUuid("");
-    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الإرسال ❌"); }
+    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الإرسال"); }
     finally { setSending(false); }
   };
 

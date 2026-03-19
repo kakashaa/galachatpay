@@ -1,12 +1,14 @@
 import React, { useRef, useState } from "react";
-import { Send, Paperclip, Mic, Smile, Image, Video, X } from "lucide-react";
+import { Send, Paperclip, Mic, Image, Video, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatInputProps {
   onSend: (text: string) => void;
   onMediaUpload?: (file: File, type: "photo" | "video") => void;
   onAttach?: (file: File) => void;
+  onVoiceSend?: (url: string, duration: number) => void;
   disabled?: boolean;
   sending?: boolean;
   uploading?: boolean;
@@ -14,15 +16,22 @@ interface ChatInputProps {
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({
-  onSend, onMediaUpload, onAttach, disabled, sending, uploading, placeholder = "اكتب رسالة...",
+  onSend, onMediaUpload, onAttach, onVoiceSend, disabled, sending, uploading, placeholder = "اكتب رسالة...",
 }) => {
   const [text, setText] = useState("");
   const [showAttach, setShowAttach] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ file: File; url: string } | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [uploadingVoice, setUploadingVoice] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const handleSend = () => {
     if (previewFile && onAttach) {
@@ -62,7 +71,142 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setPreviewFile(null);
   };
 
+  // Voice recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const duration = recordingTime;
+        setRecordingTime(0);
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        if (audioChunksRef.current.length === 0) return;
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+
+        // Upload to Supabase Storage
+        setUploadingVoice(true);
+        try {
+          const path = `voice/${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+          const { data, error } = await supabase.storage.from("attachments").upload(path, audioBlob, { contentType: "audio/webm" });
+          if (error) throw error;
+          if (data) {
+            const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+            if (onVoiceSend) {
+              onVoiceSend(urlData.publicUrl, duration);
+            }
+          }
+        } catch (err) {
+          console.error("Voice upload failed:", err);
+          toast.error("فشل رفع الرسالة الصوتية");
+        }
+        setUploadingVoice(false);
+
+        // Cleanup stream
+        stream.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      };
+
+      recorder.start(100);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch (err) {
+      console.error("Mic access denied:", err);
+      toast.error("لا يمكن الوصول للميكروفون");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = null;
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingTime(0);
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const formatDuration = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
   const hasContent = text.trim() || previewFile;
+
+  // Recording UI
+  if (isRecording) {
+    return (
+      <div style={{ background: "hsl(var(--chat-bg))", borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={cancelRecording}
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ background: "hsl(350 89% 60% / 0.15)" }}
+          >
+            <X className="w-5 h-5 text-red-400" />
+          </motion.button>
+
+          <div className="flex-1 flex items-center gap-3">
+            <motion.div
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+              className="w-2.5 h-2.5 rounded-full bg-red-500"
+            />
+            <span className="text-sm font-mono text-red-400">{formatDuration(recordingTime)}</span>
+            <div className="flex-1 flex items-center gap-0.5">
+              {Array.from({ length: 20 }).map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ height: [4, Math.random() * 16 + 4, 4] }}
+                  transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.05 }}
+                  className="w-1 rounded-full bg-red-400/60"
+                />
+              ))}
+            </div>
+          </div>
+
+          <motion.button
+            whileTap={{ scale: 0.85 }}
+            onClick={stopRecording}
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}
+          >
+            {uploadingVoice ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 text-white rotate-180" />
+            )}
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" style={{ background: "hsl(var(--chat-bg))", borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
@@ -88,12 +232,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
               <span className="text-[10px] text-muted-foreground">فيديو</span>
               <input ref={videoRef} type="file" accept="video/*" onChange={e => handleMedia(e, "video")} className="hidden" />
             </label>
-            <button onClick={() => toast("قريباً ✨")} className="flex flex-col items-center gap-1 p-3 rounded-xl hover:bg-white/5 transition-colors">
-              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "hsl(160 84% 39% / 0.15)" }}>
-                <Mic className="w-5 h-5 text-emerald-400" />
-              </div>
-              <span className="text-[10px] text-muted-foreground">صوتية</span>
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -165,7 +303,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
             <motion.button
               key="mic"
               initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-              onClick={() => toast("قريباً ✨")}
+              whileTap={{ scale: 0.85 }}
+              onClick={startRecording}
               className="w-10 h-10 rounded-full flex items-center justify-center relative"
               style={{ background: "hsl(var(--chat-input-bg))" }}
             >

@@ -38,9 +38,9 @@ const AdminIdChangePage: React.FC = () => {
         `تم تغيير معرفك إلى ${newUuid.trim()} بنجاح!`
       );
       toast.dismiss(t);
-      toast.success("تم تغيير الآيدي بنجاح ✅");
+      toast.success("تم تغيير الآيدي بنجاح");
       setOldUuid(""); setNewUuid("");
-    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل التغيير ❌"); }
+    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل التغيير"); }
     finally { setChanging(false); }
   };
 

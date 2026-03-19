@@ -305,13 +305,13 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
                       <p className="text-[10px] text-muted-foreground">الصلاحية</p>
                     </div>
                     <div className="bg-muted/20 rounded-lg p-2 text-center">
-                      <p className="text-sm font-bold">{admin.is_active ? "نشط ✅" : "مجمّد ❄️"}</p>
+                      <p className="text-sm font-bold">{admin.is_active ? "نشط" : "مجمّد ❄️"}</p>
                       <p className="text-[10px] text-muted-foreground">الحالة</p>
                     </div>
                   </div>
                   <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                     {inShift && admin.is_active
-                      ? <><span className="text-emerald-400">✅</span> ملتزم بوقت الدوام</>
+                      ? <>ملتزم بوقت الدوام</>
                       : <><span className="text-amber-400">⚠️</span> خارج وقت الدوام</>}
                   </p>
                 </motion.div>
