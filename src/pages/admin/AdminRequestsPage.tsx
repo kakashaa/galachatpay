@@ -264,10 +264,12 @@ const AdminRequestsPage: React.FC = () => {
   const approveAction: Record<ReqTab, string> = {
     entries: "approve_entry_request", frames: "approve_frame_claim",
     hairs: "approve_hair_selection", animated: "approve_animated_photo", custom: "approve_custom_gift",
+    rooms: "approve_room_background",
   };
   const rejectAction: Record<ReqTab, string> = {
     entries: "reject_entry_request", frames: "reject_frame_claim",
     hairs: "reject_hair_selection", animated: "reject_animated_photo", custom: "reject_custom_gift",
+    rooms: "reject_room_background",
   };
 
   // Visual card like user pages
