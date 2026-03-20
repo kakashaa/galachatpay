@@ -1,18 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
-  BarChart3, TrendingUp, TrendingDown, Users, DollarSign, Search,
-  RefreshCw, Calendar, Filter, ArrowUpRight, ArrowDownRight, Eye,
-  Shield, Zap, Loader2, ChevronDown, ChevronUp, Crown, Star,
-  Clock, Activity, Gift, Ban, Hash, Wallet, Briefcase, X,
+  BarChart3, TrendingUp, Users, DollarSign, Search,
+  RefreshCw, Eye, Zap, Loader2, Activity, Ban, Hash, Wallet, X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar,
 } from "recharts";
 
 /* ─── Constants ─── */
@@ -135,24 +132,9 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
   }
 };
 
-/* ─── Smart Query ─── */
-const queryBot = async (question: string): Promise<string> => {
-  try {
-    const res = await fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `question=${encodeURIComponent(question)}`,
-    });
-    const data = await res.json();
-    return data.data?.answer || data.answer || data.message || "";
-  } catch {
-    return "";
-  }
-};
-
 /* ═══════════════════════════════════ PAGE ═══════════════════════════════════ */
 const AdminLiveDashboardPage: React.FC = () => {
-  const { adminUsername } = useAdminSession();
+  useAdminSession();
   const navigate = useNavigate();
 
   /* State */
@@ -292,7 +274,7 @@ const AdminLiveDashboardPage: React.FC = () => {
   const rankList = rankTab === "senders" ? senders : receivers;
 
   return (
-    <AdminPageLayout title="البيانات الحية" backTo="/admin/dashboard">
+    <AdminPageLayout title="البيانات الحية">
       <div className="space-y-5 pb-8" dir="rtl">
 
         {/* ═══ Header — Last Update ═══ */}
