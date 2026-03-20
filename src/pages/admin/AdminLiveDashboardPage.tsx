@@ -215,7 +215,7 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
 
     // 1. Find agency across paginated results (up to 10 pages)
     let agencyName = `وكالة #${agencyId.trim()}`;
-    let agency: any = null;
+    let _agency: any = null;
 
     for (let page = 1; page <= 10; page++) {
       try {
