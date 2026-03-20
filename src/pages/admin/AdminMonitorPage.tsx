@@ -82,22 +82,28 @@ const AdminMonitorPage: React.FC = () => {
   const loadAlerts = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from("monitor_alerts" as any)
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      const newAlerts = (data || []) as unknown as MonitorAlert[];
+      const res = await fetch(
+        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-alerts"
+      );
+      const data = await res.json();
+      const apiAlerts = (data.data?.alerts || []) as MonitorAlert[];
 
       // Play sound for new alerts
-      if (soundEnabled && newAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
+      if (soundEnabled && apiAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
         playNotificationSound();
       }
-      prevCountRef.current = newAlerts.length;
-      setAlerts(newAlerts);
+      prevCountRef.current = apiAlerts.length;
+      setAlerts(apiAlerts);
     } catch {
-      /* silent */
+      // Fallback to Supabase if API fails
+      try {
+        const { data } = await supabase
+          .from("monitor_alerts" as any)
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(100);
+        setAlerts((data || []) as unknown as MonitorAlert[]);
+      } catch { /* silent */ }
     } finally {
       setLoading(false);
     }
@@ -143,17 +149,17 @@ const AdminMonitorPage: React.FC = () => {
 
     try {
       const res = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query`,
+        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question }),
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `question=${encodeURIComponent(question)}`,
         }
       );
       const data = await res.json();
       setChatMessages(prev => [...prev, {
         role: "bot",
-        text: data.answer || data.message || "لم أتمكن من معالجة الطلب",
+        text: data.data?.answer || data.answer || data.message || "ما لقيت معلومات",
         time: formatTime(new Date().toISOString()),
       }]);
     } catch {
@@ -442,9 +448,11 @@ const AdminMonitorPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground">اسأل البوت أي سؤال عن المستخدمين</p>
                 <div className="mt-4 space-y-2">
                   {[
-                    "كم مرة شحن UUID 1000 هالشهر؟",
-                    "جيب لي كل اللي شحنوا فوق مليون اليوم",
-                    "هل UUID 5555 محظور؟",
+                    "جيب أعلى الداعمين اليوم",
+                    "مين شحن فوق 500 ألف؟",
+                    "معلومات UUID 1000",
+                    "أعلى المستلمين هالشهر",
+                    "كم تنبيه اليوم؟",
                   ].map((q, i) => (
                     <motion.button
                       key={i}
