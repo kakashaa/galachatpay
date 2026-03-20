@@ -580,15 +580,20 @@ const WorksPage: React.FC = () => {
             <span className="text-[9px] text-muted-foreground mr-auto">عمولة {agentPct}%</span>
           </div>
           {members.filter(m => m.member_type === "agent").map(m => (
-            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2 space-y-1">
+            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs">{m.member_name || m.member_uuid.slice(0, 8)}</span>
-                <span className="text-[10px] text-muted-foreground">${Number(m.total_commission_usd || 0).toFixed(2)}</span>
+                <span className="text-xs font-bold text-foreground">{m.member_name || m.member_uuid.slice(0, 8)}</span>
+                <span className="text-[10px] font-bold text-amber-400">${(m.agency_salary || 0).toFixed(2)}</span>
               </div>
               {m.agency_salary !== undefined && (
-                <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                  <span>راتب الوكالة: ${m.agency_salary?.toFixed(2)}</span>
-                  <span className="text-emerald-400">${(m.commission || 0).toFixed(2)} عمولة</span>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-muted-foreground">راتب الوكالة: ${m.agency_salary?.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-emerald-400 font-bold">{Math.floor((m.commission || 0) * 7500).toLocaleString()} كوينز عمولة</span>
+                    <span className="text-muted-foreground">(${(m.commission || 0).toFixed(2)})</span>
+                  </div>
                 </div>
               )}
             </div>
