@@ -169,8 +169,9 @@ const AdminBanPage: React.FC = () => {
     setActionInProgress(report.id);
     const t = toast.loading("جاري فك الحظر...");
     try {
-      await doUnban(report.reported_user_id);
-      await supabase.from("ban_reports").delete().eq("id", report.id);
+      const unbanType = report.ban_type === "promotion" ? "device" : "normal";
+      await doUnban(report.reported_user_id, unbanType);
+      await supabase.from("ban_reports").delete().eq("reported_user_id", report.reported_user_id).eq("is_verified", true);
       toast.dismiss(t); toast.success("تم فك الحظر!");
       loadData();
     } catch { toast.dismiss(t); toast.error("فشل"); }
