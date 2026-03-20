@@ -565,7 +565,7 @@ const AdminLiveDashboardPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* ═══ User Search ═══ */}
+        {/* ═══ Search ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -573,9 +573,22 @@ const AdminLiveDashboardPage: React.FC = () => {
           className="rounded-2xl p-4"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
+          {/* Search Tabs */}
           <div className="flex items-center gap-2 mb-3">
             <Search size={14} className="text-muted-foreground" />
-            <span className="text-[12px] font-bold">بحث مستخدم</span>
+            <div className="flex gap-1">
+              {(["user", "agency"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => { setSearchTab(tab); setUserProfile(null); setAgencyInfo(null); }}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-lg transition-colors ${
+                    searchTab === tab ? "bg-emerald-500/20 text-emerald-400" : "text-muted-foreground"
+                  }`}
+                >
+                  {tab === "user" ? "بحث مستخدم" : "بحث وكالة"}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="relative">
@@ -584,7 +597,7 @@ const AdminLiveDashboardPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="UUID أو اسم المستخدم..."
+              placeholder={searchTab === "user" ? "UUID المستخدم..." : "كود الوكالة..."}
               className="w-full h-10 rounded-xl pr-4 pl-12 text-sm placeholder:text-muted-foreground focus:outline-none font-mono"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
               dir="ltr"
@@ -599,7 +612,7 @@ const AdminLiveDashboardPage: React.FC = () => {
             </motion.button>
             {searchQuery && (
               <button
-                onClick={() => { setSearchQuery(""); setUserProfile(null); }}
+                onClick={() => { setSearchQuery(""); setUserProfile(null); setAgencyInfo(null); }}
                 className="absolute left-10 top-1/2 -translate-y-1/2 text-muted-foreground"
               >
                 <X size={13} />
@@ -616,7 +629,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                 exit={{ opacity: 0, y: -8 }}
                 className="mt-4 space-y-4"
               >
-                {/* Profile Header */}
                 <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                    <div className="flex items-center gap-3 mb-3">
                      {userProfile.avatar ? (
@@ -652,7 +664,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Quick Stats */}
                   <div className="grid grid-cols-4 gap-2">
                     {[
                       { label: "كوينز", value: formatCoins(userProfile.charger_num || 0), color: "hsl(45 93% 47%)" },
@@ -668,7 +679,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Extra Info */}
                 <div className="rounded-2xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <p className="text-[11px] font-bold text-muted-foreground mb-2">معلومات إضافية</p>
                   {[
@@ -683,7 +693,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Quick Actions */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: "عرض بالداشبورد", icon: Eye, action: () => navigate(`/admin/profile/${userProfile.uuid}`) },
@@ -705,6 +714,76 @@ const AdminLiveDashboardPage: React.FC = () => {
                     );
                   })}
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Agency Info Card */}
+          <AnimatePresence>
+            {agencyInfo && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="mt-4 space-y-3"
+              >
+                <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <Building2 size={18} className="text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{agencyInfo.name}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">وكالة #{agencyInfo.id}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users size={12} className="text-muted-foreground" />
+                    <span className="text-[11px] font-bold">الأعضاء ({agencyInfo.members.length})</span>
+                  </div>
+
+                  {agencyInfo.members.length > 0 ? (
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-[1fr_80px] gap-2 text-[10px] text-muted-foreground font-bold pb-2 border-b border-white/5">
+                        <span>العضو</span>
+                        <span className="text-left font-mono">الشحن</span>
+                      </div>
+                      {agencyInfo.members.map((m, idx) => (
+                        <motion.button
+                          key={m.uuid + idx}
+                          onClick={() => {
+                            setSearchTab("user");
+                            setSearchQuery(m.uuid);
+                            setAgencyInfo(null);
+                            searchUserApi(m.uuid).then(p => p && setUserProfile(p));
+                          }}
+                          className="grid grid-cols-[1fr_80px] gap-2 items-center w-full text-right py-2 rounded-lg hover:bg-white/5 transition-colors px-1"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[10px] font-mono text-muted-foreground">{m.uuid}</span>
+                            <span className="text-xs font-medium truncate">— {m.name}</span>
+                          </div>
+                          <span className="text-[11px] font-mono text-emerald-400 text-left">
+                            {m.charges > 1000 ? `${(m.charges / 1000).toFixed(0)}K` : m.charges}
+                          </span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4">لا توجد بيانات أعضاء</p>
+                  )}
+                </div>
+
+                {/* Disabled accept button */}
+                <motion.button
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 text-[11px] font-bold py-3 rounded-xl opacity-40 cursor-not-allowed"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <UserPlus size={13} />
+                  قبول عضو جديد — قريباً
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
