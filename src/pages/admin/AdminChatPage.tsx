@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Loader2, MessageCircle, ArrowRight, Users, Shield, Mic, ImageIcon, Phone, StopCircle, ArrowLeft, Headset } from 'lucide-react';
+import { Loader2, MessageCircle, ArrowRight, Users, Shield, ArrowLeft, Headset, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { supabase } from '@/integrations/supabase/client';
 import { useAdminSession } from '@/hooks/use-admin-session';
 import { useNavigate } from 'react-router-dom';
+import ChatBubble from '@/components/chat/ChatBubble';
+import ChatInput from '@/components/chat/ChatInput';
+import DateSeparator from '@/components/chat/DateSeparator';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 const API = "https://galachat.site/project-z/api.php";
 const ADMIN_KEY = "ghala2026owner";
@@ -24,22 +29,21 @@ interface ChatMessage {
   text: string;
   type: string;
   time: string;
+  media_url?: string;
 }
 
 export default function AdminChatPage() {
-  const { adminUsername, adminDisplayName } = useAdminSession();
+  const { adminUsername } = useAdminSession();
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const adminName = adminUsername || 'naz';
 
@@ -82,8 +86,8 @@ export default function AdminChatPage() {
     messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const sendMessage = async (text: string, type = 'text') => {
-    if (!text.trim() || !activeRoom) return;
+  const sendApiMessage = async (text: string, type = 'text', mediaUrl?: string) => {
+    if (!activeRoom) return;
     setSending(true);
     try {
       const fd = new FormData();
@@ -93,40 +97,37 @@ export default function AdminChatPage() {
       fd.append('message', text);
       fd.append('sender', adminName);
       fd.append('type', type);
+      if (mediaUrl) fd.append('media_url', mediaUrl);
       const res = await fetch(API, { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
         setMessages(prev => [...prev, data.message]);
-        setInput('');
       }
     } catch { toast.error('فشل الإرسال'); }
     setSending(false);
   };
 
-  const handleVoiceToggle = () => {
-    if (recording) {
-      setRecording(false);
-      if (timerRef.current) clearInterval(timerRef.current);
-      const duration = recordingTime;
-      setRecordingTime(0);
-      sendMessage('رسالة صوتية', 'voice');
-    } else {
-      setRecording(true);
-      setRecordingTime(0);
-      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
-    }
+  const handleSendText = (text: string) => {
+    if (!text.trim()) return;
+    sendApiMessage(text, 'text');
   };
 
-  const handleImageUpload = () => { fileInputRef.current?.click(); };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) sendMessage(`صورة: ${file.name}`, 'image');
+  const handleMediaUpload = async (file: File, type: "photo" | "video") => {
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const fileName = `chat/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('chat-media').upload(fileName, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
+      const msgType = type === 'video' ? 'video' : 'image';
+      await sendApiMessage('', msgType, urlData.publicUrl);
+    } catch { toast.error("فشل رفع الملف"); }
+    setUploading(false);
   };
 
-  const handleCall = () => {
-    toast.info('جاري بدء المكالمة الصوتية...');
-    sendMessage('بدأ مكالمة صوتية', 'call');
+  const handleVoiceSend = async (url: string, duration: number) => {
+    await sendApiMessage(`${duration}`, 'voice', url);
   };
 
   const formatTime = (t: string) => {
@@ -135,8 +136,6 @@ export default function AdminChatPage() {
       return d.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
     } catch { return t; }
   };
-
-  const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : '?';
 
   // Room list view
   if (!activeRoom) {
@@ -156,7 +155,6 @@ export default function AdminChatPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Quick Support */}
             <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -173,7 +171,6 @@ export default function AdminChatPage() {
               <ArrowRight className="w-4 h-4 text-cyan-400" />
             </motion.button>
 
-            {/* Chat Groups */}
             {rooms.map((room, i) => (
               <motion.button
                 key={room.id}
@@ -220,7 +217,17 @@ export default function AdminChatPage() {
   // Chat view
   const currentRoom = rooms.find(r => r.id === activeRoom);
 
+  // Group messages by date
+  const grouped: { date: string; msgs: ChatMessage[] }[] = [];
+  messages.forEach(msg => {
+    const dateStr = new Date(msg.time?.replace(' ', 'T') || Date.now()).toDateString();
+    const last = grouped[grouped.length - 1];
+    if (last?.date === dateStr) last.msgs.push(msg);
+    else grouped.push({ date: dateStr, msgs: [msg] });
+  });
+
   return (
+    <>
     <div className="max-w-2xl mx-auto flex flex-col h-screen" dir="rtl">
       {/* Header */}
       <div className="bg-[#111318] border-b border-white/5 px-4 py-3 flex items-center gap-3 shrink-0">
@@ -238,125 +245,79 @@ export default function AdminChatPage() {
           <p className="text-sm font-bold text-white">{currentRoom?.name}</p>
           <p className="text-[10px] text-emerald-400">{currentRoom?.members} عضو</p>
         </div>
-        <button onClick={handleCall} className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center">
-          <Phone className="w-4 h-4 text-emerald-400" />
-        </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-        <AnimatePresence>
-          {messages.map((msg, i) => {
-            const isMe = msg.sender === adminName;
-            const prevMsg = i > 0 ? messages[i - 1] : null;
-            const showSender = !isMe && (!prevMsg || prevMsg.sender !== msg.sender);
-            const initial = getInitial(msg.sender_name || msg.sender);
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2">
+        {grouped.map((group) => (
+          <div key={group.date}>
+            <DateSeparator date={group.msgs[0].time} />
+            {group.msgs.map((msg, idx) => {
+              const isMe = msg.sender === adminName;
+              const prevMsg = idx > 0 ? group.msgs[idx - 1] : null;
+              const showSender = !isMe && (!prevMsg || prevMsg.sender !== msg.sender);
+              const msgType = msg.type || 'text';
+              const isMediaMsg = ['image', 'video', 'voice'].includes(msgType);
+              const textContent = isMediaMsg && msg.media_url ? null : msg.text;
 
-            return (
-              <motion.div
-                key={msg.id || i}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex ${isMe ? 'justify-start' : 'justify-end'} mb-1.5`}
-              >
-                {/* Avatar for incoming */}
-                {!isMe && showSender && (
-                  <div className="flex-shrink-0 ml-2 self-end mb-1">
-                    <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/10">
-                      <span className="text-[10px] font-bold text-emerald-400">{initial}</span>
-                    </div>
-                  </div>
-                )}
-                {!isMe && !showSender && <div className="w-9 flex-shrink-0" />}
-
-                <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${
-                  isMe
-                    ? 'bg-emerald-500/20 border border-emerald-500/10'
-                    : 'bg-white/[0.06] border border-white/5'
-                }`} style={{
-                  borderRadius: isMe ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                }}>
-                  {showSender && !isMe && (
-                    <p className="text-[9px] font-bold text-emerald-400 mb-0.5">{msg.sender_name}</p>
-                  )}
-                  {msg.type === 'voice' ? (
-                    <div className="flex items-center gap-2">
-                      <Mic className="w-4 h-4 text-emerald-400" />
-                      <div className="w-24 h-1 bg-emerald-500/30 rounded-full">
-                        <div className="w-1/2 h-full bg-emerald-400 rounded-full" />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">0:05</span>
-                    </div>
-                  ) : msg.type === 'image' ? (
-                    <div className="flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs">{msg.text}</span>
-                    </div>
-                  ) : msg.type === 'call' ? (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-green-400" />
-                      <span className="text-xs text-green-400">{msg.text}</span>
-                    </div>
-                  ) : (
-                    <p className="text-sm leading-relaxed">{msg.text}</p>
-                  )}
-                  <p className="text-[8px] text-muted-foreground mt-1 text-left">{formatTime(msg.time)}</p>
-                </div>
-
-                {/* Avatar for mine */}
-                {isMe && (
-                  <div className="flex-shrink-0 mr-2 self-end mb-1">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center border border-emerald-500/10" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))' }}>
-                      <span className="text-[10px] font-bold text-white/80">{getInitial(adminName)}</span>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+              return (
+                <ChatBubble
+                  key={msg.id || idx}
+                  isMine={isMe}
+                  senderName={msg.sender_name || msg.sender}
+                  content={textContent}
+                  mediaUrl={msg.media_url}
+                  mediaType={msgType}
+                  voiceDuration={msgType === 'voice' ? parseInt(msg.text) || 0 : undefined}
+                  time={msg.time}
+                  showSender={showSender}
+                />
+              );
+            })}
+          </div>
+        ))}
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "hsl(160 84% 39% / 0.1)" }}>
+              <MessageCircle className="w-7 h-7 text-emerald-400/60" />
+            </div>
+            <p className="text-sm text-muted-foreground">لا توجد رسائل بعد</p>
+          </div>
+        )}
         <div ref={messagesEnd} />
       </div>
 
+      {/* Uploading indicator */}
+      {uploading && (
+        <div className="px-4 py-2 text-center border-t border-white/5">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span>جاري الرفع...</span>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
-      <div className="bg-[#111318] border-t border-white/5 px-3 py-2 shrink-0">
-        {recording ? (
-          <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-2">
-            <button onClick={handleVoiceToggle} className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center animate-pulse">
-              <StopCircle className="w-4 h-4 text-white" />
-            </button>
-            <div className="flex-1 text-center">
-              <span className="text-sm text-red-400 font-mono">{recordingTime}ث</span>
-              <span className="text-xs text-muted-foreground mr-2">جاري التسجيل...</span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-            <button onClick={handleImageUpload} className="w-9 h-9 rounded-full bg-white/[0.05] flex items-center justify-center shrink-0">
-              <ImageIcon className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <button onClick={handleVoiceToggle} className="w-9 h-9 rounded-full bg-white/[0.05] flex items-center justify-center shrink-0">
-              <Mic className="w-4 h-4 text-muted-foreground" />
-            </button>
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendMessage(input)}
-              placeholder="اكتب رسالتك..."
-              className="flex-1 bg-white/[0.05] border border-white/5 rounded-full px-4 py-2 text-sm outline-none"
-              dir="rtl"
-            />
-            <button
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || sending}
-              className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center shrink-0 disabled:opacity-30"
-            >
-              {sending ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Send className="w-4 h-4 text-white" />}
-            </button>
-          </div>
-        )}
-      </div>
+      <ChatInput
+        onSend={handleSendText}
+        onMediaUpload={handleMediaUpload}
+        onVoiceSend={handleVoiceSend}
+        sending={sending}
+        uploading={uploading}
+      />
     </div>
+
+    {/* Image Preview */}
+    {previewImage && (
+      <Dialog open onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-0">
+          <button onClick={() => setPreviewImage(null)} className="absolute top-3 right-3 z-50 p-2 rounded-full bg-black/50">
+            <X className="w-5 h-5 text-white" />
+          </button>
+          <img src={previewImage} className="w-full h-full object-contain" alt="" />
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }
