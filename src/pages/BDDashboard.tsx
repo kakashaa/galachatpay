@@ -843,9 +843,13 @@ const BDDashboard: React.FC = () => {
             { id: 'supporters' as const, icon: 'diversity_3', label: 'الداعمين' },
             { id: 'agents' as const, icon: 'domain', label: 'الوكالات' },
             { id: 'wallet' as const, icon: 'account_balance_wallet', label: 'المحفظة' },
-            { id: 'settings' as const, icon: 'settings', label: 'الإعدادات' },
+            { id: 'notifications' as const, icon: 'notifications', label: 'الإشعارات' },
           ].map(item => (
-            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1 px-2">
+            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1 px-2 relative">
+              <span className={`material-symbols-outlined text-xl ${tab === item.id ? 'text-primary' : 'text-muted-foreground'}`}>{item.icon}</span>
+              {item.id === 'notifications' && bdNotifications.filter(n => !n.is_read).length > 0 && (
+                <span className="absolute top-0 right-1 h-2 w-2 rounded-full bg-red-500" />
+              )}
               <span className={`material-symbols-outlined text-xl ${tab === item.id ? 'text-primary' : 'text-muted-foreground'}`}>{item.icon}</span>
               <span className={`text-[9px] font-bold ${tab === item.id ? 'text-foreground' : 'text-muted-foreground'}`}>{item.label}</span>
             </button>
