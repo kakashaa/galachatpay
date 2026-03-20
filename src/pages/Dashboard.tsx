@@ -14,6 +14,7 @@ import UserProfileCard from "@/components/UserProfileCard";
 import GuestProfileCard from "@/components/GuestProfileCard";
 import MenuGrid from "@/components/MenuGrid";
 import BDInvitationBanner from "@/components/BDInvitationBanner";
+import WorksInvitationBanner from "@/components/WorksInvitationBanner";
 import BottomNav from "@/components/BottomNav";
 
 
