@@ -265,6 +265,18 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "charge_self" | "charge_other") => {
+    // Double-spend protection: re-check if transfer is still usable
+    const currentTransfer = transfers.find(t => t.reference_id === transfer.reference_id);
+    if (!currentTransfer || currentTransfer.is_used || !currentTransfer.selectable) {
+      toast.error("هذه الحوالة تم استخدامها بالفعل");
+      return;
+    }
+    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
+    if (usedCount >= maxTotal) {
+      toast.error("وصلت الحد الأقصى للسحب هذا الشهر");
+      setStep("exhausted");
+      return;
+    }
     setSelectedTransfer(transfer);
     setSalaryWarning(null);
 
