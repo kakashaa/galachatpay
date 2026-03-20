@@ -12,14 +12,12 @@ interface AgentOverride {
   agent_name: string;
   vip4_limit: number;
   vip5_limit: number;
-  vip6_limit: number;
   created_at: string;
 }
 
 interface AgentUsage {
   vip4_used: number;
   vip5_used: number;
-  vip6_used: number;
 }
 
 const getCurrentMonth = () => {
@@ -39,7 +37,7 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
   const [addUuid, setAddUuid] = useState("");
   const [addLoading, setAddLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ vip4_limit: 3, vip5_limit: 2, vip6_limit: 0 });
+  const [editData, setEditData] = useState({ vip4_limit: 3, vip5_limit: 5 });
 
   const loadAgents = useCallback(async () => {
     setLoading(true);
@@ -59,17 +57,17 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         .select("user_uuid, vip_level")
         .in("user_uuid", uuids)
         .eq("request_month", month)
-        .gte("vip_level", 4);
+        .gte("vip_level", 4)
+        .lte("vip_level", 5);
 
       const map: Record<string, AgentUsage> = {};
       for (const a of list) {
-        map[a.agent_uuid] = { vip4_used: 0, vip5_used: 0, vip6_used: 0 };
+        map[a.agent_uuid] = { vip4_used: 0, vip5_used: 0 };
       }
       for (const r of vipReqs || []) {
         if (!map[r.user_uuid]) continue;
         if (r.vip_level === 4) map[r.user_uuid].vip4_used++;
         else if (r.vip_level === 5) map[r.user_uuid].vip5_used++;
-        else if (r.vip_level === 6) map[r.user_uuid].vip6_used++;
       }
       setUsageMap(map);
     }
@@ -93,8 +91,8 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         agent_uuid: uuid,
         agent_name: name,
         vip4_limit: 3,
-        vip5_limit: 2,
-        vip6_limit: 0,
+        vip5_limit: 5,
+        vip6_limit: 0, // kept for DB compatibility
       });
       if (error) throw error;
       toast.success(`تم إضافة الوكيل ${name}`);
@@ -113,7 +111,6 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         .update({
           vip4_limit: editData.vip4_limit,
           vip5_limit: editData.vip5_limit,
-          vip6_limit: editData.vip6_limit,
           updated_at: new Date().toISOString(),
         })
         .eq("id", agent.id);
@@ -137,7 +134,7 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
 
   const startEdit = (agent: AgentOverride) => {
     setEditingId(agent.id);
-    setEditData({ vip4_limit: agent.vip4_limit, vip5_limit: agent.vip5_limit, vip6_limit: agent.vip6_limit });
+    setEditData({ vip4_limit: agent.vip4_limit, vip5_limit: agent.vip5_limit });
   };
 
   return (
@@ -217,11 +214,10 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
                 </div>
 
                 {/* VIP limits grid */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {[
                     { label: "VIP 4", key: "vip4", limit: isEditing ? editData.vip4_limit : agent.vip4_limit, used: usage.vip4_used, color: "text-yellow-400" },
                     { label: "VIP 5", key: "vip5", limit: isEditing ? editData.vip5_limit : agent.vip5_limit, used: usage.vip5_used, color: "text-amber-400" },
-                    { label: "VIP 6", key: "vip6", limit: isEditing ? editData.vip6_limit : agent.vip6_limit, used: usage.vip6_used, color: "text-orange-400" },
                   ].map((v) => (
                     <div key={v.key} className="bg-muted/20 rounded-lg p-2.5 text-center space-y-1">
                       <p className={`text-xs font-bold ${v.color}`}>{v.label}</p>

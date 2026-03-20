@@ -20,7 +20,6 @@ const allVipTiers: VipTier[] = [
   { level: 3, label: "VIP 3", days: 10, color: "from-yellow-500/20 to-amber-700/5" },
   { level: 4, label: "VIP 4", days: 10, color: "from-yellow-400/20 to-yellow-700/5" },
   { level: 5, label: "VIP 5", days: 10, color: "from-yellow-300/20 to-yellow-600/5" },
-  { level: 6, label: "VIP 6", days: 10, color: "from-yellow-200/20 to-yellow-500/5" },
 ];
 
 const getCurrentMonth = () => {
@@ -42,8 +41,8 @@ const RequestVip: React.FC = () => {
   // Limits state
   const [usedSelf, setUsedSelf] = useState(0);            // self requests this month
   const [usedGiftTotal, setUsedGiftTotal] = useState(0);  // total gifts this month
-  const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0, 6: 0});
-  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 2, 6: 0});
+  const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0});
+  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 5});
   const [isTopAgent, setIsTopAgent] = useState(false);     // has custom overrides
   const [giftedRecipients, setGiftedRecipients] = useState<string[]>([]); // already gifted IDs
 
@@ -72,7 +71,7 @@ const RequestVip: React.FC = () => {
       setUsedSelf(selfCount);
       setUsedGiftTotal(giftCount);
       
-      const perLevel: Record<number, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0};
+      const perLevel: Record<number, number> = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
       for (const r of allReqs) {
         if (r.recipient_uuid) perLevel[r.vip_level] = (perLevel[r.vip_level] || 0) + 1;
       }
@@ -83,7 +82,6 @@ const RequestVip: React.FC = () => {
         setLimitsPerLevel({
           4: overrideResult.data.vip4_limit,
           5: overrideResult.data.vip5_limit,
-          6: overrideResult.data.vip6_limit,
         });
       } else {
         setIsTopAgent(false);
@@ -114,13 +112,8 @@ const RequestVip: React.FC = () => {
         if (limit <= 0) return "locked";
         if ((usedPerLevel[level] || 0) >= limit) return "used_up";
       }
-      if (level === 6) {
-        const limit = limitsPerLevel[6] ?? 0;
-        if (limit <= 0) return "locked";
-      }
     } else {
       // Self: once per month, VIP 1-5 only
-      if (level >= 6) return "locked";
       if (usedSelf >= 1) return "used_up";
     }
     return "available";

@@ -105,8 +105,8 @@ const AdminVipPage: React.FC = () => {
 
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">مستوى VIP</p>
-                  <div className="grid grid-cols-6 gap-2">
-                    {[1, 2, 3, 4, 5, 6].map((level, i) => (
+                  <div className="grid grid-cols-5 gap-2">
+                    {[1, 2, 3, 4, 5].map((level, i) => (
                       <motion.button
                         key={level}
                         initial={{ opacity: 0, scale: 0.8 }}
