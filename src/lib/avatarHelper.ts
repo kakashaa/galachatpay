@@ -6,8 +6,8 @@ const DEFAULT_AVATAR = "/placeholder.svg";
 /** Build the correct avatar URL from uuid + optional avatar path */
 export function getAvatarUrl(uuid: string, avatar?: string | null): string {
   if (avatar && avatar.startsWith("http")) return avatar;
-  if (avatar) return `https://storage.googleapis.com/galalivechat-bucket-01/avatars/${avatar}`;
-  return `https://galalivechat.com/api/newWebsite/user/avatar?uuid=${uuid}`;
+  if (avatar) return `https://media.galalivechat.com/${avatar}`;
+  return `https://media.galalivechat.com/avatars/default.jpg`;
 }
 
 /** onError handler for avatar images — falls back to default */
