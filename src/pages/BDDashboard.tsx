@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Bell, CheckCircle2 } from "lucide-react";
 import OwnerControls from "@/components/bd/OwnerControls";
 import BDSupportersTab from "@/components/bd/BDSupportersTab";
 import BDAgentsTab from "@/components/bd/BDAgentsTab";
@@ -27,7 +27,9 @@ const BDDashboard: React.FC = () => {
   const [monthlyProfit, setMonthlyProfit] = useState(0);
   const [dailyLogs, setDailyLogs] = useState<{day: string; amount: number}[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
-  const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings' | 'notifications'>('dashboard');
+  const [bdBanners, setBdBanners] = useState<any[]>([]);
+  const [bdNotifications, setBdNotifications] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [salaryLoading, setSalaryLoading] = useState(false);
@@ -187,6 +189,31 @@ const BDDashboard: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, [loadData, user?.uuid]);
+
+  // Fetch BD notifications (banners + commission alerts)
+  const fetchBdNotifications = useCallback(async () => {
+    if (!user?.uuid) return;
+    try {
+      const { data: notifs } = await supabase
+        .from("bd_notifications")
+        .select("*")
+        .or(`target_uuid.eq.${user.uuid},target_uuid.eq.all`)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      const banners = (notifs || []).filter((n: any) => n.type === "admin_message" && !n.is_dismissed);
+      const allNotifs = notifs || [];
+      setBdBanners(banners);
+      setBdNotifications(allNotifs);
+    } catch { /* silent */ }
+  }, [user?.uuid]);
+
+  useEffect(() => { fetchBdNotifications(); }, [fetchBdNotifications]);
+
+  const dismissBanner = async (id: string) => {
+    await supabase.from("bd_notifications").update({ is_dismissed: true }).eq("id", id);
+    setBdBanners(prev => prev.filter(b => b.id !== id));
+  };
+
 
   const copyReferralCode = () => {
     if (data?.bd?.referral_code) {
@@ -379,7 +406,8 @@ const BDDashboard: React.FC = () => {
                 {tab === 'dashboard' ? (bd.bd_name || user?.name || "BD") :
                  tab === 'supporters' ? 'الداعمين' :
                  tab === 'agents' ? 'الوكالات' :
-                 tab === 'wallet' ? 'المحفظة' : 'الإعدادات'}
+                 tab === 'wallet' ? 'المحفظة' :
+                 tab === 'notifications' ? 'الإشعارات' : 'الإعدادات'}
               </h1>
             </div>
           </div>
@@ -397,6 +425,12 @@ const BDDashboard: React.FC = () => {
             >
               <span className="material-symbols-outlined text-xl">notifications</span>
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
+            </button>
+            <button
+              onClick={() => setTab('settings')}
+              className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <span className="material-symbols-outlined text-xl">settings</span>
             </button>
           </div>
         </div>
@@ -425,7 +459,56 @@ const BDDashboard: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4 space-y-3">
 
-        {tab === 'supporters' ? (
+        {/* Admin Banners - show on all tabs */}
+        {bdBanners.length > 0 && (
+          <div className="space-y-2">
+            {bdBanners.map((banner: any) => (
+              <div key={banner.id} className="rounded-xl p-3 flex items-start gap-2" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <Bell className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold text-foreground">{banner.title}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{banner.body}</p>
+                  <p className="text-[8px] text-muted-foreground mt-1">{new Date(banner.created_at).toLocaleDateString('ar')}</p>
+                </div>
+                <button onClick={() => dismissBanner(banner.id)} className="shrink-0 p-1 rounded-lg hover:bg-white/10 transition-colors">
+                  <CheckCircle2 className="w-4 h-4 text-blue-400" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === 'notifications' ? (
+          <div className="space-y-3 mt-1 css-fade-up">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Bell className="w-4 h-4 text-primary" />
+              <span className="text-xs font-bold text-foreground">الإشعارات</span>
+              <span className="text-[10px] text-muted-foreground mr-auto">{bdNotifications.length} إشعار</span>
+            </div>
+            {bdNotifications.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-xs">لا توجد إشعارات</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {bdNotifications.map((n: any) => (
+                  <div key={n.id} className="rounded-xl p-3" style={{ background: n.type === 'commission' ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${n.type === 'commission' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.06)'}` }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm">{n.type === 'commission' ? '💰' : '📢'}</span>
+                      <span className="text-[11px] font-bold text-foreground">{n.title}</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{n.body}</p>
+                    <p className="text-[8px] text-muted-foreground mt-1.5">
+                      {new Date(n.created_at).toLocaleDateString('ar', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {n.sent_by && <span className="mr-2">• {n.sent_by}</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : tab === 'supporters' ? (
           <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} salaryData={supporterSalaries} salaryLoading={salaryLoading} />
         ) : tab === 'agents' ? (
           <BDAgentsTab agents={agents} commissionPct={bd.agency_commission_pct || 5} salaryData={agentSalaries} salaryLoading={salaryLoading} />
@@ -767,9 +850,13 @@ const BDDashboard: React.FC = () => {
             { id: 'supporters' as const, icon: 'diversity_3', label: 'الداعمين' },
             { id: 'agents' as const, icon: 'domain', label: 'الوكالات' },
             { id: 'wallet' as const, icon: 'account_balance_wallet', label: 'المحفظة' },
-            { id: 'settings' as const, icon: 'settings', label: 'الإعدادات' },
+            { id: 'notifications' as const, icon: 'notifications', label: 'الإشعارات' },
           ].map(item => (
-            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1 px-2">
+            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1 px-2 relative">
+              <span className={`material-symbols-outlined text-xl ${tab === item.id ? 'text-primary' : 'text-muted-foreground'}`}>{item.icon}</span>
+              {item.id === 'notifications' && bdNotifications.filter(n => !n.is_read).length > 0 && (
+                <span className="absolute top-0 right-1 h-2 w-2 rounded-full bg-red-500" />
+              )}
               <span className={`material-symbols-outlined text-xl ${tab === item.id ? 'text-primary' : 'text-muted-foreground'}`}>{item.icon}</span>
               <span className={`text-[9px] font-bold ${tab === item.id ? 'text-foreground' : 'text-muted-foreground'}`}>{item.label}</span>
             </button>
