@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { sendWhatsAppNotification } from "@/utils/sendWhatsAppNotification";
 import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";
@@ -310,6 +311,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           "تم قبول سحب الراتب",
           `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`
         );
+        sendWhatsAppNotification(approveSheet.whatsapp, `✅ تم قبول طلب سحب الراتب!\nالمبلغ: $${approveSheet.amount}\nالبنك: ${approveSheet.bank}\nالحساب: ${approveSheet.account_number}`);
         toast.success("تم قبول الطلب وإرسال الإشعار");
         setRequests(prev => prev.map(r => r.id === approveSheet.id ? { ...r, status: "delivered" } : r));
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
@@ -336,6 +338,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           "تم رفض سحب الراتب",
           `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`
         );
+        sendWhatsAppNotification(rejectSheet.whatsapp, `❌ تم رفض طلب سحب الراتب\nالسبب: ${rejectReason}`);
         toast.success("تم رفض الطلب وإرسال الإشعار");
         setRequests(prev => prev.map(r => r.id === rejectSheet.id ? { ...r, status: "rejected", reject_reason: rejectReason } : r));
         setRejectSheet(null); setRejectReason(""); setRejectImage(null);

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { sendWhatsAppNotification } from "@/utils/sendWhatsAppNotification";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent,
@@ -244,6 +245,11 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
         "تم قبول طلب السحب الفوري ✅",
         `تم تحويل $${approveSheet.amount_usd} إلى حسابك البنكي. الكوينزات تم شحنها لحساب الداعم.`
       );
+      // WhatsApp notification
+      const waPhone = (() => {
+        try { const pd = JSON.parse(approveSheet.payment_details); return pd.whatsapp || ""; } catch { return approveSheet.user_phone || ""; }
+      })();
+      sendWhatsAppNotification(waPhone, `✅ تم قبول طلب السحب الفوري!\nالمبلغ: $${approveSheet.amount_usd}\nتم شحن الكوينزات للداعم وتحويل المبلغ لحسابك.`);
 
       toast.success("تم قبول الطلب وإرسال الإيصال");
       // Optimistically update local state immediately
@@ -290,6 +296,11 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
         "تم رفض طلب السحب الفوري ❌",
         `تم رفض طلب السحب الفوري. السبب: ${rejectReason}`
       );
+      // WhatsApp notification
+      const waPhone = (() => {
+        try { const pd = JSON.parse(rejectSheet.payment_details); return pd.whatsapp || ""; } catch { return rejectSheet.user_phone || ""; }
+      })();
+      sendWhatsAppNotification(waPhone, `❌ تم رفض طلب السحب الفوري\nالسبب: ${rejectReason}`);
 
       toast.success("تم رفض الطلب وإرسال الإشعار");
       // Optimistically update local state immediately
