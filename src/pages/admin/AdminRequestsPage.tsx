@@ -522,6 +522,21 @@ const AdminRequestsPage: React.FC = () => {
     <AdminPageLayout title="الطلبات" accentColor="hsl(217 91% 60%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
 
+        {/* Total pending count */}
+        {(() => {
+          const totalPending = Object.values(pendingCounts).reduce((a, b) => a + b, 0);
+          return totalPending > 0 ? (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl"
+              style={{ background: 'linear-gradient(135deg, rgba(244,63,94,0.12), rgba(245,158,11,0.08))', border: '1px solid rgba(244,63,94,0.15)' }}>
+              <Clock className="w-4 h-4" style={{ color: 'hsl(350 89% 60%)' }} />
+              <span className="text-sm font-bold" style={{ color: 'hsl(350 89% 60%)' }}>
+                {totalPending} طلب معلّق
+              </span>
+            </motion.div>
+          ) : null;
+        })()}
+
         {/* Icon strip nav */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="flex items-center justify-around rounded-2xl py-2.5 px-2"
