@@ -119,7 +119,7 @@ const AdminMonitorPage: React.FC = () => {
 
   /* ── Delete alert ── */
   const deleteAlert = async (id: string) => {
-    await supabase.from("monitor_alerts").delete().eq("id", id);
+    await (supabase.from("monitor_alerts" as any) as any).delete().eq("id", id);
     setAlerts(prev => prev.filter(a => a.id !== id));
   };
 
