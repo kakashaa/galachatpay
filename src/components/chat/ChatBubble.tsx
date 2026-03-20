@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Check, CheckCheck, Paperclip, Mic } from "lucide-react";
+import { Check, CheckCheck, Paperclip } from "lucide-react";
 import VoiceMessage from "@/components/chat/VoiceMessage";
 
 interface ChatBubbleProps {
