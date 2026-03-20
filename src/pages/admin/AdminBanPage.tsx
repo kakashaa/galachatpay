@@ -358,16 +358,17 @@ const AdminBanPage: React.FC = () => {
                                     const banType = report.ban_type === 'promotion' || report.description?.includes('ترويج') ? 'device' : 'normal';
                                     const hours = banType === 'device' ? 999999 : 24;
                                     const reason = report.description || 'بلاغ مؤكد';
-                                    await adminCall("manual_ban_user", { target_uuid: report.reported_user_id, ban_type: "full", duration_hours: hours, reason, banned_elements: null });
+                                    // Execute ban on external server (Gala Live) only - no Supabase saving
                                     const banRes = await supabase.functions.invoke("wares-request", { body: { action: "ban-user-real", uuid: report.reported_user_id, reason, hours: String(hours), ban_type: banType } });
                                     console.log("Report ban external result:", banRes.data);
+                                    if (banRes.error) throw new Error("فشل الحظر");
                                     const { sendUserNotification } = await import("@/utils/sendUserNotification");
                                     const durationText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
                                     await sendUserNotification(report.reported_user_id, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durationText}.`).catch(() => {});
                                     toast.dismiss(t);
                                     toast.success("تم الحظر الكامل!");
                                     setRemovedIds(prev => new Set(prev).add(report.id));
-                                    setTimeout(() => { setSubTab("list"); loadData(); }, 800);
+                                    loadData();
                                   } catch { toast.dismiss(t); toast.error("فشل التأكيد"); }
                                   finally { setActionInProgress(null); }
                                 }}
