@@ -41,10 +41,8 @@ const WorksPage: React.FC = () => {
   const [memberType, setMemberType] = useState<"supporter" | "agent">("supporter");
   const [sending, setSending] = useState(false);
 
-  // Withdraw dialog
+  // Withdraw
   const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [recipientUuid, setRecipientUuid] = useState("");
   const [withdrawing, setWithdrawing] = useState(false);
 
   // Earnings
