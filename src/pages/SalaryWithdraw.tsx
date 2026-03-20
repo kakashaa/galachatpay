@@ -266,7 +266,7 @@ const SalaryWithdraw: React.FC = () => {
         fetch(`${API}?action=my_salary_requests&uuid=${user!.uuid}&month=${month}`),
         supabase
           .from("salary_requests")
-          .select("transfer_id, transaction_id")
+          .select("transfer_id, transaction_id, request_type, target_name, target_uuid, recipient_name, status")
           .eq("user_uuid", user!.uuid)
           .neq("status", "rejected")
           .or("transfer_id.not.is.null,transaction_id.not.is.null"),
