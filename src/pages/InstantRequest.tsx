@@ -77,6 +77,7 @@ const InstantRequest: React.FC = () => {
 
   // Auto-fetch transfers on mount
   useEffect(() => {
+    if (!user) return;
     const fetchTransfers = async () => {
       setLoadingTransfers(true);
       try {
@@ -91,7 +92,12 @@ const InstantRequest: React.FC = () => {
       }
     };
     fetchTransfers();
-  }, [user.uuid]);
+  }, [user?.uuid]);
+
+  if (!user) {
+    navigate("/");
+    return null;
+  }
 
   // Supporter UUID lookup
   const lookupSupporter = async () => {
