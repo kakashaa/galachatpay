@@ -1156,6 +1156,29 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "works_manual_add_member": {
+        const { works_id, member_uuid, member_type, member_name } = data;
+        if (!works_id || !member_uuid) throw new Error("works_id and member_uuid required");
+        // Check if already exists
+        const { data: existing } = await supabase
+          .from("works_members")
+          .select("id")
+          .eq("works_id", works_id)
+          .eq("member_uuid", member_uuid)
+          .maybeSingle();
+        if (existing) throw new Error("العضو موجود بالفعل في هذا الفريق");
+        const { error } = await supabase.from("works_members").insert({
+          works_id,
+          member_uuid: member_uuid.trim(),
+          member_name: member_name || "عضو يدوي",
+          member_type: member_type || "supporter",
+          status: "active",
+        });
+        if (error) throw error;
+        result = { success: true };
+        break;
+      }
+
       case "works_list_withdrawals": {
         const { data: withdrawals, error } = await supabase
           .from("works_withdrawals").select("*").order("created_at", { ascending: false });

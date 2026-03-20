@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -39,6 +39,12 @@ const AdminWorksPage: React.FC = () => {
   const [showFreezeDialog, setShowFreezeDialog] = useState(false);
   const [freezeTarget, setFreezeTarget] = useState<{ type: "bd" | "user"; id: string; name: string } | null>(null);
   const [freezeReason, setFreezeReason] = useState("");
+
+  // Owner edit financials dialog
+  const [editFinAccount, setEditFinAccount] = useState<any | null>(null);
+  const [editBalanceUsd, setEditBalanceUsd] = useState("");
+  const [editTotalEarnings, setEditTotalEarnings] = useState("");
+  const [editFinLoading, setEditFinLoading] = useState(false);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -182,6 +188,26 @@ const AdminWorksPage: React.FC = () => {
     }
   };
 
+  const handleEditFinancials = async () => {
+    if (!editFinAccount) return;
+    setEditFinLoading(true);
+    try {
+      const updates: Record<string, number> = {};
+      const newBalance = parseFloat(editBalanceUsd);
+      const newEarnings = parseFloat(editTotalEarnings);
+      if (!isNaN(newBalance)) updates.balance_usd = newBalance;
+      if (!isNaN(newEarnings)) updates.total_earnings_usd = newEarnings;
+      if (Object.keys(updates).length === 0) { toast.error("لا توجد تعديلات"); setEditFinLoading(false); return; }
+      await adminCall("works_update_account", { id: editFinAccount.id, ...updates });
+      toast.success("تم تحديث البيانات المالية");
+      setEditFinAccount(null);
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error(err?.message || "فشل التحديث");
+    }
+    setEditFinLoading(false);
+  };
+
   return (
     <AdminPageLayout title="إدارة البيدي" onLogout={handleLogout}>
       <div className="max-w-3xl mx-auto p-4" dir="rtl">
@@ -270,10 +296,20 @@ const AdminWorksPage: React.FC = () => {
                         {a.status === "active" ? "تعليق" : "تفعيل"}
                       </button>
                       {isOwner && (
-                        <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
-                          className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> تجميد
-                        </button>
+                        <>
+                          <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> تجميد
+                          </button>
+                          <button onClick={() => {
+                            setEditFinAccount(a);
+                            setEditBalanceUsd(String(Number(a.balance_usd || 0)));
+                            setEditTotalEarnings(String(Number(a.total_earnings_usd || 0)));
+                          }}
+                            className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1" style={{ background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
+                            <Pencil className="w-3 h-3" /> تعديل
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -530,6 +566,33 @@ const AdminWorksPage: React.FC = () => {
                   </button>
                 </>
               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Owner: Edit Financials Dialog */}
+        <Dialog open={!!editFinAccount} onOpenChange={() => setEditFinAccount(null)}>
+          <DialogContent className="max-w-sm" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-sm">
+                <Pencil className="w-4 h-4" /> تعديل البيانات المالية — {editFinAccount?.user_name || editFinAccount?.works_code}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-muted-foreground">الرصيد المتاح ($)</label>
+                <Input type="number" value={editBalanceUsd} onChange={e => setEditBalanceUsd(e.target.value)}
+                  placeholder="0.00" dir="ltr" className="mt-1" step="0.01" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">إجمالي الأرباح ($)</label>
+                <Input type="number" value={editTotalEarnings} onChange={e => setEditTotalEarnings(e.target.value)}
+                  placeholder="0.00" dir="ltr" className="mt-1" step="0.01" />
+              </div>
+              <button onClick={handleEditFinancials} disabled={editFinLoading}
+                className="w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: 'hsl(38 92% 50%)', color: 'black' }}>
+                {editFinLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><DollarSign className="w-4 h-4" /> حفظ التعديلات</>}
+              </button>
             </div>
           </DialogContent>
         </Dialog>
