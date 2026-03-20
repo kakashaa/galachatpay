@@ -330,17 +330,28 @@ const AdminLiveDashboardPage: React.FC = () => {
     }
   }, []);
 
-  /* ─── Search User ─── */
+  /* ─── Search ─── */
   const handleSearch = async () => {
     const q = searchQuery.trim();
     if (!q) return;
     setSearchLoading(true);
     setUserProfile(null);
-    const profile = await searchUserApi(q);
-    if (profile) {
-      setUserProfile(profile);
+    setAgencyInfo(null);
+
+    if (searchTab === "agency") {
+      const info = await searchAgencyApi(q);
+      if (info) {
+        setAgencyInfo(info);
+      } else {
+        toast.error("لم يتم العثور على الوكالة");
+      }
     } else {
-      toast.error("لم يتم العثور على المستخدم");
+      const profile = await searchUserApi(q);
+      if (profile) {
+        setUserProfile(profile);
+      } else {
+        toast.error("لم يتم العثور على المستخدم");
+      }
     }
     setSearchLoading(false);
   };
