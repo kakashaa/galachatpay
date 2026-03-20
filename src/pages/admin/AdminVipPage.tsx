@@ -60,6 +60,7 @@ const AdminVipPage: React.FC = () => {
   return (
     <>
     <ConfirmDialog />
+    <AdminPageLayout title="إدارة VIP" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto px-4 pt-4 space-y-4" dir="rtl">
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(245,158,11,0.1)' }}>
