@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell, CheckCheck, ArrowRight, Star, Hash, Sparkles,
-  Frame, Camera, Gift, ShieldBan, Shield, DollarSign, Wallet, Scissors
+  Frame, Camera, Gift, ShieldBan, Shield, DollarSign, Wallet, Scissors,
+  UserPlus, Check, X, Loader2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,13 @@ interface Notification {
   is_read: boolean;
   created_at: string;
   type?: string;
+}
+
+interface PendingInvitation {
+  id: string;
+  works_id: string;
+  member_type: string;
+  agency_id?: string | null;
 }
 
 const notificationIcons: Record<string, { icon: React.ElementType; color: string }> = {
@@ -37,12 +45,12 @@ const notificationIcons: Record<string, { icon: React.ElementType; color: string
   salary_charged: { icon: Wallet, color: "text-emerald-400" },
   hair_approved: { icon: Scissors, color: "text-pink-400" },
   hair_rejected: { icon: Scissors, color: "text-red-400" },
+  works_invitation: { icon: UserPlus, color: "text-emerald-400" },
 };
 
 const getNotifIcon = (notif: Notification) => {
   const match = notificationIcons[notif.type || ""];
   if (match) return match;
-  // Fallback: try to detect from title
   const t = notif.title || "";
   if (t.includes("VIP")) return t.includes("") ? notificationIcons.vip_approved : notificationIcons.vip_rejected;
   if (t.includes("راتب") || t.includes("سحب")) return t.includes("") ? notificationIcons.salary_approved : notificationIcons.salary_rejected;
@@ -58,6 +66,9 @@ const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [prevCount, setPrevCount] = useState(0);
+  const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null);
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [responded, setResponded] = useState<"accepted" | "rejected" | null>(null);
 
   const playNotificationSound = () => {
     try {
@@ -79,6 +90,33 @@ const Notifications: React.FC = () => {
   const triggerNotificationEffect = () => {
     playNotificationSound();
     if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+  };
+
+  // Check if user has a pending works invitation
+  const checkPendingInvitation = useCallback(async () => {
+    if (!user?.uuid) return;
+    const { data } = await supabase
+      .from("works_members")
+      .select("id, works_id, member_type, agency_id")
+      .eq("member_uuid", user.uuid)
+      .eq("status", "pending")
+      .maybeSingle();
+    setPendingInvitation(data as PendingInvitation | null);
+  }, [user?.uuid]);
+
+  const handleInvitationResponse = async (accept: boolean) => {
+    if (!pendingInvitation || !user?.uuid) return;
+    setRespondingTo(pendingInvitation.id);
+    try {
+      await supabase
+        .from("works_members")
+        .update({ status: accept ? "active" : "rejected" } as any)
+        .eq("id", pendingInvitation.id);
+
+      setResponded(accept ? "accepted" : "rejected");
+      setPendingInvitation(null);
+    } catch { /* silent */ }
+    setRespondingTo(null);
   };
 
   const fetchNotifs = async () => {
@@ -115,6 +153,7 @@ const Notifications: React.FC = () => {
   useEffect(() => {
     if (!user?.uuid) return;
     fetchNotifs();
+    checkPendingInvitation();
 
     const channel = supabase
       .channel("notifications_realtime_" + user.uuid)
@@ -124,6 +163,7 @@ const Notifications: React.FC = () => {
         table: "notifications",
       }, () => {
         fetchNotifs();
+        checkPendingInvitation();
       })
       .subscribe();
 
@@ -163,6 +203,7 @@ const Notifications: React.FC = () => {
             const receiptUrl = receiptMatch ? receiptMatch[1] : null;
             const displayBody = receiptUrl ? notif.body.replace(/\n?إيصال الشحن: https?:\/\/[^\s]+/, "") : notif.body;
             const { icon: NotifIcon, color: iconColor } = getNotifIcon(notif);
+            const isWorksInvitation = notif.type === "works_invitation";
 
             return (
               <div
@@ -197,6 +238,40 @@ const Notifications: React.FC = () => {
                         فتح إيصال الشحن
                         <ArrowRight className="w-3 h-3" />
                       </a>
+                    )}
+                    {/* Works invitation accept/reject buttons */}
+                    {isWorksInvitation && pendingInvitation && !responded && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleInvitationResponse(true)}
+                          disabled={!!respondingTo}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 rounded-lg py-2 text-xs font-bold disabled:opacity-50"
+                        >
+                          {respondingTo === pendingInvitation.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          قبول
+                        </button>
+                        <button
+                          onClick={() => handleInvitationResponse(false)}
+                          disabled={!!respondingTo}
+                          className="flex-1 flex items-center justify-center gap-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg py-2 text-xs font-bold disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          رفض
+                        </button>
+                      </div>
+                    )}
+                    {isWorksInvitation && responded && (
+                      <div className={`mt-2 rounded-lg py-1.5 px-3 text-xs font-bold text-center ${
+                        responded === "accepted" 
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                          : "bg-red-500/10 text-red-400 border border-red-500/20"
+                      }`}>
+                        {responded === "accepted" ? "✅ تم قبول الدعوة" : "❌ تم رفض الدعوة"}
+                      </div>
                     )}
                     <span className="text-[10px] text-muted-foreground/60 mt-1 block">{timeAgo(notif.created_at)}</span>
                   </div>
