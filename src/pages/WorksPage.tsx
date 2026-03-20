@@ -58,33 +58,38 @@ const WorksPage: React.FC = () => {
 
   const userLevel = user?.level?.charger_level || 0;
 
-  // Anti-abuse: handle failed attempt
-  const handleFailedAttempt = useCallback(async (reason: string) => {
+  // Anti-abuse: handle failed attempt (per-target, daily reset)
+  const handleFailedAttempt = useCallback(async (reason: string, targetId: string) => {
     if (!user?.uuid) return;
 
-    // Get attempts in last 24h
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // Get today's start (midnight UTC)
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const since = todayStart.toISOString();
+
+    // Count attempts for THIS specific target today
     const { data: attempts } = await supabase
       .from("works_abuse_log")
       .select("id")
       .eq("user_uuid", user.uuid)
+      .eq("action", `add_member_failed:${targetId}`)
       .gte("created_at", since);
 
     const count = (attempts?.length || 0) + 1;
 
-    // Log attempt
+    // Log attempt with target info
     await supabase.from("works_abuse_log").insert({
       user_uuid: user.uuid,
-      action: "add_member_failed",
+      action: `add_member_failed:${targetId}`,
       reason,
       attempt_number: count,
     } as any);
 
     if (count >= BAN_THRESHOLD) {
-      // Submit ban request for owner review
+      // Submit ban request
       await supabase.from("works_ban_requests").insert({
         user_uuid: user.uuid,
-        reason: `محاولة إضافة أعضاء غير مؤهلين ${count} مرات خلال 24 ساعة`,
+        reason: `محاولة إضافة نفس العضو (${targetId}) ${count} مرات في يوم واحد`,
         attempts: count,
         status: "pending",
       } as any);
@@ -92,15 +97,15 @@ const WorksPage: React.FC = () => {
       setIsBanned(true);
       setModal({
         type: "error",
-        message: `تم إيقاف حسابك مؤقتاً\n\nحاولت إضافة أعضاء غير مؤهلين ${count} مرات.\nتم إرسال طلب حظر للإدارة.\n\nالسبب: ${reason}`,
+        message: `تم إيقاف حسابك مؤقتاً\n\nحاولت إضافة نفس العضو (${targetId}) ${count} مرات اليوم.\n\nالسبب: ${reason}`,
         vibrate: true,
       });
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
 
-    } else if (count >= WARN_THRESHOLD) {
+    } else if (count >= BAN_THRESHOLD - 1) {
       setModal({
         type: "error",
-        message: `تحذير أخير!\n\nحاولت ${count} مرات إضافة أعضاء غير مؤهلين.\nمحاولة أخرى وسيتم حظرك!\n\nالسبب: ${reason}`,
+        message: `تحذير أخير!\n\nحاولت إضافة نفس العضو (${targetId}) ${count} مرات.\nمحاولة أخرى وسيتم حظرك!\n\nالسبب: ${reason}`,
         vibrate: true,
       });
       if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
@@ -108,7 +113,7 @@ const WorksPage: React.FC = () => {
     } else {
       setModal({
         type: "error",
-        message: `فشلت الإضافة\n\n${reason}\n\nتحذير ${count}/5 — بعد 5 محاولات سيتم حظرك`,
+        message: `فشلت الإضافة\n\n${reason}\n\nتحذير ${count}/${BAN_THRESHOLD} لهذا الآيدي — بعد ${BAN_THRESHOLD} محاولات على نفس الآيدي اليوم سيتم حظرك`,
       });
     }
   }, [user?.uuid]);
