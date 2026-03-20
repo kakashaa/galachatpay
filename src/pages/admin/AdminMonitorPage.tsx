@@ -252,10 +252,8 @@ const AdminMonitorPage: React.FC = () => {
                     onClick={() => setAlertFilter(st.key)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all ${active ? "text-white" : "text-muted-foreground"}`}
                     style={active ? {
-                      background: st.key === "all"
-                        ? "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))"
-                        : `linear-gradient(135deg, ${color}, ${color}cc)`,
-                      boxShadow: `0 3px 12px ${st.key === "all" ? "rgba(16,185,129,0.3)" : color + "40"}`,
+                      background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+                      boxShadow: `0 3px 12px ${color}40`,
                     } : {
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.06)",
