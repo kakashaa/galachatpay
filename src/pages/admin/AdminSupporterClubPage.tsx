@@ -352,7 +352,6 @@ const AdminSupporterClubPage: React.FC = () => {
                 ) : (
                   filteredRewards.map(r => {
                     const typeInfo = REWARD_TYPES.find(rt => rt.type === r.type);
-                    const Icon = typeInfo?.icon || Gift;
                     return (
                       <div key={r.id} className="rounded-xl p-3 flex items-center gap-3" style={{ background: "hsl(0 0% 100% / 0.02)", border: "1px solid hsl(0 0% 100% / 0.05)" }}>
                         {r.status === "available" && <Clock className="w-3.5 h-3.5 text-yellow-400 shrink-0" />}
