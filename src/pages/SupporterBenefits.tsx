@@ -495,7 +495,6 @@ const SupporterBenefits: React.FC = () => {
                     className="overflow-hidden space-y-2">
                     {usedRewards.map(r => {
                       const info = REWARD_TYPE_MAP[r.type] || { label: r.type, icon: Star };
-                      const Icon = info.icon;
                       const itemDaysLeft = r.item_expires_at ? daysUntil(r.item_expires_at) : null;
                       return (
                         <div key={r.id} className="rounded-xl p-3 flex items-start gap-3 bg-muted/30" style={{ border: "1px solid hsl(var(--border))" }}>
