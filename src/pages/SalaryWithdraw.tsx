@@ -29,6 +29,14 @@ interface Transfer {
   selectable: boolean;
 }
 
+interface UsedTransferDetail {
+  request_type: string;
+  target_name: string | null;
+  target_uuid: string | null;
+  recipient_name: string;
+  status: string;
+}
+
 interface TransfersResult {
   transfers: Transfer[];
   is_agency_owner?: boolean;
@@ -151,6 +159,7 @@ const SalaryWithdraw: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [usedDetails, setUsedDetails] = useState<Record<string, UsedTransferDetail>>({});
   const [isAgencyOwner, setIsAgencyOwner] = useState(false);
   const [usedCount, setUsedCount] = useState(0);
 
@@ -257,7 +266,7 @@ const SalaryWithdraw: React.FC = () => {
         fetch(`${API}?action=my_salary_requests&uuid=${user!.uuid}&month=${month}`),
         supabase
           .from("salary_requests")
-          .select("transfer_id, transaction_id")
+          .select("transfer_id, transaction_id, request_type, target_name, target_uuid, recipient_name, status")
           .eq("user_uuid", user!.uuid)
           .neq("status", "rejected")
           .or("transfer_id.not.is.null,transaction_id.not.is.null"),
@@ -297,6 +306,22 @@ const SalaryWithdraw: React.FC = () => {
       });
 
       setTransfers(allTransfers);
+
+      // Build details map for used transfers
+      const detailsMap: Record<string, UsedTransferDetail> = {};
+      (localRequestsRes.data || []).forEach((r: any) => {
+        const ref = String(r.transfer_id || r.transaction_id || "").trim();
+        if (ref) {
+          detailsMap[ref] = {
+            request_type: r.request_type || "",
+            target_name: r.target_name || null,
+            target_uuid: r.target_uuid || null,
+            recipient_name: r.recipient_name || "",
+            status: r.status || "",
+          };
+        }
+      });
+      setUsedDetails(detailsMap);
       const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
       setIsAgencyOwner(agencyOwner);
 
@@ -579,6 +604,30 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
+  const getUsedLabel = (t: Transfer) => {
+    const detail = usedDetails[t.reference_id];
+    if (!detail) return { label: "تم الصرف ✅", sub: "" };
+    if (detail.request_type === "charge_self") {
+      return { label: "تم شحن كوينزات لحسابك ✅", sub: "" };
+    }
+    if (detail.request_type === "charge_other") {
+      const name = detail.target_name || detail.recipient_name || "";
+      const uuid = detail.target_uuid || "";
+      return {
+        label: "تم شحن كوينزات ✅",
+        sub: name ? `🎁 ${name}${uuid ? ` (${uuid})` : ""}` : "",
+      };
+    }
+    if (detail.request_type === "cash") {
+      const name = detail.recipient_name || "";
+      return {
+        label: "سحب نقدي 💵",
+        sub: name ? `المستلم: ${name}` : "",
+      };
+    }
+    return { label: "تم الصرف ✅", sub: "" };
+  };
+
   if (!user) return null;
 
   const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
@@ -698,10 +747,20 @@ const SalaryWithdraw: React.FC = () => {
                     </div>
                     <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                    <span className="text-[10px] text-emerald-400 font-bold">تم شحن كوينزات ✅</span>
-                  </div>
+                  {(() => {
+                    const info = getUsedLabel(t);
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                          <span className="text-[10px] text-emerald-400 font-bold">{info.label}</span>
+                        </div>
+                        {info.sub && (
+                          <p className="text-[10px] text-muted-foreground text-left font-mono">{info.sub}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </motion.div>
               ))}
             </div>
@@ -949,18 +1008,28 @@ const SalaryWithdraw: React.FC = () => {
             <div className="space-y-2">
               <p className="text-[10px] text-muted-foreground font-bold px-1">حوالات مستخدمة:</p>
               {usedTransfers.map(t => (
-                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-red-500/10 opacity-60 space-y-1">
+                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-emerald-500/10 opacity-60 space-y-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg"></span>
+                      <span className="text-lg">✅</span>
                       <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
                     </div>
                     <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                    <span className="text-[10px] text-red-400 font-bold">تم السحب بها</span>
-                  </div>
+                  {(() => {
+                    const info = getUsedLabel(t);
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                          <span className="text-[10px] text-emerald-400 font-bold">{info.label}</span>
+                        </div>
+                        {info.sub && (
+                          <p className="text-[10px] text-muted-foreground text-left font-mono">{info.sub}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
