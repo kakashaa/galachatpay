@@ -306,12 +306,8 @@ const AdminMonitorPage: React.FC = () => {
   const loadAlerts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}?key=${API_KEY}&action=promo-alerts`
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const apiAlerts = (data.data?.alerts || []) as MonitorAlert[];
+      const data = await galaApi.getAlerts();
+      const apiAlerts = (data?.data?.alerts || data?.alerts || []) as MonitorAlert[];
 
       if (soundEnabled && apiAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
         const hasHigh = apiAlerts.some(a => a.severity === "high");
@@ -402,12 +398,8 @@ const AdminMonitorPage: React.FC = () => {
     setChatMessages(prev => [...prev, { role: "user", text: question, time: formatTime(new Date().toISOString()) }]);
     setBotLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}?key=${API_KEY}&action=monitor-query`,
-        { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `question=${encodeURIComponent(question)}` }
-      );
-      const data = await res.json();
-      setChatMessages(prev => [...prev, { role: "bot", text: data.data?.answer || data.answer || data.message || "ما لقيت معلومات", time: formatTime(new Date().toISOString()) }]);
+      const data = await galaApi.askBot(question);
+      setChatMessages(prev => [...prev, { role: "bot", text: data?.data?.answer || data?.answer || data?.message || "ما لقيت معلومات", time: formatTime(new Date().toISOString()) }]);
     } catch {
       setChatMessages(prev => [...prev, { role: "bot", text: "خطأ في الاتصال — حاول مرة أخرى", time: formatTime(new Date().toISOString()) }]);
     } finally {
