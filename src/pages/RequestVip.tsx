@@ -112,13 +112,8 @@ const RequestVip: React.FC = () => {
         if (limit <= 0) return "locked";
         if ((usedPerLevel[level] || 0) >= limit) return "used_up";
       }
-      if (level === 6) {
-        const limit = limitsPerLevel[6] ?? 0;
-        if (limit <= 0) return "locked";
-      }
     } else {
       // Self: once per month, VIP 1-5 only
-      if (level >= 6) return "locked";
       if (usedSelf >= 1) return "used_up";
     }
     return "available";

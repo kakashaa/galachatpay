@@ -214,11 +214,10 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
                 </div>
 
                 {/* VIP limits grid */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {[
                     { label: "VIP 4", key: "vip4", limit: isEditing ? editData.vip4_limit : agent.vip4_limit, used: usage.vip4_used, color: "text-yellow-400" },
                     { label: "VIP 5", key: "vip5", limit: isEditing ? editData.vip5_limit : agent.vip5_limit, used: usage.vip5_used, color: "text-amber-400" },
-                    { label: "VIP 6", key: "vip6", limit: isEditing ? editData.vip6_limit : agent.vip6_limit, used: usage.vip6_used, color: "text-orange-400" },
                   ].map((v) => (
                     <div key={v.key} className="bg-muted/20 rounded-lg p-2.5 text-center space-y-1">
                       <p className={`text-xs font-bold ${v.color}`}>{v.label}</p>

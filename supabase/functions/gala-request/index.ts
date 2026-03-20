@@ -156,12 +156,6 @@ serve(async (req) => {
           }
         } else {
           // === SELF MODE: one request per month for VIP 1-5 ===
-          if (vipLevel > 5) {
-            return new Response(
-              JSON.stringify({ success: false, error: "VIP 6 متاح فقط كإهداء." }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
           const selfRequests = allReqs.filter(r => !r.recipient_uuid).length;
           if (selfRequests >= 1) {
             return new Response(
