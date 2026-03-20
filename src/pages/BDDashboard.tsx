@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Bell, X, CheckCircle2 } from "lucide-react";
+import { Loader2, Bell, CheckCircle2 } from "lucide-react";
 import OwnerControls from "@/components/bd/OwnerControls";
 import BDSupportersTab from "@/components/bd/BDSupportersTab";
 import BDAgentsTab from "@/components/bd/BDAgentsTab";
