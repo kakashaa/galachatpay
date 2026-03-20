@@ -15,7 +15,7 @@ const navItems = [
   { key: 'home' as BottomTab, icon: Home, label: 'الرئيسية' },
   { key: 'search' as BottomTab, icon: Search, label: 'بحث' },
   { key: 'chat' as BottomTab, icon: MessageCircle, label: 'المحادثات', center: true },
-  { key: 'monitor' as BottomTab, icon: Monitor, label: 'المراقبة' },
+  { key: 'monitor' as BottomTab, icon: Eye, label: 'المراقبة' },
   { key: 'favorites' as BottomTab, icon: MoreHorizontal, label: 'المزيد' },
 ];
 
