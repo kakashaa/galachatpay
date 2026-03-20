@@ -151,6 +151,14 @@ const Notifications: React.FC = () => {
   };
 
   useEffect(() => {
+    // Reset all state when user changes to prevent stale data from previous account
+    setNotifications([]);
+    setPrevCount(0);
+    setLoading(true);
+    setPendingInvitation(null);
+    setRespondingTo(null);
+    setResponded(null);
+
     if (!user?.uuid) return;
     fetchNotifs();
     checkPendingInvitation();
