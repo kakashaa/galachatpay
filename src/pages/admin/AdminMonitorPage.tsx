@@ -8,10 +8,50 @@ import {
   Shield, AlertTriangle, TrendingUp, Eye, Activity, Bell, Search, Settings,
   RefreshCw, Volume2, VolumeX, Send, Loader2, Bot, Trash2, CheckCheck,
   Zap, DollarSign, Megaphone, Gift, Monitor, Clock, ChevronDown, ChevronUp,
-  BarChart3, Users, ArrowUp, Radio, MessageSquare, Wifi, WifiOff,
+  BarChart3, Users, ArrowUp, Radio, MessageSquare, Wifi, WifiOff, X, Plus, Ban,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
+
+/* ─── API Layer ─── */
+const API_BASE = "https://hola-chat.com/wares-api.php";
+const API_KEY = "ghala2026actions";
+
+interface PromoConfig {
+  competitors: string[];
+  suspicious_phrases: string[];
+  safe_apps: string[];
+}
+
+async function fetchPromoConfig(): Promise<PromoConfig> {
+  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  return json.data;
+}
+
+async function updatePromoConfig(
+  action: "add_competitor" | "remove_competitor" | "add_phrase" | "remove_phrase" | "add_safe" | "remove_safe",
+  value: string
+): Promise<any> {
+  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ [action]: value }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function banUserApi(uuid: string, duration: number = 24): Promise<any> {
+  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=ban-user`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uuid, duration, type: ["normal"] }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
 
 /* ─── Types ─── */
 interface MonitorAlert {
@@ -288,8 +328,9 @@ const AdminMonitorPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-alerts"
+        `${API_BASE}?key=${API_KEY}&action=promo-alerts`
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const apiAlerts = (data.data?.alerts || []) as MonitorAlert[];
 
@@ -379,7 +420,7 @@ const AdminMonitorPage: React.FC = () => {
     setBotLoading(true);
     try {
       const res = await fetch(
-        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query",
+        `${API_BASE}?key=${API_KEY}&action=monitor-query`,
         { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `question=${encodeURIComponent(question)}` }
       );
       const data = await res.json();
@@ -392,6 +433,78 @@ const AdminMonitorPage: React.FC = () => {
   };
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  /* ── Promo Config ── */
+  const [promoConfig, setPromoConfig] = useState<PromoConfig | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [newCompetitor, setNewCompetitor] = useState("");
+  const [newPhrase, setNewPhrase] = useState("");
+
+  const loadPromoConfig = useCallback(async () => {
+    try {
+      setPromoLoading(true);
+      const data = await fetchPromoConfig();
+      setPromoConfig(data);
+    } catch { /* silent */ }
+    finally { setPromoLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === "settings") loadPromoConfig();
+  }, [activeSection, loadPromoConfig]);
+
+  const handleAddCompetitor = async () => {
+    if (!newCompetitor.trim() || promoSaving) return;
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("add_competitor", newCompetitor.trim());
+      setNewCompetitor("");
+      await loadPromoConfig();
+      toast.success("تمت الإضافة");
+    } catch { toast.error("فشل الإضافة"); }
+    finally { setPromoSaving(false); }
+  };
+
+  const handleRemoveCompetitor = async (name: string) => {
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("remove_competitor", name);
+      await loadPromoConfig();
+    } catch { toast.error("فشل الحذف"); }
+    finally { setPromoSaving(false); }
+  };
+
+  const handleAddPhrase = async () => {
+    if (!newPhrase.trim() || promoSaving) return;
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("add_phrase", newPhrase.trim());
+      setNewPhrase("");
+      await loadPromoConfig();
+      toast.success("تمت الإضافة");
+    } catch { toast.error("فشل الإضافة"); }
+    finally { setPromoSaving(false); }
+  };
+
+  const handleRemovePhrase = async (phrase: string) => {
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("remove_phrase", phrase);
+      await loadPromoConfig();
+    } catch { toast.error("فشل الحذف"); }
+    finally { setPromoSaving(false); }
+  };
+
+  /* ── Ban User ── */
+  const handleBanUser = async (uuid: string, name: string) => {
+    try {
+      await banUserApi(uuid, 24);
+      toast.success(`تم حظر ${name} لمدة 24 ساعة`);
+    } catch (err: any) {
+      toast.error(`فشل الحظر: ${err.message}`);
+    }
+  };
 
   /* ── Sections nav ── */
   const sections = [
