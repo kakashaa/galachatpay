@@ -135,12 +135,13 @@ const WorksPage: React.FC = () => {
   }, [user?.uuid]);
 
   // Auto-fetch salary data for all members
+  // Returns commission values in COINS (not USD)
   const fetchSalaryData = useCallback(async (worksId: string, membersList: MemberWithSalary[]) => {
     const month = new Date().toISOString().slice(0, 7);
     const year = new Date().getFullYear();
     const monthNum = new Date().getMonth() + 1;
 
-    let totalMonthCommission = 0;
+    let totalMonthCommissionCoins = 0; // sum of all commissions in COINS
     const updatedMembers = [...membersList];
 
     for (let i = 0; i < updatedMembers.length; i++) {
@@ -151,10 +152,10 @@ const WorksPage: React.FC = () => {
             `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${member.member_uuid}&month=${month}`
           );
           const data = await res.json();
-          const charges = data.data?.total_charges || 0;
-          const commission = data.data?.commission_2pct || 0;
+          const charges = data.data?.total_charges || 0; // coins
+          const commission = data.data?.commission_2pct || 0; // coins
           updatedMembers[i] = { ...member, monthly_charges: charges, commission };
-          totalMonthCommission += commission;
+          totalMonthCommissionCoins += commission;
         }
 
         if (member.member_type === "agent" && member.agency_id) {
@@ -162,15 +163,16 @@ const WorksPage: React.FC = () => {
             `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-salary&agency_id=${member.agency_id}&year=${year}&month_num=${monthNum}`
           );
           const data = await res.json();
-          const salary = data.data?.salary || 0;
-          const commission = data.data?.commission_2pct || 0;
-          updatedMembers[i] = { ...member, agency_salary: salary, commission };
-          totalMonthCommission += commission;
+          const salary = data.data?.salary || 0; // USD
+          const commissionUsd = data.data?.commission_2pct || 0; // USD
+          const commissionCoins = Math.floor(commissionUsd * 7500);
+          updatedMembers[i] = { ...member, agency_salary: salary, commission: commissionCoins };
+          totalMonthCommissionCoins += commissionCoins;
         }
       } catch { /* silent */ }
     }
 
-    return { totalMonthCommission, updatedMembers };
+    return { totalMonthCommissionCoins, updatedMembers };
   }, []);
 
   const fetchData = useCallback(async () => {
