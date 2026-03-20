@@ -1182,6 +1182,93 @@ const AdminMonitorPage: React.FC = () => {
             )}
           </motion.div>
 
+          {/* ═══ Promo Config Panel ═══ */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="rounded-2xl p-4 space-y-4"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold">🚫 إعدادات كشف الترويج</p>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={loadPromoConfig}
+                className="h-6 px-2 rounded-lg text-[9px] font-bold flex items-center gap-1 text-muted-foreground"
+                style={{ background: "rgba(255,255,255,0.05)" }}>
+                <RefreshCw size={9} className={promoLoading ? "animate-spin" : ""} /> تحديث
+              </motion.button>
+            </div>
+
+            {promoLoading && !promoConfig && (
+              <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color: "hsl(160 84% 39%)" }} /></div>
+            )}
+
+            {promoConfig && (
+              <div className="space-y-4">
+                {/* التطبيقات المنافسة */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>التطبيقات المنافسة ({promoConfig.competitors.length})</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {promoConfig.competitors.map(name => (
+                      <span key={name} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold"
+                        style={{ background: "hsla(0,84%,60%,0.1)", color: "hsl(0 84% 60%)" }}>
+                        {name}
+                        <button onClick={() => handleRemoveCompetitor(name)} disabled={promoSaving}
+                          className="hover:opacity-70 font-bold text-[10px]">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input value={newCompetitor} onChange={e => setNewCompetitor(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleAddCompetitor()}
+                      placeholder="أضف تطبيق..."
+                      className="flex-1 h-8 rounded-xl px-3 text-[10px] placeholder:text-muted-foreground focus:outline-none"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleAddCompetitor} disabled={promoSaving || !newCompetitor.trim()}
+                      className="h-8 px-3 rounded-xl text-[10px] font-bold text-white disabled:opacity-40"
+                      style={{ background: "hsl(0 84% 50%)" }}>+ إضافة</motion.button>
+                  </div>
+                </div>
+
+                {/* الجمل المشبوهة */}
+                <div className="space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+                  <p className="text-[10px] font-bold" style={{ color: "hsl(25 95% 53%)" }}>الجمل المشبوهة ({promoConfig.suspicious_phrases.length})</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {promoConfig.suspicious_phrases.map(phrase => (
+                      <span key={phrase} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold"
+                        style={{ background: "hsla(25,95%,53%,0.1)", color: "hsl(25 95% 53%)" }}>
+                        {phrase}
+                        <button onClick={() => handleRemovePhrase(phrase)} disabled={promoSaving}
+                          className="hover:opacity-70 font-bold text-[10px]">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input value={newPhrase} onChange={e => setNewPhrase(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleAddPhrase()}
+                      placeholder="أضف جملة..."
+                      className="flex-1 h-8 rounded-xl px-3 text-[10px] placeholder:text-muted-foreground focus:outline-none"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleAddPhrase} disabled={promoSaving || !newPhrase.trim()}
+                      className="h-8 px-3 rounded-xl text-[10px] font-bold text-white disabled:opacity-40"
+                      style={{ background: "hsl(25 95% 53%)" }}>+ إضافة</motion.button>
+                  </div>
+                </div>
+
+                {/* التطبيقات الآمنة */}
+                {promoConfig.safe_apps?.length > 0 && (
+                  <div className="space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+                    <p className="text-[10px] font-bold" style={{ color: "hsl(160 84% 39%)" }}>التطبيقات الآمنة ({promoConfig.safe_apps.length})</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {promoConfig.safe_apps.map(name => (
+                        <span key={name} className="px-2 py-1 rounded-lg text-[9px] font-bold"
+                          style={{ background: "hsla(160,84%,39%,0.1)", color: "hsl(160 84% 39%)" }}>
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
+
           <motion.button whileTap={{ scale: 0.97 }}
             onClick={() => toast.success("تم حفظ الإعدادات")}
             className="w-full py-3 rounded-2xl text-sm font-bold text-white"
