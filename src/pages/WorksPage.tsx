@@ -41,10 +41,7 @@ const WorksPage: React.FC = () => {
   const [memberType, setMemberType] = useState<"supporter" | "agent">("supporter");
   const [sending, setSending] = useState(false);
 
-  // Withdraw dialog
-  const [showWithdraw, setShowWithdraw] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [recipientUuid, setRecipientUuid] = useState("");
+  // Withdraw
   const [withdrawing, setWithdrawing] = useState(false);
 
   // Earnings
@@ -148,22 +145,22 @@ const WorksPage: React.FC = () => {
       try {
         if (member.member_type === "supporter") {
           const res = await fetch(
-            `https://galachat.site/project-z/api.php?action=user_monthly_charges&admin_key=ghala2026owner&uuid=${member.member_uuid}&month=${month}`
+            `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${member.member_uuid}&month=${month}`
           );
           const data = await res.json();
-          const charges = data.total_charges || 0;
-          const commission = charges * 0.02;
+          const charges = data.data?.total_charges || 0;
+          const commission = data.data?.commission_2pct || 0;
           updatedMembers[i] = { ...member, monthly_charges: charges, commission };
           totalMonthCommission += commission;
         }
 
         if (member.member_type === "agent" && member.agency_id) {
           const res = await fetch(
-            `https://galachat.site/project-z/api.php?action=agency_salary&admin_key=ghala2026owner&agency_id=${member.agency_id}&year=${year}&month=${monthNum}`
+            `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-salary&agency_id=${member.agency_id}&year=${year}&month_num=${monthNum}`
           );
           const data = await res.json();
-          const salary = data.salary || 0;
-          const commission = salary * 0.02;
+          const salary = data.data?.salary || 0;
+          const commission = data.data?.commission_2pct || 0;
           updatedMembers[i] = { ...member, agency_salary: salary, commission };
           totalMonthCommission += commission;
         }
@@ -247,71 +244,63 @@ const WorksPage: React.FC = () => {
 
   // Validate supporter
   const validateSupporter = async (uuid: string): Promise<{ ok: boolean; reason?: string; name?: string }> => {
-    const userRes = await fetch(
-      `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${uuid}`
-    );
-    const userData = await userRes.json();
+    try {
+      const res = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${uuid}`
+      );
+      const data = await res.json();
 
-    if (!userData.success || !userData.name) {
-      return { ok: false, reason: "المستخدم غير موجود" };
+      if (!data.ok) {
+        return { ok: false, reason: data.error || "المستخدم غير موجود" };
+      }
+
+      if (!data.data?.eligible) {
+        return { ok: false, reason: "لا يمكن إضافة هذا المستخدم:\n" + (data.data?.reason || "غير مؤهل") };
+      }
+
+      // Check not registered with another BD
+      const { data: existing } = await supabase
+        .from("works_members").select("id")
+        .eq("member_uuid", uuid).eq("status", "active").maybeSingle();
+      if (existing) {
+        return { ok: false, reason: "هذا المستخدم مسجّل بفريق بيدي آخر" };
+      }
+
+      return { ok: true, name: data.data.name };
+    } catch {
+      return { ok: false, reason: "فشل الاتصال بالسيرفر" };
     }
-
-    if (userData.sender_level > 0 || userData.receiver_level > 0 || userData.charger_level > 0) {
-      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nمستوى حسابه: إرسال ${userData.sender_level} / استقبال ${userData.receiver_level} / شحن ${userData.charger_level}\nلازم يكون مستوى 0` };
-    }
-
-    const minDate = new Date("2026-02-19T00:00:00");
-    if (new Date(userData.created_at) < minDate) {
-      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nتاريخ إنشاء الحساب: ${new Date(userData.created_at).toLocaleDateString("ar-SA")}\nلازم يكون حساب جديد (بعد 19/2/2026)` };
-    }
-
-    if (userData.agency_id > 0) {
-      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nمسجّل بوكالة (ID: ${userData.agency_id})` };
-    }
-
-    const { data: existingMember } = await supabase
-      .from("works_members").select("id, works_id")
-      .eq("member_uuid", uuid).eq("status", "active").maybeSingle();
-    if (existingMember) {
-      return { ok: false, reason: `هذا المستخدم مسجّل بفريق بيدي آخر` };
-    }
-
-    const { data: otherSupporter } = await supabase
-      .from("works_members").select("id")
-      .eq("member_uuid", uuid).eq("member_type", "supporter").maybeSingle();
-    if (otherSupporter) {
-      return { ok: false, reason: "هذا المستخدم مسجّل كداعم عند شخص ثاني" };
-    }
-
-    return { ok: true, name: userData.name };
   };
 
   // Validate agent by agency code
   const validateAgent = async (agencyId: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
-    const agencyRes = await fetch(
-      `https://galachat.site/project-z/api.php?action=agency_detail&admin_key=ghala2026owner&agency_id=${agencyId}`
-    );
-    const agencyData = await agencyRes.json();
+    try {
+      const res = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-agency&agency_id=${agencyId}`
+      );
+      const data = await res.json();
 
-    if (!agencyData.success) {
-      return { ok: false, reason: "الوكالة غير موجودة" };
+      if (!data.ok) {
+        return { ok: false, reason: data.error || "الوكالة غير موجودة — تأكد من الكود" };
+      }
+
+      // Old agency with salary = only Owner can add
+      if (data.data?.has_salary) {
+        return { ok: false, reason: `هذه الوكالة قديمة (راتب: $${data.data.salary?.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
+      }
+
+      // Check not registered with another BD
+      const { data: existing } = await supabase
+        .from("works_members").select("id")
+        .eq("agency_id", agencyId).eq("status", "active").maybeSingle();
+      if (existing) {
+        return { ok: false, reason: "هذه الوكالة مسجّلة بفريق بيدي آخر" };
+      }
+
+      return { ok: true, uuid: String(data.data.owner_internal_id), name: data.data.name, agency_id: agencyId };
+    } catch {
+      return { ok: false, reason: "فشل الاتصال بالسيرفر" };
     }
-
-    const ownerUuid = agencyData.owner_uuid;
-
-    const { data: existingAgent } = await supabase
-      .from("works_members").select("id, works_id")
-      .eq("agency_id", agencyId).eq("status", "active").maybeSingle();
-    if (existingAgent) {
-      return { ok: false, reason: `هذه الوكالة مسجّلة بفريق بيدي آخر` };
-    }
-
-    const memberCheck = await validateSupporter(ownerUuid);
-    if (!memberCheck.ok) {
-      return { ok: false, reason: `صاحب الوكالة (${ownerUuid}):\n${memberCheck.reason}` };
-    }
-
-    return { ok: true, uuid: ownerUuid, name: memberCheck.name || agencyData.name, agency_id: agencyId };
   };
 
   const sendInvitation = async () => {
@@ -386,25 +375,36 @@ const WorksPage: React.FC = () => {
   };
 
   const submitWithdraw = async () => {
-    if (!myWorks || withdrawing) return;
-    const amt = parseFloat(withdrawAmount);
-    if (!amt || amt <= 0 || amt > Number(myWorks.balance_usd)) {
-      setModal({ type: "error", message: "مبلغ غير صحيح" });
+    if (!myWorks || withdrawing || !user?.uuid) return;
+    const dayOfMonth = new Date().getDate();
+    if (dayOfMonth > 5) {
+      setModal({ type: "error", message: "الصرف متاح أول 5 أيام من الشهر الجديد فقط" });
       return;
     }
-    if (!recipientUuid.trim()) {
-      setModal({ type: "error", message: "أدخل UUID المستلم" });
+    if (monthEarnings <= 0) {
+      setModal({ type: "error", message: "لا توجد أرباح لصرفها" });
       return;
     }
     setWithdrawing(true);
-    setModal({ type: "loading", message: "جاري تقديم طلب السحب..." });
+    setModal({ type: "loading", message: "جاري تقديم طلب صرف النسبة..." });
+
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const withdrawMonth = lastMonth.toISOString().slice(0, 7);
+    const coinsAmount = Math.floor(monthEarnings * 7500);
+
     try {
-      await supabase.from("works_withdrawals").insert({
-        works_id: myWorks.id, user_uuid: user!.uuid, amount_usd: amt,
-        amount_coins: Math.floor(amt * 8500), recipient_uuid: recipientUuid.trim(),
-      } as any);
-      setModal({ type: "success", message: `تم تقديم طلب السحب\n$${amt.toFixed(2)} = ${Math.floor(amt * 8500).toLocaleString()} كوينز` });
-      setShowWithdraw(false); setWithdrawAmount(""); setRecipientUuid("");
+      await supabase.from("bd_withdrawals").insert({
+        bd_uuid: user.uuid,
+        bd_name: user.name || "",
+        amount: monthEarnings,
+        status: "pending",
+        transfer_type: "commission",
+        country: withdrawMonth,
+        admin_note: `كوينز: ${coinsAmount.toLocaleString()} | شهر: ${withdrawMonth}`,
+      });
+      setModal({ type: "success", message: "تم إرسال طلبك — سيتم مراجعته" });
+      // withdrawal submitted
     } catch {
       setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
     }
@@ -582,13 +582,26 @@ const WorksPage: React.FC = () => {
           <UserPlus className="w-5 h-5" /> إضافة عضو
         </button>
 
-        {/* Withdraw */}
-        {balance > 0 && (
-          <button onClick={() => setShowWithdraw(true)}
-            className="w-full bg-card border border-border py-3 rounded-2xl font-bold text-foreground flex items-center justify-center gap-2">
-            <Wallet className="w-5 h-5" /> سحب الرصيد (${balance.toFixed(2)})
-          </button>
-        )}
+        {/* Withdraw commission */}
+        {(() => {
+          const dayOfMonth = new Date().getDate();
+          const canWithdraw = dayOfMonth <= 5;
+          const coinsAmount = Math.floor(monthEarnings * 7500);
+          return canWithdraw ? (
+            <button onClick={submitWithdraw} disabled={withdrawing || monthEarnings <= 0}
+              className="w-full bg-emerald-500 text-black py-3 rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+              <Wallet className="w-5 h-5" /> صرف نسبتي ({coinsAmount.toLocaleString()} كوينز)
+            </button>
+          ) : (
+            <div className="w-full bg-card border border-border py-3 rounded-2xl text-center space-y-1">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Lock className="w-4 h-4" />
+                <span className="font-bold text-sm">صرف نسبتي 🔒</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">يفتح بداية الشهر الجديد</p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Add Member Dialog */}
@@ -613,16 +626,16 @@ const WorksPage: React.FC = () => {
               <div className="flex gap-2">
                 <button onClick={() => { setMemberType("supporter"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "supporter" ? "bg-pink-500/20 text-pink-400 border border-pink-500/20" : "bg-muted text-muted-foreground"}`}>
-                  داعم
+                  داعم (UUID)
                 </button>
                 <button onClick={() => { setMemberType("agent"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "agent" ? "bg-orange-500/20 text-orange-400 border border-orange-500/20" : "bg-muted text-muted-foreground"}`}>
-                  وكيل
+                  وكيل (كود الوكالة)
                 </button>
               </div>
 
               <Input
-                placeholder={memberType === "agent" ? "كود الوكالة (Agency ID)" : "معرف المستخدم (UUID)"}
+                placeholder={memberType === "agent" ? "كود الوكالة (مثال: 2, 3, 5...)" : "معرف المستخدم (UUID)"}
                 value={memberInput}
                 onChange={e => setMemberInput(e.target.value)}
                 dir="ltr"
@@ -637,26 +650,6 @@ const WorksPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Withdraw Dialog */}
-      <Dialog open={showWithdraw} onOpenChange={setShowWithdraw}>
-        <DialogContent className="max-w-sm">
-          <div className="p-4 space-y-3" dir="rtl">
-            <p className="text-sm font-bold">سحب الرصيد</p>
-            <p className="text-xs text-muted-foreground">الرصيد المتاح: ${balance.toFixed(2)}</p>
-            <Input type="number" placeholder="المبلغ بالدولار" value={withdrawAmount}
-              onChange={e => setWithdrawAmount(e.target.value)} dir="ltr" />
-            {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-              <p className="text-xs text-emerald-400">= {Math.floor(parseFloat(withdrawAmount) * 8500).toLocaleString()} كوينز</p>
-            )}
-            <Input placeholder="UUID المستلم" value={recipientUuid}
-              onChange={e => setRecipientUuid(e.target.value)} dir="ltr" />
-            <button onClick={submitWithdraw} disabled={withdrawing}
-              className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50">
-              {withdrawing ? "جاري الإرسال..." : "تقديم طلب السحب"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {modal && <StatusModal type={modal.type} message={modal.message} vibrate={modal.vibrate} onClose={() => setModal(null)} />}
       <BottomNav />
