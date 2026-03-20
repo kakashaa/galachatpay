@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Crown, Gift, Users, Settings, Star, Trash2, Plus, Save, Clock, Check, X, Edit2, Loader2, Search, Award, Zap, Frame, Sparkles, Gem, Coins, UserCheck, Image, BadgeCheck } from "lucide-react";
+import { Crown, Gift, Users, Settings, Star, Trash2, Plus, Save, Clock, Check, X, Edit2, Loader2, Search, Frame, Sparkles, Gem, Coins, UserCheck, Image, BadgeCheck, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
@@ -209,7 +208,7 @@ const AdminSupporterClubPage: React.FC = () => {
   });
 
   return (
-    <AdminPageLayout title="نادي الداعم" icon={<Crown className="w-5 h-5 text-yellow-400" />}>
+    <AdminPageLayout title="نادي الداعم">
       <div className="px-4 py-3 space-y-4" dir="rtl">
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-xl" style={{ background: "hsl(0 0% 100% / 0.03)" }}>

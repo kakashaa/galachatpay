@@ -4,7 +4,7 @@ import { ArrowRight, Crown, Gift, Star, Trophy, Zap, ArrowUp, Clock, Users, Chec
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import MobileLayout from "@/components/MobileLayout";
 
@@ -302,8 +302,8 @@ const SupporterBenefits: React.FC = () => {
               style={{ background: "linear-gradient(135deg, hsl(0 0% 100% / 0.04), hsl(0 0% 100% / 0.02))", border: "1px solid hsl(0 0% 100% / 0.06)" }}
             >
               <div className="w-16 h-16 mx-auto rounded-full overflow-hidden mb-2" style={{ border: `2px solid ${currentTier?.color || "hsl(0 0% 100% / 0.1)"}` }}>
-                {user.avatar ? (
-                  <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                {user.profile?.image ? (
+                  <img src={user.profile.image} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-lg font-bold text-foreground/60" style={{ background: "hsl(0 0% 100% / 0.06)" }}>
                     {(user.name || "?").charAt(0)}
@@ -314,15 +314,15 @@ const SupporterBenefits: React.FC = () => {
               <p className="text-[10px] text-muted-foreground mb-3">UUID: {user.uuid}</p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="text-center">
-                  <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(user.coins || 0)}</p>
+                  <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(user.my_store?.coins || 0)}</p>
                   <p className="text-[9px] text-muted-foreground">كوينز</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(user.diamonds || 0)}</p>
+                  <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(user.my_store?.diamonds || 0)}</p>
                   <p className="text-[9px] text-muted-foreground">ماسات</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-base font-bold text-foreground tabular-nums">${user.salary || 0}</p>
+                  <p className="text-base font-bold text-foreground tabular-nums">${user.my_store?.usd || 0}</p>
                   <p className="text-[9px] text-muted-foreground">الراتب</p>
                 </div>
               </div>
