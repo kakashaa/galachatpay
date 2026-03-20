@@ -58,6 +58,9 @@ const Dashboard: React.FC = () => {
   }, [user?.uuid]);
 
   useEffect(() => {
+    // Reset state when account changes
+    setNotifCount(0);
+    prevNotifCountRef.current = 0;
     fetchNotifCount();
     const interval = setInterval(fetchNotifCount, 15_000);
     if (isAuthenticated) {
@@ -189,15 +192,15 @@ const Dashboard: React.FC = () => {
 
         {/* Main */}
         <main className="relative z-10 px-3">
-          <WorksInvitationBanner />
-          <BDInvitationBanner />
+          <WorksInvitationBanner key={`works-inv-${user?.uuid || "guest"}`} />
+          <BDInvitationBanner key={`bd-inv-${user?.uuid || "guest"}`} />
           <MarqueeBanner />
           <BannerCarousel />
           <AdminStoryCircle />
           <VideoStoryCircle />
           <div className="mt-3" />
           
-          {isAuthenticated ? <UserProfileCard /> : <GuestProfileCard />}
+          {isAuthenticated ? <UserProfileCard key={`profile-${user?.uuid}`} /> : <GuestProfileCard />}
 
           {/* Services Title */}
           <div className="flex items-center gap-2 mb-3 pr-1">
