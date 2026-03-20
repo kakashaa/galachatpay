@@ -111,7 +111,6 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         .update({
           vip4_limit: editData.vip4_limit,
           vip5_limit: editData.vip5_limit,
-          vip6_limit: editData.vip6_limit,
           updated_at: new Date().toISOString(),
         })
         .eq("id", agent.id);
