@@ -426,6 +426,12 @@ const BDDashboard: React.FC = () => {
               <span className="material-symbols-outlined text-xl">notifications</span>
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
             </button>
+            <button
+              onClick={() => setTab('settings')}
+              className="p-1.5 rounded-full hover:bg-white/5 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <span className="material-symbols-outlined text-xl">settings</span>
+            </button>
           </div>
         </div>
         {lastSync && (
