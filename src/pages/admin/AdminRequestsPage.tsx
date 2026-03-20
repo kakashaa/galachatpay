@@ -273,20 +273,14 @@ const AdminRequestsPage: React.FC = () => {
     const loadingToast = toast.loading(isApprove ? "جاري استخراج الصورة والرفع لغلا لايف..." : "جاري تنفيذ الطلب...");
     try {
       if (activeTab === "rooms") {
-        // Use external API for rooms
         const endpoint = isApprove ? "approve-room-bg" : "reject-room-bg";
-        const endpoint = isApprove ? "approve-room-bg" : "reject-room-bg";
-        const result = await api.call ? await (api as any).call("hola-chat", endpoint, { id }) : await galaApi.checkSupporter(id);
-        // fallback: use galaApi proxy for room actions
-        const { data: proxyResult } = await supabase.functions.invoke("gala-proxy", { body: { target: "hola-chat", action: endpoint, id } });
-        const result = proxyResult;
-        if (!result.ok && !result.success) throw new Error(result.error || "فشلت العملية");
-        // Also upload to gala if approving
+        const { data: result } = await supabase.functions.invoke("gala-proxy", { body: { target: "hola-chat", action: endpoint, id } });
+        if (!result?.ok && !result?.success) throw new Error(result?.error || "فشلت العملية");
         if (isApprove && item) {
           const imageUrl = item.image_url || item.file_url;
           if (imageUrl && item.user_uuid) {
             try {
-              await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=upload-room-background&uuid=${item.user_uuid}&image_url=${encodeURIComponent(imageUrl)}`);
+              await api.uploadRoomBackground(item.user_uuid, imageUrl);
             } catch { /* silent */ }
           }
         }
