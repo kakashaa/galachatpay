@@ -5,10 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
-  BarChart3, TrendingUp, TrendingDown, Users, DollarSign, Search,
+  BarChart3, TrendingUp, Users, DollarSign, Search,
   RefreshCw, Eye, Zap, Loader2, Activity, Ban, Hash, Wallet, X,
   Building2, UserPlus, UserCheck, UserX, Filter, ArrowUpRight, ArrowDownRight,
-  Calendar, Shield, Gift, Send, Download, Clock,
+  Gift, Send, Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -54,14 +54,6 @@ interface TransactionEntry {
   amount: number;
   source?: string;
   type?: string;
-}
-
-interface SalaryRecord {
-  month: string;
-  salary: number;
-  expenses: number;
-  net: number;
-  status: string;
 }
 
 interface StatCard {
@@ -235,36 +227,6 @@ const fetchGiftHistory = async (type: "sender" | "receiver", from?: string, to?:
     let url = `https://galalivechat.com/api/gift_history?type=${type}&perPage=100`;
     if (from && to) url += `&from=${from}&to=${to}`;
     const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    });
-    const data = await res.json();
-    return data.data || [];
-  } catch {
-    return [];
-  }
-};
-
-/* ─── Search user by name to get internal_id ─── */
-const searchUserInternal = async (query: string): Promise<number | null> => {
-  try {
-    const token = await getFreshToken();
-    const res = await fetch(`https://galalivechat.com/api/search/all-users?q=${encodeURIComponent(query)}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    });
-    const data = await res.json();
-    const users = data.data || [];
-    if (users.length > 0) return users[0].id;
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-/* ─── My Gifts (aggregated) ─── */
-const fetchMyGifts = async (internalId: number): Promise<any[]> => {
-  try {
-    const token = await getFreshToken();
-    const res = await fetch(`https://galalivechat.com/api/my_gifts?user_id=${internalId}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     });
     const data = await res.json();
