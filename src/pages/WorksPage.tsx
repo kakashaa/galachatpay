@@ -135,12 +135,13 @@ const WorksPage: React.FC = () => {
   }, [user?.uuid]);
 
   // Auto-fetch salary data for all members
+  // Returns commission values in COINS (not USD)
   const fetchSalaryData = useCallback(async (worksId: string, membersList: MemberWithSalary[]) => {
     const month = new Date().toISOString().slice(0, 7);
     const year = new Date().getFullYear();
     const monthNum = new Date().getMonth() + 1;
 
-    let totalMonthCommission = 0;
+    let totalMonthCommissionCoins = 0; // sum of all commissions in COINS
     const updatedMembers = [...membersList];
 
     for (let i = 0; i < updatedMembers.length; i++) {
@@ -151,10 +152,10 @@ const WorksPage: React.FC = () => {
             `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${member.member_uuid}&month=${month}`
           );
           const data = await res.json();
-          const charges = data.data?.total_charges || 0;
-          const commission = data.data?.commission_2pct || 0;
+          const charges = data.data?.total_charges || 0; // coins
+          const commission = data.data?.commission_2pct || 0; // coins
           updatedMembers[i] = { ...member, monthly_charges: charges, commission };
-          totalMonthCommission += commission;
+          totalMonthCommissionCoins += commission;
         }
 
         if (member.member_type === "agent" && member.agency_id) {
@@ -162,15 +163,16 @@ const WorksPage: React.FC = () => {
             `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-salary&agency_id=${member.agency_id}&year=${year}&month_num=${monthNum}`
           );
           const data = await res.json();
-          const salary = data.data?.salary || 0;
-          const commission = data.data?.commission_2pct || 0;
-          updatedMembers[i] = { ...member, agency_salary: salary, commission };
-          totalMonthCommission += commission;
+          const salary = data.data?.salary || 0; // USD
+          const commissionUsd = data.data?.commission_2pct || 0; // USD
+          const commissionCoins = Math.floor(commissionUsd * 7500);
+          updatedMembers[i] = { ...member, agency_salary: salary, commission: commissionCoins };
+          totalMonthCommissionCoins += commissionCoins;
         }
       } catch { /* silent */ }
     }
 
-    return { totalMonthCommission, updatedMembers };
+    return { totalMonthCommissionCoins, updatedMembers };
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -192,28 +194,16 @@ const WorksPage: React.FC = () => {
         const rawMembers = (m || []) as any as MemberWithSalary[];
         setMembers(rawMembers);
 
-        // Fetch today earnings
-        const today = new Date().toISOString().split("T")[0];
-        const { data: te } = await supabase
-          .from("works_earnings").select("commission_usd").eq("works_id", works.id).eq("period_date", today);
-        setTodayEarnings((te || []).reduce((s: number, e: any) => s + Number(e.commission_usd), 0));
-
-        // Fetch month earnings
-        const monthStart = new Date(); monthStart.setDate(1);
-        const { data: me } = await supabase
-          .from("works_earnings").select("commission_usd").eq("works_id", works.id)
-          .gte("period_date", monthStart.toISOString().split("T")[0]);
-        setMonthEarnings((me || []).reduce((s: number, e: any) => s + Number(e.commission_usd), 0));
-
-        // Auto-fetch salary data
+        // Auto-fetch salary data for live calculations
         if (rawMembers.length > 0) {
           setSalaryLoading(true);
           try {
-            const { totalMonthCommission, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
+            const { totalMonthCommissionCoins, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
             setMembers(updatedMembers);
-            if (totalMonthCommission > 0) {
-              setMonthEarnings(prev => Math.max(prev, totalMonthCommission));
-            }
+            // monthEarnings = total commission in COINS
+            setMonthEarnings(totalMonthCommissionCoins);
+            // todayEarnings = total commission in USD (commission_coins / 7500)
+            setTodayEarnings(totalMonthCommissionCoins / 7500);
           } catch { /* silent */ }
           setSalaryLoading(false);
         }
@@ -400,20 +390,19 @@ const WorksPage: React.FC = () => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const withdrawMonth = lastMonth.toISOString().slice(0, 7);
-    const coinsAmount = Math.floor(monthEarnings * 7500);
+    const usdAmount = monthEarnings / 7500;
 
     try {
       await supabase.from("bd_withdrawals").insert({
         bd_uuid: user.uuid,
         bd_name: user.name || "",
-        amount: monthEarnings,
+        amount: usdAmount,
         status: "pending",
         transfer_type: "commission",
         country: withdrawMonth,
-        admin_note: `كوينز: ${coinsAmount.toLocaleString()} | شهر: ${withdrawMonth}`,
+        admin_note: `كوينز: ${monthEarnings.toLocaleString()} | شهر: ${withdrawMonth}`,
       });
       setModal({ type: "success", message: "تم إرسال طلبك — سيتم مراجعته" });
-      // withdrawal submitted
     } catch {
       setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
     }
@@ -423,7 +412,6 @@ const WorksPage: React.FC = () => {
   const supporterCount = members.filter(m => m.member_type === "supporter").length;
   const agentCount = members.filter(m => m.member_type === "agent").length;
   const balance = Number(myWorks?.balance_usd || 0);
-  const totalEarnings = Number(myWorks?.total_earnings_usd || 0);
   const supporterPct = Number(myWorks?.supporter_commission_pct || 2);
   const agentPct = Number(myWorks?.agent_commission_pct || 3);
 
@@ -514,7 +502,7 @@ const WorksPage: React.FC = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card border border-border rounded-2xl p-3 text-center"
-            onClick={() => { if (balance > 0) { /* scroll to withdraw */ } }}
+            onClick={() => { if (balance > 0) submitWithdraw(); }}
             style={{ cursor: balance > 0 ? 'pointer' : 'default' }}
           >
             <p className="text-2xl font-mono font-extrabold text-green-400">${balance.toFixed(2)}</p>
@@ -523,18 +511,18 @@ const WorksPage: React.FC = () => {
             {balance > 0 && <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب</p>}
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-2xl font-mono font-extrabold text-emerald-400">${totalEarnings.toFixed(2)}</p>
+            <p className="text-2xl font-mono font-extrabold text-green-400">${todayEarnings.toFixed(2)}</p>
             <p className="text-[9px] text-muted-foreground">إجمالي الأرباح</p>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-card border border-border rounded-xl p-2.5 text-center">
-            <p className="text-lg font-mono font-extrabold text-amber-400">${todayEarnings.toFixed(2)}</p>
+            <p className="text-lg font-mono font-extrabold text-green-400">${todayEarnings.toFixed(2)}</p>
             <p className="text-[9px] text-muted-foreground font-medium">أرباح اليوم</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-2.5 text-center">
-            <p className="text-lg font-mono font-extrabold text-cyan-400">{Math.floor(monthEarnings * 7500).toLocaleString()}</p>
+            <p className="text-lg font-mono font-extrabold text-cyan-400">{monthEarnings.toLocaleString()}</p>
             <p className="text-[9px] text-muted-foreground font-medium">أرباح الشهر</p>
             <p className="text-[7px] text-muted-foreground">كوينز</p>
           </div>
@@ -555,15 +543,15 @@ const WorksPage: React.FC = () => {
             <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground">{m.member_name || m.member_uuid.slice(0, 8)}</span>
-                <span className="text-[10px] font-bold text-amber-400">${((m.monthly_charges || 0) / 7500).toFixed(2)}</span>
+                <span className="text-[10px] font-extrabold text-green-400">${((m.monthly_charges || 0) / 7500).toFixed(2)}</span>
               </div>
               {m.monthly_charges !== undefined && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-muted-foreground">شحن الشهر: {m.monthly_charges?.toLocaleString()} كوينز</span>
+                    <span className="text-muted-foreground">شحن الشهر: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-emerald-400 font-bold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
+                    <span className="text-emerald-400 font-extrabold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
                     <span className="text-muted-foreground">(${((m.commission || 0) / 7500).toFixed(2)})</span>
                   </div>
                 </div>
@@ -583,7 +571,7 @@ const WorksPage: React.FC = () => {
             <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground">{m.member_name || m.member_uuid.slice(0, 8)}</span>
-                <span className="text-[10px] font-bold text-amber-400">${(m.agency_salary || 0).toFixed(2)}</span>
+                <span className="text-[10px] font-extrabold text-green-400">${(m.agency_salary || 0).toFixed(2)}</span>
               </div>
               {m.agency_salary !== undefined && (
                 <div className="space-y-1">
@@ -591,8 +579,8 @@ const WorksPage: React.FC = () => {
                     <span className="text-muted-foreground">راتب الوكالة: ${m.agency_salary?.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-emerald-400 font-bold">{Math.floor((m.commission || 0) * 7500).toLocaleString()} كوينز عمولة</span>
-                    <span className="text-muted-foreground">(${(m.commission || 0).toFixed(2)})</span>
+                    <span className="text-emerald-400 font-extrabold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
+                    <span className="text-muted-foreground">(${((m.commission || 0) / 7500).toFixed(2)})</span>
                   </div>
                 </div>
               )}
