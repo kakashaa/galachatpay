@@ -265,10 +265,12 @@ const AdminLiveDashboardPage: React.FC = () => {
   const [receivers, setReceivers] = useState<RankUser[]>([]);
   const [rankLoading, setRankLoading] = useState(false);
 
-  // User search
+  // Search
+  const [searchTab, setSearchTab] = useState<"user" | "agency">("user");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [agencyInfo, setAgencyInfo] = useState<AgencyInfo | null>(null);
 
   // Chart
   const [chartData, setChartData] = useState<any[]>([]);
