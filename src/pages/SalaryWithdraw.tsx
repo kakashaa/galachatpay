@@ -314,10 +314,11 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const chargeCoins = async () => {
+  const chargeCoins = async (chargeTarget?: string) => {
     if (!selectedTransfer) return;
     setChargingCoins(true);
     setError("");
+    const targetId = chargeTarget || user!.uuid;
     try {
       const res = await fetch(API, {
         method: "POST",
@@ -325,7 +326,7 @@ const SalaryWithdraw: React.FC = () => {
         body: JSON.stringify({
           action: "salary_charge_manual",
           admin_key: "ghala2026owner",
-          uuid: user!.uuid,
+          uuid: targetId,
           amount: selectedTransfer.amount_usd,
           reference_id: selectedTransfer.reference_id,
         }),
