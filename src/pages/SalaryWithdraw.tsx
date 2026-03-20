@@ -604,6 +604,30 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
+  const getUsedLabel = (t: Transfer) => {
+    const detail = usedDetails[t.reference_id];
+    if (!detail) return { label: "تم الصرف ✅", sub: "" };
+    if (detail.request_type === "charge_self") {
+      return { label: "تم شحن كوينزات لحسابك ✅", sub: "" };
+    }
+    if (detail.request_type === "charge_other") {
+      const name = detail.target_name || detail.recipient_name || "";
+      const uuid = detail.target_uuid || "";
+      return {
+        label: "تم شحن كوينزات ✅",
+        sub: name ? `🎁 ${name}${uuid ? ` (${uuid})` : ""}` : "",
+      };
+    }
+    if (detail.request_type === "cash") {
+      const name = detail.recipient_name || "";
+      return {
+        label: "سحب نقدي 💵",
+        sub: name ? `المستلم: ${name}` : "",
+      };
+    }
+    return { label: "تم الصرف ✅", sub: "" };
+  };
+
   if (!user) return null;
 
   const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
