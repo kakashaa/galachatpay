@@ -628,27 +628,34 @@ const SalaryWithdraw: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">{t.time}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2">
                     {cashLeft > 0 && (
                       <Button
                         onClick={() => handleSelectTransfer(t, "cash")}
                         size="sm"
-                        className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        سحب نقدي
+                        💵 سحب نقدي
                       </Button>
                     )}
-                    <Button
-                      onClick={() => handleSelectTransfer(t, "coins")}
-                      size="sm"
-                      variant={cashLeft > 0 ? "outline" : "default"}
-                      className={cn(
-                        "flex-1 h-9 text-xs font-bold",
-                        cashLeft > 0 ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10" : "gold-gradient text-primary-foreground"
-                      )}
-                    >
-                      شحن كوينز
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleSelectTransfer(t, "charge_self")}
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-9 text-xs font-bold border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                      >
+                        🪙 شحن لحسابي
+                      </Button>
+                      <Button
+                        onClick={() => handleSelectTransfer(t, "charge_other")}
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-9 text-xs font-bold border-primary/30 text-primary hover:bg-primary/10"
+                      >
+                        🎁 شحن لآخر
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
