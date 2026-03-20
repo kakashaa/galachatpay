@@ -17,7 +17,7 @@ import {
   Gift,
   ArrowRight,
   ArrowLeft,
-  Upload,
+  
   Video,
   CheckCircle2,
   Loader2,
@@ -291,12 +291,10 @@ const ReportPage = () => {
     if (!file) return;
 
     const isVideo = file.type.startsWith("video/");
-    const isImage = file.type.startsWith("image/");
 
-    // No longer force video-only for any type
-
-    if (!isVideo && !isImage) {
-      toast.error("يجب رفع صورة أو فيديو");
+    if (!isVideo) {
+      toast.error("يجب رفع فيديو كدليل على المخالفة");
+      e.target.value = "";
       return;
     }
 
@@ -944,11 +942,11 @@ const ReportPage = () => {
                       </div>
                     ) : (
                       <label className="block border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-destructive/50 transition-colors">
-                        <input type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" />
+                        <input type="file" accept="video/*" onChange={handleFileChange} className="hidden" />
                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                          <Upload className="w-10 h-10" />
-                          <span>اضغط لرفع صورة أو فيديو</span>
-                          <span className="text-xs">الحد الأقصى 100MB</span>
+                          <Video className="w-10 h-10" />
+                          <span className="font-bold">اضغط لرفع فيديو كدليل</span>
+                          <span className="text-xs">فيديو فقط • الحد الأقصى 100MB</span>
                         </div>
                       </label>
                     )}
