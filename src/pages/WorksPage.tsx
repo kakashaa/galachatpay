@@ -323,7 +323,7 @@ const WorksPage: React.FC = () => {
       if (memberType === "supporter") {
         const result = await validateSupporter(memberInput.trim());
         if (!result.ok) {
-          await handleFailedAttempt(result.reason!);
+          await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
           return;
         }
