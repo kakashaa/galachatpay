@@ -65,12 +65,6 @@ const InstantRequest: React.FC = () => {
   const [selectedCountryId, setSelectedCountryId] = useState("");
   const [selectedMethodId, setSelectedMethodId] = useState("");
   const [accountInfo, setAccountInfo] = useState("");
-  const [whatsappNumber, setWhatsappNumber] = useState("");
-
-  if (!user) {
-    navigate("/");
-    return null;
-  }
 
   const selectedCountry: CountryConfig | undefined = countries.find((c) => c.id === selectedCountryId);
   const selectedMethod: PaymentMethod | undefined = selectedCountry?.methods.find((m) => m.id === selectedMethodId);
