@@ -122,8 +122,7 @@ serve(async (req) => {
             .maybeSingle();
 
           const vip4Limit = override?.vip4_limit ?? 3;
-          const vip5Limit = override?.vip5_limit ?? 2;
-          const vip6Limit = override?.vip6_limit ?? 0;
+          const vip5Limit = override?.vip5_limit ?? 5;
 
           // Total gifting limit: 100/month (only for non-TOP agents)
           const totalGifts = allReqs.filter(r => r.recipient_uuid).length;
