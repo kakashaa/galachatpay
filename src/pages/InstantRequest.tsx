@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Zap, CheckCircle, AlertCircle, Loader2,
-  Globe, UserCheck, Send, Wallet, User, Search, Coins,
+  Globe, UserCheck, Send, Wallet, User, Search, Coins, Phone,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 
@@ -65,6 +66,8 @@ const InstantRequest: React.FC = () => {
   const [selectedCountryId, setSelectedCountryId] = useState("");
   const [selectedMethodId, setSelectedMethodId] = useState("");
   const [accountInfo, setAccountInfo] = useState("");
+  const [whatsappCode, setWhatsappCode] = useState("+966");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
 
   const selectedCountry: CountryConfig | undefined = countries.find((c) => c.id === selectedCountryId);
   const selectedMethod: PaymentMethod | undefined = selectedCountry?.methods.find((m) => m.id === selectedMethodId);
@@ -227,7 +230,7 @@ const InstantRequest: React.FC = () => {
               bank: selectedMethod?.label || "",
               account_name: fullName,
               account_number: accountInfo,
-              whatsapp: "",
+              whatsapp: whatsappNumber ? `${whatsappCode}${whatsappNumber}` : "",
             },
           }),
         });
@@ -236,6 +239,16 @@ const InstantRequest: React.FC = () => {
       }
 
       const refId = `INS-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+
+      // Send in-app notification
+      try {
+        await sendUserNotification(
+          user.uuid,
+          "✅ تم استلام طلب السحب الفوري",
+          `المبلغ: $${selectedTransfer.amount_usd} — الداعم: ${supporterInfo.name} (UUID: ${supporterInfo.uuid}) — البنك: ${selectedMethod?.label || ""}`
+        );
+      } catch {}
+
       setRequestId(refId);
       setSubmitted(true);
     } catch {
@@ -519,6 +532,42 @@ const InstantRequest: React.FC = () => {
               )}
             </motion.div>
 
+            {/* WhatsApp Number */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-4 space-y-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Phone className="w-4 h-4 text-emerald-400" /> رقم الواتساب (للإشعارات)
+              </h3>
+              <div className="flex gap-2">
+                <Select value={whatsappCode} onValueChange={setWhatsappCode}>
+                  <SelectTrigger className="bg-muted/20 border-border/30 w-[110px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="+966">🇸🇦 +966</SelectItem>
+                    <SelectItem value="+967">🇾🇪 +967</SelectItem>
+                    <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                    <SelectItem value="+971">🇦🇪 +971</SelectItem>
+                    <SelectItem value="+20">🇪🇬 +20</SelectItem>
+                    <SelectItem value="+962">🇯🇴 +962</SelectItem>
+                    <SelectItem value="+964">🇮🇶 +964</SelectItem>
+                    <SelectItem value="+965">🇰🇼 +965</SelectItem>
+                    <SelectItem value="+968">🇴🇲 +968</SelectItem>
+                    <SelectItem value="+974">🇶🇦 +974</SelectItem>
+                    <SelectItem value="+973">🇧🇭 +973</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={whatsappNumber}
+                  onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ""))}
+                  placeholder="رقم الواتساب"
+                  inputMode="numeric"
+                  className="flex-1 bg-muted/20 border-border/30"
+                  dir="ltr"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">بنرسل لك تحديثات الطلب على الواتساب</p>
+            </motion.div>
+
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep("supporter")} className="flex-1 h-12 border-border/30">رجوع</Button>
               <Button
@@ -589,6 +638,12 @@ const InstantRequest: React.FC = () => {
                     <span className="font-bold text-foreground" dir="auto">{r.value}</span>
                   </div>
                 ))}
+                {whatsappNumber && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">واتساب</span>
+                    <span className="font-bold text-foreground font-mono" dir="ltr">{whatsappCode}{whatsappNumber}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
 
