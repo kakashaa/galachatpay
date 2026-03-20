@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Search, MessageCircle, Monitor, MoreHorizontal } from 'lucide-react';
+import { Home, Search, MessageCircle, Eye, MoreHorizontal } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 type BottomTab = 'home' | 'search' | 'chat' | 'monitor' | 'favorites';
