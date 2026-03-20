@@ -37,7 +37,7 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
   const [addUuid, setAddUuid] = useState("");
   const [addLoading, setAddLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState({ vip4_limit: 3, vip5_limit: 2, vip6_limit: 0 });
+  const [editData, setEditData] = useState({ vip4_limit: 3, vip5_limit: 5 });
 
   const loadAgents = useCallback(async () => {
     setLoading(true);
