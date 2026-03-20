@@ -364,25 +364,29 @@ const AdminMonitorPage: React.FC = () => {
   }, [loadAlerts, settingsRefreshSec]);
 
   /* ── Computed ── */
-  const todayAlerts = alerts.filter(a => {
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+  const safePusherMessages = Array.isArray(pusherMessages) ? pusherMessages : [];
+  const todayAlerts = safeAlerts.filter(a => {
     try { return new Date(a.created_at).toDateString() === new Date().toDateString(); } catch { return false; }
   });
-  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length + pusherMessages.length;
-  const unreadCount = alerts.filter(a => !a.is_read).length;
+  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length + safePusherMessages.length;
+  const unreadCount = safeAlerts.filter(a => !a.is_read).length;
 
-  const filteredAlerts = alerts.filter(a => {
+  const filteredAlerts = safeAlerts.filter(a => {
     if (alertFilter === "all") return true;
     const cfg = alertTypeConfig[a.alert_type];
     return cfg?.filterKey === alertFilter;
   });
 
   /* ── History filtered ── */
-  const historyAlerts = alerts.filter(a => {
-    const d = new Date(a.created_at);
-    const now = new Date();
-    if (historyFilter === "today") return d.toDateString() === now.toDateString();
-    if (historyFilter === "week") return (now.getTime() - d.getTime()) < 7 * 86400000;
-    return (now.getTime() - d.getTime()) < 30 * 86400000;
+  const historyAlerts = safeAlerts.filter(a => {
+    try {
+      const d = new Date(a.created_at);
+      const now = new Date();
+      if (historyFilter === "today") return d.toDateString() === now.toDateString();
+      if (historyFilter === "week") return (now.getTime() - d.getTime()) < 7 * 86400000;
+      return (now.getTime() - d.getTime()) < 30 * 86400000;
+    } catch { return false; }
   }).filter(a => {
     if (!historySearch) return true;
     const s = historySearch.toLowerCase();
@@ -391,10 +395,10 @@ const AdminMonitorPage: React.FC = () => {
 
   /* ── Mark as read ── */
   const markAllRead = async () => {
-    const unread = alerts.filter(a => !a.is_read).map(a => a.id);
+    const unread = safeAlerts.filter(a => !a.is_read).map(a => a.id);
     if (unread.length === 0) return;
     await (supabase.from("monitor_alerts" as any) as any).update({ is_read: true }).in("id", unread);
-    setAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
+    setAlerts(prev => (prev || []).map(a => ({ ...a, is_read: true })));
     toast.success("تم تعليم الكل كمقروء");
   };
 
@@ -511,7 +515,7 @@ const AdminMonitorPage: React.FC = () => {
     { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
     { key: "bot" as const, label: "البوت", icon: Bot, badge: 0 },
     { key: "stats" as const, label: "إحصائيات", icon: BarChart3, badge: 0 },
-    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: pusherMessages.length },
+    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: safePusherMessages.length },
     { key: "history" as const, label: "السجل", icon: Clock, badge: 0 },
     { key: "settings" as const, label: "إعدادات", icon: Settings, badge: 0 },
   ];
@@ -519,7 +523,7 @@ const AdminMonitorPage: React.FC = () => {
   const todayCountByType = monitorTypes.filter(m => m.connected).map(m => ({
     ...m,
     count: m.key === "pusher_promo"
-      ? pusherMessages.length
+      ? safePusherMessages.length
       : todayAlerts.filter(a => a.alert_type === m.key).length,
   }));
 
@@ -643,7 +647,7 @@ const AdminMonitorPage: React.FC = () => {
               {alertFilters.map(f => {
                 const Icon = f.icon;
                 const active = alertFilter === f.key;
-                const count = f.key === "all" ? alerts.length : alerts.filter(a => alertTypeConfig[a.alert_type]?.filterKey === f.key).length;
+                const count = f.key === "all" ? safeAlerts.length : safeAlerts.filter(a => alertTypeConfig[a.alert_type]?.filterKey === f.key).length;
                 return (
                   <motion.button
                     key={f.key}
@@ -667,12 +671,12 @@ const AdminMonitorPage: React.FC = () => {
           </div>
 
           {/* Pusher real-time alerts (shown at top when filter is promotion or all) */}
-          {(alertFilter === "all" || alertFilter === "promotion") && pusherMessages.length > 0 && (
+          {(alertFilter === "all" || alertFilter === "promotion") && safePusherMessages.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 mb-1">
                 <Radio size={12} style={{ color: "hsl(0 84% 60%)" }} className="animate-pulse" />
                 <span className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>
-                  ترويج مكتشف عبر Pusher ({pusherMessages.length})
+                  ترويج مكتشف عبر Pusher ({safePusherMessages.length})
                 </span>
               </div>
               {pusherMessages.slice(0, 10).map((msg) => (
@@ -735,7 +739,7 @@ const AdminMonitorPage: React.FC = () => {
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "hsl(160 84% 39%)" }} /></div>
           )}
 
-          {!loading && filteredAlerts.length === 0 && pusherMessages.length === 0 && (
+          {!loading && filteredAlerts.length === 0 && safePusherMessages.length === 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="text-center py-16 rounded-2xl"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -896,7 +900,7 @@ const AdminMonitorPage: React.FC = () => {
             <div className="grid grid-cols-3 gap-2">
               {(["high", "medium", "low"] as const).map(sev => {
                 const cfg = severityConfig[sev];
-                const count = todayAlerts.filter(a => getSeverity(a) === sev).length + (sev === "high" ? pusherMessages.length : 0);
+                const count = todayAlerts.filter(a => getSeverity(a) === sev).length + (sev === "high" ? safePusherMessages.length : 0);
                 return (
                   <div key={sev} className="rounded-xl p-3 text-center" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
                     <p className="text-lg font-bold tabular-nums" style={{ color: cfg.color }}>{count}</p>
@@ -925,7 +929,7 @@ const AdminMonitorPage: React.FC = () => {
                   <p className="text-[9px] text-muted-foreground">محادثة مُراقبة</p>
                 </div>
                 <div className="rounded-xl p-3 text-center" style={{ background: "hsla(0,84%,60%,0.08)" }}>
-                  <p className="text-lg font-bold tabular-nums" style={{ color: "hsl(0 84% 60%)" }}>{pusherMessages.length}</p>
+                  <p className="text-lg font-bold tabular-nums" style={{ color: "hsl(0 84% 60%)" }}>{safePusherMessages.length}</p>
                   <p className="text-[9px] text-muted-foreground">ترويج مكتشف</p>
                 </div>
               </div>
@@ -942,7 +946,7 @@ const AdminMonitorPage: React.FC = () => {
           <p className="text-[11px] text-muted-foreground mb-1">أنواع المراقبة — {connectedCount}/{monitorTypes.length} متصل</p>
           {monitorTypes.map((m, i) => {
             const todayCount = m.key === "pusher_promo"
-              ? pusherMessages.length
+              ? safePusherMessages.length
               : todayAlerts.filter(a => a.alert_type === m.key).length;
             const isPusher = m.key === "pusher_promo";
             return (
@@ -1176,7 +1180,7 @@ const AdminMonitorPage: React.FC = () => {
               <div className="text-[9px] text-muted-foreground space-y-1 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <p>الحالة: {pusherConnected ? <span style={{ color: "hsl(160 84% 39%)" }}>متصل</span> : <span style={{ color: "hsl(0 84% 60%)" }}>غير متصل</span>}</p>
                 <p>محادثات مُراقبة: {subscribedChannelsRef.current.size}</p>
-                <p>ترويج مكتشف: {pusherMessages.length}</p>
+                <p>ترويج مكتشف: {safePusherMessages.length}</p>
                 <p className="pt-1">الكلمات المراقبة: {PROMO_KEYWORDS.slice(0, 8).join("، ")}...</p>
               </div>
             )}
