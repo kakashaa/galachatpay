@@ -878,37 +878,89 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── COINS SUCCESS ──
+  // ── COINS SUCCESS (receipt) ──
   if (step === "coins_success") {
+    const receiptCode = `GC-${selectedTransfer?.reference_id || "0000"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+    const receiptDate = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
     return (
-      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center px-6 py-16">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }}
-            className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6">
-            <Coins className="w-10 h-10 text-emerald-400" />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center w-full space-y-4">
-            <h2 className="text-lg font-bold text-foreground">
-              {targetInfo ? `تم شحن الكوينز لـ ${targetInfo.name}!` : "تم شحن الكوينز لحسابك!"}
-            </h2>
-            <div className="rounded-xl p-5 bg-emerald-500/10 border border-emerald-500/20">
-              <p className="text-3xl font-black text-emerald-400">{coinsCharged.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-1">كوينز</p>
-            </div>
-            {targetInfo && (
-              <div className="rounded-xl p-3 bg-muted/20 border border-border/20 flex items-center gap-3 justify-center">
-                <User className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold text-foreground">{targetInfo.name}</span>
-                <span className="text-[10px] text-muted-foreground font-mono">UUID: {targetInfo.uuid}</span>
+      <MobileLayout showHeader headerTitle="إيصال الشحن" onBack={() => navigate("/salary", { replace: true })}>
+        <div className="px-5 py-6 space-y-5">
+          {/* Receipt card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 space-y-5"
+          >
+            {/* Header */}
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
+                <CheckCircle className="w-8 h-8 text-emerald-400" />
               </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {targetInfo ? "تم إضافة الكوينز إلى رصيد المستلم" : "تم إضافة الكوينز إلى رصيدك في غلا لايف"}
-            </p>
+              <h2 className="text-lg font-black text-foreground">
+                {targetInfo ? "تم شحن الكوينز بنجاح" : "تم شحن حسابك بنجاح"}
+              </h2>
+            </div>
+
+            {/* Amount */}
+            <div className="rounded-xl bg-background/50 border border-border/20 p-4 text-center space-y-1">
+              <p className="text-xs text-muted-foreground">المبلغ</p>
+              <p className="text-3xl font-black text-emerald-400">{coinsCharged.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">كوينز</p>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">رقم الحوالة</span>
+                <span className="font-mono font-bold text-foreground">#{selectedTransfer?.reference_id}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">المبلغ بالدولار</span>
+                <span className="font-bold text-foreground" dir="ltr">${selectedTransfer?.amount_usd.toFixed(2)}</span>
+              </div>
+              {targetInfo && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">المستلم</span>
+                    <span className="font-bold text-foreground">{targetInfo.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">UUID المستلم</span>
+                    <span className="font-mono text-xs text-foreground">{targetInfo.uuid}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">التاريخ</span>
+                <span className="text-xs text-foreground">{receiptDate}</span>
+              </div>
+            </div>
+
+            {/* Receipt code */}
+            <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 text-center space-y-2">
+              <p className="text-[10px] text-muted-foreground">كود العملية</p>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-lg font-black font-mono text-primary tracking-wider">{receiptCode}</span>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(receiptCode); toast.success("تم نسخ الكود"); }}
+                  className="p-1.5 rounded-lg bg-primary/15 active:scale-90 transition-transform"
+                >
+                  <Copy className="w-3.5 h-3.5 text-primary" />
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">احتفظ بهذا الكود كمرجع</p>
+            </div>
           </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
-            <Button onClick={() => navigate("/salary")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
-          </motion.div>
+
+          {/* Forced navigation to salary home only */}
+          <Button
+            onClick={() => navigate("/salary", { replace: true })}
+            className="w-full h-12 gold-gradient text-primary-foreground font-bold text-sm"
+          >
+            العودة للرئيسية
+          </Button>
         </div>
       </MobileLayout>
     );
