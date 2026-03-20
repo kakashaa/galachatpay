@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { MessageCircle } from 'lucide-react';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatBubble from '@/components/chat/ChatBubble';
 import ChatInput from '@/components/chat/ChatInput';
@@ -114,6 +115,20 @@ const ChatRoom: React.FC = () => {
     setUploading(false);
   };
 
+  const handleVoiceSend = async (url: string, duration: number) => {
+    if (!conversationId) return;
+    try {
+      await (supabase as any).from('direct_messages').insert({
+        conversation_id: conversationId, sender_uuid: myUuid, sender_name: myName,
+        message_type: 'voice', media_url: url, content: `${duration}`, status: 'sent',
+      });
+      await (supabase as any).from('conversations').update({
+        last_message: 'رسالة صوتية',
+        last_message_at: new Date().toISOString(),
+      }).eq('id', conversationId);
+    } catch { toast.error('فشل إرسال الصوت'); }
+  };
+
   // Group by date
   const grouped: { date: string; msgs: Message[] }[] = [];
   messages.forEach(msg => {
@@ -148,14 +163,16 @@ const ChatRoom: React.FC = () => {
           </div>
         ))}
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 gap-2">
-            <span className="text-4xl"></span>
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "hsl(217 91% 40% / 0.1)" }}>
+              <MessageCircle className="w-7 h-7 text-blue-400/60" />
+            </div>
             <p className="text-sm text-muted-foreground">ابدأ المحادثة</p>
           </div>
         )}
       </div>
 
-      <ChatInput onSend={sendText} onMediaUpload={handleMediaUpload} sending={sending} uploading={uploading} />
+      <ChatInput onSend={sendText} onMediaUpload={handleMediaUpload} onVoiceSend={handleVoiceSend} sending={sending} uploading={uploading} />
     </div>
   );
 };
