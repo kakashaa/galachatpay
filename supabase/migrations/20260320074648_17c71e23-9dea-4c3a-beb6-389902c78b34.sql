@@ -1,0 +1,1 @@
+DELETE FROM works_members WHERE member_uuid = '3097';
