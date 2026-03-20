@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -46,6 +46,51 @@ const AdminWorksPage: React.FC = () => {
   const [editTotalEarnings, setEditTotalEarnings] = useState("");
   const [editFinLoading, setEditFinLoading] = useState(false);
 
+  // Global settings
+  const [globalSettings, setGlobalSettings] = useState<Record<string, boolean>>({
+    works_wallets_enabled: true,
+    works_instant_commission: true,
+    works_page_enabled: true,
+  });
+  const [globalCommPct, setGlobalCommPct] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  const fetchGlobalSettings = useCallback(async () => {
+    const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled"];
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", keys);
+    if (data) {
+      const map: Record<string, boolean> = {};
+      data.forEach((r: any) => { map[r.key] = r.value !== "false"; });
+      setGlobalSettings(prev => ({ ...prev, ...map }));
+    }
+  }, []);
+
+  const toggleGlobalSetting = async (key: string) => {
+    setSettingsLoading(true);
+    const newVal = !globalSettings[key];
+    const { error } = await supabase.from("app_settings").upsert({ key, value: String(newVal), updated_at: new Date().toISOString() });
+    if (error) { toast.error("فشل التحديث"); } else {
+      setGlobalSettings(prev => ({ ...prev, [key]: newVal }));
+      toast.success(`تم ${newVal ? "تفعيل" : "إيقاف"} الإعداد`);
+    }
+    setSettingsLoading(false);
+  };
+
+  const applyGlobalCommission = async () => {
+    const pct = parseFloat(globalCommPct);
+    if (isNaN(pct) || pct < 0 || pct > 100) { toast.error("نسبة غير صالحة"); return; }
+    setSettingsLoading(true);
+    try {
+      for (const a of accounts) {
+        await adminCall("works_update_account", { id: a.id, supporter_commission_pct: pct, agent_commission_pct: pct });
+      }
+      toast.success(`تم تعديل النسبة لجميع الحسابات إلى ${pct}%`);
+      setGlobalCommPct("");
+      fetchAccounts();
+    } catch { toast.error("فشل التحديث"); }
+    setSettingsLoading(false);
+  };
+
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try { const d = await adminCall("works_list_requests"); setRequests(d || []); } catch { }
@@ -74,6 +119,7 @@ const AdminWorksPage: React.FC = () => {
     if (tab === "requests") fetchRequests();
     else if (tab === "accounts") fetchAccounts();
     else if (tab === "withdrawals") fetchWithdrawals();
+    else if (tab === "settings") { fetchAccounts(); fetchGlobalSettings(); }
   }, [tab]);
 
   const approveRequest = async (id: string) => {
@@ -352,7 +398,59 @@ const AdminWorksPage: React.FC = () => {
           {/* Settings Tab */}
           <TabsContent value="settings">
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">اختر حساب Works من تبويب الحسابات لتعديل إعداداته.</p>
+              {/* Global Controls */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Settings className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-bold">إعدادات عامة (الكل)</span>
+                </div>
+
+                {/* Toggle: Wallets */}
+                {[
+                  { key: "works_wallets_enabled", label: "المحافظ / السحب", desc: "تمكين أو إيقاف السحب لجميع حسابات البيدي", icon: <DollarSign className="w-4 h-4" /> },
+                  { key: "works_instant_commission", label: "احتساب العمولة الفوري", desc: "تفعيل أو إيقاف حساب العمولات التلقائي", icon: <Calculator className="w-4 h-4" /> },
+                  { key: "works_page_enabled", label: "صفحة البيدي", desc: "إخفاء أو إظهار صفحة البيدي لجميع المستخدمين", icon: <Ban className="w-4 h-4" /> },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${globalSettings[item.key] ? "bg-emerald-500/15 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+                        {item.icon}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleGlobalSetting(item.key)}
+                      disabled={settingsLoading}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${globalSettings[item.key] ? "bg-emerald-500" : "bg-muted-foreground/30"}`}
+                    >
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${globalSettings[item.key] ? "right-0.5" : "left-0.5"}`} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Global commission edit */}
+                <div className="p-3 rounded-xl border border-border/50 bg-muted/20 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Percent className="w-4 h-4 text-amber-400" />
+                    <p className="text-xs font-bold">تعديل النسب للكل</p>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">تطبيق نسبة عمولة موحدة على جميع حسابات البيدي (داعمين + وكلاء)</p>
+                  <div className="flex gap-2">
+                    <Input type="number" value={globalCommPct} onChange={e => setGlobalCommPct(e.target.value)}
+                      placeholder="النسبة %" dir="ltr" className="h-8 text-xs flex-1" min="0" max="100" step="0.5" />
+                    <button onClick={applyGlobalCommission} disabled={settingsLoading || !globalCommPct}
+                      className="px-4 h-8 rounded-xl text-xs font-bold disabled:opacity-50" style={{ background: 'hsl(38 92% 50%)', color: 'black' }}>
+                      {settingsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "تطبيق"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Per-account settings */}
+              <p className="text-xs text-muted-foreground">إعدادات حسابات فردية:</p>
               {accounts.map(a => (
                 <div key={a.id} className="bg-card border border-border rounded-xl p-3 space-y-3">
                   <p className="text-sm font-bold">{a.works_code} — {a.user_name}</p>
