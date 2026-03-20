@@ -35,6 +35,14 @@ interface Props {
   canAct: boolean;
 }
 
+const normalizeChargeStatus = (rawStatus: string | null | undefined, requestType: string) => {
+  const status = String(rawStatus || "").toLowerCase();
+  if (["failed", "rejected", "error"].includes(status)) return "failed" as const;
+  if (requestType === "charge_self" || requestType === "charge_other") return "completed" as const;
+  if (["approved", "completed", "done", "delivered", "success"].includes(status)) return "completed" as const;
+  return "pending" as const;
+};
+
 const getMonthOptions = () => {
   const months: { value: string; label: string }[] = [];
   const now = new Date();
@@ -67,6 +75,7 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
   const [charges, setCharges] = useState<SalaryCharge[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "completed" | "pending">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "charge_self" | "charge_other">("all");
   const [search, setSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
   const isCurrentMonth = selectedMonth === getCurrentMonth();
@@ -87,20 +96,24 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
       const data = await res.json();
 
       if (data.success || data.charges) {
-        setCharges((data.charges || []).map((c: any) => ({
-          id: c.id || c.request_code || "",
-          uuid: c.uuid || c.user_uuid || c.target_uuid || "",
-          user_name: c.user_name || c.account_name || "",
-          target_name: c.target_name || c.recipient_name || "",
-          target_uuid: c.target_uuid || c.uuid || "",
-          amount_usd: c.amount || c.amount_usd || 0,
-          coins_charged: c.coins || c.amount_coins || (c.amount || c.amount_usd || 0) * COINS_PER_USD,
-          reference_id: c.reference_id || c.transaction_id || "",
-          transfer_verified: c.transfer_verified ?? true,
-          status: (c.status === "approved" || c.status === "completed" || c.status === "done" || c.status === "delivered") ? "completed" : c.status === "failed" ? "failed" : "pending",
-          created_at: c.created_at || new Date().toISOString(),
-          request_type: c.request_type || (c.target_uuid && c.target_uuid !== c.uuid ? "charge_other" : "charge_self"),
-        })));
+        setCharges((data.charges || []).map((c: any) => {
+          const requestType = c.request_type || (c.target_uuid && c.target_uuid !== c.uuid ? "charge_other" : "charge_self");
+          const amountUsd = c.amount || c.amount_usd || 0;
+          return {
+            id: c.id || c.request_code || "",
+            uuid: c.uuid || c.user_uuid || c.target_uuid || "",
+            user_name: c.user_name || c.account_name || "",
+            target_name: c.target_name || c.recipient_name || c.user_name || c.account_name || "",
+            target_uuid: c.target_uuid || c.uuid || c.user_uuid || "",
+            amount_usd: amountUsd,
+            coins_charged: c.coins || c.amount_coins || amountUsd * COINS_PER_USD,
+            reference_id: c.reference_id || c.transaction_id || "",
+            transfer_verified: c.transfer_verified ?? true,
+            status: normalizeChargeStatus(c.status, requestType),
+            created_at: c.created_at || new Date().toISOString(),
+            request_type: requestType,
+          };
+        }));
       } else {
         // Fallback: try Supabase local records
         const [year, month] = selectedMonth.split("-").map(Number);
@@ -115,20 +128,24 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
           .lte("created_at", endDate)
           .order("created_at", { ascending: false });
 
-        setCharges((rows || []).map((c: any) => ({
-          id: c.id,
-          uuid: c.target_uuid || c.user_uuid || "",
-          user_name: c.user_name || "",
-          target_name: c.target_name || c.recipient_name || "",
-          target_uuid: c.target_uuid || "",
-          amount_usd: c.amount_usd || 0,
-          coins_charged: c.amount_coins || (c.amount_usd || 0) * COINS_PER_USD,
-          reference_id: c.transfer_id || c.transaction_id || "",
-          transfer_verified: true,
-          status: (c.status === "approved" || c.status === "completed" || c.status === "done") ? "completed" : c.status === "failed" ? "failed" : "pending",
-          created_at: c.created_at || new Date().toISOString(),
-          request_type: c.request_type || "charge_self",
-        })));
+        setCharges((rows || []).map((c: any) => {
+          const requestType = c.request_type || "charge_self";
+          const amountUsd = c.amount_usd || 0;
+          return {
+            id: c.id,
+            uuid: c.user_uuid || c.target_uuid || "",
+            user_name: c.user_name || "",
+            target_name: c.target_name || c.recipient_name || c.user_name || "",
+            target_uuid: c.target_uuid || c.user_uuid || "",
+            amount_usd: amountUsd,
+            coins_charged: c.amount_coins || amountUsd * COINS_PER_USD,
+            reference_id: c.transfer_id || c.transaction_id || "",
+            transfer_verified: true,
+            status: normalizeChargeStatus(c.status, requestType),
+            created_at: c.created_at || new Date().toISOString(),
+            request_type: requestType,
+          };
+        }));
       }
     } catch {
       toast.error("فشل في جلب بيانات شحن الرواتب");
@@ -190,14 +207,21 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
     return charges.filter(c => {
       if (filter === "completed" && c.status !== "completed") return false;
       if (filter === "pending" && c.status !== "pending") return false;
+      if (typeFilter !== "all" && c.request_type !== typeFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        if (!(c.user_name?.toLowerCase().includes(q) || c.uuid?.includes(q) || c.reference_id?.includes(q)))
+        if (!(
+          c.user_name?.toLowerCase().includes(q) ||
+          c.target_name?.toLowerCase().includes(q) ||
+          c.uuid?.includes(q) ||
+          c.target_uuid?.includes(q) ||
+          c.reference_id?.includes(q)
+        ))
           return false;
       }
       return true;
     });
-  }, [charges, filter, search]);
+  }, [charges, filter, typeFilter, search]);
 
   const stats = useMemo(() => {
     const completed = filtered.filter(c => c.status === "completed");
@@ -216,6 +240,11 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
     if (status === "completed") return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 bg-emerald-500/10">
         <CheckCircle className="w-3 h-3" /> تم الشحن
+      </span>
+    );
+    if (status === "failed") return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-red-400 bg-red-500/10">
+        <AlertTriangle className="w-3 h-3" /> فاشلة
       </span>
     );
     return (
@@ -271,6 +300,26 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
         )}
       </div>
 
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { key: "all" as const, label: "كل الشحن" },
+          { key: "charge_self" as const, label: "شحن لحسابه" },
+          { key: "charge_other" as const, label: "شحن لحساب آخر" },
+        ].map((item) => (
+          <button
+            key={item.key}
+            onClick={() => setTypeFilter(item.key)}
+            className={`h-9 rounded-xl border text-xs font-bold transition-all ${
+              typeFilter === item.key
+                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                : "bg-card/40 border-white/10 text-muted-foreground hover:border-white/20"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       {/* ===== LIST ===== */}
       {loading ? (
         <div className="space-y-3">
@@ -319,14 +368,20 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                 charge.request_type === "charge_other" ? "bg-blue-500/5 text-blue-400" : "bg-emerald-500/5 text-emerald-400"
               }`}>
                 {charge.request_type === "charge_other" ? (
-                  <><User className="w-3.5 h-3.5" /> شحن لحساب آخر: {charge.target_name || charge.target_uuid}</>
+                  <>
+                    <User className="w-3.5 h-3.5" />
+                    شحن لحساب آخر: {charge.target_name || "—"} (UUID: {charge.target_uuid || "—"})
+                  </>
                 ) : (
-                  <><Coins className="w-3.5 h-3.5" /> شحن لحسابه</>
+                  <>
+                    <Coins className="w-3.5 h-3.5" />
+                    شحن لحسابه (UUID: {charge.target_uuid || charge.uuid || "—"})
+                  </>
                 )}
               </div>
 
               {/* Details */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div className="bg-white/[0.03] rounded-xl p-2.5 text-xs">
                   <span className="text-muted-foreground text-[10px] flex items-center gap-1 mb-0.5">
                     <Hash className="w-3 h-3" /> الرقم المرجعي
@@ -338,6 +393,15 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                     <CalendarDays className="w-3 h-3" /> التاريخ
                   </span>
                   <span className="font-bold text-foreground">{formatDateSA(charge.created_at)}</span>
+                </div>
+                <div className="bg-white/[0.03] rounded-xl p-2.5 text-xs">
+                  <span className="text-muted-foreground text-[10px] flex items-center gap-1 mb-0.5">
+                    <User className="w-3 h-3" /> الحساب المشحون
+                  </span>
+                  <span className="font-bold text-foreground">{charge.target_name || charge.user_name || "—"}</span>
+                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5" dir="ltr">
+                    UUID: {charge.target_uuid || charge.uuid || "—"}
+                  </p>
                 </div>
               </div>
             </motion.div>
