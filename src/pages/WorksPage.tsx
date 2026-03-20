@@ -552,15 +552,20 @@ const WorksPage: React.FC = () => {
             <span className="text-[9px] text-muted-foreground mr-auto">عمولة {supporterPct}%</span>
           </div>
           {members.filter(m => m.member_type === "supporter").map(m => (
-            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2 space-y-1">
+            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs">{m.member_name || m.member_uuid.slice(0, 8)}</span>
-                <span className="text-[10px] text-muted-foreground">${Number(m.total_commission_usd || 0).toFixed(2)}</span>
+                <span className="text-xs font-bold text-foreground">{m.member_name || m.member_uuid.slice(0, 8)}</span>
+                <span className="text-[10px] font-bold text-amber-400">${((m.monthly_charges || 0) / 7500).toFixed(2)}</span>
               </div>
               {m.monthly_charges !== undefined && (
-                <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-                  <span>شحن الشهر: {m.monthly_charges?.toLocaleString()} عملة</span>
-                  <span className="text-emerald-400">${(m.commission || 0).toFixed(2)} عمولة</span>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-muted-foreground">شحن الشهر: {m.monthly_charges?.toLocaleString()} كوينز</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-emerald-400 font-bold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
+                    <span className="text-muted-foreground">(${((m.commission || 0) / 7500).toFixed(2)})</span>
+                  </div>
                 </div>
               )}
             </div>
