@@ -20,7 +20,6 @@ const allVipTiers: VipTier[] = [
   { level: 3, label: "VIP 3", days: 10, color: "from-yellow-500/20 to-amber-700/5" },
   { level: 4, label: "VIP 4", days: 10, color: "from-yellow-400/20 to-yellow-700/5" },
   { level: 5, label: "VIP 5", days: 10, color: "from-yellow-300/20 to-yellow-600/5" },
-  { level: 6, label: "VIP 6", days: 10, color: "from-yellow-200/20 to-yellow-500/5" },
 ];
 
 const getCurrentMonth = () => {
