@@ -18,7 +18,6 @@ interface AgentOverride {
 interface AgentUsage {
   vip4_used: number;
   vip5_used: number;
-  vip6_used: number;
 }
 
 const getCurrentMonth = () => {
