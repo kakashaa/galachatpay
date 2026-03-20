@@ -155,7 +155,13 @@ const SalaryWithdraw: React.FC = () => {
 
   // Selected transfer
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
-  const [_withdrawalMode, setWithdrawalMode] = useState<"cash" | "coins">("cash");
+  const [_withdrawalMode, setWithdrawalMode] = useState<"cash" | "charge_self" | "charge_other">("cash");
+
+  // Charge other target
+  const [targetUuid, setTargetUuid] = useState("");
+  const [targetSearching, setTargetSearching] = useState(false);
+  const [targetInfo, setTargetInfo] = useState<{ name: string; avatar: string; uuid: string } | null>(null);
+  const [targetConfirmed, setTargetConfirmed] = useState(false);
 
   // Steps
   const [step, setStep] = useState<string>("loading");
