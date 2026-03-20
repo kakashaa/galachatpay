@@ -98,12 +98,60 @@ const BDDashboard: React.FC = () => {
         if (dayMap[day] !== undefined) dayMap[day] += log.amount || 0;
       });
       setDailyLogs(Object.entries(dayMap).map(([day, amount]) => ({ day, amount })));
+
+      // Fetch salary data from external API for each member
+      if (res?.bd) {
+        fetchMemberSalaries(res.supporters || [], res.agents || []);
+      }
     } catch {
       toast.error("فشل تحميل البيانات");
     } finally {
       setLoading(false);
     }
   }, [user?.uuid, navigate]);
+
+  // Fetch salary/charges from external API for each member
+  const fetchMemberSalaries = async (sups: any[], ags: any[]) => {
+    setSalaryLoading(true);
+    const month = new Date().toISOString().slice(0, 7);
+    const year = new Date().getFullYear();
+    const monthNum = new Date().getMonth() + 1;
+
+    const supMap: Record<string, { charges: number; commission: number }> = {};
+    const agMap: Record<string, { salary: number; commission: number }> = {};
+
+    // Fetch supporters in parallel
+    const supPromises = sups.map(async (s: any) => {
+      try {
+        const res = await fetch(
+          `https://galachat.site/project-z/api.php?action=user_monthly_charges&admin_key=ghala2026owner&uuid=${s.member_uuid}&month=${month}`
+        );
+        const data = await res.json();
+        const charges = data.total_charges || 0;
+        supMap[s.member_uuid] = { charges, commission: charges * 0.02 };
+      } catch { /* silent */ }
+    });
+
+    // Fetch agents in parallel
+    const agPromises = ags.map(async (a: any) => {
+      try {
+        // Try to get agency_id from bd_members
+        const agencyId = a.agency_id;
+        if (!agencyId) return;
+        const res = await fetch(
+          `https://galachat.site/project-z/api.php?action=agency_salary&admin_key=ghala2026owner&agency_id=${agencyId}&year=${year}&month=${monthNum}`
+        );
+        const data = await res.json();
+        const salary = data.salary || 0;
+        agMap[a.member_uuid] = { salary, commission: salary * 0.02 };
+      } catch { /* silent */ }
+    });
+
+    await Promise.all([...supPromises, ...agPromises]);
+    setSupporterSalaries(supMap);
+    setAgentSalaries(agMap);
+    setSalaryLoading(false);
+  };
 
   // Load data on mount, refresh every 30s, and listen for realtime commission changes
   useEffect(() => {
