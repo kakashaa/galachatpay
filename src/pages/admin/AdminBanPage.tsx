@@ -349,16 +349,14 @@ const AdminBanPage: React.FC = () => {
               {banReason === "insult" && (
                 <div>
                   <p className="text-[11px] text-muted-foreground mb-2 font-bold">مدة الحظر</p>
-                  <div className="grid grid-cols-4 gap-2" id="ban-duration">
+                  <div className="grid grid-cols-4 gap-2">
                     {[3, 12, 24, 48].map(h => (
                       <motion.button key={h} whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          const el = document.getElementById("ban-duration");
-                          el?.querySelectorAll("button").forEach(b => b.classList.remove("selected-duration"));
-                        }}
-                        data-hours={h}
-                        className="py-2 rounded-xl text-xs font-bold text-muted-foreground"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        onClick={() => setBanDuration(h)}
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all ${banDuration === h ? "text-white" : "text-muted-foreground"}`}
+                        style={banDuration === h
+                          ? { background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 2px 8px rgba(244,63,94,0.3)' }
+                          : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                         {h}h
                       </motion.button>
                     ))}
