@@ -159,6 +159,7 @@ const SalaryWithdraw: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [usedDetails, setUsedDetails] = useState<Record<string, UsedTransferDetail>>({});
   const [isAgencyOwner, setIsAgencyOwner] = useState(false);
   const [usedCount, setUsedCount] = useState(0);
 
