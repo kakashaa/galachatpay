@@ -41,8 +41,8 @@ const RequestVip: React.FC = () => {
   // Limits state
   const [usedSelf, setUsedSelf] = useState(0);            // self requests this month
   const [usedGiftTotal, setUsedGiftTotal] = useState(0);  // total gifts this month
-  const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0, 6: 0});
-  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 2, 6: 0});
+  const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0});
+  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 5});
   const [isTopAgent, setIsTopAgent] = useState(false);     // has custom overrides
   const [giftedRecipients, setGiftedRecipients] = useState<string[]>([]); // already gifted IDs
 
