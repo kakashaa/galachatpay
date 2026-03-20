@@ -340,17 +340,38 @@ const AdminBanPage: React.FC = () => {
                                 setActionInProgress(report.id);
                                 const t = toast.loading("جاري التأكيد والحظر...");
                                 try {
-                                  // 1. Confirm report
+                                  // 1. Confirm report in DB
                                   await adminCall("update_ban_report", { id: report.id, is_verified: true });
-                                  // 2. Execute actual ban via API
+                                  
+                                  // 2. Record ban locally (same as manual ban)
                                   const banType = report.ban_type === 'promotion' || report.description?.includes('ترويج') ? 'device' : 'normal';
                                   const hours = banType === 'device' ? 999999 : 24;
-                                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${report.reported_user_id}&reason=${encodeURIComponent(report.description || 'بلاغ')}&hours=${hours}&ban_type=${banType}`).catch(() => {});
+                                  const reason = report.description || 'بلاغ مؤكد';
+                                  
+                                  await adminCall("manual_ban_user", {
+                                    target_uuid: report.reported_user_id,
+                                    ban_type: "full",
+                                    duration_hours: hours,
+                                    reason: reason,
+                                    banned_elements: null,
+                                  });
+                                  
+                                  // 3. Execute REAL ban on external server (full platform ban)
+                                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${report.reported_user_id}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${banType}`).catch(() => {});
+                                  
+                                  // 4. Notify banned user
+                                  const { sendUserNotification } = await import("@/utils/sendUserNotification");
+                                  const durationText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
+                                  await sendUserNotification(
+                                    report.reported_user_id,
+                                    "تم تعليق حسابك",
+                                    `تم تعليق حسابك بسبب: ${reason}. المدة: ${durationText}.`
+                                  ).catch(() => {});
+                                  
                                   toast.dismiss(t);
-                                  toast.success("تم الحظر!");
-                                  // 3. Animate removal
+                                  toast.success("تم الحظر الكامل!");
+                                  // 5. Animate removal & switch tab
                                   setRemovedIds(prev => new Set(prev).add(report.id));
-                                  // 4. Switch to banned list
                                   setTimeout(() => { setSubTab("list"); loadData(); }, 800);
                                 } catch {
                                   toast.dismiss(t);
