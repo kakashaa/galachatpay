@@ -344,12 +344,7 @@ const WorksPage: React.FC = () => {
           type: "works_invitation", is_read: false,
         } as any);
       } else {
-        if (!agentOwnerUuid.trim()) {
-          setModal({ type: "error", message: "يرجى إدخال UUID صاحب الوكالة" });
-          setSending(false);
-          return;
-        }
-        const result = await validateAgent(memberInput.trim(), agentOwnerUuid.trim());
+        const result = await validateAgent(memberInput.trim());
         if (!result.ok) {
           await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
