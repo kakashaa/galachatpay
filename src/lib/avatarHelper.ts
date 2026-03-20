@@ -3,9 +3,16 @@ const API = "https://galachat.site/project-z/api.php";
 
 const DEFAULT_AVATAR = "/placeholder.svg";
 
+const OLD_BUCKET = "storage.googleapis.com/galalivechat-bucket-01";
+
+/** Normalize any avatar URL to use the fast media domain */
+function normalizeMediaUrl(url: string): string {
+  return url.replace(`https://${OLD_BUCKET}/`, "https://media.galalivechat.com/");
+}
+
 /** Build the correct avatar URL from uuid + optional avatar path */
 export function getAvatarUrl(uuid: string, avatar?: string | null): string {
-  if (avatar && avatar.startsWith("http")) return avatar;
+  if (avatar && avatar.startsWith("http")) return normalizeMediaUrl(avatar);
   if (avatar) return `https://media.galalivechat.com/${avatar}`;
   return `https://media.galalivechat.com/avatars/default.jpg`;
 }
@@ -49,7 +56,6 @@ export async function getAvatar(uuid: string): Promise<string> {
 // Legacy helper — kept for backward compat
 export function fixAvatarUrl(path?: string | null): string {
   if (!path) return DEFAULT_AVATAR;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("avatars/")) return `https://media.galalivechat.com/${path}`;
+  if (path.startsWith("http")) return normalizeMediaUrl(path);
   return `https://media.galalivechat.com/${path}`;
 }

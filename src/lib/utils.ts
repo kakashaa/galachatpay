@@ -7,6 +7,6 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getAvatarUrl(path: string): string {
   if (!path) return "";
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http")) return path.replace("https://storage.googleapis.com/galalivechat-bucket-01/", "https://media.galalivechat.com/");
   return `https://media.galalivechat.com/${path}`;
 }
