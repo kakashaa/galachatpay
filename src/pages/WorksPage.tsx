@@ -366,8 +366,9 @@ const WorksPage: React.FC = () => {
         } as any);
       }
 
-      setModal({ type: "success", message: "تم إرسال الدعوة بنجاح" });
+      setModal(null);
       setShowAddMember(false); setMemberInput(""); setAcceptedTerms(false);
+      setInstructionModal(memberType);
       fetchData();
     } catch (e: any) {
       setModal({ type: "error", message: e.message?.includes("duplicate") ? "هذا العضو مسجل بالفعل" : "فشل الإرسال\nحاول مرة أخرى" });
