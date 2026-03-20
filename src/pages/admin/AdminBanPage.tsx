@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
+import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import { Ban, Unlock, Loader2, ShieldBan, Shield, Image as LucideImage, Play, ExternalLink, Upload } from "lucide-react";
