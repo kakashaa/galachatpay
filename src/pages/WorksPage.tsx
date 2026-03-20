@@ -650,10 +650,48 @@ const WorksPage: React.FC = () => {
                 dir="ltr"
               />
 
-              <button onClick={sendInvitation} disabled={!memberInput || sending}
-                className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50">
-                {sending ? "جاري التحقق..." : "إرسال دعوة"}
-              </button>
+              <motion.button
+                onClick={sendInvitation}
+                disabled={!memberInput || sending}
+                className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 overflow-hidden relative"
+                whileTap={{ scale: 0.97 }}
+              >
+                <AnimatePresence mode="wait">
+                  {sending ? (
+                    <motion.div
+                      key="loading"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center gap-2"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      >
+                        <Loader2 className="w-4 h-4" />
+                      </motion.div>
+                      <motion.span
+                        animate={{ opacity: [1, 0.5, 1] }}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                      >
+                        {memberType === "agent" ? "جاري التحقق من الوكالة..." : "جاري التحقق من المستخدم..."}
+                      </motion.span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="idle"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>إرسال دعوة</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </div>
           )}
         </DialogContent>
