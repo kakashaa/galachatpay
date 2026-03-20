@@ -232,6 +232,43 @@ const AdminMonitorPage: React.FC = () => {
       {/* ═══ TAB 1: Alerts ═══ */}
       {tab === "alerts" && (
         <div className="space-y-3">
+          {/* Sub-tabs filter */}
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+            <div className="flex gap-1.5 min-w-max pb-1">
+              {alertSubTabs.map(st => {
+                const Icon = st.icon;
+                const active = alertFilter === st.key;
+                const cfg = alertConfig[st.key];
+                const color = cfg?.color || "#10b981";
+                return (
+                  <motion.button
+                    key={st.key}
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => setAlertFilter(st.key)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all ${active ? "text-white" : "text-muted-foreground"}`}
+                    style={active ? {
+                      background: st.key === "all"
+                        ? "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))"
+                        : `linear-gradient(135deg, ${color}, ${color}cc)`,
+                      boxShadow: `0 3px 12px ${st.key === "all" ? "rgba(16,185,129,0.3)" : color + "40"}`,
+                    } : {
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <Icon size={12} />
+                    {st.label}
+                    {st.count > 0 && (
+                      <span className={`h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 ${active ? "bg-white/20 text-white" : "bg-white/5 text-muted-foreground"}`}>
+                        {st.count}
+                      </span>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Actions bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -246,19 +283,21 @@ const AdminMonitorPage: React.FC = () => {
                 {soundEnabled ? <Volume2 size={13} className="text-admin-emerald" /> : <VolumeX size={13} className="text-muted-foreground" />}
               </motion.button>
             </div>
-            <span className="text-[10px] text-muted-foreground tabular-nums">{alerts.length} تنبيه</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">{filteredAlerts.length} تنبيه</span>
           </div>
 
-          {loading && alerts.length === 0 && (
+          {loading && filteredAlerts.length === 0 && (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-admin-emerald" /></div>
           )}
 
-          {!loading && alerts.length === 0 && (
+          {!loading && filteredAlerts.length === 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="text-center py-16 rounded-2xl"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <Eye size={32} className="mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-xs text-muted-foreground">لا توجد تنبيهات حالياً</p>
+              <p className="text-xs text-muted-foreground">
+                {alertFilter === "all" ? "لا توجد تنبيهات حالياً" : `لا توجد تنبيهات من نوع "${alertConfig[alertFilter]?.label || alertFilter}"`}
+              </p>
               <p className="text-[10px] text-muted-foreground/60 mt-1">يتم الفحص كل 60 ثانية</p>
             </motion.div>
           )}
