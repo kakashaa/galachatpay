@@ -654,15 +654,17 @@ const SalaryWithdraw: React.FC = () => {
 
   const getBackAction = () => {
     switch (step) {
-      case "transfers_list": return () => navigate("/dashboard");
-      case "all_used": return () => navigate("/dashboard");
+      case "transfers_list": return () => navigate("/salary");
+      case "all_used": return () => navigate("/salary");
       case "bank": return () => setStep("transfers_list");
       case "account": return () => setStep("bank");
       case "coins_confirm": return () => setStep("transfers_list");
       case "charge_other_search": return () => setStep("transfers_list");
-      default: return () => navigate("/dashboard");
+      default: return () => navigate("/salary");
     }
   };
+
+  const headerTitle = modeConfig[pathMode]?.title || "سحب الراتب";
 
   // ── LOADING ──
   if (loading || step === "loading") {
