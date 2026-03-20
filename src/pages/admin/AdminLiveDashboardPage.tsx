@@ -190,42 +190,44 @@ const AdminLiveDashboardPage: React.FC = () => {
   /* ─── Load Rankings ─── */
   const typeMap = { today: 1, week: 2, month: 3 };
 
-  const loadRankings = useCallback(async (period: "today" | "week" | "month" = rankPeriod) => {
-    setRankLoading(true);
+  const loadRankings = useCallback(async (period: "today" | "week" | "month" = rankPeriod, isBackground = false) => {
+    if (!isBackground) setRankLoading(true);
     try {
-      // SEQUENTIAL — each call needs its own token, parallel would invalidate tokens
       const s = await fetchRanking(2, typeMap[period]);
       const r = await fetchRanking(1, typeMap[period]);
-      setSenders(s);
-      setReceivers(r);
+      // Only update if we got actual data — never clear old data with empty results
+      if (s.length > 0) setSenders(s);
+      if (r.length > 0) setReceivers(r);
 
       const totalCoins = s.reduce((sum, u) => sum + u.amount, 0);
-      setTodayStats({
-        revenue: Math.round(totalCoins / COINS_PER_USD),
-        coins: totalCoins,
-        supporters: s.length,
-        online: Math.floor(Math.random() * 20) + 5,
-      });
+      if (s.length > 0 || totalCoins > 0) {
+        setTodayStats(prev => ({
+          revenue: Math.round(totalCoins / COINS_PER_USD) || prev.revenue,
+          coins: totalCoins || prev.coins,
+          supporters: s.length || prev.supporters,
+          online: Math.floor(Math.random() * 20) + 5,
+        }));
+      }
+      setLastUpdate(new Date());
     } catch {
-      // silent
+      // Error = keep old data
     }
-    setRankLoading(false);
-    setLastUpdate(new Date());
+    if (!isBackground) setRankLoading(false);
   }, [rankPeriod]);
 
   /* ─── Load Monthly Stats ─── */
   const loadMonthStats = useCallback(async () => {
     try {
       const monthSenders = await fetchRanking(2, 3);
+      if (monthSenders.length === 0) return; // Keep old data
       const totalCoins = monthSenders.reduce((sum, u) => sum + u.amount, 0);
-      setMonthStats({
-        revenue: Math.round(totalCoins / COINS_PER_USD),
-        coins: totalCoins,
+      setMonthStats(prev => ({
+        revenue: Math.round(totalCoins / COINS_PER_USD) || prev.revenue,
+        coins: totalCoins || prev.coins,
         salaries: 0,
-        totalUsers: monthSenders.length,
-      });
+        totalUsers: monthSenders.length || prev.totalUsers,
+      }));
 
-      // Generate chart data from monthly senders (top 15 as daily simulation)
       const days = Array.from({ length: 30 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - 29 + i);
@@ -236,7 +238,7 @@ const AdminLiveDashboardPage: React.FC = () => {
       });
       setChartData(days);
     } catch {
-      // silent
+      // Error = keep old data
     }
   }, []);
 
@@ -255,12 +257,12 @@ const AdminLiveDashboardPage: React.FC = () => {
     setSearchLoading(false);
   };
 
-  /* ─── Init & Auto-refresh ─── */
+  /* ─── Init & Auto-refresh (background — no loading state) ─── */
   useEffect(() => {
     loadRankings("today");
     loadMonthStats();
     const interval = setInterval(() => {
-      loadRankings();
+      loadRankings(rankPeriod, true);
       loadMonthStats();
     }, 60000);
     return () => clearInterval(interval);
@@ -272,7 +274,7 @@ const AdminLiveDashboardPage: React.FC = () => {
 
   const handleRefresh = () => {
     setLoading(true);
-    Promise.all([loadRankings(), loadMonthStats()]).finally(() => setLoading(false));
+    loadRankings(rankPeriod).then(() => loadMonthStats()).finally(() => setLoading(false));
   };
 
   /* ─── User type label ─── */
