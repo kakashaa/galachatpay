@@ -606,7 +606,7 @@ const BDDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5 mb-2">
+              <div className="grid grid-cols-4 gap-1.5 mb-2">
                 <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
                   <p className="text-[8px] text-muted-foreground mb-0.5">اليوم</p>
                   <p className="text-[11px] font-bold text-foreground">${todayProfit.toFixed(2)}</p>
@@ -614,6 +614,10 @@ const BDDashboard: React.FC = () => {
                 <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
                   <p className="text-[8px] text-muted-foreground mb-0.5">الشهر</p>
                   <p className="text-[11px] font-bold text-foreground">${monthlyProfit.toFixed(2)}</p>
+                </div>
+                <div className="bg-emerald-500/5 rounded-lg p-1.5 text-center border border-emerald-500/10">
+                  <p className="text-[8px] text-muted-foreground mb-0.5">رواتب</p>
+                  <p className="text-[11px] font-bold text-emerald-400">${liveSalaryTotalUsd.toFixed(2)}</p>
                 </div>
                 <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
                   <p className="text-[8px] text-muted-foreground mb-0.5">الإجمالي</p>
