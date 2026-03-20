@@ -29,8 +29,12 @@ const AdminVipPage: React.FC = () => {
     setLoading(false);
   };
 
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
   const sendVip = async () => {
     if (!vipUuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
+    const ok = await confirm({ title: "تأكيد إرسال VIP", message: `هل أنت متأكد من إرسال VIP ${vipLevel} لـ UUID ${vipUuid}؟`, danger: false, confirmText: "إرسال VIP" });
+    if (!ok) return;
     setSending(true);
     const t = toast.loading(`جاري إرسال VIP ${vipLevel}...`);
     try {
