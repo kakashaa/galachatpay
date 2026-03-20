@@ -33,6 +33,30 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
     checkStatus();
   }, [user?.uuid]);
 
+  // Re-check status when page regains focus (e.g. user returns after admin approval)
+  useEffect(() => {
+    const onFocus = () => {
+      if (status === "pending" || status === "loading") {
+        checkStatus();
+      }
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") onFocus();
+    });
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [status]);
+
+  // Poll every 15s while pending
+  useEffect(() => {
+    if (status !== "pending") return;
+    const interval = setInterval(checkStatus, 15000);
+    return () => clearInterval(interval);
+  }, [status]);
+
   const checkStatus = async () => {
     if (!user?.uuid) return;
     try {
