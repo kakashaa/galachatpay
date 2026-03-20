@@ -116,7 +116,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
           const Icon = item.icon;
           const isBdItem = item.route === "/bd";
           const showLock = isBdItem && bdBanned;
-          const isBanned = item.banKey ? isElementBanned(item.banKey) : false;
+          const isBanned = false;
           const isSpecialEligible = item.isSpecial && isEligibleForQuickSupport(user);
 
           if (isSpecialEligible && !isBanned) {
