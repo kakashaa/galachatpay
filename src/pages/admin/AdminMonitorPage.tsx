@@ -747,7 +747,7 @@ const AdminMonitorPage: React.FC = () => {
 
           <AnimatePresence mode="popLayout">
             {filteredAlerts.slice(0, 50).map((alert, i) => (
-              <AlertCard key={alert.id} alert={alert} index={i} onDelete={deleteAlert} />
+              <AlertCard key={alert.id} alert={alert} index={i} onDelete={deleteAlert} onBan={handleBanUser} />
             ))}
           </AnimatePresence>
 
@@ -1205,7 +1205,7 @@ function getSeverity(alert: MonitorAlert): "high" | "medium" | "low" {
 }
 
 /* ─── Alert Card Component ─── */
-const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: string) => void }> = ({ alert, index, onDelete }) => {
+const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: string) => void; onBan: (uuid: string, name: string) => void }> = ({ alert, index, onDelete, onBan }) => {
   const [expanded, setExpanded] = useState(false);
   const sev = getSeverity(alert);
   const sevCfg = severityConfig[sev];
