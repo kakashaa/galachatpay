@@ -194,28 +194,16 @@ const WorksPage: React.FC = () => {
         const rawMembers = (m || []) as any as MemberWithSalary[];
         setMembers(rawMembers);
 
-        // Fetch today earnings
-        const today = new Date().toISOString().split("T")[0];
-        const { data: te } = await supabase
-          .from("works_earnings").select("commission_usd").eq("works_id", works.id).eq("period_date", today);
-        setTodayEarnings((te || []).reduce((s: number, e: any) => s + Number(e.commission_usd), 0));
-
-        // Fetch month earnings
-        const monthStart = new Date(); monthStart.setDate(1);
-        const { data: me } = await supabase
-          .from("works_earnings").select("commission_usd").eq("works_id", works.id)
-          .gte("period_date", monthStart.toISOString().split("T")[0]);
-        setMonthEarnings((me || []).reduce((s: number, e: any) => s + Number(e.commission_usd), 0));
-
-        // Auto-fetch salary data
+        // Auto-fetch salary data for live calculations
         if (rawMembers.length > 0) {
           setSalaryLoading(true);
           try {
-            const { totalMonthCommission, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
+            const { totalMonthCommissionCoins, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
             setMembers(updatedMembers);
-            if (totalMonthCommission > 0) {
-              setMonthEarnings(prev => Math.max(prev, totalMonthCommission));
-            }
+            // monthEarnings = total commission in COINS
+            setMonthEarnings(totalMonthCommissionCoins);
+            // todayEarnings = total commission in USD (commission_coins / 7500)
+            setTodayEarnings(totalMonthCommissionCoins / 7500);
           } catch { /* silent */ }
           setSalaryLoading(false);
         }
