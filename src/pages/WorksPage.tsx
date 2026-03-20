@@ -404,7 +404,7 @@ const WorksPage: React.FC = () => {
         admin_note: `كوينز: ${coinsAmount.toLocaleString()} | شهر: ${withdrawMonth}`,
       });
       setModal({ type: "success", message: "تم إرسال طلبك — سيتم مراجعته" });
-      setShowWithdraw(false);
+      // withdrawal submitted
     } catch {
       setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
     }
