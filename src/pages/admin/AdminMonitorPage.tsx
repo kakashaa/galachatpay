@@ -82,12 +82,12 @@ const AdminMonitorPage: React.FC = () => {
     setLoading(true);
     try {
       const { data } = await supabase
-        .from("monitor_alerts")
+        .from("monitor_alerts" as any)
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
 
-      const newAlerts = (data || []) as MonitorAlert[];
+      const newAlerts = (data || []) as unknown as MonitorAlert[];
 
       // Play sound for new alerts
       if (soundEnabled && newAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
