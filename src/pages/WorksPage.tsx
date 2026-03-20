@@ -652,6 +652,70 @@ const WorksPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Instruction Modal after successful invitation */}
+      <Dialog open={!!instructionModal} onOpenChange={() => setInstructionModal(null)}>
+        <DialogContent className="max-w-sm">
+          <div className="p-4 space-y-4 text-center" dir="rtl">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
+              <CheckCircle className="w-7 h-7 text-emerald-400" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">
+              {instructionModal === "supporter" ? "تم إرسال الدعوة!" : "تم إرسال الطلب!"}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {instructionModal === "supporter"
+                ? "أخبر الداعم بالخطوات التالية:"
+                : "أخبر صاحب الوكالة بالخطوات التالية:"}
+            </p>
+
+            <div className="bg-muted/20 border border-border rounded-xl p-3 text-right space-y-2">
+              {[
+                "ادخل على galachatpay.lovable.app",
+                "سجّل دخول بـ UUID وكلمة المرور",
+                instructionModal === "supporter"
+                  ? "ستجد دعوة انضمام للبيدي في الإشعارات"
+                  : "ستجد طلب انضمام وكالتك للبيدي في الإشعارات",
+                'اضغط "قبول" للانضمام',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs">
+                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">
+                    {i + 1}
+                  </span>
+                  <span className="text-muted-foreground leading-relaxed">{step}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Copy link button */}
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText("galachatpay.lovable.app");
+                setModal({ type: "success", message: "تم نسخ الرابط" });
+                setTimeout(() => setModal(null), 1500);
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-card border border-border rounded-xl py-2.5 text-xs font-bold text-foreground hover:bg-muted/30 transition-colors"
+            >
+              <Copy className="w-4 h-4 text-muted-foreground" />
+              نسخ الرابط: galachatpay.lovable.app
+            </button>
+
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-2.5">
+              <p className="text-[11px] text-emerald-400 font-bold">
+                {instructionModal === "supporter"
+                  ? "بعد القبول ستبدأ نسبتك تُحسب تلقائياً"
+                  : "بعد القبول ستبدأ نسبتك من راتب الوكالة تُحسب تلقائياً"}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setInstructionModal(null)}
+              className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold text-sm"
+            >
+              فهمت
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {modal && <StatusModal type={modal.type} message={modal.message} vibrate={modal.vibrate} onClose={() => setModal(null)} />}
       <BottomNav />
