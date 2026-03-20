@@ -69,13 +69,11 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
         .maybeSingle();
 
       if (memberData) {
-        // Get BD name
-        const { data: bdData } = await supabase
-          .from("bd_commission_settings")
-          .select("bd_name")
-          .eq("bd_uuid", memberData.bd_uuid)
-          .maybeSingle();
-        setMemberBdName(bdData?.bd_name || "بيدي");
+        // Get BD name via edge function (bd_commission_settings is restricted)
+        const bdRes = await supabase.functions.invoke("bd-manage", {
+          body: { action: "check_status", user_uuid: memberData.bd_uuid },
+        });
+        setMemberBdName(bdRes.data?.bd?.bd_name || "بيدي");
         setStatus("is_member");
         return;
       }
