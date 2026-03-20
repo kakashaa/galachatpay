@@ -1309,7 +1309,7 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
               onClick={() => {
                 const uuid = alert.sender_uuid || alert.details?.user_uuid;
                 const name = alert.sender_name || alert.details?.user_name || "مجهول";
-                if (uuid) handleBanUser(uuid, name);
+                if (uuid) onBan(uuid, name);
                 else toast.error("لا يوجد UUID للحظر");
               }}>
               <Ban size={10} /> حظر 24h
