@@ -30,7 +30,7 @@ serve(async (req) => {
       "works_members", "works_abuse_log", "works_ban_requests",
       "room_background_requests", "room_background_codes",
       "admin_posts", "admin_stories", "direct_messages", "conversations",
-      "support_ratings", "admin_complaints", "id_changes",
+      "support_ratings", "admin_complaints", "id_changes", "bd_withdrawal_requests",
     ]);
 
     const supabase = createClient(
