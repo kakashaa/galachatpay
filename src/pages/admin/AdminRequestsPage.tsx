@@ -37,6 +37,7 @@ const isVideo = (url: string) => {
 const AdminRequestsPage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
   const [activeTab, setActiveTab] = useState<ReqTab>("entries");
+  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected">("pending");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -84,7 +85,7 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   useEffect(() => { loadAllCounts(); }, []);
-  useEffect(() => { loadData(); }, [activeTab]);
+  useEffect(() => { setStatusFilter("pending"); loadData(); }, [activeTab]);
 
   const HOLA_API = "https://hola-chat.com/wares-api.php";
   const HOLA_KEY = "ghala2026actions";
@@ -325,7 +326,9 @@ const AdminRequestsPage: React.FC = () => {
   const currentTab = tabs.find(t => t.key === activeTab)!;
   const visibleItems = items.filter(i => !removedIds.has(i.id));
   const pendingItems = visibleItems.filter((i: any) => i.status === "pending");
-  const otherItems = visibleItems.filter((i: any) => i.status !== "pending");
+  const approvedItems = visibleItems.filter((i: any) => i.status === "approved");
+  const rejectedItems = visibleItems.filter((i: any) => i.status === "rejected");
+  const filteredItems = statusFilter === "pending" ? pendingItems : statusFilter === "approved" ? approvedItems : rejectedItems;
 
   // Get the preview URL for any item
   const getPreviewUrl = (item: any) => item.file_url || item.video_url || item.gif_url || item.thumbnail_url || item.image_url || null;
@@ -556,11 +559,38 @@ const AdminRequestsPage: React.FC = () => {
           })}
         </motion.div>
 
+        {/* Status sub-tabs */}
+        <div className="flex items-center gap-2 rounded-xl p-1"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {([
+            { key: "pending" as const, label: "معلّقة", icon: Clock, color: "hsl(40 96% 53%)", count: pendingItems.length },
+            { key: "approved" as const, label: "مقبولة", icon: CheckCircle, color: "hsl(160 84% 39%)", count: approvedItems.length },
+            { key: "rejected" as const, label: "مرفوضة", icon: XCircle, color: "hsl(350 89% 55%)", count: rejectedItems.length },
+          ]).map(st => {
+            const StIcon = st.icon;
+            const isActive = statusFilter === st.key;
+            return (
+              <button key={st.key} onClick={() => setStatusFilter(st.key)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-bold transition-all"
+                style={isActive ? { background: `${st.color}15`, color: st.color, boxShadow: `0 2px 8px ${st.color}20` } : { color: 'hsl(0 0% 55%)' }}>
+                <StIcon className="w-3.5 h-3.5" />
+                {st.label}
+                {st.count > 0 && (
+                  <span className="min-w-[16px] h-4 px-1 rounded-full text-[8px] font-bold text-white flex items-center justify-center"
+                    style={{ background: st.color }}>
+                    {st.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Direct upload button for rooms tab */}
         {activeTab === "rooms" && (
           <button
             onClick={() => setShowDirectUpload(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98] mb-4"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.98]"
             style={{ background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)', color: 'hsl(187 92% 43%)' }}
           >
             <Upload className="w-4 h-4" />
@@ -572,114 +602,86 @@ const AdminRequestsPage: React.FC = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin" style={{ color: `${currentTab.bg}0.8)` }} />
           </div>
-        ) : visibleItems.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16 text-muted-foreground">
             <currentTab.icon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">لا توجد طلبات</p>
+            <p className="text-sm">
+              {statusFilter === "pending" ? "لا توجد طلبات معلّقة" : statusFilter === "approved" ? "لا توجد طلبات مقبولة" : "لا توجد طلبات مرفوضة"}
+            </p>
           </motion.div>
         ) : (
           <AnimatePresence mode="wait">
-            <motion.div key={activeTab} initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }}>
-              {/* Pending section */}
-              {pendingItems.length > 0 && (
-                <div className="space-y-3 mb-6">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.12)' }}>
-                      <Clock className="w-3.5 h-3.5 text-admin-amber" />
-                    </div>
-                    <span className="text-xs font-bold text-admin-amber">معلّقة ({pendingItems.length})</span>
-                  </div>
-                  {/* Grid: 2 columns for entries/frames/hairs/custom, 1 column for animated photos */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <AnimatePresence>
-                      {pendingItems.map((item, i) => renderVisualCard(item, i))}
-                    </AnimatePresence>
-                  </div>
+            <motion.div key={`${activeTab}-${statusFilter}`} initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -15 }}>
+              {statusFilter === "pending" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <AnimatePresence>
+                    {filteredItems.map((item, i) => renderVisualCard(item, i))}
+                  </AnimatePresence>
                 </div>
-              )}
+              ) : (
+                <div className="space-y-2">
+                  {filteredItems.slice(0, 30).map((item, i) => {
+                    const isApproved = item.status === "approved";
+                    const statusColor = isApproved ? "hsl(160 84% 39%)" : "hsl(350 89% 55%)";
+                    const statusLabel = isApproved ? "مقبول" : "مرفوض";
+                    const previewUrl = getPreviewUrl(item);
 
-              {/* Previous items */}
-              {otherItems.length > 0 && (
-                <div className="space-y-3">
-                  {pendingItems.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                        <CheckCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                      </div>
-                      <span className="text-xs font-bold text-muted-foreground">السابقة</span>
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    {otherItems.slice(0, 20).map((item, i) => {
-                      const isApproved = item.status === "approved";
-                      const isRejected = item.status === "rejected";
-                      const statusColor = isApproved ? "hsl(160 84% 39%)" : "hsl(350 89% 55%)";
-                      const statusLabel = isApproved ? "مقبول" : "مرفوض";
-                      const previewUrl = getPreviewUrl(item);
-
-                      return (
-                        <motion.div key={item.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.03 }}
-                          className="rounded-xl overflow-hidden"
-                          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                        >
-                          {/* Compact status header */}
-                          <div className="px-3 py-1.5 flex items-center justify-between"
-                            style={{ background: isApproved ? 'rgba(16,185,129,0.08)' : 'rgba(244,63,94,0.08)' }}>
-                            <span className="text-[9px] font-bold" style={{ color: statusColor }}>
-                              {statusLabel}
-                            </span>
-                            <span className="text-[8px] text-muted-foreground flex items-center gap-1">
-                              <Calendar className="w-2.5 h-2.5" />
-                              {new Date(item.created_at).toLocaleDateString("ar-SA")}
-                            </span>
-                          </div>
-
-                          {/* Compact info */}
-                          <div className="px-3 py-2 space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <p className="text-[10px] font-bold text-foreground truncate flex-1">{item.title || item.user_name || "—"}</p>
-                              {item.duration_days && (
-                                <span className="text-[8px] text-muted-foreground flex items-center gap-0.5 mr-2">
-                                  <Timer className="w-2.5 h-2.5" /> {item.duration_days} يوم
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-2 text-[8px] text-muted-foreground">
-                              {item.user_uuid && (
-                                <span className="flex items-center gap-0.5">
-                                  <Hash className="w-2.5 h-2.5" />
-                                  <span className="font-mono">{item.user_uuid}</span>
-                                  <button onClick={() => copyToClipboard(item.user_uuid)} className="p-0.5 rounded hover:bg-white/10">
-                                    <Copy className="w-2 h-2" />
-                                  </button>
-                                </span>
-                              )}
-                              {item.friend_uuid && (
-                                <span className="flex items-center gap-0.5" style={{ color: 'hsl(330 80% 60%)' }}>
-                                  <Send className="w-2.5 h-2.5" /> {item.friend_uuid}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* View button */}
-                            {previewUrl && (
-                              <button
-                                onClick={() => setPreviewItem(item)}
-                                className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-bold transition-all active:scale-[0.98]"
-                                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', color: 'hsl(217 91% 60%)' }}
-                              >
-                                <Eye className="w-3 h-3" /> اضغط للعرض
-                              </button>
+                    return (
+                      <motion.div key={item.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="rounded-xl overflow-hidden"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                      >
+                        <div className="px-3 py-1.5 flex items-center justify-between"
+                          style={{ background: isApproved ? 'rgba(16,185,129,0.08)' : 'rgba(244,63,94,0.08)' }}>
+                          <span className="text-[9px] font-bold" style={{ color: statusColor }}>
+                            {statusLabel}
+                          </span>
+                          <span className="text-[8px] text-muted-foreground flex items-center gap-1">
+                            <Calendar className="w-2.5 h-2.5" />
+                            {new Date(item.created_at).toLocaleDateString("ar-SA")}
+                          </span>
+                        </div>
+                        <div className="px-3 py-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-bold text-foreground truncate flex-1">{item.title || item.user_name || "—"}</p>
+                            {item.duration_days && (
+                              <span className="text-[8px] text-muted-foreground flex items-center gap-0.5 mr-2">
+                                <Timer className="w-2.5 h-2.5" /> {item.duration_days} يوم
+                              </span>
                             )}
                           </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
+                          <div className="flex items-center gap-2 text-[8px] text-muted-foreground">
+                            {item.user_uuid && (
+                              <span className="flex items-center gap-0.5">
+                                <Hash className="w-2.5 h-2.5" />
+                                <span className="font-mono">{item.user_uuid}</span>
+                                <button onClick={() => copyToClipboard(item.user_uuid)} className="p-0.5 rounded hover:bg-white/10">
+                                  <Copy className="w-2 h-2" />
+                                </button>
+                              </span>
+                            )}
+                            {item.friend_uuid && (
+                              <span className="flex items-center gap-0.5" style={{ color: 'hsl(330 80% 60%)' }}>
+                                <Send className="w-2.5 h-2.5" /> {item.friend_uuid}
+                              </span>
+                            )}
+                          </div>
+                          {previewUrl && (
+                            <button
+                              onClick={() => setPreviewItem(item)}
+                              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-bold transition-all active:scale-[0.98]"
+                              style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', color: 'hsl(217 91% 60%)' }}
+                            >
+                              <Eye className="w-3 h-3" /> اضغط للعرض
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </motion.div>
