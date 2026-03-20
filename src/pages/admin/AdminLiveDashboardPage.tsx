@@ -229,7 +229,7 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
         const agencies = d.data?.agencies || [];
         const found = agencies.find((a: any) => a.id === numericId || String(a.id) === agencyId.trim());
         if (found) {
-          agency = found;
+          _agency = found;
           agencyName = found.name || found.title || agencyName;
           break;
         }
