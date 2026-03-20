@@ -1,0 +1,1 @@
+DELETE FROM public.works_members WHERE id = '604c853f-c0be-43bd-bc77-8aedef362bdc' AND agency_id = '186' AND status = 'pending';
