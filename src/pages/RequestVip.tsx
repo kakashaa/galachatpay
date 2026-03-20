@@ -82,7 +82,6 @@ const RequestVip: React.FC = () => {
         setLimitsPerLevel({
           4: overrideResult.data.vip4_limit,
           5: overrideResult.data.vip5_limit,
-          6: overrideResult.data.vip6_limit,
         });
       } else {
         setIsTopAgent(false);
