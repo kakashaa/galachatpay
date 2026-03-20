@@ -85,7 +85,7 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   useEffect(() => { loadAllCounts(); }, []);
-  useEffect(() => { loadData(); }, [activeTab]);
+  useEffect(() => { setStatusFilter("pending"); loadData(); }, [activeTab]);
 
   const HOLA_API = "https://hola-chat.com/wares-api.php";
   const HOLA_KEY = "ghala2026actions";
