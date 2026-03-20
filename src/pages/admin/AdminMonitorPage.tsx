@@ -27,11 +27,11 @@ interface ChatMsg {
 }
 
 /* ─── Alert Type Config ─── */
-const alertConfig: Record<string, { label: string; color: string; bg: string }> = {
-  big_charge: { label: "شحنة كبيرة", color: "#f59e0b", bg: "rgba(245,158,11,0.08)" },
-  repeated_charge: { label: "شحنات متكررة", color: "#f97316", bg: "rgba(249,115,22,0.08)" },
-  manual_salary: { label: "راتب يدوي", color: "#10b981", bg: "rgba(16,185,129,0.08)" },
-  promotion: { label: "ترويج محتمل", color: "#f43f5e", bg: "rgba(244,63,94,0.08)" },
+const alertConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+  big_charge: { label: "شحنة كبيرة", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", icon: Zap },
+  repeated_charge: { label: "شحنات متكررة", color: "#f97316", bg: "rgba(249,115,22,0.08)", icon: RefreshCw },
+  manual_salary: { label: "راتب يدوي", color: "#10b981", bg: "rgba(16,185,129,0.08)", icon: DollarSign },
+  promotion: { label: "ترويج محتمل", color: "#f43f5e", bg: "rgba(244,63,94,0.08)", icon: Megaphone },
 };
 
 /* ─── Monitor Type Config ─── */
