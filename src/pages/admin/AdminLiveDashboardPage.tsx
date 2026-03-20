@@ -762,20 +762,102 @@ const AdminLiveDashboardPage: React.FC = () => {
                 exit={{ opacity: 0, y: -8 }}
                 className="mt-4 space-y-3"
               >
+                {/* Agency Header */}
                 <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
                       <Building2 size={18} className="text-blue-400" />
                     </div>
                     <div>
                       <p className="text-sm font-bold">{agencyInfo.name}</p>
-                      <p className="text-[11px] text-muted-foreground font-mono">وكالة #{agencyInfo.id}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">كود #{agencyInfo.id}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 mb-3">
+                  {/* ── Pending Requests ── */}
+                  {agencyInfo.pendingRequests.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <UserPlus size={12} className="text-amber-400" />
+                        <span className="text-[11px] font-bold text-amber-400">
+                          طلبات انضمام معلّقة ({agencyInfo.pendingRequests.length})
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {agencyInfo.pendingRequests.map((req) => (
+                          <div
+                            key={req.user_id}
+                            className="flex items-center justify-between rounded-xl p-2.5"
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              {req.avatar ? (
+                                <img
+                                  src={req.avatar.startsWith("http") ? req.avatar : `${MEDIA_BASE}${req.avatar}`}
+                                  className="w-7 h-7 rounded-full object-cover shrink-0"
+                                  alt=""
+                                  onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
+                                />
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                                  <Users size={11} className="text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-xs font-medium truncate">{req.name}</p>
+                                <p className="text-[9px] text-muted-foreground font-mono">ID: {req.user_id}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-1.5 shrink-0">
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={async () => {
+                                  const ok = await handleAgencyRequest(req.user_id, true);
+                                  if (ok) {
+                                    toast.success(`تم قبول ${req.name}`);
+                                    setAgencyInfo(prev => prev ? {
+                                      ...prev,
+                                      pendingRequests: prev.pendingRequests.filter(r => r.user_id !== req.user_id),
+                                    } : null);
+                                  } else {
+                                    toast.error("فشل قبول الطلب");
+                                  }
+                                }}
+                                className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                              >
+                                <UserCheck size={11} />
+                                قبول
+                              </motion.button>
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={async () => {
+                                  const ok = await handleAgencyRequest(req.user_id, false);
+                                  if (ok) {
+                                    toast.success(`تم رفض ${req.name}`);
+                                    setAgencyInfo(prev => prev ? {
+                                      ...prev,
+                                      pendingRequests: prev.pendingRequests.filter(r => r.user_id !== req.user_id),
+                                    } : null);
+                                  } else {
+                                    toast.error("فشل رفض الطلب");
+                                  }
+                                }}
+                                className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                              >
+                                <UserX size={11} />
+                                رفض
+                              </motion.button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Current Members ── */}
+                  <div className="flex items-center gap-2 mb-2">
                     <Users size={12} className="text-muted-foreground" />
-                    <span className="text-[11px] font-bold">الأعضاء ({agencyInfo.members.length})</span>
+                    <span className="text-[11px] font-bold">الأعضاء الحاليين ({agencyInfo.members.length})</span>
                   </div>
 
                   {agencyInfo.members.length > 0 ? (
@@ -809,16 +891,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                     <p className="text-xs text-muted-foreground text-center py-4">لا توجد بيانات أعضاء</p>
                   )}
                 </div>
-
-                {/* Disabled accept button */}
-                <motion.button
-                  disabled
-                  className="w-full flex items-center justify-center gap-2 text-[11px] font-bold py-3 rounded-xl opacity-40 cursor-not-allowed"
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-                >
-                  <UserPlus size={13} />
-                  قبول عضو جديد — قريباً
-                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
