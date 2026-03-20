@@ -190,7 +190,31 @@ const BDDashboard: React.FC = () => {
     };
   }, [loadData, user?.uuid]);
 
-  const copyReferralCode = () => {
+  // Fetch BD notifications (banners + commission alerts)
+  const fetchBdNotifications = useCallback(async () => {
+    if (!user?.uuid) return;
+    try {
+      const { data: notifs } = await supabase
+        .from("bd_notifications")
+        .select("*")
+        .or(`target_uuid.eq.${user.uuid},target_uuid.eq.all`)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      const banners = (notifs || []).filter((n: any) => n.type === "admin_message" && !n.is_dismissed);
+      const allNotifs = notifs || [];
+      setBdBanners(banners);
+      setBdNotifications(allNotifs);
+    } catch { /* silent */ }
+  }, [user?.uuid]);
+
+  useEffect(() => { fetchBdNotifications(); }, [fetchBdNotifications]);
+
+  const dismissBanner = async (id: string) => {
+    await supabase.from("bd_notifications").update({ is_dismissed: true }).eq("id", id);
+    setBdBanners(prev => prev.filter(b => b.id !== id));
+  };
+
+
     if (data?.bd?.referral_code) {
       navigator.clipboard.writeText(data.bd.referral_code);
       toast.success("تم نسخ كود الإحالة");
