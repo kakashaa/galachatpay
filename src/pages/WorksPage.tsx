@@ -275,9 +275,8 @@ const WorksPage: React.FC = () => {
   };
 
   // Validate agent by agency code
-  const validateAgent = async (agencyId: string, ownerUuid: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
+  const validateAgent = async (agencyId: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
     try {
-      // First verify the agency exists
       const res = await fetch(
         `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-agency&agency_id=${agencyId}`
       );
@@ -291,19 +290,10 @@ const WorksPage: React.FC = () => {
         return { ok: false, reason: `هذه الوكالة قديمة (راتب: $${data.data.salary?.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
       }
 
-      // Verify the owner UUID actually owns this agency
-      const supporterRes = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${ownerUuid}`
-      );
-      const supporterData = await supporterRes.json();
-
-      if (!supporterData.ok) {
-        return { ok: false, reason: `UUID ${ownerUuid} غير موجود — تأكد من المعرف` };
-      }
-
-      const userAgencyId = String(supporterData.data?.agency_id || "");
-      if (userAgencyId !== String(agencyId)) {
-        return { ok: false, reason: `UUID ${ownerUuid} لا يملك الوكالة ${agencyId}\n\nالـ UUID المطلوب هو معرف صاحب الوكالة (وكيل المضيفين)` };
+      // Use owner_uuid from API (fixed by backend), fallback to owner_internal_id
+      const ownerUuid = data.data.owner_uuid || String(data.data.owner_internal_id);
+      if (!ownerUuid) {
+        return { ok: false, reason: "لم يتم العثور على UUID صاحب الوكالة" };
       }
 
       // Check not registered with another BD
@@ -314,7 +304,7 @@ const WorksPage: React.FC = () => {
         return { ok: false, reason: "هذه الوكالة مسجّلة بفريق بيدي آخر" };
       }
 
-      return { ok: true, uuid: ownerUuid, name: data.data.name || supporterData.data?.name, agency_id: agencyId };
+      return { ok: true, uuid: ownerUuid, name: data.data.name, agency_id: agencyId };
     } catch {
       return { ok: false, reason: "فشل الاتصال بالسيرفر" };
     }
