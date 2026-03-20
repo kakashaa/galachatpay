@@ -113,6 +113,7 @@ export type Database = {
           deleted_by: string | null
           id: string
           is_deleted: boolean
+          media_url: string | null
           message: string
           message_type: string
           sender_display_name: string
@@ -123,6 +124,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
+          media_url?: string | null
           message: string
           message_type?: string
           sender_display_name?: string
@@ -133,6 +135,7 @@ export type Database = {
           deleted_by?: string | null
           id?: string
           is_deleted?: boolean
+          media_url?: string | null
           message?: string
           message_type?: string
           sender_display_name?: string
@@ -841,6 +844,42 @@ export type Database = {
           total_commission?: number
           type_user?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      bd_notifications: {
+        Row: {
+          body: string
+          created_at: string | null
+          id: string
+          is_dismissed: boolean | null
+          is_read: boolean | null
+          sent_by: string | null
+          target_uuid: string
+          title: string
+          type: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          sent_by?: string | null
+          target_uuid: string
+          title: string
+          type?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          sent_by?: string | null
+          target_uuid?: string
+          title?: string
+          type?: string | null
         }
         Relationships: []
       }
@@ -1965,6 +2004,7 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean
+          media_url: string | null
           message: string
           sender_name: string
           sender_type: string
@@ -1975,6 +2015,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          media_url?: string | null
           message: string
           sender_name: string
           sender_type?: string
@@ -1985,6 +2026,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          media_url?: string | null
           message?: string
           sender_name?: string
           sender_type?: string
