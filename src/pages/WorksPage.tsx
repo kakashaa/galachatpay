@@ -390,7 +390,7 @@ const WorksPage: React.FC = () => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const withdrawMonth = lastMonth.toISOString().slice(0, 7);
-    const coinsAmount = Math.floor(monthEarnings * 7500);
+    const usdAmount = monthEarnings / 7500; // monthEarnings is in coins
 
     try {
       await supabase.from("bd_withdrawals").insert({
