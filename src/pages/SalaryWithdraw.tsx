@@ -379,6 +379,11 @@ const SalaryWithdraw: React.FC = () => {
       const data = await res.json();
       if (data.success) {
         setSubmitResult(data);
+        // Mark transfer as used locally to prevent double-withdraw
+        setTransfers(prev => prev.map(t => 
+          t.reference_id === selectedTransfer.reference_id ? { ...t, is_used: true, selectable: false } : t
+        ));
+        setUsedCount(prev => prev + 1);
         setStep("success");
       } else {
         setError(data.message || data.error || "فشل في رفع الطلب");
