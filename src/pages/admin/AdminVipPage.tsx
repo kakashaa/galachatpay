@@ -185,6 +185,7 @@ const AdminVipPage: React.FC = () => {
         </AnimatePresence>
       </div>
     </AdminPageLayout>
+    </>
   );
 };
 
