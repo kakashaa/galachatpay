@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Clock, XCircle, ChevronLeft, Loader2, FileText } from "lucide-react";
+import { CheckCircle, Clock, XCircle, ChevronLeft, Loader2, FileText, Coins } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { formatDateAr } from "@/utils/dateFormat";
+import { supabase } from "@/integrations/supabase/client";
 
 const API = "https://galachat.site/project-z/api.php";
 
@@ -23,6 +24,9 @@ interface SalaryRequest {
   rejection_image_url?: string;
   request_type?: string;
   notes?: string;
+  target_name?: string;
+  target_uuid?: string;
+  amount_coins?: number;
 }
 
 interface Props {
@@ -58,27 +62,75 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
   const [selectedReq, setSelectedReq] = useState<SalaryRequest | null>(null);
 
   useEffect(() => {
-    const fetch_ = async () => {
+    const fetchAll = async () => {
       try {
         const now = new Date();
         const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-        const res = await fetch(`${API}?action=my_salary_requests&uuid=${userUuid}&month=${month}`);
-        const data = await res.json();
-        if (data.requests) {
-          setRequests(data.requests);
-          // Calculate already withdrawn (non-rejected)
-          const withdrawn = (data.requests as SalaryRequest[])
-            .filter((r: SalaryRequest) => r.status !== "rejected")
-            .reduce((sum: number, r: SalaryRequest) => sum + (r.amount || 0), 0);
-          onWithdrawnCalculated?.(withdrawn);
-        }
+        const monthStart = `${month}-01T00:00:00`;
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const monthEnd = nextMonth.toISOString();
+
+        // Fetch from external API + local DB in parallel
+        const [externalRes, localRes] = await Promise.all([
+          fetch(`${API}?action=my_salary_requests&uuid=${userUuid}&month=${month}`).then(r => r.json()).catch(() => ({})),
+          supabase
+            .from("salary_requests")
+            .select("*")
+            .eq("user_uuid", userUuid)
+            .gte("created_at", monthStart)
+            .lt("created_at", monthEnd)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        const externalRequests: SalaryRequest[] = externalRes.requests || [];
+
+        // Map local DB records to SalaryRequest format
+        const localData = (localRes.data || []) as any[];
+        const externalIds = new Set(externalRequests.map(r => r.id));
+        const externalRefs = new Set(externalRequests.map(r => r.reference_id).filter(Boolean));
+
+        const localRequests: SalaryRequest[] = localData
+          .filter(r => !externalIds.has(r.id) && !externalRefs.has(r.transfer_id))
+          .map(r => ({
+            id: r.id?.slice(0, 13) || r.id,
+            amount: r.amount_usd || 0,
+            status: r.status || "pending",
+            bank: r.payment_method === "coins_charge"
+              ? (r.request_type === "charge_other" ? "شحن لحساب آخر" : "شحن كوينزات")
+              : (r.payment_method || ""),
+            country: r.recipient_country || "",
+            created_at: r.created_at,
+            reference_id: r.transfer_id || r.transaction_id || undefined,
+            account_name: r.recipient_name || undefined,
+            account_number: r.payment_details || undefined,
+            admin_note: r.admin_note || undefined,
+            transfer_image_url: r.transfer_image_url || undefined,
+            rejection_image_url: r.rejection_image_url || undefined,
+            request_type: r.request_type || undefined,
+            target_name: r.target_name || undefined,
+            target_uuid: r.target_uuid || undefined,
+            amount_coins: r.amount_coins || undefined,
+          }));
+
+        // Merge and sort by date
+        const all = [...externalRequests, ...localRequests].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        setRequests(all);
+
+        // Calculate already withdrawn (non-rejected)
+        const withdrawn = all
+          .filter(r => r.status !== "rejected")
+          .reduce((sum, r) => sum + (r.amount || 0), 0);
+        onWithdrawnCalculated?.(withdrawn);
       } catch {
         // silent
       } finally {
         setLoading(false);
       }
     };
-    fetch_();
+    fetchAll();
   }, [userUuid]);
 
   if (loading) {
@@ -97,7 +149,13 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
     );
   }
 
-  const getStatus = (s: string) => STATUS_CONFIG[s] || STATUS_CONFIG.pending;
+  const getStatus = (s: string) => {
+    if (["approved", "completed", "done", "delivered"].includes(s)) return STATUS_CONFIG.approved;
+    return STATUS_CONFIG[s] || STATUS_CONFIG.pending;
+  };
+
+  const isCoinsRequest = (req: SalaryRequest) =>
+    req.request_type === "charge_self" || req.request_type === "charge_other";
 
   return (
     <>
@@ -108,9 +166,10 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
         {requests.map((req, i) => {
           const st = getStatus(req.status);
+          const coins = isCoinsRequest(req);
           return (
             <motion.div
-              key={req.id}
+              key={`${req.id}-${i}`}
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
@@ -124,10 +183,21 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  {req.bank} — {req.country}
+                  {req.bank}{req.country ? ` — ${req.country}` : ""}
                 </span>
                 <span className="text-[10px] text-muted-foreground">{formatDateAr(req.created_at)}</span>
               </div>
+
+              {/* Show coins info for charge requests */}
+              {coins && req.amount_coins && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-400">
+                  <Coins className="w-3.5 h-3.5" />
+                  <span className="font-bold">{req.amount_coins.toLocaleString()} كوينز</span>
+                  {req.target_name && (
+                    <span className="text-muted-foreground mr-1">→ {req.target_name}</span>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${st.bg}`}>
@@ -174,8 +244,14 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                 {[
                   { label: "رقم الطلب", value: selectedReq.id },
                   { label: "المبلغ", value: `$${selectedReq.amount}` },
-                  { label: "البنك", value: `${selectedReq.bank} — ${selectedReq.country}` },
-                  { label: "المستلم", value: selectedReq.account_name },
+                  ...(isCoinsRequest(selectedReq) && selectedReq.amount_coins
+                    ? [{ label: "الكوينز", value: `${selectedReq.amount_coins.toLocaleString()} كوينز` }]
+                    : []),
+                  { label: "البنك", value: `${selectedReq.bank}${selectedReq.country ? ` — ${selectedReq.country}` : ""}` },
+                  { label: "المستلم", value: selectedReq.target_name || selectedReq.account_name },
+                  ...(selectedReq.target_uuid
+                    ? [{ label: "UUID المستلم", value: selectedReq.target_uuid }]
+                    : []),
                   { label: "رقم الحساب", value: selectedReq.account_number },
                   { label: "واتساب", value: selectedReq.whatsapp },
                   { label: "الرقم المرجعي", value: selectedReq.reference_id },
@@ -221,7 +297,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                   }}
                   className="w-full gold-gradient text-primary-foreground font-bold h-12"
                 >
-                  ✏ تعديل وإعادة الإرسال
+                  تعديل وإعادة الإرسال
                 </Button>
               )}
             </div>
