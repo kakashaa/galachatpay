@@ -46,6 +46,51 @@ const AdminWorksPage: React.FC = () => {
   const [editTotalEarnings, setEditTotalEarnings] = useState("");
   const [editFinLoading, setEditFinLoading] = useState(false);
 
+  // Global settings
+  const [globalSettings, setGlobalSettings] = useState<Record<string, boolean>>({
+    works_wallets_enabled: true,
+    works_instant_commission: true,
+    works_page_enabled: true,
+  });
+  const [globalCommPct, setGlobalCommPct] = useState("");
+  const [settingsLoading, setSettingsLoading] = useState(false);
+
+  const fetchGlobalSettings = useCallback(async () => {
+    const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled"];
+    const { data } = await supabase.from("app_settings").select("key, value").in("key", keys);
+    if (data) {
+      const map: Record<string, boolean> = {};
+      data.forEach((r: any) => { map[r.key] = r.value !== "false"; });
+      setGlobalSettings(prev => ({ ...prev, ...map }));
+    }
+  }, []);
+
+  const toggleGlobalSetting = async (key: string) => {
+    setSettingsLoading(true);
+    const newVal = !globalSettings[key];
+    const { error } = await supabase.from("app_settings").upsert({ key, value: String(newVal), updated_at: new Date().toISOString() });
+    if (error) { toast.error("فشل التحديث"); } else {
+      setGlobalSettings(prev => ({ ...prev, [key]: newVal }));
+      toast.success(`تم ${newVal ? "تفعيل" : "إيقاف"} الإعداد`);
+    }
+    setSettingsLoading(false);
+  };
+
+  const applyGlobalCommission = async () => {
+    const pct = parseFloat(globalCommPct);
+    if (isNaN(pct) || pct < 0 || pct > 100) { toast.error("نسبة غير صالحة"); return; }
+    setSettingsLoading(true);
+    try {
+      for (const a of accounts) {
+        await adminCall("works_update_account", { id: a.id, supporter_commission_pct: pct, agent_commission_pct: pct });
+      }
+      toast.success(`تم تعديل النسبة لجميع الحسابات إلى ${pct}%`);
+      setGlobalCommPct("");
+      fetchAccounts();
+    } catch { toast.error("فشل التحديث"); }
+    setSettingsLoading(false);
+  };
+
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try { const d = await adminCall("works_list_requests"); setRequests(d || []); } catch { }
