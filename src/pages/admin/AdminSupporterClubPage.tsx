@@ -622,7 +622,4 @@ const AdminSupporterClubPage: React.FC = () => {
   );
 };
 
-// Need Trophy import
-import { Trophy } from "lucide-react";
-
 export default AdminSupporterClubPage;
