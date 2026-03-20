@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,53 +21,74 @@ const WorksInvitationBanner: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [responded, setResponded] = useState<"accepted" | "rejected" | null>(null);
 
+  const loadInvitation = useCallback(async () => {
+    if (!user?.uuid) return;
+
+    const { data: invites } = await supabase
+      .from("works_members")
+      .select("id, works_id, member_type, agency_id, member_name, created_at")
+      .eq("member_uuid", user.uuid)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    const pendingInvite = (invites?.[0] as WorksInvitation | undefined) ?? null;
+
+    if (!pendingInvite) {
+      setInvitation(null);
+      setWorksOwnerName("");
+      return;
+    }
+
+    setInvitation(pendingInvite);
+
+    const { data: works } = await supabase
+      .from("works_accounts")
+      .select("user_name")
+      .eq("id", pendingInvite.works_id)
+      .maybeSingle();
+
+    setWorksOwnerName(works?.user_name || "مستخدم");
+  }, [user?.uuid]);
+
   useEffect(() => {
     if (!user?.uuid) return;
+
     loadInvitation();
 
     const channel = supabase
-      .channel("works_inv_" + user.uuid)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "works_members",
-      }, () => loadInvitation())
+      .channel(`works_inv_${user.uuid}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "works_members",
+          filter: `member_uuid=eq.${user.uuid}`,
+        },
+        () => loadInvitation()
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.uuid]);
+    const poll = setInterval(loadInvitation, 15000);
 
-  const loadInvitation = async () => {
-    if (!user?.uuid) return;
-    const { data } = await supabase
-      .from("works_members")
-      .select("id, works_id, member_type, agency_id, member_name")
-      .eq("member_uuid", user.uuid)
-      .eq("status", "pending")
-      .maybeSingle();
-
-    if (data) {
-      setInvitation(data as WorksInvitation);
-      // Fetch works owner name
-      const { data: works } = await supabase
-        .from("works_accounts")
-        .select("user_name")
-        .eq("id", data.works_id)
-        .maybeSingle();
-      setWorksOwnerName(works?.user_name || "مستخدم");
-    } else {
-      setInvitation(null);
-    }
-  };
+    return () => {
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.uuid, loadInvitation]);
 
   const handleRespond = async (accept: boolean) => {
     if (!invitation) return;
+
     setLoading(true);
     try {
-      await supabase
+      const { error } = await supabase
         .from("works_members")
         .update({ status: accept ? "active" : "rejected" } as any)
         .eq("id", invitation.id);
+
+      if (error) throw error;
 
       setResponded(accept ? "accepted" : "rejected");
       toast.success(accept ? "تم قبول الدعوة! مرحباً بك في الفريق" : "تم رفض الدعوة");
@@ -75,11 +96,13 @@ const WorksInvitationBanner: React.FC = () => {
       setTimeout(() => {
         setInvitation(null);
         setResponded(null);
-      }, 2000);
+        loadInvitation();
+      }, 1200);
     } catch {
       toast.error("فشل الرد على الدعوة");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   if (!invitation && !responded) return null;
