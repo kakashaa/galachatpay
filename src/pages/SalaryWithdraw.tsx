@@ -793,7 +793,7 @@ const SalaryWithdraw: React.FC = () => {
             <Button variant="outline" onClick={() => setStep("transfers_list")} className="flex-1 h-12 border-border/30">
               <ArrowRight className="w-4 h-4 ml-1" /> رجوع
             </Button>
-            <Button onClick={chargeCoins} disabled={chargingCoins}
+            <Button onClick={() => chargeCoins()} disabled={chargingCoins}
               className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
               {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : "تأكيد الشحن"}
             </Button>
