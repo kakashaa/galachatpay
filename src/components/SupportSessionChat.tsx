@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Clock, Shield, Star, Crown, User } from "lucide-react";
+import { Send, Clock, Paperclip, Image, Video, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useSupportSession } from "@/hooks/use-support-session";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import ChatBubble from "@/components/chat/ChatBubble";
 
 // Wait timer component
@@ -47,7 +50,12 @@ const SupportSessionChat: React.FC<Props> = ({
   const [input, setInput] = useState("");
   const [roomName, setRoomName] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -61,6 +69,32 @@ const SupportSessionChat: React.FC<Props> = ({
     try { await sendMessage(userUuid, userName, senderType, msg); }
     catch { /* silent */ }
     finally { setSending(false); }
+  };
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = type === "video" ? 8 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(type === "video" ? "الحد الأقصى 8MB" : "الحد الأقصى 5MB");
+      return;
+    }
+    setUploading(true);
+    setShowAttach(false);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `support/${sessionId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("chat-media").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      // Send as message with attachment
+      await sendMessage(userUuid, userName, senderType, type === "photo" ? "📷 صورة" : "🎥 فيديو", urlData.publicUrl);
+    } catch {
+      toast.error("فشل رفع الملف");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const isResolved = session?.status === "resolved" || session?.status === "closed";
@@ -94,17 +128,31 @@ const SupportSessionChat: React.FC<Props> = ({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2" style={{ maxHeight: "calc(100vh - 200px)" }}>
         <AnimatePresence initial={false}>
-          {messages.map((msg) => (
-            <ChatBubble
-              key={msg.id}
-              isMine={msg.sender_uuid === userUuid}
-              senderName={msg.sender_name}
-              senderType={msg.sender_type}
-              content={msg.message}
-              time={msg.created_at}
-              showSender={true}
-            />
-          ))}
+          {messages.map((msg) => {
+            // Detect media from attachment_url
+            const attachUrl = (msg as any).attachment_url;
+            let mediaUrl: string | undefined;
+            let mediaType: string | undefined;
+            if (attachUrl) {
+              const isImg = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(attachUrl);
+              const isVid = /\.(mp4|webm|mov)(\?|$)/i.test(attachUrl);
+              mediaUrl = attachUrl;
+              mediaType = isImg ? "photo" : isVid ? "video" : undefined;
+            }
+            return (
+              <ChatBubble
+                key={msg.id}
+                isMine={msg.sender_uuid === userUuid}
+                senderName={msg.sender_name}
+                senderType={msg.sender_type}
+                content={msg.message}
+                mediaUrl={mediaUrl}
+                mediaType={mediaType}
+                time={msg.created_at}
+                showSender={true}
+              />
+            );
+          })}
         </AnimatePresence>
       </div>
 
@@ -131,19 +179,56 @@ const SupportSessionChat: React.FC<Props> = ({
         <RatingPrompt sessionId={sessionId} userUuid={userUuid} adminUsername={session?.assigned_admin || ""} />
       )}
 
+      {/* Image preview dialog */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-black/90 border-0">
+          {previewImage && <img src={previewImage} alt="" className="w-full h-full object-contain" />}
+        </DialogContent>
+      </Dialog>
+
       {/* Input */}
       {!isResolved && (
-        <div className="px-3 py-2.5 flex items-center gap-2" style={{ background: "hsl(var(--chat-bg))", borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
-          <Input value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="اكتب رسالتك..."
-            className="flex-1 rounded-3xl border-0 text-sm py-2.5"
-            style={{ background: "hsl(var(--chat-input-bg))" }} />
-          <motion.button whileTap={{ scale: 0.85 }} onClick={handleSend} disabled={!input.trim() || sending}
-            className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
-            <Send className="w-4 h-4 text-white rotate-180" />
-          </motion.button>
+        <div className="relative" style={{ background: "hsl(var(--chat-bg))", borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
+          {/* Attachment sheet */}
+          <AnimatePresence>
+            {showAttach && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                className="absolute bottom-full left-0 right-0 p-3 flex gap-3 justify-center"
+                style={{ background: "hsl(var(--chat-bg))", borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
+                <label className="flex flex-col items-center gap-1 cursor-pointer p-3 rounded-xl hover:bg-white/5 transition-colors">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "hsl(217 91% 50% / 0.15)" }}>
+                    <Image className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">صورة</span>
+                  <input ref={photoRef} type="file" accept="image/*" onChange={e => handleMediaUpload(e, "photo")} className="hidden" />
+                </label>
+                <label className="flex flex-col items-center gap-1 cursor-pointer p-3 rounded-xl hover:bg-white/5 transition-colors">
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: "hsl(271 81% 56% / 0.15)" }}>
+                    <Video className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">فيديو</span>
+                  <input ref={videoRef} type="file" accept="video/*" onChange={e => handleMediaUpload(e, "video")} className="hidden" />
+                </label>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <button onClick={() => setShowAttach(!showAttach)} className="p-2 rounded-full hover:bg-white/5 transition-colors">
+              {uploading ? <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" /> : <Paperclip className="w-5 h-5 text-muted-foreground" />}
+            </button>
+            <Input value={input} onChange={(e) => { setInput(e.target.value); setShowAttach(false); }}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              placeholder="اكتب رسالتك..."
+              className="flex-1 rounded-3xl border-0 text-sm py-2.5"
+              style={{ background: "hsl(var(--chat-input-bg))" }} />
+            <motion.button whileTap={{ scale: 0.85 }} onClick={handleSend} disabled={!input.trim() || sending}
+              className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40"
+              style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
+              <Send className="w-4 h-4 text-white rotate-180" />
+            </motion.button>
+          </div>
         </div>
       )}
     </div>
