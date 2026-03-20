@@ -295,6 +295,17 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                 </div>
               </div>
 
+              {/* Charge type badge */}
+              <div className={`flex items-center gap-2 rounded-xl p-2 text-xs font-bold ${
+                charge.request_type === "charge_other" ? "bg-blue-500/5 text-blue-400" : "bg-emerald-500/5 text-emerald-400"
+              }`}>
+                {charge.request_type === "charge_other" ? (
+                  <><User className="w-3.5 h-3.5" /> شحن لحساب آخر: {charge.target_name || charge.target_uuid}</>
+                ) : (
+                  <><Coins className="w-3.5 h-3.5" /> شحن لحسابه</>
+                )}
+              </div>
+
               {/* Details */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-white/[0.03] rounded-xl p-2.5 text-xs">
@@ -310,14 +321,6 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                   <span className="font-bold text-foreground">{formatDateSA(charge.created_at)}</span>
                 </div>
               </div>
-
-              {/* Transfer verification */}
-              <div className={`flex items-center gap-2 rounded-xl p-2 text-xs font-bold ${
-                charge.transfer_verified ? "bg-emerald-500/5 text-emerald-400" : "bg-amber-500/5 text-amber-400"
-              }`}>
-                {charge.transfer_verified
-                  ? <><CheckCircle className="w-3.5 h-3.5" /> تم التحقق من التحويل</>
-                  : <><Clock className="w-3.5 h-3.5" /> بانتظار التحقق</>
                 }
               </div>
             </motion.div>
