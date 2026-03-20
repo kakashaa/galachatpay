@@ -52,6 +52,7 @@ const ALLOWED: Record<string, string[]> = {
     "ban-user", "ban-user-real", "unban-user-real",
     "user-monthly-charges", "agency-salary",
     "upload-room-background", "list-room-bg-requests",
+    "approve-room-bg", "reject-room-bg",
     "wa-queue",
   ],
   "bd-data": [
