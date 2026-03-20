@@ -42,7 +42,6 @@ const WorksPage: React.FC = () => {
   const [sending, setSending] = useState(false);
 
   // Withdraw
-  const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
 
   // Earnings
