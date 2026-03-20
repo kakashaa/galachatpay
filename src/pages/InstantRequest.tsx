@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Zap, CheckCircle, AlertCircle, Loader2,
-  Globe, CreditCard, UserCheck, Send, Wallet, User, Search, Coins,
+  Globe, UserCheck, Send, Wallet, User, Search, Coins,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
