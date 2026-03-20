@@ -303,7 +303,10 @@ const AdminDashboardPage: React.FC = () => {
       {/* Bottom Navigation */}
       <AdminBottomNav
         active={bottomTab}
-        onChange={(tab) => setBottomTab(tab)}
+        onChange={(tab) => {
+          if (tab === 'monitor') { navigate('/admin/monitor'); return; }
+          setBottomTab(tab);
+        }}
         chatBadge={badgeData.supportOpen + badgeData.chatWaiting}
       />
     </div>
