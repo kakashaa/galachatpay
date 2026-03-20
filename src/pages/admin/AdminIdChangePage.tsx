@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Hash, Loader2, ArrowLeftRight, ClipboardList, ScrollText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 const AdminIdChangePage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
@@ -26,8 +27,12 @@ const AdminIdChangePage: React.FC = () => {
     setLoading(false);
   };
 
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
   const executeChange = async () => {
     if (!oldUuid.trim() || !newUuid.trim()) { toast.error("يرجى ملء الحقلين"); return; }
+    const ok = await confirm({ title: "تأكيد تغيير الآيدي", message: `هل أنت متأكد من تغيير UUID ${oldUuid} إلى ${newUuid}؟`, danger: true, confirmText: "تنفيذ التغيير" });
+    if (!ok) return;
     setChanging(true);
     const t = toast.loading("جاري تغيير الآيدي...");
     try {
@@ -53,6 +58,8 @@ const AdminIdChangePage: React.FC = () => {
   const glassCard = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.3)' };
 
   return (
+    <>
+    {ConfirmDialog}
     <AdminPageLayout title="تغيير آيدي" accentColor="hsl(271 81% 56%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>
@@ -128,6 +135,7 @@ const AdminIdChangePage: React.FC = () => {
         </AnimatePresence>
       </div>
     </AdminPageLayout>
+    </>
   );
 };
 

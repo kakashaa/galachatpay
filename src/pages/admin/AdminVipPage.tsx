@@ -7,6 +7,7 @@ import { Star, Loader2, Crown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminTopAgents from "@/components/AdminTopAgents";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 const tabs = ["إرسال VIP", "الطلبات", "TOP وكلاء"];
 
@@ -28,8 +29,12 @@ const AdminVipPage: React.FC = () => {
     setLoading(false);
   };
 
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
   const sendVip = async () => {
     if (!vipUuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
+    const ok = await confirm({ title: "تأكيد إرسال VIP", message: `هل أنت متأكد من إرسال VIP ${vipLevel} لـ UUID ${vipUuid}؟`, danger: false, confirmText: "إرسال VIP" });
+    if (!ok) return;
     setSending(true);
     const t = toast.loading(`جاري إرسال VIP ${vipLevel}...`);
     try {
@@ -53,6 +58,8 @@ const AdminVipPage: React.FC = () => {
   };
 
   return (
+    <>
+    {ConfirmDialog}
     <AdminPageLayout title="إدارة VIP" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto px-4 pt-4 space-y-4" dir="rtl">
         {/* Tabs */}
@@ -179,6 +186,7 @@ const AdminVipPage: React.FC = () => {
         </AnimatePresence>
       </div>
     </AdminPageLayout>
+    </>
   );
 };
 
