@@ -534,7 +534,6 @@ const InstantRequest: React.FC = () => {
 
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep("supporter")} className="flex-1 h-12 border-border/30">رجوع</Button>
-@@INSERTWAP@@
               <Button
                 onClick={() => { setStep("confirm"); setError(""); }}
                 disabled={!isNameValid || !selectedCountryId || !selectedMethodId || !isAccountValid()}
@@ -545,6 +544,8 @@ const InstantRequest: React.FC = () => {
             </div>
           </>
         )}
+
+        {/* WhatsApp - injected between details and confirm steps */}
 
         {/* STEP 4: Confirm */}
         {step === "confirm" && selectedTransfer && supporterInfo && (
