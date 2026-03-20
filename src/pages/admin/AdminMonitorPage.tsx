@@ -189,7 +189,7 @@ const AdminMonitorPage: React.FC = () => {
   ];
 
   return (
-    <AdminPageLayout title="المراقبة الذكية" icon={Eye} onBack={() => window.history.back()} onLogout={handleLogout}>
+    <AdminPageLayout title="المراقبة الذكية" onLogout={handleLogout}>
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-2xl mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
         {tabs.map(t => {
