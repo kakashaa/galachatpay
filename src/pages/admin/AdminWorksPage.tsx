@@ -119,6 +119,7 @@ const AdminWorksPage: React.FC = () => {
     if (tab === "requests") fetchRequests();
     else if (tab === "accounts") fetchAccounts();
     else if (tab === "withdrawals") fetchWithdrawals();
+    else if (tab === "settings") { fetchAccounts(); fetchGlobalSettings(); }
   }, [tab]);
 
   const approveRequest = async (id: string) => {
