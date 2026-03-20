@@ -43,7 +43,7 @@ export async function getAvatar(uuid: string): Promise<string> {
     // silent
   }
 
-  return getAvatarUrl(uuid);
+  return `https://media.galalivechat.com/avatars/default.jpg`;
 }
 
 // Legacy helper — kept for backward compat
