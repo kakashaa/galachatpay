@@ -1,19 +1,26 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
-import { Eye, Bell, List, Bot, Send, Loader2, Volume2, VolumeX, Trash2, CheckCheck, Zap, RefreshCw, DollarSign, Megaphone } from "lucide-react";
+import {
+  Shield, AlertTriangle, TrendingUp, Eye, Activity, Bell, Search, Settings,
+  RefreshCw, Volume2, VolumeX, Send, Loader2, Bot, Trash2, CheckCheck,
+  Zap, DollarSign, Megaphone, Gift, Monitor, Clock, ChevronDown, ChevronUp,
+  BarChart3, Users, ArrowUp,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { playNotificationSound } from "@/lib/notificationSound";
+import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 
 /* ─── Types ─── */
 interface MonitorAlert {
   id: string;
   alert_type: string;
+  severity?: "high" | "medium" | "low";
   sender_uuid: string | null;
+  sender_name?: string;
   receiver_uuid: string | null;
+  receiver_name?: string;
   amount: number;
   details: any;
   is_read: boolean;
@@ -26,22 +33,18 @@ interface ChatMsg {
   time: string;
 }
 
-/* ─── Alert Type Config ─── */
-const alertConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
-  big_charge: { label: "شحنة كبيرة", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", icon: Zap },
-  repeated_charge: { label: "شحنات متكررة", color: "#f97316", bg: "rgba(249,115,22,0.08)", icon: RefreshCw },
-  manual_salary: { label: "راتب يدوي", color: "#10b981", bg: "rgba(16,185,129,0.08)", icon: DollarSign },
-  promotion: { label: "ترويج محتمل", color: "#f43f5e", bg: "rgba(244,63,94,0.08)", icon: Megaphone },
+/* ─── Constants ─── */
+const COINS_PER_USD = 7500;
+const formatCoins = (n: number) => {
+  if (!n) return "0";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toLocaleString("en-US");
 };
-
-/* ─── Monitor Type Config ─── */
-const monitorTypes = [
-  { key: "big_charge", label: "شحنات كبيرة (> 500K)", icon: "💰" },
-  { key: "repeated_charge", label: "شحنات متكررة (3+ بنفس اليوم)", icon: "🔁" },
-  { key: "manual_salary", label: "رواتب يدوية", icon: "💵" },
-  { key: "promotion", label: "ترويج بالرسائل", icon: "📢" },
-];
-
+const formatMoney = (coins: number) => {
+  const usd = (coins / COINS_PER_USD).toFixed(2);
+  return `${coins.toLocaleString("en-US")} كوينز ($${usd})`;
+};
 const formatTime = (d: string) => {
   try {
     return new Date(d).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
@@ -49,27 +52,84 @@ const formatTime = (d: string) => {
     return "—";
   }
 };
+const formatDate = (d: string) => {
+  try {
+    return new Date(d).toLocaleDateString("ar-SA", { day: "numeric", month: "short" });
+  } catch {
+    return "—";
+  }
+};
 
-const formatNumber = (n: number) => n?.toLocaleString("en-US") ?? "0";
+/* ─── Severity Config ─── */
+const severityConfig = {
+  high: { label: "عالية", color: "hsl(0 84% 60%)", bg: "hsla(0,84%,60%,0.08)", border: "hsla(0,84%,60%,0.2)", icon: AlertTriangle },
+  medium: { label: "متوسطة", color: "hsl(25 95% 53%)", bg: "hsla(25,95%,53%,0.08)", border: "hsla(25,95%,53%,0.2)", icon: Shield },
+  low: { label: "منخفضة", color: "hsl(48 96% 53%)", bg: "hsla(48,96%,53%,0.08)", border: "hsla(48,96%,53%,0.2)", icon: Eye },
+};
+
+/* ─── Alert Type Config ─── */
+const alertTypeConfig: Record<string, { label: string; icon: any; filterKey: string }> = {
+  big_charge: { label: "شحنة كبيرة", icon: Zap, filterKey: "charges" },
+  repeated_charge: { label: "شحنات متكررة", icon: RefreshCw, filterKey: "charges" },
+  promotion: { label: "ترويج مشبوه", icon: Megaphone, filterKey: "promotion" },
+  manual_salary: { label: "شحنة داشبورد", icon: DollarSign, filterKey: "admin" },
+  big_gift: { label: "هدية كبيرة", icon: Gift, filterKey: "gifts" },
+  fake_account: { label: "حساب وهمي", icon: Users, filterKey: "accounts" },
+  admin_action: { label: "عملية أدمن", icon: Shield, filterKey: "admin" },
+};
+
+const alertFilters = [
+  { key: "all", label: "الكل", icon: Bell },
+  { key: "charges", label: "شحنات", icon: Zap },
+  { key: "gifts", label: "هدايا", icon: Gift },
+  { key: "promotion", label: "ترويج", icon: Megaphone },
+  { key: "accounts", label: "حسابات", icon: Users },
+  { key: "admin", label: "أدمن", icon: Shield },
+];
+
+/* ─── Monitor Types ─── */
+const monitorTypes = [
+  { key: "big_charge", label: "شحنات كبيرة (> 500K)", interval: "كل 1 دقيقة", connected: true },
+  { key: "repeated_charge", label: "شحنات متكررة (> 3/ساعة)", interval: "كل 2 دقيقة", connected: true },
+  { key: "promotion", label: "رسائل ترويج (كلمات ممنوعة)", interval: "كل 1 دقيقة", connected: true },
+  { key: "big_gift", label: "هدايا كبيرة (> 500K)", interval: "كل 2 دقيقة", connected: true },
+  { key: "dashboard_charge", label: "شحنات من الداشبورد", interval: "كل 1 دقيقة", connected: true },
+  { key: "admin_sensitive", label: "عمليات Admin حساسة", interval: "كل 2 دقيقة", connected: true },
+  { key: "fake_account", label: "حسابات وهمية (نفس الجهاز)", interval: "—", connected: false },
+  { key: "stolen_account", label: "سرقة حساب", interval: "—", connected: false },
+  { key: "coin_laundering", label: "غسيل كوينز", interval: "—", connected: false },
+  { key: "vip_no_charge", label: "VIP بدون شحن", interval: "—", connected: false },
+];
+
+/* ─── Quick Questions ─── */
+const quickQuestions = [
+  "مين شحن فوق 500 ألف؟",
+  "أعلى الداعمين اليوم",
+  "أعلى الداعمين هالشهر",
+  "أعلى المستلمين اليوم",
+  "تنبيهات اليوم",
+  "شحنات الشهر",
+];
 
 /* ═══════════════════════════════════════ */
 /*             MAIN COMPONENT             */
 /* ═══════════════════════════════════════ */
 const AdminMonitorPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
-  const [tab, setTab] = useState<"alerts" | "monitors" | "bot">("alerts");
-  const [alertFilter, setAlertFilter] = useState<string>("big_charge");
+  const [activeSection, setActiveSection] = useState<"alerts" | "bot" | "stats" | "monitors" | "history" | "settings">("alerts");
 
   /* ── Alerts State ── */
   const [alerts, setAlerts] = useState<MonitorAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [alertFilter, setAlertFilter] = useState("all");
   const prevCountRef = useRef(0);
+  const lastUpdateRef = useRef<string>("");
 
   /* ── Monitor toggles ── */
   const [enabledMonitors, setEnabledMonitors] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem("monitor_toggles");
-    return saved ? JSON.parse(saved) : { big_charge: true, repeated_charge: true, manual_salary: true, promotion: true };
+    return saved ? JSON.parse(saved) : Object.fromEntries(monitorTypes.filter(m => m.connected).map(m => [m.key, true]));
   });
 
   /* ── Bot State ── */
@@ -77,6 +137,16 @@ const AdminMonitorPage: React.FC = () => {
   const [botInput, setBotInput] = useState("");
   const [botLoading, setBotLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  /* ── History state ── */
+  const [historyFilter, setHistoryFilter] = useState<"today" | "week" | "month">("today");
+  const [historySearch, setHistorySearch] = useState("");
+
+  /* ── Settings state ── */
+  const [settingsRefreshSec, setSettingsRefreshSec] = useState(30);
+  const [settingsBigChargeThreshold, setSettingsBigChargeThreshold] = useState(500000);
+  const [settingsRepeatThreshold, setSettingsRepeatThreshold] = useState(3);
+  const [settingsBigGiftThreshold, setSettingsBigGiftThreshold] = useState(500000);
 
   /* ── Load Alerts ── */
   const loadAlerts = useCallback(async () => {
@@ -88,21 +158,23 @@ const AdminMonitorPage: React.FC = () => {
       const data = await res.json();
       const apiAlerts = (data.data?.alerts || []) as MonitorAlert[];
 
-      // Play sound for new alerts
       if (soundEnabled && apiAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
-        playNotificationSound();
+        const hasHigh = apiAlerts.some(a => a.severity === "high");
+        if (hasHigh) playUrgentSound();
+        else playNotificationSound();
       }
       prevCountRef.current = apiAlerts.length;
+      lastUpdateRef.current = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       setAlerts(apiAlerts);
     } catch {
-      // Fallback to Supabase if API fails
       try {
         const { data } = await supabase
           .from("monitor_alerts" as any)
           .select("*")
           .order("created_at", { ascending: false })
-          .limit(100);
+          .limit(200);
         setAlerts((data || []) as unknown as MonitorAlert[]);
+        lastUpdateRef.current = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       } catch { /* silent */ }
     } finally {
       setLoading(false);
@@ -111,9 +183,35 @@ const AdminMonitorPage: React.FC = () => {
 
   useEffect(() => {
     loadAlerts();
-    const iv = setInterval(loadAlerts, 60_000);
+    const iv = setInterval(loadAlerts, settingsRefreshSec * 1000);
     return () => clearInterval(iv);
-  }, [loadAlerts]);
+  }, [loadAlerts, settingsRefreshSec]);
+
+  /* ── Computed ── */
+  const todayAlerts = alerts.filter(a => {
+    try { return new Date(a.created_at).toDateString() === new Date().toDateString(); } catch { return false; }
+  });
+  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length;
+  const unreadCount = alerts.filter(a => !a.is_read).length;
+
+  const filteredAlerts = alerts.filter(a => {
+    if (alertFilter === "all") return true;
+    const cfg = alertTypeConfig[a.alert_type];
+    return cfg?.filterKey === alertFilter;
+  });
+
+  /* ── History filtered ── */
+  const historyAlerts = alerts.filter(a => {
+    const d = new Date(a.created_at);
+    const now = new Date();
+    if (historyFilter === "today") return d.toDateString() === now.toDateString();
+    if (historyFilter === "week") return (now.getTime() - d.getTime()) < 7 * 86400000;
+    return (now.getTime() - d.getTime()) < 30 * 86400000;
+  }).filter(a => {
+    if (!historySearch) return true;
+    const s = historySearch.toLowerCase();
+    return (a.sender_uuid?.includes(s) || a.receiver_uuid?.includes(s) || a.sender_name?.toLowerCase().includes(s) || a.details?.note?.toLowerCase().includes(s));
+  });
 
   /* ── Mark as read ── */
   const markAllRead = async () => {
@@ -124,13 +222,11 @@ const AdminMonitorPage: React.FC = () => {
     toast.success("تم تعليم الكل كمقروء");
   };
 
-  /* ── Delete alert ── */
   const deleteAlert = async (id: string) => {
     await (supabase.from("monitor_alerts" as any) as any).delete().eq("id", id);
     setAlerts(prev => prev.filter(a => a.id !== id));
   };
 
-  /* ── Toggle monitor ── */
   const toggleMonitor = (key: string) => {
     setEnabledMonitors(prev => {
       const next = { ...prev, [key]: !prev[key] };
@@ -139,158 +235,171 @@ const AdminMonitorPage: React.FC = () => {
     });
   };
 
-  /* ── Bot query ── */
-  const handleBotQuery = async () => {
-    if (!botInput.trim() || botLoading) return;
-    const question = botInput.trim();
+  /* ── Bot ── */
+  const handleBotQuery = async (q?: string) => {
+    const question = (q || botInput).trim();
+    if (!question || botLoading) return;
     setBotInput("");
     setChatMessages(prev => [...prev, { role: "user", text: question, time: formatTime(new Date().toISOString()) }]);
     setBotLoading(true);
-
     try {
       const res = await fetch(
         "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `question=${encodeURIComponent(question)}`,
-        }
+        { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `question=${encodeURIComponent(question)}` }
       );
       const data = await res.json();
-      setChatMessages(prev => [...prev, {
-        role: "bot",
-        text: data.data?.answer || data.answer || data.message || "ما لقيت معلومات",
-        time: formatTime(new Date().toISOString()),
-      }]);
+      setChatMessages(prev => [...prev, { role: "bot", text: data.data?.answer || data.answer || data.message || "ما لقيت معلومات", time: formatTime(new Date().toISOString()) }]);
     } catch {
-      setChatMessages(prev => [...prev, {
-        role: "bot",
-        text: "⚠️ خطأ في الاتصال بالسيرفر — حاول مرة أخرى",
-        time: formatTime(new Date().toISOString()),
-      }]);
+      setChatMessages(prev => [...prev, { role: "bot", text: "خطأ في الاتصال — حاول مرة أخرى", time: formatTime(new Date().toISOString()) }]);
     } finally {
       setBotLoading(false);
     }
   };
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
-  /* ── Counts ── */
-  const unreadCount = alerts.filter(a => !a.is_read).length;
-  const filteredAlerts = alerts.filter(a => a.alert_type === alertFilter);
-  const todayAlerts = alerts.filter(a => {
-    const d = new Date(a.created_at);
-    const now = new Date();
-    return d.toDateString() === now.toDateString();
-  });
-  const todayCountByType = monitorTypes.map(m => ({
+  /* ── Sections nav ── */
+  const sections = [
+    { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
+    { key: "bot" as const, label: "البوت", icon: Bot, badge: 0 },
+    { key: "stats" as const, label: "إحصائيات", icon: BarChart3, badge: 0 },
+    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: 0 },
+    { key: "history" as const, label: "السجل", icon: Clock, badge: 0 },
+    { key: "settings" as const, label: "إعدادات", icon: Settings, badge: 0 },
+  ];
+
+  const todayCountByType = monitorTypes.filter(m => m.connected).map(m => ({
     ...m,
     count: todayAlerts.filter(a => a.alert_type === m.key).length,
   }));
 
-  const alertSubTabs = [
-    { key: "big_charge", label: "شحنات كبيرة", icon: Zap, count: alerts.filter(a => a.alert_type === "big_charge").length },
-    { key: "repeated_charge", label: "شحنات متكررة", icon: RefreshCw, count: alerts.filter(a => a.alert_type === "repeated_charge").length },
-    { key: "manual_salary", label: "رواتب يدوية", icon: DollarSign, count: alerts.filter(a => a.alert_type === "manual_salary").length },
-    { key: "promotion", label: "ترويج", icon: Megaphone, count: alerts.filter(a => a.alert_type === "promotion").length },
-  ];
-
-  const tabs = [
-    { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
-    { key: "monitors" as const, label: "المراقبات", icon: List, badge: 0 },
-    { key: "bot" as const, label: "البوت الذكي", icon: Bot, badge: 0 },
-  ];
+  const connectedCount = monitorTypes.filter(m => m.connected).length;
+  const needsDbCount = monitorTypes.filter(m => !m.connected).length;
 
   return (
-    <AdminPageLayout title="المراقبة الذكية" onLogout={handleLogout}>
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-2xl mb-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-        {tabs.map(t => {
-          const Icon = t.icon;
-          const active = tab === t.key;
-          return (
-            <motion.button
-              key={t.key}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setTab(t.key)}
-              className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all relative ${active ? "text-white" : "text-muted-foreground"}`}
-              style={active ? {
-                background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                boxShadow: "0 4px 16px rgba(16,185,129,0.3)",
-              } : {}}
-            >
-              <Icon size={14} />
-              {t.label}
-              {t.badge > 0 && (
-                <span className="h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 text-white"
-                  style={{ background: "linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))" }}>
-                  {t.badge > 99 ? "99+" : t.badge}
-                </span>
-              )}
-            </motion.button>
-          );
-        })}
+    <AdminPageLayout title="المراقبة" onLogout={handleLogout}>
+      {/* ═══ HEADER STATS ═══ */}
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        {[
+          { value: todayAlerts.length, label: "تنبيهات اليوم", color: "hsl(160 84% 39%)" },
+          { value: highCount, label: "عالية الخطورة", color: "hsl(0 84% 60%)" },
+          { value: alerts.length, label: "إجمالي", color: "hsl(217 91% 60%)" },
+          { value: unreadCount, label: "غير مقروءة", color: "hsl(25 95% 53%)" },
+        ].map((s, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05 }}
+            className="rounded-2xl p-3 text-center"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <p className="text-xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
+          </motion.div>
+        ))}
       </div>
 
-      {/* ═══ TAB 1: Alerts ═══ */}
-      {tab === "alerts" && (
+      {/* Last update + refresh */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] text-muted-foreground">
+          آخر تحديث: <span className="tabular-nums">{lastUpdateRef.current || "—"}</span>
+        </p>
+        <motion.button whileTap={{ scale: 0.9 }} onClick={loadAlerts}
+          className="h-7 px-3 rounded-xl text-[10px] font-bold flex items-center gap-1.5"
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <RefreshCw size={11} className={loading ? "animate-spin" : ""} /> تحديث
+        </motion.button>
+      </div>
+
+      {/* ═══ SECTION TABS ═══ */}
+      <div className="overflow-x-auto scrollbar-hide -mx-1 px-1 mb-4">
+        <div className="flex gap-1 min-w-max p-1 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          {sections.map(s => {
+            const Icon = s.icon;
+            const active = activeSection === s.key;
+            return (
+              <motion.button
+                key={s.key}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveSection(s.key)}
+                className={`py-2 px-3 rounded-xl text-[10px] font-bold flex items-center gap-1 whitespace-nowrap transition-all ${active ? "text-white" : "text-muted-foreground"}`}
+                style={active ? {
+                  background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
+                  boxShadow: "0 4px 16px rgba(16,185,129,0.25)",
+                } : {}}
+              >
+                <Icon size={12} />
+                {s.label}
+                {s.badge > 0 && (
+                  <span className="h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 text-white"
+                    style={{ background: "hsl(0 84% 60%)" }}>
+                    {s.badge > 99 ? "99+" : s.badge}
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════ */}
+      {/* SECTION 1: LIVE ALERTS                 */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "alerts" && (
         <div className="space-y-3">
-          {/* Sub-tabs filter */}
+          {/* Live indicator + filter */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "hsl(0 84% 60%)", boxShadow: "0 0 8px hsl(0 84% 60%)" }} />
+              <span className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>مباشر</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <motion.button whileTap={{ scale: 0.9 }} onClick={markAllRead}
+                className="h-7 px-2.5 rounded-xl text-[9px] font-bold flex items-center gap-1"
+                style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.15)", color: "hsl(160 84% 39%)" }}>
+                <CheckCheck size={10} /> مقروء
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoundEnabled(!soundEnabled)}
+                className="h-7 w-7 rounded-xl flex items-center justify-center"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {soundEnabled ? <Volume2 size={11} style={{ color: "hsl(160 84% 39%)" }} /> : <VolumeX size={11} className="text-muted-foreground" />}
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Filter chips */}
           <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
-            <div className="flex gap-1.5 min-w-max pb-1">
-              {alertSubTabs.map(st => {
-                const Icon = st.icon;
-                const active = alertFilter === st.key;
-                const cfg = alertConfig[st.key];
-                const color = cfg?.color || "#10b981";
+            <div className="flex gap-1.5 min-w-max">
+              {alertFilters.map(f => {
+                const Icon = f.icon;
+                const active = alertFilter === f.key;
+                const count = f.key === "all" ? alerts.length : alerts.filter(a => alertTypeConfig[a.alert_type]?.filterKey === f.key).length;
                 return (
                   <motion.button
-                    key={st.key}
+                    key={f.key}
                     whileTap={{ scale: 0.93 }}
-                    onClick={() => setAlertFilter(st.key)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all ${active ? "text-white" : "text-muted-foreground"}`}
+                    onClick={() => setAlertFilter(f.key)}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all ${active ? "text-white" : "text-muted-foreground"}`}
                     style={active ? {
-                      background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-                      boxShadow: `0 3px 12px ${color}40`,
+                      background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
                     } : {
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.06)",
                     }}
                   >
-                    <Icon size={12} />
-                    {st.label}
-                    {st.count > 0 && (
-                      <span className={`h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 ${active ? "bg-white/20 text-white" : "bg-white/5 text-muted-foreground"}`}>
-                        {st.count}
-                      </span>
-                    )}
+                    <Icon size={10} />
+                    {f.label}
+                    {count > 0 && <span className="text-[8px] opacity-70">({count})</span>}
                   </motion.button>
                 );
               })}
             </div>
           </div>
 
-          {/* Actions bar */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <motion.button whileTap={{ scale: 0.9 }} onClick={markAllRead}
-                className="h-8 px-3 rounded-xl text-[10px] font-bold flex items-center gap-1.5"
-                style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.15)", color: "#10b981" }}>
-                <CheckCheck size={12} /> مقروء الكل
-              </motion.button>
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoundEnabled(!soundEnabled)}
-                className="h-8 w-8 rounded-xl flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                {soundEnabled ? <Volume2 size={13} className="text-admin-emerald" /> : <VolumeX size={13} className="text-muted-foreground" />}
-              </motion.button>
-            </div>
-            <span className="text-[10px] text-muted-foreground tabular-nums">{filteredAlerts.length} تنبيه</span>
-          </div>
-
+          {/* Alert cards */}
           {loading && filteredAlerts.length === 0 && (
-            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-admin-emerald" /></div>
+            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "hsl(160 84% 39%)" }} /></div>
           )}
 
           {!loading && filteredAlerts.length === 0 && (
@@ -298,168 +407,46 @@ const AdminMonitorPage: React.FC = () => {
               className="text-center py-16 rounded-2xl"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <Eye size={32} className="mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-xs text-muted-foreground">
-                {`لا توجد تنبيهات من نوع "${alertConfig[alertFilter]?.label || alertFilter}"`}
-              </p>
-              <p className="text-[10px] text-muted-foreground/60 mt-1">يتم الفحص كل 60 ثانية</p>
+              <p className="text-xs text-muted-foreground">لا توجد تنبيهات</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">يتم الفحص كل {settingsRefreshSec} ثانية</p>
             </motion.div>
           )}
 
           <AnimatePresence mode="popLayout">
-            {filteredAlerts.map((alert, i) => {
-              const config = alertConfig[alert.alert_type] || { label: alert.alert_type, color: "#71717a", bg: "rgba(113,113,122,0.08)" };
-              return (
-                <motion.div
-                  key={alert.id}
-                  layout
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  transition={{ delay: i * 0.02 }}
-                  className={`rounded-2xl p-3.5 relative overflow-hidden ${!alert.is_read ? "ring-1" : ""}`}
-                  style={{
-                    background: config.bg,
-                    border: `1px solid ${config.color}20`,
-                    ...((!alert.is_read) ? { ringColor: config.color + "40" } : {}),
-                  }}
-                >
-                  {!alert.is_read && (
-                    <div className="absolute top-3 left-3 w-2 h-2 rounded-full" style={{ background: config.color, boxShadow: `0 0 8px ${config.color}` }} />
-                  )}
-
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${config.color}20`, color: config.color }}>
-                      {config.label}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] text-muted-foreground tabular-nums">{formatTime(alert.created_at)}</span>
-                      <motion.button whileTap={{ scale: 0.8 }} onClick={() => deleteAlert(alert.id)} className="p-1 rounded-lg hover:bg-white/5">
-                        <Trash2 size={11} className="text-muted-foreground" />
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div className="space-y-1">
-                    {alert.sender_uuid && (
-                      <p className="text-[11px] text-foreground">
-                        <span className="text-muted-foreground">المرسل: </span>
-                        <span className="font-mono font-bold tabular-nums">{alert.sender_uuid}</span>
-                      </p>
-                    )}
-                    {alert.receiver_uuid && (
-                      <p className="text-[11px] text-foreground">
-                        <span className="text-muted-foreground">المستلم: </span>
-                        <span className="font-mono font-bold tabular-nums">{alert.receiver_uuid}</span>
-                      </p>
-                    )}
-                    {alert.amount > 0 && (
-                      <p className="text-[11px] text-foreground">
-                        <span className="text-muted-foreground">المبلغ: </span>
-                        <span className="font-bold tabular-nums" style={{ color: config.color }}>{formatNumber(alert.amount)} كوينز</span>
-                      </p>
-                    )}
-                    {alert.details && typeof alert.details === "object" && alert.details.note && (
-                      <p className="text-[10px] text-muted-foreground mt-1">{alert.details.note}</p>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+            {filteredAlerts.slice(0, 50).map((alert, i) => (
+              <AlertCard key={alert.id} alert={alert} index={i} onDelete={deleteAlert} />
+            ))}
           </AnimatePresence>
+
+          {filteredAlerts.length > 50 && (
+            <p className="text-center text-[10px] text-muted-foreground py-2">
+              عرض 50 من {filteredAlerts.length} — راجع السجل للمزيد
+            </p>
+          )}
         </div>
       )}
 
-      {/* ═══ TAB 2: All Monitors ═══ */}
-      {tab === "monitors" && (
-        <div className="space-y-3">
-          <p className="text-[11px] text-muted-foreground mb-2">أنواع المراقبة المتاحة</p>
-          {todayCountByType.map((m, i) => (
-            <motion.div
-              key={m.key}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="rounded-2xl p-4 flex items-center justify-between"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{m.icon}</span>
-                <div>
-                  <p className="text-xs font-bold">{m.label}</p>
-                  <p className="text-[10px] text-muted-foreground tabular-nums">{m.count} تنبيه اليوم</p>
-                </div>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => toggleMonitor(m.key)}
-                className={`w-11 h-6 rounded-full relative transition-colors ${enabledMonitors[m.key] ? "bg-admin-emerald" : "bg-zinc-700"}`}
-              >
-                <motion.div
-                  className="w-5 h-5 rounded-full bg-white absolute top-0.5"
-                  animate={{ x: enabledMonitors[m.key] ? 0 : 20 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                />
-              </motion.button>
-            </motion.div>
-          ))}
-
-          {/* Summary card */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="rounded-2xl p-4 mt-4"
-            style={{
-              background: "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))",
-              border: "1px solid rgba(16,185,129,0.12)",
-            }}
-          >
-            <p className="text-xs font-bold text-admin-emerald mb-2">ملخص اليوم</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="text-center">
-                <p className="text-2xl font-bold tabular-nums text-admin-emerald">{todayAlerts.length}</p>
-                <p className="text-[10px] text-muted-foreground">إجمالي التنبيهات</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold tabular-nums text-admin-amber">{unreadCount}</p>
-                <p className="text-[10px] text-muted-foreground">غير مقروءة</p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* ═══ TAB 3: AI Bot ═══ */}
-      {tab === "bot" && (
-        <div className="flex flex-col" style={{ height: "calc(100vh - 220px)" }}>
-          {/* Chat area */}
+      {/* ═══════════════════════════════════════ */}
+      {/* SECTION 2: SMART BOT                   */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "bot" && (
+        <div className="flex flex-col" style={{ height: "calc(100vh - 300px)" }}>
           <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-1">
             {chatMessages.length === 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
-                <Bot size={40} className="mx-auto mb-3 text-admin-emerald/40" />
-                <p className="text-xs text-muted-foreground">اسأل البوت أي سؤال عن المستخدمين</p>
-                <div className="mt-4 space-y-2">
-                  {[
-                    "جيب أعلى الداعمين اليوم",
-                    "مين شحن فوق 500 ألف؟",
-                    "معلومات UUID 1000",
-                    "أعلى المستلمين هالشهر",
-                    "كم تنبيه اليوم؟",
-                  ].map((q, i) => (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
+                <Bot size={36} className="mx-auto mb-3" style={{ color: "hsla(160,84%,39%,0.4)" }} />
+                <p className="text-xs text-muted-foreground mb-4">اسأل أي سؤال عن المستخدمين والشحنات</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {quickQuestions.map((q, i) => (
                     <motion.button
                       key={i}
-                      initial={{ opacity: 0, y: 8 }}
+                      initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + i * 0.08 }}
+                      transition={{ delay: 0.1 + i * 0.06 }}
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => { setBotInput(q); }}
-                      className="w-full text-[11px] py-2.5 px-4 rounded-xl text-right text-muted-foreground"
-                      style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                      onClick={() => handleBotQuery(q)}
+                      className="text-[10px] py-2 px-3 rounded-xl text-muted-foreground"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
                     >
                       {q}
                     </motion.button>
@@ -469,29 +456,18 @@ const AdminMonitorPage: React.FC = () => {
             )}
 
             {chatMessages.map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className="max-w-[85%] rounded-2xl px-4 py-3"
+              <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className="max-w-[85%] rounded-2xl px-4 py-3"
                   style={msg.role === "user" ? {
                     background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                    borderBottomLeftRadius: "20px",
-                    borderBottomRightRadius: "6px",
+                    borderBottomLeftRadius: "20px", borderBottomRightRadius: "6px",
                   } : {
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderBottomLeftRadius: "6px",
-                    borderBottomRightRadius: "20px",
-                  }}
-                >
+                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
+                    borderBottomLeftRadius: "6px", borderBottomRightRadius: "20px",
+                  }}>
                   <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                  <p className={`text-[8px] mt-1 ${msg.role === "user" ? "text-white/50" : "text-muted-foreground/50"} tabular-nums`}>
-                    {msg.time}
-                  </p>
+                  <p className={`text-[8px] mt-1 tabular-nums ${msg.role === "user" ? "text-white/50" : "text-muted-foreground/50"}`}>{msg.time}</p>
                 </div>
               </motion.div>
             ))}
@@ -500,17 +476,15 @@ const AdminMonitorPage: React.FC = () => {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
                 <div className="rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
                   <div className="flex items-center gap-2">
-                    <Loader2 size={14} className="animate-spin text-admin-emerald" />
+                    <Loader2 size={14} className="animate-spin" style={{ color: "hsl(160 84% 39%)" }} />
                     <span className="text-[11px] text-muted-foreground">جاري التحليل...</span>
                   </div>
                 </div>
               </motion.div>
             )}
-
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input */}
           <div className="flex gap-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <input
               value={botInput}
@@ -518,27 +492,442 @@ const AdminMonitorPage: React.FC = () => {
               onKeyDown={e => e.key === "Enter" && handleBotQuery()}
               placeholder="اسأل البوت..."
               className="flex-1 h-11 rounded-2xl px-4 text-sm placeholder:text-muted-foreground focus:outline-none"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
             />
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleBotQuery}
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleBotQuery()}
               disabled={botLoading || !botInput.trim()}
               className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40"
-              style={{
-                background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                boxShadow: "0 4px 16px rgba(16,185,129,0.3)",
-              }}
-            >
+              style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
               <Send size={16} className="text-white" />
             </motion.button>
           </div>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* SECTION 3: STATS DASHBOARD             */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "stats" && (
+        <div className="space-y-4">
+          {/* Summary cards */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "تنبيهات اليوم", value: todayAlerts.length, color: "hsl(160 84% 39%)" },
+              { label: "عالية الخطورة", value: highCount, color: "hsl(0 84% 60%)" },
+              { label: "غير مقروءة", value: unreadCount, color: "hsl(25 95% 53%)" },
+            ].map((s, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                className="rounded-2xl p-3 text-center"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-2xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Alert type breakdown */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="rounded-2xl p-4 space-y-3"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-bold">توزيع التنبيهات اليوم</p>
+            {todayCountByType.filter(m => m.count > 0).map((m, i) => {
+              const maxCount = Math.max(...todayCountByType.map(x => x.count), 1);
+              const pct = (m.count / maxCount) * 100;
+              return (
+                <div key={m.key} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">{m.label}</span>
+                    <span className="text-[10px] font-bold tabular-nums">{m.count}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ delay: 0.2 + i * 0.05, duration: 0.5 }}
+                      className="h-full rounded-full"
+                      style={{ background: "linear-gradient(90deg, hsl(160 84% 39%), hsl(160 84% 50%))" }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {todayCountByType.every(m => m.count === 0) && (
+              <p className="text-[10px] text-muted-foreground text-center py-4">لا توجد تنبيهات اليوم</p>
+            )}
+          </motion.div>
+
+          {/* Severity breakdown */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="rounded-2xl p-4"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-bold mb-3">مستوى الخطورة</p>
+            <div className="grid grid-cols-3 gap-2">
+              {(["high", "medium", "low"] as const).map(sev => {
+                const cfg = severityConfig[sev];
+                const count = todayAlerts.filter(a => getSeverity(a) === sev).length;
+                return (
+                  <div key={sev} className="rounded-xl p-3 text-center" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+                    <p className="text-lg font-bold tabular-nums" style={{ color: cfg.color }}>{count}</p>
+                    <p className="text-[9px]" style={{ color: cfg.color }}>{cfg.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* SECTION 4: MONITOR TYPES               */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "monitors" && (
+        <div className="space-y-3">
+          <p className="text-[11px] text-muted-foreground mb-1">أنواع المراقبة — {connectedCount}/{monitorTypes.length} متصل</p>
+          {monitorTypes.map((m, i) => {
+            const todayCount = todayAlerts.filter(a => a.alert_type === m.key).length;
+            return (
+              <motion.div
+                key={m.key}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="rounded-2xl p-3.5 flex items-center justify-between"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold truncate">{m.label}</p>
+                  {m.connected ? (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[9px] text-muted-foreground">{m.interval}</span>
+                      {todayCount > 0 && (
+                        <span className="text-[9px] font-bold tabular-nums" style={{ color: "hsl(25 95% 53%)" }}>{todayCount} اليوم</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[9px] mt-0.5" style={{ color: "hsl(25 95% 53%)" }}>غير متصل — يحتاج ربط</p>
+                  )}
+                </div>
+                {m.connected ? (
+                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => toggleMonitor(m.key)}
+                    className="w-10 h-5 rounded-full relative shrink-0 transition-colors"
+                    style={{ background: enabledMonitors[m.key] ? "hsl(160 84% 39%)" : "hsl(240 5% 34%)" }}>
+                    <motion.div
+                      className="w-4 h-4 rounded-full bg-white absolute top-0.5"
+                      animate={{ x: enabledMonitors[m.key] ? 0 : 22 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  </motion.button>
+                ) : (
+                  <span className="text-[9px] px-2 py-1 rounded-lg text-muted-foreground"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    قريباً
+                  </span>
+                )}
+              </motion.div>
+            );
+          })}
+
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+            className="rounded-2xl p-3 mt-2"
+            style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.1)" }}>
+            <p className="text-[10px] text-muted-foreground">
+              متصل: <span className="font-bold" style={{ color: "hsl(160 84% 39%)" }}>{connectedCount}</span> — يحتاج ربط: <span className="font-bold" style={{ color: "hsl(25 95% 53%)" }}>{needsDbCount}</span>
+            </p>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* SECTION 5: HISTORY                     */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "history" && (
+        <div className="space-y-3">
+          {/* Time filter */}
+          <div className="flex gap-1.5">
+            {([
+              { key: "today" as const, label: "اليوم" },
+              { key: "week" as const, label: "الأسبوع" },
+              { key: "month" as const, label: "الشهر" },
+            ]).map(f => (
+              <motion.button key={f.key} whileTap={{ scale: 0.95 }}
+                onClick={() => setHistoryFilter(f.key)}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all ${historyFilter === f.key ? "text-white" : "text-muted-foreground"}`}
+                style={historyFilter === f.key ? {
+                  background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
+                } : {
+                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
+                }}>
+                {f.label}
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={historySearch}
+              onChange={e => setHistorySearch(e.target.value)}
+              placeholder="بحث UUID أو اسم..."
+              className="w-full h-9 rounded-xl pr-9 pl-3 text-[11px] placeholder:text-muted-foreground focus:outline-none"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+            />
+          </div>
+
+          <p className="text-[10px] text-muted-foreground">{historyAlerts.length} تنبيه</p>
+
+          {/* History items */}
+          {historyAlerts.slice(0, 100).map((alert, i) => {
+            const sev = getSeverity(alert);
+            const sevCfg = severityConfig[sev];
+            const typeCfg = alertTypeConfig[alert.alert_type];
+            return (
+              <motion.div key={alert.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.02 }}
+                className="flex items-start gap-2 py-2"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: sevCfg.color }} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold">{typeCfg?.label || alert.alert_type}</span>
+                    <span className="text-[8px] px-1.5 py-0.5 rounded" style={{ background: sevCfg.bg, color: sevCfg.color }}>{sevCfg.label}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                    {alert.sender_name || alert.sender_uuid || "—"}
+                    {alert.amount > 0 && ` — ${formatCoins(alert.amount)}`}
+                    {alert.details?.note && ` — ${alert.details.note}`}
+                  </p>
+                </div>
+                <div className="text-left shrink-0">
+                  <p className="text-[9px] text-muted-foreground tabular-nums">{formatDate(alert.created_at)}</p>
+                  <p className="text-[9px] text-muted-foreground tabular-nums">{formatTime(alert.created_at)}</p>
+                </div>
+              </motion.div>
+            );
+          })}
+
+          {historyAlerts.length === 0 && (
+            <div className="text-center py-12">
+              <Clock size={28} className="mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-[11px] text-muted-foreground">لا توجد تنبيهات في هذه الفترة</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* SECTION 6: SETTINGS                    */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "settings" && (
+        <div className="space-y-4">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl p-4 space-y-4"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-bold">إعدادات المراقبة</p>
+
+            {/* Sound */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold">صوت التنبيه</p>
+                <p className="text-[9px] text-muted-foreground">تشغيل صوت عند تنبيه جديد</p>
+              </div>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoundEnabled(!soundEnabled)}
+                className="w-10 h-5 rounded-full relative transition-colors"
+                style={{ background: soundEnabled ? "hsl(160 84% 39%)" : "hsl(240 5% 34%)" }}>
+                <motion.div className="w-4 h-4 rounded-full bg-white absolute top-0.5"
+                  animate={{ x: soundEnabled ? 0 : 22 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }} />
+              </motion.button>
+            </div>
+
+            {/* Refresh rate */}
+            <div>
+              <p className="text-[11px] font-bold mb-1">تحديث تلقائي كل</p>
+              <div className="flex gap-2">
+                {[15, 30, 60].map(s => (
+                  <motion.button key={s} whileTap={{ scale: 0.95 }}
+                    onClick={() => setSettingsRefreshSec(s)}
+                    className={`flex-1 py-2 rounded-xl text-[10px] font-bold ${settingsRefreshSec === s ? "text-white" : "text-muted-foreground"}`}
+                    style={settingsRefreshSec === s ? {
+                      background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
+                    } : {
+                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                    {s} ثانية
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Thresholds */}
+            <div className="space-y-3">
+              <p className="text-[11px] font-bold">حدود التنبيه</p>
+              {[
+                { label: "شحنة كبيرة", value: settingsBigChargeThreshold, set: setSettingsBigChargeThreshold, suffix: "كوينز" },
+                { label: "شحنات متكررة", value: settingsRepeatThreshold, set: setSettingsRepeatThreshold, suffix: "مرات / ساعة" },
+                { label: "هدية كبيرة", value: settingsBigGiftThreshold, set: setSettingsBigGiftThreshold, suffix: "كوينز" },
+              ].map(th => (
+                <div key={th.label} className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">{th.label} &gt;</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      value={th.value}
+                      onChange={e => th.set(Number(e.target.value))}
+                      className="w-24 h-7 rounded-lg px-2 text-[10px] text-left tabular-nums focus:outline-none"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    />
+                    <span className="text-[9px] text-muted-foreground">{th.suffix}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.button whileTap={{ scale: 0.97 }}
+            onClick={() => toast.success("تم حفظ الإعدادات")}
+            className="w-full py-3 rounded-2xl text-sm font-bold text-white"
+            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
+            حفظ الإعدادات
+          </motion.button>
+        </div>
+      )}
     </AdminPageLayout>
+  );
+};
+
+/* ─── Helper: get severity ─── */
+function getSeverity(alert: MonitorAlert): "high" | "medium" | "low" {
+  if (alert.severity) return alert.severity;
+  if (alert.alert_type === "promotion") return "high";
+  if (alert.amount >= 2_000_000) return "high";
+  if (alert.amount >= 500_000) return "medium";
+  if (alert.alert_type === "repeated_charge") return "medium";
+  return "low";
+}
+
+/* ─── Alert Card Component ─── */
+const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: string) => void }> = ({ alert, index, onDelete }) => {
+  const [expanded, setExpanded] = useState(false);
+  const sev = getSeverity(alert);
+  const sevCfg = severityConfig[sev];
+  const typeCfg = alertTypeConfig[alert.alert_type] || { label: alert.alert_type, icon: Bell, filterKey: "all" };
+  const TypeIcon = typeCfg.icon;
+  const SevIcon = sevCfg.icon;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -80 }}
+      transition={{ delay: index * 0.02 }}
+      className={`rounded-2xl overflow-hidden relative ${!alert.is_read ? "ring-1" : ""}`}
+      style={{
+        background: sevCfg.bg,
+        border: `1px solid ${sevCfg.border}`,
+        ...((!alert.is_read) ? { ringColor: sevCfg.color } : {}),
+      }}
+    >
+      {/* Unread dot */}
+      {!alert.is_read && (
+        <div className="absolute top-3 left-3 w-2 h-2 rounded-full" style={{ background: sevCfg.color, boxShadow: `0 0 8px ${sevCfg.color}` }} />
+      )}
+
+      <div className="p-3.5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <SevIcon size={12} style={{ color: sevCfg.color }} />
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${sevCfg.color}20`, color: sevCfg.color }}>
+              {sevCfg.label}
+            </span>
+            <span className="text-[10px] font-bold text-foreground">{typeCfg.label}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] text-muted-foreground tabular-nums">{formatTime(alert.created_at)}</span>
+            <motion.button whileTap={{ scale: 0.8 }} onClick={() => onDelete(alert.id)} className="p-1 rounded-lg hover:bg-white/5">
+              <Trash2 size={10} className="text-muted-foreground" />
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-1">
+          {alert.sender_uuid && (
+            <p className="text-[11px]">
+              <span className="text-muted-foreground">المرسل: </span>
+              <span className="font-bold">{alert.sender_name || ""} </span>
+              <span className="font-mono tabular-nums text-muted-foreground">(UUID: {alert.sender_uuid})</span>
+            </p>
+          )}
+          {alert.receiver_uuid && (
+            <p className="text-[11px]">
+              <span className="text-muted-foreground">المستقبل: </span>
+              <span className="font-bold">{alert.receiver_name || ""} </span>
+              <span className="font-mono tabular-nums text-muted-foreground">(UUID: {alert.receiver_uuid})</span>
+            </p>
+          )}
+          {alert.amount > 0 && (
+            <p className="text-[11px]">
+              <span className="text-muted-foreground">المبلغ: </span>
+              <span className="font-bold tabular-nums" style={{ color: sevCfg.color }}>{formatMoney(alert.amount)}</span>
+            </p>
+          )}
+          {alert.details?.keyword && (
+            <p className="text-[11px]">
+              <span className="text-muted-foreground">الكلمة: </span>
+              <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>"{alert.details.keyword}"</span>
+            </p>
+          )}
+        </div>
+
+        {/* Expandable details for promotion */}
+        {alert.alert_type === "promotion" && alert.details?.context && (
+          <>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => setExpanded(!expanded)}
+              className="flex items-center gap-1 mt-2 text-[9px] text-muted-foreground">
+              {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              {expanded ? "إخفاء السياق" : "عرض السياق"}
+            </motion.button>
+            <AnimatePresence>
+              {expanded && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden mt-2 rounded-xl p-2.5 space-y-1"
+                  style={{ background: "rgba(0,0,0,0.2)" }}>
+                  {alert.details.context_before?.map((line: string, i: number) => (
+                    <p key={i} className="text-[10px] text-muted-foreground">{line}</p>
+                  ))}
+                  <p className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>
+                    {alert.details.flagged_message || ""}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+
+        {/* Actions for high severity */}
+        {sev === "high" && alert.alert_type === "promotion" && (
+          <div className="flex items-center gap-2 mt-3">
+            <motion.button whileTap={{ scale: 0.95 }}
+              className="h-7 px-3 rounded-xl text-[10px] font-bold text-white"
+              style={{ background: "hsl(0 84% 50%)" }}
+              onClick={() => toast.info("يمكنك حظر المستخدم من صفحة الحماية")}>
+              حظر
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }}
+              className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+              onClick={() => onDelete(alert.id)}>
+              تجاهل
+            </motion.button>
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 };
 
