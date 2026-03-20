@@ -761,6 +761,7 @@ const SalaryWithdraw: React.FC = () => {
                       </div>
                     );
                   })()}
+                </motion.div>
               ))}
             </div>
           )}
