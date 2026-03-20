@@ -10,8 +10,7 @@ import ChatInput from '@/components/chat/ChatInput';
 import DateSeparator from '@/components/chat/DateSeparator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
-const API = "https://galachat.site/project-z/api.php";
-const ADMIN_KEY = "ghala2026owner";
+import { galaApi } from "@/services/galaApi";
 
 interface ChatRoom {
   id: string;

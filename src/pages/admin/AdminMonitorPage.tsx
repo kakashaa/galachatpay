@@ -13,44 +13,23 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 
-/* ─── API Layer ─── */
-const API_BASE = "https://hola-chat.com/wares-api.php";
-const API_KEY = "ghala2026actions";
+/* ─── API Layer (via secure proxy) ─── */
+import { galaApi } from "@/services/galaApi";
 
-interface PromoConfig {
-  competitors: string[];
-  suspicious_phrases: string[];
-  safe_apps: string[];
-}
-
-async function fetchPromoConfig(): Promise<PromoConfig> {
-  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  return json.data;
+async function fetchPromoConfig() {
+  const data = await galaApi.getPromoConfig();
+  return data?.data || data;
 }
 
 async function updatePromoConfig(
   action: "add_competitor" | "remove_competitor" | "add_phrase" | "remove_phrase" | "add_safe" | "remove_safe",
   value: string
-): Promise<any> {
-  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ [action]: value }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+) {
+  return galaApi.updatePromoConfig({ [action]: value });
 }
 
-async function banUserApi(uuid: string, duration: number = 24): Promise<any> {
-  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=ban-user`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uuid, duration, type: ["normal"] }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+async function banUserApi(uuid: string, duration: number = 24) {
+  return galaApi.banUserReal(uuid, "monitor-ban", duration, "normal");
 }
 
 /* ─── Types ─── */
