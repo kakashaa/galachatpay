@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Loader2, Users, MessageCircle, Paperclip, X, Image as LucideImage } from 'lucide-react';
+import { Send, Loader2, Users, MessageCircle, Paperclip, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +36,7 @@ const ROLE_LABELS: Record<string, string> = {
   moderator: "مراقب",
 };
 
-const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
+const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole: _adminRole }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -134,7 +134,7 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
     try {
       const ext = file.name.split('.').pop() || 'jpg';
       const fileName = `chat/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { data, error } = await supabase.storage.from('chat-media').upload(fileName, file);
+      const { error } = await supabase.storage.from('chat-media').upload(fileName, file);
       if (error) throw error;
 
       const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
