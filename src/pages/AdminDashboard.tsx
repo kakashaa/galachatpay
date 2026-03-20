@@ -264,28 +264,8 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* Monitor tab */}
-        {bottomTab === 'monitor' && (
-          <div className="max-w-2xl mx-auto p-4 space-y-4" dir="rtl">
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'معلقة', value: stats.pending, color: 'text-admin-amber', border: 'border-admin-amber/20', bg: 'bg-admin-amber/5', icon: Clock },
-                { label: 'مقبولة', value: stats.approved, color: 'text-admin-emerald', border: 'border-admin-emerald/20', bg: 'bg-admin-emerald/5', icon: CheckCircle },
-                { label: 'مرفوضة', value: stats.rejected, color: 'text-admin-rose', border: 'border-admin-rose/20', bg: 'bg-admin-rose/5', icon: XCircle },
-              ].map((card) => {
-                const Icon = card.icon;
-                return (
-                  <div key={card.label} className={`p-4 rounded-2xl border ${card.border} ${card.bg} text-center`}>
-                    <Icon className={`w-5 h-5 mx-auto mb-1 ${card.color}`} />
-                    <p className="text-[10px] text-muted-foreground mb-1">{card.label}</p>
-                    <p className={`text-3xl font-bold font-mono ${card.color}`}>{card.value}</p>
-                  </div>
-                );
-              })}
-            </div>
-            <AdminSupportManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={true} />
-          </div>
-        )}
+        {/* Monitor tab — redirect to dedicated page */}
+        {bottomTab === 'monitor' && (() => { navigate('/admin/monitor'); return null; })()}
 
         {/* Favorites tab */}
         {bottomTab === 'favorites' && (
