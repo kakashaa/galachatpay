@@ -82,35 +82,54 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Build date range for selected month
-      const [year, month] = selectedMonth.split("-").map(Number);
-      const startDate = new Date(year, month - 1, 1).toISOString();
-      const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
+      // Fetch from external API (same pattern as withdraw list)
+      const res = await fetch(`${API}?action=salary_charge_list&admin_key=ghala2026owner&month=${selectedMonth}`);
+      const data = await res.json();
 
-      const { data: rows, error } = await supabase
-        .from("salary_requests")
-        .select("*")
-        .in("request_type", ["charge_self", "charge_other"])
-        .gte("created_at", startDate)
-        .lte("created_at", endDate)
-        .order("created_at", { ascending: false });
+      if (data.success || data.charges) {
+        setCharges((data.charges || []).map((c: any) => ({
+          id: c.id || c.request_code || "",
+          uuid: c.uuid || c.user_uuid || c.target_uuid || "",
+          user_name: c.user_name || c.account_name || "",
+          target_name: c.target_name || c.recipient_name || "",
+          target_uuid: c.target_uuid || c.uuid || "",
+          amount_usd: c.amount || c.amount_usd || 0,
+          coins_charged: c.coins || c.amount_coins || (c.amount || c.amount_usd || 0) * COINS_PER_USD,
+          reference_id: c.reference_id || c.transaction_id || "",
+          transfer_verified: c.transfer_verified ?? true,
+          status: (c.status === "approved" || c.status === "completed" || c.status === "done" || c.status === "delivered") ? "completed" : c.status === "failed" ? "failed" : "pending",
+          created_at: c.created_at || new Date().toISOString(),
+          request_type: c.request_type || (c.target_uuid && c.target_uuid !== c.uuid ? "charge_other" : "charge_self"),
+        })));
+      } else {
+        // Fallback: try Supabase local records
+        const [year, month] = selectedMonth.split("-").map(Number);
+        const startDate = new Date(year, month - 1, 1).toISOString();
+        const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
 
-      if (error) throw error;
+        const { data: rows } = await supabase
+          .from("salary_requests")
+          .select("*")
+          .in("request_type", ["charge_self", "charge_other"])
+          .gte("created_at", startDate)
+          .lte("created_at", endDate)
+          .order("created_at", { ascending: false });
 
-      setCharges((rows || []).map((c: any) => ({
-        id: c.id,
-        uuid: c.target_uuid || c.user_uuid || "",
-        user_name: c.user_name || "",
-        target_name: c.target_name || c.recipient_name || "",
-        target_uuid: c.target_uuid || "",
-        amount_usd: c.amount_usd || 0,
-        coins_charged: c.amount_coins || (c.amount_usd || 0) * COINS_PER_USD,
-        reference_id: c.transaction_id || "",
-        transfer_verified: true,
-        status: c.status === "approved" || c.status === "completed" || c.status === "done" ? "completed" : c.status === "failed" ? "failed" : "pending",
-        created_at: c.created_at || new Date().toISOString(),
-        request_type: c.request_type || "charge_self",
-      })));
+        setCharges((rows || []).map((c: any) => ({
+          id: c.id,
+          uuid: c.target_uuid || c.user_uuid || "",
+          user_name: c.user_name || "",
+          target_name: c.target_name || c.recipient_name || "",
+          target_uuid: c.target_uuid || "",
+          amount_usd: c.amount_usd || 0,
+          coins_charged: c.amount_coins || (c.amount_usd || 0) * COINS_PER_USD,
+          reference_id: c.transfer_id || c.transaction_id || "",
+          transfer_verified: true,
+          status: (c.status === "approved" || c.status === "completed" || c.status === "done") ? "completed" : c.status === "failed" ? "failed" : "pending",
+          created_at: c.created_at || new Date().toISOString(),
+          request_type: c.request_type || "charge_self",
+        })));
+      }
     } catch {
       toast.error("فشل في جلب بيانات شحن الرواتب");
     } finally {
