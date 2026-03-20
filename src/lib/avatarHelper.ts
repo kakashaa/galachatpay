@@ -50,6 +50,6 @@ export async function getAvatar(uuid: string): Promise<string> {
 export function fixAvatarUrl(path?: string | null): string {
   if (!path) return DEFAULT_AVATAR;
   if (path.startsWith("http")) return path;
-  if (path.startsWith("avatars/")) return `https://storage.googleapis.com/galalivechat-bucket-01/${path}`;
-  return `https://storage.googleapis.com/galalivechat-bucket-01/avatars/${path}`;
+  if (path.startsWith("avatars/")) return `https://media.galalivechat.com/${path}`;
+  return `https://media.galalivechat.com/${path}`;
 }
