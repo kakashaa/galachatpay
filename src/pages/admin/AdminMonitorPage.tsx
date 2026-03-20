@@ -3,11 +3,12 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
+import Pusher from "pusher-js";
 import {
   Shield, AlertTriangle, TrendingUp, Eye, Activity, Bell, Search, Settings,
   RefreshCw, Volume2, VolumeX, Send, Loader2, Bot, Trash2, CheckCheck,
   Zap, DollarSign, Megaphone, Gift, Monitor, Clock, ChevronDown, ChevronUp,
-  BarChart3, Users, ArrowUp,
+  BarChart3, Users, ArrowUp, Radio, MessageSquare, Wifi, WifiOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
@@ -33,7 +34,27 @@ interface ChatMsg {
   time: string;
 }
 
+interface PusherMessage {
+  id: string;
+  conversationId: string;
+  senderName: string;
+  senderUuid: string;
+  text: string;
+  keyword?: string;
+  time: string;
+  severity: "high" | "medium" | "low";
+}
+
 /* ─── Constants ─── */
+const PUSHER_KEY = "7308273f9bbb39599189";
+const PUSHER_CLUSTER = "mt1";
+
+const PROMO_KEYWORDS = [
+  "واتساب", "whatsapp", "تلقرام", "telegram", "رقمي", "حسابي",
+  "يوي", "yooy", "بيقو", "bigo", "تانقو", "tango", "حمّل", "download",
+  "برنامج", "تطبيق", "نزلي", "حملي", "تعال", "انتقل", "لايكي", "likee",
+];
+
 const COINS_PER_USD = 7500;
 const formatCoins = (n: number) => {
   if (!n) return "0";
@@ -48,16 +69,12 @@ const formatMoney = (coins: number) => {
 const formatTime = (d: string) => {
   try {
     return new Date(d).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "—";
-  }
+  } catch { return "—"; }
 };
 const formatDate = (d: string) => {
   try {
     return new Date(d).toLocaleDateString("ar-SA", { day: "numeric", month: "short" });
-  } catch {
-    return "—";
-  }
+  } catch { return "—"; }
 };
 
 /* ─── Severity Config ─── */
@@ -76,6 +93,7 @@ const alertTypeConfig: Record<string, { label: string; icon: any; filterKey: str
   big_gift: { label: "هدية كبيرة", icon: Gift, filterKey: "gifts" },
   fake_account: { label: "حساب وهمي", icon: Users, filterKey: "accounts" },
   admin_action: { label: "عملية أدمن", icon: Shield, filterKey: "admin" },
+  pusher_promo: { label: "ترويج (رسائل)", icon: MessageSquare, filterKey: "promotion" },
 };
 
 const alertFilters = [
@@ -92,6 +110,7 @@ const monitorTypes = [
   { key: "big_charge", label: "شحنات كبيرة (> 500K)", interval: "كل 1 دقيقة", connected: true },
   { key: "repeated_charge", label: "شحنات متكررة (> 3/ساعة)", interval: "كل 2 دقيقة", connected: true },
   { key: "promotion", label: "رسائل ترويج (كلمات ممنوعة)", interval: "كل 1 دقيقة", connected: true },
+  { key: "pusher_promo", label: "مراقبة رسائل Pusher", interval: "مباشر (WebSocket)", connected: true },
   { key: "big_gift", label: "هدايا كبيرة (> 500K)", interval: "كل 2 دقيقة", connected: true },
   { key: "dashboard_charge", label: "شحنات من الداشبورد", interval: "كل 1 دقيقة", connected: true },
   { key: "admin_sensitive", label: "عمليات Admin حساسة", interval: "كل 2 دقيقة", connected: true },
@@ -126,6 +145,16 @@ const AdminMonitorPage: React.FC = () => {
   const prevCountRef = useRef(0);
   const lastUpdateRef = useRef<string>("");
 
+  /* ── Online count ── */
+  const [onlineCount, setOnlineCount] = useState(0);
+
+  /* ── Pusher State ── */
+  const [pusherConnected, setPusherConnected] = useState(false);
+  const [pusherMessages, setPusherMessages] = useState<PusherMessage[]>([]);
+  const [activeConversations, setActiveConversations] = useState<string[]>([]);
+  const pusherRef = useRef<Pusher | null>(null);
+  const subscribedChannelsRef = useRef<Set<string>>(new Set());
+
   /* ── Monitor toggles ── */
   const [enabledMonitors, setEnabledMonitors] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem("monitor_toggles");
@@ -148,7 +177,113 @@ const AdminMonitorPage: React.FC = () => {
   const [settingsRepeatThreshold, setSettingsRepeatThreshold] = useState(3);
   const [settingsBigGiftThreshold, setSettingsBigGiftThreshold] = useState(500000);
 
-  /* ── Load Alerts ── */
+  /* ══════════════════════════════════════ */
+  /* ── Pusher Integration ──              */
+  /* ══════════════════════════════════════ */
+  const initPusher = useCallback(() => {
+    if (pusherRef.current) return;
+    try {
+      const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+      pusherRef.current = pusher;
+
+      pusher.connection.bind("connected", () => {
+        setPusherConnected(true);
+      });
+      pusher.connection.bind("disconnected", () => setPusherConnected(false));
+      pusher.connection.bind("error", () => setPusherConnected(false));
+    } catch (e) {
+      console.error("Pusher init error:", e);
+    }
+  }, []);
+
+  const subscribeToConversation = useCallback((conversationId: string) => {
+    if (!pusherRef.current || subscribedChannelsRef.current.has(conversationId)) return;
+    subscribedChannelsRef.current.add(conversationId);
+
+    const channel = pusherRef.current.subscribe(`conversation-${conversationId}`);
+    channel.bind("App\\Events\\NewConversationMessage", (data: any) => {
+      const text = (data.text || "").toLowerCase();
+      const found = PROMO_KEYWORDS.find(kw => text.includes(kw));
+
+      if (found) {
+        const msg: PusherMessage = {
+          id: `pusher-${Date.now()}-${Math.random()}`,
+          conversationId,
+          senderName: data.sender?.name || "مجهول",
+          senderUuid: String(data.sender?.uuid || data.sender?.id || ""),
+          text: data.text || "",
+          keyword: found,
+          time: data.created_at || new Date().toISOString(),
+          severity: "high",
+        };
+        setPusherMessages(prev => [msg, ...prev].slice(0, 200));
+
+        if (soundEnabled) playUrgentSound();
+        toast.error(`ترويج مكتشف: "${found}"`, {
+          description: `${msg.senderName} (محادثة #${conversationId})`,
+          duration: 10000,
+        });
+      }
+    });
+  }, [soundEnabled]);
+
+  // Fetch active conversations and subscribe
+  const fetchAndSubscribeConversations = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("pusher-monitor", {
+        body: { action: "active_conversations" },
+      });
+      if (!error && data?.channels) {
+        const ids = (data.channels as string[]).map((ch: string) => ch.replace("conversation-", ""));
+        setActiveConversations(ids);
+        ids.forEach(id => subscribeToConversation(id));
+      }
+    } catch { /* silent */ }
+  }, [subscribeToConversation]);
+
+  // Fetch online count
+  const fetchOnlineCount = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("pusher-monitor", {
+        body: { action: "online_count" },
+      });
+      if (!error && data?.online_count !== undefined) {
+        setOnlineCount(data.online_count);
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    if (enabledMonitors.pusher_promo) {
+      initPusher();
+      fetchAndSubscribeConversations();
+      fetchOnlineCount();
+      const iv = setInterval(() => {
+        fetchAndSubscribeConversations();
+        fetchOnlineCount();
+      }, 60000);
+      return () => {
+        clearInterval(iv);
+        if (pusherRef.current) {
+          pusherRef.current.disconnect();
+          pusherRef.current = null;
+          subscribedChannelsRef.current.clear();
+          setPusherConnected(false);
+        }
+      };
+    } else {
+      if (pusherRef.current) {
+        pusherRef.current.disconnect();
+        pusherRef.current = null;
+        subscribedChannelsRef.current.clear();
+        setPusherConnected(false);
+      }
+    }
+  }, [enabledMonitors.pusher_promo, initPusher, fetchAndSubscribeConversations, fetchOnlineCount]);
+
+  /* ══════════════════════════════════════ */
+  /* ── Load Alerts ──                     */
+  /* ══════════════════════════════════════ */
   const loadAlerts = useCallback(async () => {
     setLoading(true);
     try {
@@ -191,7 +326,7 @@ const AdminMonitorPage: React.FC = () => {
   const todayAlerts = alerts.filter(a => {
     try { return new Date(a.created_at).toDateString() === new Date().toDateString(); } catch { return false; }
   });
-  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length;
+  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length + pusherMessages.length;
   const unreadCount = alerts.filter(a => !a.is_read).length;
 
   const filteredAlerts = alerts.filter(a => {
@@ -263,14 +398,16 @@ const AdminMonitorPage: React.FC = () => {
     { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
     { key: "bot" as const, label: "البوت", icon: Bot, badge: 0 },
     { key: "stats" as const, label: "إحصائيات", icon: BarChart3, badge: 0 },
-    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: 0 },
+    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: pusherMessages.length },
     { key: "history" as const, label: "السجل", icon: Clock, badge: 0 },
     { key: "settings" as const, label: "إعدادات", icon: Settings, badge: 0 },
   ];
 
   const todayCountByType = monitorTypes.filter(m => m.connected).map(m => ({
     ...m,
-    count: todayAlerts.filter(a => a.alert_type === m.key).length,
+    count: m.key === "pusher_promo"
+      ? pusherMessages.length
+      : todayAlerts.filter(a => a.alert_type === m.key).length,
   }));
 
   const connectedCount = monitorTypes.filter(m => m.connected).length;
@@ -283,7 +420,7 @@ const AdminMonitorPage: React.FC = () => {
         {[
           { value: todayAlerts.length, label: "تنبيهات اليوم", color: "hsl(160 84% 39%)" },
           { value: highCount, label: "عالية الخطورة", color: "hsl(0 84% 60%)" },
-          { value: alerts.length, label: "إجمالي", color: "hsl(217 91% 60%)" },
+          { value: onlineCount, label: "أونلاين الآن", color: "hsl(217 91% 60%)" },
           { value: unreadCount, label: "غير مقروءة", color: "hsl(25 95% 53%)" },
         ].map((s, i) => (
           <motion.div
@@ -300,11 +437,30 @@ const AdminMonitorPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Last update + refresh */}
+      {/* Last update + Pusher status + refresh */}
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] text-muted-foreground">
-          آخر تحديث: <span className="tabular-nums">{lastUpdateRef.current || "—"}</span>
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-[10px] text-muted-foreground">
+            آخر تحديث: <span className="tabular-nums">{lastUpdateRef.current || "—"}</span>
+          </p>
+          {enabledMonitors.pusher_promo && (
+            <div className="flex items-center gap-1">
+              {pusherConnected ? (
+                <>
+                  <Wifi size={10} style={{ color: "hsl(160 84% 39%)" }} />
+                  <span className="text-[9px] font-bold" style={{ color: "hsl(160 84% 39%)" }}>
+                    Pusher متصل ({subscribedChannelsRef.current.size})
+                  </span>
+                </>
+              ) : (
+                <>
+                  <WifiOff size={10} className="text-muted-foreground" />
+                  <span className="text-[9px] text-muted-foreground">Pusher غير متصل</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <motion.button whileTap={{ scale: 0.9 }} onClick={loadAlerts}
           className="h-7 px-3 rounded-xl text-[10px] font-bold flex items-center gap-1.5"
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -397,12 +553,76 @@ const AdminMonitorPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Alert cards */}
+          {/* Pusher real-time alerts (shown at top when filter is promotion or all) */}
+          {(alertFilter === "all" || alertFilter === "promotion") && pusherMessages.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Radio size={12} style={{ color: "hsl(0 84% 60%)" }} className="animate-pulse" />
+                <span className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>
+                  ترويج مكتشف عبر Pusher ({pusherMessages.length})
+                </span>
+              </div>
+              {pusherMessages.slice(0, 10).map((msg) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="rounded-2xl p-3.5"
+                  style={{ background: "hsla(0,84%,60%,0.08)", border: "1px solid hsla(0,84%,60%,0.2)" }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare size={12} style={{ color: "hsl(0 84% 60%)" }} />
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: "hsla(0,84%,60%,0.15)", color: "hsl(0 84% 60%)" }}>
+                        عالية
+                      </span>
+                      <span className="text-[10px] font-bold">ترويج (رسائل)</span>
+                    </div>
+                    <span className="text-[9px] text-muted-foreground tabular-nums">{formatTime(msg.time)}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px]">
+                      <span className="text-muted-foreground">المرسل: </span>
+                      <span className="font-bold">{msg.senderName} </span>
+                      <span className="font-mono tabular-nums text-muted-foreground">(UUID: {msg.senderUuid})</span>
+                    </p>
+                    <p className="text-[11px]">
+                      <span className="text-muted-foreground">الكلمة: </span>
+                      <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>"{msg.keyword}"</span>
+                    </p>
+                    <p className="text-[11px]">
+                      <span className="text-muted-foreground">المحادثة: </span>
+                      <span className="font-mono tabular-nums">#{msg.conversationId}</span>
+                    </p>
+                    <div className="mt-2 rounded-xl p-2" style={{ background: "rgba(0,0,0,0.2)" }}>
+                      <p className="text-[10px] text-white/80 whitespace-pre-wrap break-words">{msg.text}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <motion.button whileTap={{ scale: 0.95 }}
+                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-white"
+                      style={{ background: "hsl(0 84% 50%)" }}
+                      onClick={() => toast.info("يمكنك حظر المستخدم من صفحة الحماية")}>
+                      حظر
+                    </motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }}
+                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      onClick={() => setPusherMessages(prev => prev.filter(m => m.id !== msg.id))}>
+                      تجاهل
+                    </motion.button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* API Alert cards */}
           {loading && filteredAlerts.length === 0 && (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "hsl(160 84% 39%)" }} /></div>
           )}
 
-          {!loading && filteredAlerts.length === 0 && (
+          {!loading && filteredAlerts.length === 0 && pusherMessages.length === 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="text-center py-16 rounded-2xl"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -509,12 +729,11 @@ const AdminMonitorPage: React.FC = () => {
       {/* ═══════════════════════════════════════ */}
       {activeSection === "stats" && (
         <div className="space-y-4">
-          {/* Summary cards */}
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: "تنبيهات اليوم", value: todayAlerts.length, color: "hsl(160 84% 39%)" },
               { label: "عالية الخطورة", value: highCount, color: "hsl(0 84% 60%)" },
-              { label: "غير مقروءة", value: unreadCount, color: "hsl(25 95% 53%)" },
+              { label: "أونلاين الآن", value: onlineCount, color: "hsl(217 91% 60%)" },
             ].map((s, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                 className="rounded-2xl p-3 text-center"
@@ -564,7 +783,7 @@ const AdminMonitorPage: React.FC = () => {
             <div className="grid grid-cols-3 gap-2">
               {(["high", "medium", "low"] as const).map(sev => {
                 const cfg = severityConfig[sev];
-                const count = todayAlerts.filter(a => getSeverity(a) === sev).length;
+                const count = todayAlerts.filter(a => getSeverity(a) === sev).length + (sev === "high" ? pusherMessages.length : 0);
                 return (
                   <div key={sev} className="rounded-xl p-3 text-center" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
                     <p className="text-lg font-bold tabular-nums" style={{ color: cfg.color }}>{count}</p>
@@ -574,6 +793,31 @@ const AdminMonitorPage: React.FC = () => {
               })}
             </div>
           </motion.div>
+
+          {/* Pusher stats */}
+          {enabledMonitors.pusher_promo && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+              className="rounded-2xl p-4"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <p className="text-xs font-bold mb-3">مراقبة Pusher</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl p-3 text-center" style={{ background: pusherConnected ? "hsla(160,84%,39%,0.08)" : "hsla(0,84%,60%,0.08)" }}>
+                  <p className="text-lg font-bold" style={{ color: pusherConnected ? "hsl(160 84% 39%)" : "hsl(0 84% 60%)" }}>
+                    {pusherConnected ? "متصل" : "منقطع"}
+                  </p>
+                  <p className="text-[9px] text-muted-foreground">الحالة</p>
+                </div>
+                <div className="rounded-xl p-3 text-center" style={{ background: "hsla(217,91%,60%,0.08)" }}>
+                  <p className="text-lg font-bold tabular-nums" style={{ color: "hsl(217 91% 60%)" }}>{subscribedChannelsRef.current.size}</p>
+                  <p className="text-[9px] text-muted-foreground">محادثة مُراقبة</p>
+                </div>
+                <div className="rounded-xl p-3 text-center" style={{ background: "hsla(0,84%,60%,0.08)" }}>
+                  <p className="text-lg font-bold tabular-nums" style={{ color: "hsl(0 84% 60%)" }}>{pusherMessages.length}</p>
+                  <p className="text-[9px] text-muted-foreground">ترويج مكتشف</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
       )}
 
@@ -584,7 +828,10 @@ const AdminMonitorPage: React.FC = () => {
         <div className="space-y-3">
           <p className="text-[11px] text-muted-foreground mb-1">أنواع المراقبة — {connectedCount}/{monitorTypes.length} متصل</p>
           {monitorTypes.map((m, i) => {
-            const todayCount = todayAlerts.filter(a => a.alert_type === m.key).length;
+            const todayCount = m.key === "pusher_promo"
+              ? pusherMessages.length
+              : todayAlerts.filter(a => a.alert_type === m.key).length;
+            const isPusher = m.key === "pusher_promo";
             return (
               <motion.div
                 key={m.key}
@@ -592,15 +839,26 @@ const AdminMonitorPage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 className="rounded-2xl p-3.5 flex items-center justify-between"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                style={{
+                  background: isPusher && pusherConnected ? "rgba(16,185,129,0.04)" : "rgba(255,255,255,0.03)",
+                  border: isPusher && pusherConnected ? "1px solid rgba(16,185,129,0.15)" : "1px solid rgba(255,255,255,0.06)",
+                }}
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold truncate">{m.label}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[11px] font-bold truncate">{m.label}</p>
+                    {isPusher && pusherConnected && (
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "hsl(160 84% 39%)" }} />
+                    )}
+                  </div>
                   {m.connected ? (
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[9px] text-muted-foreground">{m.interval}</span>
                       {todayCount > 0 && (
                         <span className="text-[9px] font-bold tabular-nums" style={{ color: "hsl(25 95% 53%)" }}>{todayCount} اليوم</span>
+                      )}
+                      {isPusher && (
+                        <span className="text-[9px] text-muted-foreground">({subscribedChannelsRef.current.size} محادثة)</span>
                       )}
                     </div>
                   ) : (
@@ -642,7 +900,6 @@ const AdminMonitorPage: React.FC = () => {
       {/* ═══════════════════════════════════════ */}
       {activeSection === "history" && (
         <div className="space-y-3">
-          {/* Time filter */}
           <div className="flex gap-1.5">
             {([
               { key: "today" as const, label: "اليوم" },
@@ -662,7 +919,6 @@ const AdminMonitorPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -676,7 +932,6 @@ const AdminMonitorPage: React.FC = () => {
 
           <p className="text-[10px] text-muted-foreground">{historyAlerts.length} تنبيه</p>
 
-          {/* History items */}
           {historyAlerts.slice(0, 100).map((alert, i) => {
             const sev = getSeverity(alert);
             const sevCfg = severityConfig[sev];
@@ -786,6 +1041,34 @@ const AdminMonitorPage: React.FC = () => {
             </div>
           </motion.div>
 
+          {/* Pusher settings */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+            className="rounded-2xl p-4 space-y-3"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-xs font-bold">إعدادات Pusher</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold">مراقبة الرسائل الخاصة</p>
+                <p className="text-[9px] text-muted-foreground">اكتشاف كلمات ترويج بالمحادثات</p>
+              </div>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => toggleMonitor("pusher_promo")}
+                className="w-10 h-5 rounded-full relative transition-colors"
+                style={{ background: enabledMonitors.pusher_promo ? "hsl(160 84% 39%)" : "hsl(240 5% 34%)" }}>
+                <motion.div className="w-4 h-4 rounded-full bg-white absolute top-0.5"
+                  animate={{ x: enabledMonitors.pusher_promo ? 0 : 22 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }} />
+              </motion.button>
+            </div>
+            {enabledMonitors.pusher_promo && (
+              <div className="text-[9px] text-muted-foreground space-y-1 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <p>الحالة: {pusherConnected ? <span style={{ color: "hsl(160 84% 39%)" }}>متصل</span> : <span style={{ color: "hsl(0 84% 60%)" }}>غير متصل</span>}</p>
+                <p>محادثات مُراقبة: {subscribedChannelsRef.current.size}</p>
+                <p>ترويج مكتشف: {pusherMessages.length}</p>
+                <p className="pt-1">الكلمات المراقبة: {PROMO_KEYWORDS.slice(0, 8).join("، ")}...</p>
+              </div>
+            )}
+          </motion.div>
+
           <motion.button whileTap={{ scale: 0.97 }}
             onClick={() => toast.success("تم حفظ الإعدادات")}
             className="w-full py-3 rounded-2xl text-sm font-bold text-white"
@@ -801,7 +1084,7 @@ const AdminMonitorPage: React.FC = () => {
 /* ─── Helper: get severity ─── */
 function getSeverity(alert: MonitorAlert): "high" | "medium" | "low" {
   if (alert.severity) return alert.severity;
-  if (alert.alert_type === "promotion") return "high";
+  if (alert.alert_type === "promotion" || alert.alert_type === "pusher_promo") return "high";
   if (alert.amount >= 2_000_000) return "high";
   if (alert.amount >= 500_000) return "medium";
   if (alert.alert_type === "repeated_charge") return "medium";
@@ -831,13 +1114,11 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
         ...((!alert.is_read) ? { ringColor: sevCfg.color } : {}),
       }}
     >
-      {/* Unread dot */}
       {!alert.is_read && (
         <div className="absolute top-3 left-3 w-2 h-2 rounded-full" style={{ background: sevCfg.color, boxShadow: `0 0 8px ${sevCfg.color}` }} />
       )}
 
       <div className="p-3.5">
-        {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <SevIcon size={12} style={{ color: sevCfg.color }} />
@@ -854,7 +1135,6 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
           </div>
         </div>
 
-        {/* Content */}
         <div className="space-y-1">
           {alert.sender_uuid && (
             <p className="text-[11px]">
@@ -884,7 +1164,6 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
           )}
         </div>
 
-        {/* Expandable details for promotion */}
         {alert.alert_type === "promotion" && alert.details?.context && (
           <>
             <motion.button whileTap={{ scale: 0.95 }} onClick={() => setExpanded(!expanded)}
@@ -909,8 +1188,7 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
           </>
         )}
 
-        {/* Actions for high severity */}
-        {sev === "high" && alert.alert_type === "promotion" && (
+        {sev === "high" && (alert.alert_type === "promotion" || alert.alert_type === "pusher_promo") && (
           <div className="flex items-center gap-2 mt-3">
             <motion.button whileTap={{ scale: 0.95 }}
               className="h-7 px-3 rounded-xl text-[10px] font-bold text-white"
