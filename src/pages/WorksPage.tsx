@@ -513,29 +513,34 @@ const WorksPage: React.FC = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-2xl font-mono font-bold text-green-400">${balance.toFixed(2)}</p>
+          <div className="bg-card border border-border rounded-2xl p-3 text-center"
+            onClick={() => { if (balance > 0) { /* scroll to withdraw */ } }}
+            style={{ cursor: balance > 0 ? 'pointer' : 'default' }}
+          >
+            <p className="text-2xl font-mono font-extrabold text-green-400">${balance.toFixed(2)}</p>
             <p className="text-[9px] text-muted-foreground">الرصيد المتاح</p>
+            <p className="text-[8px] text-muted-foreground">{Math.round(balance * 7500).toLocaleString()} كوينز</p>
+            {balance > 0 && <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب</p>}
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-2xl font-mono font-bold text-emerald-400">${totalEarnings.toFixed(2)}</p>
+            <p className="text-2xl font-mono font-extrabold text-emerald-400">${totalEarnings.toFixed(2)}</p>
             <p className="text-[9px] text-muted-foreground">إجمالي الأرباح</p>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-card border border-border rounded-xl p-2 text-center">
-            <p className="text-lg font-mono font-bold text-amber-400">${todayEarnings.toFixed(2)}</p>
-            <p className="text-[8px] text-muted-foreground">أرباح اليوم</p>
+          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+            <p className="text-lg font-mono font-extrabold text-amber-400">${todayEarnings.toFixed(2)}</p>
+            <p className="text-[9px] text-muted-foreground font-medium">أرباح اليوم</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-2 text-center">
-            <p className="text-lg font-mono font-bold text-blue-400">${monthEarnings.toFixed(2)}</p>
-            <p className="text-[8px] text-muted-foreground">أرباح الشهر</p>
-            <p className="text-[7px] text-muted-foreground">~{Math.floor(monthEarnings * 7500).toLocaleString()} عملة</p>
+          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+            <p className="text-lg font-mono font-extrabold text-cyan-400">{Math.floor(monthEarnings * 7500).toLocaleString()}</p>
+            <p className="text-[9px] text-muted-foreground font-medium">أرباح الشهر</p>
+            <p className="text-[7px] text-muted-foreground">كوينز</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-2 text-center">
-            <p className="text-lg font-mono font-bold">{supporterCount + agentCount}</p>
-            <p className="text-[8px] text-muted-foreground">الأعضاء</p>
+          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+            <p className="text-lg font-mono font-extrabold text-foreground">{supporterCount + agentCount}</p>
+            <p className="text-[9px] text-muted-foreground font-medium">الأعضاء</p>
           </div>
         </div>
 
