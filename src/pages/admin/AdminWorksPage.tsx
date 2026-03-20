@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3 } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,7 @@ const AdminWorksPage: React.FC = () => {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedWorksId, setSelectedWorksId] = useState<string | null>(null);
   const [members, setMembers] = useState<any[]>([]);
+  const [membersTab, setMembersTab] = useState<"supporters" | "agents">("supporters");
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [rejectReason, setRejectReason] = useState("");
 
@@ -35,6 +36,9 @@ const AdminWorksPage: React.FC = () => {
   // Owner edit commission dialog
   const [editMember, setEditMember] = useState<any | null>(null);
   const [editCommission, setEditCommission] = useState("");
+  // Edit member total commission
+  const [editMemberCommAmt, setEditMemberCommAmt] = useState<any | null>(null);
+  const [editNewCommAmt, setEditNewCommAmt] = useState("");
 
   // Owner freeze dialog
   const [showFreezeDialog, setShowFreezeDialog] = useState(false);
@@ -53,7 +57,8 @@ const AdminWorksPage: React.FC = () => {
     works_instant_commission: true,
     works_page_enabled: true,
   });
-  const [globalCommPct, setGlobalCommPct] = useState("");
+  const [globalSupporterPct, setGlobalSupporterPct] = useState("");
+  const [globalAgentPct, setGlobalAgentPct] = useState("");
   const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Suspended accounts
@@ -64,18 +69,36 @@ const AdminWorksPage: React.FC = () => {
   const [selectedCommBd, setSelectedCommBd] = useState<string | null>(null);
 
   // BD Notification
+  const [notifSubTab, setNotifSubTab] = useState<"send_all" | "send_one" | "history">("send_all");
   const [notifTarget, setNotifTarget] = useState("all");
   const [notifTitle, setNotifTitle] = useState("");
   const [notifBody, setNotifBody] = useState("");
   const [notifSending, setNotifSending] = useState(false);
+  const [notifHistory, setNotifHistory] = useState<any[]>([]);
+
+  // Portal ban
+  const [portalBanUuid, setPortalBanUuid] = useState("");
+  const [portalBanType, setPortalBanType] = useState<"full" | "service">("full");
+  const [portalBanService, setPortalBanService] = useState("salary");
+  const [portalBanDuration, setPortalBanDuration] = useState("30d");
+  const [portalBanReason, setPortalBanReason] = useState("");
+  const [portalBanLoading, setPortalBanLoading] = useState(false);
+  const [portalBans, setPortalBans] = useState<any[]>([]);
 
   const fetchGlobalSettings = useCallback(async () => {
-    const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled"];
+    const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled", "global_supporter_commission_pct", "global_agent_commission_pct"];
     const { data } = await supabase.from("app_settings").select("key, value").in("key", keys);
     if (data) {
       const map: Record<string, boolean> = {};
-      data.forEach((r: any) => { map[r.key] = r.value !== "false"; });
+      data.forEach((r: any) => {
+        if (r.key.startsWith("global_")) return;
+        map[r.key] = r.value !== "false";
+      });
       setGlobalSettings(prev => ({ ...prev, ...map }));
+      const supPct = data.find((r: any) => r.key === "global_supporter_commission_pct");
+      const agPct = data.find((r: any) => r.key === "global_agent_commission_pct");
+      if (supPct) setGlobalSupporterPct(supPct.value);
+      if (agPct) setGlobalAgentPct(agPct.value);
     }
   }, []);
 
@@ -91,15 +114,18 @@ const AdminWorksPage: React.FC = () => {
   };
 
   const applyGlobalCommission = async () => {
-    const pct = parseFloat(globalCommPct);
-    if (isNaN(pct) || pct < 0 || pct > 100) { toast.error("نسبة غير صالحة"); return; }
+    const supPct = parseFloat(globalSupporterPct);
+    const agPct = parseFloat(globalAgentPct);
+    if (isNaN(supPct) || isNaN(agPct) || supPct < 0 || supPct > 100 || agPct < 0 || agPct > 100) { toast.error("نسبة غير صالحة"); return; }
     setSettingsLoading(true);
     try {
       for (const a of accounts) {
-        await adminCall("works_update_account", { id: a.id, supporter_commission_pct: pct, agent_commission_pct: pct });
+        await adminCall("works_update_account", { id: a.id, supporter_commission_pct: supPct, agent_commission_pct: agPct });
       }
-      toast.success(`تم تعديل النسبة لجميع الحسابات إلى ${pct}%`);
-      setGlobalCommPct("");
+      // Save to app_settings
+      await supabase.from("app_settings").upsert({ key: "global_supporter_commission_pct", value: String(supPct), updated_at: new Date().toISOString() });
+      await supabase.from("app_settings").upsert({ key: "global_agent_commission_pct", value: String(agPct), updated_at: new Date().toISOString() });
+      toast.success(`تم تعديل النسب — داعمين: ${supPct}% / وكلاء: ${agPct}%`);
       fetchAccounts();
     } catch { toast.error("فشل التحديث"); }
     setSettingsLoading(false);
@@ -130,7 +156,6 @@ const AdminWorksPage: React.FC = () => {
   }, [adminCall]);
 
   const fetchSuspended = useCallback(async () => {
-    setLoading(true);
     try {
       const { data } = await supabase
         .from("login_attempts")
@@ -139,7 +164,6 @@ const AdminWorksPage: React.FC = () => {
         .order("updated_at", { ascending: false });
       setSuspendedAccounts(data || []);
     } catch { }
-    setLoading(false);
   }, []);
 
   const fetchCommissionLogs = useCallback(async (bdUuid: string) => {
@@ -156,13 +180,37 @@ const AdminWorksPage: React.FC = () => {
     setLoading(false);
   }, []);
 
+  const fetchNotifHistory = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("bd_notifications")
+        .select("*")
+        .eq("type", "admin_message")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setNotifHistory(data || []);
+    } catch { }
+  }, []);
+
+  const fetchPortalBans = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from("portal_bans")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      setPortalBans(data || []);
+    } catch { }
+  }, []);
+
   useEffect(() => {
     if (tab === "requests") fetchRequests();
     else if (tab === "accounts") fetchAccounts();
     else if (tab === "withdrawals") fetchWithdrawals();
-    else if (tab === "settings") { fetchAccounts(); fetchGlobalSettings(); }
-    else if (tab === "suspended") fetchSuspended();
+    else if (tab === "settings") { fetchAccounts(); fetchGlobalSettings(); fetchSuspended(); }
     else if (tab === "commissions") fetchAccounts();
+    else if (tab === "notify") { fetchAccounts(); fetchNotifHistory(); }
+    else if (tab === "portal_ban") fetchPortalBans();
   }, [tab]);
 
   const approveRequest = async (id: string) => {
@@ -200,18 +248,16 @@ const AdminWorksPage: React.FC = () => {
 
   const removeMember = async (id: string) => {
     try {
-      // Delete from bd_members entirely so it disappears from both sides
+      // Delete from bd_members entirely
       await adminCall("works_remove_member", { id });
       toast.success("تم إزالة العضو");
       if (selectedWorksId) fetchMembers(selectedWorksId);
     } catch {
-      // Fallback: update status
       try { await adminCall("works_update_member", { id, status: "removed" }); toast.success("تم الإزالة"); if (selectedWorksId) fetchMembers(selectedWorksId); }
       catch { toast.error("فشل"); }
     }
   };
 
-  // Unblock suspended account
   const unblockAccount = async (id: string) => {
     try {
       await supabase.from("login_attempts").update({
@@ -254,8 +300,59 @@ const AdminWorksPage: React.FC = () => {
       setNotifTitle("");
       setNotifBody("");
       setNotifTarget("all");
+      fetchNotifHistory();
     } catch { toast.error("فشل الإرسال"); }
     setNotifSending(false);
+  };
+
+  // Portal ban
+  const executePortalBan = async () => {
+    if (!portalBanUuid.trim()) { toast.error("أدخل UUID"); return; }
+    setPortalBanLoading(true);
+    try {
+      const durationMap: Record<string, number> = { "24h": 24, "7d": 168, "30d": 720, "permanent": 999999 };
+      const hours = durationMap[portalBanDuration] || 720;
+      const expiresAt = portalBanDuration === "permanent" ? null : new Date(Date.now() + hours * 3600000).toISOString();
+
+      await supabase.from("portal_bans").insert({
+        uuid: portalBanUuid.trim(),
+        ban_type: portalBanType,
+        service: portalBanType === "service" ? portalBanService : null,
+        duration: portalBanDuration,
+        reason: portalBanReason || "حظر بوابة",
+        banned_by: adminUsername,
+        expires_at: expiresAt,
+        is_active: true,
+      });
+      toast.success("تم حظر المستخدم من البوابة");
+      setPortalBanUuid("");
+      setPortalBanReason("");
+      fetchPortalBans();
+    } catch { toast.error("فشل الحظر"); }
+    setPortalBanLoading(false);
+  };
+
+  const removePortalBan = async (id: string) => {
+    try {
+      await supabase.from("portal_bans").update({ is_active: false }).eq("id", id);
+      toast.success("تم فك الحظر");
+      fetchPortalBans();
+    } catch { toast.error("فشل"); }
+  };
+
+  // Edit member total commission
+  const handleEditMemberCommission = async () => {
+    if (!editMemberCommAmt) return;
+    const newAmt = parseFloat(editNewCommAmt);
+    if (isNaN(newAmt) || newAmt < 0) { toast.error("مبلغ غير صالح"); return; }
+    try {
+      const oldAmt = editMemberCommAmt.total_commission_usd || editMemberCommAmt.total_commission || 0;
+      const diff = newAmt - oldAmt;
+      await adminCall("works_update_member", { id: editMemberCommAmt.id, total_commission_usd: newAmt });
+      toast.success(`تم تعديل العمولة: $${oldAmt.toFixed(2)} → $${newAmt.toFixed(2)} (فرق: ${diff >= 0 ? '+' : ''}$${diff.toFixed(2)})`);
+      setEditMemberCommAmt(null);
+      if (selectedWorksId) fetchMembers(selectedWorksId);
+    } catch { toast.error("فشل التعديل"); }
   };
 
   // === Owner-only actions ===
@@ -289,10 +386,7 @@ const AdminWorksPage: React.FC = () => {
       return;
     }
     try {
-      await adminCall("works_update_member", {
-        id: editMember.id,
-        commission_pct: pct,
-      });
+      await adminCall("works_update_member", { id: editMember.id, commission_pct: pct });
       toast.success("تم تحديث النسبة");
       setEditMember(null);
       if (selectedWorksId) fetchMembers(selectedWorksId);
@@ -305,11 +399,7 @@ const AdminWorksPage: React.FC = () => {
     if (!freezeTarget) return;
     try {
       if (freezeTarget.type === "bd") {
-        await adminCall("works_update_account", {
-          id: freezeTarget.id,
-          status: "frozen",
-          freeze_reason: freezeReason || "تجميد بواسطة المالك",
-        });
+        await adminCall("works_update_account", { id: freezeTarget.id, status: "frozen", freeze_reason: freezeReason || "تجميد بواسطة المالك" });
         toast.success("تم تجميد حساب البيدي");
         fetchAccounts();
       } else {
@@ -356,22 +446,33 @@ const AdminWorksPage: React.FC = () => {
     catch { return d; }
   };
 
+  const services = [
+    { value: "salary", label: "سحب راتب" },
+    { value: "vip", label: "VIP" },
+    { value: "id_change", label: "تغيير آيدي" },
+    { value: "frames", label: "إطارات" },
+    { value: "entries", label: "دخوليات" },
+    { value: "gifts", label: "هدايا" },
+    { value: "instant", label: "سحب فوري" },
+    { value: "charge", label: "شحن كوينزات" },
+  ];
+
   return (
     <AdminPageLayout title="إدارة البيدي" onLogout={handleLogout}>
       <div className="max-w-3xl mx-auto p-4" dir="rtl">
 
         {/* Owner-only toolbar */}
         {isOwner && (
-          <div className="flex items-center gap-2 mb-4 p-3 rounded-2xl" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
-            <Shield className="w-4 h-4 text-red-400" />
-            <span className="text-[10px] text-red-400 font-bold">صلاحيات المالك</span>
+          <div className="flex items-center gap-2 mb-4 p-3 rounded-2xl bg-destructive/5 border border-destructive/10">
+            <Shield className="w-4 h-4 text-destructive" />
+            <span className="text-[10px] text-destructive font-bold">صلاحيات المالك</span>
             <div className="flex-1" />
             <button onClick={() => setShowManualAdd(true)}
-              className="text-[10px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.12)', color: 'hsl(160 84% 39%)' }}>
+              className="text-[10px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <Plus className="w-3 h-3" /> إضافة يدوية
             </button>
             <button onClick={() => { setShowFreezeDialog(true); setFreezeTarget(null); }}
-              className="text-[10px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(350 89% 60%)' }}>
+              className="text-[10px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 bg-destructive/10 text-destructive border border-destructive/20">
               <Lock className="w-3 h-3" /> تجميد
             </button>
           </div>
@@ -384,16 +485,18 @@ const AdminWorksPage: React.FC = () => {
             <TabsTrigger value="withdrawals">السحوبات</TabsTrigger>
             <TabsTrigger value="settings">الإعدادات</TabsTrigger>
           </TabsList>
-          <TabsList className="w-full grid grid-cols-3 mb-4">
-            <TabsTrigger value="suspended" className="flex items-center gap-1">
-              <ShieldOff className="w-3 h-3" /> الموقوفة
-              {suspendedAccounts.length > 0 && <span className="bg-red-500 text-white text-[8px] px-1 rounded-full">{suspendedAccounts.length}</span>}
-            </TabsTrigger>
+          <TabsList className="w-full grid grid-cols-4 mb-4">
             <TabsTrigger value="commissions" className="flex items-center gap-1">
               <BarChart3 className="w-3 h-3" /> العمولات
             </TabsTrigger>
             <TabsTrigger value="notify" className="flex items-center gap-1">
-              <Bell className="w-3 h-3" /> إشعار
+              <Bell className="w-3 h-3" /> تنبيهات
+            </TabsTrigger>
+            <TabsTrigger value="portal_ban" className="flex items-center gap-1">
+              <Ban className="w-3 h-3" /> حظر البوابة
+            </TabsTrigger>
+            <TabsTrigger value="members" className="flex items-center gap-1" disabled={!selectedWorksId}>
+              <Users className="w-3 h-3" /> الأعضاء
             </TabsTrigger>
           </TabsList>
 
@@ -407,10 +510,12 @@ const AdminWorksPage: React.FC = () => {
                 {requests.filter(r => r.status === "pending").map(r => (
                   <div key={r.id} className="bg-card border border-border rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold">{r.user_name || "—"}</span>
+                      <div>
+                        <span className="text-sm font-bold">{r.user_name || "—"}</span>
+                        <p className="text-[10px] text-muted-foreground font-mono">UUID: {r.user_uuid}</p>
+                      </div>
                       <Badge variant="outline" className="text-[10px]">مستوى {r.user_level}</Badge>
                     </div>
-                    <p className="text-[10px] text-muted-foreground font-mono">{r.user_uuid}</p>
                     <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString("ar")}</p>
                     <div className="flex gap-2">
                       <button onClick={() => approveRequest(r.id)} disabled={!!processingId}
@@ -436,15 +541,17 @@ const AdminWorksPage: React.FC = () => {
                 {accounts.map(a => (
                   <div key={a.id} className="bg-card border border-border rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold">{a.user_name || "—"}</span>
+                      <div>
+                        <span className="text-sm font-bold">{a.user_name || "—"}</span>
+                        <p className="text-[10px] text-muted-foreground font-mono">UUID: {a.user_uuid}</p>
+                      </div>
                       <span className="text-xs font-mono text-emerald-400">{a.works_code}</span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground font-mono">{a.user_uuid}</p>
                     <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
                       <div><p className="font-bold text-green-400">${Number(a.balance_usd).toFixed(2)}</p><p className="text-muted-foreground">الرصيد</p></div>
                       <div><p className="font-bold text-emerald-400">${Number(a.total_earnings_usd).toFixed(2)}</p><p className="text-muted-foreground">الأرباح</p></div>
-                      <div><p className="font-bold text-pink-400">{a.supporter_count}</p><p className="text-muted-foreground">داعمين</p></div>
-                      <div><p className="font-bold text-orange-400">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
+                      <div><p className="font-bold text-primary">{a.supporter_count}</p><p className="text-muted-foreground">داعمين</p></div>
+                      <div><p className="font-bold text-accent-foreground">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => { setSelectedWorksId(a.id); fetchMembers(a.id); setTab("members"); }}
@@ -458,16 +565,16 @@ const AdminWorksPage: React.FC = () => {
                       {isOwner && (
                         <>
                           <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
-                            className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 flex items-center gap-1">
-                            <Lock className="w-3 h-3" /> تجميد
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-destructive/10 text-destructive flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
                           </button>
                           <button onClick={() => {
                             setEditFinAccount(a);
                             setEditBalanceUsd(String(Number(a.balance_usd || 0)));
                             setEditTotalEarnings(String(Number(a.total_earnings_usd || 0)));
                           }}
-                            className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1" style={{ background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
-                            <Pencil className="w-3 h-3" /> تعديل
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 flex items-center gap-1">
+                            <Pencil className="w-3 h-3" />
                           </button>
                         </>
                       )}
@@ -509,52 +616,138 @@ const AdminWorksPage: React.FC = () => {
             )}
           </TabsContent>
 
-          {/* Suspended Accounts Tab */}
-          <TabsContent value="suspended">
-            {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
-              <div className="space-y-3">
-                {suspendedAccounts.length === 0 && (
-                  <div className="text-center py-10">
-                    <ShieldOff className="w-10 h-10 mx-auto mb-2 text-muted-foreground/50" />
-                    <p className="text-muted-foreground text-sm">لا توجد حسابات موقوفة</p>
-                  </div>
-                )}
-                {suspendedAccounts.map(sa => (
-                  <div key={sa.id} className="bg-card border border-red-500/20 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold font-mono">{sa.target_uuid}</span>
-                      <Badge variant="destructive" className="text-[9px]">
-                        {sa.is_permanently_blocked ? "محظور نهائياً" : "موقوف مؤقتاً"}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-[10px]">
-                      <div>
-                        <span className="text-muted-foreground">محاولات فاشلة: </span>
-                        <span className="font-bold text-red-400">{sa.failed_attempts}</span>
+          {/* Settings Tab — now includes suspended accounts */}
+          <TabsContent value="settings">
+            <div className="space-y-4">
+              {/* Global Controls */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Settings className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-bold">إعدادات عامة</span>
+                </div>
+                {[
+                  { key: "works_wallets_enabled", label: "المحافظ / السحب", desc: "تمكين أو إيقاف السحب لجميع حسابات البيدي", icon: <DollarSign className="w-4 h-4" /> },
+                  { key: "works_instant_commission", label: "احتساب العمولة الفوري", desc: "تفعيل أو إيقاف حساب العمولات التلقائي", icon: <Calculator className="w-4 h-4" /> },
+                  { key: "works_page_enabled", label: "صفحة البيدي", desc: "إخفاء أو إظهار صفحة البيدي لجميع المستخدمين", icon: <Ban className="w-4 h-4" /> },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${globalSettings[item.key] ? "bg-emerald-500/15 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+                        {item.icon}
                       </div>
                       <div>
-                        <span className="text-muted-foreground">مرات الحظر: </span>
-                        <span className="font-bold">{sa.block_count}</span>
+                        <p className="text-xs font-bold">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.desc}</p>
                       </div>
                     </div>
-                    {sa.blocked_until && (
-                      <p className="text-[10px] text-muted-foreground">محظور حتى: {formatDate(sa.blocked_until)}</p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground">آخر تحديث: {formatDate(sa.updated_at)}</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => unblockAccount(sa.id)}
-                        className="flex-1 bg-emerald-500/10 text-emerald-400 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
-                        <ShieldOff className="w-3 h-3" /> إعادة تفعيل
-                      </button>
-                      <button onClick={() => deleteSuspendedAccount(sa.id)}
-                        className="flex-1 bg-destructive/10 text-destructive py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
-                        <Trash2 className="w-3 h-3" /> حذف نهائي
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => toggleGlobalSetting(item.key)}
+                      disabled={settingsLoading}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${globalSettings[item.key] ? "bg-emerald-500" : "bg-muted-foreground/30"}`}
+                    >
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${globalSettings[item.key] ? "right-0.5" : "left-0.5"}`} />
+                    </button>
                   </div>
                 ))}
+
+                {/* Dual commission rates */}
+                <div className="p-3 rounded-xl border border-border/50 bg-muted/20 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Percent className="w-4 h-4 text-amber-400" />
+                    <p className="text-xs font-bold">تعديل النسب للكل</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground">نسبة كل الداعمين %</label>
+                      <Input type="number" value={globalSupporterPct} onChange={e => setGlobalSupporterPct(e.target.value)}
+                        placeholder="2" dir="ltr" className="h-8 text-xs mt-1" min="0" max="100" step="0.5" />
+                      <p className="text-[9px] text-muted-foreground mt-0.5">تنطبق على جميع الداعمين</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground">نسبة كل الوكلاء %</label>
+                      <Input type="number" value={globalAgentPct} onChange={e => setGlobalAgentPct(e.target.value)}
+                        placeholder="3" dir="ltr" className="h-8 text-xs mt-1" min="0" max="100" step="0.5" />
+                      <p className="text-[9px] text-muted-foreground mt-0.5">تنطبق على جميع الوكلاء</p>
+                    </div>
+                  </div>
+                  <button onClick={applyGlobalCommission} disabled={settingsLoading || (!globalSupporterPct && !globalAgentPct)}
+                    className="w-full px-4 h-8 rounded-xl text-xs font-bold disabled:opacity-50 bg-amber-500 text-black">
+                    {settingsLoading ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "تطبيق على الكل"}
+                  </button>
+                </div>
               </div>
-            )}
+
+              {/* Per-account settings */}
+              <p className="text-xs text-muted-foreground">إعدادات حسابات فردية:</p>
+              {accounts.map(a => (
+                <div key={a.id} className="bg-card border border-border rounded-xl p-3 space-y-3">
+                  <div>
+                    <p className="text-sm font-bold">{a.user_name || a.works_code}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">UUID: {a.user_uuid}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-muted-foreground">عمولة الداعمين %</label>
+                      <Input type="number" defaultValue={a.supporter_commission_pct} className="h-8 text-xs"
+                        onBlur={e => updateAccount(a.id, { supporter_commission_pct: parseFloat(e.target.value) })} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-muted-foreground">عمولة الوكلاء %</label>
+                      <Input type="number" defaultValue={a.agent_commission_pct} className="h-8 text-xs"
+                        onBlur={e => updateAccount(a.id, { agent_commission_pct: parseFloat(e.target.value) })} />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => updateAccount(a.id, { can_withdraw: !a.can_withdraw })}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-bold ${a.can_withdraw ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
+                      السحب: {a.can_withdraw ? "مفعّل" : "معطّل"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Suspended accounts — moved here from separate tab */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <ShieldOff className="w-4 h-4 text-destructive" />
+                  <span className="text-sm font-bold">حسابات متوقفة</span>
+                  {suspendedAccounts.length > 0 && <span className="bg-destructive text-destructive-foreground text-[8px] px-1.5 rounded-full">{suspendedAccounts.length}</span>}
+                </div>
+                {suspendedAccounts.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Check className="w-6 h-6 mx-auto mb-1 text-emerald-400" />
+                    <p className="text-xs text-muted-foreground">لا توجد حسابات متوقفة</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {suspendedAccounts.map(sa => (
+                      <div key={sa.id} className="border border-destructive/20 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold font-mono">{sa.target_uuid}</span>
+                            <p className="text-[9px] text-muted-foreground">السبب: {sa.failed_attempts} محاولات تسجيل فاشلة</p>
+                          </div>
+                          <Badge variant="destructive" className="text-[9px]">
+                            {sa.is_permanently_blocked ? "دائم" : "مؤقت"}
+                          </Badge>
+                        </div>
+                        {sa.blocked_until && <p className="text-[10px] text-muted-foreground">تاريخ الإيقاف: {formatDate(sa.blocked_until)}</p>}
+                        <div className="flex gap-2">
+                          <button onClick={() => unblockAccount(sa.id)}
+                            className="flex-1 bg-emerald-500/10 text-emerald-400 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                            <ShieldOff className="w-3 h-3" /> فك التوقيف
+                          </button>
+                          <button onClick={() => deleteSuspendedAccount(sa.id)}
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-destructive/10 text-destructive flex items-center justify-center gap-1">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
 
           {/* Commissions Tab */}
@@ -571,7 +764,7 @@ const AdminWorksPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-sm font-bold">{a.user_name || "—"}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono mr-2">{a.user_uuid}</span>
+                          <p className="text-[10px] text-muted-foreground font-mono">UUID: {a.user_uuid}</p>
                         </div>
                         <BarChart3 className="w-4 h-4 text-primary" />
                       </div>
@@ -622,177 +815,260 @@ const AdminWorksPage: React.FC = () => {
             )}
           </TabsContent>
 
-          {/* Notification Tab */}
+          {/* Notification Tab — 3 sections */}
           <TabsContent value="notify">
-            <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Bell className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">إرسال إشعار للبيدي</span>
+            <div className="space-y-4">
+              {/* Sub-tabs */}
+              <div className="flex gap-1 rounded-xl bg-muted/30 p-1">
+                {[
+                  { key: "send_all" as const, label: "إرسال للكل", icon: <Send className="w-3 h-3" /> },
+                  { key: "send_one" as const, label: "إرسال لحساب", icon: <Bell className="w-3 h-3" /> },
+                  { key: "history" as const, label: "السجل", icon: <History className="w-3 h-3" /> },
+                ].map(t => (
+                  <button key={t.key} onClick={() => setNotifSubTab(t.key)}
+                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-all ${notifSubTab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+                    {t.icon} {t.label}
+                  </button>
+                ))}
               </div>
-              <div>
-                <label className="text-xs text-muted-foreground">اختر البيدي</label>
-                <select value={notifTarget} onChange={e => setNotifTarget(e.target.value)}
-                  className="w-full h-10 rounded-xl bg-muted/30 border border-border/50 text-sm px-3 mt-1">
-                  <option value="all">جميع البيدي</option>
-                  {accounts.map(a => (
-                    <option key={a.id} value={a.user_uuid}>{a.user_name || a.works_code} — {a.user_uuid}</option>
+
+              {notifSubTab === "send_all" && (
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                  <p className="text-sm font-bold">إرسال تنبيه لجميع البيدي</p>
+                  <Input value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="العنوان" />
+                  <Textarea value={notifBody} onChange={e => setNotifBody(e.target.value)} placeholder="نص الإشعار..." className="min-h-[80px]" />
+                  <button onClick={() => { setNotifTarget("all"); sendBdNotification(); }} disabled={notifSending || !notifTitle.trim() || !notifBody.trim()}
+                    className="w-full h-10 rounded-xl text-sm font-bold bg-primary text-primary-foreground flex items-center justify-center gap-2 disabled:opacity-50">
+                    {notifSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> إرسال للجميع</>}
+                  </button>
+                </div>
+              )}
+
+              {notifSubTab === "send_one" && (
+                <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                  <p className="text-sm font-bold">إرسال تنبيه لحساب بيدي محدد</p>
+                  <div>
+                    <label className="text-xs text-muted-foreground">اختر البيدي</label>
+                    <select value={notifTarget} onChange={e => setNotifTarget(e.target.value)}
+                      className="w-full h-10 rounded-xl bg-muted/30 border border-border/50 text-sm px-3 mt-1">
+                      <option value="">اختر...</option>
+                      {accounts.map(a => (
+                        <option key={a.id} value={a.user_uuid}>{a.user_name || a.works_code}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <Input value={notifTitle} onChange={e => setNotifTitle(e.target.value)} placeholder="العنوان" />
+                  <Textarea value={notifBody} onChange={e => setNotifBody(e.target.value)} placeholder="نص الإشعار..." className="min-h-[60px]" />
+                  <button onClick={sendBdNotification} disabled={notifSending || !notifTitle.trim() || !notifBody.trim() || !notifTarget || notifTarget === "all"}
+                    className="w-full h-10 rounded-xl text-sm font-bold bg-primary text-primary-foreground flex items-center justify-center gap-2 disabled:opacity-50">
+                    {notifSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> إرسال</>}
+                  </button>
+                </div>
+              )}
+
+              {notifSubTab === "history" && (
+                <div className="space-y-2">
+                  <p className="text-sm font-bold flex items-center gap-2"><History className="w-4 h-4 text-primary" /> سجل التنبيهات</p>
+                  {notifHistory.length === 0 ? (
+                    <p className="text-center text-muted-foreground text-sm py-10">لا توجد تنبيهات سابقة</p>
+                  ) : notifHistory.map(n => (
+                    <div key={n.id} className="bg-card border border-border rounded-xl p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold">{n.title}</span>
+                        <span className="text-[9px] text-muted-foreground">{n.target_uuid === "all" ? "للجميع" : `لـ ${n.target_uuid}`}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">{n.body}</p>
+                      <p className="text-[9px] text-muted-foreground mt-1">{formatDate(n.created_at)} — أرسله: {n.sent_by || "—"}</p>
+                    </div>
                   ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">عنوان الإشعار</label>
-                <Input value={notifTitle} onChange={e => setNotifTitle(e.target.value)}
-                  placeholder="مثال: تحديث مهم" className="mt-1" />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">نص الإشعار</label>
-                <Textarea value={notifBody} onChange={e => setNotifBody(e.target.value)}
-                  placeholder="اكتب نص الإشعار..." className="mt-1 min-h-[80px]" />
-              </div>
-              <button onClick={sendBdNotification} disabled={notifSending || !notifTitle.trim() || !notifBody.trim()}
-                className="w-full h-10 rounded-xl text-sm font-bold bg-primary text-primary-foreground flex items-center justify-center gap-2 disabled:opacity-50">
-                {notifSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> إرسال الإشعار</>}
-              </button>
+                </div>
+              )}
             </div>
           </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings">
+          {/* Portal Ban Tab */}
+          <TabsContent value="portal_ban">
             <div className="space-y-4">
-              {/* Global Controls */}
-              <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Settings className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-bold">إعدادات عامة (الكل)</span>
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Ban className="w-4 h-4 text-destructive" />
+                  <span className="text-sm font-bold">حظر البوابة</span>
                 </div>
+                <p className="text-[10px] text-muted-foreground">حظر مستخدم من استخدام خدمات البوابة (galachatpay) فقط — مو من غلا لايف</p>
 
-                {[
-                  { key: "works_wallets_enabled", label: "المحافظ / السحب", desc: "تمكين أو إيقاف السحب لجميع حسابات البيدي", icon: <DollarSign className="w-4 h-4" /> },
-                  { key: "works_instant_commission", label: "احتساب العمولة الفوري", desc: "تفعيل أو إيقاف حساب العمولات التلقائي", icon: <Calculator className="w-4 h-4" /> },
-                  { key: "works_page_enabled", label: "صفحة البيدي", desc: "إخفاء أو إظهار صفحة البيدي لجميع المستخدمين", icon: <Ban className="w-4 h-4" /> },
-                ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/20">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${globalSettings[item.key] ? "bg-emerald-500/15 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
-                        {item.icon}
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold">{item.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{item.desc}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => toggleGlobalSetting(item.key)}
-                      disabled={settingsLoading}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${globalSettings[item.key] ? "bg-emerald-500" : "bg-muted-foreground/30"}`}
-                    >
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${globalSettings[item.key] ? "right-0.5" : "left-0.5"}`} />
-                    </button>
-                  </div>
-                ))}
+                <Input value={portalBanUuid} onChange={e => setPortalBanUuid(e.target.value)}
+                  placeholder="UUID المستخدم" dir="ltr" />
 
-                <div className="p-3 rounded-xl border border-border/50 bg-muted/20 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Percent className="w-4 h-4 text-amber-400" />
-                    <p className="text-xs font-bold">تعديل النسب للكل</p>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">تطبيق نسبة عمولة موحدة على جميع حسابات البيدي (داعمين + وكلاء)</p>
+                <div>
+                  <p className="text-[10px] text-muted-foreground mb-1.5">نوع الحظر</p>
                   <div className="flex gap-2">
-                    <Input type="number" value={globalCommPct} onChange={e => setGlobalCommPct(e.target.value)}
-                      placeholder="النسبة %" dir="ltr" className="h-8 text-xs flex-1" min="0" max="100" step="0.5" />
-                    <button onClick={applyGlobalCommission} disabled={settingsLoading || !globalCommPct}
-                      className="px-4 h-8 rounded-xl text-xs font-bold disabled:opacity-50" style={{ background: 'hsl(38 92% 50%)', color: 'black' }}>
-                      {settingsLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "تطبيق"}
+                    <button onClick={() => setPortalBanType("full")}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border ${portalBanType === "full" ? "border-destructive bg-destructive/10 text-destructive" : "border-border/50 text-muted-foreground"}`}>
+                      حظر كامل
+                    </button>
+                    <button onClick={() => setPortalBanType("service")}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border ${portalBanType === "service" ? "border-amber-500 bg-amber-500/10 text-amber-400" : "border-border/50 text-muted-foreground"}`}>
+                      حظر خدمة
                     </button>
                   </div>
                 </div>
+
+                {portalBanType === "service" && (
+                  <div>
+                    <p className="text-[10px] text-muted-foreground mb-1">اختر الخدمة</p>
+                    <select value={portalBanService} onChange={e => setPortalBanService(e.target.value)}
+                      className="w-full h-9 rounded-xl bg-muted/30 border border-border/50 text-xs px-3">
+                      {services.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground mb-1.5">المدة</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { value: "24h", label: "24 ساعة" },
+                      { value: "7d", label: "7 أيام" },
+                      { value: "30d", label: "30 يوم" },
+                      { value: "permanent", label: "دائم" },
+                    ].map(d => (
+                      <button key={d.value} onClick={() => setPortalBanDuration(d.value)}
+                        className={`py-2 rounded-xl text-[10px] font-bold transition-all ${portalBanDuration === d.value ? "bg-destructive text-destructive-foreground" : "bg-muted/30 text-muted-foreground border border-border/50"}`}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Input value={portalBanReason} onChange={e => setPortalBanReason(e.target.value)}
+                  placeholder="السبب (اختياري)" />
+
+                <button onClick={executePortalBan} disabled={portalBanLoading || !portalBanUuid.trim()}
+                  className="w-full h-10 rounded-xl text-sm font-bold bg-destructive text-destructive-foreground flex items-center justify-center gap-2 disabled:opacity-50">
+                  {portalBanLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Ban className="w-4 h-4" /> تنفيذ الحظر</>}
+                </button>
               </div>
 
-              <p className="text-xs text-muted-foreground">إعدادات حسابات فردية:</p>
-              {accounts.map(a => (
-                <div key={a.id} className="bg-card border border-border rounded-xl p-3 space-y-3">
-                  <p className="text-sm font-bold">{a.works_code} — {a.user_name}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">عمولة الداعمين %</label>
-                      <Input type="number" defaultValue={a.supporter_commission_pct} className="h-8 text-xs"
-                        onBlur={e => updateAccount(a.id, { supporter_commission_pct: parseFloat(e.target.value) })} />
+              {/* Active portal bans */}
+              {portalBans.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-destructive">المحظورين حالياً ({portalBans.length})</p>
+                  {portalBans.map(b => (
+                    <div key={b.id} className="bg-card border border-destructive/20 rounded-xl p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold font-mono">{b.uuid}</span>
+                          <p className="text-[9px] text-muted-foreground font-mono">UUID: {b.uuid}</p>
+                        </div>
+                        <Badge variant="destructive" className="text-[9px]">{b.ban_type === "full" ? "كامل" : b.service}</Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{b.reason || "—"}</p>
+                      <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+                        <span>المدة: {b.duration} — حظره: {b.banned_by}</span>
+                        {b.expires_at && <span>ينتهي: {formatDate(b.expires_at)}</span>}
+                      </div>
+                      <button onClick={() => removePortalBan(b.id)}
+                        className="w-full mt-1 bg-emerald-500/10 text-emerald-400 py-1.5 rounded-lg text-[10px] font-bold">
+                        فك الحظر
+                      </button>
                     </div>
-                    <div>
-                      <label className="text-[10px] text-muted-foreground">عمولة الوكلاء %</label>
-                      <Input type="number" defaultValue={a.agent_commission_pct} className="h-8 text-xs"
-                        onBlur={e => updateAccount(a.id, { agent_commission_pct: parseFloat(e.target.value) })} />
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => updateAccount(a.id, { can_withdraw: !a.can_withdraw })}
-                      className={`text-xs px-3 py-1.5 rounded-lg font-bold ${a.can_withdraw ? "bg-emerald-500/10 text-emerald-400" : "bg-destructive/10 text-destructive"}`}>
-                      السحب: {a.can_withdraw ? "مفعّل" : "معطّل"}
-                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Members Tab — with supporters/agents sub-tabs */}
+          <TabsContent value="members">
+            {selectedWorksId && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold">أعضاء الفريق</h3>
+                  <div className="flex items-center gap-2">
+                    {isOwner && (
+                      <button onClick={() => { setManualTargetWorksId(selectedWorksId); setShowManualAdd(true); }}
+                        className="text-[10px] px-2 py-1 rounded-lg font-bold flex items-center gap-1 bg-emerald-500/10 text-emerald-400">
+                        <Plus className="w-3 h-3" /> إضافة
+                      </button>
+                    )}
+                    <button onClick={() => setTab("accounts")} className="text-xs text-muted-foreground">← رجوع</button>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Supporters / Agents sub-tabs */}
+                <div className="flex gap-1 rounded-xl bg-muted/30 p-1">
+                  <button onClick={() => setMembersTab("supporters")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${membersTab === "supporters" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+                    الداعمين ({members.filter(m => m.member_type === "supporter").length})
+                  </button>
+                  <button onClick={() => setMembersTab("agents")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${membersTab === "agents" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+                    الوكلاء ({members.filter(m => m.member_type === "agent").length})
+                  </button>
+                </div>
+
+                {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+                  <>
+                    {members.filter(m => m.member_type === (membersTab === "supporters" ? "supporter" : "agent")).length === 0 && (
+                      <p className="text-center text-muted-foreground text-sm py-10">لا يوجد {membersTab === "supporters" ? "داعمين" : "وكلاء"}</p>
+                    )}
+                    {members.filter(m => m.member_type === (membersTab === "supporters" ? "supporter" : "agent")).map(m => (
+                      <div key={m.id} className="bg-card border border-border rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-foreground">{m.member_name || "مستخدم"}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
+                          </div>
+                          <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                          <div className="bg-muted/30 rounded-lg p-2">
+                            <p className="text-muted-foreground">الشحن</p>
+                            <p className="font-bold text-foreground">{(m.monthly_charges || 0).toLocaleString()}</p>
+                          </div>
+                          <div className="bg-emerald-500/5 rounded-lg p-2">
+                            <p className="text-emerald-400/80">العمولة</p>
+                            <p className="font-bold text-emerald-400">${Number(m.total_commission_usd || 0).toFixed(2)}</p>
+                          </div>
+                          <div className="bg-muted/30 rounded-lg p-2">
+                            <p className="text-muted-foreground">النسبة</p>
+                            <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-1">
+                          {m.status !== "removed" && (
+                            <button onClick={() => removeMember(m.id)}
+                              className="flex-1 bg-destructive/10 text-destructive py-1.5 rounded-lg text-[10px] font-bold">
+                              إزالة
+                            </button>
+                          )}
+                          {m.status !== "removed" && (
+                            <>
+                              <button onClick={() => { setEditMember(m); setEditCommission(String(m.commission_pct || "")); }}
+                                className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 bg-amber-500/10 text-amber-400">
+                                <Percent className="w-3 h-3" /> نسبة
+                              </button>
+                              <button onClick={() => { setEditMemberCommAmt(m); setEditNewCommAmt(String(Number(m.total_commission_usd || 0))); }}
+                                className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 bg-primary/10 text-primary">
+                                <DollarSign className="w-3 h-3" /> تعديل
+                              </button>
+                            </>
+                          )}
+                          {isOwner && m.status !== "removed" && (
+                            <button onClick={() => { setFreezeTarget({ type: "user", id: m.member_uuid, name: m.member_name }); setShowFreezeDialog(true); }}
+                              className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 bg-destructive/10 text-destructive">
+                              <UserX className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
-
-        {/* Members sub-view */}
-        {tab === "members" && selectedWorksId && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold">أعضاء الفريق</h3>
-              <div className="flex items-center gap-2">
-                {isOwner && (
-                  <button onClick={() => { setManualTargetWorksId(selectedWorksId); setShowManualAdd(true); }}
-                    className="text-[10px] px-2 py-1 rounded-lg font-bold flex items-center gap-1" style={{ background: 'rgba(16,185,129,0.12)', color: 'hsl(160 84% 39%)' }}>
-                    <Plus className="w-3 h-3" /> إضافة يدوية
-                  </button>
-                )}
-                <button onClick={() => setTab("accounts")} className="text-xs text-muted-foreground">← رجوع</button>
-              </div>
-            </div>
-            {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
-              <>
-                {members.length === 0 && <p className="text-center text-muted-foreground text-sm py-10">لا يوجد أعضاء</p>}
-                {members.map(m => (
-                  <div key={m.id} className="bg-card border border-border rounded-xl p-3 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold">{m.member_name || m.member_uuid.slice(0, 10)}</span>
-                      <Badge variant={m.member_type === "supporter" ? "default" : "secondary"} className="text-[9px]">
-                        {m.member_type === "supporter" ? "داعم" : "وكيل"}
-                      </Badge>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground font-mono">{m.member_uuid}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-muted-foreground">العمولة: ${Number(m.total_commission_usd || 0).toFixed(2)}</span>
-                      <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
-                    </div>
-                    <div className="flex gap-2 mt-1">
-                      {m.status !== "removed" && (
-                        <button onClick={() => removeMember(m.id)}
-                          className="flex-1 bg-destructive/10 text-destructive py-1.5 rounded-lg text-[10px] font-bold">
-                          إزالة العضو
-                        </button>
-                      )}
-                      {isOwner && m.status !== "removed" && (
-                        <>
-                          <button onClick={() => { setEditMember(m); setEditCommission(String(m.commission_pct || "")); }}
-                            className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1" style={{ background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
-                            <Percent className="w-3 h-3" /> نسبة
-                          </button>
-                          <button onClick={() => { setFreezeTarget({ type: "user", id: m.member_uuid, name: m.member_name }); setShowFreezeDialog(true); }}
-                            className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.12)', color: 'hsl(350 89% 60%)' }}>
-                            <UserX className="w-3 h-3" /> تجميد
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-        )}
 
         {/* Owner: Manual Add Dialog */}
         <Dialog open={showManualAdd} onOpenChange={setShowManualAdd}>
@@ -832,30 +1108,70 @@ const AdminWorksPage: React.FC = () => {
                   placeholder="أدخل UUID..." dir="ltr" className="mt-1" />
               </div>
               <button onClick={handleManualAdd} disabled={manualAddLoading}
-                className="w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: 'hsl(160 84% 39%)', color: 'white' }}>
+                className="w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 bg-emerald-500 text-white">
                 {manualAddLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4" /> إضافة</>}
               </button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Owner: Edit Commission Dialog */}
+        {/* Edit Commission % Dialog */}
         <Dialog open={!!editMember} onOpenChange={() => setEditMember(null)}>
           <DialogContent className="max-w-sm" dir="rtl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-sm">
-                <DollarSign className="w-4 h-4" /> تعديل النسبة — {editMember?.member_name}
+                <Percent className="w-4 h-4" /> تعديل النسبة — {editMember?.member_name}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <p className="text-[10px] text-muted-foreground font-mono">UUID: {editMember?.member_uuid}</p>
               <div>
                 <label className="text-xs text-muted-foreground">نسبة العمولة الجديدة (%)</label>
                 <Input type="number" value={editCommission} onChange={e => setEditCommission(e.target.value)}
                   placeholder="مثال: 2.5" dir="ltr" className="mt-1" min="0" max="100" step="0.1" />
               </div>
               <button onClick={handleEditCommission}
-                className="w-full h-10 rounded-xl text-sm font-bold" style={{ background: 'hsl(38 92% 50%)', color: 'black' }}>
+                className="w-full h-10 rounded-xl text-sm font-bold bg-amber-500 text-black">
                 حفظ
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Member Total Commission Dialog */}
+        <Dialog open={!!editMemberCommAmt} onOpenChange={() => setEditMemberCommAmt(null)}>
+          <DialogContent className="max-w-sm" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-sm">
+                <DollarSign className="w-4 h-4" /> تعديل عمولة — {editMemberCommAmt?.member_name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-[10px] text-muted-foreground font-mono">UUID: {editMemberCommAmt?.member_uuid}</p>
+              <div className="bg-muted/30 rounded-xl p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">العمولة الحالية</p>
+                <p className="text-lg font-bold text-foreground">${Number(editMemberCommAmt?.total_commission_usd || 0).toFixed(2)}</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">العمولة الجديدة ($)</label>
+                <Input type="number" value={editNewCommAmt} onChange={e => setEditNewCommAmt(e.target.value)}
+                  placeholder="15.00" dir="ltr" className="mt-1" min="0" step="0.01" />
+              </div>
+              {editNewCommAmt && !isNaN(parseFloat(editNewCommAmt)) && (
+                <div className="text-center text-[11px]">
+                  {(() => {
+                    const diff = parseFloat(editNewCommAmt) - Number(editMemberCommAmt?.total_commission_usd || 0);
+                    return (
+                      <p className={diff >= 0 ? "text-emerald-400" : "text-destructive"}>
+                        الفرق: {diff >= 0 ? '+' : ''}${diff.toFixed(2)} ({diff >= 0 ? 'سيزيد' : 'سينقص'} من إجمالي الأرباح)
+                      </p>
+                    );
+                  })()}
+                </div>
+              )}
+              <button onClick={handleEditMemberCommission}
+                className="w-full h-10 rounded-xl text-sm font-bold bg-primary text-primary-foreground">
+                حفظ التعديل
               </button>
             </div>
           </DialogContent>
@@ -865,29 +1181,27 @@ const AdminWorksPage: React.FC = () => {
         <Dialog open={showFreezeDialog} onOpenChange={setShowFreezeDialog}>
           <DialogContent className="max-w-sm" dir="rtl">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-sm text-red-400">
+              <DialogTitle className="flex items-center gap-2 text-sm text-destructive">
                 <Lock className="w-4 h-4" /> تجميد {freezeTarget?.type === "bd" ? "حساب بيدي" : "مستخدم"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               {!freezeTarget && (
-                <>
-                  <div>
-                    <label className="text-xs text-muted-foreground">نوع التجميد</label>
-                    <div className="flex gap-2 mt-1">
-                      <button onClick={() => setFreezeTarget({ type: "bd", id: "", name: "" })}
-                        className="flex-1 py-3 rounded-xl text-xs font-bold border border-border/50 hover:border-red-400/50 transition-colors">
-                        <Lock className="w-4 h-4 mx-auto mb-1 text-red-400" />
-                        تجميد حساب بيدي
-                      </button>
-                      <button onClick={() => setFreezeTarget({ type: "user", id: "", name: "" })}
-                        className="flex-1 py-3 rounded-xl text-xs font-bold border border-border/50 hover:border-red-400/50 transition-colors">
-                        <UserX className="w-4 h-4 mx-auto mb-1 text-red-400" />
-                        تجميد خدمات مستخدم
-                      </button>
-                    </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">نوع التجميد</label>
+                  <div className="flex gap-2 mt-1">
+                    <button onClick={() => setFreezeTarget({ type: "bd", id: "", name: "" })}
+                      className="flex-1 py-3 rounded-xl text-xs font-bold border border-border/50 hover:border-destructive/50 transition-colors">
+                      <Lock className="w-4 h-4 mx-auto mb-1 text-destructive" />
+                      تجميد حساب بيدي
+                    </button>
+                    <button onClick={() => setFreezeTarget({ type: "user", id: "", name: "" })}
+                      className="flex-1 py-3 rounded-xl text-xs font-bold border border-border/50 hover:border-destructive/50 transition-colors">
+                      <UserX className="w-4 h-4 mx-auto mb-1 text-destructive" />
+                      تجميد خدمات مستخدم
+                    </button>
                   </div>
-                </>
+                </div>
               )}
               {freezeTarget && freezeTarget.type === "bd" && !freezeTarget.id && (
                 <div>
@@ -917,7 +1231,7 @@ const AdminWorksPage: React.FC = () => {
                       placeholder="سبب التجميد..." className="mt-1" />
                   </div>
                   <button onClick={handleFreeze}
-                    className="w-full h-10 rounded-xl text-sm font-bold bg-red-500 text-white">
+                    className="w-full h-10 rounded-xl text-sm font-bold bg-destructive text-destructive-foreground">
                     تأكيد التجميد
                   </button>
                 </>
@@ -931,7 +1245,7 @@ const AdminWorksPage: React.FC = () => {
           <DialogContent className="max-w-sm" dir="rtl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-sm">
-                <Pencil className="w-4 h-4" /> تعديل البيانات المالية — {editFinAccount?.user_name || editFinAccount?.works_code}
+                <Pencil className="w-4 h-4" /> تعديل المالية — {editFinAccount?.user_name || editFinAccount?.works_code}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -946,7 +1260,7 @@ const AdminWorksPage: React.FC = () => {
                   placeholder="0.00" dir="ltr" className="mt-1" step="0.01" />
               </div>
               <button onClick={handleEditFinancials} disabled={editFinLoading}
-                className="w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: 'hsl(38 92% 50%)', color: 'black' }}>
+                className="w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 bg-amber-500 text-black">
                 {editFinLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><DollarSign className="w-4 h-4" /> حفظ التعديلات</>}
               </button>
             </div>
