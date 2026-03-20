@@ -28,6 +28,10 @@ interface Transfer {
   time: string;
   is_used: boolean;
   selectable: boolean;
+  request_type?: string;
+  target_name?: string | null;
+  target_uuid?: string | null;
+  recipient_name?: string;
 }
 
 interface UsedTransferDetail {
@@ -42,6 +46,12 @@ interface TransfersResult {
   transfers: Transfer[];
   is_agency_owner?: boolean;
   withdrawals?: { count: number; max: number; total_withdrawn: number };
+}
+
+interface SalarySummary {
+  salary: number;
+  deduction: number;
+  net: number;
 }
 
 interface SalaryBank {
@@ -177,6 +187,12 @@ const SalaryWithdraw: React.FC = () => {
   const [usedDetails, setUsedDetails] = useState<Record<string, UsedTransferDetail>>({});
   const [isAgencyOwner, setIsAgencyOwner] = useState(false);
   const [usedCount, setUsedCount] = useState(0);
+  const [usedTransfersCount, setUsedTransfersCount] = useState(0);
+  const [salarySummary, setSalarySummary] = useState<SalarySummary>({
+    salary: 0,
+    deduction: 0,
+    net: 0,
+  });
 
   // Selected transfer
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
@@ -272,9 +288,10 @@ const SalaryWithdraw: React.FC = () => {
       const now = new Date();
       const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-      const [transfersRes, salaryRes] = await Promise.all([
+      const [transfersRes, salaryRes, salaryCheckRes] = await Promise.all([
         fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`),
         fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`),
+        fetch(`${API}?action=salary_check&uuid=${user!.uuid}`),
       ]);
 
       const [historyRes, localRequestsRes] = await Promise.all([
@@ -289,7 +306,24 @@ const SalaryWithdraw: React.FC = () => {
 
       const data: TransfersResult = await transfersRes.json();
       const salaryData = await salaryRes.json();
+      const salaryCheckData = await salaryCheckRes.json().catch(() => ({}));
       const historyData = await historyRes.json().catch(() => ({}));
+
+      const summarySalary = Number(
+        salaryCheckData?.salary ?? salaryData?.host_salary?.salary ?? 0,
+      );
+      const summaryDeduction = Number(
+        salaryCheckData?.deduction ?? salaryData?.host_salary?.deduction ?? 0,
+      );
+      const summaryNetRaw = Number(
+        salaryCheckData?.net ?? salaryData?.host_salary?.net ?? (summarySalary - summaryDeduction),
+      );
+
+      setSalarySummary({
+        salary: summarySalary,
+        deduction: summaryDeduction,
+        net: Math.max(0, summaryNetRaw),
+      });
 
       if (localRequestsRes.error) {
         console.error("Failed to fetch local salary requests:", localRequestsRes.error);
@@ -321,9 +355,22 @@ const SalaryWithdraw: React.FC = () => {
       });
 
       setTransfers(allTransfers);
+      setUsedTransfersCount(allTransfers.filter((t) => t.is_used).length);
 
       // Build details map for used transfers
       const detailsMap: Record<string, UsedTransferDetail> = {};
+      ((historyData?.requests || []) as any[]).forEach((r: any) => {
+        const ref = String(r.reference_id || r.transfer_id || r.transaction_id || "").trim();
+        if (!ref) return;
+        detailsMap[ref] = {
+          request_type: r.request_type || "",
+          target_name: r.target_name || null,
+          target_uuid: r.target_uuid || null,
+          recipient_name: r.recipient_name || r.account_name || "",
+          status: r.status || "",
+        };
+      });
+
       (localRequestsRes.data || []).forEach((r: any) => {
         const ref = String(r.transfer_id || r.transaction_id || "").trim();
         if (ref) {
@@ -631,7 +678,14 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const getUsedLabel = (t: Transfer) => {
-    const detail = usedDetails[t.reference_id];
+    const detail = usedDetails[t.reference_id] || {
+      request_type: t.request_type || "",
+      target_name: t.target_name || null,
+      target_uuid: t.target_uuid || null,
+      recipient_name: t.recipient_name || "",
+      status: "",
+    };
+
     if (!detail) return { label: "تم الصرف ✅", sub: "" };
     if (detail.request_type === "charge_self") {
       return { label: "تم شحن كوينزات لحسابك ✅", sub: "" };
@@ -651,7 +705,10 @@ const SalaryWithdraw: React.FC = () => {
         sub: name ? `المستلم: ${name}` : "",
       };
     }
-    return { label: "تم الصرف ✅", sub: "" };
+    return {
+      label: "تم الصرف ✅",
+      sub: detail.recipient_name ? `المستلم: ${detail.recipient_name}` : "تفاصيل إضافية غير متاحة (عملية قديمة)",
+    };
   };
 
   if (!user) return null;
@@ -820,7 +877,12 @@ const SalaryWithdraw: React.FC = () => {
               <CheckCircle className="w-10 h-10 text-emerald-400" />
             </motion.div>
             <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل</h2>
-            <p className="text-xs text-muted-foreground">سحبت {usedCount} من {maxTotal} هذا الشهر</p>
+            <div className="space-y-1 text-center">
+              <p className="text-xs text-muted-foreground">إجمالي الراتب: <span className="font-bold text-foreground" dir="ltr">${salarySummary.salary.toFixed(2)}</span></p>
+              <p className="text-xs text-red-400">المصروف: <span className="font-bold" dir="ltr">${salarySummary.deduction.toFixed(2)}</span></p>
+              <p className="text-xs text-emerald-400">المتبقي: <span className="font-bold" dir="ltr">${salarySummary.net.toFixed(2)}</span></p>
+              <p className="text-[11px] text-muted-foreground pt-1">السحب النقدي: {usedCount} من {maxTotal} هذا الشهر</p>
+            </div>
           </div>
           <SalaryRequestsHistory userUuid={user.uuid} />
           <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
@@ -991,9 +1053,20 @@ const SalaryWithdraw: React.FC = () => {
           <div className="text-center space-y-2">
             <h2 className="text-lg font-bold text-foreground">{headerTitle}</h2>
             <p className="text-[10px] text-muted-foreground">حوّل راتبك إلى UUID: {TRANSFER_TARGET_ID}</p>
-            <p className="text-xs text-muted-foreground">
-              سحبت {usedCount} من {maxTotal} هذا الشهر
-            </p>
+            <div className="rounded-xl bg-muted/20 border border-border/20 px-3 py-2.5 space-y-1 text-center">
+              <p className="text-xs text-muted-foreground">
+                راتب الشهر: <span className="font-bold text-foreground" dir="ltr">${salarySummary.salary.toFixed(2)}</span>
+              </p>
+              <p className="text-xs text-red-400">
+                تم صرف: <span className="font-bold" dir="ltr">${salarySummary.deduction.toFixed(2)}</span>
+              </p>
+              <p className="text-xs text-emerald-400">
+                المتبقي: <span className="font-bold" dir="ltr">${salarySummary.net.toFixed(2)}</span>
+              </p>
+              <p className="text-[11px] text-muted-foreground pt-1">
+                حوالات مستخدمة: <span className="font-bold">{usedTransfersCount}</span> • السحب النقدي: {usedCount} من {maxTotal}
+              </p>
+            </div>
           </div>
 
           {/* Selectable transfers */}
