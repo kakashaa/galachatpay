@@ -291,11 +291,11 @@ const AdminBanPage: React.FC = () => {
 
           {!loading && subTab === "reports" && (
                 <motion.div key="reports" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-              {banReports.filter(r => !removedIds.has(r.id)).length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground"><ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات</p></div>
+              {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified).length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground"><ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات معلقة</p></div>
               ) : (
                 <AnimatePresence mode="popLayout">
-                  {banReports.filter(r => !removedIds.has(r.id)).map((report: any, i: number) => (
+                  {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified).map((report: any, i: number) => (
                     <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -100, height: 0, marginBottom: 0 }} transition={{ delay: i * 0.04 }}
                       layout className="rounded-2xl overflow-hidden" style={glassCard}>
                       
