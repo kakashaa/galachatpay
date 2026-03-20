@@ -179,6 +179,7 @@ const Dashboard: React.FC = () => {
 
         {/* Main */}
         <main className="relative z-10 px-3">
+          <WorksInvitationBanner />
           <BDInvitationBanner />
           <MarqueeBanner />
           <BannerCarousel />
