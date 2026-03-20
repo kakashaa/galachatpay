@@ -52,50 +52,71 @@ interface StatCard {
   trend?: "up" | "down";
 }
 
-/* ─── Token Manager ─── */
-const getApiToken = async (): Promise<string> => {
-  const cached = localStorage.getItem("gala_api_token");
-  const cachedAt = localStorage.getItem("gala_api_token_at");
-  if (cached && cachedAt && Date.now() - Number(cachedAt) < 3600000) return cached;
+/* ─── Parse exp string like "4.36M", "500K", "1234" ─── */
+const parseExp = (exp: any): number => {
+  if (typeof exp === "number") return exp;
+  const s = String(exp || "0").trim();
+  if (s.endsWith("M")) return parseFloat(s) * 1000000;
+  if (s.endsWith("K")) return parseFloat(s) * 1000;
+  return parseFloat(s) || 0;
+};
 
+/* ─── Token Manager — fresh device_id every time ─── */
+let cachedToken: string | null = null;
+
+const getApiToken = async (): Promise<string> => {
   try {
     const res = await fetch("https://galalivechat.com/api/auth/v3/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "social", platform: "facebook", platform_id: "4",
-        device_id: "live_dashboard_" + Date.now(),
+        device_id: "live_dash_" + Date.now() + "_" + Math.random().toString(36).slice(2),
       }),
     });
     const data = await res.json();
-    const token = data.auth_token || "";
-    if (token) {
-      localStorage.setItem("gala_api_token", token);
-      localStorage.setItem("gala_api_token_at", String(Date.now()));
-    }
-    return token;
+    cachedToken = data.auth_token || null;
+    return cachedToken || "";
   } catch {
-    return cached || "";
+    return "";
   }
+};
+
+/* ─── Fetch with auto-retry on "Another device" ─── */
+const fetchWithToken = async (url: string, options: any = {}): Promise<any> => {
+  if (!cachedToken) await getApiToken();
+
+  const doFetch = async () => {
+    const res = await fetch(url, {
+      ...options,
+      headers: { ...options.headers, Authorization: `Bearer ${cachedToken}`, Accept: "application/json" },
+    });
+    return res.json();
+  };
+
+  let data = await doFetch();
+  if (data.success === false && (data.message?.includes("Another device") || data.message?.includes("token"))) {
+    await getApiToken();
+    data = await doFetch();
+  }
+  return data;
 };
 
 /* ─── Ranking API ─── */
 const fetchRanking = async (cls: number, type: number): Promise<RankUser[]> => {
   try {
-    const token = await getApiToken();
-    const res = await fetch("https://galalivechat.com/api/ranking", {
+    const data = await fetchWithToken("https://galalivechat.com/api/ranking", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ class: cls, type }),
     });
-    const data = await res.json();
     const top = data.data?.top || [];
     const other = data.data?.other || [];
     return [...top, ...other].map((u: any) => ({
       uuid: String(u.uuid || u.id || ""),
       name: u.name || u.nickname || "—",
       avatar: u.avatar || u.portrait || "",
-      amount: u.charger_num || u.receiver_num || u.charm || u.contribution || 0,
+      amount: parseExp(u.exp) || u.charger_num || u.receiver_num || u.charm || u.contribution || 0,
     }));
   } catch {
     return [];
