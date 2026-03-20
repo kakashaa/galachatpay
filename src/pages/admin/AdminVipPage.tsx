@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import AdminTopAgents from "@/components/AdminTopAgents";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { galaApi } from "@/services/galaApi";
 
 const tabs = ["إرسال VIP", "الطلبات", "TOP وكلاء"];
 
@@ -38,12 +39,7 @@ const AdminVipPage: React.FC = () => {
     setSending(true);
     const t = toast.loading(`جاري إرسال VIP ${vipLevel}...`);
     try {
-      const res = await fetch("https://galachat.site/project-z/api.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "admin_give_vip", admin_key: "ghala2026owner", uuid: vipUuid.trim(), level: vipLevel, duration: "30d" }),
-      });
-      const data = await res.json();
+      const data = await galaApi.giveVip(vipUuid.trim(), vipLevel, "30d");
       if (!data.success) throw new Error(data.error || "فشل");
       await sendUserNotification(
         vipUuid.trim(),

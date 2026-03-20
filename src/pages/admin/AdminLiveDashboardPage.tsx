@@ -115,19 +115,11 @@ const parseExp = (exp: any): number => {
   return parseFloat(s) || 0;
 };
 
-/* ─── Get a FRESH token — never reuse ─── */
+/* ─── Get a FRESH token via secure proxy ─── */
 const getFreshToken = async (): Promise<string> => {
   try {
-    const res = await fetch("https://galalivechat.com/api/auth/v3/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "social", platform: "facebook", platform_id: "4",
-        device_id: "dash_" + Date.now() + "_" + Math.random().toString(36).slice(2),
-      }),
-    });
-    const data = await res.json();
-    return data.auth_token || "";
+    const { galaApi } = await import("@/services/galaApi");
+    return await galaApi.getToken();
   } catch {
     return "";
   }
@@ -165,13 +157,11 @@ const fetchRanking = async (cls: number, type: number): Promise<RankUser[]> => {
 /* ─── User Search ─── */
 const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
   const trimmed = uuid.trim();
+  const { galaApi } = await import("@/services/galaApi");
   let profile: any = null;
 
   try {
-    const res = await fetch(
-      `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${trimmed}`
-    );
-    const data = await res.json();
+    const data = await galaApi.getUserInfo(trimmed);
     if (data.success && data.name) {
       profile = data;
     }
@@ -179,10 +169,7 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
 
   if (!profile) {
     try {
-      const res = await fetch(
-        `https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${trimmed}`
-      );
-      const data = await res.json();
+      const data = await galaApi.awsUserInfo(trimmed);
       if (data.ok && data.data?.name) {
         profile = { ...data.data, success: true };
       }
@@ -193,10 +180,7 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
 
   let salary = 0, deduction = 0;
   try {
-    const salaryRes = await fetch(
-      `https://galachat.site/project-z/api.php?action=salary_check&uuid=${trimmed}`
-    );
-    const salaryData = await salaryRes.json();
+    const salaryData = await galaApi.checkSalary(trimmed);
     salary = salaryData.salary || 0;
     deduction = salaryData.deduction || 0;
   } catch {}
@@ -263,10 +247,8 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
 
     let members: AgencyMember[] = [];
     try {
-      const mRes = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-members&agency_id=${numericId}`
-      );
-      const mData = await mRes.json();
+      const { galaApi } = await import("@/services/galaApi");
+      const mData = await galaApi.getAgencyMembers(numericId);
       const rawMembers = mData.data?.members || mData.data || [];
       if (rawMembers.length > 0) {
         const profileToken = await getFreshToken();
@@ -323,10 +305,8 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
 
     let pendingRequests: PendingRequest[] = [];
     try {
-      const rRes = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-requests&agency_id=${numericId}`
-      );
-      const rData = await rRes.json();
+      const { galaApi: api } = await import("@/services/galaApi");
+      const rData = await api.getAgencyRequests(numericId);
       const rawReqs = rData.data || [];
       pendingRequests = rawReqs.map((r: any) => ({
         user_id: r.user_id || r.id || 0,

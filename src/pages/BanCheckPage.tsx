@@ -16,7 +16,7 @@ import MobileLayout from "@/components/MobileLayout";
 import { secureUpload } from "@/utils/secureUpload";
 
 /* ─── helpers ─── */
-const CHECK_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=";
+import { galaApi } from "@/services/galaApi";
 
 const formatDate = (d: string | null) => {
   if (!d) return "—";
@@ -57,8 +57,7 @@ const BanCheckPage = () => {
     setTargetUser(null);
     setConfirmed(false);
     try {
-      const res = await fetch(CHECK_API + encodeURIComponent(trimmed));
-      const data = await res.json();
+      const data = await galaApi.checkSupporter(trimmed);
       if (data?.data?.name) {
         setTargetUser({ name: data.data.name, image: data.data.profile?.image || "", uuid: trimmed });
       } else {

@@ -10,8 +10,7 @@ import ChatInput from '@/components/chat/ChatInput';
 import DateSeparator from '@/components/chat/DateSeparator';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 
-const API = "https://galachat.site/project-z/api.php";
-const ADMIN_KEY = "ghala2026owner";
+import { galaApi } from "@/services/galaApi";
 
 interface ChatRoom {
   id: string;
@@ -49,11 +48,7 @@ export default function AdminChatPage() {
 
   const fetchRooms = useCallback(async () => {
     try {
-      const fd = new FormData();
-      fd.append('action', 'admin_chat_list');
-      fd.append('admin_key', ADMIN_KEY);
-      const res = await fetch(API, { method: 'POST', body: fd });
-      const data = await res.json();
+      const data = await galaApi.chatList();
       if (data.success) setRooms(data.chats || []);
     } catch { }
     setLoading(false);
@@ -61,13 +56,7 @@ export default function AdminChatPage() {
 
   const fetchMessages = useCallback(async (roomId: string) => {
     try {
-      const fd = new FormData();
-      fd.append('action', 'admin_chat_messages');
-      fd.append('admin_key', ADMIN_KEY);
-      fd.append('chat_id', roomId);
-      fd.append('limit', '50');
-      const res = await fetch(API, { method: 'POST', body: fd });
-      const data = await res.json();
+      const data = await galaApi.chatMessages(roomId);
       if (data.success) setMessages(data.messages || []);
     } catch { }
   }, []);
@@ -90,16 +79,7 @@ export default function AdminChatPage() {
     if (!activeRoom) return;
     setSending(true);
     try {
-      const fd = new FormData();
-      fd.append('action', 'admin_chat_send');
-      fd.append('admin_key', ADMIN_KEY);
-      fd.append('chat_id', activeRoom);
-      fd.append('message', text);
-      fd.append('sender', adminName);
-      fd.append('type', type);
-      if (mediaUrl) fd.append('media_url', mediaUrl);
-      const res = await fetch(API, { method: 'POST', body: fd });
-      const data = await res.json();
+      const data = await galaApi.chatSend(activeRoom, text, adminName, mediaUrl);
       if (data.success) {
         setMessages(prev => [...prev, data.message]);
       }

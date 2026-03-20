@@ -87,8 +87,11 @@ const AdminRequestsPage: React.FC = () => {
   useEffect(() => { loadAllCounts(); }, []);
   useEffect(() => { setStatusFilter("pending"); loadData(); }, [activeTab]);
 
-  const HOLA_API = "https://hola-chat.com/wares-api.php";
-  const HOLA_KEY = "ghala2026actions";
+  const { galaApi: api } = await import("@/services/galaApi").then(m => ({ galaApi: m.galaApi }));
+
+  const fetchRoomRequests = async (): Promise<any[]> => {
+    try {
+      const data = await api.listRoomBgRequests();
 
   // Fetch room bg requests from external dashboard
   const fetchRoomRequests = async (): Promise<any[]> => {

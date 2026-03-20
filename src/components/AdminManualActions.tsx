@@ -8,8 +8,7 @@ import { motion } from 'framer-motion';
 import { useConfirmModal } from '@/hooks/use-confirm-modal';
 import { supabase } from '@/integrations/supabase/client';
 
-const API = "https://galachat.site/project-z/api.php";
-const ADMIN_KEY = "ghala2026owner";
+import { galaApi } from "@/services/galaApi";
 
 interface Props {
   adminUsername: string;
@@ -51,19 +50,19 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
   const [logLoading, setLogLoading] = useState(false);
 
   const apiPost = async (body: Record<string, any>) => {
-    const res = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ admin_key: ADMIN_KEY, ...body }),
-    });
-    return res.json();
+    const { action, ...rest } = body;
+    if (action === 'admin_give_vip') return galaApi.giveVip(rest.uuid, rest.level, rest.duration || '30');
+    if (action === 'admin_change_uuid') return galaApi.changeUuid(rest.uuid, rest.new_uuid);
+    if (action === 'admin_ban_user') return galaApi.banUser(rest.uuid, rest.reason, rest);
+    // Fallback generic call
+    return galaApi.getUserInfo(rest.uuid);
   };
 
   const apiGet = async (params: Record<string, string>) => {
-    const url = new URL(API);
-    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-    const res = await fetch(url.toString());
-    return res.json();
+    const { action, ...rest } = params;
+    if (action === 'admin_user_info') return galaApi.getUserInfo(rest.uuid);
+    if (action === 'admin_action_log') return galaApi.actionLog(rest);
+    return galaApi.getUserInfo(rest.uuid);
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -122,9 +121,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
       const data = await apiPost(body);
 
       try {
-        await fetch(
-          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${banUuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${effectiveBanType}`
-        );
+        await galaApi.banUserReal(banUuid.trim(), reason, hours, effectiveBanType);
       } catch (e) { console.error('Real ban failed:', e); }
 
       let evidenceUrl = 'manual-ban';
@@ -166,7 +163,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     setSearchLoading(true);
     setUserInfo(null);
     try {
-      const data = await apiGet({ action: 'admin_user_info', admin_key: ADMIN_KEY, uuid: searchUuid.trim() });
+      const data = await galaApi.getUserInfo(searchUuid.trim());
       if (data.success !== false) setUserInfo(data);
       else toast.error(data.error || 'مستخدم غير موجود');
     } catch { toast.error('فشل البحث'); }
@@ -176,7 +173,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
   const handleLoadLogs = async () => {
     setLogLoading(true);
     try {
-      const params: Record<string, string> = { action: 'admin_action_log', admin_key: ADMIN_KEY, limit: '50' };
+      const params: Record<string, string> = { limit: '50' };
       if (logAdmin.trim()) params.admin = logAdmin.trim();
       const data = await apiGet(params);
       if (data.logs) setLogs(data.logs);
@@ -404,7 +401,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
                     .limit(1);
 
                   const unbanType = existingBans?.[0]?.ban_type === 'promotion' ? 'device' : 'normal';
-                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banUuid.trim()}&unban_type=${unbanType}`);
+                  await galaApi.unbanUserReal(banUuid.trim(), unbanType);
 
                   await supabase
                     .from('ban_reports')

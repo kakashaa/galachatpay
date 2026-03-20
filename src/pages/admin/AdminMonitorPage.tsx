@@ -13,44 +13,23 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 
-/* ─── API Layer ─── */
-const API_BASE = "https://hola-chat.com/wares-api.php";
-const API_KEY = "ghala2026actions";
+/* ─── API Layer (via secure proxy) ─── */
+import { galaApi } from "@/services/galaApi";
 
-interface PromoConfig {
-  competitors: string[];
-  suspicious_phrases: string[];
-  safe_apps: string[];
-}
-
-async function fetchPromoConfig(): Promise<PromoConfig> {
-  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  return json.data;
+async function fetchPromoConfig() {
+  const data = await galaApi.getPromoConfig();
+  return data?.data || data;
 }
 
 async function updatePromoConfig(
   action: "add_competitor" | "remove_competitor" | "add_phrase" | "remove_phrase" | "add_safe" | "remove_safe",
   value: string
-): Promise<any> {
-  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ [action]: value }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+) {
+  return galaApi.updatePromoConfig({ [action]: value });
 }
 
-async function banUserApi(uuid: string, duration: number = 24): Promise<any> {
-  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=ban-user`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uuid, duration, type: ["normal"] }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+async function banUserApi(uuid: string, duration: number = 24) {
+  return galaApi.banUserReal(uuid, "monitor-ban", duration, "normal");
 }
 
 /* ─── Types ─── */
@@ -327,12 +306,8 @@ const AdminMonitorPage: React.FC = () => {
   const loadAlerts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}?key=${API_KEY}&action=promo-alerts`
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const apiAlerts = (data.data?.alerts || []) as MonitorAlert[];
+      const data = await galaApi.getAlerts();
+      const apiAlerts = (data?.data?.alerts || data?.alerts || []) as MonitorAlert[];
 
       if (soundEnabled && apiAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
         const hasHigh = apiAlerts.some(a => a.severity === "high");
@@ -423,12 +398,8 @@ const AdminMonitorPage: React.FC = () => {
     setChatMessages(prev => [...prev, { role: "user", text: question, time: formatTime(new Date().toISOString()) }]);
     setBotLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}?key=${API_KEY}&action=monitor-query`,
-        { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `question=${encodeURIComponent(question)}` }
-      );
-      const data = await res.json();
-      setChatMessages(prev => [...prev, { role: "bot", text: data.data?.answer || data.answer || data.message || "ما لقيت معلومات", time: formatTime(new Date().toISOString()) }]);
+      const data = await galaApi.askBot(question);
+      setChatMessages(prev => [...prev, { role: "bot", text: data?.data?.answer || data?.answer || data?.message || "ما لقيت معلومات", time: formatTime(new Date().toISOString()) }]);
     } catch {
       setChatMessages(prev => [...prev, { role: "bot", text: "خطأ في الاتصال — حاول مرة أخرى", time: formatTime(new Date().toISOString()) }]);
     } finally {
@@ -439,7 +410,7 @@ const AdminMonitorPage: React.FC = () => {
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
   /* ── Promo Config ── */
-  const [promoConfig, setPromoConfig] = useState<PromoConfig | null>(null);
+  const [promoConfig, setPromoConfig] = useState<{ competitors: string[]; suspicious_phrases: string[]; safe_apps: string[] } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoSaving, setPromoSaving] = useState(false);
   const [newCompetitor, setNewCompetitor] = useState("");

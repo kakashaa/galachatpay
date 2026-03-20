@@ -13,6 +13,7 @@ import {
   Inbox, FileText, Landmark, Eye, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { galaApi } from '@/services/galaApi';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 
@@ -123,10 +124,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
       color: isBanned ? "#10b981" : "#f43f5e",
       onClick: () => {
         if (isBanned) {
-          fetch('https://galachat.site/project-z/api.php', {
-            method: 'POST',
-            body: new URLSearchParams({ action: 'admin_ban_user', admin_key: 'ghala2026owner', uuid: user.uuid, unban: 'true', reason: 'admin_action', admin_name: adminUsername }),
-          }).then(r => r.json()).then(d => { if (d.success) { toast.success('تم فك الحظر'); onRefresh(user.uuid); } else toast.error('فشل فك الحظر'); }).catch(() => toast.error('خطأ في الاتصال'));
+          galaApi.unbanUser(user.uuid).then(d => { if (d.success) { toast.success('تم فك الحظر'); onRefresh(user.uuid); } else toast.error('فشل فك الحظر'); }).catch(() => toast.error('خطأ في الاتصال'));
         } else navigate(`/admin/ban?uuid=${user.uuid}`);
       }
     },
@@ -413,8 +411,7 @@ const AdminHomeView: React.FC<Props> = ({
     if (!target) return;
     setSearching(true); setSearchResult(null);
     try {
-      const res = await fetch(`https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${target}`);
-      const data = await res.json();
+      const data = await galaApi.getUserInfo(target);
       if (data.success && data.name) setSearchResult(data);
       else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
     } catch { toast.error("خطأ في الاتصال"); }
