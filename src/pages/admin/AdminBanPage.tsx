@@ -20,6 +20,7 @@ const AdminBanPage: React.FC = () => {
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [banImage, setBanImage] = useState<File | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+  const [reportFilter, setReportFilter] = useState<"pending" | "rejected">("pending");
   const banFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadData(); }, [subTab]);
