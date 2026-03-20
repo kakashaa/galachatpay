@@ -215,11 +215,9 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
 
     // 1. Find agency across paginated results (up to 10 pages)
     let agencyName = `وكالة #${agencyId.trim()}`;
-    let agencyImage = "";
-    let totalMembers = 0;
-    const guessPage = isNaN(numericId) ? 1 : Math.ceil(numericId / 10);
+    let _agency: any = null;
 
-    for (let page = guessPage; page >= 1; page--) {
+    for (let page = 1; page <= 10; page++) {
       try {
         const tk = await getFreshToken();
         const r = await fetch(`https://galalivechat.com/api/agencies/filter?page=${page}`, {
@@ -229,38 +227,13 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
         });
         const d = await r.json();
         const agencies = d.data?.agencies || [];
-        const found = agencies.find((a: any) => String(a.id) === agencyId.trim() || a.id === numericId);
+        const found = agencies.find((a: any) => a.id === numericId || String(a.id) === agencyId.trim());
         if (found) {
+          _agency = found;
           agencyName = found.name || found.title || agencyName;
-          agencyImage = found.image || "";
-          totalMembers = found.total_members || 0;
           break;
         }
-        if (page === guessPage && !found) {
-          // Try all pages sequentially
-          for (let p = 1; p <= 10; p++) {
-            if (p === guessPage) continue;
-            try {
-              const tk2 = await getFreshToken();
-              const r2 = await fetch(`https://galalivechat.com/api/agencies/filter?page=${p}`, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${tk2}`, Accept: "application/json", "Content-Type": "application/json" },
-                body: JSON.stringify({ page: p }),
-              });
-              const d2 = await r2.json();
-              const agencies2 = d2.data?.agencies || [];
-              const found2 = agencies2.find((a: any) => String(a.id) === agencyId.trim() || a.id === numericId);
-              if (found2) {
-                agencyName = found2.name || found2.title || agencyName;
-                agencyImage = found2.image || "";
-                totalMembers = found2.total_members || 0;
-                break;
-              }
-              if (agencies2.length < 10) break; // last page
-            } catch {}
-          }
-          break;
-        }
+        if (agencies.length < 10) break; // last page
       } catch {}
     }
 
@@ -284,9 +257,10 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
                 { headers: { Authorization: `Bearer ${profileToken}`, Accept: "application/json" } }
               );
               const profile = await pRes.json();
+              const pData = profile.data || {};
               return {
-                uuid: String(profile.data?.uuid || m.uuid || internalId || ""),
-                name: profile.data?.name || m.name || m.nickname || `ID:${internalId}`,
+                uuid: String(pData.uuid || m.uuid || internalId || ""),
+                name: pData.name || m.name || m.nickname || `ID:${internalId}`,
                 charges: parseExp(m.charges || m.total_used || m.exp || 0),
                 user_id: internalId,
               };
