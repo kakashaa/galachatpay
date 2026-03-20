@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  ShieldBan, Search, ArrowRight, Loader2, ShieldCheck, AlertTriangle,
+  ShieldBan, Search, ArrowRight, Loader2, ShieldCheck,
   Video, CheckCircle2, Megaphone, MessageSquareWarning, FileText, Upload,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";

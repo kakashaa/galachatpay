@@ -18,7 +18,7 @@ const formatDate = (d: string | null) => {
 interface TargetUser { name: string; image: string }
 
 const AdminBanPage: React.FC = () => {
-  const { adminCall, handleLogout } = useAdminSession();
+  const { handleLogout } = useAdminSession();
   const { confirm, ConfirmDialog } = useConfirmModal();
 
   const [subTab, setSubTab] = useState<"reports" | "ban" | "list">("reports");
