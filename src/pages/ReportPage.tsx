@@ -291,12 +291,10 @@ const ReportPage = () => {
     if (!file) return;
 
     const isVideo = file.type.startsWith("video/");
-    const isImage = file.type.startsWith("image/");
 
-    // No longer force video-only for any type
-
-    if (!isVideo && !isImage) {
-      toast.error("يجب رفع صورة أو فيديو");
+    if (!isVideo) {
+      toast.error("يجب رفع فيديو كدليل على المخالفة");
+      e.target.value = "";
       return;
     }
 
