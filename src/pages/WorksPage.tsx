@@ -23,8 +23,7 @@ interface MemberWithSalary {
   commission?: number;
 }
 
-const WARN_THRESHOLD = 3;
-const BAN_THRESHOLD = 5;
+const BAN_THRESHOLD = 4; // per-target attempts before ban
 
 const WorksPage: React.FC = () => {
   const navigate = useNavigate();
