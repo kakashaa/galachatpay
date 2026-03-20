@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy } from "lucide-react";
+import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -649,10 +650,48 @@ const WorksPage: React.FC = () => {
                 dir="ltr"
               />
 
-              <button onClick={sendInvitation} disabled={!memberInput || sending}
-                className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50">
-                {sending ? "جاري التحقق..." : "إرسال دعوة"}
-              </button>
+              <motion.button
+                onClick={sendInvitation}
+                disabled={!memberInput || sending}
+                className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 overflow-hidden relative"
+                whileTap={{ scale: 0.97 }}
+              >
+                <AnimatePresence mode="wait">
+                  {sending ? (
+                    <motion.div
+                      key="loading"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center gap-2"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      >
+                        <Loader2 className="w-4 h-4" />
+                      </motion.div>
+                      <motion.span
+                        animate={{ opacity: [1, 0.5, 1] }}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                      >
+                        {memberType === "agent" ? "جاري التحقق من الوكالة..." : "جاري التحقق من المستخدم..."}
+                      </motion.span>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="idle"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>إرسال دعوة</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </div>
           )}
         </DialogContent>
@@ -661,64 +700,103 @@ const WorksPage: React.FC = () => {
       {/* Instruction Modal after successful invitation */}
       <Dialog open={!!instructionModal} onOpenChange={() => setInstructionModal(null)}>
         <DialogContent className="max-w-sm">
-          <div className="p-4 space-y-4 text-center" dir="rtl">
-            <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
-              <CheckCircle className="w-7 h-7 text-emerald-400" />
-            </div>
-            <h3 className="text-base font-bold text-foreground">
-              {instructionModal === "supporter" ? "تم إرسال الدعوة!" : "تم إرسال الطلب!"}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              {instructionModal === "supporter"
-                ? "أخبر الداعم بالخطوات التالية:"
-                : "أخبر صاحب الوكالة بالخطوات التالية:"}
-            </p>
+          <div className="p-4 space-y-5 text-center" dir="rtl">
+            {/* Animated success icon */}
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+              className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto"
+            >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
+                <CheckCircle className="w-8 h-8 text-emerald-400" />
+              </motion.div>
+            </motion.div>
 
-            <div className="bg-muted/20 border border-border rounded-xl p-3 text-right space-y-2">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <h3 className="text-lg font-black text-foreground mb-1">
+                {instructionModal === "supporter" ? "تم إرسال الدعوة! 🎉" : "تم إرسال الطلب! 🎉"}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {instructionModal === "supporter"
+                  ? "أرسل هذه الخطوات للداعم عشان يقبل الدعوة:"
+                  : "أرسل هذه الخطوات لصاحب الوكالة عشان يقبل الدعوة:"}
+              </p>
+            </motion.div>
+
+            {/* Steps with staggered animation */}
+            <div className="bg-muted/20 border border-border rounded-2xl p-4 space-y-3 text-right">
               {[
-                "ادخل على galachatpay.lovable.app",
-                "سجّل دخول بـ UUID وكلمة المرور",
-                instructionModal === "supporter"
-                  ? "ستجد دعوة انضمام للبيدي في الإشعارات"
-                  : "ستجد طلب انضمام وكالتك للبيدي في الإشعارات",
-                'اضغط "قبول" للانضمام',
+                { icon: "🌐", text: "يفتح الرابط: galachatpay.lovable.app" },
+                { icon: "🔑", text: "يسجّل دخول بـ UUID وكلمة المرور" },
+                { icon: "🔔", text: instructionModal === "supporter"
+                  ? "يروح الإشعارات — بيلاقي دعوة الانضمام للبيدي"
+                  : "يروح الإشعارات — بيلاقي طلب انضمام الوكالة للبيدي" },
+                { icon: "✅", text: 'يضغط "قبول" وينضم للفريق!' },
               ].map((step, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 text-[10px]">
-                    {i + 1}
-                  </span>
-                  <span className="text-muted-foreground leading-relaxed">{step}</span>
-                </div>
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.5 + i * 0.15 }}
+                  className="flex items-start gap-3 text-xs"
+                >
+                  <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                    <span className="text-sm">{step.icon}</span>
+                  </div>
+                  <span className="text-muted-foreground leading-relaxed pt-1">{step.text}</span>
+                </motion.div>
               ))}
             </div>
 
             {/* Copy link button */}
-            <button
+            <motion.button
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1 }}
+              whileTap={{ scale: 0.97 }}
               onClick={() => {
                 navigator.clipboard.writeText("galachatpay.lovable.app");
-                setModal({ type: "success", message: "تم نسخ الرابط" });
+                setModal({ type: "success", message: "تم نسخ الرابط ✅" });
                 setTimeout(() => setModal(null), 1500);
               }}
-              className="w-full flex items-center justify-center gap-2 bg-card border border-border rounded-xl py-2.5 text-xs font-bold text-foreground hover:bg-muted/30 transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-card border border-border rounded-xl py-3 text-xs font-bold text-foreground hover:bg-muted/30 transition-colors"
             >
               <Copy className="w-4 h-4 text-muted-foreground" />
               نسخ الرابط: galachatpay.lovable.app
-            </button>
+            </motion.button>
 
-            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-2.5">
-              <p className="text-[11px] text-emerald-400 font-bold">
-                {instructionModal === "supporter"
-                  ? "بعد القبول ستبدأ نسبتك تُحسب تلقائياً"
-                  : "بعد القبول ستبدأ نسبتك من راتب الوكالة تُحسب تلقائياً"}
-              </p>
-            </div>
-
-            <button
-              onClick={() => setInstructionModal(null)}
-              className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold text-sm"
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.3 }}
+              className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3"
             >
-              فهمت
-            </button>
+              <p className="text-[11px] text-emerald-400 font-bold leading-relaxed">
+                {instructionModal === "supporter"
+                  ? "💰 بعد القبول → نسبتك من شحنات الداعم تُحسب تلقائياً"
+                  : "💰 بعد القبول → نسبتك من راتب الوكالة تُحسب تلقائياً"}
+              </p>
+            </motion.div>
+
+            <motion.button
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.5 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setInstructionModal(null)}
+              className="w-full bg-emerald-500 text-black py-3 rounded-xl font-bold text-sm"
+            >
+              فهمت 👍
+            </motion.button>
           </div>
         </DialogContent>
       </Dialog>
