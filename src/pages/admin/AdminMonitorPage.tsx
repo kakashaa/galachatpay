@@ -4,7 +4,7 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
-import { Eye, Bell, List, Bot, Send, Loader2, Volume2, VolumeX, Trash2, CheckCheck } from "lucide-react";
+import { Eye, Bell, List, Bot, Send, Loader2, Volume2, VolumeX, Trash2, CheckCheck, Zap, RefreshCw, DollarSign, Megaphone, LayoutGrid } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound } from "@/lib/notificationSound";
 
