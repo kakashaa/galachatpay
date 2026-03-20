@@ -193,14 +193,12 @@ const AdminLiveDashboardPage: React.FC = () => {
   const loadRankings = useCallback(async (period: "today" | "week" | "month" = rankPeriod) => {
     setRankLoading(true);
     try {
-      const [s, r] = await Promise.all([
-        fetchRanking(2, typeMap[period]),
-        fetchRanking(1, typeMap[period]),
-      ]);
+      // SEQUENTIAL — each call needs its own token, parallel would invalidate tokens
+      const s = await fetchRanking(2, typeMap[period]);
+      const r = await fetchRanking(1, typeMap[period]);
       setSenders(s);
       setReceivers(r);
 
-      // Calculate stats from senders
       const totalCoins = s.reduce((sum, u) => sum + u.amount, 0);
       setTodayStats({
         revenue: Math.round(totalCoins / COINS_PER_USD),
@@ -338,7 +336,9 @@ const AdminLiveDashboardPage: React.FC = () => {
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
                 <Icon size={16} style={{ color: card.color }} className="mx-auto mb-1.5" />
-                <p className="text-base font-bold font-mono text-foreground">{card.value}</p>
+                <p className="text-base font-bold font-mono text-foreground">
+                  <AnimatedNumber value={typeof card.value === 'string' && card.value.startsWith('$') ? parseInt(card.value.replace(/[$,]/g, '')) || 0 : parseInt(String(card.value).replace(/[^0-9]/g, '')) || 0} prefix={card.value.startsWith('$') ? '$' : ''} suffix={card.value.includes('M') ? 'M' : ''} />
+                </p>
                 <p className="text-[9px] text-muted-foreground mt-0.5">{card.label}</p>
               </motion.div>
             );
@@ -438,7 +438,12 @@ const AdminLiveDashboardPage: React.FC = () => {
                     </span>
                     <div className="flex items-center gap-2 min-w-0">
                       {user.avatar ? (
-                        <img src={user.avatar} className="w-6 h-6 rounded-full object-cover shrink-0" alt="" />
+                        <img
+                          src={user.avatar}
+                          className="w-6 h-6 rounded-full object-cover shrink-0"
+                          alt=""
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
+                        />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                           <Users size={10} className="text-muted-foreground" />
@@ -512,14 +517,19 @@ const AdminLiveDashboardPage: React.FC = () => {
               >
                 {/* Profile Header */}
                 <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                  <div className="flex items-center gap-3 mb-3">
-                    {userProfile.avatar ? (
-                      <img src={userProfile.avatar} className="w-12 h-12 rounded-full object-cover" alt="" />
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
-                        <Users size={20} className="text-muted-foreground" />
-                      </div>
-                    )}
+                   <div className="flex items-center gap-3 mb-3">
+                     {userProfile.avatar ? (
+                       <img
+                         src={userProfile.avatar.startsWith("http") ? userProfile.avatar : `${MEDIA_BASE}${userProfile.avatar}`}
+                         className="w-12 h-12 rounded-full object-cover"
+                         alt=""
+                         onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
+                       />
+                     ) : (
+                       <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                         <Users size={20} className="text-muted-foreground" />
+                       </div>
+                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate">{userProfile.name}</p>
                       <p className="text-[11px] text-muted-foreground font-mono">UUID: {userProfile.uuid}</p>
