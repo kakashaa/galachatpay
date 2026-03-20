@@ -205,6 +205,11 @@ const BDDashboard: React.FC = () => {
   if (!data?.bd) return null;
   const { bd, supporters, agents } = data;
 
+  // Compute live salary commission total
+  const liveSalaryTotal = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0)
+    + Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
+  const liveSalaryTotalUsd = liveSalaryTotal / 7500;
+
   const renderStockChart = () => {
     if (dailyLogs.length === 0) return null;
     const max = Math.max(...dailyLogs.map(d => d.amount), 0.01);
