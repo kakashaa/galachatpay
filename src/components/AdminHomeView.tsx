@@ -10,7 +10,7 @@ import {
   ShoppingBag, TrendingUp, Building2, Banknote, Package,
   ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
-  Inbox, FileText, Landmark, Eye
+  Inbox, FileText, Landmark, Eye, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
@@ -444,6 +444,8 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "#71717a", roles: ["owner"], badge: 0 },
     { icon: FileText, label: "طلبات المضيفات", route: "/admin/host-requests", color: "#14b8a6", roles: ["owner", "super_admin", "admin"], badge: 0 },
     { icon: Eye, label: "المراقبة", route: "/admin/monitor", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", color: "#f59e0b", roles: ["owner"], badge: 0 },
+    { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", color: "#06b6d4", roles: ["owner", "super_admin"], badge: 0 },
   ];
 
   const visibleServices = allServices.filter(s => adminRole && s.roles.includes(adminRole));
