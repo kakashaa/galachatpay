@@ -398,6 +398,7 @@ const SalaryWithdraw: React.FC = () => {
       case "bank": return () => setStep("transfers_list");
       case "account": return () => setStep("bank");
       case "coins_confirm": return () => setStep("transfers_list");
+      case "charge_other_search": return () => setStep("transfers_list");
       default: return () => navigate("/dashboard");
     }
   };
