@@ -564,12 +564,23 @@ const SalaryWithdraw: React.FC = () => {
             <Coins className="w-10 h-10 text-emerald-400" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center w-full space-y-4">
-            <h2 className="text-lg font-bold text-foreground">تم شحن الكوينز لحسابك!</h2>
+            <h2 className="text-lg font-bold text-foreground">
+              {targetInfo ? `تم شحن الكوينز لـ ${targetInfo.name}!` : "تم شحن الكوينز لحسابك!"}
+            </h2>
             <div className="rounded-xl p-5 bg-emerald-500/10 border border-emerald-500/20">
               <p className="text-3xl font-black text-emerald-400">{coinsCharged.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground mt-1">كوينز</p>
             </div>
-            <p className="text-xs text-muted-foreground">تم إضافة الكوينز إلى رصيدك في غلا لايف</p>
+            {targetInfo && (
+              <div className="rounded-xl p-3 bg-muted/20 border border-border/20 flex items-center gap-3 justify-center">
+                <User className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold text-foreground">{targetInfo.name}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">UUID: {targetInfo.uuid}</span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {targetInfo ? "تم إضافة الكوينز إلى رصيد المستلم" : "تم إضافة الكوينز إلى رصيدك في غلا لايف"}
+            </p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
             <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
