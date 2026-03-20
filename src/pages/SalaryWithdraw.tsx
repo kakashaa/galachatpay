@@ -669,7 +669,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── LOADING ──
   if (loading || step === "loading") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">جاري جلب الحوالات...</p>
@@ -681,7 +681,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── NO TRANSFERS ──
   if (step === "no_transfers") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-8 space-y-6">
           <div className="flex flex-col items-center text-center">
             <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
@@ -739,7 +739,7 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "all_used") {
     const usedTransfers = transfers.filter(t => t.is_used);
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-8 space-y-6">
           <div className="flex flex-col items-center text-center">
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
@@ -800,7 +800,7 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "exhausted") {
     const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-8 space-y-6">
           <div className="flex flex-col items-center text-center">
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
@@ -820,7 +820,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── ERROR ──
   if (step === "error") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mb-4">
             <AlertCircle className="w-8 h-8 text-destructive" />
@@ -835,7 +835,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── SUCCESS (cash withdrawal) ──
   if (step === "success" && submitResult) {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center px-6 py-16">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }}
             className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6">
@@ -881,7 +881,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── COINS SUCCESS ──
   if (step === "coins_success") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center px-6 py-16">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }}
             className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6">
@@ -924,7 +924,7 @@ const SalaryWithdraw: React.FC = () => {
     const { canWithdrawCash, startDay } = getCashWithdrawDates();
 
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-6 space-y-5">
           <div className="text-center space-y-2">
             <h2 className="text-lg font-bold text-foreground">حوالاتك إلى الإدارة</h2>
@@ -1103,7 +1103,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── COINS CONFIRM ──
   if (step === "coins_confirm" && selectedTransfer) {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={getBackAction()}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={getBackAction()}>
         <div className="px-5 py-6 space-y-5">
           <div className="glass-card p-5 space-y-4 text-center">
             <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto">
@@ -1250,7 +1250,7 @@ const SalaryWithdraw: React.FC = () => {
   const stepperIndex = { bank: 1, account: 2 }[step] ?? 0;
 
   return (
-    <MobileLayout showHeader headerTitle="سحب الراتب" onBack={getBackAction()}>
+    <MobileLayout showHeader headerTitle={headerTitle} onBack={getBackAction()}>
       <div className="px-5 py-4 space-y-5">
         {/* Stepper */}
         <div className="flex items-center gap-1 px-2">
