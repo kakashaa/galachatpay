@@ -684,12 +684,19 @@ const BDDashboard: React.FC = () => {
             {/* Wallet Card */}
             <div className="css-fade-up-d1 overflow-hidden rounded-2xl bg-card border border-border/40 p-3.5">
               <div className="flex justify-between items-start mb-2">
-                <div>
+                <div
+                  className={`${(bd.available_balance || 0) > 0 ? 'cursor-pointer active:scale-[0.97] transition-transform' : ''}`}
+                  onClick={() => { if ((bd.available_balance || 0) > 0) setTab('wallet'); }}
+                >
                   <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[12px] text-primary">account_balance_wallet</span>
                     الرصيد المتاح
                   </p>
                   <h2 className="text-xl font-bold text-foreground tracking-tight">${(bd.available_balance || 0).toFixed(2)}</h2>
+                  <p className="text-[9px] text-muted-foreground">{Math.round((bd.available_balance || 0) * 7500).toLocaleString()} كوينز</p>
+                  {(bd.available_balance || 0) > 0 && (
+                    <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب ←</p>
+                  )}
                 </div>
               <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${todayProfit > 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
                   <span className="material-symbols-outlined text-[11px]">{todayProfit > 0 ? 'trending_up' : 'trending_flat'}</span>
