@@ -212,32 +212,6 @@ const InstantRequest: React.FC = () => {
         return;
       }
 
-      // Also notify external API
-      try {
-        await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "salary_charge_manual",
-            admin_key: "ghala2026owner",
-            uuid: user.uuid,
-            target_uuid: supporterInfo.uuid,
-            amount: selectedTransfer.amount_usd,
-            reference_id: selectedTransfer.reference_id,
-            request_type: "instant",
-            instant_data: {
-              country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
-              bank: selectedMethod?.label || "",
-              account_name: fullName,
-              account_number: accountInfo,
-              whatsapp: whatsappNumber ? `${whatsappCode}${whatsappNumber}` : "",
-            },
-          }),
-        });
-      } catch {
-        // Non-critical, local DB already saved
-      }
-
       const refId = `INS-${Date.now().toString(36).toUpperCase().slice(-6)}`;
 
       // Send in-app notification
