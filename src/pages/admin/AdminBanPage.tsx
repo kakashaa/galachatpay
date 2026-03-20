@@ -468,13 +468,6 @@ const AdminBanPage: React.FC = () => {
                   })}
                 </div>
               )}
-                        style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
-                        {actionInProgress === report.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                );
-              })}
             </motion.div>
           )}
         </AnimatePresence>
