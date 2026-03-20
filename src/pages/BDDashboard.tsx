@@ -443,7 +443,7 @@ const BDDashboard: React.FC = () => {
                   <span className="text-[10px] font-medium text-yellow-500">{((bd.available_balance || 0) * 7500).toLocaleString()} عملة</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="bg-white/[0.04] rounded-lg p-2.5 border border-border/20">
                   <p className="text-[9px] text-muted-foreground mb-0.5">إجمالي المكتسب</p>
                   <p className="text-sm font-bold text-foreground">${(bd.total_earned || 0).toFixed(2)}</p>
@@ -451,6 +451,11 @@ const BDDashboard: React.FC = () => {
                 <div className="bg-white/[0.04] rounded-lg p-2.5 border border-border/20">
                   <p className="text-[9px] text-muted-foreground mb-0.5">أرباح الشهر</p>
                   <p className="text-sm font-bold text-foreground">${(bd.current_month_earnings || 0).toFixed(2)}</p>
+                </div>
+                <div className="bg-emerald-500/5 rounded-lg p-2.5 border border-emerald-500/10">
+                  <p className="text-[9px] text-muted-foreground mb-0.5">عمولة الرواتب</p>
+                  <p className="text-sm font-bold text-emerald-400">${liveSalaryTotalUsd.toFixed(2)}</p>
+                  {salaryLoading && <Loader2 className="w-3 h-3 animate-spin text-emerald-400 mt-0.5" />}
                 </div>
               </div>
             </section>
