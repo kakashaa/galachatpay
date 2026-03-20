@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -202,18 +203,94 @@ const SalaryWithdraw: React.FC = () => {
     fetchTransfers();
   }, [user?.uuid]);
 
+  const markTransferAsUsedLocally = (referenceId: string) => {
+    const shouldIncrement = transfers.some(
+      (t) => t.reference_id === referenceId && !t.is_used,
+    );
+
+    setTransfers((prev) =>
+      prev.map((t) =>
+        t.reference_id === referenceId
+          ? { ...t, is_used: true, selectable: false }
+          : t,
+      ),
+    );
+
+    if (shouldIncrement) {
+      setUsedCount((prev) => prev + 1);
+    }
+  };
+
+  const isReferenceAlreadyUsed = async (referenceId: string) => {
+    const { data, error } = await supabase
+      .from("salary_requests")
+      .select("id")
+      .eq("user_uuid", user!.uuid)
+      .eq("transaction_id", referenceId)
+      .limit(1);
+
+    if (error) {
+      console.error("Failed to check used reference:", error);
+      return false;
+    }
+
+    return (data?.length || 0) > 0;
+  };
+
   const fetchTransfers = async () => {
     setLoading(true);
     setError("");
     try {
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
       const [transfersRes, salaryRes] = await Promise.all([
         fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`),
         fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`),
       ]);
+
+      const [historyRes, localRequestsRes] = await Promise.all([
+        fetch(`${API}?action=my_salary_requests&uuid=${user!.uuid}&month=${month}`),
+        supabase
+          .from("salary_requests")
+          .select("transaction_id")
+          .eq("user_uuid", user!.uuid)
+          .not("transaction_id", "is", null),
+      ]);
+
       const data: TransfersResult = await transfersRes.json();
       const salaryData = await salaryRes.json();
+      const historyData = await historyRes.json().catch(() => ({}));
 
-      const allTransfers = data.transfers || [];
+      if (localRequestsRes.error) {
+        console.error("Failed to fetch local salary requests:", localRequestsRes.error);
+      }
+
+      const externalUsedRefs = new Set<string>(
+        ((historyData?.requests || []) as Array<{ reference_id?: string }>)
+          .map((r) => String(r.reference_id || "").trim())
+          .filter(Boolean),
+      );
+
+      const localUsedRefs = new Set<string>(
+        (localRequestsRes.data || [])
+          .map((r) => String(r.transaction_id || "").trim())
+          .filter(Boolean),
+      );
+
+      const usedRefs = new Set<string>([
+        ...externalUsedRefs,
+        ...localUsedRefs,
+      ]);
+
+      const allTransfers = (data.transfers || []).map((transfer) => {
+        const ref = String(transfer.reference_id || "").trim();
+        if (usedRefs.has(ref)) {
+          return { ...transfer, is_used: true, selectable: false };
+        }
+        return transfer;
+      });
+
       setTransfers(allTransfers);
       const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
       setIsAgencyOwner(agencyOwner);
@@ -271,6 +348,14 @@ const SalaryWithdraw: React.FC = () => {
       toast.error("هذه الحوالة تم استخدامها بالفعل");
       return;
     }
+
+    const alreadyUsed = await isReferenceAlreadyUsed(transfer.reference_id);
+    if (alreadyUsed) {
+      markTransferAsUsedLocally(transfer.reference_id);
+      toast.error("هذه الحوالة مستخدمة مسبقاً");
+      return;
+    }
+
     const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
     if (usedCount >= maxTotal) {
       toast.error("وصلت الحد الأقصى للسحب هذا الشهر");
@@ -334,7 +419,16 @@ const SalaryWithdraw: React.FC = () => {
     setChargingCoins(true);
     setError("");
     const targetId = chargeTarget || user!.uuid;
+
     try {
+      const alreadyUsed = await isReferenceAlreadyUsed(selectedTransfer.reference_id);
+      if (alreadyUsed) {
+        markTransferAsUsedLocally(selectedTransfer.reference_id);
+        toast.error("هذه الحوالة مستخدمة مسبقاً");
+        setStep("transfers_list");
+        return;
+      }
+
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -348,12 +442,35 @@ const SalaryWithdraw: React.FC = () => {
       });
       const data = await res.json();
       if (data.success) {
+        const targetName = targetInfo?.uuid === targetId
+          ? targetInfo.name
+          : (targetId === user!.uuid ? user!.name : "مستخدم آخر");
+
+        const { error: insertError } = await supabase.from("salary_requests").insert({
+          user_uuid: user!.uuid,
+          user_name: user!.name,
+          user_phone: user!.phone || null,
+          request_type: targetId === user!.uuid ? "charge_self" : "charge_other",
+          amount_usd: selectedTransfer.amount_usd,
+          amount_coins: selectedTransfer.amount_usd * USD_TO_COINS,
+          recipient_name: targetName,
+          recipient_country: "coins",
+          payment_method: "coins_charge",
+          payment_details: `target_uuid:${targetId}`,
+          status: "approved",
+          transaction_id: selectedTransfer.reference_id,
+          transaction_date: new Date().toISOString(),
+          target_uuid: targetId,
+          target_name: targetName,
+          admin_note: `تم شحن الكوينز من الحوالة #${selectedTransfer.reference_id}`,
+        } as any);
+
+        if (insertError && insertError.code !== "23505") {
+          console.error("Failed to save charge request:", insertError);
+        }
+
         setCoinsCharged(selectedTransfer.amount_usd * USD_TO_COINS);
-        // Mark transfer as used locally to prevent double-charge
-        setTransfers(prev => prev.map(t => 
-          t.reference_id === selectedTransfer.reference_id ? { ...t, is_used: true, selectable: false } : t
-        ));
-        setUsedCount(prev => prev + 1);
+        markTransferAsUsedLocally(selectedTransfer.reference_id);
         setStep("coins_success");
       } else {
         setError(data.message || "فشل شحن الكوينز");
@@ -371,6 +488,14 @@ const SalaryWithdraw: React.FC = () => {
     setSubmitting(true);
     setError("");
     try {
+      const alreadyUsed = await isReferenceAlreadyUsed(selectedTransfer.reference_id);
+      if (alreadyUsed) {
+        markTransferAsUsedLocally(selectedTransfer.reference_id);
+        toast.error("هذه الحوالة مستخدمة مسبقاً");
+        setStep("transfers_list");
+        return;
+      }
+
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -390,12 +515,32 @@ const SalaryWithdraw: React.FC = () => {
       });
       const data = await res.json();
       if (data.success) {
+        const { error: insertError } = await supabase.from("salary_requests").insert({
+          user_uuid: user!.uuid,
+          user_name: user!.name,
+          user_phone: `${whatsappCode}${whatsappNumber}`,
+          request_type: "cash",
+          amount_usd: selectedTransfer.amount_usd,
+          amount_coins: selectedTransfer.amount_usd * USD_TO_COINS,
+          recipient_name: recipientName,
+          recipient_country: country?.name || selectedCountry,
+          payment_method: effectiveBankLabel || selectedBank,
+          payment_details: `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`,
+          status: "pending",
+          transaction_id: selectedTransfer.reference_id,
+          transaction_date: new Date().toISOString(),
+          target_uuid: user!.uuid,
+          target_name: recipientName,
+          transfer_image_url: screenshotBase64 || null,
+          admin_note: notes || null,
+        } as any);
+
+        if (insertError && insertError.code !== "23505") {
+          console.error("Failed to save withdraw request:", insertError);
+        }
+
         setSubmitResult(data);
-        // Mark transfer as used locally to prevent double-withdraw
-        setTransfers(prev => prev.map(t => 
-          t.reference_id === selectedTransfer.reference_id ? { ...t, is_used: true, selectable: false } : t
-        ));
-        setUsedCount(prev => prev + 1);
+        markTransferAsUsedLocally(selectedTransfer.reference_id);
         setStep("success");
       } else {
         setError(data.message || data.error || "فشل في رفع الطلب");
