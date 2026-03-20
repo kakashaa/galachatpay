@@ -104,7 +104,9 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     setBanLoading(true);
     try {
       const effectiveBanType = banReason === 'promo' ? 'device' : banType;
+      const reasonTypeForReport = banReason === 'promo' ? 'promotion' : banReason;
       const hours = banReason === 'promo' ? 999999 : (banDuration === '3h' ? 3 : banDuration === '6h' ? 6 : banDuration === '12h' ? 12 : 24);
+      const expiresAt = banReason === 'promo' ? null : new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 
       const body: any = {
         action: 'admin_ban_user',
@@ -119,12 +121,39 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
       }
       const data = await apiPost(body);
 
-      // Execute actual ban on the server
       try {
         await fetch(
           `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${banUuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${effectiveBanType}`
         );
-      } catch (e) { console.error("Real ban failed:", e); }
+      } catch (e) { console.error('Real ban failed:', e); }
+
+      let evidenceUrl = 'manual-ban';
+      let evidenceType = 'none';
+      if (banImage) {
+        const ext = banImage.name.split('.').pop() || 'jpg';
+        const filePath = `ban-evidence/manual_${banUuid.trim()}_${Date.now()}.${ext}`;
+        const { data: uploadData } = await supabase.storage.from('attachments').upload(filePath, banImage);
+        if (uploadData?.path) {
+          const { data: publicData } = supabase.storage.from('attachments').getPublicUrl(uploadData.path);
+          if (publicData?.publicUrl) {
+            evidenceUrl = publicData.publicUrl;
+            evidenceType = banImage.type.startsWith('video/') ? 'video' : 'image';
+          }
+        }
+      }
+
+      const { error: insertError } = await supabase.from('ban_reports').insert({
+        reporter_gala_id: `admin:${adminUsername}`,
+        reported_user_id: banUuid.trim(),
+        description: reason,
+        ban_type: reasonTypeForReport,
+        evidence_url: evidenceUrl,
+        evidence_type: evidenceType,
+        is_verified: true,
+        expires_at: expiresAt,
+        admin_notes: 'حظر يدوي من الأدمن',
+      });
+      if (insertError) console.error('Failed to save manual ban report:', insertError);
 
       if (data.success) { toast.success('تم الحظر'); setBanUuid(''); setBanCustomReason(''); setBanImage(null); }
       else toast.error(data.error || 'فشلت العملية');
