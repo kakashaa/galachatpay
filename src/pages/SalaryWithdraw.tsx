@@ -1007,18 +1007,28 @@ const SalaryWithdraw: React.FC = () => {
             <div className="space-y-2">
               <p className="text-[10px] text-muted-foreground font-bold px-1">حوالات مستخدمة:</p>
               {usedTransfers.map(t => (
-                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-red-500/10 opacity-60 space-y-1">
+                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-emerald-500/10 opacity-60 space-y-1">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg"></span>
+                      <span className="text-lg">✅</span>
                       <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
                     </div>
                     <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                    <span className="text-[10px] text-red-400 font-bold">تم السحب بها</span>
-                  </div>
+                  {(() => {
+                    const info = getUsedLabel(t);
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                          <span className="text-[10px] text-emerald-400 font-bold">{info.label}</span>
+                        </div>
+                        {info.sub && (
+                          <p className="text-[10px] text-muted-foreground text-left font-mono">{info.sub}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
