@@ -35,9 +35,9 @@ const BDDashboard: React.FC = () => {
   const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
-  const [salaryMap, setSalaryMap] = useState<Record<string, SalaryData>>({});
   const [salaryLoading, setSalaryLoading] = useState(false);
-  const [totalSalaryCommission, setTotalSalaryCommission] = useState(0);
+  const [supporterSalaries, setSupporterSalaries] = useState<Record<string, { charges: number; commission: number }>>({});
+  const [agentSalaries, setAgentSalaries] = useState<Record<string, { salary: number; commission: number }>>({});
 
   const handleManualSync = async () => {
     if (syncing || !user?.uuid) return;
