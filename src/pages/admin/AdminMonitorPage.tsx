@@ -395,10 +395,10 @@ const AdminMonitorPage: React.FC = () => {
 
   /* ── Mark as read ── */
   const markAllRead = async () => {
-    const unread = alerts.filter(a => !a.is_read).map(a => a.id);
+    const unread = safeAlerts.filter(a => !a.is_read).map(a => a.id);
     if (unread.length === 0) return;
     await (supabase.from("monitor_alerts" as any) as any).update({ is_read: true }).in("id", unread);
-    setAlerts(prev => prev.map(a => ({ ...a, is_read: true })));
+    setAlerts(prev => (prev || []).map(a => ({ ...a, is_read: true })));
     toast.success("تم تعليم الكل كمقروء");
   };
 
