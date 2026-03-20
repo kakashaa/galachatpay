@@ -271,14 +271,36 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
         `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-members&agency_id=${numericId}`
       );
       const mData = await mRes.json();
-      const rawMembers = mData.data || [];
+      const rawMembers = mData.data?.members || mData.data || [];
       if (rawMembers.length > 0) {
-        members = rawMembers.map((m: any) => ({
-          uuid: String(m.uuid || m.user_id || ""),
-          name: m.name || m.nickname || "—",
-          charges: parseExp(m.charges || m.total_used || m.exp || 0),
-          user_id: m.user_id || m.id || 0,
-        }));
+        // Enrich with profile names (up to 30)
+        const profileToken = await getFreshToken();
+        const enriched = await Promise.all(
+          rawMembers.slice(0, 30).map(async (m: any) => {
+            const internalId = m.internal_id || m.user_id || m.id;
+            try {
+              const pRes = await fetch(
+                `https://galalivechat.com/api/profile/get/${internalId}`,
+                { headers: { Authorization: `Bearer ${profileToken}`, Accept: "application/json" } }
+              );
+              const profile = await pRes.json();
+              return {
+                uuid: String(profile.data?.uuid || m.uuid || internalId || ""),
+                name: profile.data?.name || m.name || m.nickname || `ID:${internalId}`,
+                charges: parseExp(m.charges || m.total_used || m.exp || 0),
+                user_id: internalId,
+              };
+            } catch {
+              return {
+                uuid: String(m.uuid || internalId || ""),
+                name: m.name || m.nickname || `ID:${internalId}`,
+                charges: parseExp(m.charges || m.total_used || m.exp || 0),
+                user_id: internalId,
+              };
+            }
+          })
+        );
+        members = enriched;
       }
     } catch {}
 
