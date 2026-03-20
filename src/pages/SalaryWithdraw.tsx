@@ -148,7 +148,8 @@ const getCashWithdrawDates = () => {
 
 const getWithdrawalLimits = (isAgencyOwner: boolean) => {
   const maxCash = isAgencyOwner ? 2 : 1;
-  const maxTotal = isAgencyOwner ? 3 : 2;
+  // maxTotal only applies to cash withdrawals — coin charges are unlimited
+  const maxTotal = maxCash;
   return { maxCash, maxTotal };
 };
 
