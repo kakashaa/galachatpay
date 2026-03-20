@@ -106,11 +106,6 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
       setDisabledDialog({ open: true, label: item.label });
       return;
     }
-    // Check element ban
-    if (item.banKey && isElementBanned(item.banKey)) {
-      setBanDialog({ open: true, elementKey: item.banKey });
-      return;
-    }
     navigate(item.route);
   };
 
