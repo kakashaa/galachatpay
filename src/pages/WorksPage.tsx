@@ -40,6 +40,7 @@ const WorksPage: React.FC = () => {
   const [memberInput, setMemberInput] = useState("");
   const [memberType, setMemberType] = useState<"supporter" | "agent">("supporter");
   const [sending, setSending] = useState(false);
+  const [instructionModal, setInstructionModal] = useState<"supporter" | "agent" | null>(null);
 
   // Withdraw
   const [withdrawing, setWithdrawing] = useState(false);
