@@ -345,7 +345,7 @@ const BDDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-left">
-                  <p className={`text-[11px] font-bold ${comm > 0 ? 'text-emerald-400' : 'text-muted-foreground'}`}>${comm.toFixed(2)}</p>
+                  <p className={`text-[11px] font-bold ${comm > 0 ? 'text-emerald-400' : 'text-muted-foreground'}`}>{comm > 0 ? `${comm.toLocaleString()} ك` : '0'}</p>
                 </div>
               </div>
             );
