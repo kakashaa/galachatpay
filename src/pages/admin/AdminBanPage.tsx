@@ -35,6 +35,7 @@ const AdminBanPage: React.FC = () => {
   const [banTarget, setBanTarget] = useState<TargetUser | null>(null);
   const [banLookup, setBanLookup] = useState(false);
   const [banReason, setBanReason] = useState<"promotion" | "insult" | "other">("insult");
+  const [banDuration, setBanDuration] = useState<number>(24);
   const [banCustom, setBanCustom] = useState("");
   const [banImage, setBanImage] = useState<File | null>(null);
   const [banLoading, setBanLoading] = useState(false);
