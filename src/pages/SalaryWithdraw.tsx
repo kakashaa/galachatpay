@@ -222,11 +222,15 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const isReferenceAlreadyUsed = async (referenceId: string) => {
+    const transferId = String(referenceId || "").trim();
+    if (!transferId) return false;
+
     const { data, error } = await supabase
       .from("salary_requests")
       .select("id")
       .eq("user_uuid", user!.uuid)
-      .eq("transaction_id", referenceId)
+      .eq("transfer_id", transferId)
+      .neq("status", "rejected")
       .limit(1);
 
     if (error) {
@@ -253,9 +257,10 @@ const SalaryWithdraw: React.FC = () => {
         fetch(`${API}?action=my_salary_requests&uuid=${user!.uuid}&month=${month}`),
         supabase
           .from("salary_requests")
-          .select("transaction_id")
+          .select("transfer_id, transaction_id")
           .eq("user_uuid", user!.uuid)
-          .not("transaction_id", "is", null),
+          .neq("status", "rejected")
+          .or("transfer_id.not.is.null,transaction_id.not.is.null"),
       ]);
 
       const data: TransfersResult = await transfersRes.json();
@@ -274,7 +279,7 @@ const SalaryWithdraw: React.FC = () => {
 
       const localUsedRefs = new Set<string>(
         (localRequestsRes.data || [])
-          .map((r) => String(r.transaction_id || "").trim())
+          .map((r) => String(r.transfer_id || r.transaction_id || "").trim())
           .filter(Boolean),
       );
 
