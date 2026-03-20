@@ -296,12 +296,15 @@ const SalaryWithdraw: React.FC = () => {
     setTargetSearching(true);
     setTargetInfo(null);
     try {
-      const res = await fetch(`${API}?action=user_info&uuid=${targetUuid.trim()}`);
+      const res = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${targetUuid.trim()}`
+      );
       const data = await res.json();
-      if (data.success && data.user) {
+      const name = data.data?.name;
+      if (name && data.ok !== false) {
         setTargetInfo({
-          name: data.user.name || data.user.nickname || `UUID ${targetUuid}`,
-          avatar: data.user.avatar || "",
+          name,
+          avatar: data.data?.avatar || "",
           uuid: targetUuid.trim(),
         });
       } else {
