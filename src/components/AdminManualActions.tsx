@@ -395,7 +395,23 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
                 const ok = await confirm({ title: "تأكيد فك الحظر", message: `فك الحظر عن UUID ${banUuid}؟`, danger: false, confirmText: "فك الحظر" });
                 if (!ok) return;
                 try {
-                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banUuid.trim()}`);
+                  const { data: existingBans } = await supabase
+                    .from('ban_reports')
+                    .select('ban_type')
+                    .eq('reported_user_id', banUuid.trim())
+                    .eq('is_verified', true)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                  const unbanType = existingBans?.[0]?.ban_type === 'promotion' ? 'device' : 'normal';
+                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banUuid.trim()}&unban_type=${unbanType}`);
+
+                  await supabase
+                    .from('ban_reports')
+                    .delete()
+                    .eq('reported_user_id', banUuid.trim())
+                    .eq('is_verified', true);
+
                   toast.success('تم فك الحظر!');
                 } catch { toast.error('فشل فك الحظر'); }
               }}
