@@ -145,7 +145,37 @@ const AdminBanPage: React.FC = () => {
     const t = toast.loading("جاري الحظر...");
     try {
       const isPromo = banReason === "promotion";
-      await doBan(uuid, reason, isPromo ? 999999 : banDuration, isPromo ? "device" : "normal");
+      const hours = isPromo ? 999999 : banDuration;
+      await doBan(uuid, reason, hours, isPromo ? "device" : "normal");
+
+      // Save to ban_reports so it appears in المحظورين tab
+      const expiresAt = isPromo ? null : new Date(Date.now() + hours * 3600 * 1000).toISOString();
+
+      // Upload image if provided
+      let evidenceUrl = "";
+      let evidenceType = "image";
+      if (banImage) {
+        const ext = banImage.name.split(".").pop() || "jpg";
+        const path = `ban-evidence/${uuid}_${Date.now()}.${ext}`;
+        const { data: upData } = await supabase.storage.from("attachments").upload(path, banImage);
+        if (upData?.path) {
+          const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(upData.path);
+          evidenceUrl = urlData?.publicUrl || "";
+        }
+      }
+
+      await supabase.from("ban_reports").insert({
+        reporter_gala_id: "admin-manual",
+        reported_user_id: uuid,
+        ban_type: banReason,
+        description: reason,
+        evidence_url: evidenceUrl || "manual-ban",
+        evidence_type: evidenceUrl ? evidenceType : "none",
+        is_verified: true,
+        expires_at: expiresAt,
+        admin_notes: "حظر يدوي من الأدمن",
+      });
+
       toast.dismiss(t); toast.success("تم الحظر!");
       setBanUuid(""); setBanTarget(null); setBanReason("insult"); setBanCustom(""); setBanImage(null);
     } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
