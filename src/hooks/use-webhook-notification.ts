@@ -12,8 +12,8 @@ export async function notifyNewBanReport(data: BanReportData) {
   try {
     await supabase.functions.invoke('webhook-notify', {
       body: { type: 'ban_report', data },
-    });
-  } catch (error) {
-    console.error('Webhook notification failed:', error);
+    }).catch(() => {});
+  } catch {
+    // silent - webhook is non-critical
   }
 }
