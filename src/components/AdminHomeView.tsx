@@ -399,6 +399,7 @@ const AdminHomeView: React.FC<Props> = ({
 }: any) => {
   const navigate = useNavigate();
   const [searchUuid, setSearchUuid] = useState("");
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [searchResult, setSearchResult] = useState<any>(null);
   const [searching, setSearching] = useState(false);
 
