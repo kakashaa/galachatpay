@@ -44,9 +44,9 @@ serve(async (req) => {
     // For VIP requests, enforce limits in database
     if (type === "vip" && value) {
       const vipLevel = Number(value);
-      if (isNaN(vipLevel) || vipLevel < 1 || vipLevel > 6) {
+      if (isNaN(vipLevel) || vipLevel < 1 || vipLevel > 5) {
         return new Response(
-          JSON.stringify({ success: false, error: "Invalid VIP level" }),
+          JSON.stringify({ success: false, error: "Invalid VIP level. VIP 6 غير متاح." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
