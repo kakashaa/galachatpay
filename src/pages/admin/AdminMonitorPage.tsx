@@ -179,7 +179,7 @@ const AdminMonitorPage: React.FC = () => {
 
   /* ── Counts ── */
   const unreadCount = alerts.filter(a => !a.is_read).length;
-  const filteredAlerts = alertFilter === "all" ? alerts : alerts.filter(a => a.alert_type === alertFilter);
+  const filteredAlerts = alerts.filter(a => a.alert_type === alertFilter);
   const todayAlerts = alerts.filter(a => {
     const d = new Date(a.created_at);
     const now = new Date();
@@ -191,7 +191,6 @@ const AdminMonitorPage: React.FC = () => {
   }));
 
   const alertSubTabs = [
-    { key: "all", label: "الكل", icon: LayoutGrid, count: alerts.length },
     { key: "big_charge", label: "شحنات كبيرة", icon: Zap, count: alerts.filter(a => a.alert_type === "big_charge").length },
     { key: "repeated_charge", label: "شحنات متكررة", icon: RefreshCw, count: alerts.filter(a => a.alert_type === "repeated_charge").length },
     { key: "manual_salary", label: "رواتب يدوية", icon: DollarSign, count: alerts.filter(a => a.alert_type === "manual_salary").length },
