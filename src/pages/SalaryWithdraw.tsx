@@ -411,11 +411,14 @@ const SalaryWithdraw: React.FC = () => {
       return;
     }
 
-    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
-    if (usedCount >= maxTotal) {
-      toast.error("وصلت الحد الأقصى للسحب هذا الشهر");
-      setStep("exhausted");
-      return;
+    // Only enforce limits for cash mode — coins are unlimited
+    if (mode === "cash") {
+      const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
+      if (usedCount >= maxTotal) {
+        toast.error("وصلت الحد الأقصى لسحب الراتب النقدي هذا الشهر");
+        setStep("exhausted");
+        return;
+      }
     }
     setSelectedTransfer(transfer);
     setSalaryWarning(null);
