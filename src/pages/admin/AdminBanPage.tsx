@@ -465,53 +465,39 @@ const AdminBanPage: React.FC = () => {
 
           {/* ═══ TAB 3: Banned List ═══ */}
           {!loading && subTab === "list" && (
-            <motion.div key="list" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
-              {bannedList.length === 0 ? (
+            <motion.div key="list" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+              {activeBans.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground"><Shield className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا يوجد محظورين</p></div>
               ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {bannedList.filter(report => {
-                    const isPermanent = report.ban_type === "promotion" || (report.reward_amount && report.reward_amount >= 50000);
-                    if (!isPermanent && report.expires_at) {
-                      return new Date(report.expires_at) >= new Date();
-                    }
-                    return true;
-                  }).map((report, i) => {
-                    const isPermanent = report.ban_type === "promotion" || (report.reward_amount && report.reward_amount >= 50000);
-                    return (
-                      <motion.div key={report.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}
-                        className="rounded-xl overflow-hidden flex flex-col" style={glassCard}>
+                <>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-xs font-bold text-admin-rose">المحظورين الدائمين</p>
+                      <span className="text-[10px] text-muted-foreground">{permanentBans.length}</span>
+                    </div>
+                    {permanentBans.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {permanentBans.map((report, i) => renderBannedCard(report, i))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground text-center py-3">لا يوجد حظر دائم حالياً</p>
+                    )}
+                  </div>
 
-                        {report.evidence_url && report.evidence_url !== "manual-ban" && (
-                          <div className="relative w-full aspect-square bg-black/40">
-                            {report.evidence_type === "video" ? (
-                              <video src={report.evidence_url} playsInline muted className="w-full h-full object-cover" />
-                            ) : (
-                              <img src={report.evidence_url} alt="" className="w-full h-full object-cover" />
-                            )}
-                          </div>
-                        )}
-
-                        <div className="p-2 flex-1 flex flex-col gap-1">
-                          <span className="text-[11px] font-bold tabular-nums truncate">{report.reported_user_id}</span>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold w-fit"
-                            style={isPermanent ? { background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
-                            {isPermanent ? "دائم" : "مؤقت"}
-                          </span>
-                          <p className="text-[9px] text-muted-foreground truncate">{report.description || report.ban_type}</p>
-                          <p className="text-[8px] text-muted-foreground">{formatDate(report.created_at)}</p>
-
-                          <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
-                            onClick={() => unbanFromList(report)}
-                            className="mt-auto w-full py-1.5 rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50"
-                            style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
-                            {actionInProgress === report.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Unlock className="w-3 h-3" />فك</>}
-                          </motion.button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-xs font-bold text-amber-500">المحظورين المؤقتين</p>
+                      <span className="text-[10px] text-muted-foreground">{temporaryBans.length}</span>
+                    </div>
+                    {temporaryBans.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {temporaryBans.map((report, i) => renderBannedCard(report, permanentBans.length + i))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground text-center py-3">لا يوجد حظر مؤقت حالياً</p>
+                    )}
+                  </div>
+                </>
               )}
             </motion.div>
           )}
