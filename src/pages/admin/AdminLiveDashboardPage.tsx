@@ -130,30 +130,115 @@ const fetchRanking = async (cls: number, type: number): Promise<RankUser[]> => {
   }
 };
 
-/* ─── User Search ─── */
+/* ─── User Search — project-z first, then admin-actions fallback ─── */
 const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
+  const trimmed = uuid.trim();
+  let profile: any = null;
+
+  // Method 1: project-z (returns name at root level)
   try {
-    const [infoRes, salaryRes] = await Promise.all([
-      fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${uuid}`),
-      fetch(`https://galachat.site/project-z/api.php?action=salary_check&uuid=${uuid}`),
-    ]);
-    const info = await infoRes.json();
-    const salary = await salaryRes.json();
-    if (!info.ok && !info.data?.name && !info.name) return null;
-    const d = info.data || info;
+    const res = await fetch(
+      `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${trimmed}`
+    );
+    const data = await res.json();
+    if (data.success && data.name) {
+      profile = data; // { success, name, uuid, avatar, vip_level, type_user, ... }
+    }
+  } catch {}
+
+  // Method 2: admin-actions fallback
+  if (!profile) {
+    try {
+      const res = await fetch(
+        `https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${trimmed}`
+      );
+      const data = await res.json();
+      if (data.ok && data.data?.name) {
+        profile = { ...data.data, success: true };
+      }
+    } catch {}
+  }
+
+  if (!profile) return null;
+
+  // Salary check
+  let salary = 0, deduction = 0, net = 0;
+  try {
+    const salaryRes = await fetch(
+      `https://galachat.site/project-z/api.php?action=salary_check&uuid=${trimmed}`
+    );
+    const salaryData = await salaryRes.json();
+    salary = salaryData.salary || 0;
+    deduction = salaryData.deduction || 0;
+    net = salaryData.net || 0;
+  } catch {}
+
+  return {
+    name: profile.name || "—",
+    uuid: String(trimmed),
+    avatar: profile.avatar || profile.portrait || "",
+    vip: profile.vip || { vip_level: profile.vip_level || 0 },
+    type_user: profile.type_user || 0,
+    agency_id: profile.agency_id || 0,
+    charger_num: profile.charger_num || 0,
+    receiver_num: profile.receiver_num || 0,
+    level: profile.level || profile.charger_level || 0,
+    salary,
+    expenses: deduction,
+    registered_at: profile.registered_at || profile.created_at || "",
+  };
+};
+
+/* ─── Agency Search ─── */
+interface AgencyMember {
+  uuid: string;
+  name: string;
+  charges: number;
+}
+interface AgencyInfo {
+  id: string;
+  name: string;
+  members: AgencyMember[];
+}
+
+const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => {
+  try {
+    const token = await getFreshToken();
+    if (!token) return null;
+    const res = await fetch("https://galalivechat.com/api/agencies/filter", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    const agencies = data.data?.agencies || data.data || [];
+    const agency = agencies.find((a: any) => String(a.id) === agencyId.trim());
+    if (!agency) return null;
+
+    // Try to get members
+    const token2 = await getFreshToken();
+    let members: AgencyMember[] = [];
+    try {
+      const mRes = await fetch("https://galalivechat.com/api/agencies/history-data-agency", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token2}`, Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ month: new Date().getMonth() + 1, year: new Date().getFullYear() }),
+      });
+      const mData = await mRes.json();
+      const rawMembers = mData.data?.original?.data || mData.data?.data || [];
+      members = rawMembers
+        .filter((m: any) => String(m.agency_id) === agencyId.trim())
+        .map((m: any) => ({
+          uuid: String(m.uuid || m.user_id || ""),
+          name: m.name || m.nickname || "—",
+          charges: parseExp(m.charges || m.exp || 0),
+        }));
+    } catch {}
+
     return {
-      name: d.name || "—",
-      uuid: String(uuid),
-      avatar: d.avatar || d.portrait || "",
-      vip: d.vip || { vip_level: d.vip_level || 0 },
-      type_user: d.type_user || 0,
-      agency_id: d.agency_id || 0,
-      charger_num: d.charger_num || 0,
-      receiver_num: d.receiver_num || 0,
-      level: d.level || d.charger_level || 0,
-      salary: salary.salary || salary.amount || 0,
-      expenses: salary.expenses || salary.spent || 0,
-      registered_at: d.registered_at || d.created_at || "",
+      id: String(agency.id),
+      name: agency.name || `وكالة #${agency.id}`,
+      members,
     };
   } catch {
     return null;
