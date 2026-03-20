@@ -1297,7 +1297,7 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
   const sev = getSeverity(alert);
   const sevCfg = severityConfig[sev];
   const typeCfg = alertTypeConfig[alert.alert_type] || { label: alert.alert_type, icon: Bell, filterKey: "all" };
-  const TypeIcon = typeCfg.icon;
+  const _TypeIcon = typeCfg.icon;
   const SevIcon = sevCfg.icon;
 
   return (
