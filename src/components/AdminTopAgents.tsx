@@ -12,7 +12,6 @@ interface AgentOverride {
   agent_name: string;
   vip4_limit: number;
   vip5_limit: number;
-  vip6_limit: number;
   created_at: string;
 }
 
