@@ -17,6 +17,12 @@ interface BDData {
   auto_withdrawal: boolean;
 }
 
+interface SalaryData {
+  monthly_charges?: number;
+  agency_salary?: number;
+  commission: number;
+}
+
 const BDDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -29,6 +35,9 @@ const BDDashboard: React.FC = () => {
   const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [salaryMap, setSalaryMap] = useState<Record<string, SalaryData>>({});
+  const [salaryLoading, setSalaryLoading] = useState(false);
+  const [totalSalaryCommission, setTotalSalaryCommission] = useState(0);
 
   const handleManualSync = async () => {
     if (syncing || !user?.uuid) return;
