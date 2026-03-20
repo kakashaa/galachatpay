@@ -919,26 +919,16 @@ const SalaryWithdraw: React.FC = () => {
     const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
     const usedTransfers = transfers.filter(t => t.is_used);
     const oldTransfers = transfers.filter(t => !t.is_used && !t.selectable);
-    const { maxCash, maxTotal } = getWithdrawalLimits(isAgencyOwner);
-    const cashLeft = Math.max(0, maxCash - usedCount);
-    const { canWithdrawCash, startDay } = getCashWithdrawDates();
+    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
 
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-6 space-y-5">
           <div className="text-center space-y-2">
-            <h2 className="text-lg font-bold text-foreground">حوالاتك إلى الإدارة</h2>
-            <p className="text-[10px] text-muted-foreground">UUID: {TRANSFER_TARGET_ID}</p>
+            <h2 className="text-lg font-bold text-foreground">{headerTitle}</h2>
+            <p className="text-[10px] text-muted-foreground">حوّل راتبك إلى UUID: {TRANSFER_TARGET_ID}</p>
             <p className="text-xs text-muted-foreground">
               سحبت {usedCount} من {maxTotal} هذا الشهر
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              {cashLeft > 0
-                ? (canWithdrawCash
-                  ? `سحب نقدي متاح (${cashLeft} سحبة متبقية)`
-                  : `⏰ السحب النقدي يفتح يوم ${startDay}/${new Date().getMonth() + 1}`)
-                : "شحن كوينز فقط"
-              }
             </p>
           </div>
 
