@@ -264,7 +264,7 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "coins") => {
+  const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "charge_self" | "charge_other") => {
     setSelectedTransfer(transfer);
     setSalaryWarning(null);
 
@@ -279,9 +279,38 @@ const SalaryWithdraw: React.FC = () => {
       }
       setWithdrawalMode("cash");
       setStep("bank");
-    } else {
-      setWithdrawalMode("coins");
+    } else if (mode === "charge_self") {
+      setWithdrawalMode("charge_self");
       setStep("coins_confirm");
+    } else {
+      setWithdrawalMode("charge_other");
+      setTargetUuid("");
+      setTargetInfo(null);
+      setTargetConfirmed(false);
+      setStep("charge_other_search");
+    }
+  };
+
+  const searchTargetUser = async () => {
+    if (!targetUuid.trim()) return;
+    setTargetSearching(true);
+    setTargetInfo(null);
+    try {
+      const res = await fetch(`${API}?action=user_info&uuid=${targetUuid.trim()}`);
+      const data = await res.json();
+      if (data.success && data.user) {
+        setTargetInfo({
+          name: data.user.name || data.user.nickname || `UUID ${targetUuid}`,
+          avatar: data.user.avatar || "",
+          uuid: targetUuid.trim(),
+        });
+      } else {
+        toast.error("لم يتم العثور على المستخدم");
+      }
+    } catch {
+      toast.error("فشل البحث");
+    } finally {
+      setTargetSearching(false);
     }
   };
 
