@@ -27,7 +27,9 @@ const BDDashboard: React.FC = () => {
   const [monthlyProfit, setMonthlyProfit] = useState(0);
   const [dailyLogs, setDailyLogs] = useState<{day: string; amount: number}[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
-  const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings' | 'notifications'>('dashboard');
+  const [bdBanners, setBdBanners] = useState<any[]>([]);
+  const [bdNotifications, setBdNotifications] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [salaryLoading, setSalaryLoading] = useState(false);
