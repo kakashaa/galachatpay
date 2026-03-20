@@ -227,13 +227,22 @@ Deno.serve(async (req) => {
 
       // Login blocks management
       case "list_blocked_accounts": {
-        const { data: blocks, error } = await supabase
-          .from("login_attempts")
-          .select("*")
-          .or("is_permanently_blocked.eq.true,blocked_until.not.is.null")
-          .order("updated_at", { ascending: false });
-        if (error) throw error;
-        result = blocks;
+        try {
+          const blocksPromise = supabase
+            .from("login_attempts")
+            .select("*")
+            .or("is_permanently_blocked.eq.true,blocked_until.not.is.null")
+            .order("updated_at", { ascending: false });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 8000)
+          );
+          const { data: blocks, error } = await Promise.race([blocksPromise, timeoutPromise]) as any;
+          if (error) throw error;
+          result = blocks ?? [];
+        } catch (e) {
+          console.warn("[ADMIN] list_blocked_accounts failed, returning empty:", e.message);
+          result = [];
+        }
         break;
       }
       case "unblock_account": {
