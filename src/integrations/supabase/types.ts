@@ -2378,6 +2378,164 @@ export type Database = {
         }
         Relationships: []
       }
+      supporter_monthly_charges: {
+        Row: {
+          id: string
+          month: string
+          tier_name: string | null
+          total_coins: number | null
+          updated_at: string | null
+          uuid: string
+        }
+        Insert: {
+          id?: string
+          month: string
+          tier_name?: string | null
+          total_coins?: number | null
+          updated_at?: string | null
+          uuid: string
+        }
+        Update: {
+          id?: string
+          month?: string
+          tier_name?: string | null
+          total_coins?: number | null
+          updated_at?: string | null
+          uuid?: string
+        }
+        Relationships: []
+      }
+      supporter_rewards: {
+        Row: {
+          count: number | null
+          created_at: string | null
+          duration_days: number | null
+          expires_at: string | null
+          id: string
+          month: string
+          status: string | null
+          tier_id: string | null
+          tier_name: string | null
+          type: string
+          used_at: string | null
+          used_for: string | null
+          uuid: string
+          value: number | null
+          ware_id: number | null
+        }
+        Insert: {
+          count?: number | null
+          created_at?: string | null
+          duration_days?: number | null
+          expires_at?: string | null
+          id?: string
+          month: string
+          status?: string | null
+          tier_id?: string | null
+          tier_name?: string | null
+          type: string
+          used_at?: string | null
+          used_for?: string | null
+          uuid: string
+          value?: number | null
+          ware_id?: number | null
+        }
+        Update: {
+          count?: number | null
+          created_at?: string | null
+          duration_days?: number | null
+          expires_at?: string | null
+          id?: string
+          month?: string
+          status?: string | null
+          tier_id?: string | null
+          tier_name?: string | null
+          type?: string
+          used_at?: string | null
+          used_for?: string | null
+          uuid?: string
+          value?: number | null
+          ware_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supporter_rewards_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "supporter_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supporter_settings: {
+        Row: {
+          distribution_mode: string | null
+          id: string
+          is_active: boolean | null
+          notify_admin: boolean | null
+          notify_user: boolean | null
+          reminder_days: number | null
+          reward_validity_days: number | null
+          special_offers: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          distribution_mode?: string | null
+          id?: string
+          is_active?: boolean | null
+          notify_admin?: boolean | null
+          notify_user?: boolean | null
+          reminder_days?: number | null
+          reward_validity_days?: number | null
+          special_offers?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          distribution_mode?: string | null
+          id?: string
+          is_active?: boolean | null
+          notify_admin?: boolean | null
+          notify_user?: boolean | null
+          reminder_days?: number | null
+          reward_validity_days?: number | null
+          special_offers?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      supporter_tiers: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          min_coins: number
+          name: string
+          rewards: Json | null
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          min_coins: number
+          name: string
+          rewards?: Json | null
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          min_coins?: number
+          name?: string
+          rewards?: Json | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       ticket_messages: {
         Row: {
           attachment_url: string | null
