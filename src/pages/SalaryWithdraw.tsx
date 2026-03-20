@@ -239,7 +239,7 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const checkSalaryReport = async (_transfer: Transfer, _mode: "cash" | "coins") => {
+  const checkSalaryReport = async (_transfer: Transfer, _mode: string) => {
     setSalaryCheckLoading(true);
     try {
       const reportRes = await fetch(`${API}?action=salary_report&uuid=${user!.uuid}`);
