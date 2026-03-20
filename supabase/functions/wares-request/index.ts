@@ -109,7 +109,7 @@ serve(async (req) => {
     }
 
     if (action === "unban-user-real") {
-      const { uuid } = params;
+      const { uuid, unban_type } = params;
       if (!uuid) {
         return new Response(JSON.stringify({ ok: false, error: "Missing uuid" }), {
           status: 400,
@@ -117,7 +117,7 @@ serve(async (req) => {
         });
       }
 
-      const url = `${BASE_URL}?key=${API_KEY}&action=unban-user-real&uuid=${encodeURIComponent(uuid)}`;
+      const url = `${BASE_URL}?key=${API_KEY}&action=unban-user-real&uuid=${encodeURIComponent(uuid)}&unban_type=${encodeURIComponent(unban_type || "normal")}`;
       const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
       const data = await res.json();
       return new Response(JSON.stringify(data), {
