@@ -3,13 +3,14 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
 import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
+import AdminInstantWithdrawManager from "@/components/AdminInstantWithdrawManager";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3 } from "lucide-react";
+import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const AdminSalaryPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
-  const [subTab, setSubTab] = useState<"withdraw" | "charge" | "report">("withdraw");
+  const [subTab, setSubTab] = useState<"withdraw" | "charge" | "instant" | "report">("withdraw");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportStats, setReportStats] = useState({ total: 0, approved: 0, pending: 0, rejected: 0, totalUsd: 0, approvedUsd: 0, pendingUsd: 0 });
 
@@ -40,16 +41,17 @@ const AdminSalaryPage: React.FC = () => {
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(16,185,129,0.1)' }}>
           {[
-            { key: "withdraw" as const, label: "طلبات السحب", icon: Wallet },
-            { key: "charge" as const, label: "شحن الكوينز", icon: CreditCard },
+            { key: "withdraw" as const, label: "السحب", icon: Wallet },
+            { key: "charge" as const, label: "الشحن", icon: CreditCard },
+            { key: "instant" as const, label: "فوري", icon: Zap },
             { key: "report" as const, label: "التقرير", icon: BarChart3 },
           ].map(t => {
             const Icon = t.icon;
             return (
               <motion.button key={t.key} onClick={() => setSubTab(t.key)} whileTap={{ scale: 0.96 }}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${subTab === t.key ? "text-admin-emerald" : "text-muted-foreground"}`}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${subTab === t.key ? "text-admin-emerald" : "text-muted-foreground"}`}
                 style={subTab === t.key ? { background: 'rgba(16,185,129,0.12)', boxShadow: '0 2px 8px rgba(16,185,129,0.15)' } : {}}>
-                <Icon className="w-4 h-4" />{t.label}
+                <Icon className="w-3.5 h-3.5" />{t.label}
               </motion.button>
             );
           })}
@@ -58,13 +60,13 @@ const AdminSalaryPage: React.FC = () => {
         <AnimatePresence mode="wait">
           {subTab === "withdraw" && <motion.div key="w" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><AdminSalaryWithdrawManager canAct={true} /></motion.div>}
           {subTab === "charge" && <motion.div key="c" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><AdminSalaryChargeManager canAct={true} /></motion.div>}
+          {subTab === "instant" && <motion.div key="i" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><AdminInstantWithdrawManager canAct={true} /></motion.div>}
 
           {subTab === "report" && (
             reportLoading ? (
               <motion.div key="rl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-admin-emerald" /></motion.div>
             ) : (
               <motion.div key="r" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-                {/* Hero */}
                 <div className="rounded-2xl p-5 space-y-2"
                   style={{ background: 'linear-gradient(145deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.12)', boxShadow: '0 8px 32px -8px rgba(16,185,129,0.15)' }}>
                   <div className="flex items-center gap-2">
@@ -77,7 +79,6 @@ const AdminSalaryPage: React.FC = () => {
                   <p className="text-[10px] text-muted-foreground">إجمالي الرواتب ({reportStats.total} طلب)</p>
                 </div>
 
-                {/* Summary cards */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: "مسحوب", value: `$${reportStats.approvedUsd}`, count: reportStats.approved, glow: "rgba(16,185,129,0.15)", color: "text-admin-emerald" },
