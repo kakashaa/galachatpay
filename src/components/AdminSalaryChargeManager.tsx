@@ -20,12 +20,15 @@ interface SalaryCharge {
   id: string;
   uuid: string;
   user_name: string;
+  target_name: string;
+  target_uuid: string;
   amount_usd: number;
   coins_charged: number;
   reference_id: string;
   transfer_verified: boolean;
   status: "completed" | "pending" | "failed";
   created_at: string;
+  request_type: string;
 }
 
 interface Props {
