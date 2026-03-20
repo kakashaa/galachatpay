@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdminSession } from "@/hooks/use-admin-session";
+import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
   BarChart3, TrendingUp, Users, DollarSign, Search,
   RefreshCw, Eye, Zap, Loader2, Activity, Ban, Hash, Wallet, X,
-  Building2, UserPlus, UserCheck, UserX,
+  Building2, UserPlus, UserCheck, UserX, Filter, ArrowUpRight, ArrowDownRight,
+  Gift, Send, Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -38,9 +40,20 @@ interface UserProfile {
   charger_num?: number;
   receiver_num?: number;
   level?: number;
+  sender_level?: number;
+  receiver_level?: number;
   salary?: number;
   expenses?: number;
   registered_at?: string;
+}
+
+interface TransactionEntry {
+  date: string;
+  name: string;
+  uuid: string;
+  amount: number;
+  source?: string;
+  type?: string;
 }
 
 interface StatCard {
@@ -50,6 +63,25 @@ interface StatCard {
   icon: React.ElementType;
   color: string;
   trend?: "up" | "down";
+}
+
+interface AgencyMember {
+  uuid: string;
+  name: string;
+  charges: number;
+  user_id?: number;
+}
+interface PendingRequest {
+  user_id: number;
+  uuid: string;
+  name: string;
+  avatar?: string;
+}
+interface AgencyInfo {
+  id: string;
+  name: string;
+  members: AgencyMember[];
+  pendingRequests: PendingRequest[];
 }
 
 /* ─── Animated Number ─── */
@@ -101,7 +133,7 @@ const getFreshToken = async (): Promise<string> => {
   }
 };
 
-/* ─── Ranking API — each call gets its own token ─── */
+/* ─── Ranking API ─── */
 const fetchRanking = async (cls: number, type: number): Promise<RankUser[]> => {
   try {
     const token = await getFreshToken();
@@ -130,23 +162,21 @@ const fetchRanking = async (cls: number, type: number): Promise<RankUser[]> => {
   }
 };
 
-/* ─── User Search — project-z first, then admin-actions fallback ─── */
+/* ─── User Search ─── */
 const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
   const trimmed = uuid.trim();
   let profile: any = null;
 
-  // Method 1: project-z (returns name at root level)
   try {
     const res = await fetch(
       `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${trimmed}`
     );
     const data = await res.json();
     if (data.success && data.name) {
-      profile = data; // { success, name, uuid, avatar, vip_level, type_user, ... }
+      profile = data;
     }
   } catch {}
 
-  // Method 2: admin-actions fallback
   if (!profile) {
     try {
       const res = await fetch(
@@ -161,7 +191,6 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
 
   if (!profile) return null;
 
-  // Salary check
   let salary = 0, deduction = 0;
   try {
     const salaryRes = await fetch(
@@ -170,7 +199,6 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
     const salaryData = await salaryRes.json();
     salary = salaryData.salary || 0;
     deduction = salaryData.deduction || 0;
-    // net = salaryData.net || 0;
   } catch {}
 
   return {
@@ -183,39 +211,36 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
     charger_num: profile.charger_num || 0,
     receiver_num: profile.receiver_num || 0,
     level: profile.level || profile.charger_level || 0,
+    sender_level: profile.sender_level || profile.charger_level || profile.level || 0,
+    receiver_level: profile.receiver_level || 0,
     salary,
     expenses: deduction,
     registered_at: profile.registered_at || profile.created_at || "",
   };
 };
 
-/* ─── Agency Search ─── */
-interface AgencyMember {
-  uuid: string;
-  name: string;
-  charges: number;
-  user_id?: number;
-}
-interface PendingRequest {
-  user_id: number;
-  uuid: string;
-  name: string;
-  avatar?: string;
-}
-interface AgencyInfo {
-  id: string;
-  name: string;
-  members: AgencyMember[];
-  pendingRequests: PendingRequest[];
-}
+/* ─── Gift History (all app — filter client-side) ─── */
+const fetchGiftHistory = async (type: "sender" | "receiver", from?: string, to?: string): Promise<any[]> => {
+  try {
+    const token = await getFreshToken();
+    if (!token) return [];
+    let url = `https://galalivechat.com/api/gift_history?type=${type}&perPage=100`;
+    if (from && to) url += `&from=${from}&to=${to}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+    const data = await res.json();
+    return data.data || [];
+  } catch {
+    return [];
+  }
+};
 
+/* ─── Agency Search ─── */
 const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => {
   try {
     const numericId = parseInt(agencyId.trim(), 10);
-
-    // 1. Find agency across paginated results (up to 10 pages)
     let agencyName = `وكالة #${agencyId.trim()}`;
-    let _agency: any = null;
 
     for (let page = 1; page <= 10; page++) {
       try {
@@ -229,15 +254,13 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
         const agencies = d.data?.agencies || [];
         const found = agencies.find((a: any) => a.id === numericId || String(a.id) === agencyId.trim());
         if (found) {
-          _agency = found;
           agencyName = found.name || found.title || agencyName;
           break;
         }
-        if (agencies.length < 10) break; // last page
+        if (agencies.length < 10) break;
       } catch {}
     }
 
-    // 2. Get members via wares-api proxy
     let members: AgencyMember[] = [];
     try {
       const mRes = await fetch(
@@ -246,7 +269,6 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
       const mData = await mRes.json();
       const rawMembers = mData.data?.members || mData.data || [];
       if (rawMembers.length > 0) {
-        // Enrich with profile names (up to 30)
         const profileToken = await getFreshToken();
         const enriched = await Promise.all(
           rawMembers.slice(0, 30).map(async (m: any) => {
@@ -260,14 +282,14 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
               const pData = profile.data || {};
               return {
                 uuid: String(pData.uuid || m.uuid || internalId || ""),
-                name: pData.name || m.name || m.nickname || `ID:${internalId}`,
+                name: pData.name || m.name || `ID:${internalId}`,
                 charges: parseExp(m.charges || m.total_used || m.exp || 0),
                 user_id: internalId,
               };
             } catch {
               return {
                 uuid: String(m.uuid || internalId || ""),
-                name: m.name || m.nickname || `ID:${internalId}`,
+                name: m.name || `ID:${internalId}`,
                 charges: parseExp(m.charges || m.total_used || m.exp || 0),
                 user_id: internalId,
               };
@@ -278,7 +300,6 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
       }
     } catch {}
 
-    // Fallback: get members from gala API if proxy not ready
     if (members.length === 0) {
       try {
         const token3 = await getFreshToken();
@@ -300,7 +321,6 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
       } catch {}
     }
 
-    // 3. Get pending requests via wares-api proxy
     let pendingRequests: PendingRequest[] = [];
     try {
       const rRes = await fetch(
@@ -316,17 +336,14 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
       }));
     } catch {}
 
-    // Fallback: try GET for show_request if proxy not ready
     if (pendingRequests.length === 0) {
       try {
         const token = await getFreshToken();
         const reqRes = await fetch("https://galalivechat.com/api/agencies/show_request", {
-          method: "GET",
           headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         });
         const reqData = await reqRes.json();
-        const allReqs = reqData.data || [];
-        pendingRequests = allReqs.map((r: any) => ({
+        pendingRequests = (reqData.data || []).map((r: any) => ({
           user_id: r.user_id || r.id || 0,
           uuid: String(r.uuid || r.user_id || ""),
           name: r.name || r.nickname || "—",
@@ -335,12 +352,7 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
       } catch {}
     }
 
-    return {
-      id: agencyId.trim(),
-      name: agencyName,
-      members,
-      pendingRequests,
-    };
+    return { id: agencyId.trim(), name: agencyName, members, pendingRequests };
   } catch {
     return null;
   }
@@ -362,6 +374,17 @@ const handleAgencyRequest = async (userId: number, accept: boolean): Promise<boo
   }
 };
 
+/* ─── Zego Online Count ─── */
+const fetchOnlineCount = async (): Promise<{ online: number; rooms: number }> => {
+  try {
+    const { data, error } = await supabase.functions.invoke("zego-online");
+    if (!error && data) {
+      return { online: data.online || 0, rooms: data.rooms || 0 };
+    }
+  } catch {}
+  return { online: 0, rooms: 0 };
+};
+
 /* ═══════════════════════════════════ PAGE ═══════════════════════════════════ */
 const AdminLiveDashboardPage: React.FC = () => {
   useAdminSession();
@@ -374,6 +397,7 @@ const AdminLiveDashboardPage: React.FC = () => {
   // Stats
   const [todayStats, setTodayStats] = useState({ revenue: 0, coins: 0, supporters: 0, online: 0 });
   const [monthStats, setMonthStats] = useState({ revenue: 0, coins: 0, salaries: 0, totalUsers: 0 });
+  const [onlineRooms, setOnlineRooms] = useState(0);
 
   // Rankings
   const [rankPeriod, setRankPeriod] = useState<"today" | "week" | "month">("today");
@@ -389,8 +413,97 @@ const AdminLiveDashboardPage: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [agencyInfo, setAgencyInfo] = useState<AgencyInfo | null>(null);
 
+  // User detail tabs
+  const [detailPeriod, setDetailPeriod] = useState<"today" | "week" | "month" | "custom">("today");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [detailTab, setDetailTab] = useState<"charged_to" | "charged_by" | "gifts_received" | "gifts_sent">("charged_to");
+  const [transactions, setTransactions] = useState<TransactionEntry[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+  const [periodSummary, setPeriodSummary] = useState({ charged: 0, received: 0, ops: 0, people: 0, sentAmount: 0, sentPeople: 0 });
+
   // Chart
   const [chartData, setChartData] = useState<any[]>([]);
+
+  /* ─── Get date range from period ─── */
+  const getDateRange = (period: "today" | "week" | "month" | "custom") => {
+    const now = new Date();
+    let from: string, to: string;
+    if (period === "today") {
+      from = to = now.toISOString().split("T")[0];
+    } else if (period === "week") {
+      const weekAgo = new Date(now.getTime() - 7 * 86400000);
+      from = weekAgo.toISOString().split("T")[0];
+      to = now.toISOString().split("T")[0];
+    } else if (period === "month") {
+      const monthAgo = new Date(now.getTime() - 30 * 86400000);
+      from = monthAgo.toISOString().split("T")[0];
+      to = now.toISOString().split("T")[0];
+    } else {
+      from = customFrom || now.toISOString().split("T")[0];
+      to = customTo || now.toISOString().split("T")[0];
+    }
+    return { from, to };
+  };
+
+  /* ─── Load user transaction details ─── */
+  const loadUserDetails = useCallback(async (uuid: string, period: "today" | "week" | "month" | "custom") => {
+    setTxLoading(true);
+    setTransactions([]);
+    const { from, to } = getDateRange(period);
+
+    try {
+      // Fetch gift history for the period (whole app, filter client-side)
+      const [sentGifts, receivedGifts] = await Promise.all([
+        fetchGiftHistory("sender", from, to),
+        fetchGiftHistory("receiver", from, to),
+      ]);
+
+      // Filter by user UUID
+      const userSent = sentGifts.filter((g: any) => String(g.user_uuid) === uuid);
+      const userReceived = receivedGifts.filter((g: any) => String(g.user_uuid) === uuid);
+
+      const chargedToUser = userReceived.map((g: any) => ({
+        date: g.created_at || "",
+        name: g.sender_name || g.gift_name || "—",
+        uuid: String(g.sender_uuid || ""),
+        amount: parseExp(g.gift_price || g.price || 0),
+        source: g.source || "تطبيق",
+      }));
+
+      const chargedByUser = userSent.map((g: any) => ({
+        date: g.created_at || "",
+        name: g.receiver_name || g.gift_name || "—",
+        uuid: String(g.receiver_uuid || ""),
+        amount: parseExp(g.gift_price || g.price || 0),
+        type: g.gift_name || "هدية",
+      }));
+
+      // Calculate summary
+      const totalCharged = chargedToUser.reduce((s, t) => s + t.amount, 0);
+      const totalSent = chargedByUser.reduce((s, t) => s + t.amount, 0);
+      const uniqueChargers = new Set(chargedToUser.map(t => t.uuid)).size;
+      const uniqueRecipients = new Set(chargedByUser.map(t => t.uuid)).size;
+
+      setPeriodSummary({
+        charged: totalCharged,
+        received: totalCharged,
+        ops: chargedToUser.length,
+        people: uniqueChargers,
+        sentAmount: totalSent,
+        sentPeople: uniqueRecipients,
+      });
+
+      if (detailTab === "charged_to") setTransactions(chargedToUser);
+      else if (detailTab === "charged_by") setTransactions(chargedByUser);
+      else if (detailTab === "gifts_received") setTransactions(chargedToUser);
+      else setTransactions(chargedByUser);
+    } catch {
+      setPeriodSummary({ charged: 0, received: 0, ops: 0, people: 0, sentAmount: 0, sentPeople: 0 });
+    } finally {
+      setTxLoading(false);
+    }
+  }, [detailTab, customFrom, customTo]);
 
   /* ─── Load Rankings ─── */
   const typeMap = { today: 1, week: 2, month: 3 };
@@ -400,7 +513,6 @@ const AdminLiveDashboardPage: React.FC = () => {
     try {
       const s = await fetchRanking(2, typeMap[period]);
       const r = await fetchRanking(1, typeMap[period]);
-      // Only update if we got actual data — never clear old data with empty results
       if (s.length > 0) setSenders(s);
       if (r.length > 0) setReceivers(r);
 
@@ -410,13 +522,11 @@ const AdminLiveDashboardPage: React.FC = () => {
           revenue: Math.round(totalCoins / COINS_PER_USD) || prev.revenue,
           coins: totalCoins || prev.coins,
           supporters: s.length || prev.supporters,
-          online: Math.floor(Math.random() * 20) + 5,
+          online: prev.online,
         }));
       }
       setLastUpdate(new Date());
-    } catch {
-      // Error = keep old data
-    }
+    } catch {}
     if (!isBackground) setRankLoading(false);
   }, [rankPeriod]);
 
@@ -424,7 +534,7 @@ const AdminLiveDashboardPage: React.FC = () => {
   const loadMonthStats = useCallback(async () => {
     try {
       const monthSenders = await fetchRanking(2, 3);
-      if (monthSenders.length === 0) return; // Keep old data
+      if (monthSenders.length === 0) return;
       const totalCoins = monthSenders.reduce((sum, u) => sum + u.amount, 0);
       setMonthStats(prev => ({
         revenue: Math.round(totalCoins / COINS_PER_USD) || prev.revenue,
@@ -442,8 +552,15 @@ const AdminLiveDashboardPage: React.FC = () => {
         };
       });
       setChartData(days);
-    } catch {
-      // Error = keep old data
+    } catch {}
+  }, []);
+
+  /* ─── Load Online Count ─── */
+  const loadOnline = useCallback(async () => {
+    const data = await fetchOnlineCount();
+    if (data.online > 0 || data.rooms > 0) {
+      setTodayStats(prev => ({ ...prev, online: data.online }));
+      setOnlineRooms(data.rooms);
     }
   }, []);
 
@@ -454,18 +571,17 @@ const AdminLiveDashboardPage: React.FC = () => {
     setSearchLoading(true);
     setUserProfile(null);
     setAgencyInfo(null);
+    setTransactions([]);
 
     if (searchTab === "agency") {
       const info = await searchAgencyApi(q);
-      if (info) {
-        setAgencyInfo(info);
-      } else {
-        toast.error("لم يتم العثور على الوكالة");
-      }
+      if (info) setAgencyInfo(info);
+      else toast.error("لم يتم العثور على الوكالة");
     } else {
       const profile = await searchUserApi(q);
       if (profile) {
         setUserProfile(profile);
+        loadUserDetails(q, detailPeriod);
       } else {
         toast.error("لم يتم العثور على المستخدم");
       }
@@ -473,13 +589,15 @@ const AdminLiveDashboardPage: React.FC = () => {
     setSearchLoading(false);
   };
 
-  /* ─── Init & Auto-refresh (background — no loading state) ─── */
+  /* ─── Init & Auto-refresh ─── */
   useEffect(() => {
     loadRankings("today");
     loadMonthStats();
+    loadOnline();
     const interval = setInterval(() => {
       loadRankings(rankPeriod, true);
       loadMonthStats();
+      loadOnline();
     }, 60000);
     return () => clearInterval(interval);
   }, []);
@@ -488,12 +606,19 @@ const AdminLiveDashboardPage: React.FC = () => {
     loadRankings(rankPeriod);
   }, [rankPeriod]);
 
+  // Reload details when period or tab changes
+  useEffect(() => {
+    if (userProfile) {
+      loadUserDetails(userProfile.uuid, detailPeriod);
+    }
+  }, [detailPeriod, detailTab]);
+
   const handleRefresh = () => {
     setLoading(true);
-    loadRankings(rankPeriod).then(() => loadMonthStats()).finally(() => setLoading(false));
+    Promise.all([loadRankings(rankPeriod), loadMonthStats(), loadOnline()])
+      .finally(() => setLoading(false));
   };
 
-  /* ─── User type label ─── */
   const getUserTypeLabel = (t: number) => {
     const map: Record<number, string> = { 0: "عادي", 1: "مضيف", 2: "وكيل شحن", 3: "مدير غرفة", 4: "وكيل مضيفين", 5: "إدارة", 6: "مالك" };
     return map[t] || "عادي";
@@ -504,7 +629,7 @@ const AdminLiveDashboardPage: React.FC = () => {
     { label: "إيرادات اليوم", value: `$${todayStats.revenue.toLocaleString()}`, icon: DollarSign, color: "hsl(160 84% 39%)", trend: "up" },
     { label: "كوينز اليوم", value: todayStats.coins > 1000000 ? `${(todayStats.coins / 1000000).toFixed(1)}M` : formatCoins(todayStats.coins), icon: Zap, color: "hsl(45 93% 47%)", trend: "up" },
     { label: "داعم نشط", value: String(todayStats.supporters), icon: Users, color: "hsl(217 91% 60%)", trend: "up" },
-    { label: "أونلاين", value: String(todayStats.online), icon: Activity, color: "hsl(280 67% 54%)" },
+    { label: "أونلاين", value: String(todayStats.online), sub: `${onlineRooms} غرفة`, icon: Activity, color: "hsl(280 67% 54%)" },
   ];
 
   const monthCards: StatCard[] = [
@@ -558,6 +683,7 @@ const AdminLiveDashboardPage: React.FC = () => {
                   <AnimatedNumber value={typeof card.value === 'string' && card.value.startsWith('$') ? parseInt(card.value.replace(/[$,]/g, '')) || 0 : parseInt(String(card.value).replace(/[^0-9]/g, '')) || 0} prefix={card.value.startsWith('$') ? '$' : ''} suffix={card.value.includes('M') ? 'M' : ''} />
                 </p>
                 <p className="text-[9px] text-muted-foreground mt-0.5">{card.label}</p>
+                {card.sub && <p className="text-[8px] text-muted-foreground/60">{card.sub}</p>}
               </motion.div>
             );
           })}
@@ -592,7 +718,6 @@ const AdminLiveDashboardPage: React.FC = () => {
           className="rounded-2xl overflow-hidden"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          {/* Tabs */}
           <div className="flex items-center justify-between p-3 pb-0">
             <div className="flex gap-1">
               {(["senders", "receivers"] as const).map(tab => (
@@ -622,7 +747,6 @@ const AdminLiveDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Table */}
           <div className="p-3">
             {rankLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -632,7 +756,6 @@ const AdminLiveDashboardPage: React.FC = () => {
               <p className="text-center text-xs text-muted-foreground py-6">لا توجد بيانات</p>
             ) : (
               <div className="space-y-1">
-                {/* Header */}
                 <div className="grid grid-cols-[28px_1fr_70px_70px] gap-2 text-[10px] text-muted-foreground font-bold pb-2 border-b border-white/5">
                   <span>#</span>
                   <span>الاسم</span>
@@ -646,8 +769,16 @@ const AdminLiveDashboardPage: React.FC = () => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.02 }}
                     onClick={() => {
+                      setSearchTab("user");
                       setSearchQuery(user.uuid);
-                      searchUserApi(user.uuid).then(p => p && setUserProfile(p));
+                      setUserProfile(null);
+                      setAgencyInfo(null);
+                      searchUserApi(user.uuid).then(p => {
+                        if (p) {
+                          setUserProfile(p);
+                          loadUserDetails(user.uuid, detailPeriod);
+                        }
+                      });
                     }}
                     className="grid grid-cols-[28px_1fr_70px_70px] gap-2 items-center w-full text-right py-2 rounded-lg hover:bg-white/5 transition-colors px-1"
                   >
@@ -656,12 +787,8 @@ const AdminLiveDashboardPage: React.FC = () => {
                     </span>
                     <div className="flex items-center gap-2 min-w-0">
                       {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          className="w-6 h-6 rounded-full object-cover shrink-0"
-                          alt=""
-                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
-                        />
+                        <img src={user.avatar} className="w-6 h-6 rounded-full object-cover shrink-0" alt=""
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }} />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                           <Users size={10} className="text-muted-foreground" />
@@ -690,14 +817,13 @@ const AdminLiveDashboardPage: React.FC = () => {
           className="rounded-2xl p-4"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          {/* Search Tabs */}
           <div className="flex items-center gap-2 mb-3">
             <Search size={14} className="text-muted-foreground" />
             <div className="flex gap-1">
               {(["user", "agency"] as const).map(tab => (
                 <button
                   key={tab}
-                  onClick={() => { setSearchTab(tab); setUserProfile(null); setAgencyInfo(null); }}
+                  onClick={() => { setSearchTab(tab); setUserProfile(null); setAgencyInfo(null); setTransactions([]); }}
                   className={`text-[11px] font-bold px-3 py-1 rounded-lg transition-colors ${
                     searchTab === tab ? "bg-emerald-500/20 text-emerald-400" : "text-muted-foreground"
                   }`}
@@ -714,7 +840,7 @@ const AdminLiveDashboardPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder={searchTab === "user" ? "UUID المستخدم..." : "كود الوكالة..."}
+              placeholder={searchTab === "user" ? "UUID أو اسم المستخدم..." : "كود الوكالة..."}
               className="w-full h-10 rounded-xl pr-4 pl-12 text-sm placeholder:text-muted-foreground focus:outline-none font-mono"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
               dir="ltr"
@@ -729,7 +855,7 @@ const AdminLiveDashboardPage: React.FC = () => {
             </motion.button>
             {searchQuery && (
               <button
-                onClick={() => { setSearchQuery(""); setUserProfile(null); setAgencyInfo(null); }}
+                onClick={() => { setSearchQuery(""); setUserProfile(null); setAgencyInfo(null); setTransactions([]); }}
                 className="absolute left-10 top-1/2 -translate-y-1/2 text-muted-foreground"
               >
                 <X size={13} />
@@ -737,7 +863,7 @@ const AdminLiveDashboardPage: React.FC = () => {
             )}
           </div>
 
-          {/* User Profile Card */}
+          {/* ══════ User Profile Card ══════ */}
           <AnimatePresence>
             {userProfile && (
               <motion.div
@@ -746,24 +872,25 @@ const AdminLiveDashboardPage: React.FC = () => {
                 exit={{ opacity: 0, y: -8 }}
                 className="mt-4 space-y-4"
               >
+                {/* Profile Header */}
                 <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                   <div className="flex items-center gap-3 mb-3">
-                     {userProfile.avatar ? (
-                       <img
-                         src={userProfile.avatar.startsWith("http") ? userProfile.avatar : `${MEDIA_BASE}${userProfile.avatar}`}
-                         className="w-12 h-12 rounded-full object-cover"
-                         alt=""
-                         onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
-                       />
-                     ) : (
-                       <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
-                         <Users size={20} className="text-muted-foreground" />
-                       </div>
-                     )}
+                  <div className="flex items-center gap-3 mb-3">
+                    {userProfile.avatar ? (
+                      <img
+                        src={userProfile.avatar.startsWith("http") ? userProfile.avatar : `${MEDIA_BASE}${userProfile.avatar}`}
+                        className="w-12 h-12 rounded-full object-cover"
+                        alt=""
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                        <Users size={20} className="text-muted-foreground" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate">{userProfile.name}</p>
                       <p className="text-[11px] text-muted-foreground font-mono">UUID: {userProfile.uuid}</p>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {(userProfile.vip?.vip_level || userProfile.vip?.level || 0) > 0 && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
                             VIP {userProfile.vip?.vip_level || userProfile.vip?.level}
@@ -775,6 +902,11 @@ const AdminLiveDashboardPage: React.FC = () => {
                         {(userProfile.agency_id || 0) > 0 && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
                             وكالة #{userProfile.agency_id}
+                          </span>
+                        )}
+                        {userProfile.registered_at && (
+                          <span className="text-[8px] text-muted-foreground/60">
+                            تسجيل: {new Date(userProfile.registered_at).toLocaleDateString("ar-SA")}
                           </span>
                         )}
                       </div>
@@ -796,12 +928,164 @@ const AdminLiveDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Period Filter */}
+                <div className="rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Filter size={12} className="text-muted-foreground" />
+                    <span className="text-[10px] font-bold">الفترة</span>
+                  </div>
+                  <div className="flex gap-1.5 mb-2">
+                    {(["today", "week", "month", "custom"] as const).map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setDetailPeriod(p)}
+                        className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                          detailPeriod === p ? "bg-emerald-500/20 text-emerald-400" : "text-muted-foreground"
+                        }`}
+                      >
+                        {{ today: "اليوم", week: "الأسبوع", month: "الشهر", custom: "مخصص" }[p]}
+                      </button>
+                    ))}
+                  </div>
+                  {detailPeriod === "custom" && (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="date"
+                        value={customFrom}
+                        onChange={(e) => setCustomFrom(e.target.value)}
+                        className="h-8 rounded-lg px-2 text-[10px] font-mono flex-1 focus:outline-none"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      />
+                      <span className="text-[10px] text-muted-foreground">إلى</span>
+                      <input
+                        type="date"
+                        value={customTo}
+                        onChange={(e) => setCustomTo(e.target.value)}
+                        className="h-8 rounded-lg px-2 text-[10px] font-mono flex-1 focus:outline-none"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      />
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => loadUserDetails(userProfile.uuid, "custom")}
+                        className="h-8 px-3 rounded-lg text-[10px] font-bold text-white"
+                        style={{ background: "hsl(160 84% 39%)" }}
+                      >
+                        عرض
+                      </motion.button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Period Summary */}
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { label: "شحن", sub: `(${formatUSD(periodSummary.charged)})`, value: periodSummary.charged > 1000000 ? `${(periodSummary.charged / 1000000).toFixed(1)}M` : formatCoins(periodSummary.charged), color: "hsl(160 84% 39%)", icon: ArrowDownRight },
+                    { label: "استلم", sub: `(${formatUSD(periodSummary.received)})`, value: periodSummary.received > 1000000 ? `${(periodSummary.received / 1000000).toFixed(1)}M` : formatCoins(periodSummary.received), color: "hsl(217 91% 60%)", icon: Download },
+                    { label: "عملية شحن", sub: "", value: String(periodSummary.ops), color: "hsl(45 93% 47%)", icon: Activity },
+                    { label: "شخص دعمه", sub: "", value: String(periodSummary.people), color: "hsl(280 67% 54%)", icon: Users },
+                  ].map(s => {
+                    const SIcon = s.icon;
+                    return (
+                      <div key={s.label} className="text-center py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <SIcon size={12} style={{ color: s.color }} className="mx-auto mb-1" />
+                        <p className="text-[11px] font-bold font-mono" style={{ color: s.color }}>{s.value}</p>
+                        <p className="text-[8px] text-muted-foreground mt-0.5">{s.label}</p>
+                        {s.sub && <p className="text-[7px] text-muted-foreground/60">{s.sub}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Transaction Detail Tabs */}
+                <div className="rounded-2xl overflow-hidden" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div className="overflow-x-auto scrollbar-hide p-2 pb-0">
+                    <div className="flex gap-1 min-w-max">
+                      {([
+                        { key: "charged_to" as const, label: "شحن له ←", icon: ArrowDownRight },
+                        { key: "charged_by" as const, label: "هو شحن →", icon: ArrowUpRight },
+                        { key: "gifts_received" as const, label: "هدايا استلم", icon: Gift },
+                        { key: "gifts_sent" as const, label: "هدايا أرسل", icon: Send },
+                      ]).map(t => {
+                        const TIcon = t.icon;
+                        return (
+                          <button
+                            key={t.key}
+                            onClick={() => setDetailTab(t.key)}
+                            className={`flex items-center gap-1 text-[10px] font-bold px-3 py-2 rounded-lg whitespace-nowrap transition-colors ${
+                              detailTab === t.key ? "bg-emerald-500/20 text-emerald-400" : "text-muted-foreground"
+                            }`}
+                          >
+                            <TIcon size={10} />
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="p-3">
+                    {txLoading ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                      </div>
+                    ) : transactions.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Eye size={20} className="mx-auto mb-2 text-muted-foreground/30" />
+                        <p className="text-[10px] text-muted-foreground">لا توجد بيانات لهذه الفترة</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        <div className="grid grid-cols-[80px_1fr_70px_50px] gap-2 text-[9px] text-muted-foreground font-bold pb-2 border-b border-white/5">
+                          <span>التاريخ</span>
+                          <span>{detailTab.includes("charged") ? (detailTab === "charged_to" ? "الشاحن" : "المستلم") : "الهدية"}</span>
+                          <span className="text-left font-mono">المبلغ</span>
+                          <span className="text-left">{detailTab === "charged_to" ? "المصدر" : "النوع"}</span>
+                        </div>
+                        {transactions.slice(0, 30).map((tx, idx) => (
+                          <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.015 }}
+                            className="grid grid-cols-[80px_1fr_70px_50px] gap-2 items-center py-1.5 text-[10px] rounded hover:bg-white/5"
+                          >
+                            <span className="text-muted-foreground font-mono text-[9px]">
+                              {tx.date ? new Date(tx.date).toLocaleDateString("ar-SA", { day: "numeric", month: "numeric" }) : "—"}
+                            </span>
+                            <div className="min-w-0">
+                              <span className="font-medium truncate block">{tx.name}</span>
+                              {tx.uuid && <span className="text-[8px] text-muted-foreground font-mono">({tx.uuid})</span>}
+                            </div>
+                            <span className="text-left font-mono font-bold text-emerald-400">
+                              {tx.amount > 1000000 ? `${(tx.amount / 1000000).toFixed(1)}M` : formatCoins(tx.amount)}
+                            </span>
+                            <span className="text-left text-[9px] text-muted-foreground truncate">
+                              {tx.source || tx.type || "—"}
+                            </span>
+                          </motion.div>
+                        ))}
+                        {transactions.length > 0 && (
+                          <div className="pt-2 mt-2 border-t border-white/5 text-[10px]">
+                            <span className="text-muted-foreground">الإجمالي: </span>
+                            <span className="font-bold font-mono text-emerald-400">
+                              {formatBoth(transactions.reduce((s, t) => s + t.amount, 0))}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Extra Info */}
                 <div className="rounded-2xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <p className="text-[11px] font-bold text-muted-foreground mb-2">معلومات إضافية</p>
                   {[
                     { label: "نوع الحساب", value: getUserTypeLabel(userProfile.type_user || 0) },
-                    { label: "مستوى الإرسال", value: String(userProfile.level || 0) },
+                    { label: "مستوى الإرسال", value: String(userProfile.sender_level || userProfile.level || 0) },
+                    { label: "مستوى الاستقبال", value: String(userProfile.receiver_level || 0) },
                     { label: "الوكالة", value: userProfile.agency_id ? `#${userProfile.agency_id}` : "بدون" },
+                    { label: "آخر نشاط", value: userProfile.registered_at ? new Date(userProfile.registered_at).toLocaleDateString("ar-SA") : "—" },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between text-[11px]">
                       <span className="text-muted-foreground">{item.label}</span>
@@ -810,6 +1094,7 @@ const AdminLiveDashboardPage: React.FC = () => {
                   ))}
                 </div>
 
+                {/* Quick Actions */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: "عرض بالداشبورد", icon: Eye, action: () => navigate(`/admin/profile/${userProfile.uuid}`) },
@@ -835,7 +1120,7 @@ const AdminLiveDashboardPage: React.FC = () => {
             )}
           </AnimatePresence>
 
-          {/* Agency Info Card */}
+          {/* ══════ Agency Info Card ══════ */}
           <AnimatePresence>
             {agencyInfo && (
               <motion.div
@@ -844,7 +1129,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                 exit={{ opacity: 0, y: -8 }}
                 className="mt-4 space-y-3"
               >
-                {/* Agency Header */}
                 <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -856,7 +1140,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* ── Pending Requests ── */}
                   {agencyInfo.pendingRequests.length > 0 && (
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-2">
@@ -876,8 +1159,7 @@ const AdminLiveDashboardPage: React.FC = () => {
                               {req.avatar ? (
                                 <img
                                   src={req.avatar.startsWith("http") ? req.avatar : `${MEDIA_BASE}${req.avatar}`}
-                                  className="w-7 h-7 rounded-full object-cover shrink-0"
-                                  alt=""
+                                  className="w-7 h-7 rounded-full object-cover shrink-0" alt=""
                                   onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
                                 />
                               ) : (
@@ -891,43 +1173,29 @@ const AdminLiveDashboardPage: React.FC = () => {
                               </div>
                             </div>
                             <div className="flex gap-1.5 shrink-0">
-                              <motion.button
-                                whileTap={{ scale: 0.9 }}
+                              <motion.button whileTap={{ scale: 0.9 }}
                                 onClick={async () => {
                                   const ok = await handleAgencyRequest(req.user_id, true);
                                   if (ok) {
                                     toast.success(`تم قبول ${req.name}`);
-                                    setAgencyInfo(prev => prev ? {
-                                      ...prev,
-                                      pendingRequests: prev.pendingRequests.filter(r => r.user_id !== req.user_id),
-                                    } : null);
-                                  } else {
-                                    toast.error("فشل قبول الطلب");
-                                  }
+                                    setAgencyInfo(prev => prev ? { ...prev, pendingRequests: prev.pendingRequests.filter(r => r.user_id !== req.user_id) } : null);
+                                  } else toast.error("فشل قبول الطلب");
                                 }}
-                                className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                                className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400"
                               >
-                                <UserCheck size={11} />
-                                قبول
+                                <UserCheck size={11} /> قبول
                               </motion.button>
-                              <motion.button
-                                whileTap={{ scale: 0.9 }}
+                              <motion.button whileTap={{ scale: 0.9 }}
                                 onClick={async () => {
                                   const ok = await handleAgencyRequest(req.user_id, false);
                                   if (ok) {
                                     toast.success(`تم رفض ${req.name}`);
-                                    setAgencyInfo(prev => prev ? {
-                                      ...prev,
-                                      pendingRequests: prev.pendingRequests.filter(r => r.user_id !== req.user_id),
-                                    } : null);
-                                  } else {
-                                    toast.error("فشل رفض الطلب");
-                                  }
+                                    setAgencyInfo(prev => prev ? { ...prev, pendingRequests: prev.pendingRequests.filter(r => r.user_id !== req.user_id) } : null);
+                                  } else toast.error("فشل رفض الطلب");
                                 }}
-                                className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                                className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-400"
                               >
-                                <UserX size={11} />
-                                رفض
+                                <UserX size={11} /> رفض
                               </motion.button>
                             </div>
                           </div>
@@ -936,7 +1204,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* ── Current Members ── */}
                   <div className="flex items-center gap-2 mb-2">
                     <Users size={12} className="text-muted-foreground" />
                     <span className="text-[11px] font-bold">الأعضاء الحاليين ({agencyInfo.members.length})</span>
@@ -955,7 +1222,12 @@ const AdminLiveDashboardPage: React.FC = () => {
                             setSearchTab("user");
                             setSearchQuery(m.uuid);
                             setAgencyInfo(null);
-                            searchUserApi(m.uuid).then(p => p && setUserProfile(p));
+                            searchUserApi(m.uuid).then(p => {
+                              if (p) {
+                                setUserProfile(p);
+                                loadUserDetails(m.uuid, detailPeriod);
+                              }
+                            });
                           }}
                           className="grid grid-cols-[1fr_80px] gap-2 items-center w-full text-right py-2 rounded-lg hover:bg-white/5 transition-colors px-1"
                         >
@@ -1018,7 +1290,7 @@ const AdminLiveDashboardPage: React.FC = () => {
           )}
         </motion.div>
 
-        {/* ═══ Activity Feed ═══ */}
+        {/* ═══ Top 5 Visual ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
