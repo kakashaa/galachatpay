@@ -141,19 +141,57 @@ const WorksPage: React.FC = () => {
     const year = new Date().getFullYear();
     const monthNum = new Date().getMonth() + 1;
 
-    let totalMonthCommissionCoins = 0; // sum of all commissions in COINS
+    let totalMonthCommissionCoins = 0;
     const updatedMembers = [...membersList];
 
     for (let i = 0; i < updatedMembers.length; i++) {
       const member = updatedMembers[i];
       try {
         if (member.member_type === "supporter") {
-          const res = await fetch(
-            `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${member.member_uuid}&month=${month}`
-          );
-          const data = await res.json();
-          const charges = data.data?.total_charges || 0; // coins
-          const commission = data.data?.commission_2pct || 0; // coins
+          let charges = 0;
+          let commission = 0;
+
+          // Primary: wares-api
+          try {
+            const res = await fetch(
+              `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${member.member_uuid}&month=${month}`
+            );
+            const data = await res.json();
+            charges = data.data?.total_charges || 0;
+            commission = data.data?.commission_2pct || 0;
+          } catch { /* silent */ }
+
+          // Fallback: bd-data-api if primary returned 0
+          if (charges === 0) {
+            try {
+              const res2 = await fetch(
+                `https://hola-chat.com/bd-data-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${member.member_uuid}&month=${month}`
+              );
+              const data2 = await res2.json();
+              charges = data2.data?.total_charges || data2.total_charges || 0;
+              commission = data2.data?.commission_2pct || Math.floor(charges * 0.02) || 0;
+            } catch { /* silent */ }
+          }
+
+          // Fallback 2: fetch profile charger_num via edge function
+          if (charges === 0) {
+            try {
+              const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
+                body: { uuid: member.member_uuid },
+              });
+              const chargerNum = profileRes?.data?.level?.charger_num || profileRes?.level?.charger_num || 0;
+              if (chargerNum > 0) {
+                // Use stored initial_charger_num if available, otherwise use charger_num as-is
+                const initialCharger = (member as any).initial_charger_num || 0;
+                const monthlyCharges = initialCharger > 0 ? Math.max(0, chargerNum - initialCharger) : chargerNum;
+                if (monthlyCharges > 0) {
+                  charges = monthlyCharges;
+                  commission = Math.floor(monthlyCharges * 0.02);
+                }
+              }
+            } catch { /* silent */ }
+          }
+
           updatedMembers[i] = { ...member, monthly_charges: charges, commission };
           totalMonthCommissionCoins += commission;
         }
@@ -163,8 +201,8 @@ const WorksPage: React.FC = () => {
             `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-salary&agency_id=${member.agency_id}&year=${year}&month_num=${monthNum}`
           );
           const data = await res.json();
-          const salary = data.data?.salary || 0; // USD
-          const commissionUsd = data.data?.commission_2pct || 0; // USD
+          const salary = data.data?.salary || 0;
+          const commissionUsd = data.data?.commission_2pct || 0;
           const commissionCoins = Math.floor(commissionUsd * 7500);
           updatedMembers[i] = { ...member, agency_salary: salary, commission: commissionCoins };
           totalMonthCommissionCoins += commissionCoins;
