@@ -211,12 +211,12 @@ interface AgencyInfo {
 
 const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => {
   try {
-    const token = await getFreshToken();
-    if (!token) return null;
+    const numericId = parseInt(agencyId.trim(), 10);
 
     // 1. Get pending requests
     let pendingRequests: PendingRequest[] = [];
     try {
+      const token = await getFreshToken();
       const reqRes = await fetch("https://galalivechat.com/api/agencies/show_request", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
@@ -232,13 +232,35 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
       }));
     } catch {}
 
-    // 2. Get members
-    const token2 = await getFreshToken();
+    // 2. Find agency across paginated results
+    let agencyName = `وكالة #${agencyId.trim()}`;
+    const guessPage = isNaN(numericId) ? 1 : Math.ceil(numericId / 10);
+    const pagesToTry = [guessPage, ...Array.from({ length: 5 }, (_, i) => i + 1).filter(p => p !== guessPage)];
+
+    for (const page of pagesToTry) {
+      try {
+        const tk = await getFreshToken();
+        const r = await fetch(`https://galalivechat.com/api/agencies/filter?page=${page}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${tk}`, Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ page }),
+        });
+        const d = await r.json();
+        const found = (d.data?.agencies || []).find((a: any) => String(a.id) === agencyId.trim() || a.id === numericId);
+        if (found) {
+          agencyName = found.name || found.title || agencyName;
+          break;
+        }
+      } catch {}
+    }
+
+    // 3. Get members
     let members: AgencyMember[] = [];
     try {
+      const token3 = await getFreshToken();
       const mRes = await fetch("https://galalivechat.com/api/agencies/history-data-agency", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token2}`, Accept: "application/json", "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${token3}`, Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({ month: new Date().getMonth() + 1, year: new Date().getFullYear() }),
       });
       const mData = await mRes.json();
@@ -255,7 +277,7 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
 
     return {
       id: agencyId.trim(),
-      name: `وكالة #${agencyId.trim()}`,
+      name: agencyName,
       members,
       pendingRequests,
     };
