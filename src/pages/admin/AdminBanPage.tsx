@@ -210,6 +210,51 @@ const AdminBanPage: React.FC = () => {
 
   const pendingReports = reports.filter(r => !removedIds.has(r.id));
 
+  const isPermanentBan = (report: any) => report.ban_type === "promotion" || report.ban_type === "promo" || report.ban_type === "device" || (!!report.reward_amount && report.reward_amount >= 50000);
+
+  const activeBans = bannedList.filter((report) => {
+    if (!isPermanentBan(report) && report.expires_at) {
+      return new Date(report.expires_at) >= new Date();
+    }
+    return true;
+  });
+
+  const permanentBans = activeBans.filter(isPermanentBan);
+  const temporaryBans = activeBans.filter((report) => !isPermanentBan(report));
+
+  const renderBannedCard = (report: any, i: number) => (
+    <motion.div key={report.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}
+      className="rounded-xl overflow-hidden flex flex-col" style={glassCard}>
+
+      {report.evidence_url && report.evidence_url !== "manual-ban" && (
+        <div className="relative w-full aspect-square bg-black/40">
+          {report.evidence_type === "video" ? (
+            <video src={report.evidence_url} playsInline muted className="w-full h-full object-cover" />
+          ) : (
+            <img src={report.evidence_url} alt="" className="w-full h-full object-cover" />
+          )}
+        </div>
+      )}
+
+      <div className="p-2 flex-1 flex flex-col gap-1">
+        <span className="text-[11px] font-bold tabular-nums truncate">{report.reported_user_id}</span>
+        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold w-fit"
+          style={isPermanentBan(report) ? { background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
+          {isPermanentBan(report) ? "دائم" : "مؤقت"}
+        </span>
+        <p className="text-[9px] text-muted-foreground truncate">{report.description || report.ban_type}</p>
+        <p className="text-[8px] text-muted-foreground">{formatDate(report.created_at)}</p>
+
+        <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+          onClick={() => unbanFromList(report)}
+          className="mt-auto w-full py-1.5 rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
+          {actionInProgress === report.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Unlock className="w-3 h-3" />فك</>}
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+
   return (
     <>
     <AdminPageLayout title="إدارة الحظر" accentColor="hsl(350 89% 60%)" onLogout={handleLogout}>
