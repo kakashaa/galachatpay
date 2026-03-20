@@ -148,7 +148,8 @@ const getCashWithdrawDates = () => {
 
 const getWithdrawalLimits = (isAgencyOwner: boolean) => {
   const maxCash = isAgencyOwner ? 2 : 1;
-  const maxTotal = isAgencyOwner ? 3 : 2;
+  // maxTotal only applies to cash withdrawals — coin charges are unlimited
+  const maxTotal = maxCash;
   return { maxCash, maxTotal };
 };
 
@@ -339,13 +340,21 @@ const SalaryWithdraw: React.FC = () => {
       const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
       setIsAgencyOwner(agencyOwner);
 
-      const used = allTransfers.filter(t => t.is_used).length;
-      setUsedCount(used);
+      // Only count CASH withdrawals toward the limit (coins are unlimited)
+      const cashUsedRefs = new Set<string>(
+        (localRequestsRes.data || [])
+          .filter((r: any) => r.request_type === "cash")
+          .map((r: any) => String(r.transfer_id || r.transaction_id || "").trim())
+          .filter(Boolean),
+      );
+      const cashUsed = allTransfers.filter(t => t.is_used && cashUsedRefs.has(String(t.reference_id || "").trim())).length;
+      setUsedCount(cashUsed);
 
       const newTransfers = allTransfers.filter(t => !t.is_used && t.selectable);
       const { maxTotal } = getWithdrawalLimits(agencyOwner);
 
-      if (used >= maxTotal) {
+      // Only block for cash mode when cash limit reached
+      if (pathMode === "cash" && cashUsed >= maxTotal) {
         setStep("exhausted");
       } else if (newTransfers.length === 0 && allTransfers.length === 0) {
         setStep("no_transfers");
@@ -402,11 +411,14 @@ const SalaryWithdraw: React.FC = () => {
       return;
     }
 
-    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
-    if (usedCount >= maxTotal) {
-      toast.error("وصلت الحد الأقصى للسحب هذا الشهر");
-      setStep("exhausted");
-      return;
+    // Only enforce limits for cash mode — coins are unlimited
+    if (mode === "cash") {
+      const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
+      if (usedCount >= maxTotal) {
+        toast.error("وصلت الحد الأقصى لسحب الراتب النقدي هذا الشهر");
+        setStep("exhausted");
+        return;
+      }
     }
     setSelectedTransfer(transfer);
     setSalaryWarning(null);
