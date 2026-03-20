@@ -350,7 +350,7 @@ const WorksPage: React.FC = () => {
       } else {
         const result = await validateAgent(memberInput.trim());
         if (!result.ok) {
-          await handleFailedAttempt(result.reason!);
+          await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
           return;
         }
