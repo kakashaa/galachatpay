@@ -378,25 +378,36 @@ const WorksPage: React.FC = () => {
   };
 
   const submitWithdraw = async () => {
-    if (!myWorks || withdrawing) return;
-    const amt = parseFloat(withdrawAmount);
-    if (!amt || amt <= 0 || amt > Number(myWorks.balance_usd)) {
-      setModal({ type: "error", message: "مبلغ غير صحيح" });
+    if (!myWorks || withdrawing || !user?.uuid) return;
+    const dayOfMonth = new Date().getDate();
+    if (dayOfMonth > 5) {
+      setModal({ type: "error", message: "الصرف متاح أول 5 أيام من الشهر الجديد فقط" });
       return;
     }
-    if (!recipientUuid.trim()) {
-      setModal({ type: "error", message: "أدخل UUID المستلم" });
+    if (monthEarnings <= 0) {
+      setModal({ type: "error", message: "لا توجد أرباح لصرفها" });
       return;
     }
     setWithdrawing(true);
-    setModal({ type: "loading", message: "جاري تقديم طلب السحب..." });
+    setModal({ type: "loading", message: "جاري تقديم طلب صرف النسبة..." });
+
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const withdrawMonth = lastMonth.toISOString().slice(0, 7);
+    const coinsAmount = Math.floor(monthEarnings * 7500);
+
     try {
-      await supabase.from("works_withdrawals").insert({
-        works_id: myWorks.id, user_uuid: user!.uuid, amount_usd: amt,
-        amount_coins: Math.floor(amt * 8500), recipient_uuid: recipientUuid.trim(),
-      } as any);
-      setModal({ type: "success", message: `تم تقديم طلب السحب\n$${amt.toFixed(2)} = ${Math.floor(amt * 8500).toLocaleString()} كوينز` });
-      setShowWithdraw(false); setWithdrawAmount(""); setRecipientUuid("");
+      await supabase.from("bd_withdrawals").insert({
+        bd_uuid: user.uuid,
+        bd_name: user.name || "",
+        amount: monthEarnings,
+        status: "pending",
+        transfer_type: "commission",
+        country: withdrawMonth,
+        admin_note: `كوينز: ${coinsAmount.toLocaleString()} | شهر: ${withdrawMonth}`,
+      });
+      setModal({ type: "success", message: "تم إرسال طلبك — سيتم مراجعته" });
+      setShowWithdraw(false);
     } catch {
       setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
     }
