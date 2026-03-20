@@ -188,6 +188,26 @@ const AdminWorksPage: React.FC = () => {
     }
   };
 
+  const handleEditFinancials = async () => {
+    if (!editFinAccount) return;
+    setEditFinLoading(true);
+    try {
+      const updates: Record<string, number> = {};
+      const newBalance = parseFloat(editBalanceUsd);
+      const newEarnings = parseFloat(editTotalEarnings);
+      if (!isNaN(newBalance)) updates.balance_usd = newBalance;
+      if (!isNaN(newEarnings)) updates.total_earnings_usd = newEarnings;
+      if (Object.keys(updates).length === 0) { toast.error("لا توجد تعديلات"); setEditFinLoading(false); return; }
+      await adminCall("works_update_account", { id: editFinAccount.id, ...updates });
+      toast.success("تم تحديث البيانات المالية");
+      setEditFinAccount(null);
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error(err?.message || "فشل التحديث");
+    }
+    setEditFinLoading(false);
+  };
+
   return (
     <AdminPageLayout title="إدارة البيدي" onLogout={handleLogout}>
       <div className="max-w-3xl mx-auto p-4" dir="rtl">
