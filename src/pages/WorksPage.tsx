@@ -653,26 +653,6 @@ const WorksPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Withdraw Dialog */}
-      <Dialog open={showWithdraw} onOpenChange={setShowWithdraw}>
-        <DialogContent className="max-w-sm">
-          <div className="p-4 space-y-3" dir="rtl">
-            <p className="text-sm font-bold">سحب الرصيد</p>
-            <p className="text-xs text-muted-foreground">الرصيد المتاح: ${balance.toFixed(2)}</p>
-            <Input type="number" placeholder="المبلغ بالدولار" value={withdrawAmount}
-              onChange={e => setWithdrawAmount(e.target.value)} dir="ltr" />
-            {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-              <p className="text-xs text-emerald-400">= {Math.floor(parseFloat(withdrawAmount) * 8500).toLocaleString()} كوينز</p>
-            )}
-            <Input placeholder="UUID المستلم" value={recipientUuid}
-              onChange={e => setRecipientUuid(e.target.value)} dir="ltr" />
-            <button onClick={submitWithdraw} disabled={withdrawing}
-              className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50">
-              {withdrawing ? "جاري الإرسال..." : "تقديم طلب السحب"}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {modal && <StatusModal type={modal.type} message={modal.message} vibrate={modal.vibrate} onClose={() => setModal(null)} />}
       <BottomNav />
