@@ -175,7 +175,7 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const fileToBase64 = (file: File): Promise<string> => {
+  const _fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
