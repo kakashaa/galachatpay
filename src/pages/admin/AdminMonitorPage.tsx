@@ -149,17 +149,17 @@ const AdminMonitorPage: React.FC = () => {
 
     try {
       const res = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query`,
+        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question }),
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `question=${encodeURIComponent(question)}`,
         }
       );
       const data = await res.json();
       setChatMessages(prev => [...prev, {
         role: "bot",
-        text: data.answer || data.message || "لم أتمكن من معالجة الطلب",
+        text: data.data?.answer || data.answer || data.message || "ما لقيت معلومات",
         time: formatTime(new Date().toISOString()),
       }]);
     } catch {
