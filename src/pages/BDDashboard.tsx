@@ -634,10 +634,10 @@ const BDDashboard: React.FC = () => {
                   </div>
                   <span className="material-symbols-outlined text-muted-foreground text-sm">chevron_left</span>
                 </button>
-                <button onClick={() => navigate("/bd/withdraw")} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/5 transition-colors">
+                <button onClick={() => setTab('wallet')} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/5 transition-colors">
                   <div className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-yellow-400 text-sm">payments</span>
-                    <span className="text-[11px] text-foreground/80">سحب الأرباح</span>
+                    <span className="text-[11px] text-foreground/80">صرف نسبتي</span>
                   </div>
                   <span className="material-symbols-outlined text-muted-foreground text-sm">chevron_left</span>
                 </button>
