@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe,
   UserCheck, ArrowRight, ArrowLeft, Phone,
-  Loader2, Copy, Frown, ChevronDown, RefreshCw, Coins,
+  Loader2, Copy, Frown, ChevronDown, RefreshCw, Coins, Search, User,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -155,7 +155,13 @@ const SalaryWithdraw: React.FC = () => {
 
   // Selected transfer
   const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
-  const [_withdrawalMode, setWithdrawalMode] = useState<"cash" | "coins">("cash");
+  const [_withdrawalMode, setWithdrawalMode] = useState<"cash" | "charge_self" | "charge_other">("cash");
+
+  // Charge other target
+  const [targetUuid, setTargetUuid] = useState("");
+  const [targetSearching, setTargetSearching] = useState(false);
+  const [targetInfo, setTargetInfo] = useState<{ name: string; avatar: string; uuid: string } | null>(null);
+  const [targetConfirmed, setTargetConfirmed] = useState(false);
 
   // Steps
   const [step, setStep] = useState<string>("loading");
@@ -233,7 +239,7 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const checkSalaryReport = async (_transfer: Transfer, _mode: "cash" | "coins") => {
+  const checkSalaryReport = async (_transfer: Transfer, _mode: string) => {
     setSalaryCheckLoading(true);
     try {
       const reportRes = await fetch(`${API}?action=salary_report&uuid=${user!.uuid}`);
@@ -258,7 +264,7 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "coins") => {
+  const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "charge_self" | "charge_other") => {
     setSelectedTransfer(transfer);
     setSalaryWarning(null);
 
@@ -273,16 +279,46 @@ const SalaryWithdraw: React.FC = () => {
       }
       setWithdrawalMode("cash");
       setStep("bank");
-    } else {
-      setWithdrawalMode("coins");
+    } else if (mode === "charge_self") {
+      setWithdrawalMode("charge_self");
       setStep("coins_confirm");
+    } else {
+      setWithdrawalMode("charge_other");
+      setTargetUuid("");
+      setTargetInfo(null);
+      setTargetConfirmed(false);
+      setStep("charge_other_search");
     }
   };
 
-  const chargeCoins = async () => {
+  const searchTargetUser = async () => {
+    if (!targetUuid.trim()) return;
+    setTargetSearching(true);
+    setTargetInfo(null);
+    try {
+      const res = await fetch(`${API}?action=user_info&uuid=${targetUuid.trim()}`);
+      const data = await res.json();
+      if (data.success && data.user) {
+        setTargetInfo({
+          name: data.user.name || data.user.nickname || `UUID ${targetUuid}`,
+          avatar: data.user.avatar || "",
+          uuid: targetUuid.trim(),
+        });
+      } else {
+        toast.error("لم يتم العثور على المستخدم");
+      }
+    } catch {
+      toast.error("فشل البحث");
+    } finally {
+      setTargetSearching(false);
+    }
+  };
+
+  const chargeCoins = async (chargeTarget?: string) => {
     if (!selectedTransfer) return;
     setChargingCoins(true);
     setError("");
+    const targetId = chargeTarget || user!.uuid;
     try {
       const res = await fetch(API, {
         method: "POST",
@@ -290,7 +326,7 @@ const SalaryWithdraw: React.FC = () => {
         body: JSON.stringify({
           action: "salary_charge_manual",
           admin_key: "ghala2026owner",
-          uuid: user!.uuid,
+          uuid: targetId,
           amount: selectedTransfer.amount_usd,
           reference_id: selectedTransfer.reference_id,
         }),
@@ -362,6 +398,7 @@ const SalaryWithdraw: React.FC = () => {
       case "bank": return () => setStep("transfers_list");
       case "account": return () => setStep("bank");
       case "coins_confirm": return () => setStep("transfers_list");
+      case "charge_other_search": return () => setStep("transfers_list");
       default: return () => navigate("/dashboard");
     }
   };
@@ -527,12 +564,23 @@ const SalaryWithdraw: React.FC = () => {
             <Coins className="w-10 h-10 text-emerald-400" />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center w-full space-y-4">
-            <h2 className="text-lg font-bold text-foreground">تم شحن الكوينز لحسابك!</h2>
+            <h2 className="text-lg font-bold text-foreground">
+              {targetInfo ? `تم شحن الكوينز لـ ${targetInfo.name}!` : "تم شحن الكوينز لحسابك!"}
+            </h2>
             <div className="rounded-xl p-5 bg-emerald-500/10 border border-emerald-500/20">
               <p className="text-3xl font-black text-emerald-400">{coinsCharged.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground mt-1">كوينز</p>
             </div>
-            <p className="text-xs text-muted-foreground">تم إضافة الكوينز إلى رصيدك في غلا لايف</p>
+            {targetInfo && (
+              <div className="rounded-xl p-3 bg-muted/20 border border-border/20 flex items-center gap-3 justify-center">
+                <User className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold text-foreground">{targetInfo.name}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">UUID: {targetInfo.uuid}</span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {targetInfo ? "تم إضافة الكوينز إلى رصيد المستلم" : "تم إضافة الكوينز إلى رصيدك في غلا لايف"}
+            </p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
             <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
@@ -591,27 +639,34 @@ const SalaryWithdraw: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">{t.time}</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2">
                     {cashLeft > 0 && (
                       <Button
                         onClick={() => handleSelectTransfer(t, "cash")}
                         size="sm"
-                        className="flex-1 h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
                       >
-                        سحب نقدي
+                        💵 سحب نقدي
                       </Button>
                     )}
-                    <Button
-                      onClick={() => handleSelectTransfer(t, "coins")}
-                      size="sm"
-                      variant={cashLeft > 0 ? "outline" : "default"}
-                      className={cn(
-                        "flex-1 h-9 text-xs font-bold",
-                        cashLeft > 0 ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10" : "gold-gradient text-primary-foreground"
-                      )}
-                    >
-                      شحن كوينز
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleSelectTransfer(t, "charge_self")}
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-9 text-xs font-bold border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+                      >
+                        🪙 شحن لحسابي
+                      </Button>
+                      <Button
+                        onClick={() => handleSelectTransfer(t, "charge_other")}
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-9 text-xs font-bold border-primary/30 text-primary hover:bg-primary/10"
+                      >
+                        🎁 شحن لآخر
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -749,7 +804,7 @@ const SalaryWithdraw: React.FC = () => {
             <Button variant="outline" onClick={() => setStep("transfers_list")} className="flex-1 h-12 border-border/30">
               <ArrowRight className="w-4 h-4 ml-1" /> رجوع
             </Button>
-            <Button onClick={chargeCoins} disabled={chargingCoins}
+            <Button onClick={() => chargeCoins()} disabled={chargingCoins}
               className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
               {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : "تأكيد الشحن"}
             </Button>
@@ -759,7 +814,101 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ══════════════════════════════════════════
+  // ── CHARGE OTHER SEARCH ──
+  if (step === "charge_other_search" && selectedTransfer) {
+    return (
+      <MobileLayout showHeader headerTitle="شحن لحساب آخر" onBack={getBackAction()}>
+        <div className="px-5 py-6 space-y-5">
+          <div className="glass-card p-5 space-y-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/15 flex items-center justify-center mx-auto">
+              <Search className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">شحن كوينز لحساب آخر</h3>
+            <p className="text-xs text-muted-foreground">أدخل UUID الشخص المراد شحنه</p>
+
+            <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">الحوالة</span>
+              <span className="text-sm font-mono font-bold text-foreground">#{selectedTransfer.reference_id}</span>
+            </div>
+
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">المبلغ</p>
+              <p className="text-xl font-black text-emerald-400" dir="ltr">${selectedTransfer.amount_usd}</p>
+              <p className="text-sm font-bold text-amber-400">= {(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز</p>
+            </div>
+          </div>
+
+          {/* UUID Search */}
+          <div className="glass-card p-4 space-y-3">
+            <label className="text-xs font-bold text-foreground">UUID المستلم</label>
+            <div className="flex gap-2" dir="ltr">
+              <Input
+                value={targetUuid}
+                onChange={e => setTargetUuid(e.target.value.replace(/\D/g, ""))}
+                placeholder="أدخل UUID..."
+                className="bg-muted/20 border-border/30 flex-1 text-center font-mono"
+                dir="ltr"
+              />
+              <Button onClick={searchTargetUser} disabled={targetSearching || !targetUuid.trim()} size="sm"
+                className="h-10 px-4 bg-primary hover:bg-primary/90">
+                {targetSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Target Info */}
+          {targetInfo && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="glass-card p-4 space-y-3 border border-emerald-500/20">
+              <div className="flex items-center gap-3">
+                {targetInfo.avatar ? (
+                  <img src={targetInfo.avatar} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/30" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
+                    <User className="w-6 h-6 text-primary" />
+                  </div>
+                )}
+                <div className="flex-1 text-right">
+                  <p className="font-bold text-foreground">{targetInfo.name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">UUID: {targetInfo.uuid}</p>
+                </div>
+              </div>
+
+              {!targetConfirmed ? (
+                <Button onClick={() => setTargetConfirmed(true)}
+                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+                  <CheckCircle className="w-4 h-4 ml-2" /> هذا هو ✓
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 justify-center text-emerald-400">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="text-sm font-bold">تم التأكيد</span>
+                  </div>
+                  <Button onClick={() => chargeCoins(targetInfo.uuid)} disabled={chargingCoins}
+                    className="w-full h-12 gold-gradient text-primary-foreground font-bold">
+                    {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : `شحن ${(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز`}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          <Button variant="outline" onClick={() => setStep("transfers_list")} className="w-full h-11 border-border/30">
+            <ArrowRight className="w-4 h-4 ml-1" /> رجوع
+          </Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   // STEPPER FLOW (bank → account for cash)
   // ══════════════════════════════════════════
 

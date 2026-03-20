@@ -1803,6 +1803,8 @@ export type Database = {
           rejection_image_url: string | null
           request_type: string
           status: string
+          target_name: string | null
+          target_uuid: string | null
           transaction_date: string | null
           transaction_id: string | null
           transfer_image_url: string | null
@@ -1825,6 +1827,8 @@ export type Database = {
           rejection_image_url?: string | null
           request_type: string
           status?: string
+          target_name?: string | null
+          target_uuid?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
           transfer_image_url?: string | null
@@ -1847,6 +1851,8 @@ export type Database = {
           rejection_image_url?: string | null
           request_type?: string
           status?: string
+          target_name?: string | null
+          target_uuid?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
           transfer_image_url?: string | null
