@@ -26,7 +26,7 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { confirm, ConfirmDialog } = useConfirmModal();
   const { user, logout, isAuthenticated, refreshUser } = useAuth();
-  const { activeBan, getRemainingTime, isFullBan } = useBanCheck(user?.uuid);
+  
   const [notifCount, setNotifCount] = useState(0);
   const prevNotifCountRef = useRef(0);
   const [refreshing, setRefreshing] = useState(false);
