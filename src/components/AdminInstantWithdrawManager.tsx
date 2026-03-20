@@ -19,6 +19,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import { getAvatarUrl } from "@/lib/utils";
+import { useAdminSession } from "@/hooks/use-admin-session";
 
 const API = "https://galachat.site/project-z/api.php";
 const COINS_PER_USD = 8500;
@@ -79,6 +80,7 @@ const AvatarCircle = ({ src, name, size = "w-10 h-10" }: { src?: string; name: s
 };
 
 const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
+  const { adminCall } = useAdminSession();
   const [requests, setRequests] = useState<InstantRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
@@ -100,6 +102,18 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const normalizeStatus = (rawStatus?: string) => {
+    const status = (rawStatus || "").toLowerCase();
+    if (["approved", "completed", "done", "delivered"].includes(status)) return "approved";
+    if (status === "rejected") return "rejected";
+    return "pending";
+  };
+
+  const updateSalaryRequestByAdmin = useCallback(async (id: string, payload: Record<string, unknown>) => {
+    const result = await adminCall("update_salary_request", { id, ...payload });
+    if (!result?.success) throw new Error("تعذر تحديث حالة الطلب");
+  }, [adminCall]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -126,7 +140,7 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
         recipient_country: r.recipient_country || "",
         payment_method: r.payment_method || "",
         payment_details: r.payment_details || "",
-        status: r.status || "pending",
+        status: normalizeStatus(r.status),
         admin_note: r.admin_note || "",
         transfer_image_url: r.transfer_image_url || "",
         rejection_image_url: r.rejection_image_url || "",
@@ -201,16 +215,11 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const receiptUrl = urlData?.publicUrl || "";
 
       // Update request
-      const { error: updateError } = await supabase
-        .from("salary_requests")
-        .update({
-          status: "approved",
-          admin_note: approveNote || "تمت الموافقة",
-          transfer_image_url: receiptUrl,
-        } as any)
-        .eq("id", approveSheet.id);
-
-      if (updateError) throw updateError;
+      await updateSalaryRequestByAdmin(approveSheet.id, {
+        status: "approved",
+        admin_note: approveNote || "تمت الموافقة",
+        transfer_image_url: receiptUrl,
+      });
 
       // Also call external API to charge coins to supporter
       try {
@@ -270,16 +279,11 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
         }
       }
 
-      const { error: updateError } = await supabase
-        .from("salary_requests")
-        .update({
-          status: "rejected",
-          admin_note: rejectReason,
-          rejection_image_url: rejectionUrl || null,
-        } as any)
-        .eq("id", rejectSheet.id);
-
-      if (updateError) throw updateError;
+      await updateSalaryRequestByAdmin(rejectSheet.id, {
+        status: "rejected",
+        admin_note: rejectReason,
+        rejection_image_url: rejectionUrl || null,
+      });
 
       await sendUserNotification(
         rejectSheet.user_uuid,
