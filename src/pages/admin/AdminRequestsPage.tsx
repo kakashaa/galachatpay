@@ -326,7 +326,9 @@ const AdminRequestsPage: React.FC = () => {
   const currentTab = tabs.find(t => t.key === activeTab)!;
   const visibleItems = items.filter(i => !removedIds.has(i.id));
   const pendingItems = visibleItems.filter((i: any) => i.status === "pending");
-  const otherItems = visibleItems.filter((i: any) => i.status !== "pending");
+  const approvedItems = visibleItems.filter((i: any) => i.status === "approved");
+  const rejectedItems = visibleItems.filter((i: any) => i.status === "rejected");
+  const filteredItems = statusFilter === "pending" ? pendingItems : statusFilter === "approved" ? approvedItems : rejectedItems;
 
   // Get the preview URL for any item
   const getPreviewUrl = (item: any) => item.file_url || item.video_url || item.gif_url || item.thumbnail_url || item.image_url || null;
