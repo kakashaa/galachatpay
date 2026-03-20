@@ -373,7 +373,7 @@ const WorksPage: React.FC = () => {
       }
 
       setModal(null);
-      setShowAddMember(false); setMemberInput(""); setAcceptedTerms(false); setAgentOwnerUuid("");
+      setShowAddMember(false); setMemberInput(""); setAcceptedTerms(false);
       setInstructionModal(memberType);
       fetchData();
     } catch (e: any) {
