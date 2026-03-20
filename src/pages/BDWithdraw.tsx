@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowRight, Wallet, Coins, Loader2, Send } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ArrowRight, Wallet, Coins, Loader2, Send, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,16 +8,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
-const COIN_RATE = 8500; // $1 = 8500 coins
-
 const BDWithdraw: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
-  const [balance, setBalance] = useState(0);
-  const [amount, setAmount] = useState("");
-  const [targetUuid, setTargetUuid] = useState("");
   const [loading, setLoading] = useState(false);
   const [bdName, setBdName] = useState("");
+  const [targetUuid, setTargetUuid] = useState("");
+  const [requestType, setRequestType] = useState<"withdraw" | "charge">("withdraw");
+
+  // Get earnings from navigation state
+  const totalCoins = (location.state as any)?.totalCoins || 0;
+  const totalUsd = (location.state as any)?.totalUsd || 0;
+
+  // Lock: only first 5 days of month
+  const dayOfMonth = new Date().getDate();
+  const canWithdraw = dayOfMonth <= 5;
+
+  // Previous month label
+  const lastMonth = new Date();
+  lastMonth.setMonth(lastMonth.getMonth() - 1);
+  const withdrawMonth = lastMonth.toISOString().slice(0, 7);
 
   useEffect(() => {
     const load = async () => {
@@ -26,40 +37,37 @@ const BDWithdraw: React.FC = () => {
         body: { action: "check_status", user_uuid: user.uuid },
       });
       if (data?.bd) {
-        setBalance(data.bd.available_balance || 0);
         setBdName(data.bd.bd_name || "");
       }
     };
     load();
   }, [user?.uuid]);
 
-  const amountNum = parseFloat(amount) || 0;
-  const coinEquivalent = Math.floor(amountNum * COIN_RATE);
-  const balanceCoins = Math.floor(balance * COIN_RATE);
-
   const handleWithdraw = async () => {
-    if (!user?.uuid || amountNum <= 0 || !targetUuid.trim()) return;
-    if (amountNum > balance) {
-      toast.error("المبلغ أكبر من الرصيد المتاح");
+    if (!user?.uuid || !canWithdraw || totalCoins <= 0) return;
+
+    if (requestType === "charge" && !targetUuid.trim()) {
+      toast.error("أدخل آيدي المستلم");
       return;
     }
 
     setLoading(true);
     try {
-      const { data } = await supabase.functions.invoke("bd-manage", {
-        body: {
-          action: "withdraw",
-          bd_uuid: user.uuid,
-          bd_name: bdName,
-          amount: amountNum,
-          target_uuid: targetUuid.trim(),
-        },
+      const { error } = await supabase.from("bd_withdrawals").insert({
+        bd_uuid: user.uuid,
+        bd_name: bdName,
+        amount: totalUsd,
+        status: "pending",
+        country: withdrawMonth,
+        transfer_type: requestType,
+        recipient_name: requestType === "charge" ? targetUuid.trim() : null,
+        admin_note: `كوينز: ${totalCoins.toLocaleString()} | شهر: ${withdrawMonth}`,
       });
 
-      if (data?.error) {
-        toast.error(data.error);
+      if (error) {
+        toast.error("فشل رفع الطلب: " + error.message);
       } else {
-        toast.success(data.message || "تم رفع الطلب بنجاح");
+        toast.success("تم إرسال طلب الصرف بنجاح!");
         navigate("/bd/dashboard");
       }
     } catch {
@@ -75,74 +83,86 @@ const BDWithdraw: React.FC = () => {
         <button onClick={() => navigate("/bd/dashboard")} className="p-2 rounded-xl hover:bg-muted">
           <ArrowRight className="w-5 h-5" />
         </button>
-        <h1 className="font-bold text-lg">سحب الأرباح</h1>
+        <h1 className="font-bold text-lg">طلب صرف الأرباح</h1>
       </header>
 
       <main className="px-4 space-y-5">
-        {/* Balance Display */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-green-500/30 rounded-2xl p-5 text-center space-y-2">
+        {/* Earnings Summary */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-emerald-500/30 rounded-2xl p-5 text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
-            <Wallet className="w-5 h-5 text-green-400" />
-            <span className="text-sm text-muted-foreground">الرصيد المتاح</span>
+            <Wallet className="w-5 h-5 text-emerald-400" />
+            <span className="text-sm text-muted-foreground">أرباح الشهر السابق ({withdrawMonth})</span>
           </div>
-          <div className="text-3xl font-bold text-green-400">${balance.toFixed(2)}</div>
-          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
-            <Coins className="w-3.5 h-3.5 text-amber-400" />
-            <span>ما يعادل {balanceCoins.toLocaleString()} كوينز</span>
-          </div>
+          <div className="text-3xl font-bold text-emerald-400">{totalCoins.toLocaleString()} كوينز</div>
+          <div className="text-sm font-bold text-foreground">${totalUsd.toFixed(2)}</div>
         </motion.div>
 
-        {/* Amount Input */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold">المبلغ المراد سحبه ($)</label>
-          <Input
-            type="number"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            dir="ltr"
-            className="text-center text-lg font-bold"
-            min="0"
-            max={balance}
-            step="0.01"
-          />
-        </div>
-
-        {/* Coin Equivalent */}
-        {amountNum > 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">ما يعادل من كوينزات</span>
-            <span className="font-bold text-amber-400 flex items-center gap-1">
-              <Coins className="w-4 h-4" />
-              {coinEquivalent.toLocaleString()}
-            </span>
+        {!canWithdraw ? (
+          /* Locked state */
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-muted/20 border border-border rounded-2xl p-6 text-center space-y-3">
+            <Lock className="w-10 h-10 text-muted-foreground mx-auto" />
+            <p className="text-sm font-bold text-muted-foreground">الصرف مقفل حالياً</p>
+            <p className="text-xs text-muted-foreground">متاح من يوم 1 إلى 5 من كل شهر جديد</p>
           </motion.div>
+        ) : (
+          <>
+            {/* Request Type */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setRequestType("withdraw")}
+                className={`p-3 rounded-xl border text-center transition-all ${requestType === "withdraw" ? "border-emerald-500/50 bg-emerald-500/10" : "border-border bg-card"}`}
+              >
+                <span className="material-symbols-outlined text-lg text-emerald-400">payments</span>
+                <p className="text-xs font-bold mt-1">سحب نقدي</p>
+              </button>
+              <button
+                onClick={() => setRequestType("charge")}
+                className={`p-3 rounded-xl border text-center transition-all ${requestType === "charge" ? "border-primary/50 bg-primary/10" : "border-border bg-card"}`}
+              >
+                <Coins className="w-5 h-5 text-primary mx-auto" />
+                <p className="text-xs font-bold mt-1">شحن كوينزات</p>
+              </button>
+            </div>
+
+            {/* Target UUID for charge */}
+            {requestType === "charge" && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-2">
+                <label className="text-sm font-bold">آيدي المستلم (UUID)</label>
+                <Input
+                  placeholder="أدخل الآيدي المراد شحنه..."
+                  value={targetUuid}
+                  onChange={(e) => setTargetUuid(e.target.value)}
+                  dir="ltr"
+                  className="text-center font-mono"
+                />
+              </motion.div>
+            )}
+
+            {/* Submit */}
+            <Button
+              onClick={handleWithdraw}
+              disabled={loading || totalCoins <= 0 || (requestType === "charge" && !targetUuid.trim())}
+              className="w-full h-12 text-base font-bold rounded-xl"
+            >
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <><Send className="w-5 h-5 ml-2" />{requestType === "withdraw" ? "طلب سحب نقدي" : "طلب شحن كوينزات"}</>
+              )}
+            </Button>
+          </>
         )}
 
-        {/* Target UUID */}
-        <div className="space-y-2">
-          <label className="text-sm font-bold">آيدي المستلم (UUID)</label>
-          <Input
-            placeholder="أدخل الآيدي المراد إرسال الكوينزات إليه..."
-            value={targetUuid}
-            onChange={(e) => setTargetUuid(e.target.value)}
-            dir="ltr"
-            className="text-center font-mono"
-          />
+        {/* Info */}
+        <div className="bg-card border border-border rounded-xl p-4 flex items-start gap-3">
+          <span className="material-symbols-outlined text-primary text-lg mt-0.5">info</span>
+          <div>
+            <p className="text-xs font-semibold text-foreground mb-1">ملاحظة</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              الأرباح لا تُصرف تلقائياً. يجب طلب الصرف يدوياً خلال أول 5 أيام من الشهر الجديد. الطلب يراجع من الإدارة ويتم الرد خلال 24 ساعة.
+            </p>
+          </div>
         </div>
-
-        {/* Submit */}
-        <Button
-          onClick={handleWithdraw}
-          disabled={loading || amountNum <= 0 || amountNum > balance || !targetUuid.trim()}
-          className="w-full h-12 text-base font-bold rounded-xl"
-        >
-          {loading ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <><Send className="w-5 h-5 ml-2" />رفع طلب السحب</>
-          )}
-        </Button>
       </main>
     </div>
   );

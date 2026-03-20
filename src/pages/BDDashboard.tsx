@@ -430,45 +430,108 @@ const BDDashboard: React.FC = () => {
           <BDAgentsTab agents={agents} commissionPct={bd.agency_commission_pct || 5} salaryData={agentSalaries} salaryLoading={salaryLoading} />
         ) : tab === 'wallet' ? (
           <div className="space-y-3 mt-1 css-fade-up">
-            <section className="overflow-hidden rounded-2xl bg-card border border-border/40 p-4">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[12px] text-emerald-400">account_balance_wallet</span>
-                    الرصيد المتاح
-                  </p>
-                  <h2 className="text-2xl font-bold text-foreground">${(bd.available_balance || 0).toFixed(2)}</h2>
-                </div>
-                <div className="px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                  <span className="text-[10px] font-medium text-yellow-500">{((bd.available_balance || 0) * 7500).toLocaleString()} عملة</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-white/[0.04] rounded-lg p-2.5 border border-border/20">
-                  <p className="text-[9px] text-muted-foreground mb-0.5">إجمالي المكتسب</p>
-                  <p className="text-sm font-bold text-foreground">${(bd.total_earned || 0).toFixed(2)}</p>
-                </div>
-                <div className="bg-white/[0.04] rounded-lg p-2.5 border border-border/20">
-                  <p className="text-[9px] text-muted-foreground mb-0.5">أرباح الشهر</p>
-                  <p className="text-sm font-bold text-foreground">${(bd.current_month_earnings || 0).toFixed(2)}</p>
-                </div>
-                <div className="bg-emerald-500/5 rounded-lg p-2.5 border border-emerald-500/10">
-                  <p className="text-[9px] text-muted-foreground mb-0.5">عمولة الرواتب</p>
-                  <p className="text-sm font-bold text-emerald-400">${liveSalaryTotalUsd.toFixed(2)}</p>
-                  {salaryLoading && <Loader2 className="w-3 h-3 animate-spin text-emerald-400 mt-0.5" />}
-                </div>
-              </div>
+            {/* === Earnings Summary === */}
+            <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900/30 to-card border border-emerald-500/20 p-5 text-center">
+              <p className="text-xs text-muted-foreground mb-1">أرباحي هذا الشهر</p>
+              <h2 className="text-3xl font-extrabold text-emerald-400 tracking-tight">
+                {liveSalaryTotal.toLocaleString()} <span className="text-base font-medium text-muted-foreground">كوينز</span>
+              </h2>
+              <p className="text-sm font-bold text-foreground mt-1">${liveSalaryTotalUsd.toFixed(2)}</p>
+              {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400 mx-auto mt-2" />}
+              
+              {(() => {
+                const dayOfMonth = new Date().getDate();
+                const canWithdraw = dayOfMonth <= 5;
+                return canWithdraw ? (
+                  <button
+                    onClick={() => navigate("/bd/withdraw", { state: { totalCoins: liveSalaryTotal, totalUsd: liveSalaryTotalUsd } })}
+                    disabled={liveSalaryTotal <= 0}
+                    className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-base">payments</span>
+                    طلب صرف
+                  </button>
+                ) : (
+                  <div className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-muted/30 border border-border/40">
+                    <span className="material-symbols-outlined text-base text-muted-foreground">lock</span>
+                    <span className="text-sm font-bold text-muted-foreground">متاح بداية الشهر القادم</span>
+                  </div>
+                );
+              })()}
             </section>
-            <button
-              onClick={() => navigate("/bd/withdraw")}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm active:scale-[0.98] transition-all"
-            >
-              <span className="material-symbols-outlined text-base">payments</span>
-              سحب الأرباح
-            </button>
+
+            {/* === Per-Member Breakdown === */}
             <section className="rounded-2xl bg-card border border-border/40 overflow-hidden">
               <div className="flex items-center gap-1.5 px-3 pt-3 pb-2">
                 <span className="material-symbols-outlined text-primary text-sm">receipt_long</span>
+                <span className="text-xs font-bold text-foreground">تفاصيل الأعضاء</span>
+                <span className="text-[9px] text-muted-foreground mr-auto">1$ = 7,500 عملة</span>
+              </div>
+              <div className="divide-y divide-border/20">
+                {supporters.map((s: any) => {
+                  const live = supporterSalaries[s.member_uuid];
+                  const charges = live?.charges || 0;
+                  const commission = live?.commission || 0;
+                  return (
+                    <div key={s.member_uuid} className="px-3 py-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">👤</span>
+                          <span className="text-[11px] font-bold text-foreground">{s.member_name || "داعم"}</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-bold">داعم</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-mono">#{s.member_uuid}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">شحنات الشهر:</span>
+                        <span className="font-bold text-foreground">{charges.toLocaleString()} كوينز</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">نسبتك ({bd.user_commission_pct || 2}%):</span>
+                        <span className="font-bold text-emerald-400">{commission.toLocaleString()} كوينز</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {agents.map((a: any) => {
+                  const live = agentSalaries[a.member_uuid];
+                  const salary = live?.salary || 0;
+                  const commission = live?.commission || 0;
+                  const commCoins = Math.floor(commission * 7500);
+                  return (
+                    <div key={a.member_uuid} className="px-3 py-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">🏢</span>
+                          <span className="text-[11px] font-bold text-foreground">{a.member_name || "وكالة"}</span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-bold">وكالة</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-mono">كود {a.agency_id || "—"}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">راتب الوكالة:</span>
+                        <span className="font-bold text-foreground">${salary.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">نسبتك ({bd.agency_commission_pct || 5}%):</span>
+                        <span className="font-bold text-emerald-400">${commission.toFixed(2)} = {commCoins.toLocaleString()} كوينز</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {supporters.length === 0 && agents.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <span className="material-symbols-outlined text-2xl mb-1 block">group_off</span>
+                    <p className="text-[10px]">لا يوجد أعضاء بعد</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* === Withdrawal History === */}
+            <section className="rounded-2xl bg-card border border-border/40 overflow-hidden">
+              <div className="flex items-center gap-1.5 px-3 pt-3 pb-2">
+                <span className="material-symbols-outlined text-primary text-sm">history</span>
                 <span className="text-xs font-bold text-foreground">آخر عمليات السحب</span>
               </div>
               {(data?.withdrawals || []).length === 0 ? (
@@ -481,16 +544,16 @@ const BDDashboard: React.FC = () => {
                   {(data?.withdrawals || []).slice(0, 5).map((w: any) => (
                     <div key={w.id} className="flex items-center justify-between px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm text-primary">
-                          schedule
+                        <span className={`material-symbols-outlined text-sm ${w.status === 'approved' ? 'text-emerald-400' : w.status === 'rejected' ? 'text-red-400' : 'text-yellow-400'}`}>
+                          {w.status === 'approved' ? 'check_circle' : w.status === 'rejected' ? 'cancel' : 'schedule'}
                         </span>
                         <div>
                           <p className="text-[11px] font-medium text-foreground">${(w.amount || 0).toFixed(2)}</p>
                           <p className="text-[9px] text-muted-foreground">{new Date(w.created_at).toLocaleDateString('ar')}</p>
                         </div>
                       </div>
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                        محتمل من 1 دقيقة إلى 1 ساعة نزول الكوينزات إلى الحساب
+                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${w.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' : w.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                        {w.status === 'approved' ? 'مقبول' : w.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
                       </span>
                     </div>
                   ))}
