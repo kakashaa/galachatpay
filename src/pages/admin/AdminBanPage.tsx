@@ -150,6 +150,7 @@ const AdminBanPage: React.FC = () => {
 
       // Save to ban_reports so it appears in المحظورين tab
       const expiresAt = isPromo ? null : new Date(Date.now() + hours * 3600 * 1000).toISOString();
+      const reportBanType = isPromo ? "promotion" : "insult";
 
       // Upload image if provided
       let evidenceUrl = "";
