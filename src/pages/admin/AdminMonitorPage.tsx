@@ -307,7 +307,22 @@ const AdminMonitorPage: React.FC = () => {
     setLoading(true);
     try {
       const data = await galaApi.getAlerts();
-      const apiAlerts = (data?.data?.alerts || data?.alerts || []) as MonitorAlert[];
+      const rawAlerts = data?.data?.alerts || data?.alerts || [];
+
+      // Map API response to MonitorAlert interface
+      const apiAlerts: MonitorAlert[] = rawAlerts.map((a: any, idx: number) => ({
+        id: a.id || `api-${a.time || Date.now()}-${idx}`,
+        alert_type: a.alert_type || a.type || "promotion",
+        severity: a.severity || "medium",
+        sender_uuid: a.sender_uuid || a.uuid || null,
+        sender_name: a.sender_name || a.name || a.keyword || null,
+        receiver_uuid: a.receiver_uuid || null,
+        receiver_name: a.receiver_name || null,
+        amount: a.amount || 0,
+        details: a.details || { note: a.keyword || a.message || a.note || "" },
+        is_read: a.is_read ?? false,
+        created_at: a.created_at || a.time || new Date().toISOString(),
+      }));
 
       if (soundEnabled && apiAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
         const hasHigh = apiAlerts.some(a => a.severity === "high");
