@@ -247,43 +247,32 @@ const WorksPage: React.FC = () => {
 
   // Validate supporter
   const validateSupporter = async (uuid: string): Promise<{ ok: boolean; reason?: string; name?: string }> => {
-    const userRes = await fetch(
-      `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${uuid}`
-    );
-    const userData = await userRes.json();
+    try {
+      const res = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${uuid}`
+      );
+      const data = await res.json();
 
-    if (!userData.success || !userData.name) {
-      return { ok: false, reason: "المستخدم غير موجود" };
+      if (!data.ok) {
+        return { ok: false, reason: data.error || "المستخدم غير موجود" };
+      }
+
+      if (!data.data?.eligible) {
+        return { ok: false, reason: "لا يمكن إضافة هذا المستخدم:\n" + (data.data?.reason || "غير مؤهل") };
+      }
+
+      // Check not registered with another BD
+      const { data: existing } = await supabase
+        .from("works_members").select("id")
+        .eq("member_uuid", uuid).eq("status", "active").maybeSingle();
+      if (existing) {
+        return { ok: false, reason: "هذا المستخدم مسجّل بفريق بيدي آخر" };
+      }
+
+      return { ok: true, name: data.data.name };
+    } catch {
+      return { ok: false, reason: "فشل الاتصال بالسيرفر" };
     }
-
-    if (userData.sender_level > 0 || userData.receiver_level > 0 || userData.charger_level > 0) {
-      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nمستوى حسابه: إرسال ${userData.sender_level} / استقبال ${userData.receiver_level} / شحن ${userData.charger_level}\nلازم يكون مستوى 0` };
-    }
-
-    const minDate = new Date("2026-02-19T00:00:00");
-    if (new Date(userData.created_at) < minDate) {
-      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nتاريخ إنشاء الحساب: ${new Date(userData.created_at).toLocaleDateString("ar-SA")}\nلازم يكون حساب جديد (بعد 19/2/2026)` };
-    }
-
-    if (userData.agency_id > 0) {
-      return { ok: false, reason: `لا يمكن إضافة هذا المستخدم\nمسجّل بوكالة (ID: ${userData.agency_id})` };
-    }
-
-    const { data: existingMember } = await supabase
-      .from("works_members").select("id, works_id")
-      .eq("member_uuid", uuid).eq("status", "active").maybeSingle();
-    if (existingMember) {
-      return { ok: false, reason: `هذا المستخدم مسجّل بفريق بيدي آخر` };
-    }
-
-    const { data: otherSupporter } = await supabase
-      .from("works_members").select("id")
-      .eq("member_uuid", uuid).eq("member_type", "supporter").maybeSingle();
-    if (otherSupporter) {
-      return { ok: false, reason: "هذا المستخدم مسجّل كداعم عند شخص ثاني" };
-    }
-
-    return { ok: true, name: userData.name };
   };
 
   // Validate agent by agency code
