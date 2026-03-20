@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
+import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import { Ban, Unlock, Loader2, ShieldBan, Shield, Image as LucideImage, Play, ExternalLink, Upload } from "lucide-react";
@@ -79,11 +80,13 @@ const AdminBanPage: React.FC = () => {
         banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null,
       });
 
-      // Execute real ban on external server
+      // Execute real ban on external server via edge function proxy
       try {
-        await fetch(
-          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${banForm.target_uuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${durationHours}&ban_type=${effectiveBanScope}`
-        );
+        const banRes = await supabase.functions.invoke("wares-request", {
+          body: { action: "ban-user-real", uuid: banForm.target_uuid.trim(), reason, hours: String(durationHours), ban_type: effectiveBanScope },
+        });
+        console.log("External ban result:", banRes.data);
+        if (banRes.error) console.error("External ban error:", banRes.error);
       } catch (e) { console.error("Real ban failed:", e); }
 
       const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
@@ -107,7 +110,9 @@ const AdminBanPage: React.FC = () => {
     if (!ok) return;
     const t = toast.loading("جاري فك الحظر...");
     try {
-      await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banForm.target_uuid.trim()}`);
+      await supabase.functions.invoke("wares-request", {
+        body: { action: "unban-user-real", uuid: banForm.target_uuid.trim() },
+      });
       toast.dismiss(t);
       toast.success("تم فك الحظر!");
     } catch { toast.dismiss(t); toast.error("فشل فك الحظر"); }
@@ -357,7 +362,11 @@ const AdminBanPage: React.FC = () => {
                                   });
                                   
                                   // 3. Execute REAL ban on external server (full platform ban)
-                                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${report.reported_user_id}&reason=${encodeURIComponent(reason)}&hours=${hours}&ban_type=${banType}`).catch(() => {});
+                                   const banRes = await supabase.functions.invoke("wares-request", {
+                                     body: { action: "ban-user-real", uuid: report.reported_user_id, reason, hours: String(hours), ban_type: banType },
+                                   });
+                                   console.log("Report ban external result:", banRes.data);
+                                   if (banRes.error) console.error("Report ban external error:", banRes.error);
                                   
                                   // 4. Notify banned user
                                   const { sendUserNotification } = await import("@/utils/sendUserNotification");
