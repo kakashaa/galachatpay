@@ -196,7 +196,7 @@ const InstantRequest: React.FC = () => {
   // Success screen
   if (submitted) {
     return (
-      <MobileLayout showHeader headerTitle="السحب الفوري" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle="السحب الفوري" onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center px-6 py-20">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }} className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-6">
             <CheckCircle className="w-10 h-10 text-emerald-400" />
@@ -214,7 +214,7 @@ const InstantRequest: React.FC = () => {
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8">
             <Button onClick={() => navigate("/my-requests")} variant="outline" className="flex-1 border-border/30 font-bold">طلباتي</Button>
-            <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
+            <Button onClick={() => navigate("/salary")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>
