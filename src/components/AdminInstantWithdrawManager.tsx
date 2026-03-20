@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   CheckCircle, XCircle, Clock, Search, Upload,
-  Loader2, FileText, Image, User, Hash, CalendarDays,
-  MessageSquare, ClipboardList, AlertTriangle, Zap,
-  Eye, Phone, Building2, CreditCard, Coins, ShieldCheck, ShieldAlert, BarChart3, DollarSign,
+  Loader2, Image, User, Hash,
+  MessageSquare, ClipboardList, Zap,
+  Eye, Phone, Building2, Coins,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
