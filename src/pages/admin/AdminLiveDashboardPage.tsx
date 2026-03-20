@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
@@ -17,6 +17,7 @@ const COINS_PER_USD = 7500;
 const formatCoins = (c: number) => c.toLocaleString();
 const formatUSD = (c: number) => `$${(c / COINS_PER_USD).toFixed(0)}`;
 const formatBoth = (c: number) => `${formatCoins(c)} (${formatUSD(c)})`;
+const MEDIA_BASE = "https://media.galalivechat.com/";
 
 /* ─── Types ─── */
 interface RankUser {
@@ -24,8 +25,6 @@ interface RankUser {
   name: string;
   avatar?: string;
   amount: number;
-  charger_num?: number;
-  receiver_num?: number;
 }
 
 interface UserProfile {
@@ -52,6 +51,28 @@ interface StatCard {
   trend?: "up" | "down";
 }
 
+/* ─── Animated Number ─── */
+const AnimatedNumber = ({ value, prefix = "", suffix = "" }: { value: number; prefix?: string; suffix?: string }) => {
+  const [display, setDisplay] = useState(0);
+  const prevRef = useRef(0);
+  useEffect(() => {
+    const from = prevRef.current;
+    prevRef.current = value;
+    if (value === 0) { setDisplay(0); return; }
+    const diff = value - from;
+    const steps = 30;
+    const step = diff / steps;
+    let frame = 0;
+    const timer = setInterval(() => {
+      frame++;
+      if (frame >= steps) { setDisplay(value); clearInterval(timer); }
+      else setDisplay(Math.round(from + step * frame));
+    }, 25);
+    return () => clearInterval(timer);
+  }, [value]);
+  return <span className="font-mono">{prefix}{display.toLocaleString()}{suffix}</span>;
+};
+
 /* ─── Parse exp string like "4.36M", "500K", "1234" ─── */
 const parseExp = (exp: any): number => {
   if (typeof exp === "number") return exp;
@@ -61,62 +82,47 @@ const parseExp = (exp: any): number => {
   return parseFloat(s) || 0;
 };
 
-/* ─── Token Manager — fresh device_id every time ─── */
-let cachedToken: string | null = null;
-
-const getApiToken = async (): Promise<string> => {
+/* ─── Get a FRESH token — never reuse ─── */
+const getFreshToken = async (): Promise<string> => {
   try {
     const res = await fetch("https://galalivechat.com/api/auth/v3/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "social", platform: "facebook", platform_id: "4",
-        device_id: "live_dash_" + Date.now() + "_" + Math.random().toString(36).slice(2),
+        device_id: "dash_" + Date.now() + "_" + Math.random().toString(36).slice(2),
       }),
     });
     const data = await res.json();
-    cachedToken = data.auth_token || null;
-    return cachedToken || "";
+    return data.auth_token || "";
   } catch {
     return "";
   }
 };
 
-/* ─── Fetch with auto-retry on "Another device" ─── */
-const fetchWithToken = async (url: string, options: any = {}): Promise<any> => {
-  if (!cachedToken) await getApiToken();
-
-  const doFetch = async () => {
-    const res = await fetch(url, {
-      ...options,
-      headers: { ...options.headers, Authorization: `Bearer ${cachedToken}`, Accept: "application/json" },
-    });
-    return res.json();
-  };
-
-  let data = await doFetch();
-  if (data.success === false && (data.message?.includes("Another device") || data.message?.includes("token"))) {
-    await getApiToken();
-    data = await doFetch();
-  }
-  return data;
-};
-
-/* ─── Ranking API ─── */
+/* ─── Ranking API — each call gets its own token ─── */
 const fetchRanking = async (cls: number, type: number): Promise<RankUser[]> => {
   try {
-    const data = await fetchWithToken("https://galalivechat.com/api/ranking", {
+    const token = await getFreshToken();
+    if (!token) return [];
+    const res = await fetch("https://galalivechat.com/api/ranking", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
       body: JSON.stringify({ class: cls, type }),
     });
+    const data = await res.json();
+    if (!data.success) return [];
     const top = data.data?.top || [];
     const other = data.data?.other || [];
     return [...top, ...other].map((u: any) => ({
       uuid: String(u.uuid || u.id || ""),
       name: u.name || u.nickname || "—",
-      avatar: u.avatar || u.portrait || "",
-      amount: parseExp(u.exp) || u.charger_num || u.receiver_num || u.charm || u.contribution || 0,
+      avatar: u.avatar ? (u.avatar.startsWith("http") ? u.avatar : `${MEDIA_BASE}${u.avatar}`) : "",
+      amount: parseExp(u.exp) || 0,
     }));
   } catch {
     return [];
