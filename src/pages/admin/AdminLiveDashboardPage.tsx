@@ -213,31 +213,13 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
   try {
     const numericId = parseInt(agencyId.trim(), 10);
 
-    // 1. Get pending requests
-    let pendingRequests: PendingRequest[] = [];
-    try {
-      const token = await getFreshToken();
-      const reqRes = await fetch("https://galalivechat.com/api/agencies/show_request", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "application" }),
-      });
-      const reqData = await reqRes.json();
-      const allReqs = reqData.data || [];
-      pendingRequests = allReqs.map((r: any) => ({
-        user_id: r.user_id || r.id || 0,
-        uuid: String(r.uuid || r.user_id || ""),
-        name: r.name || r.nickname || "—",
-        avatar: r.avatar || "",
-      }));
-    } catch {}
-
-    // 2. Find agency across paginated results
+    // 1. Find agency across paginated results (up to 10 pages)
     let agencyName = `وكالة #${agencyId.trim()}`;
+    let agencyImage = "";
+    let totalMembers = 0;
     const guessPage = isNaN(numericId) ? 1 : Math.ceil(numericId / 10);
-    const pagesToTry = [guessPage, ...Array.from({ length: 5 }, (_, i) => i + 1).filter(p => p !== guessPage)];
 
-    for (const page of pagesToTry) {
+    for (let page = guessPage; page >= 1; page--) {
       try {
         const tk = await getFreshToken();
         const r = await fetch(`https://galalivechat.com/api/agencies/filter?page=${page}`, {
@@ -246,34 +228,116 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
           body: JSON.stringify({ page }),
         });
         const d = await r.json();
-        const found = (d.data?.agencies || []).find((a: any) => String(a.id) === agencyId.trim() || a.id === numericId);
+        const agencies = d.data?.agencies || [];
+        const found = agencies.find((a: any) => String(a.id) === agencyId.trim() || a.id === numericId);
         if (found) {
           agencyName = found.name || found.title || agencyName;
+          agencyImage = found.image || "";
+          totalMembers = found.total_members || 0;
+          break;
+        }
+        if (page === guessPage && !found) {
+          // Try all pages sequentially
+          for (let p = 1; p <= 10; p++) {
+            if (p === guessPage) continue;
+            try {
+              const tk2 = await getFreshToken();
+              const r2 = await fetch(`https://galalivechat.com/api/agencies/filter?page=${p}`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${tk2}`, Accept: "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({ page: p }),
+              });
+              const d2 = await r2.json();
+              const agencies2 = d2.data?.agencies || [];
+              const found2 = agencies2.find((a: any) => String(a.id) === agencyId.trim() || a.id === numericId);
+              if (found2) {
+                agencyName = found2.name || found2.title || agencyName;
+                agencyImage = found2.image || "";
+                totalMembers = found2.total_members || 0;
+                break;
+              }
+              if (agencies2.length < 10) break; // last page
+            } catch {}
+          }
           break;
         }
       } catch {}
     }
 
-    // 3. Get members
+    // 2. Get members via wares-api proxy
     let members: AgencyMember[] = [];
     try {
-      const token3 = await getFreshToken();
-      const mRes = await fetch("https://galalivechat.com/api/agencies/history-data-agency", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token3}`, Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ month: new Date().getMonth() + 1, year: new Date().getFullYear() }),
-      });
+      const mRes = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-members&agency_id=${numericId}`
+      );
       const mData = await mRes.json();
-      const rawMembers = mData.data?.original?.data || mData.data?.data || [];
-      members = rawMembers
-        .filter((m: any) => String(m.agency_id) === agencyId.trim())
-        .map((m: any) => ({
+      const rawMembers = mData.data || [];
+      if (rawMembers.length > 0) {
+        members = rawMembers.map((m: any) => ({
           uuid: String(m.uuid || m.user_id || ""),
           name: m.name || m.nickname || "—",
-          charges: parseExp(m.charges || m.exp || 0),
+          charges: parseExp(m.charges || m.total_used || m.exp || 0),
           user_id: m.user_id || m.id || 0,
         }));
+      }
     } catch {}
+
+    // Fallback: get members from gala API if proxy not ready
+    if (members.length === 0) {
+      try {
+        const token3 = await getFreshToken();
+        const mRes = await fetch("https://galalivechat.com/api/agencies/history-data-agency", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token3}`, Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ month: new Date().getMonth() + 1, year: new Date().getFullYear() }),
+        });
+        const mData = await mRes.json();
+        const rawMembers = mData.data?.original?.data || mData.data?.data || [];
+        members = rawMembers
+          .filter((m: any) => String(m.agency_id) === agencyId.trim())
+          .map((m: any) => ({
+            uuid: String(m.uuid || m.user_id || ""),
+            name: m.name || m.nickname || "—",
+            charges: parseExp(m.charges || m.total_used || m.exp || 0),
+            user_id: m.user_id || m.id || 0,
+          }));
+      } catch {}
+    }
+
+    // 3. Get pending requests via wares-api proxy
+    let pendingRequests: PendingRequest[] = [];
+    try {
+      const rRes = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-requests&agency_id=${numericId}`
+      );
+      const rData = await rRes.json();
+      const rawReqs = rData.data || [];
+      pendingRequests = rawReqs.map((r: any) => ({
+        user_id: r.user_id || r.id || 0,
+        uuid: String(r.uuid || r.user_id || ""),
+        name: r.name || r.nickname || "—",
+        avatar: r.avatar || "",
+      }));
+    } catch {}
+
+    // Fallback: try GET for show_request if proxy not ready
+    if (pendingRequests.length === 0) {
+      try {
+        const token = await getFreshToken();
+        const reqRes = await fetch("https://galalivechat.com/api/agencies/show_request", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        });
+        const reqData = await reqRes.json();
+        const allReqs = reqData.data || [];
+        pendingRequests = allReqs.map((r: any) => ({
+          user_id: r.user_id || r.id || 0,
+          uuid: String(r.uuid || r.user_id || ""),
+          name: r.name || r.nickname || "—",
+          avatar: r.avatar || "",
+        }));
+      } catch {}
+    }
 
     return {
       id: agencyId.trim(),
