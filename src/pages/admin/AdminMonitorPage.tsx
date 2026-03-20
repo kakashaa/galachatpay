@@ -303,7 +303,7 @@ const AdminMonitorPage: React.FC = () => {
           )}
 
           <AnimatePresence mode="popLayout">
-            {alerts.map((alert, i) => {
+            {filteredAlerts.map((alert, i) => {
               const config = alertConfig[alert.alert_type] || { label: alert.alert_type, color: "#71717a", bg: "rgba(113,113,122,0.08)" };
               return (
                 <motion.div
