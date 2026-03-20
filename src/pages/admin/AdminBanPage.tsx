@@ -86,9 +86,9 @@ const AdminBanPage: React.FC = () => {
     await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
   };
 
-  const doUnban = async (uuid: string) => {
+  const doUnban = async (uuid: string, unbanType: string = "normal") => {
     const res = await supabase.functions.invoke("wares-request", {
-      body: { action: "unban-user-real", uuid },
+      body: { action: "unban-user-real", uuid, unban_type: unbanType },
     });
     if (res.error) throw new Error("فشل فك الحظر");
   };
@@ -169,8 +169,9 @@ const AdminBanPage: React.FC = () => {
     setActionInProgress(report.id);
     const t = toast.loading("جاري فك الحظر...");
     try {
-      await doUnban(report.reported_user_id);
-      await supabase.from("ban_reports").delete().eq("id", report.id);
+      const unbanType = report.ban_type === "promotion" ? "device" : "normal";
+      await doUnban(report.reported_user_id, unbanType);
+      await supabase.from("ban_reports").delete().eq("reported_user_id", report.reported_user_id).eq("is_verified", true);
       toast.dismiss(t); toast.success("تم فك الحظر!");
       loadData();
     } catch { toast.dismiss(t); toast.error("فشل"); }
