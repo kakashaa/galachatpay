@@ -276,10 +276,20 @@ const AdminWorksPage: React.FC = () => {
                         {a.status === "active" ? "تعليق" : "تفعيل"}
                       </button>
                       {isOwner && (
-                        <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
-                          className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> تجميد
-                        </button>
+                        <>
+                          <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-400 flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> تجميد
+                          </button>
+                          <button onClick={() => {
+                            setEditFinAccount(a);
+                            setEditBalanceUsd(String(Number(a.balance_usd || 0)));
+                            setEditTotalEarnings(String(Number(a.total_earnings_usd || 0)));
+                          }}
+                            className="px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1" style={{ background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
+                            <Pencil className="w-3 h-3" /> تعديل
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
