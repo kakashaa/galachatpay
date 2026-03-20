@@ -188,14 +188,20 @@ const InstantRequest: React.FC = () => {
       const { error: insertError } = await supabase.from("salary_requests").insert({
         user_uuid: user.uuid,
         user_name: user.name,
-        user_phone: user.phone,
+        user_phone: whatsappNumber ? `${whatsappCode}${whatsappNumber}` : (user.phone || ""),
         request_type: "instant",
         amount_usd: selectedTransfer.amount_usd,
         amount_coins: selectedTransfer.amount_coins,
         recipient_name: fullName,
         recipient_country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
         payment_method: selectedMethod?.label || "",
-        payment_details: accountInfo,
+        payment_details: JSON.stringify({
+          account_number: accountInfo,
+          whatsapp: whatsappNumber ? `${whatsappCode}${whatsappNumber}` : "",
+          country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
+          bank: selectedMethod?.label || "",
+          account_name: fullName,
+        }),
         status: "pending",
         transfer_id: selectedTransfer.reference_id,
         target_uuid: supporterInfo.uuid,
@@ -210,32 +216,6 @@ const InstantRequest: React.FC = () => {
         }
         setLoading(false);
         return;
-      }
-
-      // Also notify external API
-      try {
-        await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "salary_charge_manual",
-            admin_key: "ghala2026owner",
-            uuid: user.uuid,
-            target_uuid: supporterInfo.uuid,
-            amount: selectedTransfer.amount_usd,
-            reference_id: selectedTransfer.reference_id,
-            request_type: "instant",
-            instant_data: {
-              country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
-              bank: selectedMethod?.label || "",
-              account_name: fullName,
-              account_number: accountInfo,
-              whatsapp: whatsappNumber ? `${whatsappCode}${whatsappNumber}` : "",
-            },
-          }),
-        });
-      } catch {
-        // Non-critical, local DB already saved
       }
 
       const refId = `INS-${Date.now().toString(36).toUpperCase().slice(-6)}`;
