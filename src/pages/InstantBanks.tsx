@@ -138,7 +138,7 @@ const InstantBanks: React.FC = () => {
   const [confirmed, setConfirmed] = useState(false);
 
   return (
-    <MobileLayout showHeader headerTitle="حسابات الدفع" onBack={() => navigate("/instant")}>
+    <MobileLayout showHeader headerTitle="حسابات الدفع" onBack={() => navigate("/salary/instant")}>
       <div className="px-5 py-4 space-y-5 pb-32">
         <div className="glass-card p-4 css-fade-up">
           <div className="flex items-start gap-3">
