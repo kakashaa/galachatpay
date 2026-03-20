@@ -35,6 +35,7 @@ const AdminBanPage: React.FC = () => {
   const [banTarget, setBanTarget] = useState<TargetUser | null>(null);
   const [banLookup, setBanLookup] = useState(false);
   const [banReason, setBanReason] = useState<"promotion" | "insult" | "other">("insult");
+  const [banDuration, setBanDuration] = useState<number>(24);
   const [banCustom, setBanCustom] = useState("");
   const [banImage, setBanImage] = useState<File | null>(null);
   const [banLoading, setBanLoading] = useState(false);
@@ -144,7 +145,7 @@ const AdminBanPage: React.FC = () => {
     const t = toast.loading("جاري الحظر...");
     try {
       const isPromo = banReason === "promotion";
-      await doBan(uuid, reason, isPromo ? 999999 : 24, isPromo ? "device" : "normal");
+      await doBan(uuid, reason, isPromo ? 999999 : banDuration, isPromo ? "device" : "normal");
       toast.dismiss(t); toast.success("تم الحظر!");
       setBanUuid(""); setBanTarget(null); setBanReason("insult"); setBanCustom(""); setBanImage(null);
     } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
@@ -348,16 +349,14 @@ const AdminBanPage: React.FC = () => {
               {banReason === "insult" && (
                 <div>
                   <p className="text-[11px] text-muted-foreground mb-2 font-bold">مدة الحظر</p>
-                  <div className="grid grid-cols-4 gap-2" id="ban-duration">
+                  <div className="grid grid-cols-4 gap-2">
                     {[3, 12, 24, 48].map(h => (
                       <motion.button key={h} whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          const el = document.getElementById("ban-duration");
-                          el?.querySelectorAll("button").forEach(b => b.classList.remove("selected-duration"));
-                        }}
-                        data-hours={h}
-                        className="py-2 rounded-xl text-xs font-bold text-muted-foreground"
-                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        onClick={() => setBanDuration(h)}
+                        className={`py-2.5 rounded-xl text-xs font-bold transition-all ${banDuration === h ? "text-white" : "text-muted-foreground"}`}
+                        style={banDuration === h
+                          ? { background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 2px 8px rgba(244,63,94,0.3)' }
+                          : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                         {h}h
                       </motion.button>
                     ))}
