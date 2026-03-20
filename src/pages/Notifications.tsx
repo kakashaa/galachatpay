@@ -124,7 +124,7 @@ const Notifications: React.FC = () => {
     const { data } = await supabase
       .from("notifications")
       .select("*")
-      .or(`target.eq.all,user_uuid.eq.${user.uuid}`)
+      .eq("user_uuid", user.uuid)
       .order("created_at", { ascending: false })
       .limit(50);
     const newNotifications = (data as unknown as Notification[]) ?? [];

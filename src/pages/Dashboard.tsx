@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
         .from("notifications")
         .select("*", { count: "exact", head: true })
         .eq("is_read", false)
-        .or(`target.eq.all,user_uuid.eq.${user.uuid}`);
+        .eq("user_uuid", user.uuid);
       const newCount = count ?? 0;
       // Play sound if count increased
       if (newCount > prevNotifCountRef.current && prevNotifCountRef.current > 0) {

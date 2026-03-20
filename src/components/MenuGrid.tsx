@@ -79,12 +79,11 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
     if (!user?.uuid) return;
     const checkBdBan = async () => {
       try {
-        const { data } = await supabase
-          .from("bd_commission_settings")
-          .select("is_active, is_approved, banned_at")
-          .eq("bd_uuid", user.uuid)
-          .maybeSingle();
-        if (data && !data.is_active && !data.is_approved) {
+        const res = await supabase.functions.invoke("bd-manage", {
+          body: { action: "check_status", user_uuid: user.uuid },
+        });
+        const bd = res.data?.bd;
+        if (bd && !bd.is_active && !bd.is_approved) {
           setBdBanned(true);
         } else {
           setBdBanned(false);
