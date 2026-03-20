@@ -1719,6 +1719,45 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_bans: {
+        Row: {
+          ban_type: string
+          banned_by: string | null
+          created_at: string | null
+          duration: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          reason: string | null
+          service: string | null
+          uuid: string
+        }
+        Insert: {
+          ban_type: string
+          banned_by?: string | null
+          created_at?: string | null
+          duration?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          reason?: string | null
+          service?: string | null
+          uuid: string
+        }
+        Update: {
+          ban_type?: string
+          banned_by?: string | null
+          created_at?: string | null
+          duration?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          reason?: string | null
+          service?: string | null
+          uuid?: string
+        }
+        Relationships: []
+      }
       quick_support_requests: {
         Row: {
           attachment_url: string | null
