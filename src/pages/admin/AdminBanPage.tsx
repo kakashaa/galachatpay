@@ -110,7 +110,9 @@ const AdminBanPage: React.FC = () => {
     if (!ok) return;
     const t = toast.loading("جاري فك الحظر...");
     try {
-      await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banForm.target_uuid.trim()}`);
+      await supabase.functions.invoke("wares-request", {
+        body: { action: "unban-user-real", uuid: banForm.target_uuid.trim() },
+      });
       toast.dismiss(t);
       toast.success("تم فك الحظر!");
     } catch { toast.dismiss(t); toast.error("فشل فك الحظر"); }
