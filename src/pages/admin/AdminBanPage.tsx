@@ -3,7 +3,7 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
-import { Ban, Unlock, Loader2, ShieldBan, Shield, Play, ExternalLink, Upload, Clock, XCircle, Image as LucideImage } from "lucide-react";
+import { Ban, Unlock, Loader2, ShieldBan, Shield, ExternalLink, Upload, Image as LucideImage } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
