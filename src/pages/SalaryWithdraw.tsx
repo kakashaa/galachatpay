@@ -542,6 +542,7 @@ const SalaryWithdraw: React.FC = () => {
           payment_method: effectiveBankLabel || selectedBank,
           payment_details: `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`,
           status: "pending",
+          transfer_id: selectedTransfer.reference_id,
           transaction_id: selectedTransfer.reference_id,
           transaction_date: new Date().toISOString(),
           target_uuid: user!.uuid,
@@ -550,8 +551,17 @@ const SalaryWithdraw: React.FC = () => {
           admin_note: notes || null,
         } as any);
 
-        if (insertError && insertError.code !== "23505") {
+        if (insertError) {
+          const alreadyUsedError = insertError.message?.includes("TRANSFER_ALREADY_USED") || insertError.code === "23505";
+          if (alreadyUsedError) {
+            markTransferAsUsedLocally(selectedTransfer.reference_id);
+            toast.error("هذه الحوالة تم صرفها مسبقاً");
+            setStep("transfers_list");
+            return;
+          }
           console.error("Failed to save withdraw request:", insertError);
+          toast.error("تم إرسال الطلب لكن فشل تسجيله، تواصل مع الدعم");
+          return;
         }
 
         setSubmitResult(data);
