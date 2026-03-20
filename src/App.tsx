@@ -132,7 +132,11 @@ const App = () => {
                   <Route path="/support/vip-chat" element={<VipChat />} />
                   <Route path="/support/tickets" element={<SupportTickets />} />
                   <Route path="/support-chat" element={<SupportChat />} />
-                  <Route path="/salary" element={<SalaryWithdraw />} />
+                  <Route path="/salary" element={<SalaryHome />} />
+                  <Route path="/salary/cash" element={<SalaryWithdraw />} />
+                  <Route path="/salary/charge-self" element={<SalaryWithdraw />} />
+                  <Route path="/salary/charge-other" element={<SalaryWithdraw />} />
+                  <Route path="/salary/instant" element={<InstantRequest />} />
                   <Route path="/report" element={<ReportPage />} />
                   <Route path="/gift" element={<GiftRequest />} />
                   <Route path="/custom-gift" element={<CustomGiftUpload />} />
