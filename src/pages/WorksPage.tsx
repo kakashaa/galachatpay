@@ -504,7 +504,7 @@ const WorksPage: React.FC = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card border border-border rounded-2xl p-3 text-center"
-            onClick={() => { if (balance > 0) { /* scroll to withdraw */ } }}
+            onClick={() => { if (balance > 0) submitWithdraw(); }}
             style={{ cursor: balance > 0 ? 'pointer' : 'default' }}
           >
             <p className="text-2xl font-mono font-extrabold text-green-400">${balance.toFixed(2)}</p>
@@ -513,18 +513,18 @@ const WorksPage: React.FC = () => {
             {balance > 0 && <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب</p>}
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-2xl font-mono font-extrabold text-emerald-400">${totalEarnings.toFixed(2)}</p>
+            <p className="text-2xl font-mono font-extrabold text-green-400">${todayEarnings.toFixed(2)}</p>
             <p className="text-[9px] text-muted-foreground">إجمالي الأرباح</p>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-card border border-border rounded-xl p-2.5 text-center">
-            <p className="text-lg font-mono font-extrabold text-amber-400">${todayEarnings.toFixed(2)}</p>
+            <p className="text-lg font-mono font-extrabold text-green-400">${todayEarnings.toFixed(2)}</p>
             <p className="text-[9px] text-muted-foreground font-medium">أرباح اليوم</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-2.5 text-center">
-            <p className="text-lg font-mono font-extrabold text-cyan-400">{Math.floor(monthEarnings * 7500).toLocaleString()}</p>
+            <p className="text-lg font-mono font-extrabold text-cyan-400">{monthEarnings.toLocaleString()}</p>
             <p className="text-[9px] text-muted-foreground font-medium">أرباح الشهر</p>
             <p className="text-[7px] text-muted-foreground">كوينز</p>
           </div>
