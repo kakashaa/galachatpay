@@ -57,17 +57,17 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         .select("user_uuid, vip_level")
         .in("user_uuid", uuids)
         .eq("request_month", month)
-        .gte("vip_level", 4);
+        .gte("vip_level", 4)
+        .lte("vip_level", 5);
 
       const map: Record<string, AgentUsage> = {};
       for (const a of list) {
-        map[a.agent_uuid] = { vip4_used: 0, vip5_used: 0, vip6_used: 0 };
+        map[a.agent_uuid] = { vip4_used: 0, vip5_used: 0 };
       }
       for (const r of vipReqs || []) {
         if (!map[r.user_uuid]) continue;
         if (r.vip_level === 4) map[r.user_uuid].vip4_used++;
         else if (r.vip_level === 5) map[r.user_uuid].vip5_used++;
-        else if (r.vip_level === 6) map[r.user_uuid].vip6_used++;
       }
       setUsageMap(map);
     }
