@@ -5,9 +5,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
 
 const AdminWorksPage: React.FC = () => {
   const { handleLogout, adminCall, adminUsername } = useAdminSession();
@@ -54,6 +55,19 @@ const AdminWorksPage: React.FC = () => {
   });
   const [globalCommPct, setGlobalCommPct] = useState("");
   const [settingsLoading, setSettingsLoading] = useState(false);
+
+  // Suspended accounts
+  const [suspendedAccounts, setSuspendedAccounts] = useState<any[]>([]);
+
+  // Commission logs
+  const [commissionLogs, setCommissionLogs] = useState<any[]>([]);
+  const [selectedCommBd, setSelectedCommBd] = useState<string | null>(null);
+
+  // BD Notification
+  const [notifTarget, setNotifTarget] = useState("all");
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifBody, setNotifBody] = useState("");
+  const [notifSending, setNotifSending] = useState(false);
 
   const fetchGlobalSettings = useCallback(async () => {
     const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled"];
@@ -115,11 +129,40 @@ const AdminWorksPage: React.FC = () => {
     setLoading(false);
   }, [adminCall]);
 
+  const fetchSuspended = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from("login_attempts")
+        .select("*")
+        .or("is_permanently_blocked.eq.true,blocked_until.gt." + new Date().toISOString())
+        .order("updated_at", { ascending: false });
+      setSuspendedAccounts(data || []);
+    } catch { }
+    setLoading(false);
+  }, []);
+
+  const fetchCommissionLogs = useCallback(async (bdUuid: string) => {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from("bd_commission_logs")
+        .select("*")
+        .eq("bd_uuid", bdUuid)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setCommissionLogs(data || []);
+    } catch { }
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (tab === "requests") fetchRequests();
     else if (tab === "accounts") fetchAccounts();
     else if (tab === "withdrawals") fetchWithdrawals();
     else if (tab === "settings") { fetchAccounts(); fetchGlobalSettings(); }
+    else if (tab === "suspended") fetchSuspended();
+    else if (tab === "commissions") fetchAccounts();
   }, [tab]);
 
   const approveRequest = async (id: string) => {
@@ -156,8 +199,63 @@ const AdminWorksPage: React.FC = () => {
   };
 
   const removeMember = async (id: string) => {
-    try { await adminCall("works_update_member", { id, status: "removed" }); toast.success("تم الإزالة"); if (selectedWorksId) fetchMembers(selectedWorksId); }
-    catch { toast.error("فشل"); }
+    try {
+      // Delete from bd_members entirely so it disappears from both sides
+      await adminCall("works_remove_member", { id });
+      toast.success("تم إزالة العضو");
+      if (selectedWorksId) fetchMembers(selectedWorksId);
+    } catch {
+      // Fallback: update status
+      try { await adminCall("works_update_member", { id, status: "removed" }); toast.success("تم الإزالة"); if (selectedWorksId) fetchMembers(selectedWorksId); }
+      catch { toast.error("فشل"); }
+    }
+  };
+
+  // Unblock suspended account
+  const unblockAccount = async (id: string) => {
+    try {
+      await supabase.from("login_attempts").update({
+        failed_attempts: 0,
+        blocked_until: null,
+        is_permanently_blocked: false,
+        admin_unblocked_at: new Date().toISOString(),
+      } as any).eq("id", id);
+      toast.success("تم إعادة التفعيل");
+      fetchSuspended();
+    } catch { toast.error("فشل"); }
+  };
+
+  const deleteSuspendedAccount = async (id: string) => {
+    try {
+      await supabase.from("login_attempts").delete().eq("id", id);
+      toast.success("تم الحذف");
+      fetchSuspended();
+    } catch { toast.error("فشل"); }
+  };
+
+  // Send BD notification
+  const sendBdNotification = async () => {
+    if (!notifTitle.trim() || !notifBody.trim()) {
+      toast.error("أدخل العنوان والنص");
+      return;
+    }
+    setNotifSending(true);
+    try {
+      await supabase.from("bd_notifications").insert({
+        target_uuid: notifTarget,
+        title: notifTitle.trim(),
+        body: notifBody.trim(),
+        type: "admin_message",
+        is_read: false,
+        is_dismissed: false,
+        sent_by: adminUsername,
+      });
+      toast.success("تم إرسال الإشعار");
+      setNotifTitle("");
+      setNotifBody("");
+      setNotifTarget("all");
+    } catch { toast.error("فشل الإرسال"); }
+    setNotifSending(false);
   };
 
   // === Owner-only actions ===
@@ -215,13 +313,12 @@ const AdminWorksPage: React.FC = () => {
         toast.success("تم تجميد حساب البيدي");
         fetchAccounts();
       } else {
-        // Freeze user - insert into manual_bans
         await supabase.from("manual_bans").insert({
           target_uuid: freezeTarget.id,
           ban_type: "service_freeze",
           reason: freezeReason || "تجميد خدمات بواسطة المالك",
           banned_by: "naz",
-          duration_hours: 8760, // 1 year
+          duration_hours: 8760,
           banned_elements: ["services"],
         });
         toast.success("تم تجميد خدمات المستخدم");
@@ -254,6 +351,11 @@ const AdminWorksPage: React.FC = () => {
     setEditFinLoading(false);
   };
 
+  const formatDate = (d: string) => {
+    try { return new Date(d).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); }
+    catch { return d; }
+  };
+
   return (
     <AdminPageLayout title="إدارة البيدي" onLogout={handleLogout}>
       <div className="max-w-3xl mx-auto p-4" dir="rtl">
@@ -276,11 +378,23 @@ const AdminWorksPage: React.FC = () => {
         )}
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full grid grid-cols-4 mb-4">
+          <TabsList className="w-full grid grid-cols-4 mb-2">
             <TabsTrigger value="requests">الطلبات</TabsTrigger>
             <TabsTrigger value="accounts">الحسابات</TabsTrigger>
             <TabsTrigger value="withdrawals">السحوبات</TabsTrigger>
             <TabsTrigger value="settings">الإعدادات</TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full grid grid-cols-3 mb-4">
+            <TabsTrigger value="suspended" className="flex items-center gap-1">
+              <ShieldOff className="w-3 h-3" /> الموقوفة
+              {suspendedAccounts.length > 0 && <span className="bg-red-500 text-white text-[8px] px-1 rounded-full">{suspendedAccounts.length}</span>}
+            </TabsTrigger>
+            <TabsTrigger value="commissions" className="flex items-center gap-1">
+              <BarChart3 className="w-3 h-3" /> العمولات
+            </TabsTrigger>
+            <TabsTrigger value="notify" className="flex items-center gap-1">
+              <Bell className="w-3 h-3" /> إشعار
+            </TabsTrigger>
           </TabsList>
 
           {/* Requests Tab */}
@@ -395,6 +509,153 @@ const AdminWorksPage: React.FC = () => {
             )}
           </TabsContent>
 
+          {/* Suspended Accounts Tab */}
+          <TabsContent value="suspended">
+            {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+              <div className="space-y-3">
+                {suspendedAccounts.length === 0 && (
+                  <div className="text-center py-10">
+                    <ShieldOff className="w-10 h-10 mx-auto mb-2 text-muted-foreground/50" />
+                    <p className="text-muted-foreground text-sm">لا توجد حسابات موقوفة</p>
+                  </div>
+                )}
+                {suspendedAccounts.map(sa => (
+                  <div key={sa.id} className="bg-card border border-red-500/20 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold font-mono">{sa.target_uuid}</span>
+                      <Badge variant="destructive" className="text-[9px]">
+                        {sa.is_permanently_blocked ? "محظور نهائياً" : "موقوف مؤقتاً"}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <div>
+                        <span className="text-muted-foreground">محاولات فاشلة: </span>
+                        <span className="font-bold text-red-400">{sa.failed_attempts}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">مرات الحظر: </span>
+                        <span className="font-bold">{sa.block_count}</span>
+                      </div>
+                    </div>
+                    {sa.blocked_until && (
+                      <p className="text-[10px] text-muted-foreground">محظور حتى: {formatDate(sa.blocked_until)}</p>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">آخر تحديث: {formatDate(sa.updated_at)}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => unblockAccount(sa.id)}
+                        className="flex-1 bg-emerald-500/10 text-emerald-400 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                        <ShieldOff className="w-3 h-3" /> إعادة تفعيل
+                      </button>
+                      <button onClick={() => deleteSuspendedAccount(sa.id)}
+                        className="flex-1 bg-destructive/10 text-destructive py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                        <Trash2 className="w-3 h-3" /> حذف نهائي
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Commissions Tab */}
+          <TabsContent value="commissions">
+            {!selectedCommBd ? (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground mb-2">اختر حساب بيدي لعرض عمولاته:</p>
+                {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+                  accounts.length === 0 ? (
+                    <p className="text-center text-muted-foreground text-sm py-10">لا توجد حسابات</p>
+                  ) : accounts.map(a => (
+                    <button key={a.id} onClick={() => { setSelectedCommBd(a.user_uuid); fetchCommissionLogs(a.user_uuid); }}
+                      className="w-full bg-card border border-border rounded-xl p-3 text-right hover:border-primary/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-bold">{a.user_name || "—"}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono mr-2">{a.user_uuid}</span>
+                        </div>
+                        <BarChart3 className="w-4 h-4 text-primary" />
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-primary" />
+                    عمولات: {selectedCommBd}
+                  </h3>
+                  <button onClick={() => { setSelectedCommBd(null); setCommissionLogs([]); }}
+                    className="text-xs text-muted-foreground">← رجوع</button>
+                </div>
+                {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
+                  commissionLogs.length === 0 ? (
+                    <p className="text-center text-muted-foreground text-sm py-10">لا توجد سجلات عمولة</p>
+                  ) : (
+                    <>
+                      <div className="bg-card border border-emerald-500/20 rounded-xl p-3 text-center">
+                        <p className="text-xs text-muted-foreground">إجمالي هذا الشهر</p>
+                        <p className="text-xl font-bold text-emerald-400">
+                          {commissionLogs.reduce((s, l) => s + (l.amount || 0), 0).toLocaleString()} كوينز
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {commissionLogs.map(log => (
+                          <div key={log.id} className="bg-card border border-border rounded-xl p-3">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold">{log.member_uuid}</span>
+                              <span className="font-bold text-emerald-400">+{(log.amount || 0).toLocaleString()} ك</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-1">
+                              <span>{log.member_type === "supporter" ? "داعم" : "وكيل"} • {log.commission_pct}%</span>
+                              <span>مبلغ: {(log.source_amount || 0).toLocaleString()}</span>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground mt-1">{formatDate(log.created_at)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Notification Tab */}
+          <TabsContent value="notify">
+            <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-primary" />
+                <span className="text-sm font-bold">إرسال إشعار للبيدي</span>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">اختر البيدي</label>
+                <select value={notifTarget} onChange={e => setNotifTarget(e.target.value)}
+                  className="w-full h-10 rounded-xl bg-muted/30 border border-border/50 text-sm px-3 mt-1">
+                  <option value="all">جميع البيدي</option>
+                  {accounts.map(a => (
+                    <option key={a.id} value={a.user_uuid}>{a.user_name || a.works_code} — {a.user_uuid}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">عنوان الإشعار</label>
+                <Input value={notifTitle} onChange={e => setNotifTitle(e.target.value)}
+                  placeholder="مثال: تحديث مهم" className="mt-1" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">نص الإشعار</label>
+                <Textarea value={notifBody} onChange={e => setNotifBody(e.target.value)}
+                  placeholder="اكتب نص الإشعار..." className="mt-1 min-h-[80px]" />
+              </div>
+              <button onClick={sendBdNotification} disabled={notifSending || !notifTitle.trim() || !notifBody.trim()}
+                className="w-full h-10 rounded-xl text-sm font-bold bg-primary text-primary-foreground flex items-center justify-center gap-2 disabled:opacity-50">
+                {notifSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> إرسال الإشعار</>}
+              </button>
+            </div>
+          </TabsContent>
+
           {/* Settings Tab */}
           <TabsContent value="settings">
             <div className="space-y-4">
@@ -405,7 +666,6 @@ const AdminWorksPage: React.FC = () => {
                   <span className="text-sm font-bold">إعدادات عامة (الكل)</span>
                 </div>
 
-                {/* Toggle: Wallets */}
                 {[
                   { key: "works_wallets_enabled", label: "المحافظ / السحب", desc: "تمكين أو إيقاف السحب لجميع حسابات البيدي", icon: <DollarSign className="w-4 h-4" /> },
                   { key: "works_instant_commission", label: "احتساب العمولة الفوري", desc: "تفعيل أو إيقاف حساب العمولات التلقائي", icon: <Calculator className="w-4 h-4" /> },
@@ -431,7 +691,6 @@ const AdminWorksPage: React.FC = () => {
                   </div>
                 ))}
 
-                {/* Global commission edit */}
                 <div className="p-3 rounded-xl border border-border/50 bg-muted/20 space-y-2">
                   <div className="flex items-center gap-2">
                     <Percent className="w-4 h-4 text-amber-400" />
@@ -449,7 +708,6 @@ const AdminWorksPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Per-account settings */}
               <p className="text-xs text-muted-foreground">إعدادات حسابات فردية:</p>
               {accounts.map(a => (
                 <div key={a.id} className="bg-card border border-border rounded-xl p-3 space-y-3">

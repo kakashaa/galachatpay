@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Loader2, Users, MessageCircle } from 'lucide-react';
+import { Send, Loader2, Users, MessageCircle, Paperclip, X, Image as LucideImage } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import ChatBubble from '@/components/chat/ChatBubble';
 import DateSeparator from '@/components/chat/DateSeparator';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface ChatMessage {
   id: string;
@@ -14,6 +15,7 @@ interface ChatMessage {
   message_type: string;
   is_deleted: boolean;
   created_at: string;
+  media_url?: string | null;
 }
 
 interface AdminInfo {
@@ -41,7 +43,10 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
   const [loading, setLoading] = useState(true);
   const [admins, setAdmins] = useState<AdminInfo[]>([]);
   const [onlineAdmins, setOnlineAdmins] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -84,7 +89,6 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
     return () => { supabase.removeChannel(channel); };
   }, [loadMessages, loadAdmins]);
 
-  // Track recently active admins as "online"
   useEffect(() => {
     const recent = new Set<string>();
     const now = Date.now();
@@ -94,20 +98,52 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
     setOnlineAdmins(Array.from(recent));
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!newMessage.trim() || sending) return;
+  const handleSend = async (mediaUrl?: string, mediaType?: string) => {
+    const text = newMessage.trim();
+    if (!text && !mediaUrl) return;
+    if (sending) return;
     setSending(true);
     try {
+      const msgType = mediaType || 'text';
       const { error } = await supabase.from('admin_chat_messages').insert({
         sender_username: adminUsername,
         sender_display_name: adminUsername,
-        message: newMessage.trim(),
-        message_type: 'text',
-      });
+        message: text || (mediaType === 'video' ? '🎥 فيديو' : '📷 صورة'),
+        message_type: msgType,
+        media_url: mediaUrl || null,
+      } as any);
       if (error) throw error;
       setNewMessage('');
     } catch { toast.error('فشل إرسال الرسالة'); }
     finally { setSending(false); }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const isVideo = file.type.startsWith('video');
+    const maxSize = isVideo ? 8 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(isVideo ? "الفيديو لازم أقل من 8MB" : "الصورة لازم أقل من 5MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const fileName = `chat/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { data, error } = await supabase.storage.from('chat-media').upload(fileName, file);
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
+      const mediaType = isVideo ? 'video' : 'image';
+      await handleSend(urlData.publicUrl, mediaType);
+    } catch {
+      toast.error("فشل رفع الملف");
+    }
+    setUploading(false);
   };
 
   const getAdminRole = (username: string): string => {
@@ -127,7 +163,26 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
     else grouped.push({ date, msgs: [msg] });
   });
 
+  const renderMediaContent = (msg: ChatMessage) => {
+    if (!msg.media_url) return null;
+    if (msg.message_type === 'video') {
+      return (
+        <video src={msg.media_url} controls playsInline
+          className="rounded-xl max-w-[250px] max-h-[300px] mt-1" />
+      );
+    }
+    if (msg.message_type === 'image') {
+      return (
+        <img src={msg.media_url} alt=""
+          className="rounded-xl max-w-[250px] max-h-[300px] object-cover cursor-pointer mt-1"
+          onClick={() => setPreviewImage(msg.media_url!)} />
+      );
+    }
+    return null;
+  };
+
   return (
+    <>
     <div className="flex flex-col h-[calc(100vh-180px)] max-h-[600px] rounded-2xl overflow-hidden" dir="rtl" style={{ background: "hsl(var(--chat-bg))", border: "1px solid hsl(0 0% 100% / 0.06)" }}>
       {/* Header */}
       <div className="px-4 py-3" style={{ background: "hsl(var(--chat-header-bg))", borderBottom: "1px solid hsl(0 0% 100% / 0.06)" }}>
@@ -141,7 +196,6 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
           </div>
         </div>
 
-        {/* Online admins avatars bar */}
         {admins.length > 0 && (
           <div className="flex gap-2 mt-2.5 overflow-x-auto pb-1 scrollbar-hide">
             {admins.map(admin => {
@@ -205,15 +259,21 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
                 const displayName = `${getAdminDisplayName(msg.sender_username)}${roleLabel ? ` · ${roleLabel}` : ''}`;
 
                 return (
-                  <ChatBubble
-                    key={msg.id}
-                    isMine={msg.sender_username === adminUsername}
-                    senderName={displayName}
-                    senderType={role}
-                    content={msg.message}
-                    time={msg.created_at}
-                    showSender={showSender}
-                  />
+                  <div key={msg.id}>
+                    <ChatBubble
+                      isMine={msg.sender_username === adminUsername}
+                      senderName={displayName}
+                      senderType={role}
+                      content={msg.message}
+                      time={msg.created_at}
+                      showSender={showSender}
+                    />
+                    {msg.media_url && (
+                      <div className={`flex ${msg.sender_username === adminUsername ? 'justify-end' : 'justify-start'} px-2 -mt-1 mb-2`}>
+                        {renderMediaContent(msg)}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -223,6 +283,11 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
 
       {/* Input */}
       <div className="px-3 py-2.5 flex items-center gap-2" style={{ borderTop: "1px solid hsl(0 0% 100% / 0.06)" }}>
+        <button onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="p-2 rounded-xl hover:bg-white/10 transition-colors disabled:opacity-50">
+          {uploading ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /> : <Paperclip className="w-5 h-5 text-muted-foreground" />}
+        </button>
+        <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
         <input
           type="text"
           value={newMessage}
@@ -234,8 +299,8 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
         />
         <motion.button
           whileTap={{ scale: 0.85 }}
-          onClick={handleSend}
-          disabled={!newMessage.trim() || sending}
+          onClick={() => handleSend()}
+          disabled={(!newMessage.trim() && !uploading) || sending}
           className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40"
           style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}
         >
@@ -243,6 +308,19 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole }) => {
         </motion.button>
       </div>
     </div>
+
+    {/* Image Preview Dialog */}
+    {previewImage && (
+      <Dialog open onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-1 bg-black/95 border-none">
+          <button onClick={() => setPreviewImage(null)} className="absolute top-2 right-2 z-10 p-1 rounded-full bg-black/50">
+            <X className="w-5 h-5 text-white" />
+          </button>
+          <img src={previewImage} className="w-full h-full object-contain max-h-[85vh]" />
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 };
 
