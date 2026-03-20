@@ -406,7 +406,8 @@ const BDDashboard: React.FC = () => {
                 {tab === 'dashboard' ? (bd.bd_name || user?.name || "BD") :
                  tab === 'supporters' ? 'الداعمين' :
                  tab === 'agents' ? 'الوكالات' :
-                 tab === 'wallet' ? 'المحفظة' : 'الإعدادات'}
+                 tab === 'wallet' ? 'المحفظة' :
+                 tab === 'notifications' ? 'الإشعارات' : 'الإعدادات'}
               </h1>
             </div>
           </div>
