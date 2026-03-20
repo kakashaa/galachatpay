@@ -77,7 +77,7 @@ serve(async (req) => {
       if (!isAgent) {
         if (vipLevel > 3) {
           return new Response(
-            JSON.stringify({ success: false, error: "مستوى VIP 4-6 متاح فقط للوكلاء." }),
+            JSON.stringify({ success: false, error: "مستوى VIP 4-5 متاح فقط للوكلاء." }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
