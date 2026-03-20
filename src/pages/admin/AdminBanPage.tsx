@@ -80,11 +80,13 @@ const AdminBanPage: React.FC = () => {
         banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null,
       });
 
-      // Execute real ban on external server
+      // Execute real ban on external server via edge function proxy
       try {
-        await fetch(
-          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=ban-user-real&uuid=${banForm.target_uuid.trim()}&reason=${encodeURIComponent(reason)}&hours=${durationHours}&ban_type=${effectiveBanScope}`
-        );
+        const banRes = await supabase.functions.invoke("wares-request", {
+          body: { action: "ban-user-real", uuid: banForm.target_uuid.trim(), reason, hours: String(durationHours), ban_type: effectiveBanScope },
+        });
+        console.log("External ban result:", banRes.data);
+        if (banRes.error) console.error("External ban error:", banRes.error);
       } catch (e) { console.error("Real ban failed:", e); }
 
       const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
