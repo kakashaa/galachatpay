@@ -726,7 +726,7 @@ const SalaryWithdraw: React.FC = () => {
               className="w-full gold-gradient text-primary-foreground font-bold h-12">
               <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
             </Button>
-            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+            <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
           </div>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
@@ -787,7 +787,7 @@ const SalaryWithdraw: React.FC = () => {
               className="w-full gold-gradient text-primary-foreground font-bold h-12">
               <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
             </Button>
-            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+            <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
           </div>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
@@ -811,7 +811,7 @@ const SalaryWithdraw: React.FC = () => {
             <p className="text-xs text-muted-foreground">سحبت {usedCount} من {maxTotal} هذا الشهر</p>
           </div>
           <SalaryRequestsHistory userUuid={user.uuid} />
-          <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+          <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
         </div>
       </MobileLayout>
     );
@@ -871,7 +871,7 @@ const SalaryWithdraw: React.FC = () => {
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
             <Button onClick={() => navigate("/my-requests")} variant="outline" className="flex-1 border-border/30 font-bold">طلباتي</Button>
-            <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
+            <Button onClick={() => navigate("/salary")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>
@@ -907,7 +907,7 @@ const SalaryWithdraw: React.FC = () => {
             </p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
-            <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
+            <Button onClick={() => navigate("/salary")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>
