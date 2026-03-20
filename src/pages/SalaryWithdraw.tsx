@@ -803,7 +803,101 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ══════════════════════════════════════════
+  // ── CHARGE OTHER SEARCH ──
+  if (step === "charge_other_search" && selectedTransfer) {
+    return (
+      <MobileLayout showHeader headerTitle="شحن لحساب آخر" onBack={getBackAction()}>
+        <div className="px-5 py-6 space-y-5">
+          <div className="glass-card p-5 space-y-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/15 flex items-center justify-center mx-auto">
+              <Search className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">شحن كوينز لحساب آخر</h3>
+            <p className="text-xs text-muted-foreground">أدخل UUID الشخص المراد شحنه</p>
+
+            <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">الحوالة</span>
+              <span className="text-sm font-mono font-bold text-foreground">#{selectedTransfer.reference_id}</span>
+            </div>
+
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-1">
+              <p className="text-xs text-muted-foreground">المبلغ</p>
+              <p className="text-xl font-black text-emerald-400" dir="ltr">${selectedTransfer.amount_usd}</p>
+              <p className="text-sm font-bold text-amber-400">= {(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز</p>
+            </div>
+          </div>
+
+          {/* UUID Search */}
+          <div className="glass-card p-4 space-y-3">
+            <label className="text-xs font-bold text-foreground">UUID المستلم</label>
+            <div className="flex gap-2" dir="ltr">
+              <Input
+                value={targetUuid}
+                onChange={e => setTargetUuid(e.target.value.replace(/\D/g, ""))}
+                placeholder="أدخل UUID..."
+                className="bg-muted/20 border-border/30 flex-1 text-center font-mono"
+                dir="ltr"
+              />
+              <Button onClick={searchTargetUser} disabled={targetSearching || !targetUuid.trim()} size="sm"
+                className="h-10 px-4 bg-primary hover:bg-primary/90">
+                {targetSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Target Info */}
+          {targetInfo && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="glass-card p-4 space-y-3 border border-emerald-500/20">
+              <div className="flex items-center gap-3">
+                {targetInfo.avatar ? (
+                  <img src={targetInfo.avatar} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500/30" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
+                    <User className="w-6 h-6 text-primary" />
+                  </div>
+                )}
+                <div className="flex-1 text-right">
+                  <p className="font-bold text-foreground">{targetInfo.name}</p>
+                  <p className="text-xs text-muted-foreground font-mono">UUID: {targetInfo.uuid}</p>
+                </div>
+              </div>
+
+              {!targetConfirmed ? (
+                <Button onClick={() => setTargetConfirmed(true)}
+                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+                  <CheckCircle className="w-4 h-4 ml-2" /> هذا هو ✓
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 justify-center text-emerald-400">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="text-sm font-bold">تم التأكيد</span>
+                  </div>
+                  <Button onClick={() => chargeCoins(targetInfo.uuid)} disabled={chargingCoins}
+                    className="w-full h-12 gold-gradient text-primary-foreground font-bold">
+                    {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : `شحن ${(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز`}
+                  </Button>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          <Button variant="outline" onClick={() => setStep("transfers_list")} className="w-full h-11 border-border/30">
+            <ArrowRight className="w-4 h-4 ml-1" /> رجوع
+          </Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   // STEPPER FLOW (bank → account for cash)
   // ══════════════════════════════════════════
 
