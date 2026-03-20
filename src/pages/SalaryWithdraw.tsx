@@ -306,6 +306,22 @@ const SalaryWithdraw: React.FC = () => {
       });
 
       setTransfers(allTransfers);
+
+      // Build details map for used transfers
+      const detailsMap: Record<string, UsedTransferDetail> = {};
+      (localRequestsRes.data || []).forEach((r: any) => {
+        const ref = String(r.transfer_id || r.transaction_id || "").trim();
+        if (ref) {
+          detailsMap[ref] = {
+            request_type: r.request_type || "",
+            target_name: r.target_name || null,
+            target_uuid: r.target_uuid || null,
+            recipient_name: r.recipient_name || "",
+            status: r.status || "",
+          };
+        }
+      });
+      setUsedDetails(detailsMap);
       const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
       setIsAgencyOwner(agencyOwner);
 
