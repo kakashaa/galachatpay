@@ -297,128 +297,153 @@ const AdminBanPage: React.FC = () => {
 
           {!loading && subTab === "reports" && (
                 <motion.div key="reports" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-              {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified).length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground"><ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات معلقة</p></div>
-              ) : (
-                <AnimatePresence mode="popLayout">
-                  {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified).map((report: any, i: number) => (
-                    <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -100, height: 0, marginBottom: 0 }} transition={{ delay: i * 0.04 }}
-                      layout className="rounded-2xl overflow-hidden" style={glassCard}>
-                      
-                      {/* Evidence preview */}
-                      {report.evidence_url && (
-                        <div className="relative w-full aspect-video bg-black/40">
-                          {report.evidence_type === "video" ? (
-                            <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
-                          ) : (
-                            <img src={report.evidence_url} alt="دليل" className="w-full h-full object-contain" />
-                          )}
-                          <a href={report.evidence_url} target="_blank" rel="noopener noreferrer"
-                            className="absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center"
-                            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-                            <ExternalLink className="w-3.5 h-3.5 text-white/80" />
-                          </a>
-                          <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[9px] font-bold text-white"
-                            style={{ background: report.evidence_type === "video" ? 'rgba(139,92,246,0.85)' : 'rgba(59,130,246,0.85)' }}>
-                            {report.evidence_type === "video" ? <span className="flex items-center gap-1"><Play className="w-3 h-3" /> فيديو</span> : <span className="flex items-center gap-1"><LucideImage className="w-3 h-3" /> صورة</span>}
-                          </div>
-                        </div>
-                      )}
+              
+              {/* Sub-tabs: pending / rejected */}
+              <div className="flex gap-1 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {[
+                  { key: "pending" as const, label: "معلّقة", icon: Clock, count: banReports.filter(r => !r.is_verified && r.admin_notes !== "مرفوض").length },
+                  { key: "rejected" as const, label: "مرفوضة", icon: XCircle, count: banReports.filter(r => r.admin_notes === "مرفوض").length },
+                ].map(t => (
+                  <motion.button key={t.key} onClick={() => setReportFilter(t.key)} whileTap={{ scale: 0.96 }}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${reportFilter === t.key ? "text-admin-rose" : "text-muted-foreground"}`}
+                    style={reportFilter === t.key ? { background: 'rgba(244,63,94,0.1)' } : {}}>
+                    <t.icon className="w-3.5 h-3.5" />
+                    {t.label}
+                    {t.count > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: reportFilter === t.key ? 'rgba(244,63,94,0.2)' : 'rgba(255,255,255,0.08)' }}>
+                        {t.count}
+                      </span>
+                    )}
+                  </motion.button>
+                ))}
+              </div>
 
-                      <div className="p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
-                          <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold`}
-                            style={report.is_verified ? { background: 'rgba(16,185,129,0.12)', color: 'hsl(160 84% 39%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
-                            {report.is_verified ? "مؤكد" : "معلق"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{report.description}</p>
-                        <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
-                        {report.voice_url && (
-                          <audio src={report.voice_url} controls className="w-full h-8 mt-1" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
-                        )}
-                        {!report.is_verified && (
-                          <div className="flex gap-2 mt-1">
-                            <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
-                              onClick={async () => {
-                                if (actionInProgress) return;
-                                setActionInProgress(report.id);
-                                const t = toast.loading("جاري التأكيد والحظر...");
-                                try {
-                                  // 1. Confirm report in DB
-                                  await adminCall("update_ban_report", { id: report.id, is_verified: true });
-                                  
-                                  // 2. Record ban locally (same as manual ban)
-                                  const banType = report.ban_type === 'promotion' || report.description?.includes('ترويج') ? 'device' : 'normal';
-                                  const hours = banType === 'device' ? 999999 : 24;
-                                  const reason = report.description || 'بلاغ مؤكد';
-                                  
-                                  await adminCall("manual_ban_user", {
-                                    target_uuid: report.reported_user_id,
-                                    ban_type: "full",
-                                    duration_hours: hours,
-                                    reason: reason,
-                                    banned_elements: null,
-                                  });
-                                  
-                                  // 3. Execute REAL ban on external server (full platform ban)
-                                   const banRes = await supabase.functions.invoke("wares-request", {
-                                     body: { action: "ban-user-real", uuid: report.reported_user_id, reason, hours: String(hours), ban_type: banType },
-                                   });
-                                   console.log("Report ban external result:", banRes.data);
-                                   if (banRes.error) console.error("Report ban external error:", banRes.error);
-                                  
-                                  // 4. Notify banned user
-                                  const { sendUserNotification } = await import("@/utils/sendUserNotification");
-                                  const durationText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
-                                  await sendUserNotification(
-                                    report.reported_user_id,
-                                    "تم تعليق حسابك",
-                                    `تم تعليق حسابك بسبب: ${reason}. المدة: ${durationText}.`
-                                  ).catch(() => {});
-                                  
-                                  toast.dismiss(t);
-                                  toast.success("تم الحظر الكامل!");
-                                  // 5. Animate removal & switch tab
-                                  setRemovedIds(prev => new Set(prev).add(report.id));
-                                  setTimeout(() => { setSubTab("list"); loadData(); }, 800);
-                                } catch {
-                                  toast.dismiss(t);
-                                  toast.error("فشل التأكيد");
-                                } finally {
-                                  setActionInProgress(null);
-                                }
-                              }}
-                              className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                              {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "تأكيد"}
-                            </motion.button>
-                            <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
-                              onClick={async () => {
-                                if (actionInProgress) return;
-                                setActionInProgress(report.id + "_r");
-                                const t = toast.loading("جاري الرفض...");
-                                try {
-                                  await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" });
-                                  toast.dismiss(t);
-                                  toast.success("تم الرفض");
-                                  setRemovedIds(prev => new Set(prev).add(report.id));
-                                } catch {
-                                  toast.dismiss(t);
-                                  toast.error("فشل");
-                                } finally {
-                                  setActionInProgress(null);
-                                }
-                              }}
-                              className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                              {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "رفض"}
-                            </motion.button>
+              {/* Pending reports */}
+              {reportFilter === "pending" && (
+                <>
+                  {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified && r.admin_notes !== "مرفوض").length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground"><ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات معلقة</p></div>
+                  ) : (
+                    <AnimatePresence mode="popLayout">
+                      {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified && r.admin_notes !== "مرفوض").map((report: any, i: number) => (
+                        <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -100, height: 0, marginBottom: 0 }} transition={{ delay: i * 0.04 }}
+                          layout className="rounded-2xl overflow-hidden" style={glassCard}>
+                          
+                          {report.evidence_url && (
+                            <div className="relative w-full aspect-video bg-black/40">
+                              {report.evidence_type === "video" ? (
+                                <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
+                              ) : (
+                                <img src={report.evidence_url} alt="دليل" className="w-full h-full object-contain" />
+                              )}
+                              <a href={report.evidence_url} target="_blank" rel="noopener noreferrer"
+                                className="absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center"
+                                style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+                                <ExternalLink className="w-3.5 h-3.5 text-white/80" />
+                              </a>
+                              <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[9px] font-bold text-white"
+                                style={{ background: report.evidence_type === "video" ? 'rgba(139,92,246,0.85)' : 'rgba(59,130,246,0.85)' }}>
+                                {report.evidence_type === "video" ? <span className="flex items-center gap-1"><Play className="w-3 h-3" /> فيديو</span> : <span className="flex items-center gap-1"><LucideImage className="w-3 h-3" /> صورة</span>}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="p-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
+                              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>معلق</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{report.description}</p>
+                            <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
+                            {report.voice_url && (
+                              <audio src={report.voice_url} controls className="w-full h-8 mt-1" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
+                            )}
+                            <div className="flex gap-2 mt-1">
+                              <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                                onClick={async () => {
+                                  if (actionInProgress) return;
+                                  setActionInProgress(report.id);
+                                  const t = toast.loading("جاري التأكيد والحظر...");
+                                  try {
+                                    await adminCall("update_ban_report", { id: report.id, is_verified: true });
+                                    const banType = report.ban_type === 'promotion' || report.description?.includes('ترويج') ? 'device' : 'normal';
+                                    const hours = banType === 'device' ? 999999 : 24;
+                                    const reason = report.description || 'بلاغ مؤكد';
+                                    await adminCall("manual_ban_user", { target_uuid: report.reported_user_id, ban_type: "full", duration_hours: hours, reason, banned_elements: null });
+                                    const banRes = await supabase.functions.invoke("wares-request", { body: { action: "ban-user-real", uuid: report.reported_user_id, reason, hours: String(hours), ban_type: banType } });
+                                    console.log("Report ban external result:", banRes.data);
+                                    const { sendUserNotification } = await import("@/utils/sendUserNotification");
+                                    const durationText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
+                                    await sendUserNotification(report.reported_user_id, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durationText}.`).catch(() => {});
+                                    toast.dismiss(t);
+                                    toast.success("تم الحظر الكامل!");
+                                    setRemovedIds(prev => new Set(prev).add(report.id));
+                                    setTimeout(() => { setSubTab("list"); loadData(); }, 800);
+                                  } catch { toast.dismiss(t); toast.error("فشل التأكيد"); }
+                                  finally { setActionInProgress(null); }
+                                }}
+                                className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
+                                {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "تأكيد"}
+                              </motion.button>
+                              <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                                onClick={async () => {
+                                  if (actionInProgress) return;
+                                  setActionInProgress(report.id + "_r");
+                                  const t = toast.loading("جاري الرفض...");
+                                  try {
+                                    await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" });
+                                    toast.dismiss(t);
+                                    toast.success("تم الرفض");
+                                    loadData();
+                                  } catch { toast.dismiss(t); toast.error("فشل"); }
+                                  finally { setActionInProgress(null); }
+                                }}
+                                className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "رفض"}
+                              </motion.button>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  )}
+                </>
+              )}
+
+              {/* Rejected reports */}
+              {reportFilter === "rejected" && (
+                <>
+                  {banReports.filter(r => r.admin_notes === "مرفوض").length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground"><XCircle className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات مرفوضة</p></div>
+                  ) : (
+                    <div className="space-y-3">
+                      {banReports.filter(r => r.admin_notes === "مرفوض").map((report: any, i: number) => (
+                        <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                          className="rounded-2xl overflow-hidden" style={glassCard}>
+                          
+                          {report.evidence_url && (
+                            <div className="relative w-full aspect-video bg-black/40">
+                              {report.evidence_type === "video" ? (
+                                <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
+                              ) : (
+                                <img src={report.evidence_url} alt="دليل" className="w-full h-full object-contain" />
+                              )}
+                            </div>
+                          )}
+
+                          <div className="p-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
+                              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' }}>مرفوض</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{report.description}</p>
+                            <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           )}
