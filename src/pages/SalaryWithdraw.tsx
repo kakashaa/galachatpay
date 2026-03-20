@@ -747,11 +747,20 @@ const SalaryWithdraw: React.FC = () => {
                     </div>
                     <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                    <span className="text-[10px] text-emerald-400 font-bold">تم شحن كوينزات ✅</span>
-                  </div>
-                </motion.div>
+                  {(() => {
+                    const info = getUsedLabel(t);
+                    return (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                          <span className="text-[10px] text-emerald-400 font-bold">{info.label}</span>
+                        </div>
+                        {info.sub && (
+                          <p className="text-[10px] text-muted-foreground text-left font-mono">{info.sub}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
               ))}
             </div>
           )}
