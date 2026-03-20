@@ -264,8 +264,7 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* Monitor tab — redirect to dedicated page */}
-        {bottomTab === 'monitor' && (() => { navigate('/admin/monitor'); return null; })()}
+        {/* Monitor tab handled by bottom nav onChange → navigate */}
 
         {/* Favorites tab */}
         {bottomTab === 'favorites' && (
