@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
@@ -19,12 +20,15 @@ interface SalaryCharge {
   id: string;
   uuid: string;
   user_name: string;
+  target_name: string;
+  target_uuid: string;
   amount_usd: number;
   coins_charged: number;
   reference_id: string;
   transfer_verified: boolean;
   status: "completed" | "pending" | "failed";
   created_at: string;
+  request_type: string;
 }
 
 interface Props {
@@ -78,23 +82,35 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}?action=salary_charge_list&admin_key=ghala2026owner&month=${selectedMonth}`);
-      const data = await res.json();
-      if (data.success || data.charges) {
-        setCharges((data.charges || []).map((c: any) => ({
-          id: c.id || c.reference_id || Math.random().toString(),
-          uuid: c.uuid || c.user_uuid || "",
-          user_name: c.user_name || c.name || "",
-          amount_usd: c.amount_usd || c.amount || 0,
-          coins_charged: c.coins_charged || c.coins || (c.amount_usd || c.amount || 0) * COINS_PER_USD,
-          reference_id: c.reference_id || c.ref_id || "",
-          transfer_verified: c.transfer_verified ?? true,
-          status: c.status === "completed" || c.status === "done" ? "completed" : c.status === "failed" ? "failed" : "pending",
-          created_at: c.created_at || c.date || new Date().toISOString(),
-        })));
-      } else {
-        setCharges([]);
-      }
+      // Build date range for selected month
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const startDate = new Date(year, month - 1, 1).toISOString();
+      const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
+
+      const { data: rows, error } = await supabase
+        .from("salary_requests")
+        .select("*")
+        .in("request_type", ["charge_self", "charge_other"])
+        .gte("created_at", startDate)
+        .lte("created_at", endDate)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setCharges((rows || []).map((c: any) => ({
+        id: c.id,
+        uuid: c.target_uuid || c.user_uuid || "",
+        user_name: c.user_name || "",
+        target_name: c.target_name || c.recipient_name || "",
+        target_uuid: c.target_uuid || "",
+        amount_usd: c.amount_usd || 0,
+        coins_charged: c.amount_coins || (c.amount_usd || 0) * COINS_PER_USD,
+        reference_id: c.transaction_id || "",
+        transfer_verified: true,
+        status: c.status === "approved" || c.status === "completed" || c.status === "done" ? "completed" : c.status === "failed" ? "failed" : "pending",
+        created_at: c.created_at || new Date().toISOString(),
+        request_type: c.request_type || "charge_self",
+      })));
     } catch {
       toast.error("فشل في جلب بيانات شحن الرواتب");
     } finally {
@@ -279,6 +295,17 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                 </div>
               </div>
 
+              {/* Charge type badge */}
+              <div className={`flex items-center gap-2 rounded-xl p-2 text-xs font-bold ${
+                charge.request_type === "charge_other" ? "bg-blue-500/5 text-blue-400" : "bg-emerald-500/5 text-emerald-400"
+              }`}>
+                {charge.request_type === "charge_other" ? (
+                  <><User className="w-3.5 h-3.5" /> شحن لحساب آخر: {charge.target_name || charge.target_uuid}</>
+                ) : (
+                  <><Coins className="w-3.5 h-3.5" /> شحن لحسابه</>
+                )}
+              </div>
+
               {/* Details */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-white/[0.03] rounded-xl p-2.5 text-xs">
@@ -293,16 +320,6 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                   </span>
                   <span className="font-bold text-foreground">{formatDateSA(charge.created_at)}</span>
                 </div>
-              </div>
-
-              {/* Transfer verification */}
-              <div className={`flex items-center gap-2 rounded-xl p-2 text-xs font-bold ${
-                charge.transfer_verified ? "bg-emerald-500/5 text-emerald-400" : "bg-amber-500/5 text-amber-400"
-              }`}>
-                {charge.transfer_verified
-                  ? <><CheckCircle className="w-3.5 h-3.5" /> تم التحقق من التحويل</>
-                  : <><Clock className="w-3.5 h-3.5" /> بانتظار التحقق</>
-                }
               </div>
             </motion.div>
           ))}
