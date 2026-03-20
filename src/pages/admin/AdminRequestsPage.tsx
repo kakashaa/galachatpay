@@ -37,6 +37,7 @@ const isVideo = (url: string) => {
 const AdminRequestsPage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
   const [activeTab, setActiveTab] = useState<ReqTab>("entries");
+  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected">("pending");
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
