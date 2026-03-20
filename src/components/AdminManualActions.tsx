@@ -104,7 +104,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
     setBanLoading(true);
     try {
       const effectiveBanType = banReason === 'promo' ? 'device' : banType;
-      const reasonTypeForReport = banReason === 'promo' ? 'promotion' : banReason;
+      const reasonTypeForReport = banReason === 'promo' ? 'promotion' : 'insult';
       const hours = banReason === 'promo' ? 999999 : (banDuration === '3h' ? 3 : banDuration === '6h' ? 6 : banDuration === '12h' ? 12 : 24);
       const expiresAt = banReason === 'promo' ? null : new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
 

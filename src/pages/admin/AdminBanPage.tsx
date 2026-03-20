@@ -168,7 +168,7 @@ const AdminBanPage: React.FC = () => {
       await supabase.from("ban_reports").insert({
         reporter_gala_id: "admin-manual",
         reported_user_id: uuid,
-        ban_type: banReason,
+        ban_type: reportBanType,
         description: reason,
         evidence_url: evidenceUrl || "manual-ban",
         evidence_type: evidenceUrl ? evidenceType : "none",
