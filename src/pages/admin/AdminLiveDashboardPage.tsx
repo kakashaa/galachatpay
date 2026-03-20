@@ -162,7 +162,7 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
   if (!profile) return null;
 
   // Salary check
-  let salary = 0, deduction = 0, net = 0;
+  let salary = 0, deduction = 0;
   try {
     const salaryRes = await fetch(
       `https://galachat.site/project-z/api.php?action=salary_check&uuid=${trimmed}`
@@ -170,7 +170,7 @@ const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
     const salaryData = await salaryRes.json();
     salary = salaryData.salary || 0;
     deduction = salaryData.deduction || 0;
-    net = salaryData.net || 0;
+    // net = salaryData.net || 0;
   } catch {}
 
   return {
