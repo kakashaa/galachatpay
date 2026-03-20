@@ -29,6 +29,14 @@ interface Transfer {
   selectable: boolean;
 }
 
+interface UsedTransferDetail {
+  request_type: string;
+  target_name: string | null;
+  target_uuid: string | null;
+  recipient_name: string;
+  status: string;
+}
+
 interface TransfersResult {
   transfers: Transfer[];
   is_agency_owner?: boolean;
