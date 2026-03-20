@@ -180,7 +180,7 @@ const InstantRequest: React.FC = () => {
               bank: selectedMethod?.label || "",
               account_name: fullName,
               account_number: accountInfo,
-              whatsapp: whatsappNumber,
+              whatsapp: "",
             },
           }),
         });
