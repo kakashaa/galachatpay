@@ -113,7 +113,7 @@ const InstantRequest: React.FC = () => {
     if (step !== "supporter" || supporterName || supporterAccountId || supporterAmountUsd || receiptFile) {
       setShowExitDialog(true);
     } else {
-      navigate("/instant/banks");
+      navigate("/salary");
     }
   };
 
