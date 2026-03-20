@@ -237,7 +237,14 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
       );
 
       toast.success("تم قبول الطلب وإرسال الإيصال");
+      // Optimistically update local state immediately
+      setRequests(prev => prev.map(r =>
+        r.id === approveSheet.id
+          ? { ...r, status: "approved", admin_note: approveNote || "تمت الموافقة", transfer_image_url: receiptUrl }
+          : r
+      ));
       setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
+      // Also refresh from DB in background
       fetchData();
     } catch (e: any) {
       toast.error("حدث خطأ: " + (e?.message || ""));
@@ -281,7 +288,14 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
       );
 
       toast.success("تم رفض الطلب وإرسال الإشعار");
+      // Optimistically update local state immediately
+      setRequests(prev => prev.map(r =>
+        r.id === rejectSheet.id
+          ? { ...r, status: "rejected", admin_note: rejectReason, rejection_image_url: rejectionUrl || "" }
+          : r
+      ));
       setRejectSheet(null); setRejectReason(""); setRejectImage(null);
+      // Also refresh from DB in background
       fetchData();
     } catch (e: any) {
       toast.error("حدث خطأ: " + (e?.message || ""));
