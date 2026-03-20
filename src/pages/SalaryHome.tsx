@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, Coins, Gift, Zap, Loader2, DollarSign,
+  Wallet, Coins, Gift, Zap, Loader2, DollarSign, TrendingDown,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +12,9 @@ const API = "https://galachat.site/project-z/api.php";
 const USD_TO_COINS = 7500;
 
 interface SalaryInfo {
-  salary_usd: number;
+  salary: number;
+  deduction: number;
+  net: number;
   loading: boolean;
   error: boolean;
 }
@@ -20,7 +22,7 @@ interface SalaryInfo {
 const SalaryHome: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [salary, setSalary] = useState<SalaryInfo>({ salary_usd: 0, loading: true, error: false });
+  const [salary, setSalary] = useState<SalaryInfo>({ salary: 0, deduction: 0, net: 0, loading: true, error: false });
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
@@ -30,12 +32,25 @@ const SalaryHome: React.FC = () => {
   const fetchSalary = async () => {
     setSalary(s => ({ ...s, loading: true, error: false }));
     try {
-      const res = await fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`);
+      // Try salary_check first (has deduction/net), fallback to salary_check_all
+      const res = await fetch(`${API}?action=salary_check&uuid=${user!.uuid}`);
       const data = await res.json();
-      const amount = data?.salary_usd ?? data?.total_salary ?? data?.amount ?? 0;
-      setSalary({ salary_usd: amount, loading: false, error: false });
+
+      const salaryAmount = data?.salary ?? data?.salary_usd ?? data?.total_salary ?? data?.amount ?? 0;
+      const deduction = data?.deduction ?? 0;
+      const net = data?.net ?? (salaryAmount - deduction);
+
+      setSalary({ salary: salaryAmount, deduction, net, loading: false, error: false });
     } catch {
-      setSalary({ salary_usd: 0, loading: false, error: true });
+      // Fallback to salary_check_all
+      try {
+        const res2 = await fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`);
+        const data2 = await res2.json();
+        const amount = data2?.salary_usd ?? data2?.total_salary ?? data2?.amount ?? 0;
+        setSalary({ salary: amount, deduction: 0, net: amount, loading: false, error: false });
+      } catch {
+        setSalary({ salary: 0, deduction: 0, net: 0, loading: false, error: true });
+      }
     }
   };
 
@@ -88,7 +103,7 @@ const SalaryHome: React.FC = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="glass-card p-6 text-center space-y-2"
+          className="glass-card p-6 text-center space-y-3"
         >
           <p className="text-sm text-muted-foreground">راتبك هذا الشهر</p>
           {salary.loading ? (
@@ -97,15 +112,34 @@ const SalaryHome: React.FC = () => {
             <p className="text-sm text-destructive">فشل جلب الراتب</p>
           ) : (
             <>
+              {/* Full salary */}
               <div className="flex items-center justify-center gap-2">
                 <DollarSign className="w-6 h-6 text-emerald-400" />
                 <p className="text-3xl font-black text-foreground tabular-nums" dir="ltr">
-                  {salary.salary_usd.toFixed(2)}
+                  {salary.salary.toFixed(2)}
                 </p>
               </div>
               <p className="text-sm text-muted-foreground tabular-nums">
-                {(salary.salary_usd * USD_TO_COINS).toLocaleString()} كوينز
+                {(salary.salary * USD_TO_COINS).toLocaleString()} كوينز
               </p>
+
+              {/* Deduction & remaining */}
+              {salary.deduction > 0 && (
+                <div className="flex items-center justify-center gap-4 pt-2 border-t border-border/20">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-xs text-red-400 font-bold tabular-nums" dir="ltr">
+                      تم صرف ${salary.deduction.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="w-px h-4 bg-border/30" />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-emerald-400 font-bold tabular-nums" dir="ltr">
+                      المتبقي ${salary.net.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </motion.div>
