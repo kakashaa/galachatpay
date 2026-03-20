@@ -340,13 +340,21 @@ const SalaryWithdraw: React.FC = () => {
       const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
       setIsAgencyOwner(agencyOwner);
 
-      const used = allTransfers.filter(t => t.is_used).length;
-      setUsedCount(used);
+      // Only count CASH withdrawals toward the limit (coins are unlimited)
+      const cashUsedRefs = new Set<string>(
+        (localRequestsRes.data || [])
+          .filter((r: any) => r.request_type === "cash")
+          .map((r: any) => String(r.transfer_id || r.transaction_id || "").trim())
+          .filter(Boolean),
+      );
+      const cashUsed = allTransfers.filter(t => t.is_used && cashUsedRefs.has(String(t.reference_id || "").trim())).length;
+      setUsedCount(cashUsed);
 
       const newTransfers = allTransfers.filter(t => !t.is_used && t.selectable);
       const { maxTotal } = getWithdrawalLimits(agencyOwner);
 
-      if (used >= maxTotal) {
+      // Only block for cash mode when cash limit reached
+      if (pathMode === "cash" && cashUsed >= maxTotal) {
         setStep("exhausted");
       } else if (newTransfers.length === 0 && allTransfers.length === 0) {
         setStep("no_transfers");
