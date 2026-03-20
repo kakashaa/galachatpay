@@ -4,7 +4,7 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
-import { Eye, Bell, List, Bot, Send, Loader2, Volume2, VolumeX, Trash2, CheckCheck } from "lucide-react";
+import { Eye, Bell, List, Bot, Send, Loader2, Volume2, VolumeX, Trash2, CheckCheck, Zap, RefreshCw, DollarSign, Megaphone, LayoutGrid } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound } from "@/lib/notificationSound";
 
@@ -27,11 +27,11 @@ interface ChatMsg {
 }
 
 /* ─── Alert Type Config ─── */
-const alertConfig: Record<string, { label: string; color: string; bg: string }> = {
-  big_charge: { label: "شحنة كبيرة", color: "#f59e0b", bg: "rgba(245,158,11,0.08)" },
-  repeated_charge: { label: "شحنات متكررة", color: "#f97316", bg: "rgba(249,115,22,0.08)" },
-  manual_salary: { label: "راتب يدوي", color: "#10b981", bg: "rgba(16,185,129,0.08)" },
-  promotion: { label: "ترويج محتمل", color: "#f43f5e", bg: "rgba(244,63,94,0.08)" },
+const alertConfig: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+  big_charge: { label: "شحنة كبيرة", color: "#f59e0b", bg: "rgba(245,158,11,0.08)", icon: Zap },
+  repeated_charge: { label: "شحنات متكررة", color: "#f97316", bg: "rgba(249,115,22,0.08)", icon: RefreshCw },
+  manual_salary: { label: "راتب يدوي", color: "#10b981", bg: "rgba(16,185,129,0.08)", icon: DollarSign },
+  promotion: { label: "ترويج محتمل", color: "#f43f5e", bg: "rgba(244,63,94,0.08)", icon: Megaphone },
 };
 
 /* ─── Monitor Type Config ─── */
@@ -58,6 +58,7 @@ const formatNumber = (n: number) => n?.toLocaleString("en-US") ?? "0";
 const AdminMonitorPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
   const [tab, setTab] = useState<"alerts" | "monitors" | "bot">("alerts");
+  const [alertFilter, setAlertFilter] = useState<"all" | string>("all");
 
   /* ── Alerts State ── */
   const [alerts, setAlerts] = useState<MonitorAlert[]>([]);
@@ -172,6 +173,7 @@ const AdminMonitorPage: React.FC = () => {
 
   /* ── Counts ── */
   const unreadCount = alerts.filter(a => !a.is_read).length;
+  const filteredAlerts = alertFilter === "all" ? alerts : alerts.filter(a => a.alert_type === alertFilter);
   const todayAlerts = alerts.filter(a => {
     const d = new Date(a.created_at);
     const now = new Date();
@@ -181,6 +183,14 @@ const AdminMonitorPage: React.FC = () => {
     ...m,
     count: todayAlerts.filter(a => a.alert_type === m.key).length,
   }));
+
+  const alertSubTabs = [
+    { key: "all", label: "الكل", icon: LayoutGrid, count: alerts.length },
+    { key: "big_charge", label: "شحنات كبيرة", icon: Zap, count: alerts.filter(a => a.alert_type === "big_charge").length },
+    { key: "repeated_charge", label: "شحنات متكررة", icon: RefreshCw, count: alerts.filter(a => a.alert_type === "repeated_charge").length },
+    { key: "manual_salary", label: "رواتب يدوية", icon: DollarSign, count: alerts.filter(a => a.alert_type === "manual_salary").length },
+    { key: "promotion", label: "ترويج", icon: Megaphone, count: alerts.filter(a => a.alert_type === "promotion").length },
+  ];
 
   const tabs = [
     { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
@@ -222,6 +232,43 @@ const AdminMonitorPage: React.FC = () => {
       {/* ═══ TAB 1: Alerts ═══ */}
       {tab === "alerts" && (
         <div className="space-y-3">
+          {/* Sub-tabs filter */}
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+            <div className="flex gap-1.5 min-w-max pb-1">
+              {alertSubTabs.map(st => {
+                const Icon = st.icon;
+                const active = alertFilter === st.key;
+                const cfg = alertConfig[st.key];
+                const color = cfg?.color || "#10b981";
+                return (
+                  <motion.button
+                    key={st.key}
+                    whileTap={{ scale: 0.93 }}
+                    onClick={() => setAlertFilter(st.key)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all ${active ? "text-white" : "text-muted-foreground"}`}
+                    style={active ? {
+                      background: st.key === "all"
+                        ? "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))"
+                        : `linear-gradient(135deg, ${color}, ${color}cc)`,
+                      boxShadow: `0 3px 12px ${st.key === "all" ? "rgba(16,185,129,0.3)" : color + "40"}`,
+                    } : {
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <Icon size={12} />
+                    {st.label}
+                    {st.count > 0 && (
+                      <span className={`h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 ${active ? "bg-white/20 text-white" : "bg-white/5 text-muted-foreground"}`}>
+                        {st.count}
+                      </span>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Actions bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -236,25 +283,27 @@ const AdminMonitorPage: React.FC = () => {
                 {soundEnabled ? <Volume2 size={13} className="text-admin-emerald" /> : <VolumeX size={13} className="text-muted-foreground" />}
               </motion.button>
             </div>
-            <span className="text-[10px] text-muted-foreground tabular-nums">{alerts.length} تنبيه</span>
+            <span className="text-[10px] text-muted-foreground tabular-nums">{filteredAlerts.length} تنبيه</span>
           </div>
 
-          {loading && alerts.length === 0 && (
+          {loading && filteredAlerts.length === 0 && (
             <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-admin-emerald" /></div>
           )}
 
-          {!loading && alerts.length === 0 && (
+          {!loading && filteredAlerts.length === 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="text-center py-16 rounded-2xl"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <Eye size={32} className="mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-xs text-muted-foreground">لا توجد تنبيهات حالياً</p>
+              <p className="text-xs text-muted-foreground">
+                {alertFilter === "all" ? "لا توجد تنبيهات حالياً" : `لا توجد تنبيهات من نوع "${alertConfig[alertFilter]?.label || alertFilter}"`}
+              </p>
               <p className="text-[10px] text-muted-foreground/60 mt-1">يتم الفحص كل 60 ثانية</p>
             </motion.div>
           )}
 
           <AnimatePresence mode="popLayout">
-            {alerts.map((alert, i) => {
+            {filteredAlerts.map((alert, i) => {
               const config = alertConfig[alert.alert_type] || { label: alert.alert_type, color: "#71717a", bg: "rgba(113,113,122,0.08)" };
               return (
                 <motion.div
