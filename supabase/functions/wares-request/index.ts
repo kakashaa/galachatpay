@@ -91,6 +91,40 @@ serve(async (req) => {
       });
     }
 
+    if (action === "ban-user-real") {
+      const { uuid, reason, hours, ban_type } = params;
+      if (!uuid) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing uuid" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const url = `${BASE_URL}?key=${API_KEY}&action=ban-user-real&uuid=${encodeURIComponent(uuid)}&reason=${encodeURIComponent(reason || "")}&hours=${encodeURIComponent(hours || "24")}&ban_type=${encodeURIComponent(ban_type || "normal")}`;
+      const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+      const data = await res.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "unban-user-real") {
+      const { uuid } = params;
+      if (!uuid) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing uuid" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const url = `${BASE_URL}?key=${API_KEY}&action=unban-user-real&uuid=${encodeURIComponent(uuid)}`;
+      const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+      const data = await res.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ success: false, error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
