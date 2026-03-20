@@ -40,6 +40,12 @@ const AdminWorksPage: React.FC = () => {
   const [freezeTarget, setFreezeTarget] = useState<{ type: "bd" | "user"; id: string; name: string } | null>(null);
   const [freezeReason, setFreezeReason] = useState("");
 
+  // Owner edit financials dialog
+  const [editFinAccount, setEditFinAccount] = useState<any | null>(null);
+  const [editBalanceUsd, setEditBalanceUsd] = useState("");
+  const [editTotalEarnings, setEditTotalEarnings] = useState("");
+  const [editFinLoading, setEditFinLoading] = useState(false);
+
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try { const d = await adminCall("works_list_requests"); setRequests(d || []); } catch { }
