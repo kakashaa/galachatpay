@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { galaApi } from "@/services/galaApi";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
@@ -87,7 +88,7 @@ const AdminRequestsPage: React.FC = () => {
   useEffect(() => { loadAllCounts(); }, []);
   useEffect(() => { setStatusFilter("pending"); loadData(); }, [activeTab]);
 
-  const { galaApi: api } = await import("@/services/galaApi").then(m => ({ galaApi: m.galaApi }));
+  const api = galaApi;
 
   const fetchRoomRequests = async (): Promise<any[]> => {
     try {
