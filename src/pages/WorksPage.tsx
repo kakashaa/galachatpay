@@ -545,15 +545,15 @@ const WorksPage: React.FC = () => {
             <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-foreground">{m.member_name || m.member_uuid.slice(0, 8)}</span>
-                <span className="text-[10px] font-bold text-amber-400">${((m.monthly_charges || 0) / 7500).toFixed(2)}</span>
+                <span className="text-[10px] font-extrabold text-green-400">${((m.monthly_charges || 0) / 7500).toFixed(2)}</span>
               </div>
               {m.monthly_charges !== undefined && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-muted-foreground">شحن الشهر: {m.monthly_charges?.toLocaleString()} كوينز</span>
+                    <span className="text-muted-foreground">شحن الشهر: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-emerald-400 font-bold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
+                    <span className="text-emerald-400 font-extrabold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
                     <span className="text-muted-foreground">(${((m.commission || 0) / 7500).toFixed(2)})</span>
                   </div>
                 </div>
