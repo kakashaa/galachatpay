@@ -113,14 +113,7 @@ const Dashboard: React.FC = () => {
 
     return (
     <>
-      {isFullBan && activeBan && (
-        <BanOverlay
-          reason={activeBan.reason}
-          remainingTime={getRemainingTime()}
-          banType={activeBan.ban_type}
-          bannedElements={activeBan.banned_elements || undefined}
-        />
-      )}
+      
       <div
         ref={scrollContainerRef}
         className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative" style={{ overflow: 'hidden auto' }}
