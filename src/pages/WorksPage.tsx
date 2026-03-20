@@ -629,16 +629,16 @@ const WorksPage: React.FC = () => {
               <div className="flex gap-2">
                 <button onClick={() => { setMemberType("supporter"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "supporter" ? "bg-pink-500/20 text-pink-400 border border-pink-500/20" : "bg-muted text-muted-foreground"}`}>
-                  داعم
+                  داعم (UUID)
                 </button>
                 <button onClick={() => { setMemberType("agent"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "agent" ? "bg-orange-500/20 text-orange-400 border border-orange-500/20" : "bg-muted text-muted-foreground"}`}>
-                  وكيل
+                  وكيل (كود الوكالة)
                 </button>
               </div>
 
               <Input
-                placeholder={memberType === "agent" ? "كود الوكالة (Agency ID)" : "معرف المستخدم (UUID)"}
+                placeholder={memberType === "agent" ? "كود الوكالة (مثال: 2, 3, 5...)" : "معرف المستخدم (UUID)"}
                 value={memberInput}
                 onChange={e => setMemberInput(e.target.value)}
                 dir="ltr"
