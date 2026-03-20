@@ -13,6 +13,7 @@ import {
   Inbox, FileText, Landmark, Eye, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { galaApi } from '@/services/galaApi';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 
