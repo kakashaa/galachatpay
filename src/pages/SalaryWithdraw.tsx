@@ -963,35 +963,22 @@ const SalaryWithdraw: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">{t.time}</span>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {cashLeft > 0 && (
-                      <Button
-                        onClick={() => handleSelectTransfer(t, "cash")}
-                        size="sm"
-                        className="w-full h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        💵 سحب نقدي
-                      </Button>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => handleSelectTransfer(t, "charge_self")}
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-9 text-xs font-bold border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                      >
-                        🪙 شحن لحسابي
-                      </Button>
-                      <Button
-                        onClick={() => handleSelectTransfer(t, "charge_other")}
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-9 text-xs font-bold border-primary/30 text-primary hover:bg-primary/10"
-                      >
-                        🎁 شحن لآخر
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Single action button based on mode */}
+                  <Button
+                    onClick={() => handleSelectTransfer(t, pathMode)}
+                    size="sm"
+                    className={`w-full h-10 text-xs font-bold ${
+                      pathMode === "cash"
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        : pathMode === "charge_self"
+                          ? "bg-amber-600 hover:bg-amber-700 text-white"
+                          : "bg-violet-600 hover:bg-violet-700 text-white"
+                    }`}
+                  >
+                    {pathMode === "cash" && <><Wallet className="w-3.5 h-3.5 ml-1.5" /> سحب نقدي</>}
+                    {pathMode === "charge_self" && <><Coins className="w-3.5 h-3.5 ml-1.5" /> شحن لحسابي</>}
+                    {pathMode === "charge_other" && <><Gift className="w-3.5 h-3.5 ml-1.5" /> شحن لحساب آخر</>}
+                  </Button>
                 </motion.div>
               ))}
             </div>
