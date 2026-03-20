@@ -83,18 +83,25 @@ const Dashboard: React.FC = () => {
   // Touch handlers for pull-to-refresh
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const container = scrollContainerRef.current;
+    const target = e.target as HTMLElement | null;
+
     if (!container || container.scrollTop > 0) return;
+    if (e.touches.length !== 1) return;
+    if (target?.closest("button, a, input, textarea, [role='button']")) return;
+
     startYRef.current = e.touches[0].clientY;
     setIsPulling(true);
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isPulling) return;
+
     const container = scrollContainerRef.current;
     if (!container || container.scrollTop > 0) {
       setPullDistance(0);
       return;
     }
+
     const deltaY = e.touches[0].clientY - startYRef.current;
     if (deltaY > 0) {
       setPullDistance(Math.min(deltaY * 0.5, 120));
@@ -144,6 +151,7 @@ const Dashboard: React.FC = () => {
         <header className="relative z-10 flex justify-between items-center px-4 pt-6 pb-2">
           {isAuthenticated ? (
             <button
+              type="button"
               onClick={async () => { const ok = await confirm({ title: "تسجيل الخروج", message: "هل تريد تسجيل الخروج؟", danger: true, confirmText: "خروج" }); if (ok) { logout(); navigate("/"); } }}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
             >
@@ -151,6 +159,7 @@ const Dashboard: React.FC = () => {
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => navigate("/")}
               className="w-8 h-8 flex items-center justify-center rounded-full bg-primary/15 border border-primary/30 active:bg-primary/25 transition-colors"
             >
@@ -162,6 +171,7 @@ const Dashboard: React.FC = () => {
 
           {isAuthenticated ? (
             <button
+              type="button"
               onClick={() => navigate("/notifications")}
               className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
             >
