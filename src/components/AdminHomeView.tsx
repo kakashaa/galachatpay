@@ -474,9 +474,10 @@ const AdminHomeView: React.FC<Props> = ({
               <p className="text-[11px] text-muted-foreground">لوحة التحكم</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative">
             <motion.button
               whileTap={{ scale: 0.9 }}
+              onClick={() => setShowNotifPanel(prev => !prev)}
               className="relative w-10 h-10 rounded-2xl flex items-center justify-center"
               style={{
                 background: 'rgba(255,255,255,0.05)',
@@ -499,6 +500,73 @@ const AdminHomeView: React.FC<Props> = ({
                 </motion.span>
               )}
             </motion.button>
+
+            {/* Notification dropdown panel */}
+            <AnimatePresence>
+              {showNotifPanel && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[90]"
+                    onClick={() => setShowNotifPanel(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    className="absolute left-0 top-12 z-[100] w-72 rounded-2xl overflow-hidden"
+                    dir="rtl"
+                    style={{
+                      background: 'hsl(240 10% 8%)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                    }}
+                  >
+                    <div className="px-4 py-3 border-b border-border/20 flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">الإشعارات المعلقة</span>
+                      <span className="text-[10px] text-muted-foreground">{totalBadge} عنصر</span>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {[
+                        { label: "طلبات VIP", count: vipBadge, route: "/admin/vip", icon: "⭐" },
+                        { label: "إدارة الحظر", count: banBadge, route: "/admin/ban", icon: "🛡️" },
+                        { label: "طلبات الرواتب", count: salaryBadge, route: "/admin/salary", icon: "💰" },
+                        { label: "الطلبات العامة", count: requestsBadge, route: "/admin/requests", icon: "📋" },
+                        { label: "الدعم الفني", count: supportBadge, route: "/admin/support", icon: "🎧" },
+                      ].filter(item => item.count > 0).map(item => (
+                        <motion.button
+                          key={item.route}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => {
+                            setShowNotifPanel(false);
+                            navigate(item.route);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors border-b border-border/10 last:border-0"
+                        >
+                          <span className="text-lg">{item.icon}</span>
+                          <span className="text-xs font-bold text-foreground flex-1 text-right">{item.label}</span>
+                          <span className="h-5 min-w-5 rounded-full text-[10px] font-bold flex items-center justify-center px-1.5"
+                            style={{
+                              background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
+                              color: 'white',
+                            }}
+                          >
+                            {item.count}
+                          </span>
+                        </motion.button>
+                      ))}
+                      {totalBadge === 0 && (
+                        <div className="px-4 py-6 text-center">
+                          <p className="text-xs text-muted-foreground">لا توجد إشعارات معلقة ✨</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
             {onLogout && (
               <motion.button
                 whileTap={{ scale: 0.9 }}
