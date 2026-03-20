@@ -638,6 +638,12 @@ const InstantRequest: React.FC = () => {
                     <span className="font-bold text-foreground" dir="auto">{r.value}</span>
                   </div>
                 ))}
+                {whatsappNumber && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">واتساب</span>
+                    <span className="font-bold text-foreground font-mono" dir="ltr">{whatsappCode}{whatsappNumber}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
 
