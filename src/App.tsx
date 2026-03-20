@@ -36,6 +36,7 @@ const AnimatedPhotoRequest = lazy(() => import("./pages/AnimatedPhotoRequest"));
 const EntryRequest = lazy(() => import("./pages/EntryRequest"));
 const FramesRequest = lazy(() => import("./pages/FramesRequest"));
 const ReportPage = lazy(() => import("./pages/ReportPage"));
+const SalaryHome = lazy(() => import("./pages/SalaryHome"));
 const SalaryWithdraw = lazy(() => import("./pages/SalaryWithdraw"));
 
 const MyRequests = lazy(() => import("./pages/MyRequests"));
