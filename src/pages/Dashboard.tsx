@@ -1,12 +1,11 @@
 // Dashboard v2 - cache rebuild
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Bell, LogIn, RefreshCw } from "lucide-react";
+import { LogOut, Bell, LogIn, RefreshCw, ShieldBan } from "lucide-react";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { supabase } from "@/integrations/supabase/client";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { useAuth } from "@/contexts/AuthContext";
-import MarqueeBanner from "@/components/MarqueeBanner";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import { VideoStoryCircle } from "@/components/VideoStoryCircle";
 import { AdminStoryCircle } from "@/components/AdminStoryCircle";
