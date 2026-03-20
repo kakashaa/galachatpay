@@ -265,6 +265,18 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "charge_self" | "charge_other") => {
+    // Double-spend protection: re-check if transfer is still usable
+    const currentTransfer = transfers.find(t => t.reference_id === transfer.reference_id);
+    if (!currentTransfer || currentTransfer.is_used || !currentTransfer.selectable) {
+      toast.error("هذه الحوالة تم استخدامها بالفعل");
+      return;
+    }
+    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
+    if (usedCount >= maxTotal) {
+      toast.error("وصلت الحد الأقصى للسحب هذا الشهر");
+      setStep("exhausted");
+      return;
+    }
     setSelectedTransfer(transfer);
     setSalaryWarning(null);
 
@@ -337,6 +349,11 @@ const SalaryWithdraw: React.FC = () => {
       const data = await res.json();
       if (data.success) {
         setCoinsCharged(selectedTransfer.amount_usd * USD_TO_COINS);
+        // Mark transfer as used locally to prevent double-charge
+        setTransfers(prev => prev.map(t => 
+          t.reference_id === selectedTransfer.reference_id ? { ...t, is_used: true, selectable: false } : t
+        ));
+        setUsedCount(prev => prev + 1);
         setStep("coins_success");
       } else {
         setError(data.message || "فشل شحن الكوينز");
@@ -374,6 +391,11 @@ const SalaryWithdraw: React.FC = () => {
       const data = await res.json();
       if (data.success) {
         setSubmitResult(data);
+        // Mark transfer as used locally to prevent double-withdraw
+        setTransfers(prev => prev.map(t => 
+          t.reference_id === selectedTransfer.reference_id ? { ...t, is_used: true, selectable: false } : t
+        ));
+        setUsedCount(prev => prev + 1);
         setStep("success");
       } else {
         setError(data.message || data.error || "فشل في رفع الطلب");
