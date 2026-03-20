@@ -299,7 +299,7 @@ const AdminMonitorPage: React.FC = () => {
               style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <Eye size={32} className="mx-auto mb-3 text-muted-foreground/40" />
               <p className="text-xs text-muted-foreground">
-                {alertFilter === "all" ? "لا توجد تنبيهات حالياً" : `لا توجد تنبيهات من نوع "${alertConfig[alertFilter]?.label || alertFilter}"`}
+                {`لا توجد تنبيهات من نوع "${alertConfig[alertFilter]?.label || alertFilter}"`}
               </p>
               <p className="text-[10px] text-muted-foreground/60 mt-1">يتم الفحص كل 60 ثانية</p>
             </motion.div>
