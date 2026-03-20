@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe,
   UserCheck, ArrowRight, ArrowLeft, Phone,
   Loader2, Copy, Frown, ChevronDown, RefreshCw, Coins, Search, User,
+  Wallet, Gift,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -153,8 +154,21 @@ const getWithdrawalLimits = (isAgencyOwner: boolean) => {
 
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
+  // Determine mode from URL path
+  const pathMode = location.pathname.includes("/salary/charge-other")
+    ? "charge_other"
+    : location.pathname.includes("/salary/charge-self")
+      ? "charge_self"
+      : "cash";
+
+  const modeConfig = {
+    cash: { title: "سحب نقدي", icon: Wallet, color: "text-emerald-400" },
+    charge_self: { title: "شحن لحسابي", icon: Coins, color: "text-amber-400" },
+    charge_other: { title: "شحن لحساب آخر", icon: Gift, color: "text-violet-400" },
+  };
   // Core state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -640,20 +654,22 @@ const SalaryWithdraw: React.FC = () => {
 
   const getBackAction = () => {
     switch (step) {
-      case "transfers_list": return () => navigate("/dashboard");
-      case "all_used": return () => navigate("/dashboard");
+      case "transfers_list": return () => navigate("/salary");
+      case "all_used": return () => navigate("/salary");
       case "bank": return () => setStep("transfers_list");
       case "account": return () => setStep("bank");
       case "coins_confirm": return () => setStep("transfers_list");
       case "charge_other_search": return () => setStep("transfers_list");
-      default: return () => navigate("/dashboard");
+      default: return () => navigate("/salary");
     }
   };
+
+  const headerTitle = modeConfig[pathMode]?.title || "سحب الراتب";
 
   // ── LOADING ──
   if (loading || step === "loading") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center py-32 gap-4">
           <Loader2 className="w-10 h-10 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">جاري جلب الحوالات...</p>
@@ -665,7 +681,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── NO TRANSFERS ──
   if (step === "no_transfers") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-8 space-y-6">
           <div className="flex flex-col items-center text-center">
             <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
@@ -710,7 +726,7 @@ const SalaryWithdraw: React.FC = () => {
               className="w-full gold-gradient text-primary-foreground font-bold h-12">
               <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
             </Button>
-            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+            <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
           </div>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
@@ -723,7 +739,7 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "all_used") {
     const usedTransfers = transfers.filter(t => t.is_used);
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-8 space-y-6">
           <div className="flex flex-col items-center text-center">
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
@@ -771,7 +787,7 @@ const SalaryWithdraw: React.FC = () => {
               className="w-full gold-gradient text-primary-foreground font-bold h-12">
               <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
             </Button>
-            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+            <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
           </div>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
@@ -784,7 +800,7 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "exhausted") {
     const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-8 space-y-6">
           <div className="flex flex-col items-center text-center">
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
@@ -795,7 +811,7 @@ const SalaryWithdraw: React.FC = () => {
             <p className="text-xs text-muted-foreground">سحبت {usedCount} من {maxTotal} هذا الشهر</p>
           </div>
           <SalaryRequestsHistory userUuid={user.uuid} />
-          <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+          <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
         </div>
       </MobileLayout>
     );
@@ -804,7 +820,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── ERROR ──
   if (step === "error") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mb-4">
             <AlertCircle className="w-8 h-8 text-destructive" />
@@ -819,7 +835,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── SUCCESS (cash withdrawal) ──
   if (step === "success" && submitResult) {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center px-6 py-16">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }}
             className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6">
@@ -855,7 +871,7 @@ const SalaryWithdraw: React.FC = () => {
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
             <Button onClick={() => navigate("/my-requests")} variant="outline" className="flex-1 border-border/30 font-bold">طلباتي</Button>
-            <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
+            <Button onClick={() => navigate("/salary")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>
@@ -865,7 +881,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── COINS SUCCESS ──
   if (step === "coins_success") {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="flex flex-col items-center justify-center px-6 py-16">
           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }}
             className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6">
@@ -891,7 +907,7 @@ const SalaryWithdraw: React.FC = () => {
             </p>
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
-            <Button onClick={() => navigate("/dashboard")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
+            <Button onClick={() => navigate("/salary")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
           </motion.div>
         </div>
       </MobileLayout>
@@ -903,26 +919,16 @@ const SalaryWithdraw: React.FC = () => {
     const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
     const usedTransfers = transfers.filter(t => t.is_used);
     const oldTransfers = transfers.filter(t => !t.is_used && !t.selectable);
-    const { maxCash, maxTotal } = getWithdrawalLimits(isAgencyOwner);
-    const cashLeft = Math.max(0, maxCash - usedCount);
-    const { canWithdrawCash, startDay } = getCashWithdrawDates();
+    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
 
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-6 space-y-5">
           <div className="text-center space-y-2">
-            <h2 className="text-lg font-bold text-foreground">حوالاتك إلى الإدارة</h2>
-            <p className="text-[10px] text-muted-foreground">UUID: {TRANSFER_TARGET_ID}</p>
+            <h2 className="text-lg font-bold text-foreground">{headerTitle}</h2>
+            <p className="text-[10px] text-muted-foreground">حوّل راتبك إلى UUID: {TRANSFER_TARGET_ID}</p>
             <p className="text-xs text-muted-foreground">
               سحبت {usedCount} من {maxTotal} هذا الشهر
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              {cashLeft > 0
-                ? (canWithdrawCash
-                  ? `سحب نقدي متاح (${cashLeft} سحبة متبقية)`
-                  : `⏰ السحب النقدي يفتح يوم ${startDay}/${new Date().getMonth() + 1}`)
-                : "شحن كوينز فقط"
-              }
             </p>
           </div>
 
@@ -947,35 +953,22 @@ const SalaryWithdraw: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">{t.time}</span>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {cashLeft > 0 && (
-                      <Button
-                        onClick={() => handleSelectTransfer(t, "cash")}
-                        size="sm"
-                        className="w-full h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        💵 سحب نقدي
-                      </Button>
-                    )}
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => handleSelectTransfer(t, "charge_self")}
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-9 text-xs font-bold border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                      >
-                        🪙 شحن لحسابي
-                      </Button>
-                      <Button
-                        onClick={() => handleSelectTransfer(t, "charge_other")}
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-9 text-xs font-bold border-primary/30 text-primary hover:bg-primary/10"
-                      >
-                        🎁 شحن لآخر
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Single action button based on mode */}
+                  <Button
+                    onClick={() => handleSelectTransfer(t, pathMode)}
+                    size="sm"
+                    className={`w-full h-10 text-xs font-bold ${
+                      pathMode === "cash"
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        : pathMode === "charge_self"
+                          ? "bg-amber-600 hover:bg-amber-700 text-white"
+                          : "bg-violet-600 hover:bg-violet-700 text-white"
+                    }`}
+                  >
+                    {pathMode === "cash" && <><Wallet className="w-3.5 h-3.5 ml-1.5" /> سحب نقدي</>}
+                    {pathMode === "charge_self" && <><Coins className="w-3.5 h-3.5 ml-1.5" /> شحن لحسابي</>}
+                    {pathMode === "charge_other" && <><Gift className="w-3.5 h-3.5 ml-1.5" /> شحن لحساب آخر</>}
+                  </Button>
                 </motion.div>
               ))}
             </div>
@@ -1087,7 +1080,7 @@ const SalaryWithdraw: React.FC = () => {
   // ── COINS CONFIRM ──
   if (step === "coins_confirm" && selectedTransfer) {
     return (
-      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={getBackAction()}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={getBackAction()}>
         <div className="px-5 py-6 space-y-5">
           <div className="glass-card p-5 space-y-4 text-center">
             <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto">
@@ -1234,7 +1227,7 @@ const SalaryWithdraw: React.FC = () => {
   const stepperIndex = { bank: 1, account: 2 }[step] ?? 0;
 
   return (
-    <MobileLayout showHeader headerTitle="سحب الراتب" onBack={getBackAction()}>
+    <MobileLayout showHeader headerTitle={headerTitle} onBack={getBackAction()}>
       <div className="px-5 py-4 space-y-5">
         {/* Stepper */}
         <div className="flex items-center gap-1 px-2">
