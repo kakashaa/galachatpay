@@ -7,7 +7,6 @@ import {
   Zap, Image, ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBanCheck } from "@/hooks/use-ban-check";
 import { useElementSettings } from "@/hooks/use-element-settings";
 import GuestLoginPrompt from "./GuestLoginPrompt";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,11 +50,9 @@ const ELEMENT_LABELS: Record<string, string> = {
 const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
-  const { isElementBanned, activeBan, getRemainingTime } = useBanCheck(user?.uuid);
   const { isElementEnabled } = useElementSettings();
   const [showLogin, setShowLogin] = useState(false);
   const [bdBanned, setBdBanned] = useState(false);
-  const [banDialog, setBanDialog] = useState<{ open: boolean; elementKey: string }>({ open: false, elementKey: "" });
   const [disabledDialog, setDisabledDialog] = useState<{ open: boolean; label: string }>({ open: false, label: "" });
 
   const agencyLoggedIn = !!localStorage.getItem("ghala_token") && localStorage.getItem("ghala_type") === "agent";
@@ -109,11 +106,6 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
       setDisabledDialog({ open: true, label: item.label });
       return;
     }
-    // Check element ban
-    if (item.banKey && isElementBanned(item.banKey)) {
-      setBanDialog({ open: true, elementKey: item.banKey });
-      return;
-    }
     navigate(item.route);
   };
 
@@ -124,7 +116,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
           const Icon = item.icon;
           const isBdItem = item.route === "/bd";
           const showLock = isBdItem && bdBanned;
-          const isBanned = item.banKey ? isElementBanned(item.banKey) : false;
+          const isBanned = false;
           const isSpecialEligible = item.isSpecial && isEligibleForQuickSupport(user);
 
           if (isSpecialEligible && !isBanned) {
@@ -196,35 +188,7 @@ const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) 
         {extraButton}
       </div>
 
-      {/* Element Ban Dialog */}
-      <Dialog open={banDialog.open} onOpenChange={(o) => setBanDialog({ ...banDialog, open: o })}>
-        <DialogContent className="max-w-xs text-center p-6 rounded-2xl border-destructive/30 bg-background" dir="rtl">
-          <div className="mx-auto w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mb-3">
-            <Ban className="w-8 h-8 text-destructive" />
-          </div>
-          <h3 className="text-lg font-bold text-destructive mb-1">محظور</h3>
-          <p className="text-sm text-muted-foreground mb-3">
-            تم حظرك من استخدام <span className="font-bold text-foreground">{ELEMENT_LABELS[banDialog.elementKey] || banDialog.elementKey}</span>
-          </p>
 
-          {activeBan?.reason && (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 mb-3">
-              <p className="text-[10px] text-muted-foreground mb-0.5">السبب</p>
-              <p className="text-sm font-medium text-foreground">{activeBan.reason}</p>
-            </div>
-          )}
-
-          <div className="flex items-center justify-center gap-2 text-sm mb-2">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">المدة المتبقية:</span>
-            <span className="font-bold text-foreground">{getRemainingTime()}</span>
-          </div>
-
-          <p className="text-[10px] text-muted-foreground">
-            إذا كنت تعتقد أن هذا خطأ، تواصل مع الدعم الفني
-          </p>
-        </DialogContent>
-      </Dialog>
 
       {/* Element Disabled Dialog */}
       <Dialog open={disabledDialog.open} onOpenChange={(o) => setDisabledDialog({ ...disabledDialog, open: o })}>

@@ -73,34 +73,23 @@ const AdminBanPage: React.FC = () => {
       const effectiveBanScope = banForm.reason === 'promo' ? 'device' : banForm.ban_scope;
       const durationHours = banForm.reason === 'promo' ? 999999 : (parseInt(banForm.duration_hours) || 24);
 
-      await adminCall("manual_ban_user", {
-        target_uuid: banForm.target_uuid.trim(),
-        ban_type: banForm.ban_type,
-        duration_hours: durationHours,
-        reason: reason.trim(),
-        banned_elements: banForm.ban_type === "elements" ? banForm.banned_elements : null,
+      // Execute ban on external server (Gala Live) only
+      const banRes = await supabase.functions.invoke("wares-request", {
+        body: { action: "ban-user-real", uuid: banForm.target_uuid.trim(), reason, hours: String(durationHours), ban_type: effectiveBanScope },
       });
-
-      // Execute real ban on external server via edge function proxy
-      try {
-        const banRes = await supabase.functions.invoke("wares-request", {
-          body: { action: "ban-user-real", uuid: banForm.target_uuid.trim(), reason, hours: String(durationHours), ban_type: effectiveBanScope },
-        });
-        console.log("External ban result:", banRes.data);
-        if (banRes.error) console.error("External ban error:", banRes.error);
-      } catch (e) { console.error("Real ban failed:", e); }
+      console.log("External ban result:", banRes.data);
+      if (banRes.error) throw new Error("فشل الحظر في السيرفر الخارجي");
 
       const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
       await sendUserNotification(
         banForm.target_uuid.trim(),
         "تم تعليق حسابك",
         `تم تعليق حسابك بسبب: ${reason || "مخالفة"}. المدة: ${durationText}.`
-      );
+      ).catch(() => {});
       toast.dismiss(t);
       toast.success("تم حظر المستخدم بنجاح");
       setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "promo", custom_reason: "", banned_elements: [], ban_scope: "normal" });
       setBanImage(null);
-      loadData();
     } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الحظر"); }
     finally { setBanLoading(false); }
   };
@@ -369,16 +358,17 @@ const AdminBanPage: React.FC = () => {
                                     const banType = report.ban_type === 'promotion' || report.description?.includes('ترويج') ? 'device' : 'normal';
                                     const hours = banType === 'device' ? 999999 : 24;
                                     const reason = report.description || 'بلاغ مؤكد';
-                                    await adminCall("manual_ban_user", { target_uuid: report.reported_user_id, ban_type: "full", duration_hours: hours, reason, banned_elements: null });
+                                    // Execute ban on external server (Gala Live) only - no Supabase saving
                                     const banRes = await supabase.functions.invoke("wares-request", { body: { action: "ban-user-real", uuid: report.reported_user_id, reason, hours: String(hours), ban_type: banType } });
                                     console.log("Report ban external result:", banRes.data);
+                                    if (banRes.error) throw new Error("فشل الحظر");
                                     const { sendUserNotification } = await import("@/utils/sendUserNotification");
                                     const durationText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
                                     await sendUserNotification(report.reported_user_id, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durationText}.`).catch(() => {});
                                     toast.dismiss(t);
                                     toast.success("تم الحظر الكامل!");
                                     setRemovedIds(prev => new Set(prev).add(report.id));
-                                    setTimeout(() => { setSubTab("list"); loadData(); }, 800);
+                                    loadData();
                                   } catch { toast.dismiss(t); toast.error("فشل التأكيد"); }
                                   finally { setActionInProgress(null); }
                                 }}
