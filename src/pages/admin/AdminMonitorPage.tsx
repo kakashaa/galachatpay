@@ -448,9 +448,11 @@ const AdminMonitorPage: React.FC = () => {
                 <p className="text-xs text-muted-foreground">اسأل البوت أي سؤال عن المستخدمين</p>
                 <div className="mt-4 space-y-2">
                   {[
-                    "كم مرة شحن UUID 1000 هالشهر؟",
-                    "جيب لي كل اللي شحنوا فوق مليون اليوم",
-                    "هل UUID 5555 محظور؟",
+                    "جيب أعلى الداعمين اليوم",
+                    "مين شحن فوق 500 ألف؟",
+                    "معلومات UUID 1000",
+                    "أعلى المستلمين هالشهر",
+                    "كم تنبيه اليوم؟",
                   ].map((q, i) => (
                     <motion.button
                       key={i}
