@@ -311,6 +311,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`
         );
         toast.success("تم قبول الطلب وإرسال الإشعار");
+        setRequests(prev => prev.map(r => r.id === approveSheet.id ? { ...r, status: "delivered" } : r));
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
         fetchData();
       } else toast.error(data.error || "فشل في قبول الطلب");
@@ -336,6 +337,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`
         );
         toast.success("تم رفض الطلب وإرسال الإشعار");
+        setRequests(prev => prev.map(r => r.id === rejectSheet.id ? { ...r, status: "rejected", reject_reason: rejectReason } : r));
         setRejectSheet(null); setRejectReason(""); setRejectImage(null);
         fetchData();
       } else toast.error(data.error || "فشل في رفض الطلب");
