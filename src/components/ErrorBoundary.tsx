@@ -21,14 +21,14 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("ErrorBoundary caught:", error, info);
-    // Auto-recover for chunk loading errors (lazy import failures)
+    // Auto-recover for chunk loading errors (lazy import failures) — reload instead of re-render loop
     if (
       error.message?.includes("Loading chunk") ||
       error.message?.includes("Failed to fetch dynamically imported module") ||
       error.message?.includes("Importing a module script failed")
     ) {
-      console.warn("Chunk load error detected, auto-recovering...");
-      this.setState((prev) => ({ hasError: false, errorCount: prev.errorCount + 1 }));
+      console.warn("Chunk load error detected, reloading page...");
+      window.location.reload();
       return;
     }
   }
