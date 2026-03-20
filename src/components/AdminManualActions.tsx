@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { useConfirmModal } from '@/hooks/use-confirm-modal';
+import { supabase } from '@/integrations/supabase/client';
 
 const API = "https://galachat.site/project-z/api.php";
 const ADMIN_KEY = "ghala2026owner";
