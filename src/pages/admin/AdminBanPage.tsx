@@ -3,121 +3,180 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
-import { Ban, Unlock, Loader2, ShieldBan, Shield, Image as LucideImage, Play, ExternalLink, Upload, XCircle, Clock } from "lucide-react";
+import { Ban, Unlock, Loader2, ShieldBan, Shield, ExternalLink, Upload, Image as LucideImage } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
+const CHECK_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=";
+
+const formatDate = (d: string | null) => {
+  if (!d) return "—";
+  try { return new Date(d).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return String(d); }
+};
+
+interface TargetUser { name: string; image: string }
+
 const AdminBanPage: React.FC = () => {
-  const { adminCall, handleLogout } = useAdminSession();
+  const { handleLogout } = useAdminSession();
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
+  const [subTab, setSubTab] = useState<"reports" | "ban" | "list">("reports");
   const [loading, setLoading] = useState(false);
-  const [manualBans, setManualBans] = useState<any[]>([]);
-  const [blockedAccounts, setBlockedAccounts] = useState<any[]>([]);
-  const [banReports, setBanReports] = useState<any[]>([]);
-  const [subTab, setSubTab] = useState<"ban" | "reports" | "list">("ban");
-  const [banForm, setBanForm] = useState({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "promo", custom_reason: "", banned_elements: [] as string[], ban_scope: "normal" as "normal" | "device" });
-  const [banLoading, setBanLoading] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
-  const [banImage, setBanImage] = useState<File | null>(null);
+
+  /* ── Pending reports ── */
+  const [reports, setReports] = useState<any[]>([]);
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
-  const [reportFilter, setReportFilter] = useState<"pending" | "rejected">("pending");
-  const banFileRef = useRef<HTMLInputElement>(null);
+  const [durationPick, setDurationPick] = useState<{ id: string; uuid: string; reason: string } | null>(null);
+
+  /* ── Manual ban ── */
+  const [banUuid, setBanUuid] = useState("");
+  const [banTarget, setBanTarget] = useState<TargetUser | null>(null);
+  const [banLookup, setBanLookup] = useState(false);
+  const [banReason, setBanReason] = useState<"promotion" | "insult" | "other">("insult");
+  const [banCustom, setBanCustom] = useState("");
+  const [banImage, setBanImage] = useState<File | null>(null);
+  const [banLoading, setBanLoading] = useState(false);
+  const imgRef = useRef<HTMLInputElement>(null);
+
+  /* ── Banned list ── */
+  const [bannedList, setBannedList] = useState<any[]>([]);
+
+  const glassCard = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.3)' };
 
   useEffect(() => { loadData(); }, [subTab]);
-
-  const safeListCall = async (action: string, timeoutMs = 10000): Promise<any[]> => {
-    try {
-      const result = await Promise.race([
-        adminCall(action),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
-      ]);
-      return Array.isArray(result) ? result : [];
-    } catch {
-      return [];
-    }
-  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      if (subTab === "list" || subTab === "ban") {
-        const [bans, blocked] = await Promise.all([
-          safeListCall("list_manual_bans"),
-          safeListCall("list_blocked_accounts"),
-        ]);
-        setManualBans(bans);
-        setBlockedAccounts(blocked);
-      }
-
       if (subTab === "reports") {
-        const reports = await safeListCall("list_ban_reports");
-        setBanReports(reports);
+        const { data } = await supabase.from("ban_reports").select("*").eq("is_verified", false).neq("admin_notes", "مرفوض").order("created_at", { ascending: false });
+        setReports(data || []);
       }
-    } finally {
-      setLoading(false);
-    }
+      if (subTab === "list") {
+        const { data } = await supabase.from("ban_reports").select("*").eq("is_verified", true).order("created_at", { ascending: false });
+        setBannedList(data || []);
+      }
+    } finally { setLoading(false); }
   };
 
-  const { confirm, ConfirmDialog } = useConfirmModal();
-
-  const executeBan = async () => {
-    if (!banForm.target_uuid.trim()) { toast.error("يرجى إدخال UUID"); return; }
-    const reason = banForm.reason === 'other' ? banForm.custom_reason : banForm.reason;
-    if (!reason.trim()) { toast.error("أدخل السبب"); return; }
-    const ok = await confirm({ title: "تأكيد الحظر", message: `هل أنت متأكد من حظر UUID ${banForm.target_uuid}؟`, danger: true, confirmText: "تنفيذ الحظر" });
-    if (!ok) return;
-
-    setBanLoading(true);
-    const t = toast.loading("جاري تنفيذ الحظر...");
+  /* ── Lookup user for manual ban ── */
+  const lookupBanUser = async () => {
+    const t = banUuid.trim();
+    if (!t || !/^\d+$/.test(t)) { toast.error("UUID غير صحيح"); return; }
+    setBanLookup(true); setBanTarget(null);
     try {
-      const effectiveBanScope = banForm.reason === 'promo' ? 'device' : banForm.ban_scope;
-      const durationHours = banForm.reason === 'promo' ? 999999 : (parseInt(banForm.duration_hours) || 24);
+      const res = await fetch(CHECK_API + encodeURIComponent(t));
+      const data = await res.json();
+      if (data?.data?.name) setBanTarget({ name: data.data.name, image: data.data.profile?.image || "" });
+      else toast.error("المستخدم غير موجود");
+    } catch { toast.error("خطأ"); }
+    finally { setBanLookup(false); }
+  };
 
-      // Execute ban on external server (Gala Live) only
-      const banRes = await supabase.functions.invoke("wares-request", {
-        body: { action: "ban-user-real", uuid: banForm.target_uuid.trim(), reason, hours: String(durationHours), ban_type: effectiveBanScope },
-      });
-      console.log("External ban result:", banRes.data);
-      if (banRes.error) throw new Error("فشل الحظر في السيرفر الخارجي");
+  /* ── Execute ban via external API ── */
+  const doBan = async (uuid: string, reason: string, hours: number, banType: string) => {
+    const banRes = await supabase.functions.invoke("wares-request", {
+      body: { action: "ban-user-real", uuid, reason, hours: String(hours), ban_type: banType },
+    });
+    if (banRes.error) throw new Error("فشل الحظر");
+    const durText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
+    await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
+  };
 
-      const durationText = durationHours === 999999 ? "أبدي" : `${durationHours} ساعة`;
-      await sendUserNotification(
-        banForm.target_uuid.trim(),
-        "تم تعليق حسابك",
-        `تم تعليق حسابك بسبب: ${reason || "مخالفة"}. المدة: ${durationText}.`
-      ).catch(() => {});
+  const doUnban = async (uuid: string) => {
+    const res = await supabase.functions.invoke("wares-request", {
+      body: { action: "unban-user-real", uuid },
+    });
+    if (res.error) throw new Error("فشل فك الحظر");
+  };
+
+  /* ── Accept report with duration choice ── */
+  const acceptReport = async (report: any, hours: number) => {
+    setActionInProgress(report.id);
+    const t = toast.loading("جاري التأكيد والحظر...");
+    try {
+      const isPromo = report.ban_type === "promotion";
+      const banType = isPromo ? "device" : "normal";
+      const banHours = isPromo ? 999999 : hours;
+      const reason = report.description || "بلاغ مؤكد";
+
+      // Check if already banned
+      const { data: existing } = await supabase.from("ban_reports").select("id").eq("reported_user_id", report.reported_user_id).eq("is_verified", true).limit(1);
+      if (existing && existing.length > 0) {
+        const proceed = await confirm({ title: "تنبيه", message: "هذا المستخدم محظور من قبل! هل تريد زيادة المدة؟", danger: true, confirmText: "نعم، حظر" });
+        if (!proceed) { toast.dismiss(t); setActionInProgress(null); setDurationPick(null); return; }
+      }
+
+      await doBan(report.reported_user_id, reason, banHours, banType);
+      await supabase.from("ban_reports").update({ is_verified: true } as any).eq("id", report.id);
       toast.dismiss(t);
-      toast.success("تم حظر المستخدم بنجاح");
-      setBanForm({ target_uuid: "", ban_type: "full", duration_hours: "24", reason: "promo", custom_reason: "", banned_elements: [], ban_scope: "normal" });
-      setBanImage(null);
-    } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الحظر"); }
+      toast.success("تم الحظر!");
+      setRemovedIds(prev => new Set(prev).add(report.id));
+      setDurationPick(null);
+      loadData();
+    } catch { toast.dismiss(t); toast.error("فشل"); }
+    finally { setActionInProgress(null); }
+  };
+
+  /* ── Reject report ── */
+  const rejectReport = async (id: string) => {
+    setActionInProgress(id + "_r");
+    const t = toast.loading("جاري الرفض...");
+    try {
+      await supabase.from("ban_reports").update({ admin_notes: "مرفوض" } as any).eq("id", id);
+      toast.dismiss(t); toast.success("تم الرفض");
+      loadData();
+    } catch { toast.dismiss(t); toast.error("فشل"); }
+    finally { setActionInProgress(null); }
+  };
+
+  /* ── Manual ban ── */
+  const executeManualBan = async () => {
+    const uuid = banUuid.trim();
+    if (!uuid) { toast.error("أدخل UUID"); return; }
+    const reason = banReason === "other" ? banCustom : banReason === "insult" ? "سب/إساءة" : "ترويج";
+    if (!reason.trim()) { toast.error("أدخل السبب"); return; }
+    const ok = await confirm({ title: "تأكيد الحظر", message: `حظر UUID ${uuid}؟`, danger: true, confirmText: "تنفيذ" });
+    if (!ok) return;
+    setBanLoading(true);
+    const t = toast.loading("جاري الحظر...");
+    try {
+      const isPromo = banReason === "promotion";
+      await doBan(uuid, reason, isPromo ? 999999 : 24, isPromo ? "device" : "normal");
+      toast.dismiss(t); toast.success("تم الحظر!");
+      setBanUuid(""); setBanTarget(null); setBanReason("insult"); setBanCustom(""); setBanImage(null);
+    } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
     finally { setBanLoading(false); }
   };
 
-  const handleUnban = async () => {
-    if (!banForm.target_uuid.trim()) { toast.error('أدخل UUID'); return; }
-    const ok = await confirm({ title: "تأكيد فك الحظر", message: `هل تريد فك الحظر عن UUID ${banForm.target_uuid}؟`, danger: false, confirmText: "فك الحظر" });
+  const executeManualUnban = async () => {
+    const uuid = banUuid.trim();
+    if (!uuid) { toast.error("أدخل UUID"); return; }
+    const ok = await confirm({ title: "فك الحظر", message: `فك حظر ${uuid}؟`, confirmText: "فك الحظر" });
     if (!ok) return;
     const t = toast.loading("جاري فك الحظر...");
-    try {
-      await supabase.functions.invoke("wares-request", {
-        body: { action: "unban-user-real", uuid: banForm.target_uuid.trim() },
-      });
-      toast.dismiss(t);
-      toast.success("تم فك الحظر!");
-    } catch { toast.dismiss(t); toast.error("فشل فك الحظر"); }
+    try { await doUnban(uuid); toast.dismiss(t); toast.success("تم فك الحظر!"); }
+    catch { toast.dismiss(t); toast.error("فشل"); }
   };
 
-  const ELEMENT_OPTIONS = [
-    { key: "entries", label: "دخوليات" }, { key: "frames", label: "إطارات" },
-    { key: "gifts", label: "هدايا مخصصة" }, { key: "animated_photos", label: "صور متحركة" },
-    { key: "change_id", label: "تغيير آيدي" }, { key: "hairs", label: "تسريحات" },
-    { key: "vip", label: "VIP" }, { key: "salary", label: "رواتب" },
-    { key: "quick_support", label: "دعم سريع" }, { key: "works", label: "works" },
-    { key: "stars", label: "نجومي" },
-  ];
+  /* ── Unban from list ── */
+  const unbanFromList = async (report: any) => {
+    const ok = await confirm({ title: "فك الحظر", message: `فك حظر ${report.reported_user_id}؟`, confirmText: "فك الحظر" });
+    if (!ok) return;
+    setActionInProgress(report.id);
+    const t = toast.loading("جاري فك الحظر...");
+    try {
+      await doUnban(report.reported_user_id);
+      await supabase.from("ban_reports").delete().eq("id", report.id);
+      toast.dismiss(t); toast.success("تم فك الحظر!");
+      loadData();
+    } catch { toast.dismiss(t); toast.error("فشل"); }
+    finally { setActionInProgress(null); }
+  };
 
-  const glassCard = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.3)' };
+  const pendingReports = reports.filter(r => !removedIds.has(r.id));
 
   return (
     <>
@@ -125,11 +184,11 @@ const AdminBanPage: React.FC = () => {
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(244,63,94,0.1)' }}>
-          {[
+          {([
+            { key: "reports" as const, label: "البلاغات المعلقة" },
             { key: "ban" as const, label: "حظر مستخدم" },
-            { key: "reports" as const, label: "البلاغات" },
             { key: "list" as const, label: "المحظورين" },
-          ].map(t => (
+          ]).map(t => (
             <motion.button key={t.key} onClick={() => setSubTab(t.key)} whileTap={{ scale: 0.96 }}
               className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${subTab === t.key ? "text-admin-rose" : "text-muted-foreground"}`}
               style={subTab === t.key ? { background: 'rgba(244,63,94,0.12)', boxShadow: '0 2px 8px rgba(244,63,94,0.15)' } : {}}>
@@ -138,13 +197,94 @@ const AdminBanPage: React.FC = () => {
           ))}
         </div>
 
-        {loading && <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-admin-rose" /></div>}
+        {loading && <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-admin-rose" /></div>}
 
         <AnimatePresence mode="wait">
+          {/* ═══ TAB 1: Pending Reports ═══ */}
+          {!loading && subTab === "reports" && (
+            <motion.div key="reports" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+              {pendingReports.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground"><ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات معلقة</p></div>
+              ) : (
+                <AnimatePresence mode="popLayout">
+                  {pendingReports.map((report, i) => (
+                    <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -100, height: 0 }} transition={{ delay: i * 0.04 }}
+                      layout className="rounded-2xl overflow-hidden" style={glassCard}>
+
+                      {/* Video player */}
+                      {report.evidence_url && (
+                        <div className="relative w-full aspect-video bg-black/40">
+                          {report.evidence_type === "video" ? (
+                            <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
+                          ) : (
+                            <img src={report.evidence_url} alt="" className="w-full h-full object-contain" />
+                          )}
+                          <a href={report.evidence_url} target="_blank" rel="noopener noreferrer"
+                            className="absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                            <ExternalLink className="w-3.5 h-3.5 text-white/80" />
+                          </a>
+                        </div>
+                      )}
+
+                      <div className="p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>معلق</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{report.description}</p>
+                        <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id} • {formatDate(report.created_at)}</p>
+
+                        {/* Duration picker for insult/other */}
+                        {durationPick?.id === report.id && report.ban_type !== "promotion" ? (
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-admin-rose">اختر مدة الحظر:</p>
+                            <div className="grid grid-cols-4 gap-2">
+                              {[3, 12, 24, 48].map(h => (
+                                <motion.button key={h} whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                                  onClick={() => acceptReport(report, h)}
+                                  className="py-2 rounded-xl text-xs font-bold text-white disabled:opacity-50"
+                                  style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))' }}>
+                                  {actionInProgress === report.id ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : `${h}h`}
+                                </motion.button>
+                              ))}
+                            </div>
+                            <button onClick={() => setDurationPick(null)} className="text-xs text-muted-foreground w-full text-center">إلغاء</button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2 mt-1">
+                            <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                              onClick={() => {
+                                if (report.ban_type === "promotion") {
+                                  acceptReport(report, 999999);
+                                } else {
+                                  setDurationPick({ id: report.id, uuid: report.reported_user_id, reason: report.description });
+                                }
+                              }}
+                              className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1"
+                              style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
+                              {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "قبول"}
+                            </motion.button>
+                            <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                              onClick={() => rejectReport(report.id)}
+                              className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1"
+                              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "رفض"}
+                            </motion.button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </motion.div>
+          )}
+
+          {/* ═══ TAB 2: Manual Ban ═══ */}
           {!loading && subTab === "ban" && (
             <motion.div key="ban" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="rounded-2xl p-5 space-y-4"
-              style={{ background: 'linear-gradient(145deg, rgba(244,63,94,0.08), rgba(244,63,94,0.02))', border: '1px solid rgba(244,63,94,0.12)', boxShadow: '0 8px 32px -8px rgba(244,63,94,0.1)' }}>
+              style={{ background: 'linear-gradient(145deg, rgba(244,63,94,0.08), rgba(244,63,94,0.02))', border: '1px solid rgba(244,63,94,0.12)' }}>
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.15)' }}>
                   <Ban className="w-5 h-5 text-admin-rose" />
@@ -152,130 +292,94 @@ const AdminBanPage: React.FC = () => {
                 <span className="text-sm font-bold text-admin-rose">حظر مستخدم</span>
               </div>
 
-              {/* 1. UUID */}
-              <input placeholder="UUID المستخدم" value={banForm.target_uuid} onChange={e => setBanForm(p => ({ ...p, target_uuid: e.target.value }))}
-                className="w-full h-12 rounded-xl px-4 text-sm tabular-nums focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} dir="ltr" />
+              {/* UUID + lookup */}
+              <div className="flex gap-2">
+                <input placeholder="UUID المستخدم" value={banUuid} onChange={e => { setBanUuid(e.target.value); setBanTarget(null); }}
+                  className="flex-1 h-12 rounded-xl px-4 text-sm tabular-nums focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} dir="ltr" />
+                <motion.button whileTap={{ scale: 0.95 }} onClick={lookupBanUser} disabled={banLookup || !banUuid.trim()}
+                  className="h-12 px-4 rounded-xl text-xs font-bold text-admin-rose disabled:opacity-50" style={{ background: 'rgba(244,63,94,0.1)' }}>
+                  {banLookup ? <Loader2 className="w-4 h-4 animate-spin" /> : "بحث"}
+                </motion.button>
+              </div>
 
-              {/* 2. سبب الحظر */}
+              {banTarget && (
+                <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  {banTarget.image ? <img src={banTarget.image} className="w-10 h-10 rounded-full object-cover" alt="" /> : <div className="w-10 h-10 rounded-full bg-muted" />}
+                  <span className="text-sm font-bold">{banTarget.name}</span>
+                </div>
+              )}
+
+              {/* Reason */}
               <div>
-                <p className="text-[11px] text-muted-foreground mb-2 font-bold">سبب الحظر</p>
+                <p className="text-[11px] text-muted-foreground mb-2 font-bold">السبب</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'promo', label: 'ترويج', active: 'rgba(244,63,94,0.15)', border: 'rgba(244,63,94,0.3)' },
-                    { value: 'insult', label: 'سب / إساءة', active: 'rgba(234,179,8,0.15)', border: 'rgba(234,179,8,0.3)' },
-                    { value: 'other', label: 'أخرى', active: 'rgba(249,115,22,0.15)', border: 'rgba(249,115,22,0.3)' },
-                  ].map(r => (
-                    <motion.button key={r.value} whileTap={{ scale: 0.95 }}
-                      onClick={() => setBanForm(p => ({ ...p, reason: r.value }))}
-                      className={`py-2.5 rounded-xl text-xs font-bold transition-all ${banForm.reason === r.value ? 'text-foreground' : 'text-muted-foreground'}`}
-                      style={banForm.reason === r.value ? { background: r.active, border: `1px solid ${r.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  {([
+                    { value: "promotion" as const, label: "ترويج" },
+                    { value: "insult" as const, label: "سب/إساءة" },
+                    { value: "other" as const, label: "أخرى" },
+                  ]).map(r => (
+                    <motion.button key={r.value} whileTap={{ scale: 0.95 }} onClick={() => setBanReason(r.value)}
+                      className={`py-2.5 rounded-xl text-xs font-bold transition-all ${banReason === r.value ? "text-foreground" : "text-muted-foreground"}`}
+                      style={banReason === r.value ? { background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.2)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       {r.label}
                     </motion.button>
                   ))}
                 </div>
               </div>
 
-              {banForm.reason === 'other' && (
-                <input placeholder="اكتب السبب..." value={banForm.custom_reason} onChange={e => setBanForm(p => ({ ...p, custom_reason: e.target.value }))}
+              {banReason === "promotion" && (
+                <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)' }}>
+                  <p className="text-xs text-admin-rose font-bold">ترويج = حظر جهاز دائم (999,999h)</p>
+                </div>
+              )}
+
+              {banReason === "insult" && (
+                <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                  <p className="text-xs font-bold" style={{ color: 'hsl(217 91% 60%)' }}>سب/إساءة — خيارات: 3h / 12h / 24h / 48h</p>
+                </div>
+              )}
+
+              {banReason === "other" && (
+                <input placeholder="اكتب السبب..." value={banCustom} onChange={e => setBanCustom(e.target.value)}
                   className="w-full h-12 rounded-xl px-4 text-sm focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
               )}
 
-              {/* 3. نوع الحظر الداخلي (كامل / عناصر) */}
-              <div className="grid grid-cols-2 gap-2">
-                {[{ key: "full", label: "حظر كامل", color: "rgba(244,63,94,0.12)" }, { key: "elements", label: "حظر عناصر", color: "rgba(139,92,246,0.12)" }].map(t => (
-                  <motion.button key={t.key} whileTap={{ scale: 0.95 }}
-                    onClick={() => setBanForm(p => ({ ...p, ban_type: t.key, banned_elements: [] }))}
-                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all ${banForm.ban_type === t.key ? 'text-foreground' : 'text-muted-foreground'}`}
-                    style={banForm.ban_type === t.key ? { background: t.color, border: '1px solid rgba(255,255,255,0.1)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    {t.label}
-                  </motion.button>
-                ))}
-              </div>
-              {banForm.ban_type === "elements" && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="grid grid-cols-2 gap-1.5">
-                  {ELEMENT_OPTIONS.map((el, i) => (
-                    <motion.button key={el.key} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}
-                      onClick={() => setBanForm(p => ({ ...p, banned_elements: p.banned_elements.includes(el.key) ? p.banned_elements.filter(e => e !== el.key) : [...p.banned_elements, el.key] }))}
-                      className="py-2 px-2 rounded-xl text-[11px] font-bold transition-all"
-                      style={banForm.banned_elements.includes(el.key) ? { background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.2)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'hsl(var(--muted-foreground))' }}>
-                      {el.label}
-                    </motion.button>
-                  ))}
-                </motion.div>
-              )}
-
-              {/* 4. نوع البند (حساب / جهاز) */}
-              {banForm.reason !== 'promo' ? (
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-2 font-bold">نوع الحظر</p>
-                  <div className="flex gap-3">
-                    {[
-                      { key: 'normal' as const, label: 'حساب فقط', activeColor: 'rgba(59,130,246,0.12)', activeBorder: 'rgba(59,130,246,0.3)' },
-                      { key: 'device' as const, label: 'جهاز كامل', activeColor: 'rgba(244,63,94,0.12)', activeBorder: 'rgba(244,63,94,0.3)' },
-                    ].map(s => (
-                      <motion.button key={s.key} whileTap={{ scale: 0.95 }}
-                        onClick={() => setBanForm(p => ({ ...p, ban_scope: s.key }))}
-                        className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${banForm.ban_scope === s.key ? 'text-foreground' : 'text-muted-foreground'}`}
-                        style={banForm.ban_scope === s.key ? { background: s.activeColor, border: `1px solid ${s.activeBorder}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        {s.label}
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-xl p-3 text-center" style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)' }}>
-                  <p className="text-xs text-admin-rose font-bold">الترويج = حظر جهاز دائم تلقائي (999,999 ساعة)</p>
-                </div>
-              )}
-
-              {/* 5. مدة الحظر */}
-              {banForm.reason !== 'promo' && (
+              {/* Duration for insult */}
+              {banReason === "insult" && (
                 <div>
                   <p className="text-[11px] text-muted-foreground mb-2 font-bold">مدة الحظر</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      { value: '3', label: '3 ساعات' },
-                      { value: '6', label: '6 ساعات' },
-                      { value: '12', label: '12 ساعة' },
-                      { value: '24', label: '24 ساعة' },
-                    ].map(d => (
-                      <motion.button key={d.value} whileTap={{ scale: 0.95 }}
-                        onClick={() => setBanForm(p => ({ ...p, duration_hours: d.value }))}
-                        className={`py-2 rounded-xl text-xs font-bold transition-all ${banForm.duration_hours === d.value ? 'text-foreground' : 'text-muted-foreground'}`}
-                        style={banForm.duration_hours === d.value ? { background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.3)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                        {d.label}
+                  <div className="grid grid-cols-4 gap-2" id="ban-duration">
+                    {[3, 12, 24, 48].map(h => (
+                      <motion.button key={h} whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          const el = document.getElementById("ban-duration");
+                          el?.querySelectorAll("button").forEach(b => b.classList.remove("selected-duration"));
+                        }}
+                        data-hours={h}
+                        className="py-2 rounded-xl text-xs font-bold text-muted-foreground"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        {h}h
                       </motion.button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* 6. صورة إثبات */}
-              <input type="file" ref={banFileRef} className="hidden" accept="image/*,video/*"
-                onChange={e => {
-                  const f = e.target.files?.[0];
-                  if (f && f.size <= 10 * 1024 * 1024) setBanImage(f);
-                  else if (f) toast.error('الحد الأقصى 10MB');
-                }}
-              />
-              <button onClick={() => banFileRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs text-muted-foreground transition-all hover:text-foreground"
+              {/* Image (optional) */}
+              <input type="file" ref={imgRef} className="hidden" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f && f.size <= 10 * 1024 * 1024) setBanImage(f); else if (f) toast.error("max 10MB"); }} />
+              <button onClick={() => imgRef.current?.click()} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs text-muted-foreground"
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                {banImage ? (
-                  <><LucideImage className="w-4 h-4 text-admin-rose" /> {banImage.name}</>
-                ) : (
-                  <><Upload className="w-4 h-4" /> رفع صورة أو فيديو إثبات (اختياري)</>
-                )}
+                {banImage ? <><LucideImage className="w-4 h-4 text-admin-rose" /> {banImage.name}</> : <><Upload className="w-4 h-4" /> صورة إثبات (اختياري)</>}
               </button>
 
-              {/* 7. أزرار التنفيذ + فك الحظر */}
+              {/* Action buttons */}
               <div className="flex gap-2">
-                <motion.button whileTap={{ scale: 0.96 }} onClick={executeBan} disabled={banLoading || !banForm.target_uuid.trim()}
+                <motion.button whileTap={{ scale: 0.96 }} onClick={executeManualBan} disabled={banLoading || !banUuid.trim()}
                   className="flex-1 h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 text-white disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))', boxShadow: '0 4px 16px rgba(244,63,94,0.35)' }}>
                   {banLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Ban className="w-4 h-4" />تنفيذ الحظر</>}
                 </motion.button>
-                <motion.button whileTap={{ scale: 0.96 }} onClick={handleUnban} disabled={!banForm.target_uuid.trim()}
+                <motion.button whileTap={{ scale: 0.96 }} onClick={executeManualUnban} disabled={!banUuid.trim()}
                   className="h-12 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
                   style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: 'hsl(160 84% 39%)' }}>
                   <Unlock className="w-4 h-4" /> فك الحظر
@@ -284,217 +388,53 @@ const AdminBanPage: React.FC = () => {
             </motion.div>
           )}
 
-          {!loading && subTab === "reports" && (
-                <motion.div key="reports" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-              
-              {/* Sub-tabs: pending / rejected */}
-              <div className="flex gap-1 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                {[
-                  { key: "pending" as const, label: "معلّقة", icon: Clock, count: banReports.filter(r => !r.is_verified && r.admin_notes !== "مرفوض").length },
-                  { key: "rejected" as const, label: "مرفوضة", icon: XCircle, count: banReports.filter(r => r.admin_notes === "مرفوض").length },
-                ].map(t => (
-                  <motion.button key={t.key} onClick={() => setReportFilter(t.key)} whileTap={{ scale: 0.96 }}
-                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${reportFilter === t.key ? "text-admin-rose" : "text-muted-foreground"}`}
-                    style={reportFilter === t.key ? { background: 'rgba(244,63,94,0.1)' } : {}}>
-                    <t.icon className="w-3.5 h-3.5" />
-                    {t.label}
-                    {t.count > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: reportFilter === t.key ? 'rgba(244,63,94,0.2)' : 'rgba(255,255,255,0.08)' }}>
-                        {t.count}
-                      </span>
-                    )}
-                  </motion.button>
-                ))}
-              </div>
-
-              {/* Pending reports */}
-              {reportFilter === "pending" && (
-                <>
-                  {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified && r.admin_notes !== "مرفوض").length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground"><ShieldBan className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات معلقة</p></div>
-                  ) : (
-                    <AnimatePresence mode="popLayout">
-                      {banReports.filter(r => !removedIds.has(r.id) && !r.is_verified && r.admin_notes !== "مرفوض").map((report: any, i: number) => (
-                        <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -100, height: 0, marginBottom: 0 }} transition={{ delay: i * 0.04 }}
-                          layout className="rounded-2xl overflow-hidden" style={glassCard}>
-                          
-                          {report.evidence_url && (
-                            <div className="relative w-full aspect-video bg-black/40">
-                              {report.evidence_type === "video" ? (
-                                <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
-                              ) : (
-                                <img src={report.evidence_url} alt="دليل" className="w-full h-full object-contain" />
-                              )}
-                              <a href={report.evidence_url} target="_blank" rel="noopener noreferrer"
-                                className="absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center"
-                                style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-                                <ExternalLink className="w-3.5 h-3.5 text-white/80" />
-                              </a>
-                              <div className="absolute top-2 right-2 px-2 py-0.5 rounded-lg text-[9px] font-bold text-white"
-                                style={{ background: report.evidence_type === "video" ? 'rgba(139,92,246,0.85)' : 'rgba(59,130,246,0.85)' }}>
-                                {report.evidence_type === "video" ? <span className="flex items-center gap-1"><Play className="w-3 h-3" /> فيديو</span> : <span className="flex items-center gap-1"><LucideImage className="w-3 h-3" /> صورة</span>}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="p-4 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
-                              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>معلق</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{report.description}</p>
-                            <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
-                            {report.voice_url && (
-                              <audio src={report.voice_url} controls className="w-full h-8 mt-1" style={{ filter: 'invert(1) hue-rotate(180deg)', opacity: 0.7 }} />
-                            )}
-                            <div className="flex gap-2 mt-1">
-                              <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
-                                onClick={async () => {
-                                  if (actionInProgress) return;
-                                  setActionInProgress(report.id);
-                                  const t = toast.loading("جاري التأكيد والحظر...");
-                                  try {
-                                    await adminCall("update_ban_report", { id: report.id, is_verified: true });
-                                    const banType = report.ban_type === 'promotion' || report.description?.includes('ترويج') ? 'device' : 'normal';
-                                    const hours = banType === 'device' ? 999999 : 24;
-                                    const reason = report.description || 'بلاغ مؤكد';
-                                    // Execute ban on external server (Gala Live) only - no Supabase saving
-                                    const banRes = await supabase.functions.invoke("wares-request", { body: { action: "ban-user-real", uuid: report.reported_user_id, reason, hours: String(hours), ban_type: banType } });
-                                    console.log("Report ban external result:", banRes.data);
-                                    if (banRes.error) throw new Error("فشل الحظر");
-                                    const { sendUserNotification } = await import("@/utils/sendUserNotification");
-                                    const durationText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
-                                    await sendUserNotification(report.reported_user_id, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durationText}.`).catch(() => {});
-                                    toast.dismiss(t);
-                                    toast.success("تم الحظر الكامل!");
-                                    setRemovedIds(prev => new Set(prev).add(report.id));
-                                    loadData();
-                                  } catch { toast.dismiss(t); toast.error("فشل التأكيد"); }
-                                  finally { setActionInProgress(null); }
-                                }}
-                                className="flex-1 h-9 rounded-xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                                {actionInProgress === report.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "تأكيد"}
-                              </motion.button>
-                              <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
-                                onClick={async () => {
-                                  if (actionInProgress) return;
-                                  setActionInProgress(report.id + "_r");
-                                  const t = toast.loading("جاري الرفض...");
-                                  try {
-                                    await adminCall("update_ban_report", { id: report.id, admin_notes: "مرفوض" });
-                                    toast.dismiss(t);
-                                    toast.success("تم الرفض");
-                                    loadData();
-                                  } catch { toast.dismiss(t); toast.error("فشل"); }
-                                  finally { setActionInProgress(null); }
-                                }}
-                                className="flex-1 h-9 rounded-xl text-xs font-bold text-muted-foreground disabled:opacity-50 flex items-center justify-center gap-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                {actionInProgress === report.id + "_r" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "رفض"}
-                              </motion.button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  )}
-                </>
-              )}
-
-              {/* Rejected reports */}
-              {reportFilter === "rejected" && (
-                <>
-                  {banReports.filter(r => r.admin_notes === "مرفوض").length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground"><XCircle className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد بلاغات مرفوضة</p></div>
-                  ) : (
-                    <div className="space-y-3">
-                      {banReports.filter(r => r.admin_notes === "مرفوض").map((report: any, i: number) => (
-                        <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                          className="rounded-2xl overflow-hidden" style={glassCard}>
-                          
-                          {report.evidence_url && (
-                            <div className="relative w-full aspect-video bg-black/40">
-                              {report.evidence_type === "video" ? (
-                                <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
-                              ) : (
-                                <img src={report.evidence_url} alt="دليل" className="w-full h-full object-contain" />
-                              )}
-                            </div>
-                          )}
-
-                          <div className="p-4 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
-                              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' }}>مرفوض</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{report.description}</p>
-                            <p className="text-[10px] text-muted-foreground">نوع: {report.ban_type} • مبلّغ: {report.reporter_gala_id}</p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.div>
-          )}
-
+          {/* ═══ TAB 3: Banned List ═══ */}
           {!loading && subTab === "list" && (
             <motion.div key="list" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-              {manualBans.map((ban: any, i: number) => (
-                <motion.div key={ban.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                  className="rounded-2xl p-4 space-y-2" style={glassCard}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-sm tabular-nums" dir="ltr">{ban.target_uuid}</p>
-                      <p className="text-xs text-muted-foreground">{ban.ban_type === "full" ? "حظر كامل" : "حظر عناصر"} • {ban.duration_hours === 999999 ? "أبدي" : `${ban.duration_hours} ساعة`}</p>
-                    </div>
-                    <span className="px-2 py-1 rounded-lg text-xs font-bold"
-                      style={ban.status === "active" ? { background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(16,185,129,0.12)', color: 'hsl(160 84% 39%)' }}>
-                      {ban.status === "active" ? "فعال" : "ملغي"}
-                    </span>
-                  </div>
-                  {ban.reason && <p className="text-xs text-muted-foreground">السبب: {ban.reason}</p>}
-                  {ban.banned_elements?.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {ban.banned_elements.map((el: string) => <span key={el} className="px-1.5 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(244,63,94,0.1)', color: 'hsl(350 89% 60%)' }}>{el}</span>)}
-                    </div>
-                  )}
-                  {ban.status === "active" && (
-                    <motion.button whileTap={{ scale: 0.96 }} disabled={!!actionInProgress}
-                      onClick={async () => { if (actionInProgress) return; setActionInProgress(ban.id); const t = toast.loading("جاري فك الحظر..."); try { await adminCall("unban_manual", { ban_id: ban.id }); await sendUserNotification(ban.target_uuid, "تم إعادة تفعيل حسابك", "تم رفع الحظر عن حسابك. يمكنك استخدام التطبيق بشكل طبيعي."); toast.dismiss(t); toast.success("تم فك الحظر"); loadData(); } catch { toast.dismiss(t); toast.error("فشل فك الحظر"); } finally { setActionInProgress(null); } }}
-                      className="w-full h-10 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                      {actionInProgress === ban.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
-                    </motion.button>
-                  )}
-                </motion.div>
-              ))}
-              {blockedAccounts.length > 0 && (
-                <>
-                  <p className="text-xs font-bold text-muted-foreground mt-4">حسابات محظورة تسجيل دخول ({blockedAccounts.length})</p>
-                  {blockedAccounts.map((acc: any, i: number) => (
-                    <motion.div key={acc.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                      className="rounded-2xl p-4" style={glassCard}>
+              {bannedList.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground"><Shield className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا يوجد محظورين</p></div>
+              ) : bannedList.map((report, i) => {
+                // Check if expired (non-permanent)
+                const isPermanent = report.ban_type === "promotion" || (report.reward_amount && report.reward_amount >= 50000);
+                if (!isPermanent && report.expires_at) {
+                  const exp = new Date(report.expires_at);
+                  if (exp < new Date()) return null; // expired, hide
+                }
+                return (
+                  <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                    className="rounded-2xl overflow-hidden" style={glassCard}>
+
+                    {report.evidence_url && (
+                      <div className="relative w-full aspect-video bg-black/40">
+                        {report.evidence_type === "video" ? (
+                          <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
+                        ) : (
+                          <img src={report.evidence_url} alt="" className="w-full h-full object-contain" />
+                        )}
+                      </div>
+                    )}
+
+                    <div className="p-4 space-y-2">
                       <div className="flex items-center justify-between">
-                        <p className="font-bold text-sm tabular-nums">{acc.target_uuid}</p>
-                        <span className="px-2 py-1 rounded-lg text-xs font-bold"
-                          style={acc.is_permanently_blocked ? { background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
-                          {acc.is_permanently_blocked ? "دائم" : "مؤقت"}
+                        <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold"
+                          style={isPermanent ? { background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
+                          {isPermanent ? "دائم" : "مؤقت"}
                         </span>
                       </div>
+                      <p className="text-xs text-muted-foreground">السبب: {report.description || report.ban_type}</p>
+                      {report.expires_at && <p className="text-[10px] text-muted-foreground">ينتهي: {formatDate(report.expires_at)}</p>}
+
                       <motion.button whileTap={{ scale: 0.96 }} disabled={!!actionInProgress}
-                        onClick={async () => { if (actionInProgress) return; setActionInProgress(acc.id); const t = toast.loading("جاري فك الحظر..."); try { await adminCall("unblock_account", { target_uuid: acc.target_uuid }); toast.dismiss(t); toast.success("تم فك الحظر"); loadData(); } catch { toast.dismiss(t); toast.error("فشل"); } finally { setActionInProgress(null); } }}
-                        className="w-full h-10 mt-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }}>
-                        {actionInProgress === acc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
+                        onClick={() => unbanFromList(report)}
+                        className="w-full h-9 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
+                        {actionInProgress === report.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
                       </motion.button>
-                    </motion.div>
-                  ))}
-                </>
-              )}
-              {manualBans.length === 0 && blockedAccounts.length === 0 && (
-                <div className="text-center py-10 text-muted-foreground"><Shield className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد حسابات محظورة</p></div>
-              )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>
