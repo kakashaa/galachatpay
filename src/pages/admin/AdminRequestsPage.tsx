@@ -687,6 +687,7 @@ const AdminRequestsPage: React.FC = () => {
             </motion.div>
           </AnimatePresence>
         )}
+      </div>
 
       {/* Preview Dialog for approved/rejected items */}
       <Dialog open={!!previewItem} onOpenChange={() => setPreviewItem(null)}>
