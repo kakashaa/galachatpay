@@ -17,6 +17,7 @@ interface BDData {
   auto_withdrawal: boolean;
 }
 
+
 const BDDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -29,6 +30,9 @@ const BDDashboard: React.FC = () => {
   const [tab, setTab] = useState<'dashboard' | 'supporters' | 'agents' | 'wallet' | 'settings'>('dashboard');
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+  const [supporterSalaries, setSupporterSalaries] = useState<Record<string, { charges: number; commission: number }>>({});
+  const [agentSalaries, setAgentSalaries] = useState<Record<string, { salary: number; commission: number }>>({});
 
   const handleManualSync = async () => {
     if (syncing || !user?.uuid) return;
@@ -89,12 +93,60 @@ const BDDashboard: React.FC = () => {
         if (dayMap[day] !== undefined) dayMap[day] += log.amount || 0;
       });
       setDailyLogs(Object.entries(dayMap).map(([day, amount]) => ({ day, amount })));
+
+      // Fetch salary data from external API for each member
+      if (res?.bd) {
+        fetchMemberSalaries(res.supporters || [], res.agents || []);
+      }
     } catch {
       toast.error("فشل تحميل البيانات");
     } finally {
       setLoading(false);
     }
   }, [user?.uuid, navigate]);
+
+  // Fetch salary/charges from external API for each member
+  const fetchMemberSalaries = async (sups: any[], ags: any[]) => {
+    setSalaryLoading(true);
+    const month = new Date().toISOString().slice(0, 7);
+    const year = new Date().getFullYear();
+    const monthNum = new Date().getMonth() + 1;
+
+    const supMap: Record<string, { charges: number; commission: number }> = {};
+    const agMap: Record<string, { salary: number; commission: number }> = {};
+
+    // Fetch supporters in parallel
+    const supPromises = sups.map(async (s: any) => {
+      try {
+        const res = await fetch(
+          `https://galachat.site/project-z/api.php?action=user_monthly_charges&admin_key=ghala2026owner&uuid=${s.member_uuid}&month=${month}`
+        );
+        const data = await res.json();
+        const charges = data.total_charges || 0;
+        supMap[s.member_uuid] = { charges, commission: charges * 0.02 };
+      } catch { /* silent */ }
+    });
+
+    // Fetch agents in parallel
+    const agPromises = ags.map(async (a: any) => {
+      try {
+        // Try to get agency_id from bd_members
+        const agencyId = a.agency_id;
+        if (!agencyId) return;
+        const res = await fetch(
+          `https://galachat.site/project-z/api.php?action=agency_salary&admin_key=ghala2026owner&agency_id=${agencyId}&year=${year}&month=${monthNum}`
+        );
+        const data = await res.json();
+        const salary = data.salary || 0;
+        agMap[a.member_uuid] = { salary, commission: salary * 0.02 };
+      } catch { /* silent */ }
+    });
+
+    await Promise.all([...supPromises, ...agPromises]);
+    setSupporterSalaries(supMap);
+    setAgentSalaries(agMap);
+    setSalaryLoading(false);
+  };
 
   // Load data on mount, refresh every 30s, and listen for realtime commission changes
   useEffect(() => {
@@ -152,6 +204,11 @@ const BDDashboard: React.FC = () => {
 
   if (!data?.bd) return null;
   const { bd, supporters, agents } = data;
+
+  // Compute live salary commission total
+  const liveSalaryTotal = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0)
+    + Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
+  const liveSalaryTotalUsd = liveSalaryTotal / 7500;
 
   const renderStockChart = () => {
     if (dailyLogs.length === 0) return null;
@@ -368,9 +425,9 @@ const BDDashboard: React.FC = () => {
       <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4 space-y-3">
 
         {tab === 'supporters' ? (
-          <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} />
+          <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} salaryData={supporterSalaries} salaryLoading={salaryLoading} />
         ) : tab === 'agents' ? (
-          <BDAgentsTab agents={agents} commissionPct={bd.agency_commission_pct || 5} />
+          <BDAgentsTab agents={agents} commissionPct={bd.agency_commission_pct || 5} salaryData={agentSalaries} salaryLoading={salaryLoading} />
         ) : tab === 'wallet' ? (
           <div className="space-y-3 mt-1 css-fade-up">
             <section className="overflow-hidden rounded-2xl bg-card border border-border/40 p-4">
@@ -386,7 +443,7 @@ const BDDashboard: React.FC = () => {
                   <span className="text-[10px] font-medium text-yellow-500">{((bd.available_balance || 0) * 7500).toLocaleString()} عملة</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div className="bg-white/[0.04] rounded-lg p-2.5 border border-border/20">
                   <p className="text-[9px] text-muted-foreground mb-0.5">إجمالي المكتسب</p>
                   <p className="text-sm font-bold text-foreground">${(bd.total_earned || 0).toFixed(2)}</p>
@@ -394,6 +451,11 @@ const BDDashboard: React.FC = () => {
                 <div className="bg-white/[0.04] rounded-lg p-2.5 border border-border/20">
                   <p className="text-[9px] text-muted-foreground mb-0.5">أرباح الشهر</p>
                   <p className="text-sm font-bold text-foreground">${(bd.current_month_earnings || 0).toFixed(2)}</p>
+                </div>
+                <div className="bg-emerald-500/5 rounded-lg p-2.5 border border-emerald-500/10">
+                  <p className="text-[9px] text-muted-foreground mb-0.5">عمولة الرواتب</p>
+                  <p className="text-sm font-bold text-emerald-400">${liveSalaryTotalUsd.toFixed(2)}</p>
+                  {salaryLoading && <Loader2 className="w-3 h-3 animate-spin text-emerald-400 mt-0.5" />}
                 </div>
               </div>
             </section>
@@ -544,7 +606,7 @@ const BDDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5 mb-2">
+              <div className="grid grid-cols-4 gap-1.5 mb-2">
                 <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
                   <p className="text-[8px] text-muted-foreground mb-0.5">اليوم</p>
                   <p className="text-[11px] font-bold text-foreground">${todayProfit.toFixed(2)}</p>
@@ -552,6 +614,10 @@ const BDDashboard: React.FC = () => {
                 <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
                   <p className="text-[8px] text-muted-foreground mb-0.5">الشهر</p>
                   <p className="text-[11px] font-bold text-foreground">${monthlyProfit.toFixed(2)}</p>
+                </div>
+                <div className="bg-emerald-500/5 rounded-lg p-1.5 text-center border border-emerald-500/10">
+                  <p className="text-[8px] text-muted-foreground mb-0.5">رواتب</p>
+                  <p className="text-[11px] font-bold text-emerald-400">${liveSalaryTotalUsd.toFixed(2)}</p>
                 </div>
                 <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
                   <p className="text-[8px] text-muted-foreground mb-0.5">الإجمالي</p>
