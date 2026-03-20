@@ -569,6 +569,33 @@ const AdminWorksPage: React.FC = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Owner: Edit Financials Dialog */}
+        <Dialog open={!!editFinAccount} onOpenChange={() => setEditFinAccount(null)}>
+          <DialogContent className="max-w-sm" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-sm">
+                <Pencil className="w-4 h-4" /> تعديل البيانات المالية — {editFinAccount?.user_name || editFinAccount?.works_code}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-muted-foreground">الرصيد المتاح ($)</label>
+                <Input type="number" value={editBalanceUsd} onChange={e => setEditBalanceUsd(e.target.value)}
+                  placeholder="0.00" dir="ltr" className="mt-1" step="0.01" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">إجمالي الأرباح ($)</label>
+                <Input type="number" value={editTotalEarnings} onChange={e => setEditTotalEarnings(e.target.value)}
+                  placeholder="0.00" dir="ltr" className="mt-1" step="0.01" />
+              </div>
+              <button onClick={handleEditFinancials} disabled={editFinLoading}
+                className="w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: 'hsl(38 92% 50%)', color: 'black' }}>
+                {editFinLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><DollarSign className="w-4 h-4" /> حفظ التعديلات</>}
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminPageLayout>
   );
