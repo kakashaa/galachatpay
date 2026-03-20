@@ -713,10 +713,10 @@ const AdminMonitorPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     <motion.button whileTap={{ scale: 0.95 }}
-                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-white"
+                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-white flex items-center gap-1"
                       style={{ background: "hsl(0 84% 50%)" }}
-                      onClick={() => toast.info("يمكنك حظر المستخدم من صفحة الحماية")}>
-                      حظر
+                      onClick={() => handleBanUser(msg.senderUuid, msg.senderName)}>
+                      <Ban size={10} /> حظر 24h
                     </motion.button>
                     <motion.button whileTap={{ scale: 0.95 }}
                       className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
@@ -1304,10 +1304,15 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
         {sev === "high" && (alert.alert_type === "promotion" || alert.alert_type === "pusher_promo") && (
           <div className="flex items-center gap-2 mt-3">
             <motion.button whileTap={{ scale: 0.95 }}
-              className="h-7 px-3 rounded-xl text-[10px] font-bold text-white"
+              className="h-7 px-3 rounded-xl text-[10px] font-bold text-white flex items-center gap-1"
               style={{ background: "hsl(0 84% 50%)" }}
-              onClick={() => toast.info("يمكنك حظر المستخدم من صفحة الحماية")}>
-              حظر
+              onClick={() => {
+                const uuid = alert.sender_uuid || alert.details?.user_uuid;
+                const name = alert.sender_name || alert.details?.user_name || "مجهول";
+                if (uuid) handleBanUser(uuid, name);
+                else toast.error("لا يوجد UUID للحظر");
+              }}>
+              <Ban size={10} /> حظر 24h
             </motion.button>
             <motion.button whileTap={{ scale: 0.95 }}
               className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
