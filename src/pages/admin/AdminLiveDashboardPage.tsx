@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   BarChart3, TrendingUp, Users, DollarSign, Search,
   RefreshCw, Eye, Zap, Loader2, Activity, Ban, Hash, Wallet, X,
+  Building2, UserPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -129,30 +130,115 @@ const fetchRanking = async (cls: number, type: number): Promise<RankUser[]> => {
   }
 };
 
-/* ─── User Search ─── */
+/* ─── User Search — project-z first, then admin-actions fallback ─── */
 const searchUserApi = async (uuid: string): Promise<UserProfile | null> => {
+  const trimmed = uuid.trim();
+  let profile: any = null;
+
+  // Method 1: project-z (returns name at root level)
   try {
-    const [infoRes, salaryRes] = await Promise.all([
-      fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${uuid}`),
-      fetch(`https://galachat.site/project-z/api.php?action=salary_check&uuid=${uuid}`),
-    ]);
-    const info = await infoRes.json();
-    const salary = await salaryRes.json();
-    if (!info.ok && !info.data?.name && !info.name) return null;
-    const d = info.data || info;
+    const res = await fetch(
+      `https://galachat.site/project-z/api.php?action=admin_user_info&admin_key=ghala2026owner&uuid=${trimmed}`
+    );
+    const data = await res.json();
+    if (data.success && data.name) {
+      profile = data; // { success, name, uuid, avatar, vip_level, type_user, ... }
+    }
+  } catch {}
+
+  // Method 2: admin-actions fallback
+  if (!profile) {
+    try {
+      const res = await fetch(
+        `https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${trimmed}`
+      );
+      const data = await res.json();
+      if (data.ok && data.data?.name) {
+        profile = { ...data.data, success: true };
+      }
+    } catch {}
+  }
+
+  if (!profile) return null;
+
+  // Salary check
+  let salary = 0, deduction = 0;
+  try {
+    const salaryRes = await fetch(
+      `https://galachat.site/project-z/api.php?action=salary_check&uuid=${trimmed}`
+    );
+    const salaryData = await salaryRes.json();
+    salary = salaryData.salary || 0;
+    deduction = salaryData.deduction || 0;
+    // net = salaryData.net || 0;
+  } catch {}
+
+  return {
+    name: profile.name || "—",
+    uuid: String(trimmed),
+    avatar: profile.avatar || profile.portrait || "",
+    vip: profile.vip || { vip_level: profile.vip_level || 0 },
+    type_user: profile.type_user || 0,
+    agency_id: profile.agency_id || 0,
+    charger_num: profile.charger_num || 0,
+    receiver_num: profile.receiver_num || 0,
+    level: profile.level || profile.charger_level || 0,
+    salary,
+    expenses: deduction,
+    registered_at: profile.registered_at || profile.created_at || "",
+  };
+};
+
+/* ─── Agency Search ─── */
+interface AgencyMember {
+  uuid: string;
+  name: string;
+  charges: number;
+}
+interface AgencyInfo {
+  id: string;
+  name: string;
+  members: AgencyMember[];
+}
+
+const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => {
+  try {
+    const token = await getFreshToken();
+    if (!token) return null;
+    const res = await fetch("https://galalivechat.com/api/agencies/filter", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    const agencies = data.data?.agencies || data.data || [];
+    const agency = agencies.find((a: any) => String(a.id) === agencyId.trim());
+    if (!agency) return null;
+
+    // Try to get members
+    const token2 = await getFreshToken();
+    let members: AgencyMember[] = [];
+    try {
+      const mRes = await fetch("https://galalivechat.com/api/agencies/history-data-agency", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token2}`, Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ month: new Date().getMonth() + 1, year: new Date().getFullYear() }),
+      });
+      const mData = await mRes.json();
+      const rawMembers = mData.data?.original?.data || mData.data?.data || [];
+      members = rawMembers
+        .filter((m: any) => String(m.agency_id) === agencyId.trim())
+        .map((m: any) => ({
+          uuid: String(m.uuid || m.user_id || ""),
+          name: m.name || m.nickname || "—",
+          charges: parseExp(m.charges || m.exp || 0),
+        }));
+    } catch {}
+
     return {
-      name: d.name || "—",
-      uuid: String(uuid),
-      avatar: d.avatar || d.portrait || "",
-      vip: d.vip || { vip_level: d.vip_level || 0 },
-      type_user: d.type_user || 0,
-      agency_id: d.agency_id || 0,
-      charger_num: d.charger_num || 0,
-      receiver_num: d.receiver_num || 0,
-      level: d.level || d.charger_level || 0,
-      salary: salary.salary || salary.amount || 0,
-      expenses: salary.expenses || salary.spent || 0,
-      registered_at: d.registered_at || d.created_at || "",
+      id: String(agency.id),
+      name: agency.name || `وكالة #${agency.id}`,
+      members,
     };
   } catch {
     return null;
@@ -179,10 +265,12 @@ const AdminLiveDashboardPage: React.FC = () => {
   const [receivers, setReceivers] = useState<RankUser[]>([]);
   const [rankLoading, setRankLoading] = useState(false);
 
-  // User search
+  // Search
+  const [searchTab, setSearchTab] = useState<"user" | "agency">("user");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [agencyInfo, setAgencyInfo] = useState<AgencyInfo | null>(null);
 
   // Chart
   const [chartData, setChartData] = useState<any[]>([]);
@@ -242,17 +330,28 @@ const AdminLiveDashboardPage: React.FC = () => {
     }
   }, []);
 
-  /* ─── Search User ─── */
+  /* ─── Search ─── */
   const handleSearch = async () => {
     const q = searchQuery.trim();
     if (!q) return;
     setSearchLoading(true);
     setUserProfile(null);
-    const profile = await searchUserApi(q);
-    if (profile) {
-      setUserProfile(profile);
+    setAgencyInfo(null);
+
+    if (searchTab === "agency") {
+      const info = await searchAgencyApi(q);
+      if (info) {
+        setAgencyInfo(info);
+      } else {
+        toast.error("لم يتم العثور على الوكالة");
+      }
     } else {
-      toast.error("لم يتم العثور على المستخدم");
+      const profile = await searchUserApi(q);
+      if (profile) {
+        setUserProfile(profile);
+      } else {
+        toast.error("لم يتم العثور على المستخدم");
+      }
     }
     setSearchLoading(false);
   };
@@ -466,7 +565,7 @@ const AdminLiveDashboardPage: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* ═══ User Search ═══ */}
+        {/* ═══ Search ═══ */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -474,9 +573,22 @@ const AdminLiveDashboardPage: React.FC = () => {
           className="rounded-2xl p-4"
           style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
+          {/* Search Tabs */}
           <div className="flex items-center gap-2 mb-3">
             <Search size={14} className="text-muted-foreground" />
-            <span className="text-[12px] font-bold">بحث مستخدم</span>
+            <div className="flex gap-1">
+              {(["user", "agency"] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => { setSearchTab(tab); setUserProfile(null); setAgencyInfo(null); }}
+                  className={`text-[11px] font-bold px-3 py-1 rounded-lg transition-colors ${
+                    searchTab === tab ? "bg-emerald-500/20 text-emerald-400" : "text-muted-foreground"
+                  }`}
+                >
+                  {tab === "user" ? "بحث مستخدم" : "بحث وكالة"}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="relative">
@@ -485,7 +597,7 @@ const AdminLiveDashboardPage: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="UUID أو اسم المستخدم..."
+              placeholder={searchTab === "user" ? "UUID المستخدم..." : "كود الوكالة..."}
               className="w-full h-10 rounded-xl pr-4 pl-12 text-sm placeholder:text-muted-foreground focus:outline-none font-mono"
               style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
               dir="ltr"
@@ -500,7 +612,7 @@ const AdminLiveDashboardPage: React.FC = () => {
             </motion.button>
             {searchQuery && (
               <button
-                onClick={() => { setSearchQuery(""); setUserProfile(null); }}
+                onClick={() => { setSearchQuery(""); setUserProfile(null); setAgencyInfo(null); }}
                 className="absolute left-10 top-1/2 -translate-y-1/2 text-muted-foreground"
               >
                 <X size={13} />
@@ -517,7 +629,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                 exit={{ opacity: 0, y: -8 }}
                 className="mt-4 space-y-4"
               >
-                {/* Profile Header */}
                 <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
                    <div className="flex items-center gap-3 mb-3">
                      {userProfile.avatar ? (
@@ -553,7 +664,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Quick Stats */}
                   <div className="grid grid-cols-4 gap-2">
                     {[
                       { label: "كوينز", value: formatCoins(userProfile.charger_num || 0), color: "hsl(45 93% 47%)" },
@@ -569,7 +679,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Extra Info */}
                 <div className="rounded-2xl p-4 space-y-2" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}>
                   <p className="text-[11px] font-bold text-muted-foreground mb-2">معلومات إضافية</p>
                   {[
@@ -584,7 +693,6 @@ const AdminLiveDashboardPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Quick Actions */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: "عرض بالداشبورد", icon: Eye, action: () => navigate(`/admin/profile/${userProfile.uuid}`) },
@@ -606,6 +714,76 @@ const AdminLiveDashboardPage: React.FC = () => {
                     );
                   })}
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Agency Info Card */}
+          <AnimatePresence>
+            {agencyInfo && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="mt-4 space-y-3"
+              >
+                <div className="rounded-2xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <Building2 size={18} className="text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{agencyInfo.name}</p>
+                      <p className="text-[11px] text-muted-foreground font-mono">وكالة #{agencyInfo.id}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users size={12} className="text-muted-foreground" />
+                    <span className="text-[11px] font-bold">الأعضاء ({agencyInfo.members.length})</span>
+                  </div>
+
+                  {agencyInfo.members.length > 0 ? (
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-[1fr_80px] gap-2 text-[10px] text-muted-foreground font-bold pb-2 border-b border-white/5">
+                        <span>العضو</span>
+                        <span className="text-left font-mono">الشحن</span>
+                      </div>
+                      {agencyInfo.members.map((m, idx) => (
+                        <motion.button
+                          key={m.uuid + idx}
+                          onClick={() => {
+                            setSearchTab("user");
+                            setSearchQuery(m.uuid);
+                            setAgencyInfo(null);
+                            searchUserApi(m.uuid).then(p => p && setUserProfile(p));
+                          }}
+                          className="grid grid-cols-[1fr_80px] gap-2 items-center w-full text-right py-2 rounded-lg hover:bg-white/5 transition-colors px-1"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[10px] font-mono text-muted-foreground">{m.uuid}</span>
+                            <span className="text-xs font-medium truncate">— {m.name}</span>
+                          </div>
+                          <span className="text-[11px] font-mono text-emerald-400 text-left">
+                            {m.charges > 1000 ? `${(m.charges / 1000).toFixed(0)}K` : m.charges}
+                          </span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4">لا توجد بيانات أعضاء</p>
+                  )}
+                </div>
+
+                {/* Disabled accept button */}
+                <motion.button
+                  disabled
+                  className="w-full flex items-center justify-center gap-2 text-[11px] font-bold py-3 rounded-xl opacity-40 cursor-not-allowed"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  <UserPlus size={13} />
+                  قبول عضو جديد — قريباً
+                </motion.button>
               </motion.div>
             )}
           </AnimatePresence>
