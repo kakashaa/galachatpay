@@ -194,28 +194,45 @@ interface AgencyMember {
   uuid: string;
   name: string;
   charges: number;
+  user_id?: number;
+}
+interface PendingRequest {
+  user_id: number;
+  uuid: string;
+  name: string;
+  avatar?: string;
 }
 interface AgencyInfo {
   id: string;
   name: string;
   members: AgencyMember[];
+  pendingRequests: PendingRequest[];
 }
 
 const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => {
   try {
     const token = await getFreshToken();
     if (!token) return null;
-    const res = await fetch("https://galalivechat.com/api/agencies/filter", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const data = await res.json();
-    const agencies = data.data?.agencies || data.data || [];
-    const agency = agencies.find((a: any) => String(a.id) === agencyId.trim());
-    if (!agency) return null;
 
-    // Try to get members
+    // 1. Get pending requests
+    let pendingRequests: PendingRequest[] = [];
+    try {
+      const reqRes = await fetch("https://galalivechat.com/api/agencies/show_request", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "application" }),
+      });
+      const reqData = await reqRes.json();
+      const allReqs = reqData.data || [];
+      pendingRequests = allReqs.map((r: any) => ({
+        user_id: r.user_id || r.id || 0,
+        uuid: String(r.uuid || r.user_id || ""),
+        name: r.name || r.nickname || "—",
+        avatar: r.avatar || "",
+      }));
+    } catch {}
+
+    // 2. Get members
     const token2 = await getFreshToken();
     let members: AgencyMember[] = [];
     try {
@@ -232,16 +249,34 @@ const searchAgencyApi = async (agencyId: string): Promise<AgencyInfo | null> => 
           uuid: String(m.uuid || m.user_id || ""),
           name: m.name || m.nickname || "—",
           charges: parseExp(m.charges || m.exp || 0),
+          user_id: m.user_id || m.id || 0,
         }));
     } catch {}
 
     return {
-      id: String(agency.id),
-      name: agency.name || `وكالة #${agency.id}`,
+      id: agencyId.trim(),
+      name: `وكالة #${agencyId.trim()}`,
       members,
+      pendingRequests,
     };
   } catch {
     return null;
+  }
+};
+
+/* ─── Accept/Reject agency request ─── */
+const handleAgencyRequest = async (userId: number, accept: boolean): Promise<boolean> => {
+  try {
+    const token = await getFreshToken();
+    const res = await fetch("https://galalivechat.com/api/agencies/Accept_request", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, accept: accept ? 1 : 0 }),
+    });
+    const data = await res.json();
+    return data.success === true;
+  } catch {
+    return false;
   }
 };
 
