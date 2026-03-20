@@ -148,22 +148,22 @@ const WorksPage: React.FC = () => {
       try {
         if (member.member_type === "supporter") {
           const res = await fetch(
-            `https://galachat.site/project-z/api.php?action=user_monthly_charges&admin_key=ghala2026owner&uuid=${member.member_uuid}&month=${month}`
+            `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${member.member_uuid}&month=${month}`
           );
           const data = await res.json();
-          const charges = data.total_charges || 0;
-          const commission = charges * 0.02;
+          const charges = data.data?.total_charges || 0;
+          const commission = data.data?.commission_2pct || 0;
           updatedMembers[i] = { ...member, monthly_charges: charges, commission };
           totalMonthCommission += commission;
         }
 
         if (member.member_type === "agent" && member.agency_id) {
           const res = await fetch(
-            `https://galachat.site/project-z/api.php?action=agency_salary&admin_key=ghala2026owner&agency_id=${member.agency_id}&year=${year}&month=${monthNum}`
+            `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-salary&agency_id=${member.agency_id}&year=${year}&month_num=${monthNum}`
           );
           const data = await res.json();
-          const salary = data.salary || 0;
-          const commission = salary * 0.02;
+          const salary = data.data?.salary || 0;
+          const commission = data.data?.commission_2pct || 0;
           updatedMembers[i] = { ...member, agency_salary: salary, commission };
           totalMonthCommission += commission;
         }
