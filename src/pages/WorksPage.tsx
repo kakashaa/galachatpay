@@ -277,30 +277,33 @@ const WorksPage: React.FC = () => {
 
   // Validate agent by agency code
   const validateAgent = async (agencyId: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
-    const agencyRes = await fetch(
-      `https://galachat.site/project-z/api.php?action=agency_detail&admin_key=ghala2026owner&agency_id=${agencyId}`
-    );
-    const agencyData = await agencyRes.json();
+    try {
+      const res = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-agency&agency_id=${agencyId}`
+      );
+      const data = await res.json();
 
-    if (!agencyData.success) {
-      return { ok: false, reason: "الوكالة غير موجودة" };
+      if (!data.ok) {
+        return { ok: false, reason: data.error || "الوكالة غير موجودة — تأكد من الكود" };
+      }
+
+      // Old agency with salary = only Owner can add
+      if (data.data?.has_salary) {
+        return { ok: false, reason: `هذه الوكالة قديمة (راتب: $${data.data.salary?.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
+      }
+
+      // Check not registered with another BD
+      const { data: existing } = await supabase
+        .from("works_members").select("id")
+        .eq("agency_id", agencyId).eq("status", "active").maybeSingle();
+      if (existing) {
+        return { ok: false, reason: "هذه الوكالة مسجّلة بفريق بيدي آخر" };
+      }
+
+      return { ok: true, uuid: String(data.data.owner_internal_id), name: data.data.name, agency_id: agencyId };
+    } catch {
+      return { ok: false, reason: "فشل الاتصال بالسيرفر" };
     }
-
-    const ownerUuid = agencyData.owner_uuid;
-
-    const { data: existingAgent } = await supabase
-      .from("works_members").select("id, works_id")
-      .eq("agency_id", agencyId).eq("status", "active").maybeSingle();
-    if (existingAgent) {
-      return { ok: false, reason: `هذه الوكالة مسجّلة بفريق بيدي آخر` };
-    }
-
-    const memberCheck = await validateSupporter(ownerUuid);
-    if (!memberCheck.ok) {
-      return { ok: false, reason: `صاحب الوكالة (${ownerUuid}):\n${memberCheck.reason}` };
-    }
-
-    return { ok: true, uuid: ownerUuid, name: memberCheck.name || agencyData.name, agency_id: agencyId };
   };
 
   const sendInvitation = async () => {
