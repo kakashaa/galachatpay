@@ -109,17 +109,58 @@ const InstantRequest: React.FC = () => {
     setLookupError("");
     setSupporterInfo(null);
     try {
-      const res = await fetch(`${API}?action=user_info&uuid=${supporterUuid.trim()}`);
-      const data = await res.json();
-      if (data?.success && data?.data) {
-        setSupporterInfo({
-          name: data.data.name || "مستخدم",
-          avatar: data.data.profile?.image || "",
-          uuid: supporterUuid.trim(),
-        });
-      } else {
-        setLookupError("لم يتم العثور على هذا الحساب");
-      }
+      const uid = supporterUuid.trim();
+
+      // Method 1: admin-actions
+      try {
+        const r1 = await fetch(
+          `https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${uid}`
+        );
+        const d1 = await r1.json();
+        if (d1.ok && d1.data?.name) {
+          setSupporterInfo({ name: d1.data.name, avatar: d1.data.avatar || "", uuid: uid });
+          return;
+        }
+      } catch {}
+
+      // Method 2: check-supporter
+      try {
+        const r2 = await fetch(
+          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${uid}`
+        );
+        const d2 = await r2.json();
+        if (d2.data?.name) {
+          setSupporterInfo({ name: d2.data.name, avatar: d2.data.avatar || "", uuid: uid });
+          return;
+        }
+      } catch {}
+
+      // Method 3: search API
+      try {
+        const r3 = await fetch(
+          `https://galalivechat.com/api/search/all-users?q=${uid}`,
+          { headers: { Authorization: "Bearer a6a6934df3dc4f8d99fbdf56a16d1cf05994039747ee7b76bf14383a3ee254a4" } }
+        );
+        const d3 = await r3.json();
+        const users = d3.data || [];
+        const match = users.find((u: any) => u.name?.includes(uid));
+        if (match) {
+          setSupporterInfo({ name: match.name.split(" - ")[0], avatar: "", uuid: uid });
+          return;
+        }
+      } catch {}
+
+      // Fallback: original API
+      try {
+        const res = await fetch(`${API}?action=user_info&uuid=${uid}`);
+        const data = await res.json();
+        if (data?.data?.name) {
+          setSupporterInfo({ name: data.data.name, avatar: data.data.profile?.image || "", uuid: uid });
+          return;
+        }
+      } catch {}
+
+      setLookupError("لم يتم العثور على هذا الحساب");
     } catch {
       setLookupError("خطأ في البحث. حاول مرة أخرى");
     } finally {
