@@ -364,25 +364,29 @@ const AdminMonitorPage: React.FC = () => {
   }, [loadAlerts, settingsRefreshSec]);
 
   /* ── Computed ── */
-  const todayAlerts = alerts.filter(a => {
+  const safeAlerts = Array.isArray(alerts) ? alerts : [];
+  const safePusherMessages = Array.isArray(pusherMessages) ? pusherMessages : [];
+  const todayAlerts = safeAlerts.filter(a => {
     try { return new Date(a.created_at).toDateString() === new Date().toDateString(); } catch { return false; }
   });
-  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length + pusherMessages.length;
-  const unreadCount = alerts.filter(a => !a.is_read).length;
+  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length + safePusherMessages.length;
+  const unreadCount = safeAlerts.filter(a => !a.is_read).length;
 
-  const filteredAlerts = alerts.filter(a => {
+  const filteredAlerts = safeAlerts.filter(a => {
     if (alertFilter === "all") return true;
     const cfg = alertTypeConfig[a.alert_type];
     return cfg?.filterKey === alertFilter;
   });
 
   /* ── History filtered ── */
-  const historyAlerts = alerts.filter(a => {
-    const d = new Date(a.created_at);
-    const now = new Date();
-    if (historyFilter === "today") return d.toDateString() === now.toDateString();
-    if (historyFilter === "week") return (now.getTime() - d.getTime()) < 7 * 86400000;
-    return (now.getTime() - d.getTime()) < 30 * 86400000;
+  const historyAlerts = safeAlerts.filter(a => {
+    try {
+      const d = new Date(a.created_at);
+      const now = new Date();
+      if (historyFilter === "today") return d.toDateString() === now.toDateString();
+      if (historyFilter === "week") return (now.getTime() - d.getTime()) < 7 * 86400000;
+      return (now.getTime() - d.getTime()) < 30 * 86400000;
+    } catch { return false; }
   }).filter(a => {
     if (!historySearch) return true;
     const s = historySearch.toLowerCase();
