@@ -70,8 +70,8 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
         const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         const monthEnd = nextMonth.toISOString();
 
-        // Fetch from external API + local DB in parallel
-        const [externalRes, localRes] = await Promise.all([
+        // Fetch from external API + local DB + user_transfers in parallel
+        const [externalRes, localRes, transfersRes] = await Promise.all([
           fetch(`${API}?action=my_salary_requests&uuid=${userUuid}&month=${month}`).then(r => r.json()).catch(() => ({})),
           supabase
             .from("salary_requests")
@@ -80,6 +80,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             .gte("created_at", monthStart)
             .lt("created_at", monthEnd)
             .order("created_at", { ascending: false }),
+          fetch(`${API}?action=user_transfers&uuid=${userUuid}`).then(r => r.json()).catch(() => ({})),
         ]);
 
         const externalRequests: SalaryRequest[] = externalRes.requests || [];
@@ -112,8 +113,30 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             amount_coins: r.amount_coins || undefined,
           }));
 
+        // Map used transfers from user_transfers API as completed history
+        const usedTransfers: SalaryRequest[] = ((transfersRes.transfers || []) as any[])
+          .filter((t: any) => t.is_used)
+          .filter((t: any) => {
+            const ref = String(t.reference_id);
+            return !externalIds.has(ref) && !externalRefs.has(ref)
+              && !localData.some((l: any) => l.transfer_id === ref || l.transaction_id === ref);
+          })
+          .map((t: any) => ({
+            id: `#${t.reference_id}`,
+            amount: t.amount_usd || 0,
+            status: "approved",
+            bank: "شحن كوينزات",
+            country: "",
+            created_at: t.time ? new Date(t.time).toISOString() : new Date().toISOString(),
+            reference_id: String(t.reference_id),
+            amount_coins: t.amount_coins || undefined,
+            request_type: t.request_type || "charge_self",
+            target_name: t.target_name || undefined,
+            target_uuid: t.target_uuid || undefined,
+          }));
+
         // Merge and sort by date
-        const all = [...externalRequests, ...localRequests].sort(
+        const all = [...externalRequests, ...localRequests, ...usedTransfers].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
 
