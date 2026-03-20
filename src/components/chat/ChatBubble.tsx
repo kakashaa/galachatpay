@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Check, CheckCheck, Paperclip } from "lucide-react";
+import { Check, CheckCheck, Paperclip, Mic } from "lucide-react";
 import VoiceMessage from "@/components/chat/VoiceMessage";
 
 interface ChatBubbleProps {
@@ -58,7 +58,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
     );
   }
 
-  const isEmojiOnly = content && /^[\p{Emoji}\s]{1,6}$/u.test(content) && content.length <= 6;
+  // Detect emoji-only messages (pure emoji, no text)
+  const isEmojiOnly = content && /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]{1,6}$/u.test(content) && !/[a-zA-Z0-9\u0600-\u06FF]/.test(content) && content.trim().length <= 6;
   const imgSrc = mediaUrl || attachmentUrl;
   const avatarSrc = senderAvatar || DEFAULT_AVATAR;
   const nameColor = senderName ? getNameColor(senderName) : undefined;
