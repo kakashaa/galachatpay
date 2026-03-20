@@ -1807,6 +1807,7 @@ export type Database = {
           target_uuid: string | null
           transaction_date: string | null
           transaction_id: string | null
+          transfer_id: string | null
           transfer_image_url: string | null
           updated_at: string
           user_name: string
@@ -1831,6 +1832,7 @@ export type Database = {
           target_uuid?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
+          transfer_id?: string | null
           transfer_image_url?: string | null
           updated_at?: string
           user_name: string
@@ -1855,6 +1857,7 @@ export type Database = {
           target_uuid?: string | null
           transaction_date?: string | null
           transaction_id?: string | null
+          transfer_id?: string | null
           transfer_image_url?: string | null
           updated_at?: string
           user_name?: string

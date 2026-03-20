@@ -222,11 +222,15 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const isReferenceAlreadyUsed = async (referenceId: string) => {
+    const transferId = String(referenceId || "").trim();
+    if (!transferId) return false;
+
     const { data, error } = await supabase
       .from("salary_requests")
       .select("id")
       .eq("user_uuid", user!.uuid)
-      .eq("transaction_id", referenceId)
+      .eq("transfer_id", transferId)
+      .neq("status", "rejected")
       .limit(1);
 
     if (error) {
@@ -253,9 +257,10 @@ const SalaryWithdraw: React.FC = () => {
         fetch(`${API}?action=my_salary_requests&uuid=${user!.uuid}&month=${month}`),
         supabase
           .from("salary_requests")
-          .select("transaction_id")
+          .select("transfer_id, transaction_id")
           .eq("user_uuid", user!.uuid)
-          .not("transaction_id", "is", null),
+          .neq("status", "rejected")
+          .or("transfer_id.not.is.null,transaction_id.not.is.null"),
       ]);
 
       const data: TransfersResult = await transfersRes.json();
@@ -274,7 +279,7 @@ const SalaryWithdraw: React.FC = () => {
 
       const localUsedRefs = new Set<string>(
         (localRequestsRes.data || [])
-          .map((r) => String(r.transaction_id || "").trim())
+          .map((r) => String(r.transfer_id || r.transaction_id || "").trim())
           .filter(Boolean),
       );
 
@@ -458,6 +463,7 @@ const SalaryWithdraw: React.FC = () => {
           payment_method: "coins_charge",
           payment_details: `target_uuid:${targetId}`,
           status: "approved",
+          transfer_id: selectedTransfer.reference_id,
           transaction_id: selectedTransfer.reference_id,
           transaction_date: new Date().toISOString(),
           target_uuid: targetId,
@@ -465,8 +471,17 @@ const SalaryWithdraw: React.FC = () => {
           admin_note: `تم شحن الكوينز من الحوالة #${selectedTransfer.reference_id}`,
         } as any);
 
-        if (insertError && insertError.code !== "23505") {
+        if (insertError) {
+          const alreadyUsedError = insertError.message?.includes("TRANSFER_ALREADY_USED") || insertError.code === "23505";
+          if (alreadyUsedError) {
+            markTransferAsUsedLocally(selectedTransfer.reference_id);
+            toast.error("هذه الحوالة تم صرفها مسبقاً");
+            setStep("transfers_list");
+            return;
+          }
           console.error("Failed to save charge request:", insertError);
+          toast.error("تم الشحن لكن فشل تسجيل العملية، تواصل مع الدعم فوراً");
+          return;
         }
 
         setCoinsCharged(selectedTransfer.amount_usd * USD_TO_COINS);
@@ -527,6 +542,7 @@ const SalaryWithdraw: React.FC = () => {
           payment_method: effectiveBankLabel || selectedBank,
           payment_details: `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`,
           status: "pending",
+          transfer_id: selectedTransfer.reference_id,
           transaction_id: selectedTransfer.reference_id,
           transaction_date: new Date().toISOString(),
           target_uuid: user!.uuid,
@@ -535,8 +551,17 @@ const SalaryWithdraw: React.FC = () => {
           admin_note: notes || null,
         } as any);
 
-        if (insertError && insertError.code !== "23505") {
+        if (insertError) {
+          const alreadyUsedError = insertError.message?.includes("TRANSFER_ALREADY_USED") || insertError.code === "23505";
+          if (alreadyUsedError) {
+            markTransferAsUsedLocally(selectedTransfer.reference_id);
+            toast.error("هذه الحوالة تم صرفها مسبقاً");
+            setStep("transfers_list");
+            return;
+          }
           console.error("Failed to save withdraw request:", insertError);
+          toast.error("تم إرسال الطلب لكن فشل تسجيله، تواصل مع الدعم");
+          return;
         }
 
         setSubmitResult(data);
