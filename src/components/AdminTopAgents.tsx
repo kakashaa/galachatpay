@@ -134,7 +134,7 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
 
   const startEdit = (agent: AgentOverride) => {
     setEditingId(agent.id);
-    setEditData({ vip4_limit: agent.vip4_limit, vip5_limit: agent.vip5_limit, vip6_limit: agent.vip6_limit });
+    setEditData({ vip4_limit: agent.vip4_limit, vip5_limit: agent.vip5_limit });
   };
 
   return (
