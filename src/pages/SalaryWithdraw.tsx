@@ -308,8 +308,10 @@ const SalaryWithdraw: React.FC = () => {
 
       if (used >= maxTotal) {
         setStep("exhausted");
-      } else if (newTransfers.length === 0) {
+      } else if (newTransfers.length === 0 && allTransfers.length === 0) {
         setStep("no_transfers");
+      } else if (newTransfers.length === 0 && allTransfers.length > 0) {
+        setStep("all_used");
       } else {
         setStep("transfers_list");
       }
@@ -590,6 +592,7 @@ const SalaryWithdraw: React.FC = () => {
   const getBackAction = () => {
     switch (step) {
       case "transfers_list": return () => navigate("/dashboard");
+      case "all_used": return () => navigate("/dashboard");
       case "bank": return () => setStep("transfers_list");
       case "account": return () => setStep("bank");
       case "coins_confirm": return () => setStep("transfers_list");
@@ -652,6 +655,57 @@ const SalaryWithdraw: React.FC = () => {
               <span className="text-xs text-foreground font-semibold">المبلغ: راتبك كامل</span>
             </div>
           </div>
+
+          <div className="space-y-3">
+            <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }}
+              className="w-full gold-gradient text-primary-foreground font-bold h-12">
+              <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
+            </Button>
+            <Button onClick={() => navigate("/dashboard")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+          </div>
+
+          <SalaryRequestsHistory userUuid={user.uuid} />
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // ── ALL USED (transfers exist but all spent) ──
+  if (step === "all_used") {
+    const usedTransfers = transfers.filter(t => t.is_used);
+    return (
+      <MobileLayout showHeader headerTitle="سحب الراتب" onBack={() => navigate("/dashboard")}>
+        <div className="px-5 py-8 space-y-6">
+          <div className="flex flex-col items-center text-center">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
+              className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-5">
+              <CheckCircle className="w-10 h-10 text-emerald-400" />
+            </motion.div>
+            <h2 className="text-lg font-bold text-foreground mb-2">✅ تم صرف جميع حوالاتك</h2>
+            <p className="text-xs text-muted-foreground">جميع الحوالات تم استخدامها — حوّل حوالة جديدة لسحبها</p>
+          </div>
+
+          {usedTransfers.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-muted-foreground font-bold px-1 text-center">━━━ حوالات مصروفة ━━━</p>
+              {usedTransfers.map((t, i) => (
+                <motion.div key={t.reference_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  className="glass-card p-3 rounded-xl border border-emerald-500/10 opacity-60 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">✅</span>
+                      <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
+                    </div>
+                    <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
+                    <span className="text-[10px] text-emerald-400 font-bold">تم شحن كوينزات ✅</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
           <div className="space-y-3">
             <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }}
