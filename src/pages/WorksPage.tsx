@@ -38,7 +38,7 @@ const WorksPage: React.FC = () => {
   const [showAddMember, setShowAddMember] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [memberInput, setMemberInput] = useState("");
-  const [agentOwnerUuid, setAgentOwnerUuid] = useState("");
+  
   const [memberType, setMemberType] = useState<"supporter" | "agent">("supporter");
   const [sending, setSending] = useState(false);
   const [instructionModal, setInstructionModal] = useState<"supporter" | "agent" | null>(null);
