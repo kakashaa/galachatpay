@@ -2412,13 +2412,17 @@ export type Database = {
           duration_days: number | null
           expires_at: string | null
           id: string
+          item_duration_days: number | null
+          item_expires_at: string | null
           month: string
           status: string | null
           tier_id: string | null
           tier_name: string | null
           type: string
+          use_expires_at: string | null
           used_at: string | null
           used_for: string | null
+          used_for_uuid: string | null
           uuid: string
           value: number | null
           ware_id: number | null
@@ -2429,13 +2433,17 @@ export type Database = {
           duration_days?: number | null
           expires_at?: string | null
           id?: string
+          item_duration_days?: number | null
+          item_expires_at?: string | null
           month: string
           status?: string | null
           tier_id?: string | null
           tier_name?: string | null
           type: string
+          use_expires_at?: string | null
           used_at?: string | null
           used_for?: string | null
+          used_for_uuid?: string | null
           uuid: string
           value?: number | null
           ware_id?: number | null
@@ -2446,13 +2454,17 @@ export type Database = {
           duration_days?: number | null
           expires_at?: string | null
           id?: string
+          item_duration_days?: number | null
+          item_expires_at?: string | null
           month?: string
           status?: string | null
           tier_id?: string | null
           tier_name?: string | null
           type?: string
+          use_expires_at?: string | null
           used_at?: string | null
           used_for?: string | null
+          used_for_uuid?: string | null
           uuid?: string
           value?: number | null
           ware_id?: number | null
@@ -2469,34 +2481,46 @@ export type Database = {
       }
       supporter_settings: {
         Row: {
+          coins_mode: string | null
+          default_use_validity_days: number | null
           distribution_mode: string | null
           id: string
           is_active: boolean | null
           notify_admin: boolean | null
           notify_user: boolean | null
+          notify_whatsapp: boolean | null
           reminder_days: number | null
+          reminder_days_before: number | null
           reward_validity_days: number | null
           special_offers: Json | null
           updated_at: string | null
         }
         Insert: {
+          coins_mode?: string | null
+          default_use_validity_days?: number | null
           distribution_mode?: string | null
           id?: string
           is_active?: boolean | null
           notify_admin?: boolean | null
           notify_user?: boolean | null
+          notify_whatsapp?: boolean | null
           reminder_days?: number | null
+          reminder_days_before?: number | null
           reward_validity_days?: number | null
           special_offers?: Json | null
           updated_at?: string | null
         }
         Update: {
+          coins_mode?: string | null
+          default_use_validity_days?: number | null
           distribution_mode?: string | null
           id?: string
           is_active?: boolean | null
           notify_admin?: boolean | null
           notify_user?: boolean | null
+          notify_whatsapp?: boolean | null
           reminder_days?: number | null
+          reminder_days_before?: number | null
           reward_validity_days?: number | null
           special_offers?: Json | null
           updated_at?: string | null
@@ -2513,6 +2537,7 @@ export type Database = {
           name: string
           rewards: Json | null
           sort_order: number | null
+          use_validity_days: number | null
         }
         Insert: {
           color?: string | null
@@ -2523,6 +2548,7 @@ export type Database = {
           name: string
           rewards?: Json | null
           sort_order?: number | null
+          use_validity_days?: number | null
         }
         Update: {
           color?: string | null
@@ -2533,6 +2559,7 @@ export type Database = {
           name?: string
           rewards?: Json | null
           sort_order?: number | null
+          use_validity_days?: number | null
         }
         Relationships: []
       }
