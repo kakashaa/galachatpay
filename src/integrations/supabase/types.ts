@@ -1614,6 +1614,39 @@ export type Database = {
         }
         Relationships: []
       }
+      monitor_alerts: {
+        Row: {
+          alert_type: string
+          amount: number | null
+          created_at: string | null
+          details: Json | null
+          id: string
+          is_read: boolean | null
+          receiver_uuid: string | null
+          sender_uuid: string | null
+        }
+        Insert: {
+          alert_type: string
+          amount?: number | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          is_read?: boolean | null
+          receiver_uuid?: string | null
+          sender_uuid?: string | null
+        }
+        Update: {
+          alert_type?: string
+          amount?: number | null
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          is_read?: boolean | null
+          receiver_uuid?: string | null
+          sender_uuid?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string

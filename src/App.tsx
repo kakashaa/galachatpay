@@ -90,6 +90,7 @@ const AdminAccountsPage = lazy(() => import("./pages/admin/AdminAccountsPage"));
 const AdminRequestsPage = lazy(() => import("./pages/admin/AdminRequestsPage"));
 const AdminWorksPage = lazy(() => import("./pages/admin/AdminWorksPage"));
 const AdminHostRequestsPage = lazy(() => import("./pages/admin/AdminHostRequestsPage"));
+const AdminMonitorPage = lazy(() => import("./pages/admin/AdminMonitorPage"));
 const SupportTicketsEmbed = lazy(() => import("./pages/SupportTicketsEmbed"));
 const SupportChatEmbed = lazy(() => import("./pages/SupportChatEmbed"));
 
@@ -176,6 +177,7 @@ const App = () => {
                   <Route path="/works" element={<WorksPage />} />
                   <Route path="/room-background" element={<RoomBackgroundPage />} />
                   <Route path="/admin/host-requests" element={<AdminHostRequestsPage />} />
+                  <Route path="/admin/monitor" element={<AdminMonitorPage />} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/messages" element={<DirectMessages />} />
