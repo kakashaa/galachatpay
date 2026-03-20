@@ -390,20 +390,19 @@ const WorksPage: React.FC = () => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const withdrawMonth = lastMonth.toISOString().slice(0, 7);
-    const usdAmount = monthEarnings / 7500; // monthEarnings is in coins
+    const usdAmount = monthEarnings / 7500;
 
     try {
       await supabase.from("bd_withdrawals").insert({
         bd_uuid: user.uuid,
         bd_name: user.name || "",
-        amount: monthEarnings,
+        amount: usdAmount,
         status: "pending",
         transfer_type: "commission",
         country: withdrawMonth,
-        admin_note: `كوينز: ${coinsAmount.toLocaleString()} | شهر: ${withdrawMonth}`,
+        admin_note: `كوينز: ${monthEarnings.toLocaleString()} | شهر: ${withdrawMonth}`,
       });
       setModal({ type: "success", message: "تم إرسال طلبك — سيتم مراجعته" });
-      // withdrawal submitted
     } catch {
       setModal({ type: "error", message: "فشل تقديم الطلب\nحاول مرة أخرى" });
     }
@@ -413,7 +412,6 @@ const WorksPage: React.FC = () => {
   const supporterCount = members.filter(m => m.member_type === "supporter").length;
   const agentCount = members.filter(m => m.member_type === "agent").length;
   const balance = Number(myWorks?.balance_usd || 0);
-  const totalEarnings = Number(myWorks?.total_earnings_usd || 0);
   const supporterPct = Number(myWorks?.supporter_commission_pct || 2);
   const agentPct = Number(myWorks?.agent_commission_pct || 3);
 
