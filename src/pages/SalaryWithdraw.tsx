@@ -463,6 +463,7 @@ const SalaryWithdraw: React.FC = () => {
           payment_method: "coins_charge",
           payment_details: `target_uuid:${targetId}`,
           status: "approved",
+          transfer_id: selectedTransfer.reference_id,
           transaction_id: selectedTransfer.reference_id,
           transaction_date: new Date().toISOString(),
           target_uuid: targetId,
@@ -470,8 +471,17 @@ const SalaryWithdraw: React.FC = () => {
           admin_note: `تم شحن الكوينز من الحوالة #${selectedTransfer.reference_id}`,
         } as any);
 
-        if (insertError && insertError.code !== "23505") {
+        if (insertError) {
+          const alreadyUsedError = insertError.message?.includes("TRANSFER_ALREADY_USED") || insertError.code === "23505";
+          if (alreadyUsedError) {
+            markTransferAsUsedLocally(selectedTransfer.reference_id);
+            toast.error("هذه الحوالة تم صرفها مسبقاً");
+            setStep("transfers_list");
+            return;
+          }
           console.error("Failed to save charge request:", insertError);
+          toast.error("تم الشحن لكن فشل تسجيل العملية، تواصل مع الدعم فوراً");
+          return;
         }
 
         setCoinsCharged(selectedTransfer.amount_usd * USD_TO_COINS);
