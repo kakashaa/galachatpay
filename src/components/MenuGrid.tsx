@@ -50,11 +50,9 @@ const ELEMENT_LABELS: Record<string, string> = {
 const MenuGrid: React.FC<{ extraButton?: React.ReactNode }> = ({ extraButton }) => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
-  const { isElementBanned, activeBan, getRemainingTime } = useBanCheck(user?.uuid);
   const { isElementEnabled } = useElementSettings();
   const [showLogin, setShowLogin] = useState(false);
   const [bdBanned, setBdBanned] = useState(false);
-  const [banDialog, setBanDialog] = useState<{ open: boolean; elementKey: string }>({ open: false, elementKey: "" });
   const [disabledDialog, setDisabledDialog] = useState<{ open: boolean; label: string }>({ open: false, label: "" });
 
   const agencyLoggedIn = !!localStorage.getItem("ghala_token") && localStorage.getItem("ghala_type") === "agent";
