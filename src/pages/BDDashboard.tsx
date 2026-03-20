@@ -432,29 +432,56 @@ const BDDashboard: React.FC = () => {
           <div className="space-y-3 mt-1 css-fade-up">
             {/* === Earnings Summary === */}
             <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900/30 to-card border border-emerald-500/20 p-5 text-center">
-              <p className="text-xs text-muted-foreground mb-1">أرباحي هذا الشهر</p>
+              <p className="text-xs text-muted-foreground mb-1">إجمالي أرباحي</p>
               <h2 className="text-3xl font-extrabold text-emerald-400 tracking-tight">
                 {liveSalaryTotal.toLocaleString()} <span className="text-base font-medium text-muted-foreground">كوينز</span>
               </h2>
-              <p className="text-sm font-bold text-foreground mt-1">${liveSalaryTotalUsd.toFixed(2)}</p>
+              <p className="text-sm font-bold text-foreground mt-1">(${liveSalaryTotalUsd.toFixed(2)})</p>
               {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400 mx-auto mt-2" />}
               
               {(() => {
                 const dayOfMonth = new Date().getDate();
                 const canWithdraw = dayOfMonth <= 5;
+                const lastMonth = new Date();
+                lastMonth.setMonth(lastMonth.getMonth() - 1);
+                const withdrawMonth = lastMonth.toISOString().slice(0, 7);
+
+                const handleWithdrawRequest = async () => {
+                  if (!user?.uuid || liveSalaryTotal <= 0) return;
+                  try {
+                    const { error } = await supabase.from("bd_withdrawals").insert({
+                      bd_uuid: user.uuid,
+                      bd_name: bd.bd_name || "",
+                      amount: liveSalaryTotalUsd,
+                      status: "pending",
+                      transfer_type: "commission",
+                      country: withdrawMonth,
+                      admin_note: `كوينز: ${liveSalaryTotal.toLocaleString()} | شهر: ${withdrawMonth}`,
+                    });
+                    if (error) {
+                      toast.error("فشل إرسال الطلب");
+                    } else {
+                      toast.success("تم إرسال طلبك — سيتم مراجعته");
+                      loadData();
+                    }
+                  } catch {
+                    toast.error("فشل إرسال الطلب");
+                  }
+                };
+
                 return canWithdraw ? (
                   <button
-                    onClick={() => navigate("/bd/withdraw", { state: { totalCoins: liveSalaryTotal, totalUsd: liveSalaryTotalUsd } })}
+                    onClick={handleWithdrawRequest}
                     disabled={liveSalaryTotal <= 0}
                     className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold text-sm active:scale-[0.98] transition-all disabled:opacity-40"
                   >
                     <span className="material-symbols-outlined text-base">payments</span>
-                    طلب صرف
+                    صرف نسبتي
                   </button>
                 ) : (
                   <div className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-muted/30 border border-border/40">
                     <span className="material-symbols-outlined text-base text-muted-foreground">lock</span>
-                    <span className="text-sm font-bold text-muted-foreground">متاح بداية الشهر القادم</span>
+                    <span className="text-sm font-bold text-muted-foreground">يفتح بداية الشهر الجديد</span>
                   </div>
                 );
               })()}
@@ -532,12 +559,12 @@ const BDDashboard: React.FC = () => {
             <section className="rounded-2xl bg-card border border-border/40 overflow-hidden">
               <div className="flex items-center gap-1.5 px-3 pt-3 pb-2">
                 <span className="material-symbols-outlined text-primary text-sm">history</span>
-                <span className="text-xs font-bold text-foreground">آخر عمليات السحب</span>
+                <span className="text-xs font-bold text-foreground">آخر الطلبات</span>
               </div>
               {(data?.withdrawals || []).length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   <span className="material-symbols-outlined text-2xl mb-1 block">history</span>
-                  <p className="text-[10px]">لا توجد عمليات سحب بعد</p>
+                  <p className="text-[10px]">لا توجد طلبات صرف بعد</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border/20">
@@ -553,7 +580,7 @@ const BDDashboard: React.FC = () => {
                         </div>
                       </div>
                       <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${w.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' : w.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
-                        {w.status === 'approved' ? 'مقبول' : w.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                        {w.status === 'approved' ? 'تم القبول' : w.status === 'rejected' ? 'تم الرفض' : 'قيد المراجعة'}
                       </span>
                     </div>
                   ))}
