@@ -56,7 +56,6 @@ export async function getAvatar(uuid: string): Promise<string> {
 // Legacy helper — kept for backward compat
 export function fixAvatarUrl(path?: string | null): string {
   if (!path) return DEFAULT_AVATAR;
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("avatars/")) return `https://media.galalivechat.com/${path}`;
+  if (path.startsWith("http")) return normalizeMediaUrl(path);
   return `https://media.galalivechat.com/${path}`;
 }
