@@ -420,9 +420,9 @@ const BDDashboard: React.FC = () => {
       <div className="flex-1 overflow-y-auto min-h-0 px-4 pb-4 space-y-3">
 
         {tab === 'supporters' ? (
-          <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} />
+          <BDSupportersTab supporters={supporters} commissionPct={bd.user_commission_pct || 2} salaryData={supporterSalaries} salaryLoading={salaryLoading} />
         ) : tab === 'agents' ? (
-          <BDAgentsTab agents={agents} commissionPct={bd.agency_commission_pct || 5} />
+          <BDAgentsTab agents={agents} commissionPct={bd.agency_commission_pct || 5} salaryData={agentSalaries} salaryLoading={salaryLoading} />
         ) : tab === 'wallet' ? (
           <div className="space-y-3 mt-1 css-fade-up">
             <section className="overflow-hidden rounded-2xl bg-card border border-border/40 p-4">
