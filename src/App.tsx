@@ -136,7 +136,7 @@ const App = () => {
                   <Route path="/salary/cash" element={<SalaryWithdraw />} />
                   <Route path="/salary/charge-self" element={<SalaryWithdraw />} />
                   <Route path="/salary/charge-other" element={<SalaryWithdraw />} />
-                  <Route path="/salary/instant" element={<InstantRequest />} />
+                  <Route path="/salary/instant" element={<InstantIntro />} />
                   <Route path="/report" element={<ReportPage />} />
                   <Route path="/gift" element={<GiftRequest />} />
                   <Route path="/custom-gift" element={<CustomGiftUpload />} />

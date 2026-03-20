@@ -17,7 +17,7 @@ const InstantIntro: React.FC = () => {
   const [understood, setUnderstood] = useState(false);
 
   return (
-    <MobileLayout showHeader headerTitle="السحب الفوري" onBack={() => navigate("/dashboard")}>
+    <MobileLayout showHeader headerTitle="السحب الفوري" onBack={() => navigate("/salary")}>
       <div className="px-5 py-4 space-y-5 pb-32">
         <div className="text-center space-y-3 css-fade-up">
           <div className="w-20 h-20 mx-auto rounded-2xl gold-gradient flex items-center justify-center shadow-lg">
