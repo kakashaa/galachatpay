@@ -17,11 +17,6 @@ interface BDData {
   auto_withdrawal: boolean;
 }
 
-interface SalaryData {
-  monthly_charges?: number;
-  agency_salary?: number;
-  commission: number;
-}
 
 const BDDashboard: React.FC = () => {
   const navigate = useNavigate();
