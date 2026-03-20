@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
-const CHECK_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=";
+import { galaApi } from "@/services/galaApi";
+const CHECK_API_FN = async (uuid: string) => galaApi.checkSupporter(uuid);
 
 const formatDate = (d: string | null) => {
   if (!d) return "—";
@@ -68,8 +69,7 @@ const AdminBanPage: React.FC = () => {
     if (!t || !/^\d+$/.test(t)) { toast.error("UUID غير صحيح"); return; }
     setBanLookup(true); setBanTarget(null);
     try {
-      const res = await fetch(CHECK_API + encodeURIComponent(t));
-      const data = await res.json();
+      const data = await galaApi.checkSupporter(t);
       if (data?.data?.name) setBanTarget({ name: data.data.name, image: data.data.profile?.image || "" });
       else toast.error("المستخدم غير موجود");
     } catch { toast.error("خطأ"); }

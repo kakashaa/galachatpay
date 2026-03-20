@@ -16,7 +16,7 @@ import MobileLayout from "@/components/MobileLayout";
 import { secureUpload } from "@/utils/secureUpload";
 
 /* ─── helpers ─── */
-const CHECK_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=";
+import { galaApi } from "@/services/galaApi";
 
 const formatDate = (d: string | null) => {
   if (!d) return "—";

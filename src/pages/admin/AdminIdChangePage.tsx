@@ -8,6 +8,7 @@ import { Hash, Loader2, ArrowLeftRight, ClipboardList, ScrollText } from "lucide
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { galaApi } from "@/services/galaApi";
 
 const AdminIdChangePage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
@@ -36,12 +37,7 @@ const AdminIdChangePage: React.FC = () => {
     setChanging(true);
     const t = toast.loading("جاري تغيير الآيدي...");
     try {
-      const res = await fetch("https://galachat.site/project-z/api.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "admin_change_uuid", admin_key: "ghala2026owner", uuid: oldUuid.trim(), new_uuid: newUuid.trim() }),
-      });
-      const data = await res.json();
+      const data = await galaApi.changeUuid(oldUuid.trim(), newUuid.trim());
       if (!data.success) throw new Error(data.error || "فشل التغيير");
       await sendUserNotification(
         newUuid.trim(),
