@@ -134,11 +134,11 @@ serve(async (req) => {
           }
 
           if (vipLevel >= 4) {
-            const usedPerLevel: Record<number, number> = { 4: 0, 5: 0, 6: 0 };
+            const usedPerLevel: Record<number, number> = { 4: 0, 5: 0 };
             for (const r of allReqs) {
-              if (r.vip_level >= 4 && r.recipient_uuid) usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
+              if (r.vip_level >= 4 && r.vip_level <= 5 && r.recipient_uuid) usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
             }
-            const limitForLevel = vipLevel === 4 ? vip4Limit : vipLevel === 5 ? vip5Limit : vip6Limit;
+            const limitForLevel = vipLevel === 4 ? vip4Limit : vip5Limit;
             const usedForLevel = usedPerLevel[vipLevel] || 0;
 
             if (limitForLevel <= 0) {
