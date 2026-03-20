@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { sendWhatsAppNotification } from "@/utils/sendWhatsAppNotification";
 import {
   Dialog, DialogContent,
 } from "@/components/ui/dialog";

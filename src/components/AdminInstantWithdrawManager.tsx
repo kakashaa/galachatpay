@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { sendWhatsAppNotification } from "@/utils/sendWhatsAppNotification";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent,
