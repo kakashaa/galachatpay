@@ -215,6 +215,7 @@ const BDDashboard: React.FC = () => {
   };
 
 
+  const copyReferralCode = () => {
     if (data?.bd?.referral_code) {
       navigator.clipboard.writeText(data.bd.referral_code);
       toast.success("تم نسخ كود الإحالة");
