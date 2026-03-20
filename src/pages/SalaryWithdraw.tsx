@@ -308,8 +308,10 @@ const SalaryWithdraw: React.FC = () => {
 
       if (used >= maxTotal) {
         setStep("exhausted");
-      } else if (newTransfers.length === 0) {
+      } else if (newTransfers.length === 0 && allTransfers.length === 0) {
         setStep("no_transfers");
+      } else if (newTransfers.length === 0 && allTransfers.length > 0) {
+        setStep("all_used");
       } else {
         setStep("transfers_list");
       }
