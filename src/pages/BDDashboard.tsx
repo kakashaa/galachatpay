@@ -433,11 +433,11 @@ const BDDashboard: React.FC = () => {
           <div className="space-y-3 mt-1 css-fade-up">
             {/* === Earnings Summary === */}
             <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900/30 to-card border border-emerald-500/20 p-5 text-center">
-              <p className="text-xs text-muted-foreground mb-1">إجمالي أرباحي</p>
+              <p className="text-xs text-muted-foreground mb-1">إجمالي عمولتي</p>
               <h2 className="text-3xl font-extrabold text-emerald-400 tracking-tight">
-                {liveSalaryTotal.toLocaleString()} <span className="text-base font-medium text-muted-foreground">كوينز</span>
+                {liveSalaryTotal.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">كوينز</span>
               </h2>
-              <p className="text-sm font-bold text-foreground mt-1">(${liveSalaryTotalUsd.toFixed(2)})</p>
+              <p className="text-sm font-bold text-foreground/70 mt-1">(${liveSalaryTotalUsd.toFixed(2)})</p>
               {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400 mx-auto mt-2" />}
               
               {(() => {
