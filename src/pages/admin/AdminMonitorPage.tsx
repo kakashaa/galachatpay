@@ -82,22 +82,28 @@ const AdminMonitorPage: React.FC = () => {
   const loadAlerts = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from("monitor_alerts" as any)
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      const newAlerts = (data || []) as unknown as MonitorAlert[];
+      const res = await fetch(
+        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-alerts"
+      );
+      const data = await res.json();
+      const apiAlerts = (data.data?.alerts || []) as MonitorAlert[];
 
       // Play sound for new alerts
-      if (soundEnabled && newAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
+      if (soundEnabled && apiAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
         playNotificationSound();
       }
-      prevCountRef.current = newAlerts.length;
-      setAlerts(newAlerts);
+      prevCountRef.current = apiAlerts.length;
+      setAlerts(apiAlerts);
     } catch {
-      /* silent */
+      // Fallback to Supabase if API fails
+      try {
+        const { data } = await supabase
+          .from("monitor_alerts" as any)
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(100);
+        setAlerts((data || []) as unknown as MonitorAlert[]);
+      } catch { /* silent */ }
     } finally {
       setLoading(false);
     }
