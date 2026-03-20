@@ -145,7 +145,7 @@ const AdminBanPage: React.FC = () => {
     const t = toast.loading("جاري الحظر...");
     try {
       const isPromo = banReason === "promotion";
-      await doBan(uuid, reason, isPromo ? 999999 : 24, isPromo ? "device" : "normal");
+      await doBan(uuid, reason, isPromo ? 999999 : banDuration, isPromo ? "device" : "normal");
       toast.dismiss(t); toast.success("تم الحظر!");
       setBanUuid(""); setBanTarget(null); setBanReason("insult"); setBanCustom(""); setBanImage(null);
     } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
