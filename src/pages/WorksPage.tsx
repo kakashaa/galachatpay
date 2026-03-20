@@ -585,13 +585,26 @@ const WorksPage: React.FC = () => {
           <UserPlus className="w-5 h-5" /> إضافة عضو
         </button>
 
-        {/* Withdraw */}
-        {balance > 0 && (
-          <button onClick={() => setShowWithdraw(true)}
-            className="w-full bg-card border border-border py-3 rounded-2xl font-bold text-foreground flex items-center justify-center gap-2">
-            <Wallet className="w-5 h-5" /> سحب الرصيد (${balance.toFixed(2)})
-          </button>
-        )}
+        {/* Withdraw commission */}
+        {(() => {
+          const dayOfMonth = new Date().getDate();
+          const canWithdraw = dayOfMonth <= 5;
+          const coinsAmount = Math.floor(monthEarnings * 7500);
+          return canWithdraw ? (
+            <button onClick={submitWithdraw} disabled={withdrawing || monthEarnings <= 0}
+              className="w-full bg-emerald-500 text-black py-3 rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+              <Wallet className="w-5 h-5" /> صرف نسبتي ({coinsAmount.toLocaleString()} كوينز)
+            </button>
+          ) : (
+            <div className="w-full bg-card border border-border py-3 rounded-2xl text-center space-y-1">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Lock className="w-4 h-4" />
+                <span className="font-bold text-sm">صرف نسبتي 🔒</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">يفتح بداية الشهر الجديد</p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Add Member Dialog */}
