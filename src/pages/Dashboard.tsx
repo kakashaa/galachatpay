@@ -58,6 +58,9 @@ const Dashboard: React.FC = () => {
   }, [user?.uuid]);
 
   useEffect(() => {
+    // Reset state when account changes
+    setNotifCount(0);
+    prevNotifCountRef.current = 0;
     fetchNotifCount();
     const interval = setInterval(fetchNotifCount, 15_000);
     if (isAuthenticated) {
