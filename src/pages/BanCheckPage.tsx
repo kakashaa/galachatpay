@@ -57,8 +57,7 @@ const BanCheckPage = () => {
     setTargetUser(null);
     setConfirmed(false);
     try {
-      const res = await fetch(CHECK_API + encodeURIComponent(trimmed));
-      const data = await res.json();
+      const data = await galaApi.checkSupporter(trimmed);
       if (data?.data?.name) {
         setTargetUser({ name: data.data.name, image: data.data.profile?.image || "", uuid: trimmed });
       } else {

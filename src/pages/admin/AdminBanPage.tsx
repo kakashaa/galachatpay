@@ -9,7 +9,7 @@ import { sendUserNotification } from "@/utils/sendUserNotification";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
 import { galaApi } from "@/services/galaApi";
-const CHECK_API_FN = async (uuid: string) => galaApi.checkSupporter(uuid);
+
 
 const formatDate = (d: string | null) => {
   if (!d) return "—";
