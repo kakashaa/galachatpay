@@ -27,8 +27,12 @@ const AdminIdChangePage: React.FC = () => {
     setLoading(false);
   };
 
+  const { confirm, ConfirmDialog } = useConfirmModal();
+
   const executeChange = async () => {
     if (!oldUuid.trim() || !newUuid.trim()) { toast.error("يرجى ملء الحقلين"); return; }
+    const ok = await confirm({ title: "تأكيد تغيير الآيدي", message: `هل أنت متأكد من تغيير UUID ${oldUuid} إلى ${newUuid}؟`, danger: true, confirmText: "تنفيذ التغيير" });
+    if (!ok) return;
     setChanging(true);
     const t = toast.loading("جاري تغيير الآيدي...");
     try {
