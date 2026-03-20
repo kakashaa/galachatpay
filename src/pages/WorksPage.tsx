@@ -38,7 +38,7 @@ const WorksPage: React.FC = () => {
   const [showAddMember, setShowAddMember] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [memberInput, setMemberInput] = useState("");
-  const [agentOwnerUuid, setAgentOwnerUuid] = useState("");
+  
   const [memberType, setMemberType] = useState<"supporter" | "agent">("supporter");
   const [sending, setSending] = useState(false);
   const [instructionModal, setInstructionModal] = useState<"supporter" | "agent" | null>(null);
@@ -275,9 +275,8 @@ const WorksPage: React.FC = () => {
   };
 
   // Validate agent by agency code
-  const validateAgent = async (agencyId: string, ownerUuid: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
+  const validateAgent = async (agencyId: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
     try {
-      // First verify the agency exists
       const res = await fetch(
         `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-agency&agency_id=${agencyId}`
       );
@@ -291,19 +290,10 @@ const WorksPage: React.FC = () => {
         return { ok: false, reason: `هذه الوكالة قديمة (راتب: $${data.data.salary?.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
       }
 
-      // Verify the owner UUID actually owns this agency
-      const supporterRes = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${ownerUuid}`
-      );
-      const supporterData = await supporterRes.json();
-
-      if (!supporterData.ok) {
-        return { ok: false, reason: `UUID ${ownerUuid} غير موجود — تأكد من المعرف` };
-      }
-
-      const userAgencyId = String(supporterData.data?.agency_id || "");
-      if (userAgencyId !== String(agencyId)) {
-        return { ok: false, reason: `UUID ${ownerUuid} لا يملك الوكالة ${agencyId}\n\nالـ UUID المطلوب هو معرف صاحب الوكالة (وكيل المضيفين)` };
+      // Use owner_uuid from API (fixed by backend), fallback to owner_internal_id
+      const ownerUuid = data.data.owner_uuid || String(data.data.owner_internal_id);
+      if (!ownerUuid) {
+        return { ok: false, reason: "لم يتم العثور على UUID صاحب الوكالة" };
       }
 
       // Check not registered with another BD
@@ -314,7 +304,7 @@ const WorksPage: React.FC = () => {
         return { ok: false, reason: "هذه الوكالة مسجّلة بفريق بيدي آخر" };
       }
 
-      return { ok: true, uuid: ownerUuid, name: data.data.name || supporterData.data?.name, agency_id: agencyId };
+      return { ok: true, uuid: ownerUuid, name: data.data.name, agency_id: agencyId };
     } catch {
       return { ok: false, reason: "فشل الاتصال بالسيرفر" };
     }
@@ -354,12 +344,7 @@ const WorksPage: React.FC = () => {
           type: "works_invitation", is_read: false,
         } as any);
       } else {
-        if (!agentOwnerUuid.trim()) {
-          setModal({ type: "error", message: "يرجى إدخال UUID صاحب الوكالة" });
-          setSending(false);
-          return;
-        }
-        const result = await validateAgent(memberInput.trim(), agentOwnerUuid.trim());
+        const result = await validateAgent(memberInput.trim());
         if (!result.ok) {
           await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
@@ -388,7 +373,7 @@ const WorksPage: React.FC = () => {
       }
 
       setModal(null);
-      setShowAddMember(false); setMemberInput(""); setAcceptedTerms(false); setAgentOwnerUuid("");
+      setShowAddMember(false); setMemberInput(""); setAcceptedTerms(false);
       setInstructionModal(memberType);
       fetchData();
     } catch (e: any) {
@@ -628,7 +613,7 @@ const WorksPage: React.FC = () => {
       </div>
 
       {/* Add Member Dialog */}
-      <Dialog open={showAddMember} onOpenChange={v => { if (!v) { setShowAddMember(false); setAcceptedTerms(false); setMemberInput(""); setAgentOwnerUuid(""); } }}>
+      <Dialog open={showAddMember} onOpenChange={v => { if (!v) { setShowAddMember(false); setAcceptedTerms(false); setMemberInput(""); } }}>
         <DialogContent className="max-w-sm">
           {!acceptedTerms ? (
             <div className="p-4 space-y-3" dir="rtl">
@@ -647,11 +632,11 @@ const WorksPage: React.FC = () => {
           ) : (
             <div className="p-4 space-y-3" dir="rtl">
               <div className="flex gap-2">
-                <button onClick={() => { setMemberType("supporter"); setMemberInput(""); setAgentOwnerUuid(""); }}
+                <button onClick={() => { setMemberType("supporter"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "supporter" ? "bg-pink-500/20 text-pink-400 border border-pink-500/20" : "bg-muted text-muted-foreground"}`}>
                   داعم (UUID)
                 </button>
-                <button onClick={() => { setMemberType("agent"); setMemberInput(""); setAgentOwnerUuid(""); }}
+                <button onClick={() => { setMemberType("agent"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "agent" ? "bg-orange-500/20 text-orange-400 border border-orange-500/20" : "bg-muted text-muted-foreground"}`}>
                   وكيل (كود الوكالة)
                 </button>
@@ -664,16 +649,7 @@ const WorksPage: React.FC = () => {
                 dir="ltr"
               />
 
-              {memberType === "agent" && (
-                <Input
-                  placeholder="UUID صاحب الوكالة (وكيل المضيفين)"
-                  value={agentOwnerUuid}
-                  onChange={e => setAgentOwnerUuid(e.target.value)}
-                  dir="ltr"
-                />
-              )}
-
-              <button onClick={sendInvitation} disabled={!memberInput || (memberType === "agent" && !agentOwnerUuid) || sending}
+              <button onClick={sendInvitation} disabled={!memberInput || sending}
                 className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50">
                 {sending ? "جاري التحقق..." : "إرسال دعوة"}
               </button>
