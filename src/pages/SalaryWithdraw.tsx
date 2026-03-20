@@ -154,8 +154,21 @@ const getWithdrawalLimits = (isAgencyOwner: boolean) => {
 
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
+  // Determine mode from URL path
+  const pathMode = location.pathname.includes("/salary/charge-other")
+    ? "charge_other"
+    : location.pathname.includes("/salary/charge-self")
+      ? "charge_self"
+      : "cash";
+
+  const modeConfig = {
+    cash: { title: "سحب نقدي", icon: Wallet, color: "text-emerald-400" },
+    charge_self: { title: "شحن لحسابي", icon: Coins, color: "text-amber-400" },
+    charge_other: { title: "شحن لحساب آخر", icon: Gift, color: "text-violet-400" },
+  };
   // Core state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
