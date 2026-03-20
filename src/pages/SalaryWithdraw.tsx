@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe,
   UserCheck, ArrowRight, ArrowLeft, Phone,
   Loader2, Copy, Frown, ChevronDown, RefreshCw, Coins, Search, User,
+  Wallet, Gift,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
