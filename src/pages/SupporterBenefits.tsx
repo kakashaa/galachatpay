@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowRight, Crown, Gift, Star, Trophy, Zap, ArrowUp, Clock, Users,
-  Check, Award, Gem, Sparkles, Frame, UserCheck, Coins, Image, BadgeCheck,
+  ArrowRight, Crown, Gift, Star, Trophy, ArrowUp, Clock, Users,
+  Check, Gem, Sparkles, Frame, UserCheck, Coins, Image, BadgeCheck,
   X, Search, Loader2, AlertTriangle, ChevronDown, ChevronUp, Send
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Crown, Gift, Users, Settings, Star, Trash2, Plus, Save, Clock, Check, X,
   Edit2, Loader2, Search, Frame, Sparkles, Gem, Coins, UserCheck, Image,
-  BadgeCheck, Trophy, BarChart3, AlertTriangle
+  BadgeCheck, Trophy, BarChart3
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
