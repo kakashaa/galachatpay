@@ -93,13 +93,7 @@ const AdminRequestsPage: React.FC = () => {
   const fetchRoomRequests = async (): Promise<any[]> => {
     try {
       const data = await api.listRoomBgRequests();
-
-  // Fetch room bg requests from external dashboard
-  const fetchRoomRequests = async (): Promise<any[]> => {
-    try {
-      const res = await fetch(`${HOLA_API}?key=${HOLA_KEY}&action=list-room-bg-requests`);
-      const data = await res.json();
-      const raw = data.data?.requests || data.requests || [];
+      const raw = data?.data?.requests || data?.requests || [];
       return raw.map((r: any) => ({
         id: String(r.id),
         user_uuid: r.uuid || r.user_uuid,
