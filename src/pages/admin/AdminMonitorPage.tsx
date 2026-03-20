@@ -5,13 +5,53 @@ import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import Pusher from "pusher-js";
 import {
-  Shield, AlertTriangle, TrendingUp, Eye, Activity, Bell, Search, Settings,
+  Shield, AlertTriangle, Eye, Bell, Search, Settings,
   RefreshCw, Volume2, VolumeX, Send, Loader2, Bot, Trash2, CheckCheck,
   Zap, DollarSign, Megaphone, Gift, Monitor, Clock, ChevronDown, ChevronUp,
-  BarChart3, Users, ArrowUp, Radio, MessageSquare, Wifi, WifiOff,
+  BarChart3, Users, Radio, MessageSquare, Wifi, WifiOff, Ban,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
+
+/* ─── API Layer ─── */
+const API_BASE = "https://hola-chat.com/wares-api.php";
+const API_KEY = "ghala2026actions";
+
+interface PromoConfig {
+  competitors: string[];
+  suspicious_phrases: string[];
+  safe_apps: string[];
+}
+
+async function fetchPromoConfig(): Promise<PromoConfig> {
+  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  return json.data;
+}
+
+async function updatePromoConfig(
+  action: "add_competitor" | "remove_competitor" | "add_phrase" | "remove_phrase" | "add_safe" | "remove_safe",
+  value: string
+): Promise<any> {
+  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=promo-config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ [action]: value }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function banUserApi(uuid: string, duration: number = 24): Promise<any> {
+  const res = await fetch(`${API_BASE}?key=${API_KEY}&action=ban-user`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uuid, duration, type: ["normal"] }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
 
 /* ─── Types ─── */
 interface MonitorAlert {
@@ -288,8 +328,9 @@ const AdminMonitorPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-alerts"
+        `${API_BASE}?key=${API_KEY}&action=promo-alerts`
       );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const apiAlerts = (data.data?.alerts || []) as MonitorAlert[];
 
@@ -379,7 +420,7 @@ const AdminMonitorPage: React.FC = () => {
     setBotLoading(true);
     try {
       const res = await fetch(
-        "https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query",
+        `${API_BASE}?key=${API_KEY}&action=monitor-query`,
         { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: `question=${encodeURIComponent(question)}` }
       );
       const data = await res.json();
@@ -392,6 +433,78 @@ const AdminMonitorPage: React.FC = () => {
   };
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  /* ── Promo Config ── */
+  const [promoConfig, setPromoConfig] = useState<PromoConfig | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [newCompetitor, setNewCompetitor] = useState("");
+  const [newPhrase, setNewPhrase] = useState("");
+
+  const loadPromoConfig = useCallback(async () => {
+    try {
+      setPromoLoading(true);
+      const data = await fetchPromoConfig();
+      setPromoConfig(data);
+    } catch { /* silent */ }
+    finally { setPromoLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === "settings") loadPromoConfig();
+  }, [activeSection, loadPromoConfig]);
+
+  const handleAddCompetitor = async () => {
+    if (!newCompetitor.trim() || promoSaving) return;
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("add_competitor", newCompetitor.trim());
+      setNewCompetitor("");
+      await loadPromoConfig();
+      toast.success("تمت الإضافة");
+    } catch { toast.error("فشل الإضافة"); }
+    finally { setPromoSaving(false); }
+  };
+
+  const handleRemoveCompetitor = async (name: string) => {
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("remove_competitor", name);
+      await loadPromoConfig();
+    } catch { toast.error("فشل الحذف"); }
+    finally { setPromoSaving(false); }
+  };
+
+  const handleAddPhrase = async () => {
+    if (!newPhrase.trim() || promoSaving) return;
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("add_phrase", newPhrase.trim());
+      setNewPhrase("");
+      await loadPromoConfig();
+      toast.success("تمت الإضافة");
+    } catch { toast.error("فشل الإضافة"); }
+    finally { setPromoSaving(false); }
+  };
+
+  const handleRemovePhrase = async (phrase: string) => {
+    setPromoSaving(true);
+    try {
+      await updatePromoConfig("remove_phrase", phrase);
+      await loadPromoConfig();
+    } catch { toast.error("فشل الحذف"); }
+    finally { setPromoSaving(false); }
+  };
+
+  /* ── Ban User ── */
+  const handleBanUser = async (uuid: string, name: string) => {
+    try {
+      await banUserApi(uuid, 24);
+      toast.success(`تم حظر ${name} لمدة 24 ساعة`);
+    } catch (err: any) {
+      toast.error(`فشل الحظر: ${err.message}`);
+    }
+  };
 
   /* ── Sections nav ── */
   const sections = [
@@ -600,10 +713,10 @@ const AdminMonitorPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     <motion.button whileTap={{ scale: 0.95 }}
-                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-white"
+                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-white flex items-center gap-1"
                       style={{ background: "hsl(0 84% 50%)" }}
-                      onClick={() => toast.info("يمكنك حظر المستخدم من صفحة الحماية")}>
-                      حظر
+                      onClick={() => handleBanUser(msg.senderUuid, msg.senderName)}>
+                      <Ban size={10} /> حظر 24h
                     </motion.button>
                     <motion.button whileTap={{ scale: 0.95 }}
                       className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
@@ -634,7 +747,7 @@ const AdminMonitorPage: React.FC = () => {
 
           <AnimatePresence mode="popLayout">
             {filteredAlerts.slice(0, 50).map((alert, i) => (
-              <AlertCard key={alert.id} alert={alert} index={i} onDelete={deleteAlert} />
+              <AlertCard key={alert.id} alert={alert} index={i} onDelete={deleteAlert} onBan={handleBanUser} />
             ))}
           </AnimatePresence>
 
@@ -1069,6 +1182,93 @@ const AdminMonitorPage: React.FC = () => {
             )}
           </motion.div>
 
+          {/* ═══ Promo Config Panel ═══ */}
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+            className="rounded-2xl p-4 space-y-4"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold">🚫 إعدادات كشف الترويج</p>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={loadPromoConfig}
+                className="h-6 px-2 rounded-lg text-[9px] font-bold flex items-center gap-1 text-muted-foreground"
+                style={{ background: "rgba(255,255,255,0.05)" }}>
+                <RefreshCw size={9} className={promoLoading ? "animate-spin" : ""} /> تحديث
+              </motion.button>
+            </div>
+
+            {promoLoading && !promoConfig && (
+              <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color: "hsl(160 84% 39%)" }} /></div>
+            )}
+
+            {promoConfig && (
+              <div className="space-y-4">
+                {/* التطبيقات المنافسة */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>التطبيقات المنافسة ({promoConfig.competitors.length})</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {promoConfig.competitors.map(name => (
+                      <span key={name} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold"
+                        style={{ background: "hsla(0,84%,60%,0.1)", color: "hsl(0 84% 60%)" }}>
+                        {name}
+                        <button onClick={() => handleRemoveCompetitor(name)} disabled={promoSaving}
+                          className="hover:opacity-70 font-bold text-[10px]">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input value={newCompetitor} onChange={e => setNewCompetitor(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleAddCompetitor()}
+                      placeholder="أضف تطبيق..."
+                      className="flex-1 h-8 rounded-xl px-3 text-[10px] placeholder:text-muted-foreground focus:outline-none"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleAddCompetitor} disabled={promoSaving || !newCompetitor.trim()}
+                      className="h-8 px-3 rounded-xl text-[10px] font-bold text-white disabled:opacity-40"
+                      style={{ background: "hsl(0 84% 50%)" }}>+ إضافة</motion.button>
+                  </div>
+                </div>
+
+                {/* الجمل المشبوهة */}
+                <div className="space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+                  <p className="text-[10px] font-bold" style={{ color: "hsl(25 95% 53%)" }}>الجمل المشبوهة ({promoConfig.suspicious_phrases.length})</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {promoConfig.suspicious_phrases.map(phrase => (
+                      <span key={phrase} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold"
+                        style={{ background: "hsla(25,95%,53%,0.1)", color: "hsl(25 95% 53%)" }}>
+                        {phrase}
+                        <button onClick={() => handleRemovePhrase(phrase)} disabled={promoSaving}
+                          className="hover:opacity-70 font-bold text-[10px]">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input value={newPhrase} onChange={e => setNewPhrase(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleAddPhrase()}
+                      placeholder="أضف جملة..."
+                      className="flex-1 h-8 rounded-xl px-3 text-[10px] placeholder:text-muted-foreground focus:outline-none"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleAddPhrase} disabled={promoSaving || !newPhrase.trim()}
+                      className="h-8 px-3 rounded-xl text-[10px] font-bold text-white disabled:opacity-40"
+                      style={{ background: "hsl(25 95% 53%)" }}>+ إضافة</motion.button>
+                  </div>
+                </div>
+
+                {/* التطبيقات الآمنة */}
+                {promoConfig.safe_apps?.length > 0 && (
+                  <div className="space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+                    <p className="text-[10px] font-bold" style={{ color: "hsl(160 84% 39%)" }}>التطبيقات الآمنة ({promoConfig.safe_apps.length})</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {promoConfig.safe_apps.map(name => (
+                        <span key={name} className="px-2 py-1 rounded-lg text-[9px] font-bold"
+                          style={{ background: "hsla(160,84%,39%,0.1)", color: "hsl(160 84% 39%)" }}>
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
+
           <motion.button whileTap={{ scale: 0.97 }}
             onClick={() => toast.success("تم حفظ الإعدادات")}
             className="w-full py-3 rounded-2xl text-sm font-bold text-white"
@@ -1092,12 +1292,12 @@ function getSeverity(alert: MonitorAlert): "high" | "medium" | "low" {
 }
 
 /* ─── Alert Card Component ─── */
-const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: string) => void }> = ({ alert, index, onDelete }) => {
+const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: string) => void; onBan: (uuid: string, name: string) => void }> = ({ alert, index, onDelete, onBan }) => {
   const [expanded, setExpanded] = useState(false);
   const sev = getSeverity(alert);
   const sevCfg = severityConfig[sev];
   const typeCfg = alertTypeConfig[alert.alert_type] || { label: alert.alert_type, icon: Bell, filterKey: "all" };
-  const TypeIcon = typeCfg.icon;
+  const _TypeIcon = typeCfg.icon;
   const SevIcon = sevCfg.icon;
 
   return (
@@ -1191,10 +1391,15 @@ const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: s
         {sev === "high" && (alert.alert_type === "promotion" || alert.alert_type === "pusher_promo") && (
           <div className="flex items-center gap-2 mt-3">
             <motion.button whileTap={{ scale: 0.95 }}
-              className="h-7 px-3 rounded-xl text-[10px] font-bold text-white"
+              className="h-7 px-3 rounded-xl text-[10px] font-bold text-white flex items-center gap-1"
               style={{ background: "hsl(0 84% 50%)" }}
-              onClick={() => toast.info("يمكنك حظر المستخدم من صفحة الحماية")}>
-              حظر
+              onClick={() => {
+                const uuid = alert.sender_uuid || alert.details?.user_uuid;
+                const name = alert.sender_name || alert.details?.user_name || "مجهول";
+                if (uuid) onBan(uuid, name);
+                else toast.error("لا يوجد UUID للحظر");
+              }}>
+              <Ban size={10} /> حظر 24h
             </motion.button>
             <motion.button whileTap={{ scale: 0.95 }}
               className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
