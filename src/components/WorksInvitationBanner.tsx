@@ -50,11 +50,11 @@ const WorksInvitationBanner: React.FC = () => {
       setInvitation(data as WorksInvitation);
       // Fetch works owner name
       const { data: works } = await supabase
-        .from("works_accounts" as any)
+        .from("works_accounts")
         .select("user_name")
         .eq("id", data.works_id)
         .maybeSingle();
-      setWorksOwnerName((works as any)?.user_name || "مستخدم");
+      setWorksOwnerName(works?.user_name || "مستخدم");
     } else {
       setInvitation(null);
     }
