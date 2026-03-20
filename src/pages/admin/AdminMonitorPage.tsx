@@ -515,7 +515,7 @@ const AdminMonitorPage: React.FC = () => {
     { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
     { key: "bot" as const, label: "البوت", icon: Bot, badge: 0 },
     { key: "stats" as const, label: "إحصائيات", icon: BarChart3, badge: 0 },
-    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: pusherMessages.length },
+    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: safePusherMessages.length },
     { key: "history" as const, label: "السجل", icon: Clock, badge: 0 },
     { key: "settings" as const, label: "إعدادات", icon: Settings, badge: 0 },
   ];
@@ -523,7 +523,7 @@ const AdminMonitorPage: React.FC = () => {
   const todayCountByType = monitorTypes.filter(m => m.connected).map(m => ({
     ...m,
     count: m.key === "pusher_promo"
-      ? pusherMessages.length
+      ? safePusherMessages.length
       : todayAlerts.filter(a => a.alert_type === m.key).length,
   }));
 
