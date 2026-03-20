@@ -410,7 +410,7 @@ const AdminMonitorPage: React.FC = () => {
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
   /* ── Promo Config ── */
-  const [promoConfig, setPromoConfig] = useState<PromoConfig | null>(null);
+  const [promoConfig, setPromoConfig] = useState<{ competitors: string[]; suspicious_phrases: string[]; safe_apps: string[] } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoSaving, setPromoSaving] = useState(false);
   const [newCompetitor, setNewCompetitor] = useState("");

@@ -401,7 +401,7 @@ const AdminManualActions: React.FC<Props> = ({ adminUsername }) => {
                     .limit(1);
 
                   const unbanType = existingBans?.[0]?.ban_type === 'promotion' ? 'device' : 'normal';
-                  await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${banUuid.trim()}&unban_type=${unbanType}`);
+                  await galaApi.unbanUserReal(banUuid.trim(), unbanType);
 
                   await supabase
                     .from('ban_reports')
