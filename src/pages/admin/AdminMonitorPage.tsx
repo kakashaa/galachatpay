@@ -5,10 +5,10 @@ import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import Pusher from "pusher-js";
 import {
-  Shield, AlertTriangle, TrendingUp, Eye, Activity, Bell, Search, Settings,
+  Shield, AlertTriangle, Eye, Bell, Search, Settings,
   RefreshCw, Volume2, VolumeX, Send, Loader2, Bot, Trash2, CheckCheck,
   Zap, DollarSign, Megaphone, Gift, Monitor, Clock, ChevronDown, ChevronUp,
-  BarChart3, Users, ArrowUp, Radio, MessageSquare, Wifi, WifiOff, X, Plus, Ban,
+  BarChart3, Users, Radio, MessageSquare, Wifi, WifiOff, Ban,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
