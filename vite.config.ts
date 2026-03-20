@@ -21,10 +21,11 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "pwa-192x192.png", "pwa-512x512.png"],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}"],
+        globPatterns: [],
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        runtimeCaching: [],
       },
       manifest: {
         name: "مدير غلا لايف",

@@ -49,7 +49,7 @@ async function registerPushSW() {
   }
 }
 
-// Force service worker update
+// Force service worker update & clear ALL old caches
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(registrations => {
     registrations.forEach(reg => {
@@ -68,13 +68,11 @@ if ('serviceWorker' in navigator) {
   registerPushSW();
 }
 
-// Clear old caches on load
+// Clear ALL old caches on load to prevent stale content
 if ('caches' in window) {
   caches.keys().then(names => {
     names.forEach(name => {
-      if (name.includes('workbox-precache')) {
-        caches.delete(name);
-      }
+      caches.delete(name);
     });
   });
 }
