@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Zap, CheckCircle, AlertCircle, Loader2,
-  Globe, UserCheck, Send, Wallet, User, Search, Coins,
+  Globe, UserCheck, Send, Wallet, User, Search, Coins, Phone,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendUserNotification } from "@/utils/sendUserNotification";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 
@@ -65,6 +66,8 @@ const InstantRequest: React.FC = () => {
   const [selectedCountryId, setSelectedCountryId] = useState("");
   const [selectedMethodId, setSelectedMethodId] = useState("");
   const [accountInfo, setAccountInfo] = useState("");
+  const [whatsappCode, setWhatsappCode] = useState("+966");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
 
   const selectedCountry: CountryConfig | undefined = countries.find((c) => c.id === selectedCountryId);
   const selectedMethod: PaymentMethod | undefined = selectedCountry?.methods.find((m) => m.id === selectedMethodId);
@@ -227,7 +230,7 @@ const InstantRequest: React.FC = () => {
               bank: selectedMethod?.label || "",
               account_name: fullName,
               account_number: accountInfo,
-              whatsapp: "",
+              whatsapp: whatsappNumber ? `${whatsappCode}${whatsappNumber}` : "",
             },
           }),
         });
@@ -236,6 +239,16 @@ const InstantRequest: React.FC = () => {
       }
 
       const refId = `INS-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+
+      // Send in-app notification
+      try {
+        await sendUserNotification(
+          user.uuid,
+          "✅ تم استلام طلب السحب الفوري",
+          `المبلغ: $${selectedTransfer.amount_usd} — الداعم: ${supporterInfo.name} (UUID: ${supporterInfo.uuid}) — البنك: ${selectedMethod?.label || ""}`
+        );
+      } catch {}
+
       setRequestId(refId);
       setSubmitted(true);
     } catch {
