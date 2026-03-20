@@ -145,7 +145,37 @@ const AdminBanPage: React.FC = () => {
     const t = toast.loading("جاري الحظر...");
     try {
       const isPromo = banReason === "promotion";
-      await doBan(uuid, reason, isPromo ? 999999 : banDuration, isPromo ? "device" : "normal");
+      const hours = isPromo ? 999999 : banDuration;
+      await doBan(uuid, reason, hours, isPromo ? "device" : "normal");
+
+      // Save to ban_reports so it appears in المحظورين tab
+      const expiresAt = isPromo ? null : new Date(Date.now() + hours * 3600 * 1000).toISOString();
+
+      // Upload image if provided
+      let evidenceUrl = "";
+      let evidenceType = "image";
+      if (banImage) {
+        const ext = banImage.name.split(".").pop() || "jpg";
+        const path = `ban-evidence/${uuid}_${Date.now()}.${ext}`;
+        const { data: upData } = await supabase.storage.from("attachments").upload(path, banImage);
+        if (upData?.path) {
+          const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(upData.path);
+          evidenceUrl = urlData?.publicUrl || "";
+        }
+      }
+
+      await supabase.from("ban_reports").insert({
+        reporter_gala_id: "admin-manual",
+        reported_user_id: uuid,
+        ban_type: banReason,
+        description: reason,
+        evidence_url: evidenceUrl || "manual-ban",
+        evidence_type: evidenceUrl ? evidenceType : "none",
+        is_verified: true,
+        expires_at: expiresAt,
+        admin_notes: "حظر يدوي من الأدمن",
+      });
+
       toast.dismiss(t); toast.success("تم الحظر!");
       setBanUuid(""); setBanTarget(null); setBanReason("insult"); setBanCustom(""); setBanImage(null);
     } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
@@ -390,51 +420,54 @@ const AdminBanPage: React.FC = () => {
 
           {/* ═══ TAB 3: Banned List ═══ */}
           {!loading && subTab === "list" && (
-            <motion.div key="list" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+            <motion.div key="list" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
               {bannedList.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground"><Shield className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا يوجد محظورين</p></div>
-              ) : bannedList.map((report, i) => {
-                // Check if expired (non-permanent)
-                const isPermanent = report.ban_type === "promotion" || (report.reward_amount && report.reward_amount >= 50000);
-                if (!isPermanent && report.expires_at) {
-                  const exp = new Date(report.expires_at);
-                  if (exp < new Date()) return null; // expired, hide
-                }
-                return (
-                  <motion.div key={report.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                    className="rounded-2xl overflow-hidden" style={glassCard}>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {bannedList.filter(report => {
+                    const isPermanent = report.ban_type === "promotion" || (report.reward_amount && report.reward_amount >= 50000);
+                    if (!isPermanent && report.expires_at) {
+                      return new Date(report.expires_at) >= new Date();
+                    }
+                    return true;
+                  }).map((report, i) => {
+                    const isPermanent = report.ban_type === "promotion" || (report.reward_amount && report.reward_amount >= 50000);
+                    return (
+                      <motion.div key={report.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}
+                        className="rounded-xl overflow-hidden flex flex-col" style={glassCard}>
 
-                    {report.evidence_url && (
-                      <div className="relative w-full aspect-video bg-black/40">
-                        {report.evidence_type === "video" ? (
-                          <video src={report.evidence_url} controls playsInline className="w-full h-full object-contain" />
-                        ) : (
-                          <img src={report.evidence_url} alt="" className="w-full h-full object-contain" />
+                        {report.evidence_url && report.evidence_url !== "manual-ban" && (
+                          <div className="relative w-full aspect-square bg-black/40">
+                            {report.evidence_type === "video" ? (
+                              <video src={report.evidence_url} playsInline muted className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={report.evidence_url} alt="" className="w-full h-full object-cover" />
+                            )}
+                          </div>
                         )}
-                      </div>
-                    )}
 
-                    <div className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold tabular-nums">{report.reported_user_id}</span>
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold"
-                          style={isPermanent ? { background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
-                          {isPermanent ? "دائم" : "مؤقت"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">السبب: {report.description || report.ban_type}</p>
-                      {report.expires_at && <p className="text-[10px] text-muted-foreground">ينتهي: {formatDate(report.expires_at)}</p>}
+                        <div className="p-2 flex-1 flex flex-col gap-1">
+                          <span className="text-[11px] font-bold tabular-nums truncate">{report.reported_user_id}</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold w-fit"
+                            style={isPermanent ? { background: 'rgba(244,63,94,0.12)', color: 'hsl(350 89% 60%)' } : { background: 'rgba(245,158,11,0.12)', color: 'hsl(38 92% 50%)' }}>
+                            {isPermanent ? "دائم" : "مؤقت"}
+                          </span>
+                          <p className="text-[9px] text-muted-foreground truncate">{report.description || report.ban_type}</p>
+                          <p className="text-[8px] text-muted-foreground">{formatDate(report.created_at)}</p>
 
-                      <motion.button whileTap={{ scale: 0.96 }} disabled={!!actionInProgress}
-                        onClick={() => unbanFromList(report)}
-                        className="w-full h-9 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 disabled:opacity-50"
-                        style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
-                        {actionInProgress === report.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Unlock className="w-4 h-4" />فك الحظر</>}
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                );
-              })}
+                          <motion.button whileTap={{ scale: 0.95 }} disabled={!!actionInProgress}
+                            onClick={() => unbanFromList(report)}
+                            className="mt-auto w-full py-1.5 rounded-lg text-[10px] font-bold text-white flex items-center justify-center gap-1 disabled:opacity-50"
+                            style={{ background: 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))' }}>
+                            {actionInProgress === report.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Unlock className="w-3 h-3" />فك</>}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
