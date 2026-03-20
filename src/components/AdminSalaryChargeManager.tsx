@@ -321,8 +321,6 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
                   <span className="font-bold text-foreground">{formatDateSA(charge.created_at)}</span>
                 </div>
               </div>
-                }
-              </div>
             </motion.div>
           ))}
         </div>
