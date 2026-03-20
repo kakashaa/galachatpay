@@ -10,7 +10,7 @@ import {
   ShoppingBag, TrendingUp, Building2, Banknote, Package,
   ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
-  Inbox, FileText, Landmark
+  Inbox, FileText, Landmark, Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { playUrgentSound } from '@/lib/notificationSound';
