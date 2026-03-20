@@ -613,7 +613,7 @@ const WorksPage: React.FC = () => {
       </div>
 
       {/* Add Member Dialog */}
-      <Dialog open={showAddMember} onOpenChange={v => { if (!v) { setShowAddMember(false); setAcceptedTerms(false); setMemberInput(""); setAgentOwnerUuid(""); } }}>
+      <Dialog open={showAddMember} onOpenChange={v => { if (!v) { setShowAddMember(false); setAcceptedTerms(false); setMemberInput(""); } }}>
         <DialogContent className="max-w-sm">
           {!acceptedTerms ? (
             <div className="p-4 space-y-3" dir="rtl">
@@ -632,11 +632,11 @@ const WorksPage: React.FC = () => {
           ) : (
             <div className="p-4 space-y-3" dir="rtl">
               <div className="flex gap-2">
-                <button onClick={() => { setMemberType("supporter"); setMemberInput(""); setAgentOwnerUuid(""); }}
+                <button onClick={() => { setMemberType("supporter"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "supporter" ? "bg-pink-500/20 text-pink-400 border border-pink-500/20" : "bg-muted text-muted-foreground"}`}>
                   داعم (UUID)
                 </button>
-                <button onClick={() => { setMemberType("agent"); setMemberInput(""); setAgentOwnerUuid(""); }}
+                <button onClick={() => { setMemberType("agent"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "agent" ? "bg-orange-500/20 text-orange-400 border border-orange-500/20" : "bg-muted text-muted-foreground"}`}>
                   وكيل (كود الوكالة)
                 </button>
@@ -649,16 +649,7 @@ const WorksPage: React.FC = () => {
                 dir="ltr"
               />
 
-              {memberType === "agent" && (
-                <Input
-                  placeholder="UUID صاحب الوكالة (وكيل المضيفين)"
-                  value={agentOwnerUuid}
-                  onChange={e => setAgentOwnerUuid(e.target.value)}
-                  dir="ltr"
-                />
-              )}
-
-              <button onClick={sendInvitation} disabled={!memberInput || (memberType === "agent" && !agentOwnerUuid) || sending}
+              <button onClick={sendInvitation} disabled={!memberInput || sending}
                 className="w-full bg-emerald-500 text-black py-2.5 rounded-xl font-bold disabled:opacity-50">
                 {sending ? "جاري التحقق..." : "إرسال دعوة"}
               </button>
