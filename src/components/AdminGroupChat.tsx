@@ -54,13 +54,6 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole: _adminRole 
 
   const loadAdmins = useCallback(async () => {
     try {
-      const { data } = await supabase
-        .from('admin_chat_messages')
-        .select('sender_username, sender_display_name')
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(100);
-      // Also load from admin_accounts
       const { data: accountData } = await supabase
         .from('admin_accounts')
         .select('username, display_name, role')

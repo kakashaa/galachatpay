@@ -74,9 +74,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
   const isImage = resolvedMediaType === "image" || resolvedMediaType === "photo";
   const isVideo = resolvedMediaType === "video";
 
-  // Check if message has meaningful text content (not just placeholder)
-  const hasText = content && content.trim() && !isEmojiOnly;
-  const isMediaOnly = (isImage || isVideo || isVoice) && imgSrc;
+  // Media-only check for layout decisions
 
   return (
     <>

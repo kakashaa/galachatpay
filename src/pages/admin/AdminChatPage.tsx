@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, MessageCircle, ArrowRight, Users, Shield, ArrowLeft, Headset, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminSession } from '@/hooks/use-admin-session';
 import { useNavigate } from 'react-router-dom';
@@ -33,7 +33,7 @@ interface ChatMessage {
 }
 
 export default function AdminChatPage() {
-  const { adminUsername, adminDisplayName } = useAdminSession();
+  const { adminUsername } = useAdminSession();
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
