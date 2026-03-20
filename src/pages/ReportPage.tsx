@@ -17,7 +17,7 @@ import {
   Gift,
   ArrowRight,
   ArrowLeft,
-  Upload,
+  
   Video,
   CheckCircle2,
   Loader2,
