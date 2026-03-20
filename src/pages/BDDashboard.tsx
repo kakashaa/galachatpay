@@ -345,7 +345,7 @@ const BDDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-left">
-                  <p className={`text-[11px] font-bold ${comm > 0 ? 'text-emerald-400' : 'text-muted-foreground'}`}>${comm.toFixed(2)}</p>
+                  <p className={`text-[11px] font-bold ${comm > 0 ? 'text-emerald-400' : 'text-muted-foreground'}`}>{comm > 0 ? `${comm.toLocaleString()} ك` : '0'}</p>
                 </div>
               </div>
             );
@@ -433,11 +433,11 @@ const BDDashboard: React.FC = () => {
           <div className="space-y-3 mt-1 css-fade-up">
             {/* === Earnings Summary === */}
             <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900/30 to-card border border-emerald-500/20 p-5 text-center">
-              <p className="text-xs text-muted-foreground mb-1">إجمالي أرباحي</p>
+              <p className="text-xs text-muted-foreground mb-1">إجمالي عمولتي</p>
               <h2 className="text-3xl font-extrabold text-emerald-400 tracking-tight">
-                {liveSalaryTotal.toLocaleString()} <span className="text-base font-medium text-muted-foreground">كوينز</span>
+                {liveSalaryTotal.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">كوينز</span>
               </h2>
-              <p className="text-sm font-bold text-foreground mt-1">(${liveSalaryTotalUsd.toFixed(2)})</p>
+              <p className="text-sm font-bold text-foreground/70 mt-1">(${liveSalaryTotalUsd.toFixed(2)})</p>
               {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400 mx-auto mt-2" />}
               
               {(() => {
@@ -684,35 +684,39 @@ const BDDashboard: React.FC = () => {
             {/* Wallet Card */}
             <div className="css-fade-up-d1 overflow-hidden rounded-2xl bg-card border border-border/40 p-3.5">
               <div className="flex justify-between items-start mb-2">
-                <div>
+                <div
+                  className={`${(bd.available_balance || 0) > 0 ? 'cursor-pointer active:scale-[0.97] transition-transform' : ''}`}
+                  onClick={() => { if ((bd.available_balance || 0) > 0) setTab('wallet'); }}
+                >
                   <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[12px] text-primary">account_balance_wallet</span>
                     الرصيد المتاح
                   </p>
                   <h2 className="text-xl font-bold text-foreground tracking-tight">${(bd.available_balance || 0).toFixed(2)}</h2>
+                  <p className="text-[9px] text-muted-foreground">{Math.round((bd.available_balance || 0) * 7500).toLocaleString()} كوينز</p>
+                  {(bd.available_balance || 0) > 0 && (
+                    <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب ←</p>
+                  )}
                 </div>
-                <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${todayProfit > 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${todayProfit > 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
                   <span className="material-symbols-outlined text-[11px]">{todayProfit > 0 ? 'trending_up' : 'trending_flat'}</span>
-                  {todayProfit > 0 ? `+$${todayProfit.toFixed(2)}` : '$0.00'}
+                  {todayProfit > 0 ? `+$${(todayProfit / 7500).toFixed(2)}` : '$0.00'}
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-1.5 mb-2">
-                <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
-                  <p className="text-[8px] text-muted-foreground mb-0.5">اليوم</p>
-                  <p className="text-[11px] font-bold text-foreground">${todayProfit.toFixed(2)}</p>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div className="bg-amber-500/5 rounded-xl p-2 text-center border border-amber-500/15">
+                  <p className="text-[9px] text-amber-300/80 font-medium mb-0.5">أرباح اليوم</p>
+                  <p className="text-base font-extrabold text-amber-400">${(todayProfit / 7500).toFixed(2)}</p>
                 </div>
-                <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
-                  <p className="text-[8px] text-muted-foreground mb-0.5">الشهر</p>
-                  <p className="text-[11px] font-bold text-foreground">${monthlyProfit.toFixed(2)}</p>
+                <div className="bg-cyan-500/5 rounded-xl p-2 text-center border border-cyan-500/15">
+                  <p className="text-[9px] text-cyan-300/80 font-medium mb-0.5">أرباح الشهر</p>
+                  <p className="text-sm font-extrabold text-cyan-400">{monthlyProfit.toLocaleString()}</p>
+                  <p className="text-[8px] text-muted-foreground">كوينز</p>
                 </div>
-                <div className="bg-emerald-500/5 rounded-lg p-1.5 text-center border border-emerald-500/10">
-                  <p className="text-[8px] text-muted-foreground mb-0.5">رواتب</p>
-                  <p className="text-[11px] font-bold text-emerald-400">${liveSalaryTotalUsd.toFixed(2)}</p>
-                </div>
-                <div className="bg-white/[0.04] rounded-lg p-1.5 text-center border border-border/20">
-                  <p className="text-[8px] text-muted-foreground mb-0.5">الإجمالي</p>
-                  <p className="text-[11px] font-bold text-primary">${(bd.total_earned || 0).toFixed(2)}</p>
+                <div className="bg-white/[0.04] rounded-xl p-2 text-center border border-border/20">
+                  <p className="text-[9px] text-muted-foreground font-medium mb-0.5">الأعضاء</p>
+                  <p className="text-base font-extrabold text-foreground">{supporters.length + agents.length}</p>
                 </div>
               </div>
 
