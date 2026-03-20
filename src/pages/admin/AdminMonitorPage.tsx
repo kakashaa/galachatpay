@@ -58,6 +58,7 @@ const formatNumber = (n: number) => n?.toLocaleString("en-US") ?? "0";
 const AdminMonitorPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
   const [tab, setTab] = useState<"alerts" | "monitors" | "bot">("alerts");
+  const [alertFilter, setAlertFilter] = useState<"all" | string>("all");
 
   /* ── Alerts State ── */
   const [alerts, setAlerts] = useState<MonitorAlert[]>([]);
