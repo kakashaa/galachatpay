@@ -91,8 +91,8 @@ const AdminTopAgents: React.FC<AdminTopAgentsProps> = ({ readOnly = false }) => 
         agent_uuid: uuid,
         agent_name: name,
         vip4_limit: 3,
-        vip5_limit: 2,
-        vip6_limit: 0,
+        vip5_limit: 5,
+        vip6_limit: 0, // kept for DB compatibility
       });
       if (error) throw error;
       toast.success(`تم إضافة الوكيل ${name}`);
