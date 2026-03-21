@@ -47,6 +47,12 @@ const parseExp = (exp: string | number): number => {
   return Math.round(parseFloat(s)) || 0;
 };
 
+const formatCompactCoins = (value: number): string => {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return value.toLocaleString();
+};
+
 /* ─── Animated Counter ─── */
 const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
   <motion.span
@@ -507,7 +513,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
             {([
               {
                 key: 'charge' as const, label: 'الشحن',
-                value: user.charger_exp ? (user.charger_exp >= 1000000 ? `${(user.charger_exp / 1000000).toFixed(1)}M` : Number(user.charger_exp).toLocaleString()) : '0',
+                value: formatCompactCoins(Number(user.charger_exp) || 0),
                 sub: user.charger_exp ? `$${(user.charger_exp / 7500).toFixed(0)}` : '',
                 icon: <TrendingUp size={22} className="text-amber-600" />,
                 levelLabel: user.charger_level ? `Lv ${user.charger_level}` : '',
@@ -521,7 +527,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
               },
               {
                 key: 'supporter' as const, label: 'الداعم',
-                value: user._sent_total ? (user._sent_total >= 1000000 ? `${(user._sent_total / 1000000).toFixed(1)}M` : Number(user._sent_total).toLocaleString()) : '0',
+                value: formatCompactCoins(Number(user._sent_total) || 0),
                 sub: user._sent_total ? `$${(user._sent_total / 7500).toFixed(0)}` : '',
                 icon: <Crown size={22} className="text-amber-500" />,
                 levelLabel: user.sender_level ? `Lv ${user.sender_level}` : '',
@@ -1041,6 +1047,7 @@ const AdminHomeView: React.FC<Props> = ({
     try {
       // Try fast DB proxy first, fallback to user-full
       let d: any = null;
+      let diamondsData: any = null;
       let fromDiamonds = false;
 
       try {
@@ -1049,7 +1056,8 @@ const AdminHomeView: React.FC<Props> = ({
         );
         const text = await res.text();
         const json = JSON.parse(text);
-        d = json?.data?.[0] || null;
+        diamondsData = json?.data?.[0] || null;
+        d = diamondsData;
         if (d?.name) fromDiamonds = true;
         console.log("[user-diamonds] ok:", !!d?.name);
       } catch (e) {
@@ -1081,11 +1089,14 @@ const AdminHomeView: React.FC<Props> = ({
       }
 
       if (d && d.name) {
-        const totalSent = parseInt(d.total_diamond_send) || 0;
-        const totalRecv = parseInt(d.total_diamond_received) || 0;
-        const monthlyRecv = parseInt(d.monthly_diamond_received) || 0;
-        const chargerExp = parseInt(d.charger_exp) || 0;
-        const di = parseInt(d.di) || 0;
+        const parseNum = (value: unknown): number =>
+          parseInt(String(value ?? 0).replace(/,/g, '')) || 0;
+
+        const totalSent = parseNum(diamondsData?.total_diamond_send ?? d.total_diamond_send ?? d.total_sent);
+        const totalRecv = parseNum(diamondsData?.total_diamond_received ?? d.total_diamond_received ?? d.total_received);
+        const monthlyRecv = parseNum(diamondsData?.monthly_diamond_received ?? d.monthly_diamond_received);
+        const chargerExp = parseNum(diamondsData?.charger_exp ?? d.charger_exp);
+        const di = parseNum(diamondsData?.di ?? d.di);
 
         const data: any = {
           success: true,
