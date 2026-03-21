@@ -266,7 +266,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   }, [selectedMonth]);
 
   const enrichWithAvatars = async (reqs: WithdrawRequest[]): Promise<WithdrawRequest[]> => {
-    const BATCH = 5;
+    const BATCH = 10;
     const result = [...reqs];
     for (let i = 0; i < result.length; i += BATCH) {
       const batch = result.slice(i, i + BATCH);
