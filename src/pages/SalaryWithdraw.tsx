@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
+import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {

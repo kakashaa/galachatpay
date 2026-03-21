@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 
