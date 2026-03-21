@@ -351,7 +351,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           </div>
         </ActionDialog>
 
-        {/* Ban Dialog */}
+        {/* Ban Dialog — Full inline form */}
         <ActionDialog
           open={activeAction === 'ban'}
           onClose={() => setActiveAction(null)}
@@ -359,26 +359,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           icon={Ban}
           iconColor="#ef4444"
         >
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/5 border border-destructive/10">
-              <div className="w-9 h-9 rounded-lg overflow-hidden border border-border">
-                <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-foreground">{user.name}</p>
-                <p className="text-[10px] text-destructive font-medium">سيتم توجيهك لصفحة الحظر</p>
-              </div>
-            </div>
-            <button
-              onClick={() => { navigate(`/admin/ban?uuid=${user.uuid}`); setActiveAction(null); }}
-              disabled={actionLoading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
-            >
-              {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
-              متابعة الحظر
-            </button>
-          </div>
-        </ActionDialog>
+          <BanInlineForm user={user} onDone={() => { setActiveAction(null); onRefresh(user.uuid); }} />
 
         {/* Salary Reset Dialog */}
         <ActionDialog
