@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -779,6 +779,43 @@ const ServiceGroup: React.FC<{
   );
 };
 
+/* ─── Service Icon with Mac Bounce ─── */
+const ServiceIcon: React.FC<{
+  service: { icon: typeof Crown; label: string; route: string; gradient: string; shadow: string; badge: number };
+  navigate: (path: string) => void;
+  tap: () => void;
+}> = ({ service, navigate, tap }) => {
+  const [bouncing, setBouncing] = useState(false);
+  const Icon = service.icon;
+
+  const handleClick = () => {
+    tap();
+    setBouncing(true);
+    setTimeout(() => {
+      setBouncing(false);
+      navigate(service.route);
+    }, 450);
+  };
+
+  return (
+    <button onClick={handleClick} className="relative flex flex-col items-center gap-2 group">
+      <div
+        className={`w-14 h-14 rounded-[18px] bg-gradient-to-br ${service.gradient} flex items-center justify-center shadow-lg ${service.shadow} transition-all duration-200 group-hover:scale-105 group-active:scale-95 ${bouncing ? 'animate-bounce-glow' : ''}`}
+      >
+        <Icon className="w-6 h-6 text-white drop-shadow-sm" strokeWidth={1.8} />
+      </div>
+      {service.badge > 0 && (
+        <span className="absolute -top-1 right-0 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white shadow-md shadow-red-500/50">
+          {service.badge > 99 ? '99+' : service.badge}
+        </span>
+      )}
+      <span className="text-[10px] text-slate-400 text-center leading-tight group-hover:text-slate-200 transition-colors">
+        {service.label}
+      </span>
+    </button>
+  );
+};
+
 /* ═════════════════════════════════════════════════════════════
    ═══ MAIN COMPONENT ═══
    ═════════════════════════════════════════════════════════════ */
@@ -801,6 +838,7 @@ const AdminHomeView: React.FC<Props> = ({
   recentLogs, isOwner, isSuperAdmin, onLogout,
 }) => {
   const navigate = useNavigate();
+  const tap = useTapFeedback();
   const [searchUuid, setSearchUuid] = useState("");
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [searchResult, setSearchResult] = useState<any>(null);
