@@ -1002,16 +1002,31 @@ const AdminHomeView: React.FC<Props> = ({
         galaApi.getUserInfo(target),
         fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-sent-total&uuid=${target}`).then(r => r.json()).catch(() => null),
         fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-received-total&uuid=${target}`).then(r => r.json()).catch(() => null),
-        fetch(`https://hola-chat.com/bd-data-api.php?key=ghala2026actions&action=user-profile&uuid=${target}`).then(r => r.json()).catch(() => null),
+        // Fetch VIP from profile API via gala-token
+        (async () => {
+          try {
+            const tokenRes = await supabase.functions.invoke("gala-token");
+            const token = tokenRes.data?.token;
+            if (!token) return null;
+            // Get internal ID first from AWS
+            const awsRes = await fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${target}`);
+            const awsData = await awsRes.json();
+            const internalId = awsData?.data?.id;
+            if (!internalId) return null;
+            const profileRes = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            return await profileRes.json();
+          } catch { return null; }
+        })(),
       ]);
       if (data.success && data.name) {
-        // Enrich with gift totals
         data._sent_total = sentRes?.data?.total_sent ?? 0;
         data._sent_usd = sentRes?.data?.total_usd ?? 0;
         data._recv_total = recvRes?.data?.total_received ?? 0;
         data._recv_usd = recvRes?.data?.total_usd ?? 0;
-        // Enrich with real VIP level from profile API (admin_user_info often returns 0)
-        const profileVip = profileRes?.user?.vip_level ?? profileRes?.vip_level ?? profileRes?.data?.vip?.level ?? profileRes?.data?.vip_level ?? 0;
+        // Extract VIP from profile API
+        const profileVip = profileRes?.data?.vip?.level ?? profileRes?.data?.vip_level ?? 0;
         if (profileVip > 0) data.vip_level = profileVip;
         setSearchResult(data);
       } else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
