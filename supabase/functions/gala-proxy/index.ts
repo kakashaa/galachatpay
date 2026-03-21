@@ -144,6 +144,9 @@ serve(async (req) => {
       delete params._admin_token;
     }
 
+    // Always strip _admin_token even for non-admin actions (prevent leaking to upstream)
+    if (params._admin_token) delete params._admin_token;
+
     // 3. Build the request
     const baseUrl = URLS[target as string];
     if (!baseUrl) return json({ error: "target غير معروف" }, 400);

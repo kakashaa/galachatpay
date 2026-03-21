@@ -13,7 +13,15 @@ class GalaApiService {
     }
 
     const { data, error } = await supabase.functions.invoke("gala-proxy", { body });
-    if (error) throw error;
+    if (error) {
+      // Handle 401 gracefully — session expired
+      const msg = typeof error === 'object' && error?.message ? error.message : String(error);
+      if (msg.includes('401') || msg.includes('غير صالحة')) {
+        console.warn('[galaApi] Session expired or invalid for action:', action);
+        throw new Error('جلسة الأدمن منتهية — أعد تسجيل الدخول');
+      }
+      throw error;
+    }
     if (data?.error) throw new Error(data.error);
     return data;
   }
