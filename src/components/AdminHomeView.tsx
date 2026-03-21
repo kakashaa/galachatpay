@@ -488,7 +488,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
               { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
               { key: 'support' as const, label: 'الكاريزما', value: user._recv_total ? `${(user._recv_total / 1000000).toFixed(1)}M` : (user.receiver_level ?? 0), icon: <Sparkles size={22} className="text-pink-500" /> },
               { key: 'supporter' as const, label: 'الداعم', value: user._sent_total ? `${(user._sent_total / 1000000).toFixed(1)}M` : (user.sender_level ?? 0), icon: <Crown size={22} className="text-amber-500" /> },
-              { key: 'salary' as const, label: 'الراتب', value: `$${user.net_salary ?? user.salary ?? 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
+              { key: 'salary' as const, label: 'الراتب', value: `$${user.salary ?? 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
             ] as const).map((item) => {
               const isActive = expandedTile === item.key;
               return (
