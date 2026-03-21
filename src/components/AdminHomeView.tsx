@@ -10,7 +10,7 @@ import {
   ShieldAlert, Headphones, CheckCircle, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
   Inbox, FileText, Landmark, Eye, BarChart3,
-  MessageCircle, Activity, ArrowUpRight
+  MessageCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
@@ -707,10 +707,6 @@ const AdminHomeView: React.FC<Props> = ({
   ];
 
   const visible = allServices.filter(s => adminRole && s.roles.includes(adminRole));
-  const operationsGroup = visible.filter(s => s.group === 'operations');
-  const financeGroup = visible.filter(s => s.group === 'finance');
-  const securityGroup = visible.filter(s => s.group === 'security');
-  const generalGroup = visible.filter(s => s.group === 'general');
 
   // Smart alerts
   const smartAlerts = [
