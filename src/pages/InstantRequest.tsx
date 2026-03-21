@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 
@@ -660,6 +661,16 @@ const InstantRequest: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SubmissionOverlay
+        visible={loading}
+        title="جاري رفع طلب السحب الفوري"
+        steps={[
+          { label: "جاري التحقق من الحوالة...", completedLabel: "تم التحقق ✓", icon: <></> },
+          { label: "جاري تسجيل الطلب...", completedLabel: "تم التسجيل ✓", icon: <></> },
+          { label: "جاري إرسال الإشعار...", completedLabel: "تم الإرسال ✓", icon: <></> },
+        ]}
+      />
     </MobileLayout>
   );
 };

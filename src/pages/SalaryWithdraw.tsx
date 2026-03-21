@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
+import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -1379,6 +1380,15 @@ const SalaryWithdraw: React.FC = () => {
                     className="w-full h-12 gold-gradient text-primary-foreground font-bold">
                     {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : `شحن ${(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز`}
                   </Button>
+                  <SubmissionOverlay
+                    visible={chargingCoins}
+                    title="جاري شحن الكوينز"
+                    steps={[
+                      { label: "جاري التحقق من الحوالة...", completedLabel: "تم التحقق ✓", icon: <></> },
+                      { label: "جاري شحن الكوينز...", completedLabel: "تم الشحن ✓", icon: <></> },
+                      { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
+                    ]}
+                  />
                 </div>
               )}
             </motion.div>
@@ -1592,6 +1602,7 @@ const SalaryWithdraw: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+      <SubmissionOverlay visible={submitting} title="جاري رفع طلب السحب" />
     </MobileLayout>
   );
 };
