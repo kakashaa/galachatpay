@@ -30,7 +30,7 @@ const BAN_TYPE_INFO: Record<string, { label: string; icon: React.ReactNode; dura
   other: { label: "أخرى", icon: <Shield className="w-3.5 h-3.5" />, duration: "متغير" },
 };
 
-const formatDate = (d: string | null) => {
+const _formatDate = (d: string | null) => {
   if (!d) return "—";
   try {
     return new Date(d).toLocaleDateString("ar-SA", {
