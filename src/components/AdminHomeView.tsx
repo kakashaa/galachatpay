@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
-// UserDetailAccordion removed temporarily until backend proxy ready
+import UserDetailAccordion from '@/components/UserDetailAccordion';
 import SvgaPlayer from '@/components/SvgaPlayer';
 
 const VIP_FRAMES: Record<number, string> = {
@@ -359,7 +359,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [vipLevel, setVipLevel] = useState('1');
   const [busy, setBusy] = useState(false);
-  // Detail accordion disabled until backend proxy is ready
+  const [detailSection, setDetailSection] = useState<'charge' | 'support' | 'supporter' | 'salary' | null>(null);
   const userVipLevel = user.vip_level || 0;
 
   const copyUuid = () => {
@@ -535,7 +535,8 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
               },
             ] as const).map((item) => (
               <div key={item.label}
-                className="rounded-xl text-center py-2.5 px-1"
+                onClick={() => setDetailSection(prev => prev === item.key ? null : item.key)}
+                className="rounded-xl text-center py-2.5 px-1 cursor-pointer active:scale-95 transition-transform"
                 style={{
                   background: 'linear-gradient(180deg, rgba(220,215,200,0.95) 0%, rgba(200,195,180,0.9) 100%)',
                   border: '1px solid rgba(180,170,150,0.4)',
@@ -549,6 +550,24 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
               </div>
             ))}
           </div>
+
+          {/* ─── Detail Accordion (opens below tiles) ─── */}
+          <AnimatePresence>
+            {detailSection && (
+              <UserDetailAccordion
+                uuid={user.uuid}
+                section={detailSection}
+                onClose={() => setDetailSection(null)}
+                salaryData={{ salary: user.salary, deduction: user.deduction, net_salary: user.net_salary }}
+                monthlyRecv={user.monthly_diamond_received ? parseInt(String(user.monthly_diamond_received)) || 0 : 0}
+                totalRecv={user._recv_total || 0}
+                totalRecvUsd={user._recv_total ? Math.round(user._recv_total / 7500) : 0}
+                monthlySent={0}
+                totalSent={user._sent_total || 0}
+                totalSentUsd={user._sent_total ? Math.round(user._sent_total / 7500) : 0}
+              />
+            )}
+          </AnimatePresence>
 
           {/* ─── Detail Rows (cream/white background like reference) ─── */}
           <div className="rounded-xl overflow-hidden"
