@@ -2,17 +2,15 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Shield, Headset, ClipboardList, DollarSign,
-  Hash, Settings, Briefcase, Users, ScrollText,
-  Search, Loader2, Clock, Star, ShieldBan,
-  Gift, Wallet, Bell, X, Unlock, XCircle, Camera,
+  Shield, ClipboardList, Settings, Users,
+  Search, Loader2, Clock, Star,
+  Wallet, Bell, X, Unlock, XCircle,
   Ban, KeyRound, RotateCcw, BatteryCharging, ImageIcon,
-  ShoppingBag, TrendingUp, Building2, Banknote, Package,
-  ShieldAlert, Headphones, CheckCircle, Sparkles, AlertTriangle,
+  TrendingUp, Building2,
+  ShieldAlert, Headphones, CheckCircle, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
   Inbox, FileText, Landmark, Eye, BarChart3,
-  MessageCircle, Zap, Activity, CircleDot, Filter,
-  ChevronDown, ArrowUpRight, ArrowDownRight, Minus
+  MessageCircle, Activity, ArrowUpRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
