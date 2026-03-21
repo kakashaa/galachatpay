@@ -120,9 +120,10 @@ interface UserDetailAccordionProps {
   uuid: string;
   section: 'charge' | 'support' | 'supporter' | 'salary';
   onClose: () => void;
+  salaryData?: { salary?: number; deduction?: number; net_salary?: number };
 }
 
-const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section, onClose }) => {
+const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section, onClose, salaryData }) => {
   const [filter, setFilter] = useState<DateFilter>({ range: 'month', customFrom: '', customTo: '' });
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DetailRow[]>([]);
@@ -177,14 +178,24 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section
         setTotal(`${totalCoins.toLocaleString()} كوينز ($${(totalCoins / 7500).toFixed(0)})`);
         setRows(mapped);
       } else if (section === 'salary') {
-        const data = await galaApi.checkSalary(uuid);
-        setSalaryDetail(data);
+        // Use passed salaryData first, fallback to API
+        if (salaryData && (salaryData.salary || salaryData.net_salary)) {
+          setSalaryDetail(salaryData);
+        } else {
+          const data = await galaApi.checkSalary(uuid);
+          setSalaryDetail({
+            salary: data?.salary || data?.total || 0,
+            deduction: data?.deduction || data?.spent || data?.used || 0,
+            net_salary: data?.net_salary || data?.net || data?.remaining || data?.balance || 0,
+            charges: data?.charges,
+          });
+        }
         // Try to get salary report for history
         try {
           const report = await galaApi.salaryReport(uuid);
           setSalaryMonths(report?.months || report?.history || []);
         } catch { /* ignore */ }
-        setTotal(`$${data?.salary || data?.total || 0}`);
+        setTotal(`$${salaryData?.salary || 0}`);
       }
     } catch (err) {
       console.error('Detail fetch error:', err);
