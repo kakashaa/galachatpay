@@ -1078,42 +1078,23 @@ const AdminHomeView: React.FC<Props> = ({
               }
             }
 
-            // Monthly ranking - receivers
-            const tokenRes2 = await supabase.functions.invoke("gala-token");
-            const rankToken = tokenRes2.data?.token;
-            if (rankToken) {
-              const recvRank = await fetch("https://galalivechat.com/api/ranking", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${rankToken}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ class: 1, type: 3 }),
-              }).then(r => r.json()).catch(() => null);
+            // Fast DB proxy for sender/receiver totals
+            const [sendersRes, receiversRes] = await Promise.all([
+              fetch("https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=top-senders").then(r => r.json()).catch(() => ({ data: [] })),
+              fetch("https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=top-receivers").then(r => r.json()).catch(() => ({ data: [] })),
+            ]);
 
-              if (recvRank?.data) {
-                const allReceivers = [...(recvRank.data.top || []), ...(recvRank.data.other || [])];
-                const thisRecv = allReceivers.find((u: any) => String(u.uuid) === target);
-                if (thisRecv) {
-                  setSearchResult((prev: any) => prev ? { ...prev, _monthly_recv: parseExp(thisRecv.exp) } : prev);
-                }
-              }
-            }
+            const senders = sendersRes?.data || [];
+            const receivers = receiversRes?.data || [];
+            const thisUserSent = senders.find((u: any) => String(u.uuid) === target);
+            const thisUserRecv = receivers.find((u: any) => String(u.uuid) === target);
 
-            // Monthly ranking - senders
-            const tokenRes3 = await supabase.functions.invoke("gala-token");
-            const rankToken2 = tokenRes3.data?.token;
-            if (rankToken2) {
-              const sentRank = await fetch("https://galalivechat.com/api/ranking", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${rankToken2}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ class: 2, type: 3 }),
-              }).then(r => r.json()).catch(() => null);
-
-              if (sentRank?.data) {
-                const allSenders = [...(sentRank.data.top || []), ...(sentRank.data.other || [])];
-                const thisSent = allSenders.find((u: any) => String(u.uuid) === target);
-                if (thisSent) {
-                  setSearchResult((prev: any) => prev ? { ...prev, _monthly_sent: parseExp(thisSent.exp) } : prev);
-                }
-              }
+            if (thisUserSent || thisUserRecv) {
+              setSearchResult((prev: any) => prev ? {
+                ...prev,
+                ...(thisUserSent ? { _sent_total: thisUserSent.total_diamond_send, _sent_usd: +(thisUserSent.total_diamond_send / 7500).toFixed(2) } : {}),
+                ...(thisUserRecv ? { _recv_total: thisUserRecv.total_diamond_received, _recv_usd: +(thisUserRecv.total_diamond_received / 7500).toFixed(2) } : {}),
+              } : prev);
             }
           } catch (e) { console.warn("Background enrichment failed:", e); }
         })();
