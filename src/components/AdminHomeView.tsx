@@ -1017,44 +1017,42 @@ const AdminHomeView: React.FC<Props> = ({
     if (!target) return;
     setSearching(true); setSearchResult(null);
     try {
-      const [data, sentRes, recvRes, profileRes] = await Promise.all([
-        galaApi.getUserInfo(target),
-        fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-sent-total&uuid=${target}`).then(r => r.json()).catch(() => null),
-        fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-received-total&uuid=${target}`).then(r => r.json()).catch(() => null),
-        // Fetch VIP from profile API via gala-token
-        (async () => {
-          try {
-            const tokenRes = await supabase.functions.invoke("gala-token");
-            const token = tokenRes.data?.token;
-            if (!token) return null;
-            const awsRes = await fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${target}`);
-            const awsData = await awsRes.json();
-            const internalId = awsData?.data?.id;
-            if (!internalId) return null;
-            const profileFetch = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            return await profileFetch.json();
-          } catch { return null; }
-        })(),
-      ]);
-      if (data.success && data.name) {
-        // All-time totals
-        data._sent_total = sentRes?.data?.total_sent ?? 0;
-        data._sent_usd = sentRes?.data?.total_usd ?? 0;
-        data._recv_total = recvRes?.data?.total_received ?? 0;
-        data._recv_usd = recvRes?.data?.total_usd ?? 0;
+      // Single unified API call
+      const res = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
+      );
+      const json = await res.json();
+      const d = json?.data;
 
-        // Extract VIP from profile API
-        const profileVip = profileRes?.data?.vip?.level ?? profileRes?.data?.vip_level ?? 0;
-        if (profileVip > 0) data.vip_level = profileVip;
+      if (d && d.name) {
+        const data: any = {
+          success: true,
+          uuid: target,
+          name: d.name,
+          avatar: d.avatar,
+          vip_level: d.vip_level || 0,
+          salary: d.salary || 0,
+          deduction: d.deduction || 0,
+          net_salary: d.net_salary || 0,
+          charger_level: d.charger_level || 0,
+          sender_level: d.sender_level || 0,
+          agency_id: d.agency_id || '',
+          family_id: d.family_id || '',
+          is_banned: d.is_banned || false,
+          online: d.online || false,
+          created_at: d.created_at || '',
+          // All-time totals
+          _sent_total: d.total_sent || 0,
+          _sent_usd: d.total_sent ? +(d.total_sent / 7500).toFixed(2) : 0,
+          _recv_total: d.total_received || 0,
+          _recv_usd: d.total_received ? +(d.total_received / 7500).toFixed(2) : 0,
+        };
 
         // Fetch monthly ranking data (sequential to avoid token conflicts)
         try {
           const tokenRes2 = await supabase.functions.invoke("gala-token");
           const rankToken = tokenRes2.data?.token;
           if (rankToken) {
-            // Monthly receivers (class=1, type=3)
             const recvRank = await fetch("https://galalivechat.com/api/ranking", {
               method: "POST",
               headers: { Authorization: `Bearer ${rankToken}`, "Content-Type": "application/json" },
@@ -1067,11 +1065,9 @@ const AdminHomeView: React.FC<Props> = ({
               data._monthly_recv = thisRecv ? parseExp(thisRecv.exp) : 0;
             }
 
-            // Fresh token for second ranking call
             const tokenRes3 = await supabase.functions.invoke("gala-token");
             const rankToken2 = tokenRes3.data?.token;
             if (rankToken2) {
-              // Monthly senders (class=2, type=3)
               const sentRank = await fetch("https://galalivechat.com/api/ranking", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${rankToken2}`, "Content-Type": "application/json" },

@@ -56,6 +56,7 @@ const ALLOWED: Record<string, string[]> = {
     "approve-room-bg", "reject-room-bg",
     "wa-queue",
     "gift-sent-total", "gift-received-total",
+    "user-full",
   ],
   "bd-data": [
     "user-monthly-charges", "user-profile", "user-info",
