@@ -10,7 +10,7 @@ import {
   ShieldAlert, Headphones, CheckCircle, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
   Inbox, FileText, Landmark, Eye, BarChart3,
-  MessageCircle, Activity, ArrowUpRight
+  MessageCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
@@ -707,10 +707,6 @@ const AdminHomeView: React.FC<Props> = ({
   ];
 
   const visible = allServices.filter(s => adminRole && s.roles.includes(adminRole));
-  const operationsGroup = visible.filter(s => s.group === 'operations');
-  const financeGroup = visible.filter(s => s.group === 'finance');
-  const securityGroup = visible.filter(s => s.group === 'security');
-  const generalGroup = visible.filter(s => s.group === 'general');
 
   // Smart alerts
   const smartAlerts = [
@@ -722,77 +718,40 @@ const AdminHomeView: React.FC<Props> = ({
   ].filter(Boolean) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
   return (
-    <div className="min-h-screen bg-background pb-32 admin-theme" dir="rtl">
-      <div className="max-w-[448px] mx-auto px-4 pt-5 space-y-5">
+    <div className="min-h-screen pb-32" dir="rtl">
+      <div className="max-w-[448px] mx-auto">
 
-        {/* ═══ 1. HEADER ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center">
-              <span className="text-lg font-bold text-primary">
-                {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
-              </span>
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-foreground leading-tight">{adminDisplayName}</h2>
-              <p className="text-[10px] text-muted-foreground">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</p>
-            </div>
-          </div>
+        {/* ═══ 1. HEADER — same style as user dashboard ═══ */}
+        <header className="flex justify-between items-center px-4 pt-6 pb-3">
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-destructive/10 border border-destructive/20 active:bg-destructive/20 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5 text-destructive" />
+            </button>
+          )}
+
+          <h1 className="text-base font-black gradient-text">لوحة التحكم</h1>
 
           <div className="flex items-center gap-1.5 relative">
-            {/* Messages */}
-            <motion.button
-              whileTap={{ scale: 0.9 }}
+            <button
               onClick={() => navigate("/admin/chat")}
-              className="w-9 h-9 rounded-xl flex items-center justify-center bg-card border border-border"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
             >
-              <MessageCircle size={15} className="text-muted-foreground" />
-            </motion.button>
-
-            {/* Notifications */}
-            <motion.button
-              whileTap={{ scale: 0.9 }}
+              <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+            <button
               onClick={() => setShowNotifPanel(prev => !prev)}
-              className="relative w-9 h-9 rounded-xl flex items-center justify-center bg-card border border-border"
+              className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
             >
-              <Bell size={15} className="text-muted-foreground" />
+              <Bell className="w-3.5 h-3.5 text-muted-foreground" />
               {totalBadge > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 text-white bg-destructive"
-                  style={{ border: '2px solid hsl(var(--background))' }}
-                >
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[9px] font-black text-destructive-foreground flex items-center justify-center">
                   {totalBadge > 99 ? '99+' : totalBadge}
-                </motion.span>
+                </span>
               )}
-            </motion.button>
-
-            {/* Settings */}
-            {isOwner && (
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => navigate("/admin/settings")}
-                className="w-9 h-9 rounded-xl flex items-center justify-center bg-card border border-border"
-              >
-                <Settings size={15} className="text-muted-foreground" />
-              </motion.button>
-            )}
-
-            {/* Logout */}
-            {onLogout && (
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={onLogout}
-                className="w-9 h-9 rounded-xl flex items-center justify-center bg-destructive/10 border border-destructive/15"
-              >
-                <LogOut size={15} className="text-destructive" />
-              </motion.button>
-            )}
+            </button>
 
             {/* Notification dropdown */}
             <AnimatePresence>
@@ -809,7 +768,7 @@ const AdminHomeView: React.FC<Props> = ({
                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                    className="absolute left-0 top-11 z-[100] w-72 rounded-xl overflow-hidden bg-card border border-border"
+                    className="absolute left-0 top-10 z-[100] w-72 rounded-2xl overflow-hidden bg-card border border-border"
                     dir="rtl"
                     style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}
                   >
@@ -849,24 +808,79 @@ const AdminHomeView: React.FC<Props> = ({
               )}
             </AnimatePresence>
           </div>
-        </motion.div>
+        </header>
 
-        {/* ═══ 2. SEARCH BAR ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-        >
+        {/* ═══ MAIN CONTENT ═══ */}
+        <main className="px-3 space-y-4">
+
+          {/* Admin Profile Card — like UserProfileCard */}
+          <div className="rounded-2xl overflow-hidden border border-border/40"
+            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)' }}>
+            <div className="p-3.5 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-[14px] bg-primary/15 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-lg font-bold text-primary">
+                  {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-bold text-foreground truncate">{adminDisplayName}</h2>
+                <p className="text-[10px] text-muted-foreground/70">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</p>
+              </div>
+              {isOwner && (
+                <button
+                  onClick={() => navigate("/admin/settings")}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+                >
+                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+
+            {/* KPI row inside profile card */}
+            <div className="px-3.5 pb-3.5 grid grid-cols-3 gap-1.5">
+              {[
+                { label: "معلّق", value: stats.pending, color: "text-amber-500", bg: "bg-amber-500/8" },
+                { label: "مقبول", value: stats.approved, color: "text-emerald-500", bg: "bg-emerald-500/8" },
+                { label: "مرفوض", value: stats.rejected, color: "text-red-500", bg: "bg-red-500/8" },
+              ].map((kpi) => (
+                <div key={kpi.label} className={`text-center py-2 rounded-xl ${kpi.bg} border border-border/20`}>
+                  <p className={`text-sm font-bold tabular-nums font-mono ${kpi.color}`}>
+                    <AnimatedNumber value={kpi.value} />
+                  </p>
+                  <p className="text-[8px] text-muted-foreground/60 font-medium mt-0.5">{kpi.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Shift timer inside profile */}
+            {(shiftStart || shiftEnd) && (
+              <div className="px-3.5 pb-3">
+                <div className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <Clock size={10} className="text-amber-500" />
+                    <span className="text-muted-foreground/70">الوردية</span>
+                    <span className="text-muted-foreground/50 tabular-nums font-mono">{shiftStart || '—'} → {shiftEnd || '—'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ═══ SEARCH BAR ═══ */}
           <div className="relative flex items-center gap-2">
             <div className="relative flex-1">
-              <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 pointer-events-none" />
+              <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none" />
               <input
                 type="text"
                 value={searchUuid}
                 onChange={(e) => setSearchUuid(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchUser()}
                 placeholder="ابحث عن مستخدم، UUID، طلب..."
-                className="w-full h-9 rounded-lg pr-8 pl-3 text-[11px] placeholder:text-muted-foreground/40 focus:outline-none bg-muted/40 border border-border/50 focus:border-primary/30 focus:bg-card transition-all tabular-nums"
+                className="w-full h-10 rounded-[14px] pr-9 pl-3 text-[11px] placeholder:text-muted-foreground/40 focus:outline-none transition-all tabular-nums"
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
                 dir="rtl"
               />
               {searchUuid && (
@@ -881,114 +895,89 @@ const AdminHomeView: React.FC<Props> = ({
             <motion.button
               onClick={() => searchUser()}
               whileTap={{ scale: 0.9 }}
-              className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary flex-shrink-0"
+              className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-primary flex-shrink-0 active:scale-95 transition-transform"
             >
-              {searching ? <Loader2 size={13} className="text-primary-foreground animate-spin" /> : <ArrowUpRight size={13} className="text-primary-foreground" />}
+              {searching ? <Loader2 size={14} className="text-primary-foreground animate-spin" /> : <Search size={14} className="text-primary-foreground" />}
             </motion.button>
           </div>
-        </motion.div>
 
-        {/* ═══ Search Result ═══ */}
-        <AnimatePresence>
-          {searchResult && (
-            <UserIdCard
-              user={searchResult}
-              onClose={() => setSearchResult(null)}
-              adminUsername={adminUsername}
-              onRefresh={searchUser}
-            />
-          )}
-        </AnimatePresence>
+          {/* ═══ Search Result ═══ */}
+          <AnimatePresence>
+            {searchResult && (
+              <UserIdCard
+                user={searchResult}
+                onClose={() => setSearchResult(null)}
+                adminUsername={adminUsername}
+                onRefresh={searchUser}
+              />
+            )}
+          </AnimatePresence>
 
-        {!searchResult && (
-          <>
-            {/* ═══ 3. KPI CARDS ═══ */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-            >
-              <div className="grid grid-cols-3 gap-1.5">
-                <KPICard label="معلّق" value={stats.pending} icon={Clock} colorClass="text-amber-500" bgClass="bg-amber-500/10" />
-                <KPICard label="مقبول" value={stats.approved} icon={CheckCircle} colorClass="text-emerald-500" bgClass="bg-emerald-500/10" />
-                <KPICard label="مرفوض" value={stats.rejected} icon={XCircle} colorClass="text-red-500" bgClass="bg-red-500/10" />
-              </div>
-            </motion.div>
-
-            {/* ═══ 4. QUICK ACTIONS (icon strip) ═══ */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex items-center gap-3 overflow-x-auto scrollbar-hide py-1"
-            >
-              {[
-                { icon: Shield, label: "المشرفين", onClick: () => navigate("/admin/chat"), color: "text-primary" },
-                { icon: Users, label: "الأدمن", onClick: () => navigate("/admin/chat"), color: "text-muted-foreground" },
-                ...(isOwner ? [
-                  { icon: Users, label: "إضافة مشرف", onClick: () => navigate("/admin/accounts"), color: "text-muted-foreground" },
-                  { icon: Eye, label: "المراقبة", onClick: () => navigate("/admin/monitor"), color: "text-muted-foreground" },
-                  { icon: BarChart3, label: "البيانات", onClick: () => navigate("/admin/live-dashboard"), color: "text-muted-foreground" },
-                ] : []),
-              ].map((action, i) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={i}
-                    onClick={action.onClick}
-                    className="flex flex-col items-center gap-1 flex-shrink-0 active:scale-90 transition-transform"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center">
-                      <Icon size={16} className={action.color} />
-                    </div>
-                    <span className="text-[8px] font-medium text-muted-foreground whitespace-nowrap">{action.label}</span>
-                  </button>
-                );
-              })}
-            </motion.div>
-
-            {/* ═══ 5. SMART ALERTS ═══ */}
-            {smartAlerts.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.12 }}
-              >
-                <SectionHeader title="تنبيهات تحتاج انتباهك" />
-                <div className="space-y-1.5">
-                  {smartAlerts.map((alert, i) => (
-                    <AlertItem key={i} {...alert} />
-                  ))}
+          {!searchResult && (
+            <>
+              {/* ═══ SMART ALERTS ═══ */}
+              {smartAlerts.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2.5 pr-1">
+                    <div className="w-1 h-3.5 rounded-full bg-destructive" />
+                    <h3 className="text-xs font-black text-foreground">تنبيهات</h3>
+                    <span className="text-[9px] text-muted-foreground/60 tabular-nums">({smartAlerts.length})</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {smartAlerts.map((alert, i) => (
+                      <AlertItem key={i} {...alert} />
+                    ))}
+                  </div>
                 </div>
-              </motion.div>
-            )}
+              )}
 
-            {/* ═══ Shift Timer ═══ */}
-            {(shiftStart || shiftEnd) && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />
-              </motion.div>
-            )}
+              {/* ═══ Owner Delay Monitor ═══ */}
+              {isOwner && <DelayMonitor />}
 
-            {/* ═══ Owner Delay Monitor ═══ */}
-            {isOwner && <DelayMonitor />}
+              {/* ═══ SERVICES — same grid style as user dashboard MenuGrid ═══ */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 pr-1">
+                  <div className="w-1 h-3.5 rounded-full gold-gradient" />
+                  <h3 className="text-xs font-black text-foreground">الخدمات</h3>
+                </div>
 
-            {/* ═══ 6. QUICK ACCESS GROUPS ═══ */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18 }}
-              className="space-y-4"
-            >
-              <SectionHeader title="الوصول السريع" />
-
-              {operationsGroup.length > 0 && <ServiceGroup title="إدارة العمليات" items={operationsGroup} navigate={navigate} />}
-              {financeGroup.length > 0 && <ServiceGroup title="الإدارة المالية" items={financeGroup} navigate={navigate} />}
-              {securityGroup.length > 0 && <ServiceGroup title="الدعم والحماية" items={securityGroup} navigate={navigate} />}
-              {generalGroup.length > 0 && <ServiceGroup title="الإدارة العامة" items={generalGroup} navigate={navigate} />}
-            </motion.div>
-          </>
-        )}
+                {/* All services in one clean grid */}
+                <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+                  {visible.map((service) => {
+                    const Icon = service.icon;
+                    return (
+                      <motion.button
+                        key={service.route + service.label}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => navigate(service.route)}
+                        className="flex flex-col items-center gap-1 relative active:-translate-y-0.5 transition-transform duration-150"
+                      >
+                        <div
+                          className="w-12 h-12 rounded-[14px] flex items-center justify-center relative"
+                          style={{
+                            background: `${service.color}12`,
+                            border: `1px solid rgba(255,255,255,0.06)`,
+                          }}
+                        >
+                          <Icon size={20} style={{ color: service.color }} />
+                          {service.badge > 0 && (
+                            <span
+                              className="absolute -top-1.5 -left-1.5 h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 text-white bg-destructive"
+                              style={{ border: '2px solid hsl(var(--background))' }}
+                            >
+                              {service.badge > 99 ? '99+' : service.badge}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">{service.label}</span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </main>
       </div>
     </div>
   );
