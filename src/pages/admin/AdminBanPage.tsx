@@ -117,7 +117,7 @@ const AdminBanPage: React.FC = () => {
       r.reporter_gala_id?.includes(searchQuery)
     );
 
-  const isPermanentBan = (report: any) =>
+  const _isPermanentBan = (report: any) =>
     report.ban_type === "promotion" || report.ban_type === "promo" || report.ban_type === "device" ||
     (!!report.reward_amount && report.reward_amount >= 50000);
 
