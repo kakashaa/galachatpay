@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, ChevronDown } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, Loader2 } from 'lucide-react';
 import { galaApi } from '@/services/galaApi';
 
 /* ─── Types ─── */
@@ -128,7 +128,7 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section
   const [rows, setRows] = useState<DetailRow[]>([]);
   const [total, setTotal] = useState<string>('');
   const [salaryMonths, setSalaryMonths] = useState<any[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState('');
+  const [_selectedMonth, _setSelectedMonth] = useState('');
   const [salaryDetail, setSalaryDetail] = useState<any>(null);
 
   const titles: Record<string, string> = {
