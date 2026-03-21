@@ -121,9 +121,15 @@ interface UserDetailAccordionProps {
   section: 'charge' | 'support' | 'supporter' | 'salary';
   onClose: () => void;
   salaryData?: { salary?: number; deduction?: number; net_salary?: number };
+  monthlyRecv?: number;
+  totalRecv?: number;
+  totalRecvUsd?: number;
+  monthlySent?: number;
+  totalSent?: number;
+  totalSentUsd?: number;
 }
 
-const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section, onClose, salaryData }) => {
+const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section, onClose, salaryData, monthlyRecv, totalRecv, totalRecvUsd, monthlySent, totalSent, totalSentUsd }) => {
   const [filter, setFilter] = useState<DateFilter>({ range: 'month', customFrom: '', customTo: '' });
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DetailRow[]>([]);
