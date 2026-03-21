@@ -241,7 +241,8 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           approved_amount: r.approved_amount || null,
           salary_type: r.salary_type || "host",
         }));
-        const enriched = await enrichWithAvatars(rawRequests);
+        // Show data immediately, load avatars in background
+        setRequests(rawRequests);
         setRequests(enriched);
         const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
         const pendingReqs = rawRequests.filter(r => r.status === "pending");
