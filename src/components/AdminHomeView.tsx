@@ -687,11 +687,52 @@ const AdminHomeView: React.FC<Props> = ({
               <div className="grid grid-cols-3 gap-2">
                 <KPICard label="معلّق" value={stats.pending} icon={Clock} colorClass="text-amber-500" bgClass="bg-amber-500/10" />
                 <KPICard label="مقبول" value={stats.approved} icon={CheckCircle} colorClass="text-emerald-500" bgClass="bg-emerald-500/10" />
+            {/* ═══ 3. KPI CARDS ═══ */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+            >
+              <div className="grid grid-cols-3 gap-2">
+                <KPICard label="معلّق" value={stats.pending} icon={Clock} colorClass="text-amber-500" bgClass="bg-amber-500/10" />
+                <KPICard label="مقبول" value={stats.approved} icon={CheckCircle} colorClass="text-emerald-500" bgClass="bg-emerald-500/10" />
                 <KPICard label="مرفوض" value={stats.rejected} icon={XCircle} colorClass="text-red-500" bgClass="bg-red-500/10" />
               </div>
             </motion.div>
 
-            {/* ═══ 4. SMART ALERTS ═══ */}
+            {/* ═══ 4. QUICK ACTIONS (icon strip) ═══ */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex items-center gap-3 overflow-x-auto scrollbar-hide py-1"
+            >
+              {[
+                { icon: Shield, label: "المشرفين", onClick: () => navigate("/admin/chat"), color: "text-primary" },
+                { icon: Users, label: "الأدمن", onClick: () => navigate("/admin/chat"), color: "text-muted-foreground" },
+                ...(isOwner ? [
+                  { icon: Users, label: "إضافة مشرف", onClick: () => navigate("/admin/accounts"), color: "text-muted-foreground" },
+                  { icon: Eye, label: "المراقبة", onClick: () => navigate("/admin/monitor"), color: "text-muted-foreground" },
+                  { icon: BarChart3, label: "البيانات", onClick: () => navigate("/admin/live-dashboard"), color: "text-muted-foreground" },
+                ] : []),
+              ].map((action, i) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={i}
+                    onClick={action.onClick}
+                    className="flex flex-col items-center gap-1 flex-shrink-0 active:scale-90 transition-transform"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center">
+                      <Icon size={16} className={action.color} />
+                    </div>
+                    <span className="text-[8px] font-medium text-muted-foreground whitespace-nowrap">{action.label}</span>
+                  </button>
+                );
+              })}
+            </motion.div>
+
+            {/* ═══ 5. SMART ALERTS ═══ */}
             {smartAlerts.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -717,7 +758,7 @@ const AdminHomeView: React.FC<Props> = ({
             {/* ═══ Owner Delay Monitor ═══ */}
             {isOwner && <DelayMonitor />}
 
-            {/* ═══ 5. QUICK ACCESS GROUPS ═══ */}
+            {/* ═══ 6. QUICK ACCESS GROUPS ═══ */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -731,122 +772,6 @@ const AdminHomeView: React.FC<Props> = ({
               {securityGroup.length > 0 && <ServiceGroup title="الدعم والحماية" items={securityGroup} navigate={navigate} />}
               {generalGroup.length > 0 && <ServiceGroup title="الإدارة العامة" items={generalGroup} navigate={navigate} />}
             </motion.div>
-
-            {/* ═══ 6. QUICK ACTIONS ═══ */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.22 }}
-            >
-              <SectionHeader title="إجراءات سريعة" />
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => navigate("/admin/chat")}
-                  className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl bg-primary/8 border border-primary/12 text-primary hover:bg-primary/12 transition-colors active:scale-[0.98]"
-                >
-                  <Shield size={16} />
-                  <span className="text-[11px] font-bold">مجموعة المشرفين</span>
-                </button>
-                <button
-                  onClick={() => navigate("/admin/chat")}
-                  className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors active:scale-[0.98]"
-                >
-                  <Users size={16} />
-                  <span className="text-[11px] font-bold">كل الأدمن</span>
-                </button>
-                {isOwner && (
-                  <>
-                    <button
-                      onClick={() => navigate("/admin/accounts")}
-                      className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors active:scale-[0.98]"
-                    >
-                      <Users size={16} />
-                      <span className="text-[11px] font-bold">إضافة مشرف</span>
-                    </button>
-                    <button
-                      onClick={() => navigate("/admin/monitor")}
-                      className="flex items-center gap-2.5 px-3.5 py-3 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors active:scale-[0.98]"
-                    >
-                      <Eye size={16} />
-                      <span className="text-[11px] font-bold">فتح المراقبة</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </motion.div>
-
-            {/* ═══ 7. RECENT ACTIVITY ═══ */}
-            {recentLogs.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.26 }}
-              >
-                <SectionHeader
-                  title="آخر العمليات"
-                  action={isOwner ? { label: "عرض الكل", onClick: () => navigate("/admin/log") } : undefined}
-                />
-                <div className="space-y-1.5">
-                  {recentLogs.slice(0, 5).map((log: any, i: number) => {
-                    const info = getActionInfo(log.action || "");
-                    const details = log.details || {};
-                    const targetName = details.user_name || details.target_name || details.member_name || details.bd_name || "";
-                    const targetId = details.user_uuid || details.target_uuid || details.member_uuid || details.uuid || "";
-                    const thumbUrl = details.image_url || details.thumbnail_url || details.file_url || details.evidence_url || details.gif_url || "";
-                    const extraInfo = details.title || (details.vip_level ? `VIP ${details.vip_level}` : "") || (details.amount_usd ? `$${details.amount_usd}` : "") || (details.new_id ? `آيدي: ${details.new_id}` : "");
-                    const timeStr = log.created_at ? new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '';
-                    const ActionIcon = info.icon;
-
-                    return (
-                      <motion.div
-                        key={log.id || i}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.28 + i * 0.04 }}
-                        className="rounded-xl overflow-hidden active:scale-[0.98] transition-transform cursor-pointer bg-card border border-border"
-                        dir="rtl"
-                        onClick={() => isOwner && navigate("/admin/log")}
-                      >
-                        <div className="flex items-center gap-0">
-                          {/* Thumbnail or icon */}
-                          {thumbUrl ? (
-                            <div className="w-14 h-14 shrink-0 relative overflow-hidden">
-                              <img src={thumbUrl} alt="" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-gradient-to-l from-black/50 to-transparent" />
-                            </div>
-                          ) : (
-                            <div className="w-10 h-14 shrink-0 flex items-center justify-center">
-                              <ActionIcon size={16} className={info.color} />
-                            </div>
-                          )}
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0 px-3 py-2.5">
-                            <p className={`text-[11px] font-bold ${info.color} leading-tight`}>{info.label}</p>
-                            {targetName && (
-                              <p className="text-[10px] text-foreground/70 font-medium truncate mt-0.5">
-                                {targetName}
-                                {targetId && <span className="text-muted-foreground/40 mr-1 text-[8px]">#{targetId.slice(0, 6)}</span>}
-                              </p>
-                            )}
-                            {extraInfo && (
-                              <p className="text-[9px] text-muted-foreground truncate">{extraInfo}</p>
-                            )}
-                            <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[8px] text-muted-foreground/50">{log.admin_username}</span>
-                              <span className="w-0.5 h-0.5 rounded-full bg-muted-foreground/20" />
-                              <span className="text-[8px] text-muted-foreground/40 tabular-nums">{timeStr}</span>
-                            </div>
-                          </div>
-
-                          <ChevronLeft className="w-3 h-3 text-muted-foreground/20 ml-2 shrink-0" />
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
           </>
         )}
       </div>
