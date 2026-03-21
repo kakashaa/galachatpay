@@ -359,7 +359,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [vipLevel, setVipLevel] = useState('1');
   const [busy, setBusy] = useState(false);
-  // Detail accordion disabled until backend proxy is ready
+  const [detailSection, setDetailSection] = useState<'charge' | 'support' | 'supporter' | 'salary' | null>(null);
   const userVipLevel = user.vip_level || 0;
 
   const copyUuid = () => {
