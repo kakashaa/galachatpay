@@ -275,13 +275,60 @@ const BanInlineForm: React.FC<{ user: any; onDone: () => void }> = ({ user, onDo
   );
 };
 
-/* ─── User ID Card (Redesigned) ─── */
+/* ─── Change ID Inline Form ─── */
+const ChangeIdInlineForm: React.FC<{ user: any; onDone: () => void }> = ({ user, onDone }) => {
+  const [nextUuid, setNextUuid] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = async () => {
+    if (!nextUuid.trim()) {
+      toast.error('أدخل UUID الجديد');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await galaApi.changeUuid(user.uuid, nextUuid.trim());
+      toast.success('تم تغيير UUID بنجاح');
+      onDone();
+    } catch {
+      toast.error('فشل تغيير UUID');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border bg-muted/20 p-3">
+        <p className="text-[11px] text-muted-foreground">UUID الحالي</p>
+        <p className="mt-1 text-xs font-bold tabular-nums">{user.uuid}</p>
+      </div>
+
+      <input
+        value={nextUuid}
+        onChange={(e) => setNextUuid(e.target.value)}
+        placeholder="UUID الجديد"
+        className="w-full rounded-xl border border-input bg-background/70 px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-ring tabular-nums"
+        dir="ltr"
+      />
+
+      <button
+        onClick={handleChange}
+        disabled={loading || !nextUuid.trim()}
+        className="w-full rounded-xl bg-secondary py-3 text-xs font-bold text-secondary-foreground disabled:opacity-50"
+      >
+        {loading ? 'جاري التعديل...' : 'تأكيد التعديل'}
+      </button>
+    </div>
+  );
+};
+
+/* ─── User ID Card (New UI) ─── */
 const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: string; onRefresh: (uuid: string) => void }> = ({ user, onClose, onRefresh }) => {
-  const navigate = useNavigate();
-  const isBanned = user.is_banned;
+  const isBanned = Boolean(user.is_banned);
   const [activeAction, setActiveAction] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState(false);
   const [vipLevel, setVipLevel] = useState('1');
+  const [busy, setBusy] = useState(false);
 
   const copyUuid = () => {
     navigator.clipboard.writeText(user.uuid);
@@ -289,273 +336,283 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   };
 
   const handleUnban = async () => {
-    setActionLoading(true);
+    setBusy(true);
     try {
       const d = await galaApi.unbanUser(user.uuid);
-      if (d.success) { toast.success('تم فك الحظر'); onRefresh(user.uuid); }
-      else toast.error('فشل فك الحظر');
-    } catch { toast.error('خطأ في الاتصال'); }
-    setActionLoading(false);
+      if (d.success) {
+        toast.success('تم فك الحظر');
+        onRefresh(user.uuid);
+      } else {
+        toast.error('فشل فك الحظر');
+      }
+    } catch {
+      toast.error('خطأ في الاتصال');
+    }
+    setBusy(false);
     setActiveAction(null);
   };
 
+  const handleVipApply = async () => {
+    setBusy(true);
+    try {
+      await galaApi.giveVip(user.uuid, Number(vipLevel), '30');
+      toast.success(`تم تنفيذ VIP ${vipLevel}`);
+      onRefresh(user.uuid);
+      setActiveAction(null);
+    } catch {
+      toast.error('فشل تنفيذ VIP');
+    }
+    setBusy(false);
+  };
+
   const handleActionClick = (key: string) => {
-    if (key === 'ban' && isBanned) { handleUnban(); return; }
-    if (key === 'id') { navigate(`/admin/id-change?uuid=${user.uuid}`); return; }
+    if (key === 'ban' && isBanned) {
+      handleUnban();
+      return;
+    }
     setActiveAction(key);
   };
 
-  const actions = [
-    { key: 'vip', label: "VIP", icon: Star, color: "#f59e0b" },
-    { key: 'ban', label: isBanned ? "فك حظر" : "حظر", icon: isBanned ? Unlock : Ban, color: isBanned ? "#10b981" : "#ef4444" },
-    { key: 'id', label: "آيدي", icon: KeyRound, color: "#8b5cf6" },
-    { key: 'salary', label: "تصفير", icon: RotateCcw, color: "#f97316" },
-    { key: 'charge', label: "شحن", icon: BatteryCharging, color: "#ef4444" },
-    { key: 'photo', label: "صورة", icon: ImageIcon, color: "#06b6d4" },
+  const actions: Array<{
+    key: string;
+    label: string;
+    icon: typeof Star;
+    tone: 'primary' | 'destructive' | 'secondary' | 'muted';
+  }> = [
+    { key: 'vip', label: 'VIP', icon: Star, tone: 'primary' },
+    { key: 'ban', label: isBanned ? 'فك الحظر' : 'حظر', icon: isBanned ? Unlock : Ban, tone: 'destructive' },
+    { key: 'id', label: 'UUID', icon: KeyRound, tone: 'secondary' },
+    { key: 'salary', label: 'تصفير', icon: RotateCcw, tone: 'muted' },
+    { key: 'charge', label: 'الشحن', icon: BatteryCharging, tone: 'destructive' },
+    { key: 'photo', label: 'الصورة', icon: ImageIcon, tone: 'secondary' },
   ];
+
+  const toneClasses: Record<'primary' | 'destructive' | 'secondary' | 'muted', string> = {
+    primary: 'bg-primary/10 border-primary/25 text-primary',
+    destructive: 'bg-destructive/10 border-destructive/25 text-destructive',
+    secondary: 'bg-secondary/20 border-secondary/35 text-secondary',
+    muted: 'bg-muted/55 border-border text-foreground',
+  };
 
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ type: "spring", damping: 26, stiffness: 300 }}
-        className="rounded-2xl overflow-hidden border border-border"
-        style={{ background: 'linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)/0.95) 100%)' }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 12 }}
+        transition={{ duration: 0.25 }}
+        className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/85 p-3 backdrop-blur-xl"
       >
-        {/* Header row */}
-        <div className="px-4 pt-4 pb-3 flex gap-3.5">
-          {/* Avatar */}
-          <div className="relative flex-shrink-0">
-            <div className="w-[52px] h-[52px] rounded-2xl overflow-hidden ring-2 ring-primary/20 ring-offset-2 ring-offset-card">
-              <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
+        <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: 'linear-gradient(140deg, hsl(var(--primary) / 0.08), transparent 55%)' }} />
+
+        <div className="relative flex items-start gap-3">
+          <div className="relative">
+            <div className="h-14 w-14 overflow-hidden rounded-2xl border border-border bg-muted/40">
+              <img
+                src={user.avatar || '/placeholder.svg'}
+                className="h-full w-full object-cover"
+                alt={user.name || 'user'}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                }}
+              />
             </div>
-            <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[2.5px] border-card ${user.online ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+            <span className={`absolute -bottom-1 -left-1 h-3.5 w-3.5 rounded-full border-2 border-card ${user.online ? 'bg-primary' : 'bg-muted-foreground'}`} />
           </div>
 
-          {/* Info */}
-          <div className="flex-1 min-w-0 pt-0.5">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-sm truncate text-foreground">{user.name}</h3>
+              <h3 className="truncate text-sm font-extrabold text-foreground">{user.name}</h3>
               {user.vip_level > 0 && (
-                <span className="px-1.5 py-0.5 rounded-md text-[8px] font-extrabold bg-gradient-to-r from-amber-500/20 to-amber-400/10 text-amber-400 border border-amber-500/20">
+                <span className="rounded-full border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">
                   VIP {user.vip_level}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              <button onClick={copyUuid} className="flex items-center gap-1 group">
-                <span className="text-[10px] text-muted-foreground/80 tabular-nums font-mono">#{user.uuid}</span>
-                <Copy size={9} className="text-muted-foreground/40 group-active:text-primary transition-colors" />
-              </button>
-              <div className="flex items-center gap-1">
-                <div className={`w-1.5 h-1.5 rounded-full ${isBanned ? 'bg-destructive animate-pulse' : 'bg-emerald-400'}`} />
-                <span className={`text-[9px] font-bold ${isBanned ? 'text-destructive' : 'text-emerald-400'}`}>
-                  {isBanned ? 'محظور' : 'نشط'}
-                </span>
-              </div>
-            </div>
+            <button onClick={copyUuid} className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+              <span className="tabular-nums font-mono">UUID: {user.uuid}</span>
+              <Copy size={10} />
+            </button>
+            <p className={`mt-1 text-[10px] font-bold ${isBanned ? 'text-destructive' : 'text-primary'}`}>
+              {isBanned ? 'الحساب محظور' : 'الحساب نشط'}
+            </p>
           </div>
 
-          {/* Close */}
-          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center bg-muted/30 hover:bg-muted/60 transition-colors flex-shrink-0 self-start">
-            <X size={13} className="text-muted-foreground" />
+          <button onClick={onClose} className="h-8 w-8 rounded-xl border border-border bg-muted/40 text-muted-foreground">
+            <X size={13} className="mx-auto" />
           </button>
         </div>
 
-        {/* Stats strip */}
-        <div className="mx-4 mb-3 grid grid-cols-4 gap-1.5">
+        <div className="relative mt-3 grid grid-cols-4 gap-1.5">
           {[
-            { label: "الراتب", value: `$${user.salary || 0}`, color: "text-primary", bg: "bg-primary/8" },
-            { label: "الداعم", value: user.sender_level || 0, color: "text-amber-400", bg: "bg-amber-400/8" },
-            { label: "الدعم", value: user.receiver_level || 0, color: "text-blue-400", bg: "bg-blue-400/8" },
-            { label: "الشحن", value: user.charger_level || 0, color: "text-orange-400", bg: "bg-orange-400/8" },
-          ].map((stat) => (
-            <div key={stat.label} className={`text-center py-2 rounded-xl ${stat.bg} border border-border/30`}>
-              <p className={`text-sm font-bold tabular-nums ${stat.color}`}>{stat.value}</p>
-              <p className="text-[8px] text-muted-foreground/60 mt-0.5 font-medium">{stat.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Extra details */}
-        <div className="mx-4 mb-3 rounded-xl bg-muted/15 border border-border/20 divide-y divide-border/15">
-          {[
-            { label: "صافي الراتب", value: `$${user.net_salary || 0}` },
-            { label: "الخصومات", value: `$${user.deduction || 0}`, isDestructive: true },
-            { label: "الوكالة", value: user.agency_id || '—' },
-            { label: "العائلة", value: user.family_id || '—' },
+            { label: 'الراتب', value: `$${user.salary || 0}` },
+            { label: 'الداعم', value: user.sender_level || 0 },
+            { label: 'الدعم', value: user.receiver_level || 0 },
+            { label: 'الشحن', value: user.charger_level || 0 },
           ].map((item) => (
-            <div key={item.label} className="flex justify-between text-[10px] px-3 py-2">
-              <span className="text-muted-foreground/60">{item.label}</span>
-              <span className={`font-semibold tabular-nums ${item.isDestructive ? 'text-destructive' : 'text-foreground/90'}`}>{item.value}</span>
+            <div key={item.label} className="rounded-xl border border-border/60 bg-background/55 px-1.5 py-2 text-center">
+              <p className="text-sm font-black tabular-nums">{item.value}</p>
+              <p className="mt-0.5 text-[8px] text-muted-foreground">{item.label}</p>
             </div>
           ))}
         </div>
 
-        {/* Action buttons - pill style */}
-        <div className="px-4 pb-4">
-          <div className="grid grid-cols-6 gap-1.5">
-            {actions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <motion.button
-                  key={action.key}
-                  whileTap={{ scale: 0.85 }}
-                  onClick={() => handleActionClick(action.key)}
-                  className="flex flex-col items-center gap-1 py-2 rounded-xl transition-all active:opacity-80"
-                  style={{ background: `${action.color}0C`, border: `1px solid ${action.color}15` }}
-                >
-                  <Icon size={15} style={{ color: action.color }} />
-                  <span className="text-[7px] font-bold" style={{ color: action.color }}>{action.label}</span>
-                </motion.button>
-              );
-            })}
-          </div>
+        <div className="relative mt-2 rounded-2xl border border-border/60 bg-background/45 p-2">
+          {[
+            { label: 'صافي الراتب', value: `$${user.net_salary || 0}` },
+            { label: 'الخصومات', value: `$${user.deduction || 0}` },
+            { label: 'الوكالة', value: user.agency_id || '—' },
+            { label: 'العائلة', value: user.family_id || '—' },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center justify-between border-b border-border/40 py-1.5 text-[10px] last:border-b-0">
+              <span className="text-muted-foreground">{row.label}</span>
+              <span className="font-bold tabular-nums">{row.value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="relative mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {actions.map((action) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={action.key}
+                onClick={() => handleActionClick(action.key)}
+                className={`flex min-w-[64px] flex-col items-center rounded-2xl border px-1.5 py-2 text-[8px] font-bold ${toneClasses[action.tone]}`}
+              >
+                <Icon size={15} />
+                <span className="mt-1 whitespace-nowrap">{action.label}</span>
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
-      {/* ═══ Centered Action Dialogs ═══ */}
       <AnimatePresence>
-        {/* VIP Dialog */}
         <ActionDialog
           open={activeAction === 'vip'}
           onClose={() => setActiveAction(null)}
-          title="إرسال VIP"
+          title="تفعيل VIP"
           icon={Star}
-          iconColor="#f59e0b"
+          iconColor="hsl(var(--primary))"
         >
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30">
-              <div className="w-9 h-9 rounded-lg overflow-hidden border border-border">
-                <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-foreground">{user.name}</p>
-                <p className="text-[10px] text-muted-foreground">#{user.uuid}</p>
-              </div>
-            </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground mb-2">اختر المستوى:</p>
-              <div className="grid grid-cols-5 gap-1.5">
-                {['1','2','3','4','5'].map(lv => (
-                  <button
-                    key={lv}
-                    onClick={() => setVipLevel(lv)}
-                    className={`py-3 rounded-xl text-xs font-bold transition-all ${
-                      vipLevel === lv
-                        ? 'bg-amber-500/20 border-2 border-amber-500/50 text-amber-400 shadow-lg shadow-amber-500/10'
-                        : 'bg-muted/30 border border-border text-muted-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    {lv}
-                  </button>
-                ))}
-              </div>
+          <div className="space-y-3">
+            <p className="text-[11px] text-muted-foreground">اختر مستوى VIP:</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {['1', '2', '3', '4', '5'].map((lv) => (
+                <button
+                  key={lv}
+                  onClick={() => setVipLevel(lv)}
+                  className={`rounded-xl py-2 text-xs font-bold ${vipLevel === lv ? 'border border-primary/35 bg-primary/15 text-primary' : 'border border-border bg-muted/40 text-muted-foreground'}`}
+                >
+                  {lv}
+                </button>
+              ))}
             </div>
             <button
-              onClick={() => { navigate(`/admin/vip?uuid=${user.uuid}&level=${vipLevel}`); setActiveAction(null); }}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold active:scale-[0.98] transition-transform shadow-lg shadow-amber-500/20"
+              onClick={handleVipApply}
+              disabled={busy}
+              className="w-full rounded-xl bg-primary py-3 text-xs font-bold text-primary-foreground disabled:opacity-50"
             >
-              إرسال VIP {vipLevel}
+              {busy ? 'جاري التنفيذ...' : `تنفيذ VIP ${vipLevel}`}
             </button>
           </div>
         </ActionDialog>
 
-        {/* Ban Dialog — Full inline form */}
         <ActionDialog
           open={activeAction === 'ban'}
           onClose={() => setActiveAction(null)}
           title="حظر المستخدم"
           icon={Ban}
-          iconColor="#ef4444"
+          iconColor="hsl(var(--destructive))"
         >
           <BanInlineForm user={user} onDone={() => { setActiveAction(null); onRefresh(user.uuid); }} />
         </ActionDialog>
 
-        {/* Salary Reset Dialog */}
         <ActionDialog
           open={activeAction === 'salary'}
           onClose={() => setActiveAction(null)}
           title="تصفير الراتب"
           icon={RotateCcw}
-          iconColor="#f97316"
+          iconColor="hsl(var(--primary))"
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-muted/20 border border-border/30 text-center">
-                <p className="text-lg font-bold text-foreground tabular-nums">${user.salary || 0}</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">الراتب الحالي</p>
+              <div className="rounded-xl border border-border bg-muted/25 p-3 text-center">
+                <p className="text-base font-black tabular-nums">${user.salary || 0}</p>
+                <p className="text-[9px] text-muted-foreground">الراتب الحالي</p>
               </div>
-              <div className="p-3 rounded-xl bg-muted/20 border border-border/30 text-center">
-                <p className="text-lg font-bold text-foreground tabular-nums">${user.net_salary || 0}</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">صافي الراتب</p>
+              <div className="rounded-xl border border-border bg-muted/25 p-3 text-center">
+                <p className="text-base font-black tabular-nums">${user.net_salary || 0}</p>
+                <p className="text-[9px] text-muted-foreground">صافي الراتب</p>
               </div>
             </div>
             <button
               onClick={() => { toast.info('جاري تصفير الراتب...'); setActiveAction(null); }}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20"
+              className="w-full rounded-xl bg-primary py-3 text-xs font-bold text-primary-foreground"
             >
-              <RotateCcw size={14} />
               تأكيد التصفير
             </button>
           </div>
         </ActionDialog>
 
-        {/* Charge Stop Dialog */}
         <ActionDialog
           open={activeAction === 'charge'}
           onClose={() => setActiveAction(null)}
           title="إيقاف الشحن"
           icon={BatteryCharging}
-          iconColor="#ef4444"
+          iconColor="hsl(var(--destructive))"
         >
-          <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 text-center">
-              <p className="text-2xl font-bold text-foreground tabular-nums">{user.charger_level || 0}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">مستوى الشحن الحالي</p>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-center">
+              <p className="text-xl font-black tabular-nums">{user.charger_level || 0}</p>
+              <p className="text-[10px] text-muted-foreground">مستوى الشحن الحالي</p>
             </div>
             <button
               onClick={() => { toast.info('جاري إيقاف الشحن...'); setActiveAction(null); }}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+              className="w-full rounded-xl bg-destructive py-3 text-xs font-bold text-destructive-foreground"
             >
-              <BatteryCharging size={14} />
-              إيقاف الشحن
+              تأكيد الإيقاف
             </button>
           </div>
         </ActionDialog>
 
-        {/* Photo Change Dialog */}
         <ActionDialog
           open={activeAction === 'photo'}
           onClose={() => setActiveAction(null)}
           title="تغيير الصورة"
           icon={ImageIcon}
-          iconColor="#06b6d4"
+          iconColor="hsl(var(--secondary))"
         >
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-border ring-4 ring-cyan-500/10">
-                <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
-              </div>
+          <div className="space-y-3">
+            <div className="mx-auto h-24 w-24 overflow-hidden rounded-2xl border border-border">
+              <img src={user.avatar || '/placeholder.svg'} className="h-full w-full object-cover" alt={user.name || 'avatar'} />
             </div>
-            <p className="text-[11px] text-muted-foreground text-center">{user.name} — الصورة الحالية</p>
+            <p className="text-center text-[11px] text-muted-foreground">{user.name} — الصورة الحالية</p>
             <button
-              onClick={() => { toast.info('جاري فتح تغيير الصورة...'); setActiveAction(null); }}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
+              onClick={() => { toast.info('جاري فتح أدوات الصورة...'); setActiveAction(null); }}
+              className="w-full rounded-xl bg-secondary py-3 text-xs font-bold text-secondary-foreground"
             >
-              <ImageIcon size={14} />
-              تغيير الصورة
+              فتح أدوات الصورة
             </button>
           </div>
+        </ActionDialog>
+
+        <ActionDialog
+          open={activeAction === 'id'}
+          onClose={() => setActiveAction(null)}
+          title="تعديل UUID"
+          icon={KeyRound}
+          iconColor="hsl(var(--secondary))"
+        >
+          <ChangeIdInlineForm user={user} onDone={() => { setActiveAction(null); onRefresh(user.uuid); }} />
         </ActionDialog>
       </AnimatePresence>
     </>
   );
 };
 
-/* ─── Delay Monitor (Owner only) ─── */
+/* ─── Delay Monitor (Owner only) ───
 const DelayMonitor: React.FC = () => {
   const [alerts, setAlerts] = useState<DelayAlert[]>([]);
 
