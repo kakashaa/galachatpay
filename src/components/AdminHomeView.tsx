@@ -516,6 +516,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                 uuid={user.uuid}
                 section={expandedTile}
                 onClose={() => setExpandedTile(null)}
+                salaryData={{ salary: user.salary, deduction: user.deduction, net_salary: user.net_salary }}
               />
             )}
           </AnimatePresence>
