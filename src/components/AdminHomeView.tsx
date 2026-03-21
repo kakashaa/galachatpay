@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -10,7 +10,7 @@ import {
   ShieldAlert, Headphones, CheckCircle, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
   Inbox, FileText, Landmark, Eye, BarChart3,
-  MessageCircle
+  MessageCircle, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
@@ -868,180 +868,228 @@ const AdminHomeView: React.FC<Props> = ({
     vipBadge > 0 && { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low' as const, onClick: () => navigate('/admin/vip') },
   ].filter(Boolean) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
+  /* Floating star particles (reference design) */
+  const particles = useMemo(() =>
+    Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      left: `${(i * 37 + 13) % 100}%`,
+      bottom: `${(i * 23) % 60}%`,
+      size: i % 3 === 0 ? 2 : 1,
+      duration: 8 + (i % 7) * 3,
+      delay: (i % 10) * 1.5,
+      reverse: i % 2 === 0,
+      opacity: i % 3 === 0 ? 0.6 : 0.3,
+      color: i % 5 === 0 ? '#f59e0b' : i % 4 === 0 ? '#14b8a6' : '#ffffff',
+    })), []);
+
+  const typeColor = (type: string) => {
+    if (type === 'approve' || type.includes('approve')) return 'bg-teal-400';
+    if (type === 'reject' || type.includes('reject') || type.includes('ban') || type.includes('delete')) return 'bg-red-400';
+    if (type === 'pending') return 'bg-amber-400';
+    return 'bg-slate-400';
+  };
+
   return (
-    <div className="admin-theme admin-starry-bg relative overflow-hidden pb-32" dir="rtl">
-      {/* Animated stars */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
-        {Array.from({ length: 40 }).map((_, i) => (
+    <div className="relative overflow-hidden pb-32" dir="rtl" style={{ background: '#0c0f1d', minHeight: '100dvh' }}>
+      {/* Floating particles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
+        {particles.map((p) => (
           <div
-            key={i}
-            className="absolute rounded-full bg-white"
+            key={p.id}
+            className={p.reverse ? 'particle-reverse' : 'particle'}
             style={{
-              width: `${1 + Math.random() * 2}px`,
-              height: `${1 + Math.random() * 2}px`,
-              top: `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
-              opacity: 0.2 + Math.random() * 0.5,
-              animation: `twinkle ${2 + Math.random() * 4}s ease-in-out ${Math.random() * 3}s infinite`,
+              position: 'absolute',
+              left: p.left,
+              bottom: p.bottom,
+              width: p.size,
+              height: p.size,
+              borderRadius: '50%',
+              backgroundColor: p.color,
+              opacity: p.opacity,
+              animationDuration: `${p.duration}s`,
+              animationDelay: `${p.delay}s`,
             }}
           />
         ))}
       </div>
 
-      <div className="relative z-10 mx-auto max-w-[448px] px-4">
-        {/* ── Header ── */}
-        <header className="flex items-center justify-between pt-6 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-500/30">
-              {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-white">أهلاً، {adminDisplayName}</h1>
-              <p className="text-[10px] text-slate-500">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {onLogout && (
-              <button onClick={onLogout} className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.06] flex items-center justify-center">
-                <LogOut className="w-4 h-4 text-slate-500" strokeWidth={1.8} />
-              </button>
-            )}
-            <button onClick={() => navigate('/admin/chat')} className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.06] flex items-center justify-center">
-              <MessageCircle className="w-4 h-4 text-slate-500" strokeWidth={1.8} />
-            </button>
-            <button
-              onClick={() => setShowNotifPanel((prev) => !prev)}
-              className="relative w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.06] flex items-center justify-center"
-            >
-              <Bell className="w-4 h-4 text-slate-400" strokeWidth={1.8} />
-              {totalBadge > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[8px] font-bold text-white flex items-center justify-center shadow-md shadow-red-500/50">
-                  {totalBadge > 99 ? '99+' : totalBadge}
-                </span>
-              )}
-            </button>
+      {/* Ambient gradient glow blobs */}
+      <div className="fixed top-0 right-0 w-72 h-72 bg-amber-500/5 rounded-full blur-[100px] pointer-events-none" aria-hidden="true" />
+      <div className="fixed bottom-40 left-0 w-60 h-60 bg-teal-500/5 rounded-full blur-[100px] pointer-events-none" aria-hidden="true" />
 
-            {/* Notification dropdown */}
-            <AnimatePresence>
-              {showNotifPanel && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[90]"
-                    onClick={() => setShowNotifPanel(false)}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                    className="absolute left-0 top-11 z-[100] w-72 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0c1424]/95 backdrop-blur-2xl shadow-2xl"
-                    dir="rtl"
-                  >
-                    <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
-                      <span className="text-[11px] font-bold text-white">المهام المعلقة</span>
-                      <span className="text-[9px] tabular-nums text-slate-500">{totalBadge} عنصر</span>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {[
-                        { label: 'طلبات VIP', count: vipBadge, route: '/admin/vip', Icon: Crown },
-                        { label: 'إدارة الحظر', count: banBadge, route: '/admin/ban', Icon: ShieldAlert },
-                        { label: 'طلبات الرواتب', count: salaryBadge, route: '/admin/salary', Icon: Wallet },
-                        { label: 'الطلبات العامة', count: requestsBadge, route: '/admin/requests', Icon: Inbox },
-                        { label: 'الدعم الفني', count: supportBadge, route: '/admin/support', Icon: Headphones },
-                      ]
-                        .filter((item) => item.count > 0)
-                        .map((item) => (
-                          <button
-                            key={item.route}
-                            onClick={() => { setShowNotifPanel(false); navigate(item.route); }}
-                            className="flex w-full items-center gap-3 border-b border-white/[0.04] px-4 py-2.5 text-right hover:bg-white/[0.04]"
-                          >
-                            <item.Icon size={14} className="text-emerald-400" strokeWidth={1.8} />
-                            <span className="flex-1 text-[11px] font-bold text-white">{item.label}</span>
-                            <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-red-500 px-1.5 text-[9px] font-bold text-white">
-                              {item.count}
-                            </span>
-                          </button>
-                        ))}
-                      {totalBadge === 0 && (
-                        <div className="px-4 py-6 text-center">
-                          <CheckCircle className="mx-auto mb-1.5 h-5 w-5 text-emerald-400" strokeWidth={1.8} />
-                          <p className="text-[11px] text-slate-500">لا توجد مهام معلقة</p>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
+      <div className="relative z-10 mx-auto max-w-[448px] min-h-dvh flex flex-col pb-24">
+
+        {/* ── Premium Profile Header Card ── */}
+        <header className="mx-4 mt-10 mb-4 rounded-2xl overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-bl from-amber-500/15 via-[#161a35] to-teal-500/10" />
+          <div className="absolute inset-0 border border-amber-400/10 rounded-2xl" />
+
+          <div className="relative px-5 pt-5 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {/* Avatar */}
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 via-orange-400 to-rose-500 flex items-center justify-center text-base font-bold text-[#0c0f1d] ring-2 ring-amber-400/30 ring-offset-2 ring-offset-[#161a35]">
+                    {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
+                  </div>
+                  <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#161a35]" />
+                </div>
+
+                <div>
+                  <h1 className="text-base font-semibold text-white leading-tight">أهلاً {adminDisplayName}</h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/20">
+                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                      <span className="text-[9px] font-semibold text-amber-400">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowNotifPanel((prev) => !prev)}
+                className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                aria-label="الإشعارات"
+              >
+                <Bell className="w-[18px] h-[18px] text-slate-300" />
+                {totalBadge > 0 && (
+                  <span className="absolute -top-1 -left-1 w-[17px] h-[17px] bg-gradient-to-br from-red-400 to-rose-500 rounded-full text-[9px] font-bold flex items-center justify-center text-white shadow-md shadow-red-500/30">
+                    {totalBadge > 99 ? '99+' : totalBadge}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Last login / shift info */}
+            <div className="flex items-center gap-1.5 mt-3 pr-1">
+              <Clock className="w-3 h-3 text-slate-500" />
+              <span className="text-[10px] text-slate-500">{shiftStart && shiftEnd ? `الوردية: ${shiftStart} → ${shiftEnd}` : 'آخر دخول: الآن'}</span>
+            </div>
           </div>
         </header>
 
-        <main className="relative z-10 space-y-4">
-          {/* ── Stats Badges (pill style) ── */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-2.5 py-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              <span className="text-[10px] text-amber-400 font-medium tabular-nums">
-                <AnimatedNumber value={stats.pending} /> معلّق
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-emerald-500/10 rounded-full px-2.5 py-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[10px] text-emerald-400 font-medium tabular-nums">
-                <AnimatedNumber value={stats.approved} /> مقبول
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-red-500/10 rounded-full px-2.5 py-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-              <span className="text-[10px] text-red-400 font-medium tabular-nums">
-                <AnimatedNumber value={stats.rejected} /> مرفوض
-              </span>
-            </div>
-          </div>
-
-          {/* ── Quick action buttons ── */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/admin/chat')}
-              className="flex-1 flex items-center gap-2 bg-white/[0.04] rounded-full px-3 py-2 border border-white/[0.06] hover:bg-white/[0.08] transition-all active:scale-[0.97]"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" strokeWidth={1.8} />
-              <span className="text-[10px] text-slate-400">مجموعة المشرفين</span>
-            </button>
-            {isOwner && (
-              <button
-                onClick={() => navigate('/admin/accounts')}
-                className="flex-1 flex items-center gap-2 bg-white/[0.04] rounded-full px-3 py-2 border border-white/[0.06] hover:bg-white/[0.08] transition-all active:scale-[0.97]"
+        {/* Notification dropdown */}
+        <AnimatePresence>
+          {showNotifPanel && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[90]"
+                onClick={() => setShowNotifPanel(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                className="absolute left-4 right-4 top-24 z-[100] max-w-sm mx-auto overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0c1424]/95 backdrop-blur-2xl shadow-2xl"
+                dir="rtl"
               >
-                <Users className="w-3.5 h-3.5 text-blue-400" strokeWidth={1.8} />
-                <span className="text-[10px] text-slate-400">كل الأدمن</span>
-              </button>
-            )}
-          </div>
+                <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
+                  <span className="text-[11px] font-bold text-white">المهام المعلقة</span>
+                  <span className="text-[9px] tabular-nums text-slate-500">{totalBadge} عنصر</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {[
+                    { label: 'طلبات VIP', count: vipBadge, route: '/admin/vip', Icon: Crown },
+                    { label: 'إدارة الحظر', count: banBadge, route: '/admin/ban', Icon: ShieldAlert },
+                    { label: 'طلبات الرواتب', count: salaryBadge, route: '/admin/salary', Icon: Wallet },
+                    { label: 'الطلبات العامة', count: requestsBadge, route: '/admin/requests', Icon: Inbox },
+                    { label: 'الدعم الفني', count: supportBadge, route: '/admin/support', Icon: Headphones },
+                  ]
+                    .filter((item) => item.count > 0)
+                    .map((item) => (
+                      <button
+                        key={item.route}
+                        onClick={() => { setShowNotifPanel(false); navigate(item.route); }}
+                        className="flex w-full items-center gap-3 border-b border-white/[0.04] px-4 py-2.5 text-right hover:bg-white/[0.04]"
+                      >
+                        <item.Icon size={14} className="text-amber-400" strokeWidth={1.8} />
+                        <span className="flex-1 text-[11px] font-bold text-white">{item.label}</span>
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-red-500 px-1.5 text-[9px] font-bold text-white">
+                          {item.count}
+                        </span>
+                      </button>
+                    ))}
+                  {totalBadge === 0 && (
+                    <div className="px-4 py-6 text-center">
+                      <CheckCircle className="mx-auto mb-1.5 h-5 w-5 text-emerald-400" strokeWidth={1.8} />
+                      <p className="text-[11px] text-slate-500">لا توجد مهام معلقة</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
-          {/* ── Search Bar (rounded pill) ── */}
-          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.06] rounded-full px-4 py-2.5 focus-within:ring-1 focus-within:ring-white/20 transition-all">
-            <Search className="w-4 h-4 text-slate-600 flex-shrink-0" strokeWidth={1.8} />
+        {/* Main Content */}
+        <main className="flex-1 px-4 flex flex-col gap-4">
+
+          {/* ── Search ── */}
+          <div className="relative group">
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 group-focus-within:text-slate-400 transition-colors" strokeWidth={1.5} />
             <input
               type="text"
               value={searchUuid}
               onChange={(e) => setSearchUuid(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchUser()}
-              placeholder="ابحث برقم UUID..."
-              className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 outline-none tabular-nums"
+              placeholder="البحث بـ UUID..."
+              className="w-full h-9 pr-9 pl-10 text-[11px] bg-black/30 border border-white/5 rounded-full text-white placeholder:text-slate-600 placeholder:text-right focus:outline-none focus:ring-1 focus:ring-white/15 focus:border-white/10 transition-all duration-300 font-mono"
               dir="rtl"
             />
-            {searchUuid && (
-              <button onClick={() => { setSearchUuid(''); setSearchResult(null); }}>
-                <X size={14} className="text-slate-500" />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {searchUuid && (
+                <button onClick={() => { setSearchUuid(''); setSearchResult(null); }}>
+                  <X size={14} className="text-slate-500" />
+                </button>
+              )}
+              {searching && <Loader2 size={14} className="animate-spin text-amber-400" />}
+            </div>
+          </div>
+
+          {/* ── Stats Row — tiny colored dots ── */}
+          <div className="flex items-center justify-center gap-5">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
+              <span className="text-[12px] font-bold text-amber-400 tabular-nums"><AnimatedNumber value={stats.pending} /></span>
+              <span className="text-[10px] text-slate-500">معلق</span>
+            </div>
+            <div className="w-px h-3 bg-slate-700/60" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-teal-400 shadow-sm shadow-teal-400/50" />
+              <span className="text-[12px] font-bold text-teal-400 tabular-nums"><AnimatedNumber value={stats.approved} /></span>
+              <span className="text-[10px] text-slate-500">مقبول</span>
+            </div>
+            <div className="w-px h-3 bg-slate-700/60" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-rose-400 shadow-sm shadow-rose-400/50" />
+              <span className="text-[12px] font-bold text-rose-400 tabular-nums"><AnimatedNumber value={stats.rejected} /></span>
+              <span className="text-[10px] text-slate-500">مرفوض</span>
+            </div>
+          </div>
+
+          {/* ── Group Chat — amber pill buttons ── */}
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => navigate('/admin/chat')}
+              className="flex-1 flex items-center justify-center gap-2 h-9 rounded-full bg-gradient-to-l from-amber-500/20 to-amber-600/5 border border-amber-400/15 hover:border-amber-400/30 transition-all group"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[11px] font-medium text-amber-300">قروب المشرفين</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </button>
+            {isOwner && (
+              <button
+                onClick={() => navigate('/admin/accounts')}
+                className="flex-1 flex items-center justify-center gap-2 h-9 rounded-full bg-white/5 border border-white/8 hover:border-white/15 transition-all group"
+              >
+                <MessageCircle className="w-3.5 h-3.5 text-slate-400 group-hover:scale-110 transition-transform" />
+                <span className="text-[11px] font-medium text-slate-300">كل الأدمن</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               </button>
             )}
-            <button onClick={() => searchUser()} className="flex-shrink-0">
-              {searching ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : null}
-            </button>
           </div>
 
           {/* ── Search Result ── */}
@@ -1060,7 +1108,7 @@ const AdminHomeView: React.FC<Props> = ({
             <>
               {/* ── Smart Alerts ── */}
               {smartAlerts.length > 0 && (
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 space-y-1.5">
+                <div className="rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm p-3 space-y-1.5">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-1 h-3.5 rounded-full bg-red-500" />
                     <h3 className="text-xs font-bold text-white">التنبيهات</h3>
@@ -1074,11 +1122,14 @@ const AdminHomeView: React.FC<Props> = ({
 
               {isOwner && <DelayMonitor />}
 
-              {/* ── Services Grid (macOS Launchpad) ── */}
-              <div>
-                <div className="flex items-center gap-2 mb-4 pr-1">
-                  <div className="w-1 h-3.5 rounded-full bg-gradient-to-b from-emerald-400 to-cyan-500" />
-                  <h3 className="text-xs font-bold text-white">الخدمات</h3>
+              {/* ── Services Section ── */}
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-[12px] font-semibold text-white/90">الخدمات</h2>
+                  <button className="flex items-center gap-0.5 text-[10px] text-amber-400/70 font-medium hover:text-amber-400 transition-colors">
+                    <span>عرض الكل</span>
+                    <ChevronLeft className="w-3 h-3" />
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-4 gap-y-5 gap-x-4 px-1">
@@ -1098,14 +1149,56 @@ const AdminHomeView: React.FC<Props> = ({
                             {service.badge > 99 ? '99+' : service.badge}
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-400 text-center leading-tight">
+                        <span className="text-[10px] text-slate-400 text-center leading-tight group-hover:text-slate-200 transition-colors">
                           {service.label}
                         </span>
                       </button>
                     );
                   })}
                 </div>
-              </div>
+              </section>
+
+              {/* ── Activity Log ── */}
+              {isOwner && recentLogs.length > 0 && (
+                <section>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h2 className="text-[12px] font-semibold text-white/90">سجل النشاط</h2>
+                    <button
+                      onClick={() => navigate('/admin/log')}
+                      className="flex items-center gap-0.5 text-[10px] text-amber-400/70 font-medium hover:text-amber-400 transition-colors"
+                    >
+                      <span>عرض الكل</span>
+                      <ChevronLeft className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.06] backdrop-blur-sm">
+                    {recentLogs.slice(0, 4).map((log, index) => {
+                      const info = getActionInfo(log.action);
+                      return (
+                        <div
+                          key={log.id}
+                          className={`flex items-center gap-3 px-4 py-3 ${
+                            index !== Math.min(recentLogs.length, 4) - 1 ? 'border-b border-white/[0.04]' : ''
+                          }`}
+                        >
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${typeColor(log.action)}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] text-white/90 font-medium truncate">{log.admin_username}</p>
+                            <p className="text-[9px] text-slate-500 truncate mt-0.5">{info.label}</p>
+                          </div>
+                          <div className="flex items-center gap-1 text-[8px] text-slate-600 shrink-0">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>{new Date(log.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* ── Shift Timer ── */}
+              {shiftEnd && <ShiftCountdown shiftStart={shiftStart} shiftEnd={shiftEnd} />}
             </>
           )}
         </main>
