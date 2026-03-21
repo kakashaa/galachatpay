@@ -836,25 +836,25 @@ const AdminHomeView: React.FC<Props> = ({
   const supportBadge = badges.support || 0;
   const totalBadge = vipBadge + banBadge + salaryBadge + requestsBadge + supportBadge;
 
-  // Service groups
+  // Service groups — macOS Launchpad style with gradients
   const allServices = [
-    { icon: Crown, label: "VIP", route: "/admin/vip", color: "#f59e0b", roles: ["owner", "super_admin"], badge: vipBadge, group: "operations" },
-    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", color: "#f43f5e", roles: ["owner", "super_admin"], badge: banBadge, group: "security" },
-    { icon: Wallet, label: "الرواتب", route: "/admin/salary", color: "#10b981", roles: ["owner"], badge: salaryBadge, group: "finance" },
-    { icon: Inbox, label: "الطلبات", route: "/admin/requests", color: "#3b82f6", roles: ["owner", "super_admin", "admin"], badge: requestsBadge, group: "operations" },
-    { icon: Store, label: "المتجر", route: "/admin/gifts", color: "#ec4899", roles: ["owner"], badge: 0, group: "general" },
-    { icon: Headphones, label: "الدعم", route: "/admin/support", color: "#06b6d4", roles: ["owner", "super_admin", "admin"], badge: supportBadge, group: "security" },
-    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0, group: "operations" },
-    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", color: "#10b981", roles: ["owner"], badge: 0, group: "finance" },
-    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", color: "#f97316", roles: ["owner"], badge: 0, group: "operations" },
-    { icon: Users, label: "المشرفين", route: "/admin/accounts", color: "#14b8a6", roles: ["owner"], badge: 0, group: "general" },
-    { icon: ClipboardList, label: "السجل", route: "/admin/log", color: "#6366f1", roles: ["owner", "super_admin"], badge: 0, group: "operations" },
-    { icon: Building2, label: "البيدي", route: "/admin/works", color: "#f43f5e", roles: ["owner"], badge: 0, group: "general" },
-    { icon: Settings, label: "الإعدادات", route: "/admin/settings", color: "#71717a", roles: ["owner"], badge: 0, group: "general" },
-    { icon: FileText, label: "طلبات المضيفات", route: "/admin/host-requests", color: "#14b8a6", roles: ["owner", "super_admin", "admin"], badge: 0, group: "operations" },
-    { icon: Eye, label: "المراقبة", route: "/admin/monitor", color: "#8b5cf6", roles: ["owner", "super_admin"], badge: 0, group: "security" },
-    { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", color: "#f59e0b", roles: ["owner"], badge: 0, group: "security" },
-    { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", color: "#06b6d4", roles: ["owner", "super_admin"], badge: 0, group: "finance" },
+    { icon: Crown, label: "VIP", route: "/admin/vip", gradient: "from-amber-400 to-yellow-600", shadow: "shadow-amber-500/40", roles: ["owner", "super_admin"], badge: vipBadge },
+    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: banBadge },
+    { icon: Wallet, label: "الرواتب", route: "/admin/salary", gradient: "from-emerald-400 to-green-600", shadow: "shadow-emerald-500/40", roles: ["owner"], badge: salaryBadge },
+    { icon: Inbox, label: "الطلبات", route: "/admin/requests", gradient: "from-purple-500 to-violet-600", shadow: "shadow-purple-500/40", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
+    { icon: Store, label: "المتجر", route: "/admin/gifts", gradient: "from-pink-500 to-rose-600", shadow: "shadow-pink-500/40", roles: ["owner"], badge: 0 },
+    { icon: Headphones, label: "الدعم", route: "/admin/support", gradient: "from-cyan-400 to-blue-500", shadow: "shadow-cyan-500/40", roles: ["owner", "super_admin", "admin"], badge: supportBadge },
+    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", gradient: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/40", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", gradient: "from-orange-400 to-amber-600", shadow: "shadow-orange-500/40", roles: ["owner"], badge: 0 },
+    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", gradient: "from-teal-400 to-cyan-600", shadow: "shadow-teal-500/40", roles: ["owner"], badge: 0 },
+    { icon: Users, label: "المشرفين", route: "/admin/accounts", gradient: "from-blue-500 to-indigo-600", shadow: "shadow-blue-500/40", roles: ["owner"], badge: 0 },
+    { icon: ClipboardList, label: "السجل", route: "/admin/log", gradient: "from-gray-400 to-slate-600", shadow: "shadow-gray-500/30", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Building2, label: "البيدي", route: "/admin/works", gradient: "from-indigo-500 to-purple-700", shadow: "shadow-indigo-500/40", roles: ["owner"], badge: 0 },
+    { icon: Settings, label: "الإعدادات", route: "/admin/settings", gradient: "from-slate-400 to-slate-600", shadow: "shadow-slate-500/30", roles: ["owner"], badge: 0 },
+    { icon: FileText, label: "المضيفات", route: "/admin/host-requests", gradient: "from-rose-400 to-pink-600", shadow: "shadow-rose-500/40", roles: ["owner", "super_admin", "admin"], badge: 0 },
+    { icon: Eye, label: "المراقبة", route: "/admin/monitor", gradient: "from-red-500 to-orange-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", gradient: "from-yellow-400 to-amber-500", shadow: "shadow-yellow-500/40", roles: ["owner"], badge: 0 },
+    { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", gradient: "from-green-500 to-emerald-600", shadow: "shadow-green-500/40", roles: ["owner", "super_admin"], badge: 0 },
   ];
 
   const visible = allServices.filter(s => adminRole && s.roles.includes(adminRole));
@@ -869,37 +869,53 @@ const AdminHomeView: React.FC<Props> = ({
   ].filter(Boolean) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
   return (
-    <div className="admin-theme premium-bg relative min-h-screen overflow-hidden pb-32" dir="rtl">
-      {/* Background blobs */}
-      <div className="pointer-events-none absolute -top-20 right-[-70px] h-56 w-56 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.06)' }} />
-      <div className="pointer-events-none absolute top-72 left-[-90px] h-56 w-56 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.04)' }} />
+    <div className="admin-theme admin-starry-bg relative overflow-hidden pb-32" dir="rtl">
+      {/* Animated stars */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
+        {Array.from({ length: 40 }).map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full bg-white"
+            style={{
+              width: `${1 + Math.random() * 2}px`,
+              height: `${1 + Math.random() * 2}px`,
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              opacity: 0.2 + Math.random() * 0.5,
+              animation: `twinkle ${2 + Math.random() * 4}s ease-in-out ${Math.random() * 3}s infinite`,
+            }}
+          />
+        ))}
+      </div>
 
-      <div className="relative mx-auto max-w-[448px] px-3">
-        {/* ── Header (same style as user dashboard) ── */}
-        <header className="flex items-center justify-between pt-6 pb-2 px-1">
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          )}
-          <h1 className="text-base font-black admin-gradient-text glow-text">لوحة التحكم</h1>
-          <div className="relative flex items-center gap-1.5">
-            <button
-              onClick={() => navigate('/admin/chat')}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
+      <div className="relative z-10 mx-auto max-w-[448px] px-4">
+        {/* ── Header ── */}
+        <header className="flex items-center justify-between pt-6 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-emerald-500/30">
+              {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-white">أهلاً، {adminDisplayName}</h1>
+              <p className="text-[10px] text-slate-500">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {onLogout && (
+              <button onClick={onLogout} className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.06] flex items-center justify-center">
+                <LogOut className="w-4 h-4 text-slate-500" strokeWidth={1.8} />
+              </button>
+            )}
+            <button onClick={() => navigate('/admin/chat')} className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.06] flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 text-slate-500" strokeWidth={1.8} />
             </button>
             <button
               onClick={() => setShowNotifPanel((prev) => !prev)}
-              className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+              className="relative w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.06] flex items-center justify-center"
             >
-              <Bell className="w-3.5 h-3.5 text-muted-foreground" />
+              <Bell className="w-4 h-4 text-slate-400" strokeWidth={1.8} />
               {totalBadge > 0 && (
-                <span className="absolute -right-1 -top-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[9px] font-black text-destructive-foreground flex items-center justify-center">
+                <span className="absolute -right-1 -top-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[8px] font-bold text-white flex items-center justify-center shadow-md shadow-red-500/50">
                   {totalBadge > 99 ? '99+' : totalBadge}
                 </span>
               )}
@@ -920,12 +936,12 @@ const AdminHomeView: React.FC<Props> = ({
                     initial={{ opacity: 0, y: -8, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                    className="absolute left-0 top-11 z-[100] w-72 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+                    className="absolute left-0 top-11 z-[100] w-72 overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0c1424]/95 backdrop-blur-2xl shadow-2xl"
                     dir="rtl"
                   >
-                    <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-                      <span className="text-[11px] font-bold text-foreground">المهام المعلقة</span>
-                      <span className="text-[9px] tabular-nums text-muted-foreground">{totalBadge} عنصر</span>
+                    <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
+                      <span className="text-[11px] font-bold text-white">المهام المعلقة</span>
+                      <span className="text-[9px] tabular-nums text-slate-500">{totalBadge} عنصر</span>
                     </div>
                     <div className="max-h-64 overflow-y-auto">
                       {[
@@ -940,19 +956,19 @@ const AdminHomeView: React.FC<Props> = ({
                           <button
                             key={item.route}
                             onClick={() => { setShowNotifPanel(false); navigate(item.route); }}
-                            className="flex w-full items-center gap-3 border-b border-border/40 px-4 py-2.5 text-right hover:bg-muted/50"
+                            className="flex w-full items-center gap-3 border-b border-white/[0.04] px-4 py-2.5 text-right hover:bg-white/[0.04]"
                           >
-                            <item.Icon size={14} className="text-primary" />
-                            <span className="flex-1 text-[11px] font-bold text-foreground">{item.label}</span>
-                            <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-destructive px-1.5 text-[9px] font-bold text-destructive-foreground">
+                            <item.Icon size={14} className="text-emerald-400" strokeWidth={1.8} />
+                            <span className="flex-1 text-[11px] font-bold text-white">{item.label}</span>
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-red-500 px-1.5 text-[9px] font-bold text-white">
                               {item.count}
                             </span>
                           </button>
                         ))}
                       {totalBadge === 0 && (
                         <div className="px-4 py-6 text-center">
-                          <CheckCircle className="mx-auto mb-1.5 h-5 w-5 text-primary" />
-                          <p className="text-[11px] text-muted-foreground">لا توجد مهام معلقة</p>
+                          <CheckCircle className="mx-auto mb-1.5 h-5 w-5 text-emerald-400" strokeWidth={1.8} />
+                          <p className="text-[11px] text-slate-500">لا توجد مهام معلقة</p>
                         </div>
                       )}
                     </div>
@@ -963,93 +979,69 @@ const AdminHomeView: React.FC<Props> = ({
           </div>
         </header>
 
-        <main className="relative z-10 space-y-3">
-          {/* ── Admin Profile Card (glass-card) ── */}
-          <div className="neon-card p-3">
-            <div className="flex items-center gap-3 mb-2.5">
-              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center border border-primary/20 bg-primary/10 text-sm font-black text-primary">
-                {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-sm font-extrabold text-foreground">{adminDisplayName}</h2>
-                <p className="text-[10px] text-muted-foreground">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</p>
-              </div>
-              {isOwner && (
-                <button
-                  onClick={() => navigate('/admin/settings')}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10"
-                >
-                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
-              )}
+        <main className="relative z-10 space-y-4">
+          {/* ── Stats Badges (pill style) ── */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-2.5 py-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <span className="text-[10px] text-amber-400 font-medium tabular-nums">
+                <AnimatedNumber value={stats.pending} /> معلّق
+              </span>
             </div>
-
-            {/* KPI row — glass style */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'مقبول', value: stats.approved, icon: CheckCircle, gradient: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))', glow: 'rgba(16,185,129,0.3)', color: '#10b981' },
-                { label: 'معلّق', value: stats.pending, icon: Clock, gradient: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05))', glow: 'rgba(59,130,246,0.3)', color: '#3b82f6' },
-                { label: 'مرفوض', value: stats.rejected, icon: XCircle, gradient: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))', glow: 'rgba(239,68,68,0.3)', color: '#ef4444' },
-              ].map(k => {
-                const KIcon = k.icon;
-                return (
-                  <div
-                    key={k.label}
-                    className="relative overflow-hidden rounded-2xl p-3 text-center backdrop-blur-sm"
-                    style={{
-                      background: k.gradient,
-                      border: `1px solid ${k.color}25`,
-                      boxShadow: `0 0 20px ${k.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
-                    }}
-                  >
-                    <div className="pointer-events-none absolute -top-3 -right-3 w-10 h-10 rounded-full opacity-20" style={{ background: k.color }} />
-                    <div className="w-7 h-7 mx-auto rounded-xl flex items-center justify-center mb-1.5" style={{ background: `${k.color}20` }}>
-                      <KIcon size={14} style={{ color: k.color }} />
-                    </div>
-                    <p className="text-lg font-black tabular-nums leading-none" style={{ color: k.color }}>
-                      <AnimatedNumber value={k.value} />
-                    </p>
-                    <p className="text-[9px] text-muted-foreground mt-1 font-bold">{k.label}</p>
-                  </div>
-                );
-              })}
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 rounded-full px-2.5 py-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-[10px] text-emerald-400 font-medium tabular-nums">
+                <AnimatedNumber value={stats.approved} /> مقبول
+              </span>
             </div>
+            <div className="flex items-center gap-1.5 bg-red-500/10 rounded-full px-2.5 py-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              <span className="text-[10px] text-red-400 font-medium tabular-nums">
+                <AnimatedNumber value={stats.rejected} /> مرفوض
+              </span>
+            </div>
+          </div>
 
-            {(shiftStart || shiftEnd) && (
-              <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <Clock className="w-3 h-3" />
-                <span>الوردية: <span className="tabular-nums font-bold text-foreground">{shiftStart || '—'} → {shiftEnd || '—'}</span></span>
-              </div>
+          {/* ── Quick action buttons ── */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate('/admin/chat')}
+              className="flex-1 flex items-center gap-2 bg-white/[0.04] rounded-full px-3 py-2 border border-white/[0.06] hover:bg-white/[0.08] transition-all active:scale-[0.97]"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" strokeWidth={1.8} />
+              <span className="text-[10px] text-slate-400">مجموعة المشرفين</span>
+            </button>
+            {isOwner && (
+              <button
+                onClick={() => navigate('/admin/accounts')}
+                className="flex-1 flex items-center gap-2 bg-white/[0.04] rounded-full px-3 py-2 border border-white/[0.06] hover:bg-white/[0.08] transition-all active:scale-[0.97]"
+              >
+                <Users className="w-3.5 h-3.5 text-blue-400" strokeWidth={1.8} />
+                <span className="text-[10px] text-slate-400">كل الأدمن</span>
+              </button>
             )}
           </div>
 
-          {/* ── Search Bar ── */}
-          <div className="glass-card p-2.5" style={{ border: '1px solid hsla(160, 84%, 39%, 0.15)' }}>
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={searchUuid}
-                  onChange={(e) => setSearchUuid(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && searchUser()}
-                  placeholder="ابحث عن مستخدم، UUID..."
-                  className="h-9 w-full rounded-[10px] border border-input bg-background/60 pr-8 pl-3 text-[11px] tabular-nums outline-none focus:ring-2 focus:ring-ring"
-                  dir="rtl"
-                />
-                {searchUuid && (
-                  <button onClick={() => { setSearchUuid(''); setSearchResult(null); }} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => searchUser()}
-                className="w-9 h-9 flex items-center justify-center rounded-[10px] bg-primary text-primary-foreground flex-shrink-0 btn-glow"
-              >
-                {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+          {/* ── Search Bar (rounded pill) ── */}
+          <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.06] rounded-full px-4 py-2.5 focus-within:ring-1 focus-within:ring-white/20 transition-all">
+            <Search className="w-4 h-4 text-slate-600 flex-shrink-0" strokeWidth={1.8} />
+            <input
+              type="text"
+              value={searchUuid}
+              onChange={(e) => setSearchUuid(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && searchUser()}
+              placeholder="ابحث برقم UUID..."
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 outline-none tabular-nums"
+              dir="rtl"
+            />
+            {searchUuid && (
+              <button onClick={() => { setSearchUuid(''); setSearchResult(null); }}>
+                <X size={14} className="text-slate-500" />
               </button>
-            </div>
+            )}
+            <button onClick={() => searchUser()} className="flex-shrink-0">
+              {searching ? <Loader2 size={16} className="animate-spin text-emerald-400" /> : null}
+            </button>
           </div>
 
           {/* ── Search Result ── */}
@@ -1068,57 +1060,45 @@ const AdminHomeView: React.FC<Props> = ({
             <>
               {/* ── Smart Alerts ── */}
               {smartAlerts.length > 0 && (
-                <div className="neon-card p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-1 h-3.5 rounded-full bg-destructive" />
-                    <h3 className="text-xs font-black text-foreground">التنبيهات</h3>
-                    <span className="text-[9px] tabular-nums text-muted-foreground mr-auto">{smartAlerts.length}</span>
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 space-y-1.5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-1 h-3.5 rounded-full bg-red-500" />
+                    <h3 className="text-xs font-bold text-white">التنبيهات</h3>
+                    <span className="text-[9px] tabular-nums text-slate-500 mr-auto">{smartAlerts.length}</span>
                   </div>
-                  <div className="space-y-1.5">
-                    {smartAlerts.map((alert, i) => (
-                      <AlertItem key={i} {...alert} />
-                    ))}
-                  </div>
+                  {smartAlerts.map((alert, i) => (
+                    <AlertItem key={i} {...alert} />
+                  ))}
                 </div>
               )}
 
               {isOwner && <DelayMonitor />}
 
-              {/* ── Services Grid (same style as user MenuGrid) ── */}
+              {/* ── Services Grid (macOS Launchpad) ── */}
               <div>
-                <div className="flex items-center gap-2 mb-3 pr-1">
-                  <div className="w-1 h-3.5 rounded-full gold-gradient" />
-                  <h3 className="text-xs font-black text-foreground">الخدمات</h3>
+                <div className="flex items-center gap-2 mb-4 pr-1">
+                  <div className="w-1 h-3.5 rounded-full bg-gradient-to-b from-emerald-400 to-cyan-500" />
+                  <h3 className="text-xs font-bold text-white">الخدمات</h3>
                 </div>
 
-                <div className="grid grid-cols-4 gap-y-4 gap-x-1.5 px-1">
+                <div className="grid grid-cols-4 gap-y-5 gap-x-4 px-1">
                   {visible.map((service) => {
                     const Icon = service.icon;
                     return (
                       <button
                         key={service.route + service.label}
                         onClick={() => navigate(service.route)}
-                        className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150 ripple"
+                        className="relative flex flex-col items-center gap-2 group"
                       >
-                        <div
-                          className="relative w-12 h-12 rounded-[14px] flex items-center justify-center transition-all duration-300 hover:shadow-lg"
-                          style={{
-                            background: `linear-gradient(145deg, ${service.color}1A, ${service.color}0D)`,
-                            border: `1px solid ${service.color}25`,
-                            boxShadow: `0 4px 15px ${service.color}15`,
-                          }}
-                        >
-                          <Icon className="w-5 h-5" style={{ color: service.color }} />
-                          {service.badge > 0 && (
-                            <span
-                              className="absolute -top-1.5 -left-1.5 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[8px] font-black text-destructive-foreground flex items-center justify-center"
-                              style={{ border: '2px solid hsl(var(--background))' }}
-                            >
-                              {service.badge > 99 ? '99+' : service.badge}
-                            </span>
-                          )}
+                        <div className={`w-14 h-14 rounded-[18px] bg-gradient-to-br ${service.gradient} flex items-center justify-center shadow-lg ${service.shadow} transition-all duration-200 group-hover:scale-105 group-active:scale-95`}>
+                          <Icon className="w-6 h-6 text-white drop-shadow-sm" strokeWidth={1.8} />
                         </div>
-                        <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">
+                        {service.badge > 0 && (
+                          <span className="absolute -top-1 right-0 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full text-[8px] font-bold flex items-center justify-center text-white shadow-md shadow-red-500/50">
+                            {service.badge > 99 ? '99+' : service.badge}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-400 text-center leading-tight">
                           {service.label}
                         </span>
                       </button>
