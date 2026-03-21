@@ -330,6 +330,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [vipLevel, setVipLevel] = useState('1');
   const [busy, setBusy] = useState(false);
+  const [expandedTile, setExpandedTile] = useState<'charge' | 'support' | 'supporter' | 'salary' | null>(null);
 
   const copyUuid = () => {
     navigator.clipboard.writeText(user.uuid);
