@@ -272,11 +272,13 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
     try {
       let rejectionUrl = "";
       if (rejectImage) {
-        const ext = rejectImage.name.split(".").pop() || "jpg";
+        const { compressImage } = await import("@/utils/compressImage");
+        const compressedReject = await compressImage(rejectImage, 1200, 1200, 0.7);
+        const ext = compressedReject.name.split(".").pop() || "jpg";
         const filePath = `receipts/instant_reject_${rejectSheet.id}_${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("attachments")
-          .upload(filePath, rejectImage, { contentType: rejectImage.type });
+          .upload(filePath, compressedReject, { contentType: compressedReject.type });
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(filePath);
           rejectionUrl = urlData?.publicUrl || "";
