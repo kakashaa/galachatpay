@@ -415,6 +415,38 @@
   75% { transform: translateY(-6px); filter: brightness(1.2); }
 }
 
+@keyframes float-particle {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  50% {
+    transform: translateY(-40vh) translateX(20px);
+  }
+}
+
+@keyframes float-particle-reverse {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.7; }
+  50% {
+    transform: translateY(-30vh) translateX(-15px);
+  }
+}
+
+.particle {
+  animation: float-particle linear infinite;
+}
+
+.particle-reverse {
+  animation: float-particle-reverse linear infinite;
+}
+
 @keyframes twinkle {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 0.8; }
