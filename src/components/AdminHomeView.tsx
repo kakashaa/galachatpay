@@ -991,9 +991,19 @@ const AdminHomeView: React.FC<Props> = ({
     if (!target) return;
     setSearching(true); setSearchResult(null);
     try {
-      const data = await galaApi.getUserInfo(target);
-      if (data.success && data.name) setSearchResult(data);
-      else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
+      const [data, sentRes, recvRes] = await Promise.all([
+        galaApi.getUserInfo(target),
+        fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-sent-total&uuid=${target}`).then(r => r.json()).catch(() => null),
+        fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-received-total&uuid=${target}`).then(r => r.json()).catch(() => null),
+      ]);
+      if (data.success && data.name) {
+        // Enrich with gift totals
+        data._sent_total = sentRes?.data?.total_sent ?? 0;
+        data._sent_usd = sentRes?.data?.total_usd ?? 0;
+        data._recv_total = recvRes?.data?.total_received ?? 0;
+        data._recv_usd = recvRes?.data?.total_usd ?? 0;
+        setSearchResult(data);
+      } else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
     } catch { toast.error("خطأ في الاتصال"); }
     setSearching(false);
   }, [searchUuid]);
