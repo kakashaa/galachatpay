@@ -869,10 +869,10 @@ const AdminHomeView: React.FC<Props> = ({
   ].filter(Boolean) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
   return (
-    <div className="admin-theme relative min-h-screen overflow-hidden pb-32" dir="rtl">
+    <div className="admin-theme premium-bg relative min-h-screen overflow-hidden pb-32" dir="rtl">
       {/* Background blobs */}
-      <div className="pointer-events-none absolute -top-20 right-[-70px] h-56 w-56 rounded-full bg-primary/5 blur-3xl" />
-      <div className="pointer-events-none absolute top-72 left-[-90px] h-56 w-56 rounded-full bg-accent/5 blur-3xl" />
+      <div className="pointer-events-none absolute -top-20 right-[-70px] h-56 w-56 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.06)' }} />
+      <div className="pointer-events-none absolute top-72 left-[-90px] h-56 w-56 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.04)' }} />
 
       <div className="relative mx-auto max-w-[448px] px-3">
         {/* ── Header (same style as user dashboard) ── */}
@@ -885,7 +885,7 @@ const AdminHomeView: React.FC<Props> = ({
               <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           )}
-          <h1 className="text-base font-black gradient-text">لوحة التحكم</h1>
+          <h1 className="text-base font-black admin-gradient-text glow-text">لوحة التحكم</h1>
           <div className="relative flex items-center gap-1.5">
             <button
               onClick={() => navigate('/admin/chat')}
@@ -965,7 +965,7 @@ const AdminHomeView: React.FC<Props> = ({
 
         <main className="relative z-10 space-y-3">
           {/* ── Admin Profile Card (glass-card) ── */}
-          <div className="glass-card p-3">
+          <div className="neon-card p-3">
             <div className="flex items-center gap-3 mb-2.5">
               <div className="w-10 h-10 rounded-[14px] flex items-center justify-center border border-primary/20 bg-primary/10 text-sm font-black text-primary">
                 {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
@@ -998,8 +998,8 @@ const AdminHomeView: React.FC<Props> = ({
                     className="relative overflow-hidden rounded-2xl p-3 text-center backdrop-blur-sm"
                     style={{
                       background: k.gradient,
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      boxShadow: `0 4px 20px ${k.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+                      border: `1px solid ${k.color}25`,
+                      boxShadow: `0 0 20px ${k.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
                     }}
                   >
                     <div className="pointer-events-none absolute -top-3 -right-3 w-10 h-10 rounded-full opacity-20" style={{ background: k.color }} />
@@ -1024,7 +1024,7 @@ const AdminHomeView: React.FC<Props> = ({
           </div>
 
           {/* ── Search Bar ── */}
-          <div className="glass-card p-2.5">
+          <div className="glass-card p-2.5" style={{ border: '1px solid hsla(160, 84%, 39%, 0.15)' }}>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -1045,7 +1045,7 @@ const AdminHomeView: React.FC<Props> = ({
               </div>
               <button
                 onClick={() => searchUser()}
-                className="w-9 h-9 flex items-center justify-center rounded-[10px] bg-primary text-primary-foreground flex-shrink-0"
+                className="w-9 h-9 flex items-center justify-center rounded-[10px] bg-primary text-primary-foreground flex-shrink-0 btn-glow"
               >
                 {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
               </button>
@@ -1068,7 +1068,7 @@ const AdminHomeView: React.FC<Props> = ({
             <>
               {/* ── Smart Alerts ── */}
               {smartAlerts.length > 0 && (
-                <div className="glass-card p-3">
+                <div className="neon-card p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-1 h-3.5 rounded-full bg-destructive" />
                     <h3 className="text-xs font-black text-foreground">التنبيهات</h3>
@@ -1098,13 +1098,14 @@ const AdminHomeView: React.FC<Props> = ({
                       <button
                         key={service.route + service.label}
                         onClick={() => navigate(service.route)}
-                        className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
+                        className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150 ripple"
                       >
                         <div
-                          className="relative w-12 h-12 rounded-[14px] flex items-center justify-center"
+                          className="relative w-12 h-12 rounded-[14px] flex items-center justify-center transition-all duration-300 hover:shadow-lg"
                           style={{
-                            background: `${service.color}1F`,
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            background: `linear-gradient(145deg, ${service.color}1A, ${service.color}0D)`,
+                            border: `1px solid ${service.color}25`,
+                            boxShadow: `0 4px 15px ${service.color}15`,
                           }}
                         >
                           <Icon className="w-5 h-5" style={{ color: service.color }} />
