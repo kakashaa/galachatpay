@@ -116,8 +116,8 @@ const ShiftCountdown: React.FC<{ shiftStart: string | null; shiftEnd: string | n
   );
 };
 
-/* ─── Action Sheet (inline dialog) ─── */
-const ActionSheet: React.FC<{
+/* ─── Centered Dialog ─── */
+const ActionDialog: React.FC<{
   open: boolean;
   onClose: () => void;
   title: string;
@@ -131,29 +131,31 @@ const ActionSheet: React.FC<{
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-end justify-center"
+      className="fixed inset-0 z-[200] flex items-center justify-center px-6"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
       <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 350 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative z-10 w-full max-w-[448px] rounded-t-2xl bg-card border-t border-x border-border overflow-hidden"
+        className="relative z-10 w-full max-w-sm rounded-2xl bg-card border border-border overflow-hidden shadow-2xl"
+        style={{ boxShadow: '0 25px 60px rgba(0,0,0,0.5)' }}
       >
-        <div className="w-10 h-1 rounded-full bg-muted-foreground/20 mx-auto mt-2.5" />
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${iconColor}15` }}>
-            <Icon size={15} style={{ color: iconColor }} />
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-border/50">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${iconColor}18` }}>
+            <Icon size={17} style={{ color: iconColor }} />
           </div>
-          <h3 className="text-sm font-bold text-foreground flex-1">{title}</h3>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-muted/50 flex items-center justify-center">
-            <X size={12} className="text-muted-foreground" />
+          <h3 className="text-[13px] font-bold text-foreground flex-1">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-muted/40 hover:bg-muted flex items-center justify-center transition-colors">
+            <X size={13} className="text-muted-foreground" />
           </button>
         </div>
-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+        {/* Body */}
+        <div className="p-5" dir="rtl">
           {children}
         </div>
       </motion.div>
@@ -161,7 +163,7 @@ const ActionSheet: React.FC<{
   );
 };
 
-/* ─── User ID Card ─── */
+/* ─── User ID Card (Redesigned) ─── */
 const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: string; onRefresh: (uuid: string) => void }> = ({ user, onClose, onRefresh }) => {
   const navigate = useNavigate();
   const isBanned = user.is_banned;
@@ -172,16 +174,6 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   const copyUuid = () => {
     navigator.clipboard.writeText(user.uuid);
     toast.success('تم نسخ UUID');
-  };
-
-  const handleBan = async () => {
-    setActionLoading(true);
-    try {
-      navigate(`/admin/ban?uuid=${user.uuid}`);
-      setActiveAction(null);
-    } finally {
-      setActionLoading(false);
-    }
   };
 
   const handleUnban = async () => {
@@ -195,255 +187,275 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
     setActiveAction(null);
   };
 
-  const handleSendVip = () => {
-    navigate(`/admin/vip?uuid=${user.uuid}&level=${vipLevel}`);
-    setActiveAction(null);
+  const handleActionClick = (key: string) => {
+    if (key === 'ban' && isBanned) { handleUnban(); return; }
+    if (key === 'id') { navigate(`/admin/id-change?uuid=${user.uuid}`); return; }
+    setActiveAction(key);
   };
 
   const actions = [
     { key: 'vip', label: "VIP", icon: Star, color: "#f59e0b" },
     { key: 'ban', label: isBanned ? "فك حظر" : "حظر", icon: isBanned ? Unlock : Ban, color: isBanned ? "#10b981" : "#ef4444" },
-    { key: 'id', label: "الآيدي", icon: KeyRound, color: "#8b5cf6" },
+    { key: 'id', label: "آيدي", icon: KeyRound, color: "#8b5cf6" },
     { key: 'salary', label: "تصفير", icon: RotateCcw, color: "#f97316" },
-    { key: 'charge', label: "الشحن", icon: BatteryCharging, color: "#ef4444" },
-    { key: 'photo', label: "الصورة", icon: ImageIcon, color: "#06b6d4" },
+    { key: 'charge', label: "شحن", icon: BatteryCharging, color: "#ef4444" },
+    { key: 'photo', label: "صورة", icon: ImageIcon, color: "#06b6d4" },
   ];
-
-  const handleActionClick = (key: string) => {
-    if (key === 'ban' && isBanned) {
-      handleUnban();
-      return;
-    }
-    if (key === 'id') {
-      navigate(`/admin/id-change?uuid=${user.uuid}`);
-      return;
-    }
-    setActiveAction(key);
-  };
 
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: 16, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.97 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
         transition={{ type: "spring", damping: 26, stiffness: 300 }}
-        className="rounded-2xl overflow-hidden bg-card border border-border"
+        className="rounded-2xl overflow-hidden border border-border"
+        style={{ background: 'linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)/0.95) 100%)' }}
       >
-        {/* Top accent */}
-        <div className="h-[2px] w-full bg-gradient-to-l from-primary/60 via-primary to-primary/60" />
-
-        {/* Profile header */}
-        <div className="p-3.5 flex items-center gap-3">
+        {/* Header row */}
+        <div className="px-4 pt-4 pb-3 flex gap-3.5">
+          {/* Avatar */}
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl overflow-hidden border border-border">
+            <div className="w-[52px] h-[52px] rounded-2xl overflow-hidden ring-2 ring-primary/20 ring-offset-2 ring-offset-card">
               <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
             </div>
-            <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${user.online ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+            <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-[2.5px] border-card ${user.online ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-[13px] truncate text-foreground">{user.name}</h3>
+          {/* Info */}
+          <div className="flex-1 min-w-0 pt-0.5">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-sm truncate text-foreground">{user.name}</h3>
               {user.vip_level > 0 && (
-                <span className="px-1 py-px rounded text-[8px] font-bold bg-amber-500/15 text-amber-500">
-                  V{user.vip_level}
+                <span className="px-1.5 py-0.5 rounded-md text-[8px] font-extrabold bg-gradient-to-r from-amber-500/20 to-amber-400/10 text-amber-400 border border-amber-500/20">
+                  VIP {user.vip_level}
                 </span>
               )}
-              <span className={`text-[8px] font-bold ${isBanned ? 'text-destructive' : 'text-primary'}`}>
-                {isBanned ? '● محظور' : '● نشط'}
-              </span>
             </div>
-            <button onClick={copyUuid} className="flex items-center gap-1 group mt-0.5">
-              <span className="text-[10px] text-muted-foreground tabular-nums font-mono">#{user.uuid}</span>
-              <Copy size={9} className="text-muted-foreground/60 group-active:text-primary transition-colors" />
-            </button>
+            <div className="flex items-center gap-2 mt-1">
+              <button onClick={copyUuid} className="flex items-center gap-1 group">
+                <span className="text-[10px] text-muted-foreground/80 tabular-nums font-mono">#{user.uuid}</span>
+                <Copy size={9} className="text-muted-foreground/40 group-active:text-primary transition-colors" />
+              </button>
+              <div className="flex items-center gap-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${isBanned ? 'bg-destructive animate-pulse' : 'bg-emerald-400'}`} />
+                <span className={`text-[9px] font-bold ${isBanned ? 'text-destructive' : 'text-emerald-400'}`}>
+                  {isBanned ? 'محظور' : 'نشط'}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center bg-muted/40 hover:bg-muted transition-colors flex-shrink-0">
-            <X size={11} className="text-muted-foreground" />
+          {/* Close */}
+          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center bg-muted/30 hover:bg-muted/60 transition-colors flex-shrink-0 self-start">
+            <X size={13} className="text-muted-foreground" />
           </button>
         </div>
 
-        {/* Stats grid */}
-        <div className="px-3.5 grid grid-cols-4 gap-1">
+        {/* Stats strip */}
+        <div className="mx-4 mb-3 grid grid-cols-4 gap-1.5">
           {[
-            { label: "الراتب", value: `$${user.salary || 0}`, color: "text-primary" },
-            { label: "الداعم", value: user.sender_level || 0, color: "text-amber-500" },
-            { label: "الدعم", value: user.receiver_level || 0, color: "text-blue-500" },
-            { label: "الشحن", value: user.charger_level || 0, color: "text-orange-500" },
+            { label: "الراتب", value: `$${user.salary || 0}`, color: "text-primary", bg: "bg-primary/8" },
+            { label: "الداعم", value: user.sender_level || 0, color: "text-amber-400", bg: "bg-amber-400/8" },
+            { label: "الدعم", value: user.receiver_level || 0, color: "text-blue-400", bg: "bg-blue-400/8" },
+            { label: "الشحن", value: user.charger_level || 0, color: "text-orange-400", bg: "bg-orange-400/8" },
           ].map((stat) => (
-            <div key={stat.label} className="text-center py-1.5 rounded-lg bg-muted/20">
-              <p className={`text-[11px] font-bold tabular-nums ${stat.color}`}>{stat.value}</p>
-              <p className="text-[7px] text-muted-foreground/70">{stat.label}</p>
+            <div key={stat.label} className={`text-center py-2 rounded-xl ${stat.bg} border border-border/30`}>
+              <p className={`text-sm font-bold tabular-nums ${stat.color}`}>{stat.value}</p>
+              <p className="text-[8px] text-muted-foreground/60 mt-0.5 font-medium">{stat.label}</p>
             </div>
           ))}
         </div>
 
-        {/* Details rows */}
-        <div className="px-3.5 mt-2 mb-1">
+        {/* Extra details */}
+        <div className="mx-4 mb-3 rounded-xl bg-muted/15 border border-border/20 divide-y divide-border/15">
           {[
             { label: "صافي الراتب", value: `$${user.net_salary || 0}` },
             { label: "الخصومات", value: `$${user.deduction || 0}`, isDestructive: true },
             { label: "الوكالة", value: user.agency_id || '—' },
             { label: "العائلة", value: user.family_id || '—' },
           ].map((item) => (
-            <div key={item.label} className="flex justify-between text-[10px] py-1 border-b border-border/20 last:border-0">
-              <span className="text-muted-foreground/70">{item.label}</span>
-              <span className={`font-medium tabular-nums ${item.isDestructive ? 'text-destructive' : 'text-foreground'}`}>{item.value}</span>
+            <div key={item.label} className="flex justify-between text-[10px] px-3 py-2">
+              <span className="text-muted-foreground/60">{item.label}</span>
+              <span className={`font-semibold tabular-nums ${item.isDestructive ? 'text-destructive' : 'text-foreground/90'}`}>{item.value}</span>
             </div>
           ))}
         </div>
 
-        {/* Action buttons - horizontal strip */}
-        <div className="px-3 pb-3 pt-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-          {actions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <motion.button
-                key={action.key}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleActionClick(action.key)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap flex-shrink-0 transition-colors active:opacity-80"
-                style={{
-                  background: `${action.color}10`,
-                  border: `1px solid ${action.color}20`,
-                  color: action.color,
-                }}
-              >
-                <Icon size={12} />
-                {action.label}
-              </motion.button>
-            );
-          })}
+        {/* Action buttons - pill style */}
+        <div className="px-4 pb-4">
+          <div className="grid grid-cols-6 gap-1.5">
+            {actions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <motion.button
+                  key={action.key}
+                  whileTap={{ scale: 0.85 }}
+                  onClick={() => handleActionClick(action.key)}
+                  className="flex flex-col items-center gap-1 py-2 rounded-xl transition-all active:opacity-80"
+                  style={{ background: `${action.color}0C`, border: `1px solid ${action.color}15` }}
+                >
+                  <Icon size={15} style={{ color: action.color }} />
+                  <span className="text-[7px] font-bold" style={{ color: action.color }}>{action.label}</span>
+                </motion.button>
+              );
+            })}
+          </div>
         </div>
       </motion.div>
 
-      {/* ═══ Action Sheets ═══ */}
+      {/* ═══ Centered Action Dialogs ═══ */}
       <AnimatePresence>
-        {/* VIP Action Sheet */}
-        <ActionSheet
+        {/* VIP Dialog */}
+        <ActionDialog
           open={activeAction === 'vip'}
           onClose={() => setActiveAction(null)}
-          title={`إرسال VIP — ${user.name}`}
+          title="إرسال VIP"
           icon={Star}
           iconColor="#f59e0b"
         >
-          <div className="space-y-3">
-            <p className="text-[11px] text-muted-foreground">اختر مستوى الـ VIP للمستخدم <span className="text-foreground font-bold">{user.name}</span></p>
-            <div className="grid grid-cols-5 gap-1.5">
-              {['1','2','3','4','5'].map(lv => (
-                <button
-                  key={lv}
-                  onClick={() => setVipLevel(lv)}
-                  className={`py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    vipLevel === lv
-                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-500 border'
-                      : 'bg-muted/30 border border-border text-muted-foreground'
-                  }`}
-                >
-                  VIP {lv}
-                </button>
-              ))}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30">
+              <div className="w-9 h-9 rounded-lg overflow-hidden border border-border">
+                <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">{user.name}</p>
+                <p className="text-[10px] text-muted-foreground">#{user.uuid}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground mb-2">اختر المستوى:</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {['1','2','3','4','5'].map(lv => (
+                  <button
+                    key={lv}
+                    onClick={() => setVipLevel(lv)}
+                    className={`py-3 rounded-xl text-xs font-bold transition-all ${
+                      vipLevel === lv
+                        ? 'bg-amber-500/20 border-2 border-amber-500/50 text-amber-400 shadow-lg shadow-amber-500/10'
+                        : 'bg-muted/30 border border-border text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    {lv}
+                  </button>
+                ))}
+              </div>
             </div>
             <button
-              onClick={handleSendVip}
-              className="w-full py-2.5 rounded-xl bg-amber-500 text-white text-xs font-bold active:scale-[0.98] transition-transform"
+              onClick={() => { navigate(`/admin/vip?uuid=${user.uuid}&level=${vipLevel}`); setActiveAction(null); }}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold active:scale-[0.98] transition-transform shadow-lg shadow-amber-500/20"
             >
               إرسال VIP {vipLevel}
             </button>
           </div>
-        </ActionSheet>
+        </ActionDialog>
 
-        {/* Ban Action Sheet */}
-        <ActionSheet
+        {/* Ban Dialog */}
+        <ActionDialog
           open={activeAction === 'ban'}
           onClose={() => setActiveAction(null)}
-          title={`حظر — ${user.name}`}
+          title="حظر المستخدم"
           icon={Ban}
           iconColor="#ef4444"
         >
-          <div className="space-y-3">
-            <p className="text-[11px] text-muted-foreground">سيتم توجيهك لصفحة الحظر مع تعبئة البيانات تلقائياً</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/5 border border-destructive/10">
+              <div className="w-9 h-9 rounded-lg overflow-hidden border border-border">
+                <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">{user.name}</p>
+                <p className="text-[10px] text-destructive font-medium">سيتم توجيهك لصفحة الحظر</p>
+              </div>
+            </div>
             <button
-              onClick={handleBan}
+              onClick={() => { navigate(`/admin/ban?uuid=${user.uuid}`); setActiveAction(null); }}
               disabled={actionLoading}
-              className="w-full py-2.5 rounded-xl bg-destructive text-white text-xs font-bold active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
             >
               {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
               متابعة الحظر
             </button>
           </div>
-        </ActionSheet>
+        </ActionDialog>
 
-        {/* Salary Reset Action Sheet */}
-        <ActionSheet
+        {/* Salary Reset Dialog */}
+        <ActionDialog
           open={activeAction === 'salary'}
           onClose={() => setActiveAction(null)}
-          title={`تصفير الراتب — ${user.name}`}
+          title="تصفير الراتب"
           icon={RotateCcw}
           iconColor="#f97316"
         >
-          <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
-              <p className="text-[11px] text-muted-foreground">الراتب الحالي: <span className="text-foreground font-bold">${user.salary || 0}</span></p>
-              <p className="text-[11px] text-muted-foreground mt-1">صافي الراتب: <span className="text-foreground font-bold">${user.net_salary || 0}</span></p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 rounded-xl bg-muted/20 border border-border/30 text-center">
+                <p className="text-lg font-bold text-foreground tabular-nums">${user.salary || 0}</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">الراتب الحالي</p>
+              </div>
+              <div className="p-3 rounded-xl bg-muted/20 border border-border/30 text-center">
+                <p className="text-lg font-bold text-foreground tabular-nums">${user.net_salary || 0}</p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">صافي الراتب</p>
+              </div>
             </div>
             <button
               onClick={() => { toast.info('جاري تصفير الراتب...'); setActiveAction(null); }}
-              className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20"
             >
               <RotateCcw size={14} />
-              تصفير الراتب
+              تأكيد التصفير
             </button>
           </div>
-        </ActionSheet>
+        </ActionDialog>
 
-        {/* Charge Stop Action Sheet */}
-        <ActionSheet
+        {/* Charge Stop Dialog */}
+        <ActionDialog
           open={activeAction === 'charge'}
           onClose={() => setActiveAction(null)}
-          title={`إيقاف الشحن — ${user.name}`}
+          title="إيقاف الشحن"
           icon={BatteryCharging}
           iconColor="#ef4444"
         >
-          <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-destructive/5 border border-destructive/10">
-              <p className="text-[11px] text-muted-foreground">مستوى الشحن الحالي: <span className="text-foreground font-bold">{user.charger_level || 0}</span></p>
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 text-center">
+              <p className="text-2xl font-bold text-foreground tabular-nums">{user.charger_level || 0}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">مستوى الشحن الحالي</p>
             </div>
             <button
               onClick={() => { toast.info('جاري إيقاف الشحن...'); setActiveAction(null); }}
-              className="w-full py-2.5 rounded-xl bg-destructive text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
             >
               <BatteryCharging size={14} />
               إيقاف الشحن
             </button>
           </div>
-        </ActionSheet>
+        </ActionDialog>
 
-        {/* Photo Change Action Sheet */}
-        <ActionSheet
+        {/* Photo Change Dialog */}
+        <ActionDialog
           open={activeAction === 'photo'}
           onClose={() => setActiveAction(null)}
-          title={`تغيير الصورة — ${user.name}`}
+          title="تغيير الصورة"
           icon={ImageIcon}
           iconColor="#06b6d4"
         >
-          <div className="space-y-3">
-            <div className="flex items-center justify-center">
-              <div className="w-20 h-20 rounded-xl overflow-hidden border border-border">
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-border ring-4 ring-cyan-500/10">
                 <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
               </div>
             </div>
+            <p className="text-[11px] text-muted-foreground text-center">{user.name} — الصورة الحالية</p>
             <button
               onClick={() => { toast.info('جاري فتح تغيير الصورة...'); setActiveAction(null); }}
-              className="w-full py-2.5 rounded-xl bg-cyan-500 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white text-xs font-bold active:scale-[0.98] transition-transform flex items-center justify-center gap-2 shadow-lg shadow-cyan-500/20"
             >
               <ImageIcon size={14} />
               تغيير الصورة
             </button>
           </div>
-        </ActionSheet>
+        </ActionDialog>
       </AnimatePresence>
     </>
   );
