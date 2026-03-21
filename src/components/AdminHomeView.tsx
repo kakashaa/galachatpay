@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
+import { supabase } from '@/integrations/supabase/client';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
@@ -488,7 +489,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
               { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
               { key: 'support' as const, label: 'الكاريزما', value: user._recv_total ? `${(user._recv_total / 1000000).toFixed(1)}M` : (user.receiver_level ?? 0), icon: <Sparkles size={22} className="text-pink-500" /> },
               { key: 'supporter' as const, label: 'الداعم', value: user._sent_total ? `${(user._sent_total / 1000000).toFixed(1)}M` : (user.sender_level ?? 0), icon: <Crown size={22} className="text-amber-500" /> },
-              { key: 'salary' as const, label: 'الراتب', value: `$${user.net_salary ?? user.salary ?? 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
+              { key: 'salary' as const, label: 'الراتب', value: `$${user.salary ?? 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
             ] as const).map((item) => {
               const isActive = expandedTile === item.key;
               return (
@@ -998,17 +999,36 @@ const AdminHomeView: React.FC<Props> = ({
     if (!target) return;
     setSearching(true); setSearchResult(null);
     try {
-      const [data, sentRes, recvRes] = await Promise.all([
+      const [data, sentRes, recvRes, profileRes] = await Promise.all([
         galaApi.getUserInfo(target),
         fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-sent-total&uuid=${target}`).then(r => r.json()).catch(() => null),
         fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=gift-received-total&uuid=${target}`).then(r => r.json()).catch(() => null),
+        // Fetch VIP from profile API via gala-token
+        (async () => {
+          try {
+            const tokenRes = await supabase.functions.invoke("gala-token");
+            const token = tokenRes.data?.token;
+            if (!token) return null;
+            // Get internal ID first from AWS
+            const awsRes = await fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${target}`);
+            const awsData = await awsRes.json();
+            const internalId = awsData?.data?.id;
+            if (!internalId) return null;
+            const profileRes = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            return await profileRes.json();
+          } catch { return null; }
+        })(),
       ]);
       if (data.success && data.name) {
-        // Enrich with gift totals
         data._sent_total = sentRes?.data?.total_sent ?? 0;
         data._sent_usd = sentRes?.data?.total_usd ?? 0;
         data._recv_total = recvRes?.data?.total_received ?? 0;
         data._recv_usd = recvRes?.data?.total_usd ?? 0;
+        // Extract VIP from profile API
+        const profileVip = profileRes?.data?.vip?.level ?? profileRes?.data?.vip_level ?? 0;
+        if (profileVip > 0) data.vip_level = profileVip;
         setSearchResult(data);
       } else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
     } catch { toast.error("خطأ في الاتصال"); }
