@@ -870,111 +870,104 @@ const AdminHomeView: React.FC<Props> = ({
 
   return (
     <div className="admin-theme relative min-h-screen overflow-hidden pb-32" dir="rtl">
-      <div className="pointer-events-none absolute -top-20 right-[-70px] h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
-      <div className="pointer-events-none absolute top-72 left-[-90px] h-56 w-56 rounded-full bg-secondary/15 blur-3xl" />
+      {/* Background blobs */}
+      <div className="pointer-events-none absolute -top-20 right-[-70px] h-56 w-56 rounded-full bg-primary/5 blur-3xl" />
+      <div className="pointer-events-none absolute top-72 left-[-90px] h-56 w-56 rounded-full bg-accent/5 blur-3xl" />
 
-      <div className="relative mx-auto max-w-[448px] px-3 pt-4">
-        <header className="rounded-3xl border border-border/70 bg-card/80 px-3 py-2.5 backdrop-blur-xl">
-          <div className="flex items-center justify-between">
-            {onLogout && (
-              <button
-                onClick={onLogout}
-                className="flex h-9 w-9 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            )}
+      <div className="relative mx-auto max-w-[448px] px-3">
+        {/* ── Header (same style as user dashboard) ── */}
+        <header className="flex items-center justify-between pt-6 pb-2 px-1">
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          )}
+          <h1 className="text-base font-black gradient-text">لوحة التحكم</h1>
+          <div className="relative flex items-center gap-1.5">
+            <button
+              onClick={() => navigate('/admin/chat')}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setShowNotifPanel((prev) => !prev)}
+              className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+            >
+              <Bell className="w-3.5 h-3.5 text-muted-foreground" />
+              {totalBadge > 0 && (
+                <span className="absolute -right-1 -top-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[9px] font-black text-destructive-foreground flex items-center justify-center">
+                  {totalBadge > 99 ? '99+' : totalBadge}
+                </span>
+              )}
+            </button>
 
-            <div className="text-center">
-              <h1 className="text-sm font-black text-foreground">لوحة التحكم</h1>
-              <p className="text-[10px] text-muted-foreground">Admin Control Center</p>
-            </div>
-
-            <div className="relative flex items-center gap-1.5">
-              <button
-                onClick={() => navigate('/admin/chat')}
-                className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground"
-              >
-                <MessageCircle className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={() => setShowNotifPanel((prev) => !prev)}
-                className="relative flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground"
-              >
-                <Bell className="h-4 w-4" />
-                {totalBadge > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground">
-                    {totalBadge > 99 ? '99+' : totalBadge}
-                  </span>
-                )}
-              </button>
-
-              <AnimatePresence>
-                {showNotifPanel && (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="fixed inset-0 z-[90]"
-                      onClick={() => setShowNotifPanel(false)}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                      className="absolute left-0 top-11 z-[100] w-72 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
-                      dir="rtl"
-                    >
-                      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-                        <span className="text-[11px] font-bold text-foreground">المهام المعلقة</span>
-                        <span className="text-[9px] tabular-nums text-muted-foreground">{totalBadge} عنصر</span>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {[
-                          { label: 'طلبات VIP', count: vipBadge, route: '/admin/vip', Icon: Crown },
-                          { label: 'إدارة الحظر', count: banBadge, route: '/admin/ban', Icon: ShieldAlert },
-                          { label: 'طلبات الرواتب', count: salaryBadge, route: '/admin/salary', Icon: Wallet },
-                          { label: 'الطلبات العامة', count: requestsBadge, route: '/admin/requests', Icon: Inbox },
-                          { label: 'الدعم الفني', count: supportBadge, route: '/admin/support', Icon: Headphones },
-                        ]
-                          .filter((item) => item.count > 0)
-                          .map((item) => (
-                            <button
-                              key={item.route}
-                              onClick={() => {
-                                setShowNotifPanel(false);
-                                navigate(item.route);
-                              }}
-                              className="flex w-full items-center gap-3 border-b border-border/40 px-4 py-2.5 text-right hover:bg-muted/50"
-                            >
-                              <item.Icon size={14} className="text-primary" />
-                              <span className="flex-1 text-[11px] font-bold text-foreground">{item.label}</span>
-                              <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-destructive px-1.5 text-[9px] font-bold text-destructive-foreground">
-                                {item.count}
-                              </span>
-                            </button>
-                          ))}
-                        {totalBadge === 0 && (
-                          <div className="px-4 py-6 text-center">
-                            <CheckCircle className="mx-auto mb-1.5 h-5 w-5 text-primary" />
-                            <p className="text-[11px] text-muted-foreground">لا توجد مهام معلقة</p>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
+            {/* Notification dropdown */}
+            <AnimatePresence>
+              {showNotifPanel && (
+                <>
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[90]"
+                    onClick={() => setShowNotifPanel(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                    className="absolute left-0 top-11 z-[100] w-72 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+                    dir="rtl"
+                  >
+                    <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                      <span className="text-[11px] font-bold text-foreground">المهام المعلقة</span>
+                      <span className="text-[9px] tabular-nums text-muted-foreground">{totalBadge} عنصر</span>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {[
+                        { label: 'طلبات VIP', count: vipBadge, route: '/admin/vip', Icon: Crown },
+                        { label: 'إدارة الحظر', count: banBadge, route: '/admin/ban', Icon: ShieldAlert },
+                        { label: 'طلبات الرواتب', count: salaryBadge, route: '/admin/salary', Icon: Wallet },
+                        { label: 'الطلبات العامة', count: requestsBadge, route: '/admin/requests', Icon: Inbox },
+                        { label: 'الدعم الفني', count: supportBadge, route: '/admin/support', Icon: Headphones },
+                      ]
+                        .filter((item) => item.count > 0)
+                        .map((item) => (
+                          <button
+                            key={item.route}
+                            onClick={() => { setShowNotifPanel(false); navigate(item.route); }}
+                            className="flex w-full items-center gap-3 border-b border-border/40 px-4 py-2.5 text-right hover:bg-muted/50"
+                          >
+                            <item.Icon size={14} className="text-primary" />
+                            <span className="flex-1 text-[11px] font-bold text-foreground">{item.label}</span>
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-destructive px-1.5 text-[9px] font-bold text-destructive-foreground">
+                              {item.count}
+                            </span>
+                          </button>
+                        ))}
+                      {totalBadge === 0 && (
+                        <div className="px-4 py-6 text-center">
+                          <CheckCircle className="mx-auto mb-1.5 h-5 w-5 text-primary" />
+                          <p className="text-[11px] text-muted-foreground">لا توجد مهام معلقة</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </header>
 
-        <main className="mt-3 space-y-3">
-          <section className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-3 backdrop-blur-xl">
-            <div className="mb-3 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-lg font-black text-primary">
+        <main className="relative z-10 space-y-3">
+          {/* ── Admin Profile Card (glass-card) ── */}
+          <div className="glass-card p-3">
+            <div className="flex items-center gap-3 mb-2.5">
+              <div className="w-10 h-10 rounded-[14px] flex items-center justify-center border border-primary/20 bg-primary/10 text-sm font-black text-primary">
                 {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
               </div>
               <div className="min-w-0 flex-1">
@@ -984,47 +977,38 @@ const AdminHomeView: React.FC<Props> = ({
               {isOwner && (
                 <button
                   onClick={() => navigate('/admin/settings')}
-                  className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground"
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               )}
             </div>
 
+            {/* KPI row */}
             <div className="grid grid-cols-3 gap-1.5">
-              <div className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-center">
-                <p className="text-sm font-black tabular-nums text-primary">
-                  <AnimatedNumber value={stats.approved} />
-                </p>
-                <p className="text-[9px] text-muted-foreground">مقبول</p>
-              </div>
-              <div className="rounded-xl border border-secondary/30 bg-secondary/15 p-2 text-center">
-                <p className="text-sm font-black tabular-nums text-secondary">
-                  <AnimatedNumber value={stats.pending} />
-                </p>
-                <p className="text-[9px] text-muted-foreground">معلّق</p>
-              </div>
-              <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-2 text-center">
-                <p className="text-sm font-black tabular-nums text-destructive">
-                  <AnimatedNumber value={stats.rejected} />
-                </p>
-                <p className="text-[9px] text-muted-foreground">مرفوض</p>
-              </div>
+              {[
+                { label: 'مقبول', value: stats.approved, color: 'text-primary', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.2)' },
+                { label: 'معلّق', value: stats.pending, color: 'text-secondary', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.2)' },
+                { label: 'مرفوض', value: stats.rejected, color: 'text-destructive', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.2)' },
+              ].map(k => (
+                <div key={k.label} className="rounded-[10px] p-1.5 text-center" style={{ background: k.bg, border: `1px solid ${k.border}` }}>
+                  <p className={`text-xs font-black tabular-nums ${k.color}`}><AnimatedNumber value={k.value} /></p>
+                  <p className="text-[8px] text-muted-foreground">{k.label}</p>
+                </div>
+              ))}
             </div>
 
             {(shiftStart || shiftEnd) && (
-              <div className="mt-2 rounded-xl border border-border/60 bg-background/50 px-2 py-1.5 text-[10px] text-muted-foreground">
-                الوردية: <span className="tabular-nums font-bold text-foreground">{shiftStart || '—'} → {shiftEnd || '—'}</span>
+              <div className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>الوردية: <span className="tabular-nums font-bold text-foreground">{shiftStart || '—'} → {shiftEnd || '—'}</span></span>
               </div>
             )}
-          </section>
+          </div>
 
-          <section className="rounded-3xl border border-border/70 bg-card/80 p-2 backdrop-blur-xl">
+          {/* ── Search Bar ── */}
+          <div className="glass-card p-2.5">
             <div className="flex items-center gap-2">
-              <button className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
-                <Search size={16} />
-              </button>
-
               <div className="relative flex-1">
                 <Search size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -1032,32 +1016,26 @@ const AdminHomeView: React.FC<Props> = ({
                   value={searchUuid}
                   onChange={(e) => setSearchUuid(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && searchUser()}
-                  placeholder="ابحث عن مستخدم، UUID، تذكرة..."
-                  className="h-10 w-full rounded-2xl border border-input bg-background/60 pr-9 pl-8 text-[11px] tabular-nums outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="ابحث عن مستخدم، UUID..."
+                  className="h-9 w-full rounded-[10px] border border-input bg-background/60 pr-8 pl-3 text-[11px] tabular-nums outline-none focus:ring-2 focus:ring-ring"
                   dir="rtl"
                 />
                 {searchUuid && (
-                  <button
-                    onClick={() => {
-                      setSearchUuid('');
-                      setSearchResult(null);
-                    }}
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
+                  <button onClick={() => { setSearchUuid(''); setSearchResult(null); }} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
                     <X size={12} />
                   </button>
                 )}
               </div>
-
               <button
                 onClick={() => searchUser()}
-                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground"
+                className="w-9 h-9 flex items-center justify-center rounded-[10px] bg-primary text-primary-foreground flex-shrink-0"
               >
-                {searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
               </button>
             </div>
-          </section>
+          </div>
 
+          {/* ── Search Result ── */}
           <AnimatePresence>
             {searchResult && (
               <UserIdCard
@@ -1071,59 +1049,65 @@ const AdminHomeView: React.FC<Props> = ({
 
           {!searchResult && (
             <>
+              {/* ── Smart Alerts ── */}
               {smartAlerts.length > 0 && (
-                <section className="rounded-3xl border border-border/70 bg-card/80 p-3 backdrop-blur-xl">
-                  <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-xs font-black text-foreground">التنبيهات الذكية</h3>
-                    <span className="text-[9px] tabular-nums text-muted-foreground">{smartAlerts.length}</span>
+                <div className="glass-card p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1 h-3.5 rounded-full bg-destructive" />
+                    <h3 className="text-xs font-black text-foreground">التنبيهات</h3>
+                    <span className="text-[9px] tabular-nums text-muted-foreground mr-auto">{smartAlerts.length}</span>
                   </div>
                   <div className="space-y-1.5">
                     {smartAlerts.map((alert, i) => (
                       <AlertItem key={i} {...alert} />
                     ))}
                   </div>
-                </section>
+                </div>
               )}
 
               {isOwner && <DelayMonitor />}
 
-              <section className="rounded-3xl border border-border/70 bg-card/80 p-3 backdrop-blur-xl">
-                <h3 className="mb-2 text-xs font-black text-foreground">الخدمات</h3>
-                <div className="grid grid-cols-2 gap-2">
+              {/* ── Services Grid (same style as user MenuGrid) ── */}
+              <div>
+                <div className="flex items-center gap-2 mb-3 pr-1">
+                  <div className="w-1 h-3.5 rounded-full gold-gradient" />
+                  <h3 className="text-xs font-black text-foreground">الخدمات</h3>
+                </div>
+
+                <div className="grid grid-cols-4 gap-y-4 gap-x-1.5 px-1">
                   {visible.map((service) => {
                     const Icon = service.icon;
-                    const tone = service.group === 'security'
-                      ? 'border-destructive/20 bg-destructive/10 text-destructive'
-                      : service.group === 'finance'
-                        ? 'border-primary/20 bg-primary/10 text-primary'
-                        : service.group === 'operations'
-                          ? 'border-secondary/25 bg-secondary/15 text-secondary'
-                          : 'border-border bg-background/55 text-foreground';
-
                     return (
-                      <motion.button
+                      <button
                         key={service.route + service.label}
-                        whileTap={{ scale: 0.98 }}
                         onClick={() => navigate(service.route)}
-                        className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/45 px-2.5 py-2 text-right"
+                        className="flex flex-col items-center gap-1 active:scale-90 active:-translate-y-1 transition-transform duration-150"
                       >
-                        <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${tone}`}>
-                          <Icon size={15} />
+                        <div
+                          className="relative w-12 h-12 rounded-[14px] flex items-center justify-center"
+                          style={{
+                            background: `${service.color}1F`,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <Icon className="w-5 h-5" style={{ color: service.color }} />
+                          {service.badge > 0 && (
+                            <span
+                              className="absolute -top-1.5 -left-1.5 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[8px] font-black text-destructive-foreground flex items-center justify-center"
+                              style={{ border: '2px solid hsl(var(--background))' }}
+                            >
+                              {service.badge > 99 ? '99+' : service.badge}
+                            </span>
+                          )}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[11px] font-bold text-foreground">{service.label}</p>
-                          <p className="text-[9px] text-muted-foreground">{service.group === 'security' ? 'حماية' : service.group === 'finance' ? 'مالية' : service.group === 'operations' ? 'تشغيل' : 'عام'}</p>
-                        </div>
-                        {service.badge > 0 && (
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[8px] font-black text-destructive-foreground">
-                            {service.badge > 99 ? '99+' : service.badge}
-                          </span>
-                        )}
-                      </motion.button>
+                        <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">
+                          {service.label}
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
-              </section>
+              </div>
             </>
           )}
         </main>
