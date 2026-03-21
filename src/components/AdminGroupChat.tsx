@@ -160,51 +160,78 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole: _adminRole 
     else grouped.push({ date, msgs: [msg] });
   });
 
-  return (
+    return (
     <>
-    <div className="flex flex-col h-[calc(100vh-180px)] max-h-[600px] rounded-2xl overflow-hidden" dir="rtl" style={{ background: "hsl(var(--chat-bg))", border: "1px solid hsl(0 0% 100% / 0.06)" }}>
+    <div
+      className="flex flex-col h-[calc(100vh-180px)] max-h-[600px] rounded-3xl overflow-hidden backdrop-blur-xl"
+      dir="rtl"
+      style={{
+        background: 'linear-gradient(180deg, rgba(15,15,25,0.95), rgba(8,8,16,0.98))',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+      }}
+    >
       {/* Header */}
-      <div className="px-4 py-3 shrink-0" style={{ background: "hsl(var(--chat-header-bg))", borderBottom: "1px solid hsl(0 0% 100% / 0.06)" }}>
+      <div
+        className="px-4 py-3.5 shrink-0"
+        style={{
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.05))',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "hsl(160 84% 39% / 0.15)" }}>
-            <Users className="w-5 h-5" style={{ color: "hsl(160 84% 39%)" }} />
+          <div
+            className="w-11 h-11 rounded-2xl flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.08))',
+              border: '1px solid rgba(16,185,129,0.15)',
+              boxShadow: '0 4px 12px rgba(16,185,129,0.15)',
+            }}
+          >
+            <Users className="w-5 h-5" style={{ color: 'hsl(160 84% 39%)' }} />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">مجموعة الإدارة</p>
-            <p className="text-[10px] text-muted-foreground">{admins.length} عضو · {onlineAdmins.length} متصل</p>
+            <p className="text-[13px] font-extrabold text-foreground">مجموعة الإدارة</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <p className="text-[10px] text-muted-foreground">{admins.length} عضو · {onlineAdmins.length} متصل</p>
+            </div>
           </div>
         </div>
 
         {admins.length > 0 && (
-          <div className="flex gap-2 mt-2.5 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="flex gap-2.5 mt-3 overflow-x-auto pb-1 scrollbar-hide">
             {admins.map(admin => {
               const isOnline = onlineAdmins.includes(admin.username);
               const initial = (admin.display_name || admin.username).charAt(0).toUpperCase();
               return (
-                <div key={admin.username} className="flex flex-col items-center gap-0.5 min-w-[42px]">
+                <div key={admin.username} className="flex flex-col items-center gap-1 min-w-[46px]">
                   <div className="relative">
                     <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold border-2"
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center text-[11px] font-black"
                       style={{
-                        background: admin.role === 'owner' ? 'linear-gradient(135deg, hsl(0 70% 50%), hsl(0 70% 35%))' :
-                          admin.role === 'super_admin' ? 'linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))' :
-                          'hsl(0 0% 100% / 0.08)',
-                        borderColor: isOnline ? 'hsl(160 84% 39%)' : 'transparent',
-                        color: 'white',
+                        background: admin.role === 'owner'
+                          ? 'linear-gradient(135deg, rgba(239,68,68,0.25), rgba(239,68,68,0.1))'
+                          : admin.role === 'super_admin'
+                          ? 'linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.1))'
+                          : 'rgba(255,255,255,0.06)',
+                        border: isOnline ? '2px solid rgba(16,185,129,0.6)' : '1px solid rgba(255,255,255,0.08)',
+                        color: admin.role === 'owner' ? '#ef4444' : admin.role === 'super_admin' ? '#10b981' : '#a1a1aa',
+                        boxShadow: isOnline ? '0 0 12px rgba(16,185,129,0.25)' : 'none',
                       }}
                     >
                       {initial}
                     </div>
                     <div
-                      className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
+                      className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full"
                       style={{
-                        background: isOnline ? 'hsl(160 84% 39%)' : 'hsl(0 0% 40%)',
-                        borderColor: 'hsl(var(--chat-bg))',
-                        boxShadow: isOnline ? '0 0 6px hsl(160 84% 39%)' : 'none',
+                        background: isOnline ? '#10b981' : 'rgba(113,113,122,0.5)',
+                        border: '2px solid rgba(15,15,25,0.95)',
+                        boxShadow: isOnline ? '0 0 8px rgba(16,185,129,0.5)' : 'none',
                       }}
                     />
                   </div>
-                  <span className="text-[8px] text-muted-foreground truncate max-w-[42px]">
+                  <span className="text-[8px] text-muted-foreground truncate max-w-[46px] font-medium">
                     {admin.display_name || admin.username}
                   </span>
                 </div>
@@ -215,15 +242,17 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole: _adminRole 
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-2">
-            <MessageCircle className="w-10 h-10 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">لا توجد رسائل بعد</p>
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <MessageCircle className="w-7 h-7 text-muted-foreground/30" />
+            </div>
+            <p className="text-xs text-muted-foreground font-bold">لا توجد رسائل بعد</p>
           </div>
         ) : (
           grouped.map((group) => (
@@ -238,7 +267,6 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole: _adminRole 
                 const displayName = `${getAdminDisplayName(msg.sender_username)}${roleLabel ? ` · ${roleLabel}` : ''}`;
                 
                 const msgType = msg.message_type || 'text';
-                // Determine content: don't show placeholder text for media messages
                 const isMediaMsg = ['image', 'video', 'voice'].includes(msgType);
                 const textContent = isMediaMsg && msg.media_url ? (msgType === 'voice' ? null : null) : msg.message;
 
@@ -264,10 +292,10 @@ const AdminGroupChat: React.FC<Props> = ({ adminUsername, adminRole: _adminRole 
 
       {/* Uploading indicator */}
       {uploading && (
-        <div className="px-4 py-2 text-center">
-          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span>جاري الرفع...</span>
+        <div className="px-4 py-2 text-center" style={{ background: 'rgba(59,130,246,0.05)' }}>
+          <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+            <span className="font-bold">جاري الرفع...</span>
           </div>
         </div>
       )}

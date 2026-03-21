@@ -23,15 +23,15 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[448px] z-50 admin-theme px-4 pb-[env(safe-area-inset-bottom,8px)]" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 8px), 12px)' }}>
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[448px] z-50 admin-theme px-3 pb-[env(safe-area-inset-bottom,8px)]" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 8px), 10px)' }}>
       <nav
-        className="relative h-[68px] rounded-[24px] flex items-center justify-around px-1"
+        className="relative h-[72px] rounded-[28px] flex items-center justify-around px-2"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,24,0.92) 0%, rgba(12,12,16,0.96) 100%)',
-          backdropFilter: 'blur(32px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(200%)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          boxShadow: '0 -4px 40px rgba(0,0,0,0.6), 0 -1px 0 rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.08)',
+          background: 'linear-gradient(180deg, rgba(18,18,28,0.94) 0%, rgba(10,10,18,0.98) 100%)',
+          backdropFilter: 'blur(40px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
         }}
       >
         {navItems.map((item) => {
@@ -44,29 +44,28 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
                 key={item.key}
                 onClick={() => navigate("/admin/chat")}
                 whileTap={{ scale: 0.88 }}
-                className="relative w-[52px] h-[52px] -translate-y-4 rounded-[16px] flex items-center justify-center"
+                className="relative w-[50px] h-[50px] -translate-y-3 rounded-[18px] flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(145deg, hsl(160 84% 42%), hsl(160 84% 32%))',
-                  boxShadow: '0 6px 28px rgba(16,185,129,0.5), 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.25)',
+                  background: 'linear-gradient(145deg, hsl(160 84% 42%), hsl(160 84% 28%))',
+                  boxShadow: '0 8px 30px rgba(16,185,129,0.45), inset 0 1px 0 rgba(255,255,255,0.2)',
                 }}
               >
-                {/* Pulse */}
                 <motion.div
-                  className="absolute inset-0 rounded-[16px]"
-                  style={{ border: '2px solid hsl(160 84% 39%)' }}
-                  animate={{ scale: [1, 1.25, 1], opacity: [0.4, 0, 0.4] }}
+                  className="absolute inset-0 rounded-[18px]"
+                  style={{ border: '2px solid rgba(16,185,129,0.4)' }}
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                 />
-                <Icon size={22} className="text-white relative z-10" />
+                <Icon size={20} className="text-white relative z-10" />
                 {chatBadge && chatBadge > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full text-[8px] text-white font-bold flex items-center justify-center px-1"
+                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[8px] text-white font-black flex items-center justify-center px-1"
                     style={{
-                      background: 'linear-gradient(135deg, hsl(350 89% 60%), hsl(350 89% 50%))',
-                      boxShadow: '0 2px 8px rgba(244,63,94,0.5)',
-                      border: '2px solid hsl(240 10% 5%)',
+                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                      boxShadow: '0 2px 8px rgba(239,68,68,0.5)',
+                      border: '2px solid rgba(10,10,18,0.98)',
                     }}
                   >
                     {chatBadge > 99 ? '99+' : chatBadge}
@@ -81,30 +80,27 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
               key={item.key}
               onClick={() => onChange(item.key)}
               whileTap={{ scale: 0.85 }}
-              className="relative flex flex-col items-center gap-0.5 py-2 px-3"
+              className="relative flex flex-col items-center gap-1"
             >
-              {isActive && (
-                <motion.div
-                  layoutId="admin-dock-dot"
-                  className="absolute -top-0.5 w-4 h-[2.5px] rounded-full"
-                  style={{
-                    background: 'hsl(160 84% 39%)',
-                    boxShadow: '0 0 8px rgba(16,185,129,0.5)',
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                />
-              )}
               <motion.div
-                animate={isActive ? { y: -1 } : { y: 0 }}
+                animate={isActive ? { y: -2 } : { y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className="w-11 h-11 rounded-[14px] flex items-center justify-center transition-all duration-200"
+                style={{
+                  background: isActive
+                    ? 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))'
+                    : 'transparent',
+                  border: isActive ? '1px solid rgba(16,185,129,0.2)' : '1px solid transparent',
+                  boxShadow: isActive ? '0 4px 16px rgba(16,185,129,0.15)' : 'none',
+                }}
               >
                 <Icon
-                  size={19}
+                  size={18}
                   className={isActive ? 'text-admin-emerald' : 'text-zinc-500'}
-                  style={isActive ? { filter: 'drop-shadow(0 0 5px rgba(16,185,129,0.4))' } : {}}
+                  style={isActive ? { filter: 'drop-shadow(0 0 6px rgba(16,185,129,0.4))' } : {}}
                 />
               </motion.div>
-              <span className={`text-[9px] font-medium ${isActive ? 'text-admin-emerald' : 'text-zinc-500'}`}>
+              <span className={`text-[8px] font-bold ${isActive ? 'text-admin-emerald' : 'text-zinc-600'}`}>
                 {item.label}
               </span>
             </motion.button>

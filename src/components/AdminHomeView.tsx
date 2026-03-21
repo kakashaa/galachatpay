@@ -984,18 +984,35 @@ const AdminHomeView: React.FC<Props> = ({
               )}
             </div>
 
-            {/* KPI row */}
-            <div className="grid grid-cols-3 gap-1.5">
+            {/* KPI row — glass style */}
+            <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'مقبول', value: stats.approved, color: 'text-primary', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.2)' },
-                { label: 'معلّق', value: stats.pending, color: 'text-secondary', bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.2)' },
-                { label: 'مرفوض', value: stats.rejected, color: 'text-destructive', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.2)' },
-              ].map(k => (
-                <div key={k.label} className="rounded-[10px] p-1.5 text-center" style={{ background: k.bg, border: `1px solid ${k.border}` }}>
-                  <p className={`text-xs font-black tabular-nums ${k.color}`}><AnimatedNumber value={k.value} /></p>
-                  <p className="text-[8px] text-muted-foreground">{k.label}</p>
-                </div>
-              ))}
+                { label: 'مقبول', value: stats.approved, icon: CheckCircle, gradient: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))', glow: 'rgba(16,185,129,0.3)', color: '#10b981' },
+                { label: 'معلّق', value: stats.pending, icon: Clock, gradient: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.05))', glow: 'rgba(59,130,246,0.3)', color: '#3b82f6' },
+                { label: 'مرفوض', value: stats.rejected, icon: XCircle, gradient: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))', glow: 'rgba(239,68,68,0.3)', color: '#ef4444' },
+              ].map(k => {
+                const KIcon = k.icon;
+                return (
+                  <div
+                    key={k.label}
+                    className="relative overflow-hidden rounded-2xl p-3 text-center backdrop-blur-sm"
+                    style={{
+                      background: k.gradient,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: `0 4px 20px ${k.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
+                    }}
+                  >
+                    <div className="pointer-events-none absolute -top-3 -right-3 w-10 h-10 rounded-full opacity-20" style={{ background: k.color }} />
+                    <div className="w-7 h-7 mx-auto rounded-xl flex items-center justify-center mb-1.5" style={{ background: `${k.color}20` }}>
+                      <KIcon size={14} style={{ color: k.color }} />
+                    </div>
+                    <p className="text-lg font-black tabular-nums leading-none" style={{ color: k.color }}>
+                      <AnimatedNumber value={k.value} />
+                    </p>
+                    <p className="text-[9px] text-muted-foreground mt-1 font-bold">{k.label}</p>
+                  </div>
+                );
+              })}
             </div>
 
             {(shiftStart || shiftEnd) && (
