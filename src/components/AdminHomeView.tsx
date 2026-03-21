@@ -1062,7 +1062,7 @@ const AdminHomeView: React.FC<Props> = ({
           uuid: target,
           name: d.name,
           avatar: d.avatar || '',
-          vip_level: parseInt(d.vip) || 0,
+          vip_level: 0, // vip from user-diamonds is an ID not level; real level comes from profile API
           salary: d.salary || 0,
           deduction: d.deduction || 0,
           net_salary: d.net_salary || 0,
