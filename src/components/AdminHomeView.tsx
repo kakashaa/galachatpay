@@ -302,7 +302,7 @@ const getActionInfo = (action: string) => {
   return info;
 };
 
-/* ─── KPI Card ─── */
+/* ─── Compact KPI Card ─── */
 const KPICard: React.FC<{
   label: string; value: number; icon: typeof Clock;
   colorClass: string; bgClass: string;
@@ -311,23 +311,16 @@ const KPICard: React.FC<{
   <motion.button
     onClick={onClick}
     whileTap={{ scale: 0.97 }}
-    className={`rounded-xl p-3 text-right flex flex-col gap-2 bg-card border border-border hover:border-border/80 transition-colors ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
+    className={`rounded-xl px-3 py-2.5 flex items-center gap-2.5 bg-card border border-border hover:border-border/80 transition-colors ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
   >
-    <div className="flex items-center justify-between">
-      <div className={`w-8 h-8 rounded-lg ${bgClass} flex items-center justify-center`}>
-        <Icon size={16} className={colorClass} />
-      </div>
-      {value > 0 && (
-        <div className="flex items-center gap-0.5">
-          <Activity size={10} className={colorClass} />
-        </div>
-      )}
+    <div className={`w-7 h-7 rounded-lg ${bgClass} flex items-center justify-center flex-shrink-0`}>
+      <Icon size={13} className={colorClass} />
     </div>
-    <div>
-      <p className={`text-xl font-bold tabular-nums font-mono ${colorClass}`}>
+    <div className="text-right min-w-0">
+      <p className={`text-base font-bold tabular-nums font-mono leading-none ${colorClass}`}>
         <AnimatedNumber value={value} />
       </p>
-      <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+      <p className="text-[9px] text-muted-foreground mt-0.5">{label}</p>
     </div>
   </motion.button>
 );
@@ -635,32 +628,34 @@ const AdminHomeView: React.FC<Props> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
         >
-          <div className="relative">
-            <Search size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              value={searchUuid}
-              onChange={(e) => setSearchUuid(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchUser()}
-              placeholder="ابحث عن مستخدم، UUID، طلب، تذكرة..."
-              className="w-full h-10 rounded-xl pr-9 pl-11 text-xs placeholder:text-muted-foreground/60 focus:outline-none bg-card border border-border focus:border-primary/30 transition-colors tabular-nums"
-              dir="rtl"
-            />
+          <div className="relative flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 pointer-events-none" />
+              <input
+                type="text"
+                value={searchUuid}
+                onChange={(e) => setSearchUuid(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchUser()}
+                placeholder="ابحث عن مستخدم، UUID، طلب..."
+                className="w-full h-9 rounded-lg pr-8 pl-3 text-[11px] placeholder:text-muted-foreground/40 focus:outline-none bg-muted/40 border border-border/50 focus:border-primary/30 focus:bg-card transition-all tabular-nums"
+                dir="rtl"
+              />
+              {searchUuid && (
+                <button
+                  onClick={() => { setSearchUuid(""); setSearchResult(null); }}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={11} />
+                </button>
+              )}
+            </div>
             <motion.button
               onClick={() => searchUser()}
               whileTap={{ scale: 0.9 }}
-              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center bg-primary"
+              className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary flex-shrink-0"
             >
-              {searching ? <Loader2 size={12} className="text-primary-foreground animate-spin" /> : <ArrowUpRight size={12} className="text-primary-foreground" />}
+              {searching ? <Loader2 size={13} className="text-primary-foreground animate-spin" /> : <ArrowUpRight size={13} className="text-primary-foreground" />}
             </motion.button>
-            {searchUuid && (
-              <button
-                onClick={() => { setSearchUuid(""); setSearchResult(null); }}
-                className="absolute left-10 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X size={12} />
-              </button>
-            )}
           </div>
         </motion.div>
 
@@ -684,7 +679,7 @@ const AdminHomeView: React.FC<Props> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
             >
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 <KPICard label="معلّق" value={stats.pending} icon={Clock} colorClass="text-amber-500" bgClass="bg-amber-500/10" />
                 <KPICard label="مقبول" value={stats.approved} icon={CheckCircle} colorClass="text-emerald-500" bgClass="bg-emerald-500/10" />
                 <KPICard label="مرفوض" value={stats.rejected} icon={XCircle} colorClass="text-red-500" bgClass="bg-red-500/10" />
