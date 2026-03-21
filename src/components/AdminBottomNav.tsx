@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, Search, Bell, Eye, MoreHorizontal } from 'lucide-react';
+import { useTapFeedback } from '@/hooks/use-tap-feedback';
 
 type BottomTab = 'home' | 'search' | 'chat' | 'monitor' | 'favorites';
 
@@ -20,6 +21,19 @@ const navItems = [
 
 const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
   const navigate = useNavigate();
+  const tap = useTapFeedback();
+  const [bouncingKey, setBouncingKey] = useState<string | null>(null);
+
+  const handleTap = (item: typeof navItems[0]) => {
+    tap();
+    setBouncingKey(item.key);
+    setTimeout(() => {
+      setBouncingKey(null);
+      if (item.key === 'monitor') { navigate('/admin/monitor'); return; }
+      if (item.key === 'chat') { navigate('/admin/chat'); return; }
+      onChange(item.key);
+    }, 400);
+  };
 
   return (
     <div
@@ -41,15 +55,12 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
             const isActive = active === item.key;
             const Icon = item.icon;
             const isChatTab = item.key === 'chat';
+            const isBouncing = bouncingKey === item.key;
 
             return (
               <button
                 key={item.key}
-                onClick={() => {
-                  if (item.key === 'monitor') { navigate('/admin/monitor'); return; }
-                  if (isChatTab) { navigate('/admin/chat'); return; }
-                  onChange(item.key);
-                }}
+                onClick={() => handleTap(item)}
                 className="relative flex flex-col items-center gap-1.5"
               >
                 <div
@@ -57,7 +68,7 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
                     isActive
                       ? `bg-gradient-to-br ${item.gradient} shadow-lg`
                       : 'bg-white/[0.07] hover:bg-white/[0.12]'
-                  }`}
+                  } ${isBouncing ? 'animate-mac-bounce' : ''}`}
                 >
                   <Icon
                     className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500'}`}
