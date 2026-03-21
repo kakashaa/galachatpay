@@ -1022,9 +1022,10 @@ const AdminHomeView: React.FC<Props> = ({
         `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
       );
       const json = await res.json();
-      // Handle both {data: {...}} and direct {...} response formats
-      const d = json?.data || json;
-      console.log("[user-full] raw response:", JSON.stringify({ salary: d?.salary, deduction: d?.deduction, net_salary: d?.net_salary }));
+      console.log("[user-full] RAW json:", JSON.stringify(json));
+      // API returns {ok: true, data: {salary, deduction, net_salary, ...}}
+      const d = json?.data ?? json;
+      console.log("[user-full] parsed salary:", d?.salary, "deduction:", d?.deduction, "net_salary:", d?.net_salary);
 
       if (d && d.name) {
         const data: any = {
