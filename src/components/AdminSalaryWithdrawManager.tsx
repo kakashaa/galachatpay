@@ -241,8 +241,9 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           approved_amount: r.approved_amount || null,
           salary_type: r.salary_type || "host",
         }));
-        const enriched = await enrichWithAvatars(rawRequests);
-        setRequests(enriched);
+        // Show data immediately, load avatars in background
+        setRequests(rawRequests);
+        enrichWithAvatars(rawRequests).then(enriched => setRequests(enriched)).catch(() => {});
         const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
         const pendingReqs = rawRequests.filter(r => r.status === "pending");
         const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
@@ -265,7 +266,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   }, [selectedMonth]);
 
   const enrichWithAvatars = async (reqs: WithdrawRequest[]): Promise<WithdrawRequest[]> => {
-    const BATCH = 5;
+    const BATCH = 10;
     const result = [...reqs];
     for (let i = 0; i < result.length; i += BATCH) {
       const batch = result.slice(i, i + BATCH);
