@@ -1017,13 +1017,46 @@ const AdminHomeView: React.FC<Props> = ({
     if (!target) return;
     setSearching(true); setSearchResult(null);
     try {
-      // Single fast DB proxy call — all user data from DB directly
-      const res = await fetch(
-        `https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=user-diamonds&uuid=${target}`
-      );
-      const json = await res.json();
-      const d = (json?.data?.[0]) || null;
-      console.log("[user-diamonds] RAW:", JSON.stringify(json));
+      // Try fast DB proxy first, fallback to user-full
+      let d: any = null;
+      let fromDiamonds = false;
+
+      try {
+        const res = await fetch(
+          `https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=user-diamonds&uuid=${target}`
+        );
+        const text = await res.text();
+        const json = JSON.parse(text);
+        d = json?.data?.[0] || null;
+        if (d?.name) fromDiamonds = true;
+        console.log("[user-diamonds] ok:", !!d?.name);
+      } catch (e) {
+        console.warn("[user-diamonds] failed, falling back to user-full:", e);
+      }
+
+      // Fallback to user-full if db-proxy failed
+      if (!d?.name) {
+        try {
+          const res2 = await fetch(
+            `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
+          );
+          const json2 = await res2.json();
+          const fd = json2?.data ?? json2;
+          if (fd?.name) {
+            d = {
+              name: fd.name, avatar: fd.avatar,
+              vip: fd.vip_level, charger_level: fd.charger_level,
+              sender_level: fd.sender_level, received_level: 0,
+              total_diamond_send: fd.total_sent, total_diamond_received: fd.total_received,
+              monthly_diamond_received: 0, charger_exp: 0, di: 0,
+              agency_id: fd.agency_id, family_id: fd.family_id,
+              online: fd.online, created_at: fd.created_at,
+              salary: fd.salary, deduction: fd.deduction, net_salary: fd.net_salary,
+              is_banned: fd.is_banned,
+            };
+          }
+        } catch { /* both failed */ }
+      }
 
       if (d && d.name) {
         const totalSent = parseInt(d.total_diamond_send) || 0;
@@ -1038,17 +1071,17 @@ const AdminHomeView: React.FC<Props> = ({
           name: d.name,
           avatar: d.avatar || '',
           vip_level: parseInt(d.vip) || 0,
-          salary: 0,
-          deduction: 0,
-          net_salary: 0,
+          salary: d.salary || 0,
+          deduction: d.deduction || 0,
+          net_salary: d.net_salary || 0,
           charger_level: parseInt(d.charger_level) || 0,
           charger_exp: chargerExp,
           sender_level: parseInt(d.sender_level) || 0,
           received_level: parseInt(d.received_level) || 0,
           agency_id: d.agency_id || '',
           family_id: d.family_id || '',
-          is_banned: false,
-          online: d.online === '1' || d.online === 1,
+          is_banned: d.is_banned || false,
+          online: d.online === '1' || d.online === 1 || d.online === true,
           created_at: d.created_at || '',
           di,
           _sent_total: totalSent,
@@ -1062,22 +1095,23 @@ const AdminHomeView: React.FC<Props> = ({
         setSearchResult(data);
         setSearching(false);
 
-        // Background: fetch salary + VIP level from profile API
+        // Background: fetch salary (if from diamonds) + VIP level
         (async () => {
           try {
-            // Salary from user-full
-            const salaryRes = await fetch(
-              `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
-            ).then(r => r.json()).catch(() => null);
-            const sd = salaryRes?.data ?? salaryRes;
-            if (sd?.salary || sd?.net_salary) {
-              setSearchResult((prev: any) => prev ? {
-                ...prev,
-                salary: sd.salary || 0,
-                deduction: sd.deduction || 0,
-                net_salary: sd.net_salary || 0,
-                is_banned: sd.is_banned || prev.is_banned,
-              } : prev);
+            if (fromDiamonds) {
+              const salaryRes = await fetch(
+                `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
+              ).then(r => r.json()).catch(() => null);
+              const sd = salaryRes?.data ?? salaryRes;
+              if (sd?.salary || sd?.net_salary) {
+                setSearchResult((prev: any) => prev ? {
+                  ...prev,
+                  salary: sd.salary || 0,
+                  deduction: sd.deduction || 0,
+                  net_salary: sd.net_salary || 0,
+                  is_banned: sd.is_banned || prev.is_banned,
+                } : prev);
+              }
             }
 
             // VIP via profile API
@@ -1101,7 +1135,7 @@ const AdminHomeView: React.FC<Props> = ({
           } catch (e) { console.warn("Background enrichment failed:", e); }
         })();
 
-        return; // already set searching=false above
+        return;
       } else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
     } catch { toast.error("خطأ في الاتصال"); }
     setSearching(false);
