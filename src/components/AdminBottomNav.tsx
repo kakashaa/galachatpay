@@ -27,11 +27,11 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
       <nav
         className="relative h-[72px] rounded-[28px] flex items-center justify-around px-2"
         style={{
-          background: 'linear-gradient(180deg, rgba(18,18,28,0.94) 0%, rgba(10,10,18,0.98) 100%)',
+          background: 'linear-gradient(180deg, hsla(160, 35%, 8%, 0.96) 0%, hsla(160, 35%, 4%, 0.98) 100%)',
           backdropFilter: 'blur(40px) saturate(200%)',
           WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+          border: '1px solid hsla(160, 84%, 39%, 0.15)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.5), 0 0 30px hsla(160, 84%, 39%, 0.08), inset 0 1px 0 hsla(160, 84%, 39%, 0.1)',
         }}
       >
         {navItems.map((item) => {
@@ -47,12 +47,12 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
                 className="relative w-[50px] h-[50px] -translate-y-3 rounded-[18px] flex items-center justify-center"
                 style={{
                   background: 'linear-gradient(145deg, hsl(160 84% 42%), hsl(160 84% 28%))',
-                  boxShadow: '0 8px 30px rgba(16,185,129,0.45), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  boxShadow: '0 8px 30px hsla(160,84%,39%,0.45), 0 0 20px hsla(160,84%,39%,0.2), inset 0 1px 0 rgba(255,255,255,0.2)',
                 }}
               >
                 <motion.div
                   className="absolute inset-0 rounded-[18px]"
-                  style={{ border: '2px solid rgba(16,185,129,0.4)' }}
+                  style={{ border: '2px solid hsla(160,84%,39%,0.4)' }}
                   animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
                   transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                 />
@@ -88,10 +88,10 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
                 className="w-11 h-11 rounded-[14px] flex items-center justify-center transition-all duration-200"
                 style={{
                   background: isActive
-                    ? 'linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))'
+                    ? 'linear-gradient(135deg, hsla(160,84%,39%,0.18), hsla(160,84%,39%,0.06))'
                     : 'transparent',
-                  border: isActive ? '1px solid rgba(16,185,129,0.2)' : '1px solid transparent',
-                  boxShadow: isActive ? '0 4px 16px rgba(16,185,129,0.15)' : 'none',
+                  border: isActive ? '1px solid hsla(160,84%,39%,0.25)' : '1px solid transparent',
+                  boxShadow: isActive ? '0 4px 16px hsla(160,84%,39%,0.15), 0 0 10px hsla(160,84%,39%,0.08)' : 'none',
                 }}
               >
                 <Icon
