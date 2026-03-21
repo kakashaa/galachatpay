@@ -253,14 +253,14 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section
               <div className="space-y-2">
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: 'الراتب', val: `$${salaryDetail.salary || 0}` },
-                    { label: 'المصروف', val: `$${salaryDetail.spent || salaryDetail.used || 0}` },
-                    { label: 'المتبقي', val: `$${salaryDetail.remaining || salaryDetail.balance || 0}` },
+                    { label: 'الراتب', val: `$${salaryDetail.salary || salaryDetail.total || 0}`, color: 'text-white' },
+                    { label: 'المصروف', val: `$${salaryDetail.deduction || salaryDetail.spent || salaryDetail.used || 0}`, color: 'text-red-400' },
+                    { label: 'المتبقي', val: `$${salaryDetail.net_salary || salaryDetail.remaining || salaryDetail.balance || 0}`, color: 'text-emerald-400' },
                   ].map(s => (
                     <div key={s.label} className="rounded-lg px-2 py-2 text-center"
                       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <p className="text-[9px] text-white/30">{s.label}</p>
-                      <p className="text-xs font-black text-white tabular-nums">{s.val}</p>
+                      <p className={`text-xs font-black tabular-nums ${s.color}`}>{s.val}</p>
                     </div>
                   ))}
                 </div>
