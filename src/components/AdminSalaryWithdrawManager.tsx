@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { motion } from "framer-motion";
 import {
   CheckCircle, XCircle, Clock, Search, Upload,
   Loader2, FileText, Image, Printer, Building2,
   Eye, Phone, User, Hash, CalendarDays,
   MessageSquare, CreditCard, ClipboardList, AlertTriangle, BarChart3, ShieldCheck,
-  ShieldAlert, DollarSign,
+  ShieldAlert, DollarSign, SlidersHorizontal, X, Lock, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +53,7 @@ interface WithdrawRequest {
   account_number: string;
   whatsapp: string;
   notes?: string;
-  status: "pending" | "delivered" | "rejected";
+  status: "pending" | "delivered" | "rejected" | "reserved" | "review";
   admin_note?: string;
   receipt_image?: string;
   created_at: string;
@@ -69,6 +68,10 @@ interface WithdrawRequest {
   transferred_usd?: number;
   approved_amount?: number;
   salary_type?: string;
+  is_duplicate_flagged?: boolean;
+  reject_reason?: string;
+  reserve_reason?: string;
+  user_edited?: boolean;
 }
 
 interface Stats {
@@ -80,6 +83,8 @@ interface Stats {
   pending_amount: number;
   rejected: number;
   rejected_amount?: number;
+  reserved?: number;
+  reserved_amount?: number;
 }
 
 interface Props {
@@ -150,11 +155,23 @@ const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
   return checks;
 };
 
+/* ═══════════════════════════════════════════════════
+   TAB CONFIG
+   ═══════════════════════════════════════════════════ */
+type TabKey = "pending" | "delivered" | "rejected" | "reserved";
+
+const TAB_CONFIG: { key: TabKey; label: string; icon: React.ReactNode; color: string; border: string; bg: string; glow: string }[] = [
+  { key: "pending",   label: "انتظار",  icon: <Clock className="w-3.5 h-3.5" />,       color: "text-amber-400",   border: "border-amber-500/30",   bg: "bg-amber-500/10",   glow: "shadow-amber-500/20" },
+  { key: "delivered",  label: "تحويل",  icon: <CheckCircle className="w-3.5 h-3.5" />,  color: "text-emerald-400", border: "border-emerald-500/30", bg: "bg-emerald-500/10", glow: "shadow-emerald-500/20" },
+  { key: "rejected",  label: "مرفوض",   icon: <XCircle className="w-3.5 h-3.5" />,      color: "text-rose-400",    border: "border-rose-500/30",    bg: "bg-rose-500/10",    glow: "shadow-rose-500/20" },
+  { key: "reserved",  label: "محجوز",   icon: <Lock className="w-3.5 h-3.5" />,         color: "text-orange-400",  border: "border-orange-500/30",  bg: "bg-orange-500/10",  glow: "shadow-orange-500/20" },
+];
+
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [requests, setRequests] = useState<WithdrawRequest[]>([]);
   const [_stats, setStats] = useState<Stats>({ total: 0, delivered: 0, delivered_amount: 0, pending: 0, pending_amount: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "delivered" | "rejected">("all");
+  const [activeTab, setActiveTab] = useState<TabKey>("pending");
   const [search, setSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
   const isCurrentMonth = selectedMonth === getCurrentMonth();
@@ -163,6 +180,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [countryFilter, setCountryFilter] = useState("all");
   const [amountMin, setAmountMin] = useState("");
   const [amountMax, setAmountMax] = useState("");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Unified detail sheet
   const [detailReq, setDetailReq] = useState<WithdrawRequest | null>(null);
@@ -180,6 +198,12 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [rejectImage, setRejectImage] = useState<File | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const hasActiveFilters = search || bankFilter !== "all" || countryFilter !== "all" || amountMin || amountMax;
+
+  const clearFilters = () => {
+    setSearch(""); setBankFilter("all"); setCountryFilter("all"); setAmountMin(""); setAmountMax("");
+  };
 
   const openDetailSheet = async (req: WithdrawRequest) => {
     setDetailReq(req);
@@ -206,9 +230,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     }
   };
 
-  const mapStatus = (s: string): "pending" | "delivered" | "rejected" => {
+  const mapStatus = (s: string): WithdrawRequest["status"] => {
     if (s === "approved" || s === "delivered") return "delivered";
     if (s === "rejected") return "rejected";
+    if (s === "reserved") return "reserved";
+    if (s === "review") return "pending";
     return "pending";
   };
 
@@ -240,13 +266,17 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           transferred_usd: r.transferred_usd || null,
           approved_amount: r.approved_amount || null,
           salary_type: r.salary_type || "host",
+          is_duplicate_flagged: r.is_duplicate_flagged || false,
+          reject_reason: r.reject_reason || r.admin_note || "",
+          reserve_reason: r.reserve_reason || "",
+          user_edited: r.user_edited || false,
         }));
-        // Show data immediately, load avatars in background
         setRequests(rawRequests);
         enrichWithAvatars(rawRequests).then(enriched => setRequests(enriched)).catch(() => {});
         const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
-        const pendingReqs = rawRequests.filter(r => r.status === "pending");
+        const pendingReqs = rawRequests.filter(r => r.status === "pending" || r.status === "review" as any);
         const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
+        const reservedReqs = rawRequests.filter(r => r.status === "reserved");
         const apiStats = data.stats || {};
         setStats({
           total: apiStats.total || rawRequests.length,
@@ -256,6 +286,8 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           pending_amount: pendingReqs.reduce((s, r) => s + (r.amount || 0), 0),
           rejected: apiStats.rejected || rejectedReqs.length,
           rejected_amount: rejectedReqs.reduce((s, r) => s + (r.amount || 0), 0),
+          reserved: reservedReqs.length,
+          reserved_amount: reservedReqs.reduce((s, r) => s + (r.amount || 0), 0),
         });
       }
     } catch {
@@ -303,11 +335,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
-        await sendUserNotification(
-          approveSheet.user_uuid,
-          "تم قبول سحب الراتب",
-          `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`
-        );
+        await sendUserNotification(approveSheet.user_uuid, "تم قبول سحب الراتب", `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`);
         sendWhatsAppNotification(approveSheet.whatsapp, `✅ تم قبول طلب سحب الراتب!\nالمبلغ: $${approveSheet.amount}\nالبنك: ${approveSheet.bank}\nالحساب: ${approveSheet.account_number}`);
         toast.success("تم قبول الطلب وإرسال الإشعار");
         setRequests(prev => prev.map(r => r.id === approveSheet.id ? { ...r, status: "delivered" } : r));
@@ -330,11 +358,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       });
       const data = await res.json();
       if (data.success) {
-        await sendUserNotification(
-          rejectSheet.user_uuid,
-          "تم رفض سحب الراتب",
-          `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`
-        );
+        await sendUserNotification(rejectSheet.user_uuid, "تم رفض سحب الراتب", `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`);
         sendWhatsAppNotification(rejectSheet.whatsapp, `❌ تم رفض طلب سحب الراتب\nالسبب: ${rejectReason}`);
         toast.success("تم رفض الطلب وإرسال الإشعار");
         setRequests(prev => prev.map(r => r.id === rejectSheet.id ? { ...r, status: "rejected", reject_reason: rejectReason } : r));
@@ -344,12 +368,18 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     } catch { toast.error("حدث خطأ"); } finally { setActionLoading(false); }
   };
 
+  /* ─── Filtering ─── */
   const filtered = useMemo(() => {
     return requests.filter(r => {
-      if (filter !== "all" && r.status !== filter) return false;
+      // Tab filter
+      if (activeTab === "pending" && r.status !== "pending") return false;
+      if (activeTab === "delivered" && r.status !== "delivered") return false;
+      if (activeTab === "rejected" && r.status !== "rejected") return false;
+      if (activeTab === "reserved" && r.status !== "reserved") return false;
+
       if (search) {
         const q = search.toLowerCase();
-        if (!(r.user_name?.toLowerCase().includes(q) || r.user_uuid?.includes(q) || r.request_code?.toLowerCase().includes(q) || r.account_name?.toLowerCase().includes(q)))
+        if (!(r.user_name?.toLowerCase().includes(q) || r.user_uuid?.includes(q) || r.request_code?.toLowerCase().includes(q) || r.account_name?.toLowerCase().includes(q) || r.whatsapp?.includes(q) || r.reference_id?.includes(q)))
           return false;
       }
       if (bankFilter !== "all") {
@@ -366,7 +396,42 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       if (amountMax && r.amount > parseFloat(amountMax)) return false;
       return true;
     });
-  }, [requests, filter, search, bankFilter, countryFilter, amountMin, amountMax]);
+  }, [requests, activeTab, search, bankFilter, countryFilter, amountMin, amountMax]);
+
+  /* ─── Tab counts ─── */
+  const tabCounts = useMemo(() => {
+    const applySearchFilters = (r: WithdrawRequest) => {
+      if (search) {
+        const q = search.toLowerCase();
+        if (!(r.user_name?.toLowerCase().includes(q) || r.user_uuid?.includes(q) || r.request_code?.toLowerCase().includes(q) || r.account_name?.toLowerCase().includes(q) || r.whatsapp?.includes(q) || r.reference_id?.includes(q)))
+          return false;
+      }
+      if (bankFilter !== "all") {
+        const bankLabel = BANK_LABELS[bankFilter] || bankFilter;
+        if (!r.bank?.includes(bankFilter) && !r.bank?.includes(bankLabel)) return false;
+      }
+      if (countryFilter !== "all") {
+        const countryLabel = COUNTRY_LABELS[countryFilter] || countryFilter;
+        if (countryFilter === "other") {
+          if (["sa", "SA", "السعودية", "ye", "YE", "اليمن", "us", "US", "أمريكا"].some(c => r.country?.includes(c))) return false;
+        } else if (!r.country?.includes(countryFilter) && !r.country?.includes(countryLabel)) return false;
+      }
+      if (amountMin && r.amount < parseFloat(amountMin)) return false;
+      if (amountMax && r.amount > parseFloat(amountMax)) return false;
+      return true;
+    };
+
+    const pending = requests.filter(r => r.status === "pending" && applySearchFilters(r));
+    const delivered = requests.filter(r => r.status === "delivered" && applySearchFilters(r));
+    const rejected = requests.filter(r => r.status === "rejected" && applySearchFilters(r));
+    const reserved = requests.filter(r => r.status === "reserved" && applySearchFilters(r));
+    return {
+      pending: { count: pending.length, amount: pending.reduce((s, r) => s + r.amount, 0) },
+      delivered: { count: delivered.length, amount: delivered.reduce((s, r) => s + r.amount, 0) },
+      rejected: { count: rejected.length, amount: rejected.reduce((s, r) => s + r.amount, 0) },
+      reserved: { count: reserved.length, amount: reserved.reduce((s, r) => s + r.amount, 0) },
+    };
+  }, [requests, search, bankFilter, countryFilter, amountMin, amountMax]);
 
   const countrySummary = useMemo(() => {
     const map: Record<string, { count: number; amount: number }> = {};
@@ -382,10 +447,12 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const handlePrint = () => window.print();
 
   const statusConfig: Record<string, { label: string; textClass: string; bgClass: string; icon: React.ReactNode }> = {
-    pending: { label: "قيد المراجعة", textClass: "text-amber-400", bgClass: "bg-amber-500/10", icon: <Clock className="w-3 h-3" /> },
-    delivered: { label: "تم التسليم", textClass: "text-emerald-400", bgClass: "bg-emerald-500/10", icon: <CheckCircle className="w-3 h-3" /> },
-    approved: { label: "تم التسليم", textClass: "text-emerald-400", bgClass: "bg-emerald-500/10", icon: <CheckCircle className="w-3 h-3" /> },
-    rejected: { label: "مرفوض", textClass: "text-red-400", bgClass: "bg-red-500/10", icon: <XCircle className="w-3 h-3" /> },
+    pending:   { label: "قيد الانتظار", textClass: "text-amber-400",   bgClass: "bg-amber-500/10",   icon: <Clock className="w-3 h-3" /> },
+    delivered: { label: "تم التحويل",   textClass: "text-emerald-400", bgClass: "bg-emerald-500/10", icon: <CheckCircle className="w-3 h-3" /> },
+    approved:  { label: "تم التحويل",   textClass: "text-emerald-400", bgClass: "bg-emerald-500/10", icon: <CheckCircle className="w-3 h-3" /> },
+    rejected:  { label: "مرفوض",        textClass: "text-rose-400",    bgClass: "bg-rose-500/10",    icon: <XCircle className="w-3 h-3" /> },
+    reserved:  { label: "محجوز",        textClass: "text-orange-400",  bgClass: "bg-orange-500/10",  icon: <Lock className="w-3 h-3" /> },
+    review:    { label: "مراجعة",       textClass: "text-blue-400",    bgClass: "bg-blue-500/10",    icon: <Eye className="w-3 h-3" /> },
   };
 
   const statusBadge = (status: string) => {
@@ -397,212 +464,351 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     );
   };
 
-  const filteredStats = useMemo(() => {
-    const pending = filtered.filter(r => r.status === "pending");
-    const delivered = filtered.filter(r => r.status === "delivered");
-    const rejected = filtered.filter(r => r.status === "rejected");
-    return {
-      total: filtered.length,
-      totalAmount: filtered.reduce((s, r) => s + r.amount, 0),
-      pending: pending.length,
-      pendingAmount: pending.reduce((s, r) => s + r.amount, 0),
-      delivered: delivered.length,
-      deliveredAmount: delivered.reduce((s, r) => s + r.amount, 0),
-      rejected: rejected.length,
-      rejectedAmount: rejected.reduce((s, r) => s + r.amount, 0),
-    };
-  }, [filtered]);
+  const adminRole = localStorage.getItem("admin_role");
+  const isSuperAdmin = adminRole === "owner" || adminRole === "super_admin";
 
   return (
-    <div className="space-y-5 print-area" dir="rtl">
-      {/* ===== 1. STAT CARDS ===== */}
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { key: "all" as const, label: "الكل", icon: <ClipboardList className="w-4 h-4" />, count: filteredStats.total, amount: filteredStats.totalAmount, color: "text-foreground", border: "border-white/5", bg: "bg-card/50" },
-          { key: "pending" as const, label: "معلقة", icon: <Clock className="w-4 h-4" />, count: filteredStats.pending, amount: filteredStats.pendingAmount, color: "text-amber-400", border: "border-amber-500/20", bg: "bg-amber-500/5" },
-          { key: "delivered" as const, label: "مسلّمة", icon: <CheckCircle className="w-4 h-4" />, count: filteredStats.delivered, amount: filteredStats.deliveredAmount, color: "text-emerald-400", border: "border-emerald-500/20", bg: "bg-emerald-500/5" },
-          { key: "rejected" as const, label: "مرفوضة", icon: <XCircle className="w-4 h-4" />, count: filteredStats.rejected, amount: filteredStats.rejectedAmount, color: "text-rose-400", border: "border-rose-500/20", bg: "bg-rose-500/5" },
-        ].map((card, i) => (
-          <motion.button
-            key={card.key}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05, duration: 0.4, ease: "easeOut" }}
-            onClick={() => setFilter(card.key)}
-            className={`relative rounded-xl p-3 text-center transition-all duration-300 border backdrop-blur-sm ${card.border} ${card.bg} ${
-              filter === card.key ? "border-white/20 scale-[1.02]" : "hover:border-white/10"
-            }`}>
-            <div className={`${card.color} mb-1 flex justify-center`}>{card.icon}</div>
-            <p className={`text-2xl font-bold font-mono tabular-nums ${card.color}`}>{card.count}</p>
-            <p className="text-[10px] text-muted-foreground">{card.label}</p>
-            <p className={`text-xs font-semibold font-mono tabular-nums ${card.color} mt-0.5`}>${card.amount?.toLocaleString()}</p>
-          </motion.button>
-        ))}
+    <div className="space-y-4 print-area" dir="rtl">
+
+      {/* ═══ MONTH SELECTOR ═══ */}
+      <div className="flex items-center gap-2">
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+          className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl text-xs px-3 h-9 text-foreground font-bold">
+          {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+        {!isCurrentMonth && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <CalendarDays className="w-3 h-3 text-amber-400" />
+            <span className="text-[9px] text-amber-400 font-bold">أرشيف</span>
+          </div>
+        )}
       </div>
 
-      {/* ===== 2. FILTERS ===== */}
+      {/* ═══ TABS ═══ */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {TAB_CONFIG.map((tab) => {
+          const isActive = activeTab === tab.key;
+          const data = tabCounts[tab.key];
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`relative rounded-xl p-2.5 text-center transition-all duration-200 border ${
+                isActive
+                  ? `${tab.border} ${tab.bg} shadow-lg ${tab.glow}`
+                  : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]"
+              }`}
+            >
+              <div className={`flex items-center justify-center gap-1 mb-1 ${isActive ? tab.color : "text-muted-foreground"}`}>
+                {tab.icon}
+                <span className="text-[10px] font-bold">{tab.label}</span>
+              </div>
+              <p className={`text-lg font-black tabular-nums font-mono ${isActive ? tab.color : "text-foreground/60"}`}>
+                {data.count}
+              </p>
+              <p className={`text-[9px] font-mono tabular-nums ${isActive ? tab.color + "/70" : "text-muted-foreground"}`}>
+                ${data.amount.toLocaleString()}
+              </p>
+              {isActive && (
+                <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full ${tab.bg.replace("/10", "")}`} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ═══ SEARCH + ADVANCED FILTERS ═══ */}
       <div className="space-y-2 no-print">
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="بحث: UUID، اسم، كود الطلب..."
-              className="bg-white/5 border-white/10 pr-9 text-xs h-9 rounded-xl" dir="rtl" />
-          </div>
-          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl text-xs px-2 h-9 text-foreground w-[150px]">
-            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="بحث: الآيدي، الاسم، كود التتبع، الهاتف، المرجعي..."
+            className="bg-white/[0.04] border-white/[0.08] pr-9 text-xs h-9 rounded-xl" dir="rtl" />
         </div>
-        <div className="flex gap-1.5 flex-wrap">
-          <select value={bankFilter} onChange={e => setBankFilter(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl text-[10px] px-2 h-8 text-foreground flex-1 min-w-[70px]">
-            <option value="all">البنك</option>
-            {BANKS.filter(b => b.value !== "all").map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-          </select>
-          <select value={countryFilter} onChange={e => setCountryFilter(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl text-[10px] px-2 h-8 text-foreground flex-1 min-w-[70px]">
-            {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-          <Input type="number" placeholder="من $" value={amountMin} onChange={e => setAmountMin(e.target.value)}
-            className="bg-white/5 border-white/10 w-[60px] text-[10px] h-8 px-1.5 rounded-xl" dir="ltr" />
-          <Input type="number" placeholder="إلى $" value={amountMax} onChange={e => setAmountMax(e.target.value)}
-            className="bg-white/5 border-white/10 w-[60px] text-[10px] h-8 px-1.5 rounded-xl" dir="ltr" />
-          <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 px-2 border-white/10 rounded-xl hover:bg-white/5">
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAdvancedFilters(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+              showAdvancedFilters ? "bg-primary/10 text-primary border border-primary/20" : "bg-white/[0.04] text-muted-foreground border border-white/[0.06] hover:bg-white/[0.06]"
+            }`}
+          >
+            <SlidersHorizontal className="w-3 h-3" />
+            فلترة متقدمة
+          </button>
+
+          {hasActiveFilters && (
+            <button onClick={clearFilters}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/15 transition-all">
+              <X className="w-3 h-3" /> مسح الفلاتر
+            </button>
+          )}
+
+          <div className="flex-1" />
+
+          <Button variant="outline" size="sm" onClick={handlePrint}
+            className="h-7 px-2 border-white/[0.08] rounded-lg hover:bg-white/[0.04] text-muted-foreground">
             <Printer className="w-3.5 h-3.5" />
           </Button>
         </div>
+
+        {/* Advanced filters panel */}
+        {showAdvancedFilters && (
+          <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 space-y-2.5 css-fade-up">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                  <Building2 className="w-2.5 h-2.5" /> الدولة
+                </label>
+                <select value={countryFilter} onChange={e => { setCountryFilter(e.target.value); setBankFilter("all"); }}
+                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg text-[10px] px-2 h-8 text-foreground">
+                  {COUNTRIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                  <CreditCard className="w-2.5 h-2.5" /> طريقة الدفع
+                </label>
+                <select value={bankFilter} onChange={e => setBankFilter(e.target.value)}
+                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg text-[10px] px-2 h-8 text-foreground">
+                  <option value="all">الكل</option>
+                  {BANKS.filter(b => b.value !== "all").map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] text-muted-foreground font-bold flex items-center gap-1">
+                <DollarSign className="w-2.5 h-2.5" /> نطاق المبلغ
+              </label>
+              <div className="flex items-center gap-2">
+                <Input type="number" placeholder="من $" value={amountMin} onChange={e => setAmountMin(e.target.value)}
+                  className="bg-white/[0.04] border-white/[0.08] flex-1 text-[10px] h-8 px-2 rounded-lg" dir="ltr" />
+                <span className="text-[10px] text-muted-foreground">—</span>
+                <Input type="number" placeholder="إلى $" value={amountMax} onChange={e => setAmountMax(e.target.value)}
+                  className="bg-white/[0.04] border-white/[0.08] flex-1 text-[10px] h-8 px-2 rounded-lg" dir="ltr" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ===== 3. COMPACT CARDS LIST ===== */}
+      {/* ═══ REQUEST CARDS ═══ */}
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-card/50 border border-white/5 rounded-xl p-3 animate-pulse">
-              <div className="h-3 bg-white/5 rounded w-2/3" />
+            <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/[0.05]" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-white/[0.05] rounded w-2/3" />
+                  <div className="h-2.5 bg-white/[0.04] rounded w-1/2" />
+                </div>
+              </div>
             </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-30" />
-          <p className="text-sm text-muted-foreground">لا توجد طلبات {filter !== "all" ? statusConfig[filter]?.label : ""}</p>
+          <p className="text-sm text-muted-foreground">لا توجد طلبات {statusConfig[activeTab]?.label || ""}</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((req, i) => (
-            <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03, duration: 0.3 }}
-              className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-xl p-3 hover:border-white/10 transition-colors">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {statusBadge(req.status)}
-                    {req.status === "rejected" && req.admin_note && (
-                      <span className="text-[9px] text-red-400/70 truncate max-w-[120px]">({req.admin_note})</span>
-                    )}
+        <div className="space-y-2.5">
+          {filtered.map((req, i) => {
+            const sc = statusConfig[req.status] || statusConfig.pending;
+            return (
+              <div key={req.id}
+                className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 hover:border-white/[0.1] transition-all duration-200 css-fade-up"
+                style={{ animationDelay: `${i * 0.03}s` }}
+              >
+                {/* Duplicate warning */}
+                {req.is_duplicate_flagged && (
+                  <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span className="text-[9px] text-amber-400 font-bold">تحذير كوينز — طلب مكرر</span>
                   </div>
-                  <p className="text-xs text-foreground truncate">
-                    <span className="font-bold">{req.user_name}</span>
-                    <span className="text-muted-foreground"> • UUID: {req.user_uuid} • </span>
-                    <span className="font-bold font-mono">${req.amount}</span>
-                    <span className="text-muted-foreground"> • {BANK_LABELS[req.bank] || req.bank}</span>
-                  </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">{req.request_code}</p>
-                </div>
-                <div className="shrink-0">
-                  {req.status === "pending" && canAct && isCurrentMonth ? (
-                    <Button size="sm" onClick={() => openDetailSheet(req)}
-                      className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-[10px] h-7 px-3 rounded-lg">
-                      معالجة
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="ghost" onClick={() => openDetailSheet(req)}
-                      className="text-muted-foreground hover:text-foreground text-[10px] h-7 px-3 rounded-lg">
-                      {req.status === "pending" ? "التفاصيل" : "عرض التفاصيل"}
-                    </Button>
-                  )}
+                )}
+
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <AvatarCircle src={req.avatar} name={req.account_name || req.user_name} size="w-10 h-10" />
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {statusBadge(req.status)}
+                        {req.user_edited && req.status === "reserved" && (
+                          <span className="text-[8px] text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-full font-bold">معدّل</span>
+                        )}
+                      </div>
+                      <p className="text-base font-black tabular-nums font-mono text-foreground">${req.amount}</p>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-foreground truncate">{req.account_name || req.user_name}</p>
+                      <p className="text-[10px] text-emerald-400 font-mono truncate">{req.user_uuid}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap text-[9px] text-muted-foreground">
+                      <span>{COUNTRY_LABELS[req.country] || req.country}</span>
+                      <span className="text-white/10">·</span>
+                      <span>{BANK_LABELS[req.bank] || req.bank}</span>
+                      {req.reference_id && (
+                        <>
+                          <span className="text-white/10">·</span>
+                          <span className="font-mono text-foreground/60">#{req.reference_id}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Reject/Reserve reason */}
+                    {req.status === "rejected" && (req.admin_note || req.reject_reason) && (
+                      <div className="flex items-start gap-1.5 mt-1">
+                        <XCircle className="w-3 h-3 text-rose-400 shrink-0 mt-0.5" />
+                        <p className="text-[9px] text-rose-400/80 leading-relaxed">{req.reject_reason || req.admin_note}</p>
+                      </div>
+                    )}
+                    {req.status === "reserved" && req.reserve_reason && (
+                      <div className="flex items-start gap-1.5 mt-1">
+                        <Lock className="w-3 h-3 text-orange-400 shrink-0 mt-0.5" />
+                        <p className="text-[9px] text-orange-400/80 leading-relaxed">{req.reserve_reason}</p>
+                      </div>
+                    )}
+
+                    {/* Process date */}
+                    {(req.status === "delivered" && req.approved_at) && (
+                      <p className="text-[9px] text-emerald-400/60 font-mono">{formatDateSA(req.approved_at)}</p>
+                    )}
+                    {(req.status === "rejected" && req.rejected_at) && (
+                      <p className="text-[9px] text-rose-400/60 font-mono">{formatDateSA(req.rejected_at)}</p>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 pt-1">
+                      {req.status === "pending" && canAct && isCurrentMonth && isSuperAdmin ? (
+                        <button onClick={() => openDetailSheet(req)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold bg-gradient-to-br from-amber-500/15 to-amber-600/10 text-amber-400 border border-amber-500/20 hover:from-amber-500/25 transition-all active:scale-95">
+                          <Eye className="w-3 h-3" /> عرض ومعالجة
+                        </button>
+                      ) : (
+                        <button onClick={() => openDetailSheet(req)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold bg-white/[0.04] text-muted-foreground border border-white/[0.06] hover:bg-white/[0.06] transition-all active:scale-95">
+                          <Eye className="w-3 h-3" /> عرض التفاصيل
+                        </button>
+                      )}
+                      {isSuperAdmin && (
+                        <button className="p-1.5 rounded-lg bg-rose-500/5 text-rose-400/40 hover:text-rose-400 hover:bg-rose-500/10 transition-all">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* ===== 4. MONTHLY SUMMARY ===== */}
+      {/* ═══ MONTHLY SUMMARY ═══ */}
       {!loading && filtered.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="bg-card/50 backdrop-blur-sm border border-white/5 rounded-2xl p-4 space-y-3">
+        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 space-y-3 css-fade-up">
           <h3 className="text-sm font-bold text-foreground tracking-tight flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-primary" /> ملخص الشهر
           </h3>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-emerald-500/5 rounded-xl p-2.5">
-              <p className="text-[10px] text-emerald-400 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> مسلّمة</p>
-              <p className="text-sm font-bold font-mono tabular-nums text-emerald-400">{filteredStats.delivered}</p>
-              <p className="text-[10px] font-semibold font-mono text-emerald-400/70">${filteredStats.deliveredAmount.toLocaleString()}</p>
+            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-2.5">
+              <p className="text-[10px] text-emerald-400 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> تحويل</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-emerald-400">{tabCounts.delivered.count}</p>
+              <p className="text-[10px] font-semibold font-mono text-emerald-400/70">${tabCounts.delivered.amount.toLocaleString()}</p>
             </div>
-            <div className="bg-rose-500/5 rounded-xl p-2.5">
-              <p className="text-[10px] text-rose-400 flex items-center justify-center gap-1"><XCircle className="w-3 h-3" /> مرفوضة</p>
-              <p className="text-sm font-bold font-mono tabular-nums text-rose-400">{filteredStats.rejected}</p>
-              <p className="text-[10px] font-semibold font-mono text-rose-400/70">${filteredStats.rejectedAmount.toLocaleString()}</p>
+            <div className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-2.5">
+              <p className="text-[10px] text-rose-400 flex items-center justify-center gap-1"><XCircle className="w-3 h-3" /> مرفوض</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-rose-400">{tabCounts.rejected.count}</p>
+              <p className="text-[10px] font-semibold font-mono text-rose-400/70">${tabCounts.rejected.amount.toLocaleString()}</p>
             </div>
-            <div className="bg-amber-500/5 rounded-xl p-2.5">
-              <p className="text-[10px] text-amber-400 flex items-center justify-center gap-1"><Clock className="w-3 h-3" /> معلقة</p>
-              <p className="text-sm font-bold font-mono tabular-nums text-amber-400">{filteredStats.pending}</p>
-              <p className="text-[10px] font-semibold font-mono text-amber-400/70">${filteredStats.pendingAmount.toLocaleString()}</p>
+            <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-2.5">
+              <p className="text-[10px] text-amber-400 flex items-center justify-center gap-1"><Clock className="w-3 h-3" /> انتظار</p>
+              <p className="text-sm font-bold font-mono tabular-nums text-amber-400">{tabCounts.pending.count}</p>
+              <p className="text-[10px] font-semibold font-mono text-amber-400/70">${tabCounts.pending.amount.toLocaleString()}</p>
             </div>
           </div>
           {countrySummary.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-[10px] text-muted-foreground font-bold">التوزيع حسب الدولة:</p>
               {countrySummary.map(([country, data]) => (
-                <div key={country} className="flex items-center justify-between bg-white/[0.03] rounded-xl px-3 py-2 text-xs">
+                <div key={country} className="flex items-center justify-between bg-white/[0.03] border border-white/[0.04] rounded-xl px-3 py-2 text-xs">
                   <span className="text-foreground">{country}</span>
                   <span className="text-muted-foreground font-mono tabular-nums">{data.count} طلب — <strong className="text-primary">${data.amount.toLocaleString()}</strong></span>
                 </div>
               ))}
             </div>
           )}
-        </motion.div>
+        </div>
       )}
 
-      {/* ===== UNIFIED DETAIL SHEET ===== */}
+      {/* ═══ DETAIL SHEET ═══ */}
       <Sheet open={!!detailReq} onOpenChange={() => setDetailReq(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
-          <SheetHeader className="pb-3 border-b border-white/5">
-            <SheetTitle className="flex items-center gap-2 text-base">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0c0f1d] border-white/[0.06]" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/[0.06]">
+            <SheetTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
               <Hash className="w-4 h-4 text-primary" /> تفاصيل الطلب
             </SheetTitle>
           </SheetHeader>
           {detailReq && (
             <div className="space-y-4 pt-4">
+              {/* Code + Status */}
+              <div className="flex items-center justify-between bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2.5">
+                <div>
+                  <p className="text-[9px] text-muted-foreground">كود التتبع</p>
+                  <p className="text-xs font-bold font-mono text-foreground">{detailReq.request_code}</p>
+                </div>
+                {statusBadge(detailReq.status)}
+              </div>
+
+              {/* Reference */}
+              {detailReq.reference_id && (
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2">
+                  <p className="text-[9px] text-muted-foreground">الرقم المرجعي</p>
+                  <p className="text-xs font-bold font-mono text-primary">#{detailReq.reference_id}</p>
+                </div>
+              )}
+
+              {/* Duplicate warning */}
+              {detailReq.is_duplicate_flagged && (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="text-[10px] text-amber-400 font-bold">تحذير كوينز — طلب مكرر محتمل</span>
+                </div>
+              )}
+
               {/* User header */}
               <div className="flex items-center gap-3">
                 <AvatarCircle src={detailAvatar || detailReq.avatar} name={detailReq.user_name || detailReq.account_name} size="w-12 h-12" />
                 <div className="flex-1">
                   <p className="text-sm font-bold text-foreground">{detailReq.user_name}</p>
-                  <p className="text-[10px] text-muted-foreground font-mono">UUID: {detailReq.user_uuid}</p>
+                  <p className="text-[10px] text-emerald-400 font-mono">UUID: {detailReq.user_uuid}</p>
                 </div>
                 <div className="text-left">
-                  {statusBadge(detailReq.status)}
-                  <p className="text-lg font-bold font-mono tabular-nums text-primary mt-1">${detailReq.amount}</p>
+                  <p className="text-xl font-black font-mono tabular-nums text-primary">${detailReq.amount}</p>
                 </div>
               </div>
 
-              {/* ━━━ Request Info ━━━ */}
+              {/* Request details */}
               <div className="space-y-2">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1">تفاصيل الطلب</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/[0.06] pb-1">تفاصيل الطلب</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <DetailCell icon={<Building2 className="w-3 h-3" />} label="البنك" value={`${BANK_LABELS[detailReq.bank] || detailReq.bank} — ${COUNTRY_LABELS[detailReq.country] || detailReq.country}`} />
                   <DetailCell icon={<User className="w-3 h-3" />} label="المستلم" value={detailReq.account_name} />
-                  <DetailCell icon={<CreditCard className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
-                  <DetailCell icon={<Phone className="w-3 h-3" />} label="واتساب" value={detailReq.whatsapp} dir="ltr" />
+                  <DetailCell icon={<DollarSign className="w-3 h-3" />} label="المبلغ" value={`$${detailReq.amount}`} />
+                  <DetailCell icon={<Building2 className="w-3 h-3" />} label="الدولة" value={COUNTRY_LABELS[detailReq.country] || detailReq.country} />
+                  <DetailCell icon={<Phone className="w-3 h-3" />} label="الهاتف" value={detailReq.whatsapp} dir="ltr" />
+                  <DetailCell icon={<CreditCard className="w-3 h-3" />} label="طريقة الدفع" value={BANK_LABELS[detailReq.bank] || detailReq.bank} />
+                  <DetailCell icon={<Hash className="w-3 h-3" />} label="رقم الحساب" value={detailReq.account_number} dir="ltr" />
                 </div>
-                <DetailCell icon={<Hash className="w-3 h-3" />} label="المرجعي" value={detailReq.reference_id ? `#${detailReq.reference_id}` : "—"} />
                 <DetailCell icon={<CalendarDays className="w-3 h-3" />} label="تاريخ الطلب" value={formatDateSA(detailReq.created_at)} />
                 {detailReq.salary_type && (
-                  <div className="bg-white/[0.03] rounded-xl px-3 py-2 text-xs flex items-center gap-2">
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl px-3 py-2 text-xs flex items-center gap-2">
                     <span className="text-[10px] text-muted-foreground">نوع الراتب:</span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${detailReq.salary_type === "agency" ? "bg-amber-500/10 text-amber-400" : "bg-emerald-500/10 text-emerald-400"}`}>
                       {detailReq.salary_type === "agency" ? "وكالة" : "مضيف"}
@@ -624,7 +830,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 )}
               </div>
 
-              {/* ━━━ Salary Report (loaded async) ━━━ */}
+              {/* Salary report */}
               {detailReportLoading ? (
                 <div className="flex items-center justify-center py-6 gap-2">
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -632,9 +838,8 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 </div>
               ) : detailReport && (
                 <>
-                  {/* Support details */}
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1 flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/[0.06] pb-1 flex items-center gap-1.5">
                       <BarChart3 className="w-3.5 h-3.5 text-primary" /> الدعم والهدايا
                     </p>
                     <div className="grid grid-cols-2 gap-2">
@@ -644,49 +849,48 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         { label: "مستوى الإرسال", value: detailReport.sender_level || 0 },
                         { label: "مستوى الاستقبال", value: detailReport.receiver_level || 0 },
                       ].map((item, idx) => (
-                        <div key={idx} className="bg-white/[0.03] rounded-lg px-3 py-2 flex justify-between items-center">
+                        <div key={idx} className="bg-white/[0.03] border border-white/[0.04] rounded-lg px-3 py-2 flex justify-between items-center">
                           <span className="text-[10px] text-muted-foreground">{item.label}</span>
                           <span className="text-xs font-bold font-mono text-foreground">{item.value.toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
                     {(detailReport.charger_level || 0) > 0 && (
-                      <div className="bg-white/[0.03] rounded-lg px-3 py-2 flex justify-between items-center">
+                      <div className="bg-white/[0.03] border border-white/[0.04] rounded-lg px-3 py-2 flex justify-between items-center">
                         <span className="text-[10px] text-muted-foreground">مستوى الشحن</span>
                         <span className="text-xs font-bold font-mono text-foreground">{detailReport.charger_level}</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Salary report */}
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1 flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/[0.06] pb-1 flex items-center gap-1.5">
                       <DollarSign className="w-3.5 h-3.5 text-primary" /> تقرير الراتب
                     </p>
                     {detailReport.salary !== undefined ? (
                       <div className="space-y-1.5">
-                        <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <div className="flex justify-between bg-white/[0.03] border border-white/[0.04] rounded-lg px-3 py-2">
                           <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
                           <span className="text-xs font-bold font-mono text-foreground">${detailReport.salary?.toLocaleString() || 0}</span>
                         </div>
                         {(detailReport.deduction || 0) > 0 && (
-                          <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
+                          <div className="flex justify-between bg-rose-500/5 border border-rose-500/10 rounded-lg px-3 py-2">
                             <span className="text-[10px] text-rose-400">المقتطع</span>
                             <span className="text-xs font-bold font-mono text-rose-400">-${detailReport.deduction}</span>
                           </div>
                         )}
-                        <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                        <div className="flex justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-3 py-2">
                           <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
                           <span className="text-xs font-bold font-mono text-emerald-400">${detailReport.net?.toLocaleString() || 0}</span>
                         </div>
                         {detailReport.agency_salary > 0 && (
-                          <div className="flex justify-between bg-amber-500/5 rounded-lg px-3 py-2">
+                          <div className="flex justify-between bg-amber-500/5 border border-amber-500/10 rounded-lg px-3 py-2">
                             <span className="text-[10px] text-amber-400">عمولة الوكالة</span>
                             <span className="text-xs font-bold font-mono text-amber-400">${detailReport.agency_salary}</span>
                           </div>
                         )}
                         {detailReport.agency_id > 0 && (
-                          <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                          <div className="flex justify-between bg-white/[0.03] border border-white/[0.04] rounded-lg px-3 py-2">
                             <span className="text-[10px] text-muted-foreground">الوكالة</span>
                             <span className="text-xs font-bold text-foreground">#{detailReport.agency_id}</span>
                           </div>
@@ -694,17 +898,17 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                       </div>
                     ) : detailReport.host_salary ? (
                       <div className="space-y-1.5">
-                        <div className="flex justify-between bg-white/[0.03] rounded-lg px-3 py-2">
+                        <div className="flex justify-between bg-white/[0.03] border border-white/[0.04] rounded-lg px-3 py-2">
                           <span className="text-[10px] text-muted-foreground">الراتب الأصلي</span>
                           <span className="text-xs font-bold font-mono text-foreground">${detailReport.host_salary.salary?.toLocaleString() || 0}</span>
                         </div>
                         {(detailReport.host_salary.deduction || 0) > 0 && (
-                          <div className="flex justify-between bg-rose-500/5 rounded-lg px-3 py-2">
+                          <div className="flex justify-between bg-rose-500/5 border border-rose-500/10 rounded-lg px-3 py-2">
                             <span className="text-[10px] text-rose-400">المقتطع</span>
                             <span className="text-xs font-bold font-mono text-rose-400">-${detailReport.host_salary.deduction}</span>
                           </div>
                         )}
-                        <div className="flex justify-between bg-emerald-500/5 rounded-lg px-3 py-2">
+                        <div className="flex justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-3 py-2">
                           <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
                           <span className="text-xs font-bold font-mono text-emerald-400">${detailReport.host_salary.net?.toLocaleString() || 0}</span>
                         </div>
@@ -712,16 +916,16 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                     ) : null}
                   </div>
 
-                  {/* Security checks */}
+                  {/* Security */}
                   <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1 flex items-center gap-1.5">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/[0.06] pb-1 flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-primary" /> حالة الأمان
                     </p>
                     {getUserSecurityChecks(detailReport, detailReq).map((check, idx) => (
-                      <div key={idx} className={`flex items-center gap-2 text-xs p-2 rounded-lg ${
-                        check.status === "safe" ? "bg-emerald-500/5 text-emerald-400" :
-                        check.status === "danger" ? "bg-rose-500/5 text-rose-400" :
-                        "bg-amber-500/5 text-amber-400"
+                      <div key={idx} className={`flex items-center gap-2 text-xs p-2 rounded-lg border ${
+                        check.status === "safe" ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-400" :
+                        check.status === "danger" ? "bg-rose-500/5 border-rose-500/10 text-rose-400" :
+                        "bg-amber-500/5 border-amber-500/10 text-amber-400"
                       }`}>
                         {check.status === "safe" && <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
                         {check.status === "danger" && <ShieldAlert className="w-3.5 h-3.5 shrink-0" />}
@@ -733,22 +937,22 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 </>
               )}
 
-              {/* ━━━ Actions ━━━ */}
-              {canAct && isCurrentMonth && detailReq.status === "pending" && (
-                <div className="flex gap-2 pt-2 border-t border-white/5">
+              {/* Actions */}
+              {canAct && isCurrentMonth && detailReq.status === "pending" && isSuperAdmin && (
+                <div className="flex gap-2 pt-2 border-t border-white/[0.06]">
                   <Button onClick={() => { setApproveSheet(detailReq); setDetailReq(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote(""); }}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
-                    <CheckCircle className="w-4 h-4 ml-1.5" /> قبول + إيصال
+                    className="flex-1 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
+                    <CheckCircle className="w-4 h-4 ml-1.5" /> تأكيد الدفع
                   </Button>
                   <button onClick={() => { setRejectSheet(detailReq); setDetailReq(null); setRejectReason(""); setRejectImage(null); }}
-                    className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-medium text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
-                    <XCircle className="w-4 h-4" /> رفض + سبب
+                    className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                    <XCircle className="w-4 h-4" /> رفض
                   </button>
                 </div>
               )}
               {!isCurrentMonth && detailReq.status === "pending" && (
-                <div className="bg-muted/20 rounded-xl p-2.5 text-center text-[10px] text-muted-foreground">
-                  📁 أرشيف — لا يمكن التعديل على طلبات الأشهر السابقة
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-2.5 text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5" /> أرشيف — لا يمكن التعديل على طلبات الأشهر السابقة
                 </div>
               )}
             </div>
@@ -756,11 +960,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         </SheetContent>
       </Sheet>
 
-      {/* ===== APPROVE SHEET ===== */}
+      {/* ═══ APPROVE SHEET ═══ */}
       <Sheet open={!!approveSheet} onOpenChange={() => setApproveSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
-          <SheetHeader className="pb-3 border-b border-white/5">
-            <SheetTitle className="flex items-center gap-2 text-base">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0c0f1d] border-white/[0.06]" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/[0.06]">
+            <SheetTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
               <CheckCircle className="w-5 h-5 text-emerald-400" /> تأكيد تسليم الراتب
             </SheetTitle>
           </SheetHeader>
@@ -768,7 +972,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
             {approveSheet && (
               <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-3 space-y-1.5 text-xs">
                 <p className="flex items-center gap-1.5"><User className="w-3 h-3 text-emerald-400" /> <strong>{approveSheet.user_name}</strong> — <strong className="text-primary">${approveSheet.amount}</strong></p>
-                <p className="flex items-center gap-1.5"><Building2 className="w-3 h-3 text-emerald-400" /> {approveSheet.bank} — {approveSheet.account_number}</p>
+                <p className="flex items-center gap-1.5"><Building2 className="w-3 h-3 text-emerald-400" /> {BANK_LABELS[approveSheet.bank] || approveSheet.bank} — {approveSheet.account_number}</p>
                 <p className="flex items-center gap-1.5"><Phone className="w-3 h-3 text-emerald-400" /> {approveSheet.whatsapp}</p>
               </div>
             )}
@@ -785,19 +989,27 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                     if (f) { setReceiptFile(f); setReceiptPreview(URL.createObjectURL(f)); }
                   }} />
               </label>
-              {receiptPreview && <img src={receiptPreview} alt="receipt" className="w-full h-40 object-cover rounded-xl border border-white/5" />}
+              {receiptPreview && <img src={receiptPreview} alt="receipt" className="w-full h-40 object-cover rounded-xl border border-white/[0.06]" />}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" /> ملاحظات (اختياري)
               </label>
               <Textarea value={approveNote} onChange={e => setApproveNote(e.target.value)}
-                placeholder="ملاحظات إضافية..." className="bg-white/5 border-white/10 min-h-[60px] rounded-xl" />
+                placeholder="ملاحظات إضافية..." className="bg-white/[0.04] border-white/[0.08] min-h-[60px] rounded-xl" />
             </div>
+
+            {approveSheet?.is_duplicate_flagged && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 flex items-center gap-2 text-[10px] text-amber-400">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                تحذير: هذا الطلب مشبوه بالتكرار — تأكد قبل التحويل
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setApproveSheet(null)} className="flex-1 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all duration-200">إلغاء</button>
+              <button onClick={() => setApproveSheet(null)} className="flex-1 h-12 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.08] text-sm transition-all duration-200 text-foreground">إلغاء</button>
               <Button onClick={handleApprove} disabled={actionLoading || !receiptFile}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all">
+                className="flex-1 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-700 text-white font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all">
                 {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle className="w-4 h-4 ml-1.5" /> تأكيد التسليم</>}
               </Button>
             </div>
@@ -805,11 +1017,11 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         </SheetContent>
       </Sheet>
 
-      {/* ===== REJECT SHEET ===== */}
+      {/* ═══ REJECT SHEET ═══ */}
       <Sheet open={!!rejectSheet} onOpenChange={() => setRejectSheet(null)}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0f1117] border-white/5" dir="rtl">
-          <SheetHeader className="pb-3 border-b border-white/5">
-            <SheetTitle className="flex items-center gap-2 text-base">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-[#0c0f1d] border-white/[0.06]" dir="rtl">
+          <SheetHeader className="pb-3 border-b border-white/[0.06]">
+            <SheetTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
               <XCircle className="w-5 h-5 text-rose-400" /> رفض طلب السحب
             </SheetTitle>
           </SheetHeader>
@@ -825,7 +1037,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" /> سبب الرفض (إجباري) *
               </label>
               <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
-                placeholder="مثال: اسم المستلم غير مطابق..." className="bg-white/5 border-white/10 min-h-[80px] rounded-xl" />
+                placeholder="مثال: اسم المستلم غير مطابق..." className="bg-white/[0.04] border-white/[0.08] min-h-[80px] rounded-xl" />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
@@ -838,12 +1050,12 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                   onChange={e => { if (e.target.files?.[0]) setRejectImage(e.target.files[0]); }} />
               </label>
             </div>
-            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-2.5 flex items-center gap-2 text-[10px] text-amber-400">
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 flex items-center gap-2 text-[10px] text-amber-400">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               سيتم إرجاع المبلغ لحساب المستخدم تلقائياً
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setRejectSheet(null)} className="flex-1 h-12 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm transition-all duration-200">إلغاء</button>
+              <button onClick={() => setRejectSheet(null)} className="flex-1 h-12 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.08] text-sm transition-all duration-200 text-foreground">إلغاء</button>
               <button onClick={handleReject} disabled={actionLoading || !rejectReason.trim()}
                 className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-sm">
                 {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><XCircle className="w-4 h-4" /> تأكيد الرفض</>}
@@ -853,9 +1065,9 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         </SheetContent>
       </Sheet>
 
-      {/* ===== IMAGE PREVIEW ===== */}
+      {/* ═══ IMAGE PREVIEW ═══ */}
       <Dialog open={!!imagePreview} onOpenChange={() => setImagePreview(null)}>
-        <DialogContent className="max-w-[90vw] max-h-[90vh] p-1 rounded-2xl bg-black/90 border-white/5">
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-1 rounded-2xl bg-black/90 border-white/[0.06]">
           {imagePreview && <img src={imagePreview} alt="preview" className="w-full h-full object-contain rounded-xl" />}
         </DialogContent>
       </Dialog>
@@ -872,7 +1084,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 };
 
 const DetailCell: React.FC<{ icon: React.ReactNode; label: string; value: string; dir?: string }> = ({ icon, label, value, dir }) => (
-  <div className="bg-white/[0.03] rounded-xl p-2.5 text-xs">
+  <div className="bg-white/[0.03] border border-white/[0.04] rounded-xl p-2.5 text-xs">
     <span className="text-muted-foreground text-[10px] flex items-center gap-1 mb-0.5">{icon} {label}</span>
     <span className="font-bold text-foreground" dir={dir}>{value}</span>
   </div>
