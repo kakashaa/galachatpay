@@ -869,190 +869,195 @@ const AdminHomeView: React.FC<Props> = ({
   ].filter(Boolean) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
   return (
-    <div className="min-h-screen pb-32" dir="rtl">
-      <div className="max-w-[448px] mx-auto">
+    <div className="admin-theme relative min-h-screen overflow-hidden pb-32" dir="rtl">
+      <div className="pointer-events-none absolute -top-20 right-[-70px] h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+      <div className="pointer-events-none absolute top-72 left-[-90px] h-56 w-56 rounded-full bg-secondary/15 blur-3xl" />
 
-        {/* ═══ 1. HEADER — same style as user dashboard ═══ */}
-        <header className="flex justify-between items-center px-4 pt-6 pb-3">
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-destructive/10 border border-destructive/20 active:bg-destructive/20 transition-colors"
-            >
-              <LogOut className="w-3.5 h-3.5 text-destructive" />
-            </button>
-          )}
+      <div className="relative mx-auto max-w-[448px] px-3 pt-4">
+        <header className="rounded-3xl border border-border/70 bg-card/80 px-3 py-2.5 backdrop-blur-xl">
+          <div className="flex items-center justify-between">
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="flex h-9 w-9 items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/10 text-destructive"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
 
-          <h1 className="text-base font-black gradient-text">لوحة التحكم</h1>
+            <div className="text-center">
+              <h1 className="text-sm font-black text-foreground">لوحة التحكم</h1>
+              <p className="text-[10px] text-muted-foreground">Admin Control Center</p>
+            </div>
 
-          <div className="flex items-center gap-1.5 relative">
-            <button
-              onClick={() => navigate("/admin/chat")}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-            <button
-              onClick={() => setShowNotifPanel(prev => !prev)}
-              className="relative w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
-            >
-              <Bell className="w-3.5 h-3.5 text-muted-foreground" />
-              {totalBadge > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-[9px] font-black text-destructive-foreground flex items-center justify-center">
-                  {totalBadge > 99 ? '99+' : totalBadge}
-                </span>
-              )}
-            </button>
+            <div className="relative flex items-center gap-1.5">
+              <button
+                onClick={() => navigate('/admin/chat')}
+                className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </button>
 
-            {/* Notification dropdown */}
-            <AnimatePresence>
-              {showNotifPanel && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[90]"
-                    onClick={() => setShowNotifPanel(false)}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.96 }}
-                    className="absolute left-0 top-10 z-[100] w-72 rounded-2xl overflow-hidden bg-card border border-border"
-                    dir="rtl"
-                    style={{ boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}
-                  >
-                    <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-foreground">المهام المعلقة</span>
-                      <span className="text-[9px] text-muted-foreground tabular-nums">{totalBadge} عنصر</span>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {[
-                        { label: "طلبات VIP", count: vipBadge, route: "/admin/vip", Icon: Crown, color: "text-amber-500" },
-                        { label: "إدارة الحظر", count: banBadge, route: "/admin/ban", Icon: ShieldAlert, color: "text-destructive" },
-                        { label: "طلبات الرواتب", count: salaryBadge, route: "/admin/salary", Icon: Wallet, color: "text-primary" },
-                        { label: "الطلبات العامة", count: requestsBadge, route: "/admin/requests", Icon: Inbox, color: "text-blue-500" },
-                        { label: "الدعم الفني", count: supportBadge, route: "/admin/support", Icon: Headphones, color: "text-cyan-500" },
-                      ].filter(item => item.count > 0).map(item => (
-                        <button
-                          key={item.route}
-                          onClick={() => { setShowNotifPanel(false); navigate(item.route); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0"
-                        >
-                          <item.Icon size={14} className={item.color} />
-                          <span className="text-[11px] font-bold text-foreground flex-1 text-right">{item.label}</span>
-                          <span className="h-5 min-w-5 rounded-md text-[9px] font-bold flex items-center justify-center px-1.5 bg-destructive text-white">
-                            {item.count}
-                          </span>
-                        </button>
-                      ))}
-                      {totalBadge === 0 && (
-                        <div className="px-4 py-6 text-center">
-                          <CheckCircle className="w-5 h-5 text-primary mx-auto mb-1.5" />
-                          <p className="text-[11px] text-muted-foreground">لا توجد مهام معلقة</p>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
+              <button
+                onClick={() => setShowNotifPanel((prev) => !prev)}
+                className="relative flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground"
+              >
+                <Bell className="h-4 w-4" />
+                {totalBadge > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground">
+                    {totalBadge > 99 ? '99+' : totalBadge}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showNotifPanel && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-[90]"
+                      onClick={() => setShowNotifPanel(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      className="absolute left-0 top-11 z-[100] w-72 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+                      dir="rtl"
+                    >
+                      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+                        <span className="text-[11px] font-bold text-foreground">المهام المعلقة</span>
+                        <span className="text-[9px] tabular-nums text-muted-foreground">{totalBadge} عنصر</span>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {[
+                          { label: 'طلبات VIP', count: vipBadge, route: '/admin/vip', Icon: Crown },
+                          { label: 'إدارة الحظر', count: banBadge, route: '/admin/ban', Icon: ShieldAlert },
+                          { label: 'طلبات الرواتب', count: salaryBadge, route: '/admin/salary', Icon: Wallet },
+                          { label: 'الطلبات العامة', count: requestsBadge, route: '/admin/requests', Icon: Inbox },
+                          { label: 'الدعم الفني', count: supportBadge, route: '/admin/support', Icon: Headphones },
+                        ]
+                          .filter((item) => item.count > 0)
+                          .map((item) => (
+                            <button
+                              key={item.route}
+                              onClick={() => {
+                                setShowNotifPanel(false);
+                                navigate(item.route);
+                              }}
+                              className="flex w-full items-center gap-3 border-b border-border/40 px-4 py-2.5 text-right hover:bg-muted/50"
+                            >
+                              <item.Icon size={14} className="text-primary" />
+                              <span className="flex-1 text-[11px] font-bold text-foreground">{item.label}</span>
+                              <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-destructive px-1.5 text-[9px] font-bold text-destructive-foreground">
+                                {item.count}
+                              </span>
+                            </button>
+                          ))}
+                        {totalBadge === 0 && (
+                          <div className="px-4 py-6 text-center">
+                            <CheckCircle className="mx-auto mb-1.5 h-5 w-5 text-primary" />
+                            <p className="text-[11px] text-muted-foreground">لا توجد مهام معلقة</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
-        {/* ═══ MAIN CONTENT ═══ */}
-        <main className="px-3 space-y-4">
-
-          {/* Admin Profile Card — like UserProfileCard */}
-          <div className="rounded-2xl overflow-hidden border border-border/40"
-            style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)' }}>
-            <div className="p-3.5 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-[14px] bg-primary/15 border border-primary/20 flex items-center justify-center flex-shrink-0">
-                <span className="text-lg font-bold text-primary">
-                  {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
-                </span>
+        <main className="mt-3 space-y-3">
+          <section className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-3 backdrop-blur-xl">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-lg font-black text-primary">
+                {adminDisplayName?.charAt(0)?.toUpperCase() || 'A'}
               </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-bold text-foreground truncate">{adminDisplayName}</h2>
-                <p className="text-[10px] text-muted-foreground/70">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</p>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-sm font-extrabold text-foreground">{adminDisplayName}</h2>
+                <p className="text-[10px] text-muted-foreground">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</p>
               </div>
               {isOwner && (
                 <button
-                  onClick={() => navigate("/admin/settings")}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:bg-white/10 transition-colors"
+                  onClick={() => navigate('/admin/settings')}
+                  className="flex h-9 w-9 items-center justify-center rounded-2xl border border-border bg-background/60 text-muted-foreground"
                 >
-                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Settings className="h-4 w-4" />
                 </button>
               )}
             </div>
 
-            {/* KPI row inside profile card */}
-            <div className="px-3.5 pb-3.5 grid grid-cols-3 gap-1.5">
-              {[
-                { label: "معلّق", value: stats.pending, color: "text-amber-500", bg: "bg-amber-500/8" },
-                { label: "مقبول", value: stats.approved, color: "text-emerald-500", bg: "bg-emerald-500/8" },
-                { label: "مرفوض", value: stats.rejected, color: "text-red-500", bg: "bg-red-500/8" },
-              ].map((kpi) => (
-                <div key={kpi.label} className={`text-center py-2 rounded-xl ${kpi.bg} border border-border/20`}>
-                  <p className={`text-sm font-bold tabular-nums font-mono ${kpi.color}`}>
-                    <AnimatedNumber value={kpi.value} />
-                  </p>
-                  <p className="text-[8px] text-muted-foreground/60 font-medium mt-0.5">{kpi.label}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-center">
+                <p className="text-sm font-black tabular-nums text-primary">
+                  <AnimatedNumber value={stats.approved} />
+                </p>
+                <p className="text-[9px] text-muted-foreground">مقبول</p>
+              </div>
+              <div className="rounded-xl border border-secondary/30 bg-secondary/15 p-2 text-center">
+                <p className="text-sm font-black tabular-nums text-secondary">
+                  <AnimatedNumber value={stats.pending} />
+                </p>
+                <p className="text-[9px] text-muted-foreground">معلّق</p>
+              </div>
+              <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-2 text-center">
+                <p className="text-sm font-black tabular-nums text-destructive">
+                  <AnimatedNumber value={stats.rejected} />
+                </p>
+                <p className="text-[9px] text-muted-foreground">مرفوض</p>
+              </div>
             </div>
 
-            {/* Shift timer inside profile */}
             {(shiftStart || shiftEnd) && (
-              <div className="px-3.5 pb-3">
-                <div className="flex items-center justify-between text-[10px]">
-                  <div className="flex items-center gap-1.5">
-                    <Clock size={10} className="text-amber-500" />
-                    <span className="text-muted-foreground/70">الوردية</span>
-                    <span className="text-muted-foreground/50 tabular-nums font-mono">{shiftStart || '—'} → {shiftEnd || '—'}</span>
-                  </div>
-                </div>
+              <div className="mt-2 rounded-xl border border-border/60 bg-background/50 px-2 py-1.5 text-[10px] text-muted-foreground">
+                الوردية: <span className="tabular-nums font-bold text-foreground">{shiftStart || '—'} → {shiftEnd || '—'}</span>
               </div>
             )}
-          </div>
+          </section>
 
-          {/* ═══ SEARCH BAR ═══ */}
-          <div className="relative flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none" />
-              <input
-                type="text"
-                value={searchUuid}
-                onChange={(e) => setSearchUuid(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && searchUser()}
-                placeholder="ابحث عن مستخدم، UUID، طلب..."
-                className="w-full h-10 rounded-[14px] pr-9 pl-3 text-[11px] placeholder:text-muted-foreground/40 focus:outline-none transition-all tabular-nums"
-                style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}
-                dir="rtl"
-              />
-              {searchUuid && (
-                <button
-                  onClick={() => { setSearchUuid(""); setSearchResult(null); }}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X size={11} />
-                </button>
-              )}
+          <section className="rounded-3xl border border-border/70 bg-card/80 p-2 backdrop-blur-xl">
+            <div className="flex items-center gap-2">
+              <button className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+                <Search size={16} />
+              </button>
+
+              <div className="relative flex-1">
+                <Search size={13} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchUuid}
+                  onChange={(e) => setSearchUuid(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchUser()}
+                  placeholder="ابحث عن مستخدم، UUID، تذكرة..."
+                  className="h-10 w-full rounded-2xl border border-input bg-background/60 pr-9 pl-8 text-[11px] tabular-nums outline-none focus:ring-2 focus:ring-ring"
+                  dir="rtl"
+                />
+                {searchUuid && (
+                  <button
+                    onClick={() => {
+                      setSearchUuid('');
+                      setSearchResult(null);
+                    }}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => searchUser()}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground"
+              >
+                {searching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+              </button>
             </div>
-            <motion.button
-              onClick={() => searchUser()}
-              whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 rounded-[14px] flex items-center justify-center bg-primary flex-shrink-0 active:scale-95 transition-transform"
-            >
-              {searching ? <Loader2 size={14} className="text-primary-foreground animate-spin" /> : <Search size={14} className="text-primary-foreground" />}
-            </motion.button>
-          </div>
+          </section>
 
-          {/* ═══ Search Result ═══ */}
           <AnimatePresence>
             {searchResult && (
               <UserIdCard
@@ -1066,66 +1071,59 @@ const AdminHomeView: React.FC<Props> = ({
 
           {!searchResult && (
             <>
-              {/* ═══ SMART ALERTS ═══ */}
               {smartAlerts.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2.5 pr-1">
-                    <div className="w-1 h-3.5 rounded-full bg-destructive" />
-                    <h3 className="text-xs font-black text-foreground">تنبيهات</h3>
-                    <span className="text-[9px] text-muted-foreground/60 tabular-nums">({smartAlerts.length})</span>
+                <section className="rounded-3xl border border-border/70 bg-card/80 p-3 backdrop-blur-xl">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-xs font-black text-foreground">التنبيهات الذكية</h3>
+                    <span className="text-[9px] tabular-nums text-muted-foreground">{smartAlerts.length}</span>
                   </div>
                   <div className="space-y-1.5">
                     {smartAlerts.map((alert, i) => (
                       <AlertItem key={i} {...alert} />
                     ))}
                   </div>
-                </div>
+                </section>
               )}
 
-              {/* ═══ Owner Delay Monitor ═══ */}
               {isOwner && <DelayMonitor />}
 
-              {/* ═══ SERVICES — same grid style as user dashboard MenuGrid ═══ */}
-              <div>
-                <div className="flex items-center gap-2 mb-3 pr-1">
-                  <div className="w-1 h-3.5 rounded-full gold-gradient" />
-                  <h3 className="text-xs font-black text-foreground">الخدمات</h3>
-                </div>
-
-                {/* All services in one clean grid */}
-                <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+              <section className="rounded-3xl border border-border/70 bg-card/80 p-3 backdrop-blur-xl">
+                <h3 className="mb-2 text-xs font-black text-foreground">الخدمات</h3>
+                <div className="grid grid-cols-2 gap-2">
                   {visible.map((service) => {
                     const Icon = service.icon;
+                    const tone = service.group === 'security'
+                      ? 'border-destructive/20 bg-destructive/10 text-destructive'
+                      : service.group === 'finance'
+                        ? 'border-primary/20 bg-primary/10 text-primary'
+                        : service.group === 'operations'
+                          ? 'border-secondary/25 bg-secondary/15 text-secondary'
+                          : 'border-border bg-background/55 text-foreground';
+
                     return (
                       <motion.button
                         key={service.route + service.label}
-                        whileTap={{ scale: 0.9 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => navigate(service.route)}
-                        className="flex flex-col items-center gap-1 relative active:-translate-y-0.5 transition-transform duration-150"
+                        className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/45 px-2.5 py-2 text-right"
                       >
-                        <div
-                          className="w-12 h-12 rounded-[14px] flex items-center justify-center relative"
-                          style={{
-                            background: `${service.color}12`,
-                            border: `1px solid rgba(255,255,255,0.06)`,
-                          }}
-                        >
-                          <Icon size={20} style={{ color: service.color }} />
-                          {service.badge > 0 && (
-                            <span
-                              className="absolute -top-1.5 -left-1.5 h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 text-white bg-destructive"
-                              style={{ border: '2px solid hsl(var(--background))' }}
-                            >
-                              {service.badge > 99 ? '99+' : service.badge}
-                            </span>
-                          )}
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${tone}`}>
+                          <Icon size={15} />
                         </div>
-                        <span className="text-[9px] font-bold text-muted-foreground leading-tight text-center">{service.label}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[11px] font-bold text-foreground">{service.label}</p>
+                          <p className="text-[9px] text-muted-foreground">{service.group === 'security' ? 'حماية' : service.group === 'finance' ? 'مالية' : service.group === 'operations' ? 'تشغيل' : 'عام'}</p>
+                        </div>
+                        {service.badge > 0 && (
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[8px] font-black text-destructive-foreground">
+                            {service.badge > 99 ? '99+' : service.badge}
+                          </span>
+                        )}
                       </motion.button>
                     );
                   })}
                 </div>
-              </div>
+              </section>
             </>
           )}
         </main>
