@@ -207,8 +207,8 @@ const AdminDashboardPage: React.FC = () => {
     <>
     <div
       ref={scrollContainerRef}
-      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative admin-theme"
-      style={{ background: "hsl(240 10% 3.9%)", overflow: 'hidden auto' }}
+      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative admin-theme premium-bg"
+      style={{ overflow: 'hidden auto' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -230,8 +230,8 @@ const AdminDashboardPage: React.FC = () => {
 
       {/* Background */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-0 w-64 h-64 bg-primary/5 rounded-full" />
-        <div className="absolute bottom-0 right-0 w-64 h-64 bg-accent/5 rounded-full" />
+        <div className="absolute top-0 left-0 w-64 h-64 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.05)' }} />
+        <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.03)' }} />
       </div>
 
       <div className="relative z-10 flex-1 overflow-y-auto min-h-0">
