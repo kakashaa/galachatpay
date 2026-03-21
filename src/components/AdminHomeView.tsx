@@ -360,6 +360,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           iconColor="#ef4444"
         >
           <BanInlineForm user={user} onDone={() => { setActiveAction(null); onRefresh(user.uuid); }} />
+        </ActionDialog>
 
         {/* Salary Reset Dialog */}
         <ActionDialog
