@@ -185,14 +185,8 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({
     setLoading(false);
   }, [uuid, section, filter, salaryData]);
 
-  // Only fetch on mount and when section changes — NOT on filter change (no auto-refresh)
-  const [initialLoad, setInitialLoad] = useState(true);
-  useEffect(() => {
-    if (initialLoad) {
-      fetchData();
-      setInitialLoad(false);
-    }
-  }, [initialLoad, fetchData]);
+  // Fetch on mount only — filter changes trigger via onSearch callback (no polling)
+  useEffect(() => { fetchData(); }, [uuid, section]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <motion.div
