@@ -486,8 +486,8 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           <div className="grid grid-cols-4 gap-2 relative z-[1]" dir="rtl">
             {([
               { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
-              { key: 'support' as const, label: 'الكاريزما', value: user.receiver_level ?? 0, icon: <Sparkles size={22} className="text-pink-500" /> },
-              { key: 'supporter' as const, label: 'الداعم', value: user.sender_level ?? 0, icon: <Crown size={22} className="text-amber-500" /> },
+              { key: 'support' as const, label: 'الكاريزما', value: user._recv_total ? `${(user._recv_total / 1000000).toFixed(1)}M` : (user.receiver_level ?? 0), icon: <Sparkles size={22} className="text-pink-500" /> },
+              { key: 'supporter' as const, label: 'الداعم', value: user._sent_total ? `${(user._sent_total / 1000000).toFixed(1)}M` : (user.sender_level ?? 0), icon: <Crown size={22} className="text-amber-500" /> },
               { key: 'salary' as const, label: 'الراتب', value: `$${user.net_salary ?? user.salary ?? 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
             ] as const).map((item) => {
               const isActive = expandedTile === item.key;
@@ -503,6 +503,13 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                   <p className="text-[9px] font-bold mb-1 text-gray-600">{item.label}</p>
                   <div className="flex justify-center mb-1">{item.icon}</div>
                   <p className="text-base font-black tabular-nums font-mono text-gray-800">{item.value}</p>
+                  {/* Show USD below for gift tiles */}
+                  {item.key === 'support' && user._recv_usd > 0 && (
+                    <p className="text-[8px] text-gray-500 font-mono">${user._recv_usd.toLocaleString()}</p>
+                  )}
+                  {item.key === 'supporter' && user._sent_usd > 0 && (
+                    <p className="text-[8px] text-gray-500 font-mono">${user._sent_usd.toLocaleString()}</p>
+                  )}
                 </button>
               );
             })}
