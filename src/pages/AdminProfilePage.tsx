@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft, MessageCircle, Grid3X3, Clock, Heart, Eye, Plus,
-  Image, Video, Type, X, Upload, Star, Send, Loader2, Trash2,
+  MessageCircle, Grid3X3, Clock, Heart, Eye, Plus,
+  Image, Video, Type, X, Upload, Star, Send, Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
@@ -288,7 +287,7 @@ const AdminProfilePage = () => {
   }, {});
 
   return (
-    <AdminPageLayout title="الملف الشخصي" showBackButton>
+    <AdminPageLayout title="الملف الشخصي">
       <div className="px-4 space-y-4 pb-8">
 
         {/* ─── Profile Header ─── */}
