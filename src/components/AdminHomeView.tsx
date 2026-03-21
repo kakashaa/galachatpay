@@ -612,7 +612,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   );
 };
 
-/* ─── Delay Monitor (Owner only) ───
+/* ─── Delay Monitor (Owner only) ─── */
 const DelayMonitor: React.FC = () => {
   const [alerts, setAlerts] = useState<DelayAlert[]>([]);
 
