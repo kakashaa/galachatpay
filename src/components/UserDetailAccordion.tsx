@@ -51,7 +51,7 @@ async function fetchCharges(uuid: string, start: string, end: string) {
 }
 
 /* ─── Filter Pills ─── */
-const FilterPills: React.FC<{ filter: DateFilter; onChange: (f: DateFilter) => void }> = ({ filter, onChange }) => {
+const FilterPills: React.FC<{ filter: DateFilter; onChange: (f: DateFilter) => void; onSearch: () => void }> = ({ filter, onChange, onSearch }) => {
   const options: { id: DateFilter['range']; label: string }[] = [
     { id: 'month', label: 'الشهر' },
     { id: 'today', label: 'اليوم' },
@@ -64,7 +64,7 @@ const FilterPills: React.FC<{ filter: DateFilter; onChange: (f: DateFilter) => v
     <div className="space-y-2">
       <div className="flex gap-1 flex-wrap" dir="rtl">
         {options.map((o) => (
-          <button key={o.id} onClick={() => onChange({ ...filter, range: o.id })}
+          <button key={o.id} onClick={() => { onChange({ ...filter, range: o.id }); if (o.id !== 'custom') setTimeout(onSearch, 0); }}
             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
               filter.range === o.id
                 ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
@@ -84,9 +84,9 @@ const FilterPills: React.FC<{ filter: DateFilter; onChange: (f: DateFilter) => v
           <input type="date" value={filter.customTo}
             onChange={e => onChange({ ...filter, customTo: e.target.value })}
             className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-[10px] text-white/70" />
-          <button onClick={() => onChange({ ...filter })}
+          <button onClick={onSearch}
             className="px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20">
-            عرض
+            بحث
           </button>
         </div>
       )}
@@ -185,7 +185,8 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({
     setLoading(false);
   }, [uuid, section, filter, salaryData]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // Fetch on mount only — filter changes trigger via onSearch callback (no polling)
+  useEffect(() => { fetchData(); }, [uuid, section]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <motion.div
@@ -209,7 +210,7 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({
         </div>
 
         {/* Date Filter (not for salary) */}
-        {section !== 'salary' && <FilterPills filter={filter} onChange={setFilter} />}
+        {section !== 'salary' && <FilterPills filter={filter} onChange={setFilter} onSearch={fetchData} />}
 
         {/* Content */}
         {loading ? (
@@ -280,12 +281,10 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({
                         </>
                       ) : (
                         <>
-                          <th className="py-1.5 px-1 text-right font-bold text-white/30">التاريخ</th>
+                          <th className="py-1.5 px-1 text-right font-bold text-white/30">المرسل</th>
+                          <th className="py-1.5 px-1 text-right font-bold text-white/30">المستلم</th>
                           <th className="py-1.5 px-1 text-right font-bold text-white/30">الهدية</th>
                           <th className="py-1.5 px-1 text-right font-bold text-white/30">السعر</th>
-                          <th className="py-1.5 px-1 text-right font-bold text-white/30">
-                            {section === 'supporter' ? 'المستلم' : 'الداعم'}
-                          </th>
                         </>
                       )}
                     </tr>
@@ -305,15 +304,18 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({
                           </>
                         ) : (
                           <>
-                            <td className="py-1.5 px-1 text-white/50 font-mono text-[9px]">
-                              {row.created_at ? new Date(row.created_at).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }) : '—'}
+                            <td className="py-1.5 px-1 text-white/50 text-[9px]">
+                              <span className="text-white/60">{row.sender_name || '—'}</span>
+                              <span className="text-white/20 text-[8px] mr-0.5">({row.sender_uuid || '—'})</span>
                             </td>
-                            <td className="py-1.5 px-1 text-white/60">{row.gift_name || '—'}</td>
-                            <td className="py-1.5 px-1 text-amber-400 font-bold tabular-nums">
+                            <td className="py-1.5 px-1 text-white/50 text-[9px]">
+                              <span className="text-white/60">{row.receiver_name || '—'}</span>
+                              <span className="text-white/20 text-[8px] mr-0.5">({row.receiver_uuid || '—'})</span>
+                            </td>
+                            <td className="py-1.5 px-1 text-white/60 text-[9px]">{row.gift_name || '—'}</td>
+                            <td className="py-1.5 px-1 text-amber-400 font-bold tabular-nums text-[9px]">
                               {Number(row.gift_price || 0).toLocaleString()}
-                            </td>
-                            <td className="py-1.5 px-1 text-white/40 text-[9px]">
-                              {section === 'supporter' ? (row.receiver || '—') : (row.sender || '—')}
+                              <span className="text-emerald-400/60 text-[8px] mr-0.5">(${row.gift_price_usd || 0})</span>
                             </td>
                           </>
                         )}
