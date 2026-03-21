@@ -661,6 +661,16 @@ const InstantRequest: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SubmissionOverlay
+        visible={loading}
+        title="جاري رفع طلب السحب الفوري"
+        steps={[
+          { label: "جاري التحقق من الحوالة...", completedLabel: "تم التحقق ✓", icon: <></> },
+          { label: "جاري تسجيل الطلب...", completedLabel: "تم التسجيل ✓", icon: <></> },
+          { label: "جاري إرسال الإشعار...", completedLabel: "تم الإرسال ✓", icon: <></> },
+        ]}
+      />
     </MobileLayout>
   );
 };

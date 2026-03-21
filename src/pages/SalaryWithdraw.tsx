@@ -1380,6 +1380,15 @@ const SalaryWithdraw: React.FC = () => {
                     className="w-full h-12 gold-gradient text-primary-foreground font-bold">
                     {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : `شحن ${(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز`}
                   </Button>
+                  <SubmissionOverlay
+                    visible={chargingCoins}
+                    title="جاري شحن الكوينز"
+                    steps={[
+                      { label: "جاري التحقق من الحوالة...", completedLabel: "تم التحقق ✓", icon: <></> },
+                      { label: "جاري شحن الكوينز...", completedLabel: "تم الشحن ✓", icon: <></> },
+                      { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
+                    ]}
+                  />
                 </div>
               )}
             </motion.div>
@@ -1593,6 +1602,7 @@ const SalaryWithdraw: React.FC = () => {
           )}
         </AnimatePresence>
       </div>
+      <SubmissionOverlay visible={submitting} title="جاري رفع طلب السحب" />
     </MobileLayout>
   );
 };
