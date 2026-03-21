@@ -190,25 +190,23 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const _fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const _fileToBase64 = async (file: File): Promise<string> => {
+    const { compressImageToBase64 } = await import("@/utils/compressImage");
+    return compressImageToBase64(file, 1200, 0.7);
   };
 
   const handleApprove = async () => {
     if (!approveSheet || !receiptFile) { toast.error("يجب رفع إيصال التحويل"); return; }
     setActionLoading(true);
     try {
-      // Upload receipt to storage
-      const ext = receiptFile.name.split(".").pop() || "jpg";
+      // Compress then upload receipt to storage
+      const { compressImage } = await import("@/utils/compressImage");
+      const compressed = await compressImage(receiptFile, 1200, 1200, 0.7);
+      const ext = compressed.name.split(".").pop() || "jpg";
       const filePath = `receipts/instant_${approveSheet.id}_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("attachments")
-        .upload(filePath, receiptFile, { contentType: receiptFile.type });
+        .upload(filePath, compressed, { contentType: compressed.type });
 
       if (uploadError) throw uploadError;
 
@@ -274,11 +272,13 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
     try {
       let rejectionUrl = "";
       if (rejectImage) {
-        const ext = rejectImage.name.split(".").pop() || "jpg";
+        const { compressImage } = await import("@/utils/compressImage");
+        const compressedReject = await compressImage(rejectImage, 1200, 1200, 0.7);
+        const ext = compressedReject.name.split(".").pop() || "jpg";
         const filePath = `receipts/instant_reject_${rejectSheet.id}_${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("attachments")
-          .upload(filePath, rejectImage, { contentType: rejectImage.type });
+          .upload(filePath, compressedReject, { contentType: compressedReject.type });
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(filePath);
           rejectionUrl = urlData?.publicUrl || "";

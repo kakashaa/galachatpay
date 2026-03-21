@@ -285,13 +285,9 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+  const fileToBase64 = async (file: File): Promise<string> => {
+    const { compressImageToBase64 } = await import("@/utils/compressImage");
+    return compressImageToBase64(file, 1200, 0.7);
   };
 
   const handleApprove = async () => {
