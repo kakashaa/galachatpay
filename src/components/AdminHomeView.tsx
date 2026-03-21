@@ -408,6 +408,17 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
 
   const [showMoreActions, setShowMoreActions] = useState(false);
 
+  // VIP-based card styling
+  const vipCardStyles: Record<number, { border: string; shadow: string; bg: string }> = {
+    1: { border: '2px solid rgba(168,130,76,0.6)', shadow: '0 0 25px rgba(168,130,76,0.15)', bg: 'linear-gradient(160deg, #1e1d30 0%, #15132a 100%)' },
+    2: { border: '2px solid rgba(120,180,220,0.6)', shadow: '0 0 25px rgba(120,180,220,0.15)', bg: 'linear-gradient(160deg, #152035 0%, #0f1830 100%)' },
+    3: { border: '2px solid rgba(180,140,220,0.6)', shadow: '0 0 25px rgba(180,140,220,0.15)', bg: 'linear-gradient(160deg, #201530 0%, #180f2a 100%)' },
+    4: { border: '2px solid rgba(220,170,60,0.7)', shadow: '0 0 30px rgba(220,170,60,0.2)', bg: 'linear-gradient(160deg, #252015 0%, #1a1810 100%)' },
+    5: { border: '2px solid rgba(255,80,80,0.6)', shadow: '0 0 30px rgba(255,80,80,0.2)', bg: 'linear-gradient(160deg, #251518 0%, #1a0f12 100%)' },
+    6: { border: '2px solid rgba(255,200,50,0.8)', shadow: '0 0 40px rgba(255,200,50,0.25), 0 0 80px rgba(255,200,50,0.08)', bg: 'linear-gradient(160deg, #2a2210 0%, #1f1a0a 100%)' },
+  };
+  const vipStyle = userVipLevel > 0 ? vipCardStyles[userVipLevel] : null;
+
   return (
     <>
       <motion.div
@@ -417,12 +428,12 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="relative overflow-hidden rounded-2xl"
         style={{
-          background: 'linear-gradient(160deg, #1a1d35 0%, #0f1225 100%)',
-          border: '2px solid rgba(195,165,110,0.45)',
-          boxShadow: '0 0 30px rgba(195,165,110,0.1), inset 0 1px 0 rgba(195,165,110,0.2), inset 0 -1px 0 rgba(195,165,110,0.1)',
+          background: vipStyle?.bg || 'linear-gradient(160deg, #1a1d35 0%, #0f1225 100%)',
+          border: vipStyle?.border || '2px solid rgba(195,165,110,0.45)',
+          boxShadow: vipStyle?.shadow || '0 0 30px rgba(195,165,110,0.1), inset 0 1px 0 rgba(195,165,110,0.2)',
         }}
       >
-        {/* Inner gold frame line */}
+        {/* Inner frame line */}
         <div className="pointer-events-none absolute inset-[3px] rounded-xl" style={{ border: '1px solid rgba(195,165,110,0.12)' }} />
 
         <div className="relative p-4 space-y-3">
@@ -433,8 +444,8 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
 
           {/* VIP Card SVGA Background */}
           {userVipLevel > 0 && VIP_CARDS[userVipLevel] && (
-            <div className="absolute inset-0 z-0 pointer-events-none opacity-30">
-              <SvgaPlayer src={VIP_CARDS[userVipLevel]} loop={0} className="w-full h-full object-cover" width={400} height={500} />
+            <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
+              <SvgaPlayer src={VIP_CARDS[userVipLevel]} loop={0} className="w-full h-full" width={500} height={600} />
             </div>
           )}
 
