@@ -374,19 +374,6 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
     setActiveAction(key);
   };
 
-  const actions: Array<{
-    key: string;
-    label: string;
-    icon: typeof Star;
-    tone: 'primary' | 'destructive' | 'secondary' | 'muted';
-  }> = [
-    { key: 'vip', label: 'VIP', icon: Star, tone: 'primary' },
-    { key: 'ban', label: isBanned ? 'فك الحظر' : 'حظر', icon: isBanned ? Unlock : Ban, tone: 'destructive' },
-    { key: 'id', label: 'UUID', icon: KeyRound, tone: 'secondary' },
-    { key: 'salary', label: 'تصفير', icon: RotateCcw, tone: 'muted' },
-    { key: 'charge', label: 'الشحن', icon: BatteryCharging, tone: 'destructive' },
-    { key: 'photo', label: 'الصورة', icon: ImageIcon, tone: 'secondary' },
-  ];
 
   const [showMoreActions, setShowMoreActions] = useState(false);
 
