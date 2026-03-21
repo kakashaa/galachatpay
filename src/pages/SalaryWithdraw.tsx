@@ -148,6 +148,36 @@ const countryCodes = [
 
 const TRANSFER_TARGET_ID = "10000";
 const USD_TO_COINS = 8500;
+const REQUEST_TIMEOUT_ERROR = "REQUEST_TIMEOUT";
+const EXTERNAL_REQUEST_TIMEOUT = 25000;
+
+const isTimeoutError = (error: unknown) =>
+  error instanceof Error && error.message === REQUEST_TIMEOUT_ERROR;
+
+const fetchJsonWithTimeout = async (
+  url: string,
+  init?: RequestInit,
+  timeoutMs: number = EXTERNAL_REQUEST_TIMEOUT,
+) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, data };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(REQUEST_TIMEOUT_ERROR);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
 
 const getCashWithdrawDates = () => {
   const today = new Date();
@@ -231,12 +261,15 @@ const SalaryWithdraw: React.FC = () => {
   // Coins charge
   const [chargingCoins, setChargingCoins] = useState(false);
   const [coinsCharged, setCoinsCharged] = useState(0);
+  const [chargeStage, setChargeStage] = useState<"verify" | "charging" | "saving">("verify");
 
   // Salary report check
   const [salaryCheckLoading, setSalaryCheckLoading] = useState(false);
   const [salaryWarning, setSalaryWarning] = useState<{ show: boolean; manual_amount?: number; message?: string } | null>(null);
 
   const hasFetchedRef = useRef(false);
+  const chargeInFlightRef = useRef(false);
+  const submitInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
@@ -501,14 +534,17 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const searchTargetUser = async () => {
-    if (!targetUuid.trim()) return;
+    if (!targetUuid.trim() || targetSearching) return;
     setTargetSearching(true);
     setTargetInfo(null);
+    setTargetConfirmed(false);
+    setError("");
     try {
-      const res = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${targetUuid.trim()}`
+      const { data } = await fetchJsonWithTimeout(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${targetUuid.trim()}`,
+        undefined,
+        12000,
       );
-      const data = await res.json();
       const name = data.data?.name;
       if (name && data.ok !== false) {
         setTargetInfo({
@@ -519,16 +555,18 @@ const SalaryWithdraw: React.FC = () => {
       } else {
         toast.error("لم يتم العثور على المستخدم");
       }
-    } catch {
-      toast.error("فشل البحث");
+    } catch (error) {
+      toast.error(isTimeoutError(error) ? "البحث تأخر، حاول مرة أخرى" : "فشل البحث");
     } finally {
       setTargetSearching(false);
     }
   };
 
   const chargeCoins = async (chargeTarget?: string) => {
-    if (!selectedTransfer) return;
+    if (!selectedTransfer || chargingCoins || chargeInFlightRef.current) return;
+    chargeInFlightRef.current = true;
     setChargingCoins(true);
+    setChargeStage("verify");
     setError("");
     const targetId = chargeTarget || user!.uuid;
 
@@ -541,7 +579,8 @@ const SalaryWithdraw: React.FC = () => {
         return;
       }
 
-      const res = await fetch(API, {
+      setChargeStage("charging");
+      const { ok, data } = await fetchJsonWithTimeout(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -552,11 +591,12 @@ const SalaryWithdraw: React.FC = () => {
           reference_id: selectedTransfer.reference_id,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
+      if (ok && data.success) {
         const targetName = targetInfo?.uuid === targetId
           ? targetInfo.name
           : (targetId === user!.uuid ? user!.name : "مستخدم آخر");
+
+        setChargeStage("saving");
 
         const { error: insertError } = await supabase.from("salary_requests").insert({
           user_uuid: user!.uuid,
@@ -595,18 +635,21 @@ const SalaryWithdraw: React.FC = () => {
         markTransferAsUsedLocally(selectedTransfer.reference_id);
         setStep("coins_success");
       } else {
-        setError(data.message || "فشل شحن الكوينز");
+        setError(data.message || data.error || "فشل شحن الكوينز");
       }
-    } catch {
-      setError("فشل الاتصال بالخادم");
+    } catch (error) {
+      setError(isTimeoutError(error) ? "الخادم تأخر في الرد، حاول مرة أخرى" : "فشل الاتصال بالخادم");
     } finally {
       setChargingCoins(false);
+      setChargeStage("verify");
+      chargeInFlightRef.current = false;
     }
   };
 
 
   const handleSubmit = async () => {
-    if (!selectedTransfer) return;
+    if (!selectedTransfer || submitting || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setSubmitting(true);
     setError("");
     try {
@@ -618,7 +661,7 @@ const SalaryWithdraw: React.FC = () => {
         return;
       }
 
-      const res = await fetch(API, {
+      const { ok, data } = await fetchJsonWithTimeout(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -635,8 +678,7 @@ const SalaryWithdraw: React.FC = () => {
           screenshot: screenshotBase64 || null,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
+      if (ok && data.success) {
         const { error: insertError } = await supabase.from("salary_requests").insert({
           user_uuid: user!.uuid,
           user_name: user!.name,
@@ -677,10 +719,11 @@ const SalaryWithdraw: React.FC = () => {
       } else {
         setError(data.message || data.error || "فشل في رفع الطلب");
       }
-    } catch {
-      setError("فشل الاتصال. حاول مرة أخرى.");
+    } catch (error) {
+      setError(isTimeoutError(error) ? "الخادم تأخر في الرد، حاول مرة أخرى." : "فشل الاتصال. حاول مرة أخرى.");
     } finally {
       setSubmitting(false);
+      submitInFlightRef.current = false;
     }
   };
 
@@ -1335,7 +1378,12 @@ const SalaryWithdraw: React.FC = () => {
             <div className="flex gap-2" dir="ltr">
               <Input
                 value={targetUuid}
-                onChange={e => setTargetUuid(e.target.value.replace(/\D/g, ""))}
+                onChange={e => {
+                  setTargetUuid(e.target.value.replace(/\D/g, ""));
+                  setTargetInfo(null);
+                  setTargetConfirmed(false);
+                  setError("");
+                }}
                 placeholder="أدخل UUID..."
                 className="bg-muted/20 border-border/30 flex-1 text-center font-mono"
                 dir="ltr"
@@ -1374,15 +1422,17 @@ const SalaryWithdraw: React.FC = () => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 justify-center text-emerald-400">
                     <CheckCircle className="w-5 h-5" />
-                    <span className="text-sm font-bold">تم التأكيد</span>
+                    <span className="text-sm font-bold">تم تأكيد المستلم</span>
                   </div>
-                  <Button onClick={() => chargeCoins(targetInfo.uuid)} disabled={chargingCoins}
+                  <Button onClick={() => chargeCoins(targetInfo.uuid)} disabled={chargingCoins || chargeInFlightRef.current}
                     className="w-full h-12 gold-gradient text-primary-foreground font-bold">
                     {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : `شحن ${(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز`}
                   </Button>
+                  <p className="text-[11px] text-muted-foreground text-center">اضغط مرة واحدة وانتظر إتمام العملية</p>
                   <SubmissionOverlay
                     visible={chargingCoins}
                     title="جاري شحن الكوينز"
+                    activeStep={chargeStage === "verify" ? 0 : chargeStage === "charging" ? 1 : 2}
                     steps={[
                       { label: "جاري التحقق من الحوالة...", completedLabel: "تم التحقق ✓", icon: <></> },
                       { label: "جاري شحن الكوينز...", completedLabel: "تم الشحن ✓", icon: <></> },

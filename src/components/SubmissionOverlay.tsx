@@ -18,12 +18,14 @@ interface SubmissionOverlayProps {
   visible: boolean;
   steps?: SubmissionStep[];
   title?: string;
+  activeStep?: number;
 }
 
 const SubmissionOverlay: React.FC<SubmissionOverlayProps> = ({
   visible,
   steps = DEFAULT_STEPS,
   title = "جاري معالجة طلبك",
+  activeStep,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -32,6 +34,13 @@ const SubmissionOverlay: React.FC<SubmissionOverlayProps> = ({
       setCurrentStep(0);
       return;
     }
+
+    if (typeof activeStep === "number") {
+      const boundedStep = Math.max(0, Math.min(activeStep, steps.length - 1));
+      setCurrentStep(boundedStep);
+      return;
+    }
+
     // Animate through steps at intervals
     const timers: NodeJS.Timeout[] = [];
     steps.forEach((_, i) => {
@@ -39,7 +48,7 @@ const SubmissionOverlay: React.FC<SubmissionOverlayProps> = ({
       timers.push(setTimeout(() => setCurrentStep(i), (i) * 1800));
     });
     return () => timers.forEach(clearTimeout);
-  }, [visible, steps.length]);
+  }, [visible, steps.length, activeStep]);
 
   return (
     <AnimatePresence>
