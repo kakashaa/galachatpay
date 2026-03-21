@@ -212,7 +212,7 @@ serve(async (req) => {
     }
 
     // 4. Execute the request
-    const timeout = ADMIN_ONLY.has(action) ? 30000 : 15000;
+    const timeout = ADMIN_ONLY.has(action) ? 55000 : 30000;
     const res = await fetch(url, { ...fetchOptions, signal: AbortSignal.timeout(timeout) });
     const text = await res.text();
 
