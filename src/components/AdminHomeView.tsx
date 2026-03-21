@@ -39,6 +39,14 @@ const VIP_CARDS: Record<number, string> = {
   6: "https://hola-chat.com/vip-assets/card-vip6.svga",
 };
 
+/* ─── parseExp: convert "4.3M" / "500K" → number ─── */
+const parseExp = (exp: string | number): number => {
+  const s = String(exp);
+  if (s.endsWith("M")) return Math.round(parseFloat(s) * 1000000);
+  if (s.endsWith("K")) return Math.round(parseFloat(s) * 1000);
+  return Math.round(parseFloat(s)) || 0;
+};
+
 /* ─── Animated Counter ─── */
 const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
   <motion.span
@@ -486,10 +494,20 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           {/* ─── 4 Stats Tiles (light cream like reference) ─── */}
           <div className="grid grid-cols-4 gap-2 relative z-[1]" dir="rtl">
             {([
-              { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
-              { key: 'support' as const, label: 'الكاريزما', value: user._recv_total ? `${(user._recv_total / 1000000).toFixed(1)}M` : (user.receiver_level ?? 0), icon: <Sparkles size={22} className="text-pink-500" /> },
-              { key: 'supporter' as const, label: 'الداعم', value: user._sent_total ? `${(user._sent_total / 1000000).toFixed(1)}M` : (user.sender_level ?? 0), icon: <Crown size={22} className="text-amber-500" /> },
-              { key: 'salary' as const, label: 'الراتب', value: `$${user.salary ?? 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
+              { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, sub: 'هذا الشهر', icon: <TrendingUp size={22} className="text-amber-600" /> },
+              {
+                key: 'support' as const, label: 'الكاريزما',
+                value: user._monthly_recv ? (user._monthly_recv >= 1000000 ? `${(user._monthly_recv / 1000000).toFixed(1)}M` : user._monthly_recv.toLocaleString()) : (user.receiver_level ?? 0),
+                sub: 'هذا الشهر',
+                icon: <Sparkles size={22} className="text-pink-500" />,
+              },
+              {
+                key: 'supporter' as const, label: 'الداعم',
+                value: user._monthly_sent ? (user._monthly_sent >= 1000000 ? `${(user._monthly_sent / 1000000).toFixed(1)}M` : user._monthly_sent.toLocaleString()) : (user.sender_level ?? 0),
+                sub: 'هذا الشهر',
+                icon: <Crown size={22} className="text-amber-500" />,
+              },
+              { key: 'salary' as const, label: 'الراتب', value: `$${user.salary ?? 0}`, sub: '', icon: <DollarSign size={22} className="text-amber-600" /> },
             ] as const).map((item) => {
               const isActive = expandedTile === item.key;
               return (
@@ -504,13 +522,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                   <p className="text-[9px] font-bold mb-1 text-gray-600">{item.label}</p>
                   <div className="flex justify-center mb-1">{item.icon}</div>
                   <p className="text-base font-black tabular-nums font-mono text-gray-800">{item.value}</p>
-                  {/* Show USD below for gift tiles */}
-                  {item.key === 'support' && user._recv_usd > 0 && (
-                    <p className="text-[8px] text-gray-500 font-mono">${user._recv_usd.toLocaleString()}</p>
-                  )}
-                  {item.key === 'supporter' && user._sent_usd > 0 && (
-                    <p className="text-[8px] text-gray-500 font-mono">${user._sent_usd.toLocaleString()}</p>
-                  )}
+                  {item.sub && <p className="text-[7px] text-gray-400 mt-0.5">{item.sub}</p>}
                 </button>
               );
             })}
@@ -525,6 +537,12 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                 section={expandedTile}
                 onClose={() => setExpandedTile(null)}
                 salaryData={{ salary: user.salary, deduction: user.deduction, net_salary: user.net_salary }}
+                monthlyRecv={user._monthly_recv}
+                totalRecv={user._recv_total}
+                totalRecvUsd={user._recv_usd}
+                monthlySent={user._monthly_sent}
+                totalSent={user._sent_total}
+                totalSentUsd={user._sent_usd}
               />
             )}
           </AnimatePresence>
@@ -1009,26 +1027,66 @@ const AdminHomeView: React.FC<Props> = ({
             const tokenRes = await supabase.functions.invoke("gala-token");
             const token = tokenRes.data?.token;
             if (!token) return null;
-            // Get internal ID first from AWS
             const awsRes = await fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${target}`);
             const awsData = await awsRes.json();
             const internalId = awsData?.data?.id;
             if (!internalId) return null;
-            const profileRes = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
+            const profileFetch = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
-            return await profileRes.json();
+            return await profileFetch.json();
           } catch { return null; }
         })(),
       ]);
       if (data.success && data.name) {
+        // All-time totals
         data._sent_total = sentRes?.data?.total_sent ?? 0;
         data._sent_usd = sentRes?.data?.total_usd ?? 0;
         data._recv_total = recvRes?.data?.total_received ?? 0;
         data._recv_usd = recvRes?.data?.total_usd ?? 0;
+
         // Extract VIP from profile API
         const profileVip = profileRes?.data?.vip?.level ?? profileRes?.data?.vip_level ?? 0;
         if (profileVip > 0) data.vip_level = profileVip;
+
+        // Fetch monthly ranking data (sequential to avoid token conflicts)
+        try {
+          const tokenRes2 = await supabase.functions.invoke("gala-token");
+          const rankToken = tokenRes2.data?.token;
+          if (rankToken) {
+            // Monthly receivers (class=1, type=3)
+            const recvRank = await fetch("https://galalivechat.com/api/ranking", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${rankToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ class: 1, type: 3 }),
+            }).then(r => r.json()).catch(() => null);
+
+            if (recvRank?.data) {
+              const allReceivers = [...(recvRank.data.top || []), ...(recvRank.data.other || [])];
+              const thisRecv = allReceivers.find((u: any) => String(u.uuid) === target);
+              data._monthly_recv = thisRecv ? parseExp(thisRecv.exp) : 0;
+            }
+
+            // Fresh token for second ranking call
+            const tokenRes3 = await supabase.functions.invoke("gala-token");
+            const rankToken2 = tokenRes3.data?.token;
+            if (rankToken2) {
+              // Monthly senders (class=2, type=3)
+              const sentRank = await fetch("https://galalivechat.com/api/ranking", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${rankToken2}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ class: 2, type: 3 }),
+              }).then(r => r.json()).catch(() => null);
+
+              if (sentRank?.data) {
+                const allSenders = [...(sentRank.data.top || []), ...(sentRank.data.other || [])];
+                const thisSent = allSenders.find((u: any) => String(u.uuid) === target);
+                data._monthly_sent = thisSent ? parseExp(thisSent.exp) : 0;
+              }
+            }
+          }
+        } catch (e) { console.warn("Ranking fetch failed:", e); }
+
         setSearchResult(data);
       } else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
     } catch { toast.error("خطأ في الاتصال"); }

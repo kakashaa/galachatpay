@@ -121,9 +121,15 @@ interface UserDetailAccordionProps {
   section: 'charge' | 'support' | 'supporter' | 'salary';
   onClose: () => void;
   salaryData?: { salary?: number; deduction?: number; net_salary?: number };
+  monthlyRecv?: number;
+  totalRecv?: number;
+  totalRecvUsd?: number;
+  monthlySent?: number;
+  totalSent?: number;
+  totalSentUsd?: number;
 }
 
-const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section, onClose, salaryData }) => {
+const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section, onClose, salaryData, monthlyRecv, totalRecv, totalRecvUsd, monthlySent, totalSent, totalSentUsd }) => {
   const [filter, setFilter] = useState<DateFilter>({ range: 'month', customFrom: '', customTo: '' });
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<DetailRow[]>([]);
@@ -245,14 +251,61 @@ const UserDetailAccordion: React.FC<UserDetailAccordionProps> = ({ uuid, section
           </div>
         ) : (
           <>
-            {/* Total */}
-            <div className="rounded-lg px-3 py-2 text-center"
-              style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)' }}>
-              <p className="text-[9px] text-white/30 mb-0.5">
-                {section === 'charge' ? 'إجمالي الشحن' : section === 'support' ? 'إجمالي المستلم' : section === 'supporter' ? 'إجمالي المرسل' : 'الراتب الكامل'}
-              </p>
-              <p className="text-sm font-black text-amber-400 tabular-nums" dir="ltr">{total}</p>
-            </div>
+            {/* Monthly + All-time summary for support/supporter */}
+            {(section === 'support' || section === 'supporter') && (
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="rounded-lg px-3 py-2 text-center"
+                  style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)' }}>
+                  <p className="text-[9px] text-white/30 mb-0.5">الشهر الحالي</p>
+                  <p className="text-sm font-black text-amber-400 tabular-nums" dir="ltr">
+                    {section === 'support'
+                      ? (monthlyRecv ? `${monthlyRecv.toLocaleString()} كوينز` : '—')
+                      : (monthlySent ? `${monthlySent.toLocaleString()} كوينز` : '—')
+                    }
+                  </p>
+                  <p className="text-[8px] text-white/20">
+                    {section === 'support'
+                      ? (monthlyRecv ? `$${(monthlyRecv / 7500).toFixed(0)}` : '')
+                      : (monthlySent ? `$${(monthlySent / 7500).toFixed(0)}` : '')
+                    }
+                  </p>
+                </div>
+                <div className="rounded-lg px-3 py-2 text-center"
+                  style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.12)' }}>
+                  <p className="text-[9px] text-white/30 mb-0.5">الإجمالي</p>
+                  <p className="text-sm font-black text-purple-400 tabular-nums" dir="ltr">
+                    {section === 'support'
+                      ? (totalRecv ? `${(totalRecv / 1000000).toFixed(1)}M` : '—')
+                      : (totalSent ? `${(totalSent / 1000000).toFixed(1)}M` : '—')
+                    }
+                  </p>
+                  <p className="text-[8px] text-white/20">
+                    {section === 'support'
+                      ? (totalRecvUsd ? `$${totalRecvUsd.toLocaleString()}` : '')
+                      : (totalSentUsd ? `$${totalSentUsd.toLocaleString()}` : '')
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Total for charge */}
+            {section === 'charge' && (
+              <div className="rounded-lg px-3 py-2 text-center"
+                style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)' }}>
+                <p className="text-[9px] text-white/30 mb-0.5">إجمالي الشحن</p>
+                <p className="text-sm font-black text-amber-400 tabular-nums" dir="ltr">{total}</p>
+              </div>
+            )}
+
+            {/* Total for salary */}
+            {section === 'salary' && (
+              <div className="rounded-lg px-3 py-2 text-center"
+                style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)' }}>
+                <p className="text-[9px] text-white/30 mb-0.5">الراتب الكامل</p>
+                <p className="text-sm font-black text-amber-400 tabular-nums" dir="ltr">{total}</p>
+              </div>
+            )}
 
             {/* Table (charge/support/supporter) */}
             {section !== 'salary' && (
