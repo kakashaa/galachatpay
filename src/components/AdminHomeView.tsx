@@ -374,20 +374,8 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
     setActiveAction(key);
   };
 
-  const actions: Array<{
-    key: string;
-    label: string;
-    icon: typeof Star;
-    tone: 'primary' | 'destructive' | 'secondary' | 'muted';
-  }> = [
-    { key: 'vip', label: 'VIP', icon: Star, tone: 'primary' },
-    { key: 'ban', label: isBanned ? 'فك الحظر' : 'حظر', icon: isBanned ? Unlock : Ban, tone: 'destructive' },
-    { key: 'id', label: 'UUID', icon: KeyRound, tone: 'secondary' },
-    { key: 'salary', label: 'تصفير', icon: RotateCcw, tone: 'muted' },
-    { key: 'charge', label: 'الشحن', icon: BatteryCharging, tone: 'destructive' },
-    { key: 'photo', label: 'الصورة', icon: ImageIcon, tone: 'secondary' },
-  ];
 
+  const [showMoreActions, setShowMoreActions] = useState(false);
 
   return (
     <>
@@ -396,29 +384,32 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 12 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="relative overflow-hidden rounded-3xl"
+        className="relative overflow-hidden rounded-2xl"
         style={{
-          background: 'linear-gradient(145deg, rgba(18,18,30,0.97), rgba(12,15,29,0.99))',
-          border: '1.5px solid rgba(212,165,116,0.35)',
-          boxShadow: '0 0 40px rgba(212,165,116,0.08), inset 0 1px 0 rgba(212,165,116,0.15)',
+          background: 'linear-gradient(160deg, #1a1d35 0%, #0f1225 100%)',
+          border: '2px solid rgba(195,165,110,0.45)',
+          boxShadow: '0 0 30px rgba(195,165,110,0.1), inset 0 1px 0 rgba(195,165,110,0.2), inset 0 -1px 0 rgba(195,165,110,0.1)',
         }}
       >
-        {/* Gold corner accents */}
-        <div className="pointer-events-none absolute top-0 left-0 w-20 h-20 opacity-20" style={{ background: 'radial-gradient(circle at top left, rgba(212,165,116,0.4), transparent 70%)' }} />
-        <div className="pointer-events-none absolute bottom-0 right-0 w-20 h-20 opacity-20" style={{ background: 'radial-gradient(circle at bottom right, rgba(212,165,116,0.4), transparent 70%)' }} />
+        {/* Inner gold frame line */}
+        <div className="pointer-events-none absolute inset-[3px] rounded-xl" style={{ border: '1px solid rgba(195,165,110,0.12)' }} />
 
-        <div className="relative p-4">
-          {/* Close button */}
-          <button onClick={onClose} className="absolute top-3 left-3 z-10 h-7 w-7 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <X size={12} className="text-muted-foreground" />
+        <div className="relative p-4 space-y-3">
+          {/* Close X */}
+          <button onClick={onClose} className="absolute top-2 left-2 z-10 h-6 w-6 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors">
+            <X size={11} className="text-white/40" />
           </button>
 
-          {/* ─── Profile Header ─── */}
-          <div className="flex flex-col items-center text-center mb-4">
-            <div className="relative mb-2">
+          {/* ─── Profile Header: name left, avatar right (RTL) ─── */}
+          <div className="flex items-center gap-3 pt-1" dir="rtl">
+            {/* Avatar - right side in RTL */}
+            <div className="relative shrink-0">
               <div className="h-16 w-16 overflow-hidden rounded-full"
-                style={{ border: '2.5px solid rgba(212,165,116,0.5)', boxShadow: '0 0 20px rgba(212,165,116,0.15)' }}>
+                style={{
+                  border: '2.5px solid rgba(160,150,130,0.6)',
+                  boxShadow: '0 0 15px rgba(160,150,130,0.15), inset 0 0 10px rgba(0,0,0,0.3)',
+                  background: 'linear-gradient(135deg, #3a3d50, #2a2d40)',
+                }}>
                 <img
                   src={user.avatar || '/placeholder.svg'}
                   className="h-full w-full object-cover"
@@ -426,88 +417,143 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                   onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
                 />
               </div>
-              <span className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 ${user.online ? 'bg-emerald-500 border-emerald-400/30' : 'bg-muted-foreground border-muted'}`}
-                style={{ boxShadow: user.online ? '0 0 8px rgba(16,185,129,0.5)' : 'none' }} />
+              <span className={`absolute bottom-0 left-0 h-3 w-3 rounded-full border-2 border-[#1a1d35] ${user.online ? 'bg-emerald-500' : 'bg-gray-500'}`}
+                style={{ boxShadow: user.online ? '0 0 8px rgba(16,185,129,0.6)' : 'none' }} />
             </div>
-            <h3 className="text-base font-black text-foreground">{user.name}</h3>
-            <button onClick={copyUuid} className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-              <Copy size={9} />
-              <span className="tabular-nums font-mono">UUID: {user.uuid}</span>
-            </button>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full ${isBanned ? 'bg-destructive' : 'bg-emerald-500'}`}
-                style={{ boxShadow: isBanned ? '0 0 6px hsl(var(--destructive))' : '0 0 6px rgba(16,185,129,0.6)' }} />
-              <p className={`text-[10px] font-bold ${isBanned ? 'text-destructive' : 'text-emerald-400'}`}>
-                {isBanned ? 'الحساب محظور' : 'الحساب نشط'}
-              </p>
-              {user.vip_level > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold"
-                  style={{ background: 'linear-gradient(135deg, rgba(212,165,116,0.2), rgba(234,179,8,0.15))', border: '1px solid rgba(212,165,116,0.3)', color: '#D4A574' }}>
-                  VIP {user.vip_level}
+
+            {/* Name + UUID - left side in RTL */}
+            <div className="flex-1 text-right">
+              <h3 className="text-lg font-black text-white">{user.name}</h3>
+              <button onClick={copyUuid} className="flex items-center gap-1 justify-end mt-0.5 text-[10px] text-white/50 hover:text-white/70 transition-colors">
+                <Copy size={9} />
+                <span className="tabular-nums font-mono">UUID: {user.uuid}</span>
+              </button>
+              <div className="flex items-center gap-1.5 justify-end mt-1">
+                <span className={`text-[10px] font-bold ${isBanned ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {isBanned ? 'الحساب محظور' : 'الحساب نشط'}
                 </span>
-              )}
+                <span className={`h-2 w-2 rounded-full ${isBanned ? 'bg-red-500' : 'bg-emerald-500'}`}
+                  style={{ boxShadow: isBanned ? '0 0 6px rgba(239,68,68,0.6)' : '0 0 6px rgba(16,185,129,0.6)' }} />
+              </div>
             </div>
           </div>
 
-          {/* ─── 4 Stats Tiles ─── */}
-          <div className="grid grid-cols-4 gap-2 mb-3">
+          {/* ─── 4 Stats Tiles (light cream like reference) ─── */}
+          <div className="grid grid-cols-4 gap-2" dir="rtl">
             {[
-              { label: 'الراتب', value: `$${user.salary || 0}`, gradient: 'from-amber-500/15 to-amber-600/5', borderColor: 'rgba(245,158,11,0.2)', textColor: 'text-amber-400' },
-              { label: 'الداعم', value: user.sender_level || 0, gradient: 'from-violet-500/15 to-violet-600/5', borderColor: 'rgba(139,92,246,0.2)', textColor: 'text-violet-400' },
-              { label: 'الدعم', value: user.receiver_level || 0, gradient: 'from-rose-500/15 to-rose-600/5', borderColor: 'rgba(244,63,94,0.2)', textColor: 'text-rose-400' },
-              { label: 'الشحن', value: user.charger_level || 0, gradient: 'from-emerald-500/15 to-emerald-600/5', borderColor: 'rgba(16,185,129,0.2)', textColor: 'text-emerald-400' },
+              { label: 'الراتب', value: `$${user.salary || 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
+              { label: 'الداعم', value: user.sender_level || 0, icon: <Crown size={22} className="text-amber-500" /> },
+              { label: 'الدعم', value: user.receiver_level || 0, icon: <Sparkles size={22} className="text-pink-500" /> },
+              { label: 'الشحن', value: user.charger_level || 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
             ].map((item) => (
-              <div key={item.label} className={`rounded-2xl bg-gradient-to-br ${item.gradient} px-1.5 py-3 text-center`}
-                style={{ border: `1px solid ${item.borderColor}` }}>
-                <p className={`text-lg font-black tabular-nums font-mono ${item.textColor}`}>{item.value}</p>
-                <p className="mt-0.5 text-[8px] text-muted-foreground font-bold">{item.label}</p>
+              <div key={item.label} className="rounded-xl text-center py-2.5 px-1"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(220,215,200,0.95) 0%, rgba(200,195,180,0.9) 100%)',
+                  border: '1px solid rgba(180,170,150,0.4)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.2)',
+                }}>
+                <p className="text-[9px] font-bold text-gray-600 mb-1">{item.label}</p>
+                <div className="flex justify-center mb-1">{item.icon}</div>
+                <p className="text-base font-black tabular-nums font-mono text-gray-800">{item.value}</p>
               </div>
             ))}
           </div>
 
-          {/* ─── Detail Rows ─── */}
-          <div className="rounded-2xl overflow-hidden mb-3"
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* ─── Detail Rows (cream/white background like reference) ─── */}
+          <div className="rounded-xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(180deg, rgba(220,215,200,0.92) 0%, rgba(210,205,190,0.88) 100%)',
+              border: '1px solid rgba(180,170,150,0.3)',
+            }}>
             {[
-              { icon: <DollarSign size={12} className="text-emerald-400" />, label: 'صافي الراتب', value: `$${user.net_salary || 0}` },
-              { icon: <BarChart3 size={12} className="text-rose-400" />, label: 'الخصومات', value: `$${user.deduction || 0}` },
-              { icon: <Shield size={12} className="text-amber-400" />, label: 'الوكالة', value: user.agency_id || '—' },
-              { icon: <Users size={12} className="text-blue-400" />, label: 'العائلة', value: user.family_id || '—' },
+              { icon: <Wallet size={14} className="text-blue-700" />, label: 'صافي الراتب', value: `$${user.net_salary || 0}` },
+              { icon: <ClipboardList size={14} className="text-blue-700" />, label: 'الخصومات', value: `$${user.deduction || 0}` },
+              { icon: <Building2 size={14} className="text-blue-700" />, label: 'الوكالة', value: user.agency_id || '—' },
+              { icon: <Users size={14} className="text-blue-700" />, label: 'العائلة', value: user.family_id || '—' },
             ].map((row, idx) => (
-              <div key={row.label} className={`flex items-center justify-between px-3 py-2.5 text-[11px] ${idx < 3 ? 'border-b border-white/[0.04]' : ''}`}>
-                <div className="flex items-center gap-2">
+              <div key={row.label} className={`flex items-center px-3 py-2.5 ${idx < 3 ? 'border-b' : ''}`} dir="rtl"
+                style={{ borderColor: 'rgba(160,150,130,0.25)' }}>
+                <span className="text-xs font-bold text-gray-700 flex-1">{row.label}</span>
+                <span className="font-bold tabular-nums font-mono text-gray-800 text-xs mx-3">{row.value}</span>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(0,0,0,0.05)' }}>
                   {row.icon}
-                  <span className="text-muted-foreground">{row.label}</span>
                 </div>
-                <span className="font-bold tabular-nums font-mono text-foreground">{row.value}</span>
               </div>
             ))}
           </div>
 
-          {/* ─── Action Buttons ─── */}
-          <div className="grid grid-cols-3 gap-1.5">
-            {actions.map((action) => {
-              const Icon = action.icon;
-              const toneStyles: Record<string, { bg: string; border: string; text: string; glow: string }> = {
-                primary: { bg: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08))', border: 'rgba(16,185,129,0.3)', text: 'text-emerald-400', glow: '0 0 12px rgba(16,185,129,0.1)' },
-                destructive: { bg: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08))', border: 'rgba(239,68,68,0.3)', text: 'text-rose-400', glow: '0 0 12px rgba(239,68,68,0.1)' },
-                secondary: { bg: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(139,92,246,0.06))', border: 'rgba(139,92,246,0.25)', text: 'text-violet-400', glow: '0 0 12px rgba(139,92,246,0.08)' },
-                muted: { bg: 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))', border: 'rgba(255,255,255,0.1)', text: 'text-muted-foreground', glow: 'none' },
-              };
-              const s = toneStyles[action.tone] || toneStyles.muted;
-              return (
-                <button
-                  key={action.key}
-                  onClick={() => handleActionClick(action.key)}
-                  className={`flex flex-col items-center rounded-2xl px-1 py-2.5 text-[9px] font-bold ${s.text} active:scale-[0.96] transition-all duration-150`}
-                  style={{ background: s.bg, border: `1px solid ${s.border}`, boxShadow: s.glow }}
-                >
-                  <Icon size={16} />
-                  <span className="mt-1 whitespace-nowrap">{action.label}</span>
-                </button>
-              );
-            })}
+          {/* ─── 4 Action Buttons (pill-shaped, matching reference exactly) ─── */}
+          <div className="grid grid-cols-4 gap-1.5" dir="rtl">
+            {/* حظر - Red */}
+            <button onClick={() => handleActionClick('ban')}
+              className="flex flex-col items-center gap-1 rounded-xl py-2.5 active:scale-[0.95] transition-all"
+              style={{
+                background: 'linear-gradient(180deg, #c0392b 0%, #922b21 100%)',
+                boxShadow: '0 3px 8px rgba(192,57,43,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              }}>
+              <ShieldAlert size={18} className="text-white" />
+              <span className="text-[9px] font-bold text-white">{isBanned ? 'فك حظر' : 'حظر'}</span>
+            </button>
+
+            {/* VIP - Green */}
+            <button onClick={() => handleActionClick('vip')}
+              className="flex flex-col items-center gap-1 rounded-xl py-2.5 active:scale-[0.95] transition-all"
+              style={{
+                background: 'linear-gradient(180deg, #27ae60 0%, #1e8449 100%)',
+                boxShadow: '0 3px 8px rgba(39,174,96,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              }}>
+              <Crown size={18} className="text-white" />
+              <span className="text-[9px] font-bold text-white">VIP</span>
+            </button>
+
+            {/* إلغاء/تصفير - Gray */}
+            <button onClick={() => handleActionClick('salary')}
+              className="flex flex-col items-center gap-1 rounded-xl py-2.5 active:scale-[0.95] transition-all"
+              style={{
+                background: 'linear-gradient(180deg, #5d6d7e 0%, #4a5568 100%)',
+                boxShadow: '0 3px 8px rgba(93,109,126,0.35), inset 0 1px 0 rgba(255,255,255,0.1)',
+              }}>
+              <RotateCcw size={18} className="text-white" />
+              <span className="text-[9px] font-bold text-white">إلغاء</span>
+            </button>
+
+            {/* أضف - Dark blue/teal */}
+            <button onClick={() => handleActionClick('charge')}
+              className="flex flex-col items-center gap-1 rounded-xl py-2.5 active:scale-[0.95] transition-all"
+              style={{
+                background: 'linear-gradient(180deg, #2c5f7c 0%, #1a3a50 100%)',
+                boxShadow: '0 3px 8px rgba(44,95,124,0.35), inset 0 1px 0 rgba(255,255,255,0.1)',
+              }}>
+              <BatteryCharging size={18} className="text-white" />
+              <span className="text-[9px] font-bold text-white">أضف</span>
+            </button>
           </div>
+
+          {/* More actions toggle */}
+          <button onClick={() => setShowMoreActions(v => !v)}
+            className="w-full text-center text-[9px] text-white/30 hover:text-white/50 py-1 transition-colors">
+            {showMoreActions ? 'إخفاء الإجراءات الإضافية' : 'المزيد ▾'}
+          </button>
+
+          {showMoreActions && (
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { key: 'id', label: 'UUID', icon: KeyRound },
+                { key: 'photo', label: 'الصورة', icon: ImageIcon },
+              ].map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button key={action.key} onClick={() => handleActionClick(action.key)}
+                    className="flex flex-col items-center gap-1 rounded-xl py-2 active:scale-[0.95] transition-all"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <Icon size={14} className="text-white/60" />
+                    <span className="text-[8px] font-bold text-white/50">{action.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </motion.div>
 
