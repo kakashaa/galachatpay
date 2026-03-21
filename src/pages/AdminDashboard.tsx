@@ -207,8 +207,8 @@ const AdminDashboardPage: React.FC = () => {
     <>
     <div
       ref={scrollContainerRef}
-      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative admin-theme premium-bg"
-      style={{ overflow: 'hidden auto' }}
+      className="mobile-container text-foreground pb-44 overflow-x-hidden overflow-y-auto relative admin-theme"
+      style={{ background: 'linear-gradient(to bottom, #050816, #0a1628, #050816)', overflow: 'hidden auto' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -222,17 +222,11 @@ const AdminDashboardPage: React.FC = () => {
           style={{ height: refreshing ? 48 : pullDistance > 0 ? pullDistance : 0 }}
         >
           <RefreshCw
-            className={`w-5 h-5 text-primary transition-transform ${refreshing ? "animate-spin" : ""}`}
+            className={`w-5 h-5 text-emerald-400 transition-transform ${refreshing ? "animate-spin" : ""}`}
             style={{ transform: `rotate(${pullProgress * 360}deg)`, opacity: pullProgress }}
           />
         </div>
       )}
-
-      {/* Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-0 w-64 h-64 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.05)' }} />
-        <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full blur-3xl" style={{ background: 'hsla(160, 84%, 39%, 0.03)' }} />
-      </div>
 
       <div className="relative z-10 flex-1 overflow-y-auto min-h-0">
         {/* Home View */}
