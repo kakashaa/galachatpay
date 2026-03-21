@@ -1017,84 +1017,86 @@ const AdminHomeView: React.FC<Props> = ({
     if (!target) return;
     setSearching(true); setSearchResult(null);
     try {
-      // Step 1: Fast unified data (5s)
+      // Single fast DB proxy call — all user data from DB directly
       const res = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
+        `https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=user-diamonds&uuid=${target}`
       );
       const json = await res.json();
-      console.log("[user-full] RAW json:", JSON.stringify(json));
-      // API returns {ok: true, data: {salary, deduction, net_salary, ...}}
-      const d = json?.data ?? json;
-      console.log("[user-full] parsed salary:", d?.salary, "deduction:", d?.deduction, "net_salary:", d?.net_salary);
+      const d = (json?.data?.[0]) || null;
+      console.log("[user-diamonds] RAW:", JSON.stringify(json));
 
       if (d && d.name) {
+        const totalSent = parseInt(d.total_diamond_send) || 0;
+        const totalRecv = parseInt(d.total_diamond_received) || 0;
+        const monthlyRecv = parseInt(d.monthly_diamond_received) || 0;
+        const chargerExp = parseInt(d.charger_exp) || 0;
+        const di = parseInt(d.di) || 0;
+
         const data: any = {
           success: true,
           uuid: target,
           name: d.name,
-          avatar: d.avatar,
-          vip_level: d.vip_level || 0,
-          salary: d.salary || 0,
-          deduction: d.deduction || 0,
-          net_salary: d.net_salary || 0,
-          charger_level: d.charger_level || 0,
-          sender_level: d.sender_level || 0,
+          avatar: d.avatar || '',
+          vip_level: parseInt(d.vip) || 0,
+          salary: 0,
+          deduction: 0,
+          net_salary: 0,
+          charger_level: parseInt(d.charger_level) || 0,
+          charger_exp: chargerExp,
+          sender_level: parseInt(d.sender_level) || 0,
+          received_level: parseInt(d.received_level) || 0,
           agency_id: d.agency_id || '',
           family_id: d.family_id || '',
-          is_banned: d.is_banned || false,
-          online: d.online || false,
+          is_banned: false,
+          online: d.online === '1' || d.online === 1,
           created_at: d.created_at || '',
-          _sent_total: d.total_sent || 0,
-          _sent_usd: d.total_sent ? +(d.total_sent / 7500).toFixed(2) : 0,
-          _recv_total: d.total_received || 0,
-          _recv_usd: d.total_received ? +(d.total_received / 7500).toFixed(2) : 0,
+          di,
+          _sent_total: totalSent,
+          _sent_usd: +(totalSent / 7500).toFixed(2),
+          _recv_total: totalRecv,
+          _recv_usd: +(totalRecv / 7500).toFixed(2),
+          _recv_monthly: monthlyRecv,
+          _recv_monthly_usd: +(monthlyRecv / 7500).toFixed(2),
         };
 
-        // Show results immediately
         setSearchResult(data);
         setSearching(false);
 
-        // Step 2: Background enrichment (VIP + monthly ranking)
+        // Background: fetch salary + VIP level from profile API
         (async () => {
           try {
-            const tokenRes = await supabase.functions.invoke("gala-token");
-            const token = tokenRes.data?.token;
-            if (!token) return;
-
-            // VIP via search → profile
-            const searchRes = await fetch(`https://galalivechat.com/api/find/users?q=${target}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            }).then(r => r.json()).catch(() => null);
-
-            const internalId = searchRes?.data?.[0]?.id;
-            if (internalId) {
-              const profileRes = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              }).then(r => r.json()).catch(() => null);
-
-              const vip = profileRes?.data?.vip;
-              if (vip?.level > 0) {
-                setSearchResult((prev: any) => prev ? { ...prev, vip_level: vip.level } : prev);
-              }
-            }
-
-            // Fast DB proxy for sender/receiver totals
-            const [sendersRes, receiversRes] = await Promise.all([
-              fetch("https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=top-senders").then(r => r.json()).catch(() => ({ data: [] })),
-              fetch("https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=top-receivers").then(r => r.json()).catch(() => ({ data: [] })),
-            ]);
-
-            const senders = sendersRes?.data || [];
-            const receivers = receiversRes?.data || [];
-            const thisUserSent = senders.find((u: any) => String(u.uuid) === target);
-            const thisUserRecv = receivers.find((u: any) => String(u.uuid) === target);
-
-            if (thisUserSent || thisUserRecv) {
+            // Salary from user-full
+            const salaryRes = await fetch(
+              `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
+            ).then(r => r.json()).catch(() => null);
+            const sd = salaryRes?.data ?? salaryRes;
+            if (sd?.salary || sd?.net_salary) {
               setSearchResult((prev: any) => prev ? {
                 ...prev,
-                ...(thisUserSent ? { _sent_total: thisUserSent.total_diamond_send, _sent_usd: +(thisUserSent.total_diamond_send / 7500).toFixed(2) } : {}),
-                ...(thisUserRecv ? { _recv_total: thisUserRecv.total_diamond_received, _recv_usd: +(thisUserRecv.total_diamond_received / 7500).toFixed(2) } : {}),
+                salary: sd.salary || 0,
+                deduction: sd.deduction || 0,
+                net_salary: sd.net_salary || 0,
+                is_banned: sd.is_banned || prev.is_banned,
               } : prev);
+            }
+
+            // VIP via profile API
+            const tokenRes = await supabase.functions.invoke("gala-token");
+            const token = tokenRes.data?.token;
+            if (token) {
+              const searchRes = await fetch(`https://galalivechat.com/api/find/users?q=${target}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              }).then(r => r.json()).catch(() => null);
+              const internalId = searchRes?.data?.[0]?.id;
+              if (internalId) {
+                const profileRes = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                }).then(r => r.json()).catch(() => null);
+                const vip = profileRes?.data?.vip;
+                if (vip?.level > 0) {
+                  setSearchResult((prev: any) => prev ? { ...prev, vip_level: vip.level } : prev);
+                }
+              }
             }
           } catch (e) { console.warn("Background enrichment failed:", e); }
         })();
