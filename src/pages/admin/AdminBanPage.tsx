@@ -21,7 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type BanType = "promotion" | "insult" | "defamation" | "other";
+// Ban types used across the page
 
 const BAN_TYPE_INFO: Record<string, { label: string; icon: React.ReactNode; duration: string }> = {
   promotion: { label: "ترويج", icon: <Megaphone className="w-3.5 h-3.5" />, duration: "دائم" },
