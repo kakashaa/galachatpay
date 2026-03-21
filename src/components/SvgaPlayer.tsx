@@ -57,6 +57,7 @@ const SvgaPlayer: React.FC<SvgaPlayerProps> = ({ src, loop = 0, className = "", 
       width={width || 300}
       height={height || 300}
       className={className}
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
     />
   );
 };
