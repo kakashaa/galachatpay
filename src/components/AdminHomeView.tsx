@@ -493,7 +493,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
               <div key={row.label} className={`flex items-center px-3 py-2.5 ${idx < 3 ? 'border-b' : ''}`} dir="rtl"
                 style={{ borderColor: 'rgba(160,150,130,0.25)' }}>
                 <span className="text-xs font-bold text-gray-700 flex-1">{row.label}</span>
-                <span className="font-bold tabular-nums font-mono text-gray-800 text-xs mx-3">{row.value}</span>
+                <span className={`font-bold tabular-nums font-mono text-xs mx-3 ${(row as any).color || 'text-gray-800'}`}>{row.value}</span>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                   style={{ background: 'rgba(0,0,0,0.05)' }}>
                   {row.icon}
