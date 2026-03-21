@@ -165,7 +165,7 @@ class GalaApiService {
   }
 
   async getPromoConfig() {
-    return this.call("hola-chat", "promo-config");
+    return this.call("hola-chat", "promo-config", {}, true);
   }
 
   async updatePromoConfig(update: Record<string, string>) {
