@@ -1017,7 +1017,7 @@ const AdminHomeView: React.FC<Props> = ({
     if (!target) return;
     setSearching(true); setSearchResult(null);
     try {
-      // Single unified API call
+      // Step 1: Fast unified data (5s)
       const res = await fetch(
         `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
       );
@@ -1041,30 +1041,60 @@ const AdminHomeView: React.FC<Props> = ({
           is_banned: d.is_banned || false,
           online: d.online || false,
           created_at: d.created_at || '',
-          // All-time totals
           _sent_total: d.total_sent || 0,
           _sent_usd: d.total_sent ? +(d.total_sent / 7500).toFixed(2) : 0,
           _recv_total: d.total_received || 0,
           _recv_usd: d.total_received ? +(d.total_received / 7500).toFixed(2) : 0,
         };
 
-        // Fetch monthly ranking data (sequential to avoid token conflicts)
-        try {
-          const tokenRes2 = await supabase.functions.invoke("gala-token");
-          const rankToken = tokenRes2.data?.token;
-          if (rankToken) {
-            const recvRank = await fetch("https://galalivechat.com/api/ranking", {
-              method: "POST",
-              headers: { Authorization: `Bearer ${rankToken}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ class: 1, type: 3 }),
+        // Show results immediately
+        setSearchResult(data);
+        setSearching(false);
+
+        // Step 2: Background enrichment (VIP + monthly ranking)
+        (async () => {
+          try {
+            const tokenRes = await supabase.functions.invoke("gala-token");
+            const token = tokenRes.data?.token;
+            if (!token) return;
+
+            // VIP via search → profile
+            const searchRes = await fetch(`https://galalivechat.com/api/find/users?q=${target}`, {
+              headers: { Authorization: `Bearer ${token}` },
             }).then(r => r.json()).catch(() => null);
 
-            if (recvRank?.data) {
-              const allReceivers = [...(recvRank.data.top || []), ...(recvRank.data.other || [])];
-              const thisRecv = allReceivers.find((u: any) => String(u.uuid) === target);
-              data._monthly_recv = thisRecv ? parseExp(thisRecv.exp) : 0;
+            const internalId = searchRes?.data?.[0]?.id;
+            if (internalId) {
+              const profileRes = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              }).then(r => r.json()).catch(() => null);
+
+              const vip = profileRes?.data?.vip;
+              if (vip?.level > 0) {
+                setSearchResult((prev: any) => prev ? { ...prev, vip_level: vip.level } : prev);
+              }
             }
 
+            // Monthly ranking - receivers
+            const tokenRes2 = await supabase.functions.invoke("gala-token");
+            const rankToken = tokenRes2.data?.token;
+            if (rankToken) {
+              const recvRank = await fetch("https://galalivechat.com/api/ranking", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${rankToken}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ class: 1, type: 3 }),
+              }).then(r => r.json()).catch(() => null);
+
+              if (recvRank?.data) {
+                const allReceivers = [...(recvRank.data.top || []), ...(recvRank.data.other || [])];
+                const thisRecv = allReceivers.find((u: any) => String(u.uuid) === target);
+                if (thisRecv) {
+                  setSearchResult((prev: any) => prev ? { ...prev, _monthly_recv: parseExp(thisRecv.exp) } : prev);
+                }
+              }
+            }
+
+            // Monthly ranking - senders
             const tokenRes3 = await supabase.functions.invoke("gala-token");
             const rankToken2 = tokenRes3.data?.token;
             if (rankToken2) {
@@ -1077,13 +1107,15 @@ const AdminHomeView: React.FC<Props> = ({
               if (sentRank?.data) {
                 const allSenders = [...(sentRank.data.top || []), ...(sentRank.data.other || [])];
                 const thisSent = allSenders.find((u: any) => String(u.uuid) === target);
-                data._monthly_sent = thisSent ? parseExp(thisSent.exp) : 0;
+                if (thisSent) {
+                  setSearchResult((prev: any) => prev ? { ...prev, _monthly_sent: parseExp(thisSent.exp) } : prev);
+                }
               }
             }
-          }
-        } catch (e) { console.warn("Ranking fetch failed:", e); }
+          } catch (e) { console.warn("Background enrichment failed:", e); }
+        })();
 
-        setSearchResult(data);
+        return; // already set searching=false above
       } else { toast.error("لم يتم العثور على المستخدم"); setSearchResult(null); }
     } catch { toast.error("خطأ في الاتصال"); }
     setSearching(false);
