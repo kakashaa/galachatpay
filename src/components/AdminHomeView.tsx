@@ -494,58 +494,50 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           {/* ─── 4 Stats Tiles (light cream like reference) ─── */}
           <div className="grid grid-cols-4 gap-2 relative z-[1]" dir="rtl">
             {([
-              { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, sub: 'هذا الشهر', icon: <TrendingUp size={22} className="text-amber-600" /> },
+              {
+                key: 'charge' as const, label: 'الشحن',
+                value: user.charger_exp ? (user.charger_exp >= 1000000 ? `${(user.charger_exp / 1000000).toFixed(1)}M` : Number(user.charger_exp).toLocaleString()) : '0',
+                sub: user.charger_exp ? `$${(user.charger_exp / 7500).toFixed(0)}` : '',
+                icon: <TrendingUp size={22} className="text-amber-600" />,
+                levelLabel: user.charger_level ? `Lv ${user.charger_level}` : '',
+              },
               {
                 key: 'support' as const, label: 'الكاريزما',
-                value: user._monthly_recv ? (user._monthly_recv >= 1000000 ? `${(user._monthly_recv / 1000000).toFixed(1)}M` : user._monthly_recv.toLocaleString()) : (user.receiver_level ?? 0),
-                sub: 'هذا الشهر',
+                value: user._recv_total ? (user._recv_total >= 1000000 ? `${(user._recv_total / 1000000).toFixed(1)}M` : Number(user._recv_total).toLocaleString()) : '0',
+                sub: user._recv_total ? `$${(user._recv_total / 7500).toFixed(0)}` : '',
                 icon: <Sparkles size={22} className="text-pink-500" />,
+                levelLabel: user.received_level ? `Lv ${user.received_level}` : '',
               },
               {
                 key: 'supporter' as const, label: 'الداعم',
-                value: user._monthly_sent ? (user._monthly_sent >= 1000000 ? `${(user._monthly_sent / 1000000).toFixed(1)}M` : user._monthly_sent.toLocaleString()) : (user.sender_level ?? 0),
-                sub: 'هذا الشهر',
+                value: user._sent_total ? (user._sent_total >= 1000000 ? `${(user._sent_total / 1000000).toFixed(1)}M` : Number(user._sent_total).toLocaleString()) : '0',
+                sub: user._sent_total ? `$${(user._sent_total / 7500).toFixed(0)}` : '',
                 icon: <Crown size={22} className="text-amber-500" />,
+                levelLabel: user.sender_level ? `Lv ${user.sender_level}` : '',
               },
-              { key: 'salary' as const, label: 'الراتب', value: `$${user.salary ?? 0}`, sub: '', icon: <DollarSign size={22} className="text-amber-600" /> },
-            ] as const).map((item) => {
-              const isActive = expandedTile === item.key;
-              return (
-                <button key={item.label}
-                  onClick={() => setExpandedTile(isActive ? null : item.key)}
-                  className={`rounded-xl text-center py-2.5 px-1 transition-all active:scale-[0.95] cursor-pointer ${isActive ? 'ring-1 ring-amber-500/40' : ''}`}
-                  style={{
-                    background: 'linear-gradient(180deg, rgba(220,215,200,0.95) 0%, rgba(200,195,180,0.9) 100%)',
-                    border: '1px solid rgba(180,170,150,0.4)',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.2)',
-                  }}>
-                  <p className="text-[9px] font-bold mb-1 text-gray-600">{item.label}</p>
-                  <div className="flex justify-center mb-1">{item.icon}</div>
-                  <p className="text-base font-black tabular-nums font-mono text-gray-800">{item.value}</p>
-                  {item.sub && <p className="text-[7px] text-gray-400 mt-0.5">{item.sub}</p>}
-                </button>
-              );
-            })}
+              {
+                key: 'salary' as const, label: 'الراتب',
+                value: `$${user.salary ?? 0}`,
+                sub: '',
+                icon: <DollarSign size={22} className="text-amber-600" />,
+                levelLabel: '',
+              },
+            ] as const).map((item) => (
+              <div key={item.label}
+                className="rounded-xl text-center py-2.5 px-1"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(220,215,200,0.95) 0%, rgba(200,195,180,0.9) 100%)',
+                  border: '1px solid rgba(180,170,150,0.4)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.2)',
+                }}>
+                <p className="text-[9px] font-bold mb-1 text-gray-600">{item.label}</p>
+                <div className="flex justify-center mb-1">{item.icon}</div>
+                <p className="text-[11px] font-black tabular-nums font-mono text-gray-800 leading-tight">{item.value}</p>
+                {item.sub && <p className="text-[8px] font-bold text-emerald-700 mt-0.5">{item.sub}</p>}
+                {item.levelLabel && <p className="text-[7px] text-gray-400 mt-0.5">{item.levelLabel}</p>}
+              </div>
+            ))}
           </div>
-
-          {/* ─── Expandable Detail Accordion ─── */}
-          <AnimatePresence>
-            {expandedTile && (
-              <UserDetailAccordion
-                key={expandedTile}
-                uuid={user.uuid}
-                section={expandedTile}
-                onClose={() => setExpandedTile(null)}
-                salaryData={{ salary: user.salary, deduction: user.deduction, net_salary: user.net_salary }}
-                monthlyRecv={user._monthly_recv}
-                totalRecv={user._recv_total}
-                totalRecvUsd={user._recv_usd}
-                monthlySent={user._monthly_sent}
-                totalSent={user._sent_total}
-                totalSentUsd={user._sent_usd}
-              />
-            )}
-          </AnimatePresence>
 
           {/* ─── Detail Rows (cream/white background like reference) ─── */}
           <div className="rounded-xl overflow-hidden"
