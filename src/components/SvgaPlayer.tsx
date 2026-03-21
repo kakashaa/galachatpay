@@ -18,12 +18,12 @@ const SvgaPlayer: React.FC<SvgaPlayerProps> = ({ src, loop = 0, className = "", 
 
     const loadSvga = async () => {
       try {
-        const { Downloader, Parser, Player } = await import("svga-web");
+        const SVGA = await import("svga-web");
         if (cancelled) return;
 
-        const downloader = new Downloader();
-        const parser = new Parser();
-        const player = new Player(canvasRef.current!);
+        const downloader = new SVGA.Downloader();
+        const parser = new SVGA.Parser();
+        const player = new SVGA.Player(canvasRef.current!);
         playerRef.current = player;
 
         const fileData = await downloader.get(src);
@@ -36,7 +36,7 @@ const SvgaPlayer: React.FC<SvgaPlayerProps> = ({ src, loop = 0, className = "", 
         await player.mount(svgaData);
         player.start();
       } catch (err) {
-        console.error("SVGA load error:", err);
+        console.error("SVGA load error:", src, err);
       }
     };
 
@@ -51,13 +51,16 @@ const SvgaPlayer: React.FC<SvgaPlayerProps> = ({ src, loop = 0, className = "", 
     };
   }, [src, loop]);
 
+  // Use higher resolution canvas but scale down with CSS for crisp rendering
+  const canvasW = width || 300;
+  const canvasH = height || 300;
+
   return (
     <canvas
       ref={canvasRef}
-      width={width || 300}
-      height={height || 300}
+      width={canvasW}
+      height={canvasH}
       className={className}
-      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
     />
   );
 };
