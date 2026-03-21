@@ -55,9 +55,10 @@ const ALLOWED: Record<string, string[]> = {
     "upload-room-background", "list-room-bg-requests",
     "approve-room-bg", "reject-room-bg",
     "wa-queue",
+    "gift-sent-total", "gift-received-total",
   ],
   "bd-data": [
-    "user-monthly-charges",
+    "user-monthly-charges", "user-profile", "user-info",
   ],
   "aws": [
     "user-info", "set-frame", "set-entry", "set-profile-entry", "set-necklace",
