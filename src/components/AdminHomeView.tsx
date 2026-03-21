@@ -448,19 +448,24 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
             <X size={11} className="text-white/40" />
           </button>
 
-          {/* VIP Card SVGA Background */}
+          {/* VIP Card SVGA Background — fills entire card */}
           {userVipLevel > 0 && VIP_CARDS[userVipLevel] && (
-            <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
-              <SvgaPlayer src={VIP_CARDS[userVipLevel]} loop={0} className="w-full h-full" width={500} height={600} />
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+              <SvgaPlayer src={VIP_CARDS[userVipLevel]} loop={0} className="w-full h-full object-cover" width={600} height={800} />
             </div>
           )}
 
           {/* ─── Profile Header: name left, avatar right (RTL) ─── */}
           <div className="flex items-center gap-3 pt-1 relative z-[1]" dir="rtl">
             {/* Avatar with VIP Frame - right side in RTL */}
-            <div className="relative shrink-0" style={{ width: userVipLevel > 0 ? 80 : 64, height: userVipLevel > 0 ? 80 : 64 }}>
-              <div className={`overflow-hidden rounded-full absolute ${userVipLevel > 0 ? 'inset-[12px]' : 'inset-0'}`}
+            <div className="relative shrink-0 flex items-center justify-center" style={{ width: userVipLevel > 0 ? 96 : 64, height: userVipLevel > 0 ? 96 : 64 }}>
+              {/* Avatar circle centered inside */}
+              <div className="overflow-hidden rounded-full absolute"
                 style={{
+                  width: userVipLevel > 0 ? 56 : 64,
+                  height: userVipLevel > 0 ? 56 : 64,
+                  top: '50%', left: '50%',
+                  transform: 'translate(-50%, -50%)',
                   border: '2.5px solid rgba(160,150,130,0.6)',
                   boxShadow: '0 0 15px rgba(160,150,130,0.15), inset 0 0 10px rgba(0,0,0,0.3)',
                   background: 'linear-gradient(135deg, #3a3d50, #2a2d40)',
@@ -472,21 +477,25 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                   onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
                 />
               </div>
-              {/* VIP SVGA Frame overlay */}
+              {/* VIP SVGA Frame overlay — 1.5x avatar, centered */}
               {userVipLevel > 0 && VIP_FRAMES[userVipLevel] && (
                 <div className="absolute inset-0 z-10 pointer-events-none">
-                  <SvgaPlayer src={VIP_FRAMES[userVipLevel]} loop={0} width={userVipLevel > 0 ? 80 : 64} height={userVipLevel > 0 ? 80 : 64} className="w-full h-full" />
+                  <SvgaPlayer src={VIP_FRAMES[userVipLevel]} loop={0} width={96} height={96} className="w-full h-full" />
                 </div>
               )}
               <span className={`absolute bottom-0 left-0 z-20 h-3 w-3 rounded-full border-2 border-[#1a1d35] ${user.online ? 'bg-emerald-500' : 'bg-gray-500'}`}
                 style={{ boxShadow: user.online ? '0 0 8px rgba(16,185,129,0.6)' : 'none' }} />
             </div>
 
-            {/* Name + UUID - left side in RTL */}
+            {/* Name + VIP badge + UUID - left side in RTL */}
             <div className="flex-1 text-right">
-              <div className="flex items-center gap-1.5 justify-end">
+              <div className="flex items-center gap-1.5 justify-end flex-wrap">
                 <h3 className="text-lg font-black text-white">{user.name}</h3>
-                {userVipLevel > 0 && (
+                {/* VIP badge image from profile API */}
+                {userVipLevel > 0 && user.vip_image && (
+                  <img src={user.vip_image} alt={`VIP ${userVipLevel}`} className="h-5 object-contain" />
+                )}
+                {userVipLevel > 0 && !user.vip_image && (
                   <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black"
                     style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.25), rgba(245,158,11,0.15))', border: '1px solid rgba(234,179,8,0.4)' }}>
                     <Crown size={10} className="text-yellow-400" />
@@ -1161,7 +1170,8 @@ const AdminHomeView: React.FC<Props> = ({
                 }).then(r => r.json()).catch(() => null);
                 const vip = profileRes?.data?.vip;
                 if (vip?.level > 0) {
-                  setSearchResult((prev: any) => prev ? { ...prev, vip_level: vip.level } : prev);
+                  const vipImage = vip.image ? `https://media.galalivechat.com/${vip.image}` : '';
+                  setSearchResult((prev: any) => prev ? { ...prev, vip_level: vip.level, vip_image: vipImage } : prev);
                 }
               }
             }
