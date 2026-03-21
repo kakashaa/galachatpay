@@ -745,9 +745,45 @@ const SalaryWithdraw: React.FC = () => {
   if (loading || step === "loading") {
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">جاري جلب الحوالات...</p>
+        <div className="flex flex-col items-center justify-center py-24 gap-6 px-6">
+          <div className="relative">
+            <Loader2 className="w-12 h-12 animate-spin text-primary" />
+            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-primary/20 animate-pulse" />
+          </div>
+          <div className="w-full max-w-xs space-y-3">
+            {[
+              { label: "جاري التأكد من الحوالات...", step: 1 },
+              { label: "جاري التحقق من المبالغ...", step: 2 },
+              { label: "جاري التأكد من تكرار الحوالات...", step: 3 },
+            ].map((item) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{
+                  opacity: loadingStep >= item.step ? 1 : 0.3,
+                  x: 0,
+                }}
+                transition={{ delay: item.step * 0.3, duration: 0.4 }}
+                className="flex items-center gap-3 rtl:flex-row-reverse"
+              >
+                {loadingStep > item.step ? (
+                  <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                ) : loadingStep === item.step ? (
+                  <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                )}
+                <span className={cn(
+                  "text-sm transition-colors duration-300",
+                  loadingStep >= item.step ? "text-foreground" : "text-muted-foreground/50"
+                )}>
+                  {loadingStep > item.step
+                    ? item.label.replace("جاري", "تم").replace("...", " ✓")
+                    : item.label}
+                </span>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </MobileLayout>
     );
