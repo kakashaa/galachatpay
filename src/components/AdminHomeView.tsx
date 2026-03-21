@@ -19,7 +19,7 @@ import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
 import UserDetailAccordion from '@/components/UserDetailAccordion';
-import SvgaPlayer from '@/components/SvgaPlayer';
+
 
 const VIP_FRAMES: Record<number, string> = {
   1: "https://hola-chat.com/vip-assets/frame-vip1.svga",
