@@ -443,29 +443,24 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           {/* ─── 4 Stats Tiles (light cream like reference) ─── */}
           <div className="grid grid-cols-4 gap-2" dir="rtl">
             {([
-              { key: 'charge' as const, label: 'الشحن', value: user.charger_level || 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
-              { key: 'support' as const, label: 'الدعم', value: user.receiver_level || 0, icon: <Sparkles size={22} className="text-pink-500" /> },
-              { key: 'supporter' as const, label: 'الداعم', value: user.sender_level || 0, icon: <Crown size={22} className="text-amber-500" /> },
-              { key: 'salary' as const, label: 'الراتب', value: `$${user.salary || 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
+              { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
+              { key: 'support' as const, label: 'الكاريزما', value: user.receiver_level ?? 0, icon: <Sparkles size={22} className="text-pink-500" /> },
+              { key: 'supporter' as const, label: 'الداعم', value: user.sender_level ?? 0, icon: <Crown size={22} className="text-amber-500" /> },
+              { key: 'salary' as const, label: 'الراتب', value: `$${user.net_salary ?? user.salary ?? 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
             ] as const).map((item) => {
-              const numericVal = typeof item.value === 'string' ? parseFloat(item.value.replace('$', '')) : item.value;
-              const isEmpty = !numericVal || numericVal === 0;
+              const isActive = expandedTile === item.key;
               return (
                 <button key={item.label}
-                  disabled={isEmpty}
-                  onClick={() => !isEmpty && setExpandedTile(expandedTile === item.key ? null : item.key)}
-                  className={`rounded-xl text-center py-2.5 px-1 transition-all ${!isEmpty ? 'active:scale-[0.95] cursor-pointer' : 'cursor-default'} ${expandedTile === item.key ? 'ring-1 ring-amber-500/40' : ''}`}
+                  onClick={() => setExpandedTile(isActive ? null : item.key)}
+                  className={`rounded-xl text-center py-2.5 px-1 transition-all active:scale-[0.95] cursor-pointer ${isActive ? 'ring-1 ring-amber-500/40' : ''}`}
                   style={{
-                    background: isEmpty
-                      ? 'linear-gradient(180deg, rgba(180,180,180,0.6) 0%, rgba(160,160,160,0.5) 100%)'
-                      : 'linear-gradient(180deg, rgba(220,215,200,0.95) 0%, rgba(200,195,180,0.9) 100%)',
-                    border: `1px solid ${isEmpty ? 'rgba(150,150,150,0.3)' : 'rgba(180,170,150,0.4)'}`,
-                    boxShadow: isEmpty ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.2)',
-                    opacity: isEmpty ? 0.5 : 1,
+                    background: 'linear-gradient(180deg, rgba(220,215,200,0.95) 0%, rgba(200,195,180,0.9) 100%)',
+                    border: '1px solid rgba(180,170,150,0.4)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.2)',
                   }}>
-                  <p className={`text-[9px] font-bold mb-1 ${isEmpty ? 'text-gray-400' : 'text-gray-600'}`}>{item.label}</p>
-                  <div className="flex justify-center mb-1" style={{ opacity: isEmpty ? 0.4 : 1 }}>{item.icon}</div>
-                  <p className={`text-base font-black tabular-nums font-mono ${isEmpty ? 'text-gray-400' : 'text-gray-800'}`}>{item.value}</p>
+                  <p className="text-[9px] font-bold mb-1 text-gray-600">{item.label}</p>
+                  <div className="flex justify-center mb-1">{item.icon}</div>
+                  <p className="text-base font-black tabular-nums font-mono text-gray-800">{item.value}</p>
                 </button>
               );
             })}
@@ -490,8 +485,8 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
               border: '1px solid rgba(180,170,150,0.3)',
             }}>
             {[
-              { icon: <Wallet size={14} className="text-blue-700" />, label: 'صافي الراتب', value: `$${user.net_salary || 0}` },
-              { icon: <ClipboardList size={14} className="text-blue-700" />, label: 'الخصومات', value: `$${user.deduction || 0}` },
+              { icon: <Wallet size={14} className="text-blue-700" />, label: 'المتبقي', value: `$${user.net_salary ?? 0}`, color: 'text-emerald-600 font-black' },
+              { icon: <ClipboardList size={14} className="text-blue-700" />, label: 'المصروف', value: `$${user.deduction ?? 0}`, color: 'text-red-600 font-black' },
               { icon: <Building2 size={14} className="text-blue-700" />, label: 'الوكالة', value: user.agency_id || '—' },
               { icon: <Users size={14} className="text-blue-700" />, label: 'العائلة', value: user.family_id || '—' },
             ].map((row, idx) => (
