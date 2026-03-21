@@ -17,6 +17,7 @@ import { galaApi } from '@/services/galaApi';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
+import UserDetailAccordion from '@/components/UserDetailAccordion';
 
 /* ─── Animated Counter ─── */
 const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
@@ -330,6 +331,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [vipLevel, setVipLevel] = useState('1');
   const [busy, setBusy] = useState(false);
+  const [expandedTile, setExpandedTile] = useState<'charge' | 'support' | 'supporter' | 'salary' | null>(null);
 
   const copyUuid = () => {
     navigator.clipboard.writeText(user.uuid);
@@ -440,13 +442,15 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
 
           {/* ─── 4 Stats Tiles (light cream like reference) ─── */}
           <div className="grid grid-cols-4 gap-2" dir="rtl">
-            {[
-              { label: 'الراتب', value: `$${user.salary || 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
-              { label: 'الداعم', value: user.sender_level || 0, icon: <Crown size={22} className="text-amber-500" /> },
-              { label: 'الدعم', value: user.receiver_level || 0, icon: <Sparkles size={22} className="text-pink-500" /> },
-              { label: 'الشحن', value: user.charger_level || 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl text-center py-2.5 px-1"
+            {([
+              { key: 'salary' as const, label: 'الراتب', value: `$${user.salary || 0}`, icon: <DollarSign size={22} className="text-amber-600" /> },
+              { key: 'supporter' as const, label: 'الداعم', value: user.sender_level || 0, icon: <Crown size={22} className="text-amber-500" /> },
+              { key: 'support' as const, label: 'الدعم', value: user.receiver_level || 0, icon: <Sparkles size={22} className="text-pink-500" /> },
+              { key: 'charge' as const, label: 'الشحن', value: user.charger_level || 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
+            ] as const).map((item) => (
+              <button key={item.label}
+                onClick={() => setExpandedTile(expandedTile === item.key ? null : item.key)}
+                className={`rounded-xl text-center py-2.5 px-1 transition-all active:scale-[0.95] ${expandedTile === item.key ? 'ring-1 ring-amber-500/40' : ''}`}
                 style={{
                   background: 'linear-gradient(180deg, rgba(220,215,200,0.95) 0%, rgba(200,195,180,0.9) 100%)',
                   border: '1px solid rgba(180,170,150,0.4)',
@@ -455,9 +459,21 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                 <p className="text-[9px] font-bold text-gray-600 mb-1">{item.label}</p>
                 <div className="flex justify-center mb-1">{item.icon}</div>
                 <p className="text-base font-black tabular-nums font-mono text-gray-800">{item.value}</p>
-              </div>
+              </button>
             ))}
           </div>
+
+          {/* ─── Expandable Detail Accordion ─── */}
+          <AnimatePresence>
+            {expandedTile && (
+              <UserDetailAccordion
+                key={expandedTile}
+                uuid={user.uuid}
+                section={expandedTile}
+                onClose={() => setExpandedTile(null)}
+              />
+            )}
+          </AnimatePresence>
 
           {/* ─── Detail Rows (cream/white background like reference) ─── */}
           <div className="rounded-xl overflow-hidden"

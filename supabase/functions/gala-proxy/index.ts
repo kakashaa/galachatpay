@@ -43,6 +43,7 @@ const ALLOWED: Record<string, string[]> = {
     "wa_notify", "wa_queue",
     "user_transfers", "get_avatar", "get_avatars",
     "update_user_avatar", "upload_custom_gift",
+    "admin_charges_report", "admin_gift_logs",
   ],
   "hola-chat": [
     "check-supporter", "check-agency",

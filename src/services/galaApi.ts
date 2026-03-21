@@ -65,6 +65,15 @@ class GalaApiService {
     return this.call("project-z", "salary_report", { uuid });
   }
 
+  // User detail reports
+  async chargesReport(uuid: string, from?: string, to?: string) {
+    return this.call("project-z", "admin_charges_report", { uuid, ...(from ? { from } : {}), ...(to ? { to } : {}) }, true);
+  }
+
+  async giftLogs(uuid: string, direction: "sender" | "receiver", from?: string, to?: string) {
+    return this.call("project-z", "admin_gift_logs", { uuid, direction, ...(from ? { from } : {}), ...(to ? { to } : {}) }, true);
+  }
+
   async salaryWithdrawList(month: string) {
     return this.call("project-z", "salary_withdraw_list", { month }, true);
   }
