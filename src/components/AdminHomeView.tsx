@@ -9,7 +9,7 @@ import {
   TrendingUp, Building2,
   ShieldAlert, Headphones, CheckCircle, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
-  Inbox, FileText, Landmark, Eye, BarChart3,
+  Inbox, FileText, Landmark, Eye, BarChart3, DollarSign,
   MessageCircle, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -388,12 +388,6 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
     { key: 'photo', label: 'الصورة', icon: ImageIcon, tone: 'secondary' },
   ];
 
-  const toneClasses: Record<'primary' | 'destructive' | 'secondary' | 'muted', string> = {
-    primary: 'bg-primary/10 border-primary/25 text-primary',
-    destructive: 'bg-destructive/10 border-destructive/25 text-destructive',
-    secondary: 'bg-secondary/20 border-secondary/35 text-secondary',
-    muted: 'bg-muted/55 border-border text-foreground',
-  };
 
   return (
     <>
