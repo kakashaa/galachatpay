@@ -687,15 +687,6 @@ const AdminHomeView: React.FC<Props> = ({
               <div className="grid grid-cols-3 gap-2">
                 <KPICard label="معلّق" value={stats.pending} icon={Clock} colorClass="text-amber-500" bgClass="bg-amber-500/10" />
                 <KPICard label="مقبول" value={stats.approved} icon={CheckCircle} colorClass="text-emerald-500" bgClass="bg-emerald-500/10" />
-            {/* ═══ 3. KPI CARDS ═══ */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-            >
-              <div className="grid grid-cols-3 gap-2">
-                <KPICard label="معلّق" value={stats.pending} icon={Clock} colorClass="text-amber-500" bgClass="bg-amber-500/10" />
-                <KPICard label="مقبول" value={stats.approved} icon={CheckCircle} colorClass="text-emerald-500" bgClass="bg-emerald-500/10" />
                 <KPICard label="مرفوض" value={stats.rejected} icon={XCircle} colorClass="text-red-500" bgClass="bg-red-500/10" />
               </div>
             </motion.div>
