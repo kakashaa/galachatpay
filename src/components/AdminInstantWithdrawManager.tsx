@@ -199,12 +199,14 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
     if (!approveSheet || !receiptFile) { toast.error("يجب رفع إيصال التحويل"); return; }
     setActionLoading(true);
     try {
-      // Upload receipt to storage
-      const ext = receiptFile.name.split(".").pop() || "jpg";
+      // Compress then upload receipt to storage
+      const { compressImage } = await import("@/utils/compressImage");
+      const compressed = await compressImage(receiptFile, 1200, 1200, 0.7);
+      const ext = compressed.name.split(".").pop() || "jpg";
       const filePath = `receipts/instant_${approveSheet.id}_${Date.now()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from("attachments")
-        .upload(filePath, receiptFile, { contentType: receiptFile.type });
+        .upload(filePath, compressed, { contentType: compressed.type });
 
       if (uploadError) throw uploadError;
 
