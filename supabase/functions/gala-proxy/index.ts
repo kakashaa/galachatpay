@@ -26,6 +26,12 @@ const URLS: Record<string, string> = {
   "gala-api": "https://galalivechat.com/api",
 };
 
+// Primary admin accounts (same auth model used in admin-manage)
+const PRIMARY_ADMINS: Record<string, { role: "owner" | "super_admin" | "admin"; envKey: string }> = {
+  naz: { role: "owner", envKey: "ADMIN_NAZ_PASSWORD" },
+  blnawah: { role: "admin", envKey: "ADMIN_BLNAWAH_PASSWORD" },
+};
+
 // Allowed actions per target
 const ALLOWED: Record<string, string[]> = {
   "project-z": [
@@ -120,15 +126,28 @@ serve(async (req) => {
 
       try {
         const decoded = JSON.parse(atob(adminToken));
-        if (!decoded.username) throw new Error("invalid");
+        const decodedUsername = String(decoded?.username || "").trim();
+        if (!decodedUsername) throw new Error("invalid");
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        const { data: admin } = await supabase
-          .from("admin_accounts")
-          .select("username, role")
-          .eq("username", decoded.username)
-          .eq("is_active", true)
-          .single();
+        const normalizedUsername = decodedUsername.toLowerCase();
+        let admin: { username: string; role: string } | null = null;
+
+        // 1) Primary admins from env-backed accounts
+        const primaryAdmin = PRIMARY_ADMINS[normalizedUsername];
+        if (primaryAdmin && Deno.env.get(primaryAdmin.envKey)) {
+          admin = { username: normalizedUsername, role: primaryAdmin.role };
+        } else {
+          // 2) Moderators/admins from DB
+          const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+          const { data: dbAdmin } = await supabase
+            .from("admin_accounts")
+            .select("username, role")
+            .ilike("username", decodedUsername)
+            .eq("is_active", true)
+            .single();
+
+          admin = dbAdmin;
+        }
 
         if (!admin) return json({ error: "جلسة غير صالحة" }, 401);
 
