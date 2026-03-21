@@ -163,6 +163,118 @@ const ActionDialog: React.FC<{
   );
 };
 
+/* ─── Ban Inline Form ─── */
+const BanInlineForm: React.FC<{ user: any; onDone: () => void }> = ({ user, onDone }) => {
+  const [reason, setReason] = useState('');
+  const [duration, setDuration] = useState('24');
+  const [banType, setBanType] = useState('normal');
+  const [loading, setLoading] = useState(false);
+
+  const durations = [
+    { label: '3 ساعات', value: '3' },
+    { label: '12 ساعة', value: '12' },
+    { label: '24 ساعة', value: '24' },
+    { label: '3 أيام', value: '72' },
+    { label: '7 أيام', value: '168' },
+    { label: 'دائم', value: '8760' },
+  ];
+
+  const banTypes = [
+    { label: 'عادي', value: 'normal', color: 'text-amber-400' },
+    { label: 'كامل', value: 'full', color: 'text-destructive' },
+  ];
+
+  const handleBan = async () => {
+    if (!reason.trim()) { toast.error('أدخل سبب الحظر'); return; }
+    setLoading(true);
+    try {
+      await galaApi.banUserReal(user.uuid, reason, parseInt(duration), banType);
+      toast.success('تم حظر المستخدم بنجاح');
+      onDone();
+    } catch {
+      toast.error('فشل الحظر');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* User preview */}
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/5 border border-destructive/10">
+        <div className="w-9 h-9 rounded-lg overflow-hidden border border-border">
+          <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-foreground truncate">{user.name}</p>
+          <p className="text-[10px] text-muted-foreground tabular-nums font-mono">#{user.uuid}</p>
+        </div>
+      </div>
+
+      {/* Ban type */}
+      <div>
+        <p className="text-[11px] text-muted-foreground mb-2">نوع الحظر:</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {banTypes.map(bt => (
+            <button
+              key={bt.value}
+              onClick={() => setBanType(bt.value)}
+              className={`py-2.5 rounded-xl text-[11px] font-bold transition-all ${
+                banType === bt.value
+                  ? 'bg-destructive/15 border-2 border-destructive/40 text-destructive'
+                  : 'bg-muted/30 border border-border text-muted-foreground hover:bg-muted/50'
+              }`}
+            >
+              {bt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Duration */}
+      <div>
+        <p className="text-[11px] text-muted-foreground mb-2">المدة:</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {durations.map(d => (
+            <button
+              key={d.value}
+              onClick={() => setDuration(d.value)}
+              className={`py-2 rounded-xl text-[10px] font-bold transition-all ${
+                duration === d.value
+                  ? 'bg-destructive/15 border-2 border-destructive/40 text-destructive'
+                  : 'bg-muted/30 border border-border text-muted-foreground hover:bg-muted/50'
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Reason */}
+      <div>
+        <p className="text-[11px] text-muted-foreground mb-2">سبب الحظر:</p>
+        <textarea
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          placeholder="اكتب سبب الحظر..."
+          rows={2}
+          className="w-full rounded-xl bg-muted/20 border border-border/40 px-3 py-2 text-[11px] text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-destructive/40 resize-none transition-colors"
+        />
+      </div>
+
+      {/* Submit */}
+      <button
+        onClick={handleBan}
+        disabled={loading || !reason.trim()}
+        className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+      >
+        {loading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
+        تأكيد الحظر
+      </button>
+    </div>
+  );
+};
+
 /* ─── User ID Card (Redesigned) ─── */
 const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: string; onRefresh: (uuid: string) => void }> = ({ user, onClose, onRefresh }) => {
   const navigate = useNavigate();
@@ -351,7 +463,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           </div>
         </ActionDialog>
 
-        {/* Ban Dialog */}
+        {/* Ban Dialog — Full inline form */}
         <ActionDialog
           open={activeAction === 'ban'}
           onClose={() => setActiveAction(null)}
@@ -359,25 +471,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           icon={Ban}
           iconColor="#ef4444"
         >
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-destructive/5 border border-destructive/10">
-              <div className="w-9 h-9 rounded-lg overflow-hidden border border-border">
-                <img src={user.avatar || '/placeholder.svg'} className="w-full h-full object-cover" alt="" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-foreground">{user.name}</p>
-                <p className="text-[10px] text-destructive font-medium">سيتم توجيهك لصفحة الحظر</p>
-              </div>
-            </div>
-            <button
-              onClick={() => { navigate(`/admin/ban?uuid=${user.uuid}`); setActiveAction(null); }}
-              disabled={actionLoading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold active:scale-[0.98] transition-transform disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
-            >
-              {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
-              متابعة الحظر
-            </button>
-          </div>
+          <BanInlineForm user={user} onDone={() => { setActiveAction(null); onRefresh(user.uuid); }} />
         </ActionDialog>
 
         {/* Salary Reset Dialog */}
