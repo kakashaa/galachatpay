@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
-import UserDetailAccordion from '@/components/UserDetailAccordion';
+// UserDetailAccordion removed temporarily until backend proxy ready
 import SvgaPlayer from '@/components/SvgaPlayer';
 
 const VIP_FRAMES: Record<number, string> = {
@@ -359,7 +359,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [vipLevel, setVipLevel] = useState('1');
   const [busy, setBusy] = useState(false);
-  const [expandedTile, setExpandedTile] = useState<'charge' | 'support' | 'supporter' | 'salary' | null>(null);
+  // Detail accordion disabled until backend proxy is ready
   const userVipLevel = user.vip_level || 0;
 
   const copyUuid = () => {
