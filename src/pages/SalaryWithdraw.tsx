@@ -182,6 +182,7 @@ const SalaryWithdraw: React.FC = () => {
   };
   // Core state
   const [loading, setLoading] = useState(true);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState("");
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [usedDetails, setUsedDetails] = useState<Record<string, UsedTransferDetail>>({});
@@ -283,18 +284,18 @@ const SalaryWithdraw: React.FC = () => {
 
   const fetchTransfers = async () => {
     setLoading(true);
+    setLoadingStep(0);
     setError("");
     try {
       const now = new Date();
       const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-      const [transfersRes, salaryRes, salaryCheckRes] = await Promise.all([
+      // Step 1: Fetch all data in parallel
+      setLoadingStep(1);
+      const [transfersRes, salaryRes, salaryCheckRes, historyRes, localRequestsRes] = await Promise.all([
         fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`),
         fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`),
         fetch(`${API}?action=salary_check&uuid=${user!.uuid}`),
-      ]);
-
-      const [historyRes, localRequestsRes] = await Promise.all([
         fetch(`${API}?action=my_salary_requests&uuid=${user!.uuid}&month=${month}`),
         supabase
           .from("salary_requests")
@@ -304,10 +305,15 @@ const SalaryWithdraw: React.FC = () => {
           .or("transfer_id.not.is.null,transaction_id.not.is.null"),
       ]);
 
+      // Step 2: Parse responses
+      setLoadingStep(2);
       const data: TransfersResult = await transfersRes.json();
       const salaryData = await salaryRes.json();
       const salaryCheckData = await salaryCheckRes.json().catch(() => ({}));
       const historyData = await historyRes.json().catch(() => ({}));
+
+      // Step 3: Verify duplicates
+      setLoadingStep(3);
 
       const summarySalary = Number(
         salaryCheckData?.salary ?? salaryData?.host_salary?.salary ?? 0,
