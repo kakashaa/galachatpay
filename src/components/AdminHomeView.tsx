@@ -1210,18 +1210,34 @@ const AdminHomeView: React.FC<Props> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => setShowNotifPanel((prev) => !prev)}
-                className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-                aria-label="الإشعارات"
-              >
-                <Bell className="w-[18px] h-[18px] text-slate-300" />
-                {totalBadge > 0 && (
-                  <span className="absolute -top-1 -left-1 w-[17px] h-[17px] bg-gradient-to-br from-red-400 to-rose-500 rounded-full text-[9px] font-bold flex items-center justify-center text-white shadow-md shadow-red-500/30">
-                    {totalBadge > 99 ? '99+' : totalBadge}
-                  </span>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowNotifPanel((prev) => !prev)}
+                  className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                  aria-label="الإشعارات"
+                >
+                  <Bell className="w-[18px] h-[18px] text-slate-300" />
+                  {totalBadge > 0 && (
+                    <span className="absolute -top-1 -left-1 w-[17px] h-[17px] bg-gradient-to-br from-red-400 to-rose-500 rounded-full text-[9px] font-bold flex items-center justify-center text-white shadow-md shadow-red-500/30">
+                      {totalBadge > 99 ? '99+' : totalBadge}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    if (onLogout) onLogout();
+                    else {
+                      localStorage.removeItem("admin_session_token");
+                      localStorage.removeItem("admin_username");
+                      navigate("/admin-login");
+                    }
+                  }}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                  aria-label="تسجيل الخروج"
+                >
+                  <LogOut className="w-[16px] h-[16px] text-red-400" />
+                </button>
+              </div>
             </div>
 
             {/* Last login / shift info */}
