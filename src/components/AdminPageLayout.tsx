@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, LogOut } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import AdminBottomNav from "@/components/AdminBottomNav";
 
@@ -105,17 +104,9 @@ const AdminPageLayout: React.FC<Props> = ({ title, children, accentColor, onLogo
       </header>
 
       {/* Content */}
-      <AnimatePresence mode="wait">
-        <motion.main
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-          className="relative z-10 flex-1 overflow-y-auto min-h-0 pb-28"
-        >
-          {children}
-        </motion.main>
-      </AnimatePresence>
+      <main className="relative z-10 flex-1 overflow-y-auto min-h-0 pb-28 animate-slide-up">
+        {children}
+      </main>
 
       {/* Bottom Dock */}
       <AdminBottomNav
