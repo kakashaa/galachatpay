@@ -162,12 +162,10 @@ const ActionSheet: React.FC<{
 };
 
 /* ─── User ID Card ─── */
-const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: string; onRefresh: (uuid: string) => void }> = ({ user, onClose, _adminUsername, onRefresh }) => {
+const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: string; onRefresh: (uuid: string) => void }> = ({ user, onClose, onRefresh }) => {
   const navigate = useNavigate();
   const isBanned = user.is_banned;
   const [activeAction, setActiveAction] = useState<string | null>(null);
-  const [banDuration, setBanDuration] = useState('24');
-  const [banReason, setBanReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [vipLevel, setVipLevel] = useState('1');
 
