@@ -450,15 +450,33 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
 
           {/* VIP Card SVGA Background — fills entire card */}
           {userVipLevel > 0 && VIP_CARDS[userVipLevel] && (
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-              <SvgaPlayer src={VIP_CARDS[userVipLevel]} loop={0} className="w-full h-full object-cover" width={600} height={800} />
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-2xl">
+              <canvas
+                ref={(el) => {
+                  if (!el || (el as any).__svgaLoaded) return;
+                  (el as any).__svgaLoaded = true;
+                  import("svga-web").then(async ({ Downloader, Parser, Player }) => {
+                    try {
+                      const player = new Player(el);
+                      const fileData = await new Downloader().get(VIP_CARDS[userVipLevel]);
+                      const svgaData = await new Parser().do(fileData);
+                      player.set({ loop: 0, fillMode: "forwards" });
+                      await player.mount(svgaData);
+                      player.start();
+                    } catch (e) { console.error("Card SVGA error:", e); }
+                  });
+                }}
+                width={500}
+                height={700}
+                style={{ width: '100%', height: '100%', display: 'block' }}
+              />
             </div>
           )}
 
           {/* ─── Profile Header: name left, avatar right (RTL) ─── */}
           <div className="flex items-center gap-3 pt-1 relative z-[1]" dir="rtl">
             {/* Avatar with VIP Frame - right side in RTL */}
-            <div className="relative shrink-0 flex items-center justify-center" style={{ width: userVipLevel > 0 ? 96 : 64, height: userVipLevel > 0 ? 96 : 64 }}>
+            <div className="relative shrink-0 flex items-center justify-center" style={{ width: userVipLevel > 0 ? 100 : 64, height: userVipLevel > 0 ? 100 : 64 }}>
               {/* Avatar circle centered inside */}
               <div className="overflow-hidden rounded-full absolute"
                 style={{
@@ -466,6 +484,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                   height: userVipLevel > 0 ? 56 : 64,
                   top: '50%', left: '50%',
                   transform: 'translate(-50%, -50%)',
+                  zIndex: 5,
                   border: '2.5px solid rgba(160,150,130,0.6)',
                   boxShadow: '0 0 15px rgba(160,150,130,0.15), inset 0 0 10px rgba(0,0,0,0.3)',
                   background: 'linear-gradient(135deg, #3a3d50, #2a2d40)',
@@ -477,10 +496,28 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                   onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
                 />
               </div>
-              {/* VIP SVGA Frame overlay — 1.5x avatar, centered */}
+              {/* VIP SVGA Frame overlay — rendered at high res, scaled by CSS */}
               {userVipLevel > 0 && VIP_FRAMES[userVipLevel] && (
                 <div className="absolute inset-0 z-10 pointer-events-none">
-                  <SvgaPlayer src={VIP_FRAMES[userVipLevel]} loop={0} width={96} height={96} className="w-full h-full" />
+                  <canvas
+                    ref={(el) => {
+                      if (!el || (el as any).__svgaLoaded) return;
+                      (el as any).__svgaLoaded = true;
+                      import("svga-web").then(async ({ Downloader, Parser, Player }) => {
+                        try {
+                          const player = new Player(el);
+                          const fileData = await new Downloader().get(VIP_FRAMES[userVipLevel]);
+                          const svgaData = await new Parser().do(fileData);
+                          player.set({ loop: 0, fillMode: "forwards" });
+                          await player.mount(svgaData);
+                          player.start();
+                        } catch (e) { console.error("Frame SVGA error:", e); }
+                      });
+                    }}
+                    width={300}
+                    height={300}
+                    style={{ width: '100%', height: '100%', display: 'block' }}
+                  />
                 </div>
               )}
               <span className={`absolute bottom-0 left-0 z-20 h-3 w-3 rounded-full border-2 border-[#1a1d35] ${user.online ? 'bg-emerald-500' : 'bg-gray-500'}`}
