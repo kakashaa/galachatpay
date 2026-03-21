@@ -243,7 +243,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         }));
         // Show data immediately, load avatars in background
         setRequests(rawRequests);
-        setRequests(enriched);
+        enrichWithAvatars(rawRequests).then(enriched => setRequests(enriched)).catch(() => {});
         const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
         const pendingReqs = rawRequests.filter(r => r.status === "pending");
         const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
