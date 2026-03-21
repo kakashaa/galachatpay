@@ -17,6 +17,7 @@ import { galaApi } from '@/services/galaApi';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
+import UserDetailAccordion from '@/components/UserDetailAccordion';
 
 /* ─── Animated Counter ─── */
 const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
