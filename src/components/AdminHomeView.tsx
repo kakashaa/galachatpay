@@ -422,11 +422,18 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
             <X size={11} className="text-white/40" />
           </button>
 
+          {/* VIP Card SVGA Background */}
+          {userVipLevel > 0 && VIP_CARDS[userVipLevel] && (
+            <div className="absolute inset-0 z-0 pointer-events-none opacity-30">
+              <SvgaPlayer src={VIP_CARDS[userVipLevel]} loop={0} className="w-full h-full object-cover" width={400} height={500} />
+            </div>
+          )}
+
           {/* ─── Profile Header: name left, avatar right (RTL) ─── */}
-          <div className="flex items-center gap-3 pt-1" dir="rtl">
-            {/* Avatar - right side in RTL */}
-            <div className="relative shrink-0">
-              <div className="h-16 w-16 overflow-hidden rounded-full"
+          <div className="flex items-center gap-3 pt-1 relative z-[1]" dir="rtl">
+            {/* Avatar with VIP Frame - right side in RTL */}
+            <div className="relative shrink-0" style={{ width: userVipLevel > 0 ? 80 : 64, height: userVipLevel > 0 ? 80 : 64 }}>
+              <div className={`overflow-hidden rounded-full absolute ${userVipLevel > 0 ? 'inset-[12px]' : 'inset-0'}`}
                 style={{
                   border: '2.5px solid rgba(160,150,130,0.6)',
                   boxShadow: '0 0 15px rgba(160,150,130,0.15), inset 0 0 10px rgba(0,0,0,0.3)',
@@ -439,13 +446,28 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
                   onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
                 />
               </div>
-              <span className={`absolute bottom-0 left-0 h-3 w-3 rounded-full border-2 border-[#1a1d35] ${user.online ? 'bg-emerald-500' : 'bg-gray-500'}`}
+              {/* VIP SVGA Frame overlay */}
+              {userVipLevel > 0 && VIP_FRAMES[userVipLevel] && (
+                <div className="absolute inset-0 z-10 pointer-events-none">
+                  <SvgaPlayer src={VIP_FRAMES[userVipLevel]} loop={0} width={userVipLevel > 0 ? 80 : 64} height={userVipLevel > 0 ? 80 : 64} className="w-full h-full" />
+                </div>
+              )}
+              <span className={`absolute bottom-0 left-0 z-20 h-3 w-3 rounded-full border-2 border-[#1a1d35] ${user.online ? 'bg-emerald-500' : 'bg-gray-500'}`}
                 style={{ boxShadow: user.online ? '0 0 8px rgba(16,185,129,0.6)' : 'none' }} />
             </div>
 
             {/* Name + UUID - left side in RTL */}
             <div className="flex-1 text-right">
-              <h3 className="text-lg font-black text-white">{user.name}</h3>
+              <div className="flex items-center gap-1.5 justify-end">
+                <h3 className="text-lg font-black text-white">{user.name}</h3>
+                {userVipLevel > 0 && (
+                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-black"
+                    style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.25), rgba(245,158,11,0.15))', border: '1px solid rgba(234,179,8,0.4)' }}>
+                    <Crown size={10} className="text-yellow-400" />
+                    <span className="text-yellow-300">VIP {userVipLevel}</span>
+                  </span>
+                )}
+              </div>
               <button onClick={copyUuid} className="flex items-center gap-1 justify-end mt-0.5 text-[10px] text-white/50 hover:text-white/70 transition-colors">
                 <Copy size={9} />
                 <span className="tabular-nums font-mono">UUID: {user.uuid}</span>
@@ -461,7 +483,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
           </div>
 
           {/* ─── 4 Stats Tiles (light cream like reference) ─── */}
-          <div className="grid grid-cols-4 gap-2" dir="rtl">
+          <div className="grid grid-cols-4 gap-2 relative z-[1]" dir="rtl">
             {([
               { key: 'charge' as const, label: 'الشحن', value: user.charger_level ?? 0, icon: <TrendingUp size={22} className="text-amber-600" /> },
               { key: 'support' as const, label: 'الكاريزما', value: user.receiver_level ?? 0, icon: <Sparkles size={22} className="text-pink-500" /> },
