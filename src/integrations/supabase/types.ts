@@ -236,6 +236,76 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_post_comments: {
+        Row: {
+          comment: string
+          commenter_name: string
+          commenter_uuid: string | null
+          created_at: string | null
+          id: string
+          is_admin: boolean | null
+          post_id: string
+        }
+        Insert: {
+          comment: string
+          commenter_name?: string
+          commenter_uuid?: string | null
+          created_at?: string | null
+          id?: string
+          is_admin?: boolean | null
+          post_id: string
+        }
+        Update: {
+          comment?: string
+          commenter_name?: string
+          commenter_uuid?: string | null
+          created_at?: string | null
+          id?: string
+          is_admin?: boolean | null
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "admin_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_post_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          liker_name: string | null
+          liker_uuid: string
+          post_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          liker_name?: string | null
+          liker_uuid: string
+          post_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          liker_name?: string | null
+          liker_uuid?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "admin_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_posts: {
         Row: {
           caption: string | null
