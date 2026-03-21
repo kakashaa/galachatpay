@@ -18,6 +18,25 @@ import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
 import UserDetailAccordion from '@/components/UserDetailAccordion';
+import SvgaPlayer from '@/components/SvgaPlayer';
+
+const VIP_FRAMES: Record<number, string> = {
+  1: "https://hola-chat.com/vip-assets/frame-vip1.svga",
+  2: "https://hola-chat.com/vip-assets/frame-vip2.svga",
+  3: "https://hola-chat.com/vip-assets/frame-vip3.svga",
+  4: "https://hola-chat.com/vip-assets/frame-vip4.svga",
+  5: "https://hola-chat.com/vip-assets/frame-vip5.svga",
+  6: "https://hola-chat.com/vip-assets/frame-vip6.svga",
+};
+
+const VIP_CARDS: Record<number, string> = {
+  1: "https://hola-chat.com/vip-assets/card-vip1.svga",
+  2: "https://hola-chat.com/vip-assets/card-vip2.svga",
+  3: "https://hola-chat.com/vip-assets/card-vip3.svga",
+  4: "https://hola-chat.com/vip-assets/card-vip4.svga",
+  5: "https://hola-chat.com/vip-assets/card-vip5.svga",
+  6: "https://hola-chat.com/vip-assets/card-vip6.svga",
+};
 
 /* ─── Animated Counter ─── */
 const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
@@ -332,6 +351,7 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
   const [vipLevel, setVipLevel] = useState('1');
   const [busy, setBusy] = useState(false);
   const [expandedTile, setExpandedTile] = useState<'charge' | 'support' | 'supporter' | 'salary' | null>(null);
+  const userVipLevel = user.vip_level || 0;
 
   const copyUuid = () => {
     navigator.clipboard.writeText(user.uuid);
