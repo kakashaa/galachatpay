@@ -27,7 +27,7 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
     user?.level?.sender_level || 0,
     user?.level?.receiver_level || 0
   );
-  const isEligible = highestLevel >= 10;
+  const isEligible = true;
 
   useEffect(() => {
     checkStatus();
