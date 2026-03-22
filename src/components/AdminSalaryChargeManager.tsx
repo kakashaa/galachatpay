@@ -91,61 +91,71 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch from external API (same pattern as withdraw list)
-      const data = await galaApi.salaryChargeList(selectedMonth) as any;
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const startDate = new Date(year, month - 1, 1).toISOString();
+      const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
 
-      if (data.success || data.charges) {
-        setCharges((data.charges || []).map((c: any) => {
-          const requestType = c.request_type || (c.target_uuid && c.target_uuid !== c.uuid ? "charge_other" : "charge_self");
-          const amountUsd = c.amount || c.amount_usd || 0;
-          return {
-            id: c.id || c.request_code || "",
-            uuid: c.uuid || c.user_uuid || c.target_uuid || "",
-            user_name: c.user_name || c.account_name || "",
-            target_name: c.target_name || c.recipient_name || c.user_name || c.account_name || "",
-            target_uuid: c.target_uuid || c.uuid || c.user_uuid || "",
-            amount_usd: amountUsd,
-            coins_charged: c.coins || c.amount_coins || amountUsd * COINS_PER_USD,
-            reference_id: c.reference_id || c.transaction_id || "",
-            transfer_verified: c.transfer_verified ?? true,
-            status: normalizeChargeStatus(c.status, requestType),
-            created_at: c.created_at || new Date().toISOString(),
-            request_type: requestType,
-          };
-        }));
-      } else {
-        // Fallback: try Supabase local records
-        const [year, month] = selectedMonth.split("-").map(Number);
-        const startDate = new Date(year, month - 1, 1).toISOString();
-        const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
-
-        const { data: rows } = await supabase
+      // Fetch from external API + Supabase in parallel
+      const [apiResult, supabaseRows] = await Promise.all([
+        galaApi.salaryChargeList(selectedMonth).catch(() => ({ success: false, charges: [] })),
+        supabase
           .from("salary_requests")
           .select("*")
-          .in("request_type", ["charge_self", "charge_other"])
+          .in("request_type", ["charge_self", "charge_other", "agency_coins", "agency_transfer"])
           .gte("created_at", startDate)
           .lte("created_at", endDate)
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .then(r => r.data || []),
+      ]);
 
-        setCharges((rows || []).map((c: any) => {
-          const requestType = c.request_type || "charge_self";
-          const amountUsd = c.amount_usd || 0;
-          return {
-            id: c.id,
-            uuid: c.user_uuid || c.target_uuid || "",
-            user_name: c.user_name || "",
-            target_name: c.target_name || c.recipient_name || c.user_name || "",
-            target_uuid: c.target_uuid || c.user_uuid || "",
-            amount_usd: amountUsd,
-            coins_charged: c.amount_coins || amountUsd * COINS_PER_USD,
-            reference_id: c.transfer_id || c.transaction_id || "",
-            transfer_verified: true,
-            status: normalizeChargeStatus(c.status, requestType),
-            created_at: c.created_at || new Date().toISOString(),
-            request_type: requestType,
-          };
-        }));
-      }
+      const data = apiResult as any;
+
+      // Map API charges
+      const apiCharges: SalaryCharge[] = (data.charges || []).map((c: any) => {
+        const requestType = c.type || c.request_type || (c.target_uuid && c.target_uuid !== c.uuid ? "charge_other" : "charge_self");
+        const amountUsd = c.amount || c.amount_usd || 0;
+        return {
+          id: c.id || c.request_code || "",
+          uuid: c.uuid || c.user_uuid || c.target_uuid || "",
+          user_name: c.user_name || c.account_name || "",
+          target_name: c.target_name || c.recipient_name || c.user_name || c.account_name || "",
+          target_uuid: c.target_uuid || c.uuid || c.user_uuid || "",
+          amount_usd: amountUsd,
+          coins_charged: c.coins || c.amount_coins || amountUsd * COINS_PER_USD,
+          reference_id: c.reference_id || c.transaction_id || "",
+          transfer_verified: c.transfer_verified ?? true,
+          status: normalizeChargeStatus(c.status, requestType),
+          created_at: c.created_at || new Date().toISOString(),
+          request_type: requestType,
+        };
+      });
+
+      // Map Supabase-only charge records
+      const supabaseCharges: SalaryCharge[] = (supabaseRows as any[]).map((c: any) => {
+        const requestType = c.request_type || "charge_self";
+        const amountUsd = c.amount_usd || 0;
+        return {
+          id: c.id,
+          uuid: c.user_uuid || c.target_uuid || "",
+          user_name: c.user_name || "",
+          target_name: c.target_name || c.recipient_name || c.user_name || "",
+          target_uuid: c.target_uuid || c.user_uuid || "",
+          amount_usd: amountUsd,
+          coins_charged: c.amount_coins || amountUsd * COINS_PER_USD,
+          reference_id: c.transfer_id || c.transaction_id || "",
+          transfer_verified: true,
+          status: normalizeChargeStatus(c.status, requestType),
+          created_at: c.created_at || new Date().toISOString(),
+          request_type: requestType,
+        };
+      });
+
+      // Merge: deduplicate by id
+      const apiIds = new Set(apiCharges.map(c => c.id));
+      const merged = [...apiCharges, ...supabaseCharges.filter(c => !apiIds.has(c.id))];
+      merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      setCharges(merged);
     } catch {
       toast.error("فشل في جلب بيانات شحن الرواتب");
     } finally {
