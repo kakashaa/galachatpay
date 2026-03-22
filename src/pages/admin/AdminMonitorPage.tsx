@@ -856,7 +856,299 @@ const AdminMonitorPage: React.FC = () => {
       )}
 
       {/* ═══════════════════════════════════════ */}
-      {/* SECTION 2: SMART BOT                   */}
+      {/* SALARY MONITOR                          */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "salary" && (
+        <div className="space-y-4">
+          <motion.button whileTap={{ scale: 0.97 }} onClick={handleSalaryAudit} disabled={salaryLoading}
+            className="w-full py-3 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 45%))" }}>
+            {salaryLoading ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
+            فحص الرواتب
+          </motion.button>
+
+          {salaryAudit && (
+            <>
+              <div className="rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <p className="text-[11px] text-muted-foreground">
+                  الشهر: <span className="font-bold text-foreground">{salaryAudit.month || "—"}</span>
+                  {" · "}مشبوه: <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>{salaryAudit.suspicious_count || 0}</span>
+                </p>
+              </div>
+
+              {(salaryAudit.suspicious || []).length === 0 && (
+                <div className="text-center py-10 rounded-2xl" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.1)" }}>
+                  <p className="text-sm font-bold" style={{ color: "hsl(160 84% 39%)" }}>✅ لا توجد رواتب مشبوهة</p>
+                </div>
+              )}
+
+              {(salaryAudit.suspicious || []).map((s: any, i: number) => {
+                const isHighExcess = s.excess_usd > 50;
+                const isMedExcess = s.excess_usd > 10;
+                return (
+                  <motion.div key={s.uuid} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                    className="rounded-2xl p-4 space-y-2"
+                    style={{
+                      background: isHighExcess ? "hsla(0,84%,60%,0.06)" : isMedExcess ? "hsla(48,96%,53%,0.06)" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${isHighExcess ? "hsla(0,84%,60%,0.2)" : isMedExcess ? "hsla(48,96%,53%,0.2)" : "rgba(255,255,255,0.06)"}`,
+                    }}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[12px] font-bold">{s.name || "—"}</p>
+                      <span className="text-[9px] font-mono text-muted-foreground">UUID: {s.uuid}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[10px]">
+                      <p><span className="text-muted-foreground">المسجل: </span><span className="font-bold">${s.salary_recorded?.toFixed(2)}</span></p>
+                      <p><span className="text-muted-foreground">المتوقع: </span><span className="font-bold">${s.salary_expected?.toFixed(2)}</span></p>
+                      <p><span className="text-muted-foreground">الزيادة: </span><span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>${s.excess_usd?.toFixed(2)}</span></p>
+                      <p><span className="text-muted-foreground">الماس: </span><span className="font-bold tabular-nums">{(s.monthly_diamonds || 0).toLocaleString()}</span></p>
+                    </div>
+                    {s.agency_id && <p className="text-[10px] text-muted-foreground">الوكالة: #{s.agency_id}</p>}
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleSalaryFix(s.uuid)}
+                      className="h-8 px-4 rounded-xl text-[10px] font-bold text-black"
+                      style={{ background: "hsl(48 96% 53%)" }}>
+                      تصحيح
+                    </motion.button>
+                  </motion.div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* TRANSACTION MONITOR                     */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "transactions" && (
+        <div className="space-y-3">
+          <motion.button whileTap={{ scale: 0.97 }} onClick={handleLoadTransactions} disabled={txLoading}
+            className="w-full py-3 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
+            {txLoading ? <Loader2 size={16} className="animate-spin" /> : <Activity size={16} />}
+            تحديث العمليات
+          </motion.button>
+
+          <div className="flex gap-1">
+            {([
+              { key: "all" as const, label: "الكل" },
+              { key: "suspicious" as const, label: "⚠️ مشبوه" },
+              { key: "withdrawals" as const, label: "💰 سحوبات" },
+              { key: "rewards" as const, label: "🎁 مكافآت" },
+            ]).map(t => (
+              <motion.button key={t.key} whileTap={{ scale: 0.95 }} onClick={() => setTxTab(t.key)}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-bold ${txTab === t.key ? "text-white" : "text-muted-foreground"}`}
+                style={txTab === t.key ? { background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" } : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                {t.label}
+              </motion.button>
+            ))}
+          </div>
+
+          {txCharges.length === 0 && !txLoading && (
+            <div className="text-center py-12 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <Activity size={28} className="mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-[11px] text-muted-foreground">اضغط "تحديث العمليات" لتحميل البيانات</p>
+            </div>
+          )}
+
+          {txCharges.filter(c => {
+            if (txTab === "all") return true;
+            if (txTab === "suspicious") return c.charger_type === "dash" || (c.charger_type === "freight forwarder" && c.amount > 100000);
+            if (txTab === "withdrawals") return c.charger_type === "app" && c.usd > 0;
+            if (txTab === "rewards") return c.charger_type === "room_target_rewards" || c.charger_type === "profit_target";
+            return true;
+          }).map((c: any, i: number) => {
+            const typeIcons: Record<string, string> = { dash: "🔴", app: "🟢", host: "🟡", "freight forwarder": "🔵", room_target_rewards: "⚪", profit_target: "🟣" };
+            const isNegative = c.amount < 0;
+            return (
+              <motion.div key={c.id || i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
+                className="rounded-2xl p-3"
+                style={{ background: c.charger_type === "dash" ? "hsla(0,84%,60%,0.05)" : "rgba(255,255,255,0.03)", border: `1px solid ${c.charger_type === "dash" ? "hsla(0,84%,60%,0.15)" : "rgba(255,255,255,0.06)"}` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span>{typeIcons[c.charger_type] || "⚪"}</span>
+                    <span className="text-[10px] font-bold">{c.charger_name || "—"}</span>
+                    <span className="text-[9px] font-mono text-muted-foreground">({c.charger_uuid})</span>
+                  </div>
+                  <span className="text-[9px] text-muted-foreground tabular-nums">{c.created_at?.slice(11, 16) || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground">
+                    → {c.user_name || "—"} <span className="font-mono">({c.user_uuid})</span>
+                  </p>
+                  <div className="text-left">
+                    <p className="text-[11px] font-bold tabular-nums" style={{ color: isNegative ? "hsl(0 84% 60%)" : "hsl(160 84% 39%)" }}>
+                      {isNegative ? "" : "+"}{(c.amount || 0).toLocaleString()}
+                    </p>
+                    {c.usd > 0 && <p className="text-[9px] text-muted-foreground tabular-nums">${c.usd}</p>}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* USER CHECK                              */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "usercheck" && (
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input value={checkUuid} onChange={e => setCheckUuid(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleUserCheck()}
+              placeholder="UUID..."
+              className="flex-1 h-10 rounded-xl px-4 text-sm placeholder:text-muted-foreground focus:outline-none"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+            <motion.button whileTap={{ scale: 0.95 }} onClick={handleUserCheck} disabled={userCheckLoading}
+              className="h-10 px-5 rounded-xl text-sm font-bold text-white flex items-center gap-2 disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
+              {userCheckLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+              فحص
+            </motion.button>
+          </div>
+
+          {userCheckData && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl p-4 space-y-3"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold">{userCheckData.name || "—"}</p>
+                <span className="text-[10px] font-mono text-muted-foreground">UUID: {checkUuid}</span>
+              </div>
+              {userCheckData.agency_id && <p className="text-[10px] text-muted-foreground">الوكالة: #{userCheckData.agency_id}</p>}
+
+              <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(0,0,0,0.15)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <p><span className="text-muted-foreground">الماس الشهري: </span><span className="font-bold tabular-nums">{(userCheckData.monthly_diamonds || 0).toLocaleString()}</span></p>
+                  <p><span className="text-muted-foreground">الراتب المسجل: </span><span className="font-bold">${userCheckData.salary_actual?.toFixed(2) || "0"}</span></p>
+                  <p><span className="text-muted-foreground">الراتب المتوقع: </span><span className="font-bold">${userCheckData.salary_expected?.toFixed(2) || "0"}</span></p>
+                  <p><span className="text-muted-foreground">المتبقي: </span><span className="font-bold">${userCheckData.remaining?.toFixed(2) || "0"}</span></p>
+                </div>
+                <div className="flex items-center gap-3 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <p className="text-[10px]">
+                    الحالة: {userCheckData.is_suspicious
+                      ? <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>⚠️ مشبوه</span>
+                      : <span className="font-bold" style={{ color: "hsl(160 84% 39%)" }}>✅ نظيف</span>}
+                  </p>
+                  <p className="text-[10px]">
+                    يقدر يسحب: {userCheckData.can_withdraw
+                      ? <span className="font-bold" style={{ color: "hsl(160 84% 39%)" }}>✅ نعم</span>
+                      : <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>❌ لا</span>}
+                  </p>
+                </div>
+              </div>
+
+              {userCheckCharges.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-muted-foreground">آخر العمليات:</p>
+                  {userCheckCharges.map((c: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between py-1.5 text-[10px]" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div>
+                        <span>{c.charger_type === "app" ? "🟢" : c.charger_type === "dash" ? "🔴" : "⚪"} </span>
+                        <span>{c.charger_type} → {c.user_name || c.user_uuid}</span>
+                      </div>
+                      <div className="text-left">
+                        <span className="font-bold tabular-nums" style={{ color: c.amount < 0 ? "hsl(0 84% 60%)" : "hsl(160 84% 39%)" }}>
+                          {(c.amount || 0).toLocaleString()}
+                        </span>
+                        {c.usd > 0 && <span className="text-muted-foreground ml-1">(${c.usd})</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleSalaryFix(checkUuid)}
+                  className="h-8 px-4 rounded-xl text-[10px] font-bold text-black"
+                  style={{ background: "hsl(48 96% 53%)" }}>
+                  تصحيح الراتب
+                </motion.button>
+                <motion.button whileTap={{ scale: 0.95 }}
+                  onClick={async () => {
+                    try {
+                      await fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-block-withdraw`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                        body: `uuid=${checkUuid}`,
+                      });
+                      toast.success("تم حظر السحب");
+                    } catch { toast.error("فشل"); }
+                  }}
+                  className="h-8 px-4 rounded-xl text-[10px] font-bold text-white"
+                  style={{ background: "hsl(0 84% 50%)" }}>
+                  حظر السحب
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════ */}
+      {/* DAILY SUMMARY                           */}
+      {/* ═══════════════════════════════════════ */}
+      {activeSection === "daily" && (
+        <div className="space-y-4">
+          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { handleLoadDaily(); handleLoadAlertsSummary(); }} disabled={dailyLoading}
+            className="w-full py-3 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
+            {dailyLoading ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />}
+            تحديث الملخص اليومي
+          </motion.button>
+
+          {/* Alert Summary Cards */}
+          {alertsSummary && (
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "رواتب وهمية", count: alertsSummary.fake_salary?.count || 0, detail: `+$${alertsSummary.fake_salary?.total_excess?.toFixed(0) || 0}`, color: "hsl(0 84% 60%)", bg: "hsla(0,84%,60%,0.06)" },
+                { label: "إضافة يدوية", count: alertsSummary.dash_additions?.count || 0, detail: `${((alertsSummary.dash_additions?.total_coins || 0) / 1000).toFixed(0)}K`, color: "hsl(0 84% 60%)", bg: "hsla(0,84%,60%,0.06)" },
+                { label: "سحوبات كبيرة", count: alertsSummary.large_withdrawals?.count || 0, detail: `$${alertsSummary.large_withdrawals?.total_usd || 0}`, color: "hsl(48 96% 53%)", bg: "hsla(48,96%,53%,0.06)" },
+                { label: "شحن مشبوه", count: alertsSummary.suspicious_freight?.count || 0, detail: `${((alertsSummary.suspicious_freight?.total_coins || 0) / 1000).toFixed(0)}K`, color: "hsl(48 96% 53%)", bg: "hsla(48,96%,53%,0.06)" },
+              ].map((a, i) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  className="rounded-2xl p-3 text-center"
+                  style={{ background: a.bg, border: `1px solid ${a.color}30` }}>
+                  <p className="text-xl font-bold tabular-nums" style={{ color: a.color }}>{a.count}</p>
+                  <p className="text-[9px] text-muted-foreground">{a.label}</p>
+                  <p className="text-[9px] font-bold tabular-nums mt-0.5" style={{ color: a.color }}>{a.detail}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {/* Daily Stats */}
+          {dailySummary && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: "💰 إجمالي السحوبات", value: dailySummary.total_withdrawals_count || 0, detail: `$${dailySummary.total_withdrawals_usd || 0}`, color: "hsl(217 91% 60%)" },
+                  { label: "🎁 إجمالي الهدايا", value: dailySummary.total_gifts_count || 0, detail: `${((dailySummary.total_gifts_coins || 0) / 1000).toFixed(0)}K`, color: "hsl(160 84% 39%)" },
+                  { label: "⚠️ عمليات مشبوهة", value: dailySummary.suspicious_count || 0, detail: "", color: "hsl(25 95% 53%)" },
+                  { label: "👥 نشطين", value: dailySummary.active_users || 0, detail: "", color: "hsl(280 67% 60%)" },
+                ].map((s, i) => (
+                  <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.05 }}
+                    className="rounded-2xl p-3 text-center"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <p className="text-xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</p>
+                    <p className="text-[9px] text-muted-foreground">{s.label}</p>
+                    {s.detail && <p className="text-[9px] font-bold tabular-nums mt-0.5" style={{ color: s.color }}>{s.detail}</p>}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!dailySummary && !alertsSummary && !dailyLoading && (
+            <div className="text-center py-12 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <TrendingUp size={28} className="mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-[11px] text-muted-foreground">اضغط الزر لتحميل الملخص اليومي</p>
+            </div>
+          )}
+        </div>
+      )}
+
+
       {/* ═══════════════════════════════════════ */}
       {activeSection === "bot" && (
         <div className="flex flex-col" style={{ height: "calc(100vh - 300px)" }}>
