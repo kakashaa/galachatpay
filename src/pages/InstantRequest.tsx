@@ -211,6 +211,7 @@ const InstantRequest: React.FC = () => {
         }),
         status: "pending",
         transfer_id: selectedTransfer.reference_id,
+        transaction_date: selectedTransfer.time || new Date().toISOString(),
         target_uuid: supporterInfo.uuid,
         target_name: supporterInfo.name,
       } as any);
