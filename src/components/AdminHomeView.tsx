@@ -10,7 +10,7 @@ import {
   ShieldAlert, Headphones, CheckCircle, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
   Inbox, FileText, Landmark, Eye, BarChart3, DollarSign,
-  MessageCircle, Sparkles
+  MessageCircle, Sparkles, Scissors
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
