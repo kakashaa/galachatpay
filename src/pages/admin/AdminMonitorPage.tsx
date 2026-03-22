@@ -182,14 +182,23 @@ const AdminMonitorPage: React.FC = () => {
   return (
     <AdminPageLayout title="المراقبة" onLogout={handleLogout}>
       <div className="space-y-6 pb-10" dir="rtl">
-        {/* ── Header with Refresh ── */}
+        {/* ── Header with Auto-Refresh Status ── */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">لوحة المراقبة</h1>
-            {lastRefresh && <p className="text-xs text-muted-foreground">آخر تحديث: {lastRefresh}</p>}
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            </span>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">لوحة المراقبة</h1>
+              <p className="text-[10px] text-muted-foreground">
+                {lastRefresh ? `آخر تحديث: ${lastRefresh}` : "جاري التحميل..."} 
+                {lastRefresh && <span className="text-muted-foreground/60"> · التالي: {countdown}ث</span>}
+              </p>
+            </div>
           </div>
           <button
-            onClick={refreshAll}
+            onClick={() => { refreshAll(); setCountdown(60); }}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition"
           >
@@ -198,10 +207,10 @@ const AdminMonitorPage: React.FC = () => {
           </button>
         </div>
 
-        {!alertsData && !loading && (
+        {loading && !alertsData && (
           <div className="text-center py-16 text-muted-foreground">
-            <Activity className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p className="text-sm">اضغط "تحديث" لتحميل البيانات</p>
+            <Loader2 className="w-10 h-10 mx-auto mb-3 animate-spin opacity-40" />
+            <p className="text-sm">جاري تحميل البيانات...</p>
           </div>
         )}
 

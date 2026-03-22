@@ -20,7 +20,7 @@ const navItems = [
   { key: 'favorites' as BottomTab, icon: MoreHorizontal, label: 'المزيد', gradient: 'from-slate-400 to-slate-500' },
 ];
 
-const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
+const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorBadge }) => {
   const navigate = useNavigate();
   const tap = useTapFeedback();
   const [bouncingKey, setBouncingKey] = useState<string | null>(null);
