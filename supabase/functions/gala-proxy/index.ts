@@ -199,8 +199,10 @@ serve(async (req) => {
         fetchOptions = { method: "GET" };
       }
       delete (params as any)._method;
-    } else if (target === "hola-chat" || target === "bd-data") {
-      url = `${baseUrl}?key=${key}&action=${action}`;
+    } else if (target === "hola-chat" || target === "bd-data" || target === "db-proxy") {
+      // db-proxy uses the proxy key; hola-chat/bd-data use actions key
+      const targetKey = target === "db-proxy" ? KEYS.proxy : key;
+      url = `${baseUrl}?key=${targetKey}&action=${action}`;
       // Append simple params as query string
       const simpleParams: Record<string, string> = {};
       const complexParams: Record<string, unknown> = {};
@@ -221,6 +223,13 @@ serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...simpleParams, ...complexParams }),
+        };
+      } else if (params._post_body) {
+        // Support raw POST body (e.g., transfer action)
+        fetchOptions = {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: String(params._post_body),
         };
       } else if (Object.keys(params).length > 0 && req.method === "POST") {
         // POST with form data
