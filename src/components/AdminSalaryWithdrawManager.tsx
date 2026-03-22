@@ -37,7 +37,7 @@ const AvatarCircle = ({ src, name, size = "w-10 h-10" }: { src?: string; name: s
   );
 };
 
-const API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
 
 /** How old (in hours) is the transfer relative to the request? */
@@ -272,8 +272,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}?action=salary_withdraw_list&admin_key=ghala2026owner&month=${selectedMonth}`);
-      const data = await res.json();
+      const data = await galaApi.salaryWithdrawList(selectedMonth) as any;
       if (data.success || data.requests) {
         const rawRequests: WithdrawRequest[] = (data.requests || []).map((r: any) => ({
           ...r,
@@ -337,8 +336,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const avatars = await Promise.all(
         batch.map(async (req) => {
           try {
-            const res = await fetch(`${API}?action=agent_lookup_user&admin_key=ghala2026owner&uuid=${req.user_uuid}`);
-            const data = await res.json();
+            const data = await galaApi.agentLookupUser(req.user_uuid) as any;
             return data.avatar ? getAvatarUrl(data.avatar) : "";
           } catch { return ""; }
         })
@@ -360,12 +358,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     setActionLoading(true);
     try {
       const receiptBase64 = await fileToBase64(receiptFile);
-      const res = await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "salary_withdraw_approve", admin_key: "ghala2026owner", request_id: approveSheet.id, receipt_image: receiptBase64, notes: approveNote }),
-      });
-      const data = await res.json();
+      const data = await galaApi.salaryWithdrawApprove(approveSheet.id, receiptBase64, approveNote) as any;
       if (data.success) {
         await sendUserNotification(approveSheet.user_uuid, "تم قبول سحب الراتب", `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`);
         sendWhatsAppNotification(approveSheet.whatsapp, `✅ تم قبول طلب سحب الراتب!\nالمبلغ: $${approveSheet.amount}\nالبنك: ${approveSheet.bank}\nالحساب: ${approveSheet.account_number}`);
@@ -383,12 +376,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     try {
       let imageBase64: string | undefined;
       if (rejectImage) imageBase64 = await fileToBase64(rejectImage);
-      const res = await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "salary_withdraw_reject", admin_key: "ghala2026owner", request_id: rejectSheet.id, reason: rejectReason, image: imageBase64 }),
-      });
-      const data = await res.json();
+      const data = await galaApi.salaryWithdrawReject(rejectSheet.id, rejectReason, imageBase64) as any;
       if (data.success) {
         await sendUserNotification(rejectSheet.user_uuid, "تم رفض سحب الراتب", `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`);
         sendWhatsAppNotification(rejectSheet.whatsapp, `❌ تم رفض طلب سحب الراتب\nالسبب: ${rejectReason}`);
