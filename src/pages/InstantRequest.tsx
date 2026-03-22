@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 
 import { galaApi } from "@/services/galaApi";
+import { API_URLS } from "@/config/api";
 const COINS_PER_DOLLAR = 8500;
 
 interface Transfer {
