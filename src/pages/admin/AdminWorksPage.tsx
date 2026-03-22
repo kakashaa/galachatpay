@@ -548,13 +548,13 @@ const AdminWorksPage: React.FC = () => {
                       <span className="text-xs font-mono text-emerald-400">{a.works_code}</span>
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
-                      <div><p className="font-bold text-green-400">${Number(a.balance_usd).toFixed(2)}</p><p className="text-muted-foreground">الرصيد</p></div>
-                      <div><p className="font-bold text-emerald-400">${Number(a.total_earnings_usd).toFixed(2)}</p><p className="text-muted-foreground">الأرباح</p></div>
+                      <div><p className="font-bold text-green-400">${Number(a.available_balance || a.balance_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">الرصيد</p></div>
+                      <div><p className="font-bold text-emerald-400">${Number(a.total_earned || a.total_earnings_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">الأرباح</p></div>
                       <div><p className="font-bold text-primary">{a.supporter_count}</p><p className="text-muted-foreground">داعمين</p></div>
                       <div><p className="font-bold text-accent-foreground">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setSelectedWorksId(a.id); fetchMembers(a.id); setTab("members"); }}
+                      <button onClick={() => { setSelectedWorksId(a.user_uuid || a.bd_uuid); fetchMembers(a.user_uuid || a.bd_uuid); setTab("members"); }}
                         className="flex-1 bg-muted py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                         <Users className="w-3 h-3" /> الأعضاء
                       </button>
@@ -1085,7 +1085,7 @@ const AdminWorksPage: React.FC = () => {
                   className="w-full h-10 rounded-xl bg-muted/30 border border-border/50 text-sm px-3 mt-1">
                   <option value="">اختر...</option>
                   {accounts.map(a => (
-                    <option key={a.id} value={a.id}>{a.works_code} — {a.user_name}</option>
+                    <option key={a.id} value={a.user_uuid || a.bd_uuid}>{a.works_code || a.referral_code} — {a.user_name || a.bd_name}</option>
                   ))}
                 </select>
               </div>

@@ -1077,10 +1077,10 @@ Deno.serve(async (req) => {
         break;
       }
 
-      // ===== WORKS SYSTEM =====
+      // ===== WORKS SYSTEM (BD) =====
       case "works_list_requests": {
         const { data: reqs, error } = await supabase
-          .from("works_requests").select("*").order("created_at", { ascending: false });
+          .from("bd_registration_requests").select("*").order("created_at", { ascending: false });
         if (error) throw error;
         result = reqs;
         break;
@@ -1088,28 +1088,48 @@ Deno.serve(async (req) => {
 
       case "works_approve_request": {
         const { id } = data;
-        const req2 = await supabase.from("works_requests").select("*").eq("id", id).single();
+        const req2 = await supabase.from("bd_registration_requests").select("*").eq("id", id).single();
         if (!req2.data) throw new Error("Request not found");
-        const code = "WK-" + Math.random().toString(36).substr(2, 6).toUpperCase();
-        await supabase.from("works_accounts").insert({
-          user_uuid: req2.data.user_uuid, user_name: req2.data.user_name,
-          works_code: code, status: "active",
-        });
-        await supabase.from("works_requests").update({ status: "approved" }).eq("id", id);
+        const referralCode = "BD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+
+        // Check if bd_commission_settings already exists for this user
+        const { data: existingBd } = await supabase
+          .from("bd_commission_settings")
+          .select("id")
+          .eq("bd_uuid", req2.data.user_uuid)
+          .maybeSingle();
+
+        if (existingBd) {
+          // Re-activate existing BD account
+          await supabase.from("bd_commission_settings")
+            .update({ is_approved: true, is_active: true, banned_at: null })
+            .eq("bd_uuid", req2.data.user_uuid);
+        } else {
+          // Create new BD account in bd_commission_settings
+          await supabase.from("bd_commission_settings").insert({
+            bd_uuid: req2.data.user_uuid,
+            bd_name: req2.data.user_name,
+            is_approved: true,
+            is_active: true,
+            referral_code: referralCode,
+          });
+        }
+
+        await supabase.from("bd_registration_requests").update({ status: "approved" }).eq("id", id);
         await supabase.from("notifications").insert({
           user_uuid: req2.data.user_uuid,
           title: "تم قبول طلب Works ✅",
-          body: `تم تفعيل نظام Works لحسابك! كود Works الخاص بك: ${code}`,
+          body: `تم تفعيل نظام البيدي لحسابك! كود الإحالة: ${referralCode}`,
           is_read: false,
         });
-        result = { success: true, works_code: code };
+        result = { success: true, referral_code: referralCode };
         break;
       }
 
       case "works_reject_request": {
         const { id, reason } = data;
-        await supabase.from("works_requests").update({ status: "rejected", admin_note: reason }).eq("id", id);
-        const reqR = await supabase.from("works_requests").select("user_uuid").eq("id", id).single();
+        await supabase.from("bd_registration_requests").update({ status: "rejected", admin_note: reason }).eq("id", id);
+        const reqR = await supabase.from("bd_registration_requests").select("user_uuid").eq("id", id).single();
         if (reqR.data) {
           await supabase.from("notifications").insert({
             user_uuid: reqR.data.user_uuid,
@@ -1124,17 +1144,24 @@ Deno.serve(async (req) => {
 
       case "works_list_accounts": {
         const { data: accounts, error } = await supabase
-          .from("works_accounts").select("*").order("created_at", { ascending: false });
+          .from("bd_commission_settings").select("*").order("created_at", { ascending: false });
         if (error) throw error;
         for (const acc of (accounts || [])) {
           const { count: supporters } = await supabase
-            .from("works_members").select("*", { count: "exact", head: true })
-            .eq("works_id", acc.id).eq("member_type", "supporter").eq("status", "active");
+            .from("bd_members").select("*", { count: "exact", head: true })
+            .eq("bd_uuid", acc.bd_uuid).eq("member_type", "supporter").eq("is_active", true);
           const { count: agents } = await supabase
-            .from("works_members").select("*", { count: "exact", head: true })
-            .eq("works_id", acc.id).eq("member_type", "agent").eq("status", "active");
+            .from("bd_members").select("*", { count: "exact", head: true })
+            .eq("bd_uuid", acc.bd_uuid).eq("member_type", "agency").eq("is_active", true);
           (acc as any).supporter_count = supporters || 0;
           (acc as any).agent_count = agents || 0;
+          // Map fields for frontend compatibility
+          (acc as any).user_uuid = acc.bd_uuid;
+          (acc as any).user_name = acc.bd_name;
+          (acc as any).works_code = acc.referral_code;
+          (acc as any).status = acc.is_active ? "active" : (acc.banned_at ? "banned" : "frozen");
+          (acc as any).supporter_commission_pct = acc.user_commission_pct;
+          (acc as any).agent_commission_pct = acc.agency_commission_pct;
         }
         result = accounts;
         break;
@@ -1142,25 +1169,62 @@ Deno.serve(async (req) => {
 
       case "works_get_members": {
         const { works_id } = data;
+        // works_id here is actually bd_uuid
         const { data: members, error } = await supabase
-          .from("works_members").select("*").eq("works_id", works_id).order("created_at", { ascending: false });
+          .from("bd_members").select("*").eq("bd_uuid", works_id).order("created_at", { ascending: false });
         if (error) throw error;
+        // Map fields for frontend compatibility
+        for (const m of (members || [])) {
+          (m as any).works_id = m.bd_uuid;
+          (m as any).status = m.is_active ? "active" : "removed";
+          (m as any).commission_pct = m.custom_commission_pct;
+        }
         result = members;
         break;
       }
 
       case "works_update_account": {
         const { id: uaId, ...uaUpdates } = data;
-        const { error } = await supabase.from("works_accounts").update(uaUpdates).eq("id", uaId);
-        if (error) throw error;
+        // Map frontend fields to bd_commission_settings fields
+        const bdUpdates: Record<string, any> = {};
+        if (uaUpdates.status !== undefined) {
+          bdUpdates.is_active = uaUpdates.status === "active";
+          if (uaUpdates.status === "frozen" || uaUpdates.status === "banned") bdUpdates.is_active = false;
+        }
+        if (uaUpdates.supporter_commission_pct !== undefined) bdUpdates.user_commission_pct = uaUpdates.supporter_commission_pct;
+        if (uaUpdates.agent_commission_pct !== undefined) bdUpdates.agency_commission_pct = uaUpdates.agent_commission_pct;
+        if (uaUpdates.total_earnings_usd !== undefined) bdUpdates.total_earned = uaUpdates.total_earnings_usd;
+        if (uaUpdates.freeze_reason !== undefined) bdUpdates.banned_at = uaUpdates.status === "active" ? null : new Date().toISOString();
+        // Pass through any other fields
+        Object.keys(uaUpdates).forEach(k => {
+          if (!["status", "supporter_commission_pct", "agent_commission_pct", "total_earnings_usd", "freeze_reason"].includes(k)) {
+            bdUpdates[k] = uaUpdates[k];
+          }
+        });
+        if (Object.keys(bdUpdates).length > 0) {
+          const { error } = await supabase.from("bd_commission_settings").update(bdUpdates).eq("id", uaId);
+          if (error) throw error;
+        }
         result = { success: true };
         break;
       }
 
       case "works_update_member": {
         const { id: umId, ...umUpdates } = data;
-        const { error } = await supabase.from("works_members").update(umUpdates).eq("id", umId);
-        if (error) throw error;
+        const bdMemberUpdates: Record<string, any> = {};
+        if (umUpdates.status !== undefined) bdMemberUpdates.is_active = umUpdates.status === "active";
+        if (umUpdates.commission_pct !== undefined) bdMemberUpdates.custom_commission_pct = umUpdates.commission_pct;
+        if (umUpdates.total_commission_usd !== undefined) bdMemberUpdates.total_commission = umUpdates.total_commission_usd;
+        // Pass through other fields
+        Object.keys(umUpdates).forEach(k => {
+          if (!["status", "commission_pct", "total_commission_usd"].includes(k)) {
+            bdMemberUpdates[k] = umUpdates[k];
+          }
+        });
+        if (Object.keys(bdMemberUpdates).length > 0) {
+          const { error } = await supabase.from("bd_members").update(bdMemberUpdates).eq("id", umId);
+          if (error) throw error;
+        }
         result = { success: true };
         break;
       }
@@ -1168,20 +1232,20 @@ Deno.serve(async (req) => {
       case "works_manual_add_member": {
         const { works_id, member_uuid, member_type, member_name } = data;
         if (!works_id || !member_uuid) throw new Error("works_id and member_uuid required");
-        // Check if already exists
+        // works_id = bd_uuid
         const { data: existing } = await supabase
-          .from("works_members")
+          .from("bd_members")
           .select("id")
-          .eq("works_id", works_id)
+          .eq("bd_uuid", works_id)
           .eq("member_uuid", member_uuid)
           .maybeSingle();
         if (existing) throw new Error("العضو موجود بالفعل في هذا الفريق");
-        const { error } = await supabase.from("works_members").insert({
-          works_id,
+        const { error } = await supabase.from("bd_members").insert({
+          bd_uuid: works_id,
           member_uuid: member_uuid.trim(),
           member_name: member_name || "عضو يدوي",
           member_type: member_type || "supporter",
-          status: "active",
+          is_active: true,
         });
         if (error) throw error;
         result = { success: true };
@@ -1190,22 +1254,28 @@ Deno.serve(async (req) => {
 
       case "works_list_withdrawals": {
         const { data: withdrawals, error } = await supabase
-          .from("works_withdrawals").select("*").order("created_at", { ascending: false });
+          .from("bd_withdrawals").select("*").order("created_at", { ascending: false });
         if (error) throw error;
+        // Map fields for frontend compatibility
+        for (const w of (withdrawals || [])) {
+          (w as any).works_id = w.bd_uuid;
+          (w as any).amount_usd = w.amount;
+        }
         result = withdrawals;
         break;
       }
 
       case "works_approve_withdrawal": {
         const { id: awId } = data;
-        const w = await supabase.from("works_withdrawals").select("*").eq("id", awId).single();
+        const w = await supabase.from("bd_withdrawals").select("*").eq("id", awId).single();
         if (!w.data) throw new Error("Not found");
-        await supabase.from("works_withdrawals").update({ status: "approved" }).eq("id", awId);
-        const accW = await supabase.from("works_accounts").select("balance_usd").eq("id", w.data.works_id).single();
+        await supabase.from("bd_withdrawals").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", awId);
+        // Deduct from available_balance
+        const accW = await supabase.from("bd_commission_settings").select("available_balance").eq("bd_uuid", w.data.bd_uuid).single();
         if (accW.data) {
-          await supabase.from("works_accounts").update({
-            balance_usd: Math.max(0, (Number(accW.data.balance_usd) || 0) - Number(w.data.amount_usd))
-          }).eq("id", w.data.works_id);
+          await supabase.from("bd_commission_settings").update({
+            available_balance: Math.max(0, (Number(accW.data.available_balance) || 0) - Number(w.data.amount))
+          }).eq("bd_uuid", w.data.bd_uuid);
         }
         result = { success: true };
         break;
@@ -1213,7 +1283,7 @@ Deno.serve(async (req) => {
 
       case "works_reject_withdrawal": {
         const { id: rwId, reason: rwReason } = data;
-        await supabase.from("works_withdrawals").update({ status: "rejected", admin_note: rwReason }).eq("id", rwId);
+        await supabase.from("bd_withdrawals").update({ status: "rejected", admin_note: rwReason, rejected_at: new Date().toISOString() }).eq("id", rwId);
         result = { success: true };
         break;
       }
