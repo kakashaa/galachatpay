@@ -7,8 +7,7 @@ import { toast } from "sonner";
 
 import { COINS_PER_DOLLAR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-
-const AGENT_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 const COINS_PER_USD = COINS_PER_DOLLAR;
 
 const AGENT_PAYMENT_METHODS = [
@@ -66,8 +65,7 @@ const AgentCharge: React.FC = () => {
     setUserName("");
     setUserAvatar("");
     try {
-      const res = await fetch(`${AGENT_API}?action=agent_lookup_user&token=${token}&uuid=${uuid.trim()}`);
-      const data = await res.json();
+      const data = await galaApi.agentLookupUser(uuid.trim(), token);
       if (data.success) {
         setUserName(data.name || "");
         setUserAvatar(data.avatar || "");
@@ -97,22 +95,16 @@ const AgentCharge: React.FC = () => {
   const handleCharge = async () => {
     setCharging(true);
     try {
-      const res = await fetch(`${AGENT_API}?action=agent_charge`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          uuid: uuid.trim(),
-          coins: parseInt(coins),
-          payment_method: selectedPayment,
-          payment_country: AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.country || "other",
-          receipt_confirmed: receiptConfirmed,
-          receipt_image: receiptImage || null,
-          notes: notes || null,
-          confirm_amount: parseFloat(confirmAmount),
-        }),
+      const data = await galaApi.agentCharge(token, {
+        uuid: uuid.trim(),
+        coins: parseInt(coins),
+        payment_method: selectedPayment,
+        payment_country: AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.country || "other",
+        receipt_confirmed: receiptConfirmed,
+        receipt_image: receiptImage || null,
+        notes: notes || null,
+        confirm_amount: parseFloat(confirmAmount),
       });
-      const data = await res.json();
       setChargeResult({ success: data.success, message: data.message || (data.success ? "تم الشحن بنجاح" : "فشل الشحن"), transaction_id: data.transaction_id, new_balance: data.new_balance });
       if (data.success) {
         setCooldown(60);

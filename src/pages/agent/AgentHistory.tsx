@@ -5,8 +5,7 @@ import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
-
-const AGENT_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 const RECEIPT_BASE = "https://galachat.site/admin-panel-data/agent-receipts/";
 
 const bankOptions = [
@@ -67,11 +66,10 @@ const AgentHistory: React.FC = () => {
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ action: "agent_history", token });
-      if (dateFilter) params.set("date", dateFilter);
-      if (bankFilter !== "all") params.set("bank", bankFilter);
-      const res = await fetch(`${AGENT_API}?${params}`);
-      const data = await res.json();
+      const p: Record<string, string> = {};
+      if (dateFilter) p.date = dateFilter;
+      if (bankFilter !== "all") p.bank = bankFilter;
+      const data = await galaApi.agentHistory(token, p);
       if (data.success) {
         setTransactions(data.transactions || []);
         setTotalUsd(data.total_usd || 0);

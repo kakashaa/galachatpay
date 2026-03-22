@@ -7,6 +7,7 @@ import { Loader2, Bell, CheckCircle2 } from "lucide-react";
 import OwnerControls from "@/components/bd/OwnerControls";
 import BDSupportersTab from "@/components/bd/BDSupportersTab";
 import BDAgentsTab from "@/components/bd/BDAgentsTab";
+import { galaApi } from "@/services/galaApi";
 
 interface BDData {
   bd: any;
@@ -120,10 +121,7 @@ const BDDashboard: React.FC = () => {
     // Fetch supporters in parallel
     const supPromises = sups.map(async (s: any) => {
       try {
-        const res = await fetch(
-          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${s.member_uuid}&month=${month}`
-        );
-        const data = await res.json();
+        const data = await galaApi.userMonthlyCharges(s.member_uuid, month);
         const charges = data.data?.total_charges || 0;
         const commission = data.data?.commission_2pct || (charges * 0.02);
         supMap[s.member_uuid] = { charges, commission };
@@ -135,10 +133,7 @@ const BDDashboard: React.FC = () => {
       try {
         const agencyId = a.agency_id;
         if (!agencyId) return;
-        const res = await fetch(
-          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=agency-salary&agency_id=${agencyId}&year=${year}&month_num=${monthNum}`
-        );
-        const data = await res.json();
+        const data = await galaApi.agencySalary(agencyId, String(year), String(monthNum));
         const salary = data.data?.salary || 0;
         const commission = data.data?.commission_2pct || (salary * 0.02);
         agMap[a.member_uuid] = { salary, commission };
