@@ -1085,7 +1085,7 @@ const AdminWorksPage: React.FC = () => {
                   className="w-full h-10 rounded-xl bg-muted/30 border border-border/50 text-sm px-3 mt-1">
                   <option value="">اختر...</option>
                   {accounts.map(a => (
-                    <option key={a.id} value={a.id}>{a.works_code} — {a.user_name}</option>
+                    <option key={a.id} value={a.user_uuid || a.bd_uuid}>{a.works_code || a.referral_code} — {a.user_name || a.bd_name}</option>
                   ))}
                 </select>
               </div>
