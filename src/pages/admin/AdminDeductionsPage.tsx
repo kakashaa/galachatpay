@@ -174,8 +174,8 @@ const AdminDeductionsPage: React.FC = () => {
       if (receiverUuid.trim()) body.receiver_uuid = receiverUuid.trim();
       if (singleDate) body.date = singleDate;
       else {
-        if (dateFrom) body.date_from = dateFrom;
-        if (dateTo) body.date_to = dateTo;
+        if (dateFrom) body.start = dateFrom;
+        if (dateTo) body.end = dateTo;
       }
 
       const res = await fetch(`${DB_PROXY}?key=${encodeURIComponent("ghala2026proxy")}&action=gift-deduct`, {
