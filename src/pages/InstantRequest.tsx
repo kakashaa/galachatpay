@@ -87,7 +87,13 @@ const InstantRequest: React.FC = () => {
       try {
         const res = await fetch(`${API}?action=user_transfers&uuid=${user.uuid}`);
         const data = await res.json();
-        const available = (data.transfers || []).filter((t: Transfer) => !t.is_used && t.selectable);
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const available = (data.transfers || []).filter((t: Transfer) => {
+          if (t.is_used || !t.selectable) return false;
+          const transferMonth = (t.time || "").slice(0, 7);
+          if (transferMonth && transferMonth < currentMonth) return false;
+          return true;
+        });
         setTransfers(available);
       } catch {
         setTransfers([]);
