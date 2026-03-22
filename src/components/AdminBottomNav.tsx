@@ -9,6 +9,7 @@ interface Props {
   active: BottomTab;
   onChange: (tab: BottomTab) => void;
   chatBadge?: number;
+  monitorBadge?: number;
 }
 
 const navItems = [
