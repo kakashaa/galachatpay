@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
@@ -79,6 +79,8 @@ const AdminMonitorPage: React.FC = () => {
   const [auditData, setAuditData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState("");
+  const [countdown, setCountdown] = useState(60);
+  const prevDangerCount = useRef(0);
 
   /* ── Salary Check ── */
   const [salaryUuid, setSalaryUuid] = useState("");
@@ -87,6 +89,23 @@ const AdminMonitorPage: React.FC = () => {
 
   /* ── Feed Filter ── */
   const [feedFilter, setFeedFilter] = useState("all");
+
+  /* ── Danger sound ── */
+  const playDangerSound = useCallback(() => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = "square";
+      gain.gain.value = 0.15;
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.stop(ctx.currentTime + 0.5);
+    } catch {}
+  }, []);
 
   /* ── Refresh All ── */
   const refreshAll = useCallback(async () => {
@@ -98,16 +117,38 @@ const AdminMonitorPage: React.FC = () => {
         apiCall("daily-summary").catch(() => null),
         apiCall("salary-audit").catch(() => null),
       ]);
-      setAlertsData(alerts);
-      setFeedData(feed);
-      setDailyData(daily);
-      setAuditData(audit);
+      if (alerts) setAlertsData(alerts);
+      if (feed) setFeedData(feed);
+      if (daily) setDailyData(daily);
+      if (audit) setAuditData(audit);
       setLastRefresh(new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-      toast.success("تم التحديث");
+      setCountdown(60);
+
+      // Check for new danger alerts
+      const newDangerCount = feed?.summary?.danger_count || 0;
+      if (newDangerCount > prevDangerCount.current && prevDangerCount.current >= 0) {
+        playDangerSound();
+      }
+      prevDangerCount.current = newDangerCount;
     } catch (e: any) {
-      toast.error("فشل التحديث: " + (e.message || "خطأ"));
+      console.error("Monitor refresh error:", e);
     }
     setLoading(false);
+  }, [playDangerSound]);
+
+  /* ── Auto-refresh on mount + every 60s ── */
+  useEffect(() => {
+    refreshAll();
+    const interval = setInterval(refreshAll, 60000);
+    return () => clearInterval(interval);
+  }, [refreshAll]);
+
+  /* ── Countdown timer ── */
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setCountdown(prev => (prev <= 1 ? 60 : prev - 1));
+    }, 1000);
+    return () => clearInterval(tick);
   }, []);
 
   /* ── Salary Check ── */
@@ -141,14 +182,23 @@ const AdminMonitorPage: React.FC = () => {
   return (
     <AdminPageLayout title="المراقبة" onLogout={handleLogout}>
       <div className="space-y-6 pb-10" dir="rtl">
-        {/* ── Header with Refresh ── */}
+        {/* ── Header with Auto-Refresh Status ── */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">لوحة المراقبة</h1>
-            {lastRefresh && <p className="text-xs text-muted-foreground">آخر تحديث: {lastRefresh}</p>}
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            </span>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">لوحة المراقبة</h1>
+              <p className="text-[10px] text-muted-foreground">
+                {lastRefresh ? `آخر تحديث: ${lastRefresh}` : "جاري التحميل..."} 
+                {lastRefresh && <span className="text-muted-foreground/60"> · التالي: {countdown}ث</span>}
+              </p>
+            </div>
           </div>
           <button
-            onClick={refreshAll}
+            onClick={() => { refreshAll(); setCountdown(60); }}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition"
           >
@@ -157,10 +207,10 @@ const AdminMonitorPage: React.FC = () => {
           </button>
         </div>
 
-        {!alertsData && !loading && (
+        {loading && !alertsData && (
           <div className="text-center py-16 text-muted-foreground">
-            <Activity className="w-12 h-12 mx-auto mb-3 opacity-40" />
-            <p className="text-sm">اضغط "تحديث" لتحميل البيانات</p>
+            <Loader2 className="w-10 h-10 mx-auto mb-3 animate-spin opacity-40" />
+            <p className="text-sm">جاري تحميل البيانات...</p>
           </div>
         )}
 

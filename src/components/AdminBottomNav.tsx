@@ -9,6 +9,7 @@ interface Props {
   active: BottomTab;
   onChange: (tab: BottomTab) => void;
   chatBadge?: number;
+  monitorBadge?: number;
 }
 
 const navItems = [
@@ -19,7 +20,7 @@ const navItems = [
   { key: 'favorites' as BottomTab, icon: MoreHorizontal, label: 'المزيد', gradient: 'from-slate-400 to-slate-500' },
 ];
 
-const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
+const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorBadge }) => {
   const navigate = useNavigate();
   const tap = useTapFeedback();
   const [bouncingKey, setBouncingKey] = useState<string | null>(null);
@@ -81,6 +82,14 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge }) => {
                     style={{ border: '2px solid rgba(0,0,0,0.6)' }}
                   >
                     {chatBadge > 99 ? '99+' : chatBadge}
+                  </span>
+                )}
+                {item.key === 'monitor' && monitorBadge && monitorBadge > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[8px] text-white font-bold flex items-center justify-center px-1 bg-red-500 shadow-md shadow-red-500/50 animate-pulse"
+                    style={{ border: '2px solid rgba(0,0,0,0.6)' }}
+                  >
+                    {monitorBadge > 99 ? '99+' : monitorBadge}
                   </span>
                 )}
                 {isActive && (
