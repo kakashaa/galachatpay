@@ -93,6 +93,7 @@ const ADMIN_ONLY = new Set([
   "set-frame", "set-entry", "set-profile-entry", "set-necklace",
   "update_user_avatar", "upload_custom_gift",
   "gift-deduct", "gift-restore", "deduct-diamonds",
+  "gifts-sent", "gifts-received", "charges-by-uuid",
 ]);
 
 // Owner-only actions
@@ -256,7 +257,7 @@ serve(async (req) => {
     }
 
     // 4. Execute the request
-    const timeout = ADMIN_ONLY.has(action) ? 55000 : target === "db-proxy" ? 120000 : 30000;
+    const timeout = ADMIN_ONLY.has(action) ? 55000 : (target === "db-proxy" || target === "hola-chat") ? 120000 : 30000;
     const res = await fetch(url, { ...fetchOptions, signal: AbortSignal.timeout(timeout) });
     const text = await res.text();
 

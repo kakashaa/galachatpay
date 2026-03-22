@@ -184,15 +184,15 @@ class GalaApiService {
 
   // db-proxy detail reports
   async giftsSent(uuid: string, start: string, end: string) {
-    return this.dbProxy("gifts-sent", { uuid, start, end });
+    return this.dbProxy("gifts-sent", { uuid, start, end }, true);
   }
 
   async giftsReceived(uuid: string, start: string, end: string) {
-    return this.dbProxy("gifts-received", { uuid, start, end });
+    return this.dbProxy("gifts-received", { uuid, start, end }, true);
   }
 
   async chargesByUuid(uuid: string, start: string, end: string) {
-    return this.dbProxy("charges-by-uuid", { uuid, start, end });
+    return this.dbProxy("charges-by-uuid", { uuid, start, end }, true);
   }
 
   // Avatar
