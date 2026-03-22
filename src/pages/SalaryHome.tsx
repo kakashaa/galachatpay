@@ -74,7 +74,6 @@ const SalaryHome: React.FC = () => {
   const host = status?.host_salary;
   const agency = status?.agency_salary;
   const isAgencyOwner = status?.is_agency_owner || false;
-  const opts = status?.withdrawal_options;
 
   const hostAvailable = host?.available || 0;
   const agencyAvailable = agency?.pool_available || 0;
