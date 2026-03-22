@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
-const API = "https://hola-chat.com/db-proxy.php?key=ghala2026proxy";
+const DB_PROXY = "https://hola-chat.com/db-proxy.php";
 const COINS_PER_USD = 7500;
 
 interface Gift {
