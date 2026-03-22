@@ -190,8 +190,9 @@ const Login: React.FC = () => {
         },
       };
 
-      // Store password for session verification
-      localStorage.setItem("gala_session_key", btoa(password.trim()));
+      // Store encrypted session token (never store raw password!)
+      localStorage.setItem("gala_session_token", data.session_token || "");
+      localStorage.setItem("gala_login_time", Date.now().toString());
 
       // Fetch and save real avatar from get_avatar API
       try {

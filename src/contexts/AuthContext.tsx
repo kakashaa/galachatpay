@@ -53,6 +53,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SESSION_MAX_AGE = 8 * 60 * 60 * 1000; // 8 hours
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<GalaUser | null>(() => {
     try {
@@ -73,17 +75,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  // Check session expiry on mount and visibility change
+  const checkSessionExpiry = useCallback(() => {
+    const loginTime = parseInt(localStorage.getItem("gala_login_time") || "0");
+    if (loginTime && Date.now() - loginTime > SESSION_MAX_AGE) {
+      console.log("Session expired (8 hours), forcing logout");
+      localStorage.removeItem("gala_session_token");
+      localStorage.removeItem("gala_login_time");
+      localStorage.removeItem("gala_user");
+      setUser(null);
+      return true;
+    }
+    return false;
+  }, []);
+
+  useEffect(() => {
+    checkSessionExpiry();
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") {
+        checkSessionExpiry();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => document.removeEventListener("visibilitychange", handleVisible);
+  }, [checkSessionExpiry]);
+
   const refreshUser = useCallback(async () => {
     if (!user?.uuid) return;
-    const storedKey = localStorage.getItem("gala_session_key");
-    if (!storedKey) return;
+    const sessionToken = localStorage.getItem("gala_session_token");
+    if (!sessionToken) return;
+    if (checkSessionExpiry()) return;
     try {
-      const pw = atob(storedKey);
       const result = await supabase.functions.invoke("gala-login", {
-        body: { uuid: user.uuid, password: pw },
+        body: { uuid: user.uuid, session_token: sessionToken },
       });
       const data = result.data;
+
+      // Session expired on server side
+      if (data?.session_expired) {
+        console.log("Session expired server-side, forcing logout");
+        localStorage.removeItem("gala_session_token");
+        localStorage.removeItem("gala_login_time");
+        localStorage.setItem("gala_force_logout_reason", "password_changed");
+        logout();
+        return;
+      }
+
       if (!data?.success || !data?.data) return;
+
+      // Refresh the session token if server returned a new one
+      if (data.session_token) {
+        localStorage.setItem("gala_session_token", data.session_token);
+        localStorage.setItem("gala_login_time", Date.now().toString());
+      }
+
       const apiUser = data.data;
       const levelData = typeof apiUser.level === "number"
         ? { receiver_level: apiUser.level, sender_level: 0, charger_level: 0, receiver_num: 0, sender_num: 0, charger_num: 0 }
@@ -97,7 +142,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
       const effectiveType = resolveUserType(apiUser.type_user, apiUser.agency);
 
-      // Use functional updater to avoid stale closure
       setUser(prevUser => ({
         id: apiUser.id,
         uuid: apiUser.uuid,
@@ -130,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch {
       // silent
     }
-  }, [user?.uuid]);
+  }, [user?.uuid, checkSessionExpiry]);
 
   // Auto-refresh every 3 minutes + on visibility change
   useEffect(() => {
@@ -152,37 +196,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [user?.uuid, refreshUser]);
 
-  // Password verification - check every 30 seconds if password changed
+  // Password verification - check every 5 minutes if password changed
   const verifyTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const verifyPassword = useCallback(async () => {
     if (!user?.uuid) return;
-    const storedKey = localStorage.getItem("gala_session_key");
-    if (!storedKey) return;
-    
+    const sessionToken = localStorage.getItem("gala_session_token");
+    if (!sessionToken) return;
+    if (checkSessionExpiry()) return;
+
     try {
-      const pw = atob(storedKey);
       const result = await supabase.functions.invoke("gala-login", {
-        body: { uuid: user.uuid, password: pw },
+        body: { uuid: user.uuid, session_token: sessionToken },
       });
       const data = result.data;
-      
-      // If login fails (wrong password) and NOT blocked, force logout
+
+      // If login fails (wrong password / expired) and NOT blocked, force logout
       if (data && !data.success && !data.blocked) {
-        console.log("Password changed, forcing logout");
-        localStorage.removeItem("gala_session_key");
+        console.log("Password changed or session expired, forcing logout");
+        localStorage.removeItem("gala_session_token");
+        localStorage.removeItem("gala_login_time");
         localStorage.setItem("gala_force_logout_reason", "password_changed");
         logout();
       }
     } catch {
       // Network error - don't logout on connectivity issues
     }
-  }, [user?.uuid]);
+  }, [user?.uuid, checkSessionExpiry]);
 
   useEffect(() => {
     if (user?.uuid) {
       verifyTimerRef.current = setInterval(verifyPassword, 5 * 60 * 1000);
-      // Also verify on visibility change (when user comes back to app)
       const handleVisibility = () => {
         if (document.visibilityState === "visible") {
           verifyPassword();
@@ -200,7 +244,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user?.uuid, verifyPassword]);
 
   const logout = () => {
-    // Save current account to saved accounts list before clearing
     if (user) {
       try {
         const savedRaw = localStorage.getItem("gala_saved_accounts");
@@ -212,14 +255,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           saved.unshift(entry);
         }
-        // Keep max 5 accounts
         localStorage.setItem("gala_saved_accounts", JSON.stringify(saved.slice(0, 5)));
       } catch { /* ignore */ }
     }
     setUser(null);
     localStorage.removeItem("gala_user");
-    localStorage.removeItem("gala_session_key");
+    localStorage.removeItem("gala_session_token");
+    localStorage.removeItem("gala_login_time");
     localStorage.removeItem("gala_avatar");
+    // Clean up old key if still present from previous version
+    localStorage.removeItem("gala_session_key");
   };
 
   return (
