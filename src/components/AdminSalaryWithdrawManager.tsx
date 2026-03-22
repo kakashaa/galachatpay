@@ -286,8 +286,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           .gte("created_at", startDate)
           .lte("created_at", endDate)
           .order("created_at", { ascending: false })
-          .then(r => r.data || [])
-          .catch(() => []),
+          .then(r => r.data || []),
       ]);
 
       const data = apiResult as any;
