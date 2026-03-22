@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 
-const API = "https://hola-chat.com/db-proxy.php?key=ghala2026proxy";
+const DB_PROXY = "https://hola-chat.com/db-proxy.php";
 const COINS_PER_USD = 7500;
 
 interface Gift {
@@ -101,8 +101,8 @@ const AdminDeductionsPage: React.FC = () => {
     if (singleDate) {
       p.set("date", singleDate);
     } else {
-      if (dateFrom) p.set("date_from", dateFrom);
-      if (dateTo) p.set("date_to", dateTo);
+      if (dateFrom) p.set("start", dateFrom);
+      if (dateTo) p.set("end", dateTo);
     }
     return p;
   };
@@ -117,7 +117,7 @@ const AdminDeductionsPage: React.FC = () => {
     try {
       const p = buildParams();
       p.set("action", "gift-lookup");
-      const res = await fetch(`${API}?${p.toString()}`);
+      const res = await fetch(`${DB_PROXY}?${p.toString()}`);
       const data = await res.json();
       if (!data.ok) { toast.error(data.error || "فشل البحث"); return; }
       setLookupData(data);
@@ -132,11 +132,10 @@ const AdminDeductionsPage: React.FC = () => {
     try {
       const p = buildParams();
       p.set("action", "gift-impact");
-      const res = await fetch(`${API}?${p.toString()}`);
+      const res = await fetch(`${DB_PROXY}?${p.toString()}`);
       const data: ImpactResult = await res.json();
       if (!data.ok) { toast.error("فشل عرض التأثير"); return; }
       setImpactData(data);
-      // Merge impact into lookup receivers
       if (lookupData) {
         const merged = lookupData.receivers.map(r => {
           const impact = data.receivers?.find(ir => ir.uuid === r.uuid);
@@ -167,7 +166,6 @@ const AdminDeductionsPage: React.FC = () => {
     setDeductLoading(true);
     try {
       const body: any = {
-        action: "gift-deduct",
         sender_uuid: senderUuid.trim(),
       };
       if (mode === "selected") {
@@ -176,11 +174,11 @@ const AdminDeductionsPage: React.FC = () => {
       if (receiverUuid.trim()) body.receiver_uuid = receiverUuid.trim();
       if (singleDate) body.date = singleDate;
       else {
-        if (dateFrom) body.date_from = dateFrom;
-        if (dateTo) body.date_to = dateTo;
+        if (dateFrom) body.start = dateFrom;
+        if (dateTo) body.end = dateTo;
       }
 
-      const res = await fetch(API, {
+      const res = await fetch(`${DB_PROXY}?key=${encodeURIComponent("ghala2026proxy")}&action=gift-deduct`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -206,10 +204,10 @@ const AdminDeductionsPage: React.FC = () => {
     if (!ok) return;
     setRestoreLoading(true);
     try {
-      const res = await fetch(API, {
+      const res = await fetch(`${DB_PROXY}?key=${encodeURIComponent("ghala2026proxy")}&action=gift-restore`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "gift-restore", uuid: restoreUuid.trim(), amount: Number(restoreAmount) }),
+        body: JSON.stringify({ uuid: restoreUuid.trim(), amount: Number(restoreAmount) }),
       });
       const data = await res.json();
       if (data.ok) toast.success("تم الاستعادة بنجاح");
