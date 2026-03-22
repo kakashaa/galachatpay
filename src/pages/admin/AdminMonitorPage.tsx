@@ -7,25 +7,12 @@ import {
   TrendingUp, Activity, CheckCircle, XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { galaApi } from "@/services/galaApi";
 
 /* ─── DB Proxy Helper ─── */
-const DB_PROXY = "https://hola-chat.com/db-proxy.php";
-const API_KEY = "ghala2026proxy";
-
 async function apiCall(action: string, params?: Record<string, string | number>) {
-  const url = new URL(DB_PROXY);
-  url.searchParams.set("key", API_KEY);
-  url.searchParams.set("action", action);
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      url.searchParams.set(k, String(v));
-    }
-  }
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  const json = await res.json();
-  if (json.ok === false) throw new Error(json.error || json.message || "API returned error");
-  return json.data !== undefined ? json.data : json;
+  const result = await galaApi.dbProxy(action, params as Record<string, string | number>);
+  return (result as any)?.data !== undefined ? (result as any).data : result;
 }
 
 /* ─── Helpers ─── */
