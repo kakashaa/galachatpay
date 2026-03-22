@@ -6,8 +6,7 @@ import { useAgentAuth } from "@/hooks/use-agent-auth";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import AgentBottomNav from "@/components/AgentBottomNav";
 import { BANK_LABELS } from "@/lib/constants";
-
-const AGENT_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 interface Transaction {
   id: string;
@@ -45,19 +44,15 @@ const AgentDashboard: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`${AGENT_API}?action=agent_dashboard&token=${token}`);
-      const json = await res.json();
+      const json = await galaApi.agentDashboard(token);
       if (json.success) {
         setData(json);
-        // Enrich transactions with avatars
         const txs: Transaction[] = (json.recent_transactions || []).slice(0, 5);
         setEnrichedTxs(txs);
-        // Fetch avatars in background
         Promise.all(
           txs.map(async (tx) => {
             try {
-              const r = await fetch(`${AGENT_API}?action=agent_lookup_user&token=${token}&uuid=${tx.uuid || tx.user_uuid}`);
-              const d = await r.json();
+              const d = await galaApi.agentLookupUser(tx.uuid || tx.user_uuid || "", token);
               return { ...tx, avatar: d.avatar || "" };
             } catch { return { ...tx, avatar: "" }; }
           })

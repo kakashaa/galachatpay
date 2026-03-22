@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, Lock, Phone, Settings } from "lucide-react";
-
-const AGENT_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 const AgentSetup: React.FC = () => {
   const navigate = useNavigate();
@@ -40,13 +39,8 @@ const AgentSetup: React.FC = () => {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("ghala_token");
-      const res = await fetch(`${AGENT_API}?action=agent_change_password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, old_password: oldPassword, new_password: newPassword, phone }),
-      });
-      const data = await res.json();
+      const token = localStorage.getItem("ghala_token") || "";
+      const data = await galaApi.agentChangePassword(token, oldPassword, newPassword);
       if (!data.success) {
         setError(data.error || "فشل تغيير كلمة المرور");
         return;

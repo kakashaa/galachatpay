@@ -4,8 +4,7 @@ import { ArrowRight, TrendingUp, Wallet, Gem, Zap, Calculator, Users, Clock, Loc
 import { useAgentAuth } from "@/hooks/use-agent-auth";
 import AgentBottomNav from "@/components/AgentBottomNav";
 import { BANK_LABELS } from "@/lib/constants";
-
-const AGENT_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 interface WeeklyItem {
   date: string;
@@ -72,12 +71,10 @@ const AgentStats: React.FC = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const [statsRes, dashRes] = await Promise.all([
-        fetch(`${AGENT_API}?action=agent_stats&token=${token}`),
-        fetch(`${AGENT_API}?action=agent_dashboard&token=${token}`),
+      const [statsData, dashData] = await Promise.all([
+        galaApi.agentStats(token),
+        galaApi.agentDashboard(token) as Promise<DashboardData>,
       ]);
-      const statsData = await statsRes.json();
-      const dashData: DashboardData = await dashRes.json();
 
       if (statsData.success) {
         setStats(statsData);

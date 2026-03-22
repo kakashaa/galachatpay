@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, AlertCircle, User, Lock, Wallet, ArrowRight } from "lucide-react";
-
-const AGENT_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 const AgentLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -32,12 +31,7 @@ const AgentLogin: React.FC = () => {
 
     setLoading(true);
     try {
-      const res = await fetch(`${AGENT_API}?action=agent_login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password: password.trim() }),
-      });
-      const data = await res.json();
+      const data = await galaApi.agentLogin(username.trim(), password.trim());
 
       if (!data.success) {
         setError(data.error || "بيانات الدخول غير صحيحة");
