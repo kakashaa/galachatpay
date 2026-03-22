@@ -152,8 +152,46 @@ class GalaApiService {
     return this.call("project-z", "agent_transactions", { username }, true);
   }
 
-  async agentLookupUser(uuid: string) {
+  async agentLookupUser(uuid: string, token?: string) {
+    if (token) return this.call("project-z", "agent_lookup_user", { uuid, token });
     return this.call("project-z", "agent_lookup_user", { uuid }, true);
+  }
+
+  async agentLogin(username: string, password: string) {
+    return this.call("project-z", "agent_login", { username, password });
+  }
+
+  async agentChangePassword(token: string, oldPassword: string, newPassword: string) {
+    return this.call("project-z", "agent_change_password", { token, old_password: oldPassword, new_password: newPassword });
+  }
+
+  async agentCharge(token: string, params: Record<string, unknown>) {
+    return this.call("project-z", "agent_charge", { token, ...params });
+  }
+
+  async agentDashboard(token: string) {
+    return this.call("project-z", "agent_dashboard", { token });
+  }
+
+  async agentHistory(token: string, params: Record<string, string> = {}) {
+    return this.call("project-z", "agent_history", { token, ...params });
+  }
+
+  async agentStats(token: string) {
+    return this.call("project-z", "agent_stats", { token });
+  }
+
+  // db-proxy detail reports
+  async giftsSent(uuid: string, start: string, end: string) {
+    return this.dbProxy("gifts-sent", { uuid, start, end });
+  }
+
+  async giftsReceived(uuid: string, start: string, end: string) {
+    return this.dbProxy("gifts-received", { uuid, start, end });
+  }
+
+  async chargesByUuid(uuid: string, start: string, end: string) {
+    return this.dbProxy("charges-by-uuid", { uuid, start, end });
   }
 
   // Avatar
