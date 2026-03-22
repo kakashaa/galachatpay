@@ -3,9 +3,8 @@ import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
 import {
-  RefreshCw, Loader2, Search, AlertTriangle, Shield, DollarSign,
-  TrendingUp, Activity, CheckCircle, XCircle, Users, Truck,
-  CreditCard, Home, Gift, Target, Gamepad2, Wrench,
+  RefreshCw, Loader2, Search, AlertTriangle, Shield,
+  TrendingUp, Activity, CheckCircle, XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
