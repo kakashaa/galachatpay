@@ -224,6 +224,42 @@ const AdminDeductionsPage: React.FC = () => {
     finally { setRestoreLoading(false); }
   };
 
+  const parsedDeductAmount = parseInt(deductAmount) || 0;
+
+  const handleManualDeduct = async () => {
+    if (!deductUuid.trim() || !deductAmount.trim()) { toast.error("أدخل UUID والمبلغ"); return; }
+    const ok = await confirm({
+      title: "تأكيد الخصم اليدوي",
+      message: `خصم ${parsedDeductAmount.toLocaleString()} كوينز ($${(parsedDeductAmount / COINS_PER_USD).toFixed(2)}) من UUID ${deductUuid}`,
+      danger: true,
+      confirmText: "تنفيذ الخصم",
+    });
+    if (!ok) return;
+    setDeductManualLoading(true);
+    setDeductManualResult(null);
+    try {
+      const res = await fetch(DB_PROXY, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `key=ghala2026proxy&action=deduct-diamonds&uuid=${deductUuid.trim()}&amount=${parsedDeductAmount}`,
+      });
+      const result = await res.json();
+      if (result.ok) {
+        setDeductManualResult({
+          uuid: deductUuid.trim(),
+          name: result.name || undefined,
+          amount: parsedDeductAmount,
+          balance_before: result.balance_before,
+          balance_after: result.balance_after,
+        });
+        toast.success(`تم خصم ${parsedDeductAmount.toLocaleString()} كوينز`);
+      } else {
+        toast.error(result.error || "فشل الخصم");
+      }
+    } catch { toast.error("خطأ بالاتصال"); }
+    finally { setDeductManualLoading(false); }
+  };
+
   const toggleSelect = (uuid: string) => {
     setSelected(prev => {
       const next = new Set(prev);
