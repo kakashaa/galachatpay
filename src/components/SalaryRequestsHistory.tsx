@@ -221,7 +221,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  {req.bank}{req.country ? ` — ${req.country}` : ""}
+                  {getRequestTypeLabel(req.request_type) || req.bank}{req.country && !isCoinsRequest(req) ? ` — ${req.country}` : ""}
                 </span>
                 <span className="text-[10px] text-muted-foreground">{formatDateAr(req.created_at)}</span>
               </div>
