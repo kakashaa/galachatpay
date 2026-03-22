@@ -4,8 +4,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   CheckCircle, AlertCircle, Globe,
   UserCheck, ArrowRight, ArrowLeft, Phone,
-  Loader2, Copy, Frown, ChevronDown, RefreshCw, Coins, Search, User,
-  Wallet, Gift,
+  Loader2, Copy, Coins, Search, User,
+  Wallet, Gift, DollarSign,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -17,53 +17,37 @@ import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
 
+const DB_PROXY = "https://hola-chat.com/db-proxy.php";
+const PROXY_KEY = "ghala2026proxy";
 const API = "https://galachat.site/project-z/api.php";
 
-interface Transfer {
-  reference_id: string;
-  amount_usd: number;
-  time: string;
-  is_used: boolean;
-  selectable: boolean;
-  request_type?: string;
-  target_name?: string | null;
-  target_uuid?: string | null;
-  recipient_name?: string;
+const USD_TO_COINS = 8500;
+
+interface SalaryCheckResult {
+  salary_actual: number;
+  salary_expected: number;
+  remaining: number;
+  is_suspicious: boolean;
+  can_withdraw: boolean;
+  total_withdrawn?: number;
+  cash_count?: number;
+  max_cash?: number;
 }
 
-interface UsedTransferDetail {
-  request_type: string;
-  target_name: string | null;
-  target_uuid: string | null;
-  recipient_name: string;
-  status: string;
-}
-
-interface TransfersResult {
-  transfers: Transfer[];
-  is_agency_owner?: boolean;
-  withdrawals?: { count: number; max: number; total_withdrawn: number };
-}
-
-interface SalarySummary {
-  salary: number;
-  deduction: number;
-  net: number;
-}
-
-interface SalaryBank {
-  id: string;
-  label: string;
+interface TransferResult {
+  ok: boolean;
+  error?: string;
+  reference_id?: string;
+  amount_usd?: number;
+  coins?: number;
+  time?: string;
 }
 
 interface SalaryCountry {
   id: string;
   name: string;
-  banks: SalaryBank[];
+  banks: { id: string; label: string }[];
 }
 
 const SALARY_COUNTRIES: SalaryCountry[] = [
@@ -146,60 +130,11 @@ const countryCodes = [
   { code: "+880", flag: "🇧🇩" },
 ];
 
-const TRANSFER_TARGET_ID = "10000";
-const USD_TO_COINS = 8500;
-const REQUEST_TIMEOUT_ERROR = "REQUEST_TIMEOUT";
-const EXTERNAL_REQUEST_TIMEOUT = 25000;
-
-const isTimeoutError = (error: unknown) =>
-  error instanceof Error && error.message === REQUEST_TIMEOUT_ERROR;
-
-const fetchJsonWithTimeout = async (
-  url: string,
-  init?: RequestInit,
-  timeoutMs: number = EXTERNAL_REQUEST_TIMEOUT,
-) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      ...init,
-      signal: controller.signal,
-    });
-    const data = await response.json().catch(() => ({}));
-    return { ok: response.ok, status: response.status, data };
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(REQUEST_TIMEOUT_ERROR);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
-
-const getCashWithdrawDates = () => {
-  const today = new Date();
-  const dayOfMonth = today.getDate();
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const canWithdrawCash = true; // TESTING — فتح مؤقت للتجربة (الأصل: dayOfMonth >= lastDay - 2)
-  return { dayOfMonth, lastDay, canWithdrawCash, startDay: lastDay - 2 };
-};
-
-const getWithdrawalLimits = (isAgencyOwner: boolean) => {
-  const maxCash = isAgencyOwner ? 2 : 1;
-  // maxTotal only applies to cash withdrawals — coin charges are unlimited
-  const maxTotal = maxCash;
-  return { maxCash, maxTotal };
-};
-
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
 
-  // Determine mode from URL path
   const pathMode = location.pathname.includes("/salary/charge-other")
     ? "charge_other"
     : location.pathname.includes("/salary/charge-self")
@@ -211,250 +146,80 @@ const SalaryWithdraw: React.FC = () => {
     charge_self: { title: "شحن لحسابي", icon: Coins, color: "text-amber-400" },
     charge_other: { title: "شحن لحساب آخر", icon: Gift, color: "text-violet-400" },
   };
-  // Core state
-  const [loading, setLoading] = useState(true);
-  const [loadingStep, setLoadingStep] = useState(0);
-  const [error, setError] = useState("");
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [usedDetails, setUsedDetails] = useState<Record<string, UsedTransferDetail>>({});
-  const [isAgencyOwner, setIsAgencyOwner] = useState(false);
-  const [usedCount, setUsedCount] = useState(0);
-  const [usedTransfersCount, setUsedTransfersCount] = useState(0);
-  const [salarySummary, setSalarySummary] = useState<SalarySummary>({
-    salary: 0,
-    deduction: 0,
-    net: 0,
-  });
 
-  // Selected transfer
-  const [selectedTransfer, setSelectedTransfer] = useState<Transfer | null>(null);
-  const [_withdrawalMode, setWithdrawalMode] = useState<"cash" | "charge_self" | "charge_other">("cash");
-
-  // Charge other target
-  const [targetUuid, setTargetUuid] = useState("");
-  const [targetSearching, setTargetSearching] = useState(false);
-  const [targetInfo, setTargetInfo] = useState<{ name: string; avatar: string; uuid: string } | null>(null);
-  const [targetConfirmed, setTargetConfirmed] = useState(false);
-
-  // Steps
+  // State
   const [step, setStep] = useState<string>("loading");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [salaryInfo, setSalaryInfo] = useState<SalaryCheckResult | null>(null);
 
-  // Screenshot for manual verification
-  const [screenshotBase64, setScreenshotBase64] = useState("");
+  // Amount
+  const [amountUsd, setAmountUsd] = useState("");
 
-  // Bank selection
+  // Bank (cash mode)
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedBank, setSelectedBank] = useState("");
   const [customBankName, setCustomBankName] = useState("");
 
-  // Account details
+  // Account (cash mode)
   const [recipientName, setRecipientName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [whatsappCode, setWhatsappCode] = useState("+967");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Submit
-  const [submitting, setSubmitting] = useState(false);
-  const [submitResult, setSubmitResult] = useState<{ success: boolean; request_id?: string; message?: string } | null>(null);
+  // Charge other
+  const [targetUuid, setTargetUuid] = useState("");
+  const [targetSearching, setTargetSearching] = useState(false);
+  const [targetInfo, setTargetInfo] = useState<{ name: string; avatar: string; uuid: string } | null>(null);
+  const [targetConfirmed, setTargetConfirmed] = useState(false);
 
-  // Coins charge
-  const [chargingCoins, setChargingCoins] = useState(false);
-  const [coinsCharged, setCoinsCharged] = useState(0);
-  const [chargeStage, setChargeStage] = useState<"verify" | "charging" | "saving">("verify");
+  // Processing
+  const [processing, setProcessing] = useState(false);
+  const [processStage, setProcessStage] = useState<"check" | "transfer" | "save">("check");
+  const [transferResult, setTransferResult] = useState<TransferResult | null>(null);
+  const [resultRemaining, setResultRemaining] = useState(0);
 
-  // Salary report check
-  const [salaryCheckLoading, setSalaryCheckLoading] = useState(false);
-  const [salaryWarning, setSalaryWarning] = useState<{ show: boolean; manual_amount?: number; message?: string } | null>(null);
+  // Salary warning
+  const [salaryWarning, setSalaryWarning] = useState<{ show: boolean; message?: string } | null>(null);
 
   const hasFetchedRef = useRef(false);
-  const chargeInFlightRef = useRef(false);
-  const submitInFlightRef = useRef(false);
+  const processInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    fetchTransfers();
+    fetchSalaryInfo();
   }, [user?.uuid]);
 
-  const markTransferAsUsedLocally = (referenceId: string) => {
-    const shouldIncrement = transfers.some(
-      (t) => t.reference_id === referenceId && !t.is_used,
-    );
-
-    setTransfers((prev) =>
-      prev.map((t) =>
-        t.reference_id === referenceId
-          ? { ...t, is_used: true, selectable: false }
-          : t,
-      ),
-    );
-
-    if (shouldIncrement) {
-      setUsedCount((prev) => prev + 1);
-    }
-  };
-
-  const isReferenceAlreadyUsed = async (referenceId: string) => {
-    const transferId = String(referenceId || "").trim();
-    if (!transferId) return false;
-
-    const { data, error } = await supabase
-      .from("salary_requests")
-      .select("id")
-      .eq("user_uuid", user!.uuid)
-      .eq("transfer_id", transferId)
-      .neq("status", "rejected")
-      .limit(1);
-
-    if (error) {
-      console.error("Failed to check used reference:", error);
-      return false;
-    }
-
-    return (data?.length || 0) > 0;
-  };
-
-  const fetchTransfers = async () => {
+  const fetchSalaryInfo = async () => {
     setLoading(true);
-    setLoadingStep(0);
     setError("");
     try {
-      const now = new Date();
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const res = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=salary-check&uuid=${user!.uuid}`);
+      const data = await res.json();
+      setSalaryInfo(data);
 
-      // Step 1: Fetch all data in parallel
-      setLoadingStep(1);
-      const [transfersRes, salaryRes, salaryCheckRes, historyRes, localRequestsRes] = await Promise.all([
-        fetch(`${API}?action=user_transfers&uuid=${user!.uuid}`),
-        fetch(`${API}?action=salary_check_all&uuid=${user!.uuid}`),
-        fetch(`${API}?action=salary_check&uuid=${user!.uuid}`),
-        fetch(`${API}?action=my_salary_requests&uuid=${user!.uuid}&month=${month}`),
-        supabase
-          .from("salary_requests")
-          .select("transfer_id, transaction_id, request_type, target_name, target_uuid, recipient_name, status")
-          .eq("user_uuid", user!.uuid)
-          .neq("status", "rejected")
-          .or("transfer_id.not.is.null,transaction_id.not.is.null"),
-      ]);
-
-      // Step 2: Parse responses
-      setLoadingStep(2);
-      const data: TransfersResult = await transfersRes.json();
-      const salaryData = await salaryRes.json();
-      const salaryCheckData = await salaryCheckRes.json().catch(() => ({}));
-      const historyData = await historyRes.json().catch(() => ({}));
-
-      // Step 3: Verify duplicates
-      setLoadingStep(3);
-
-      const summarySalary = Number(
-        salaryCheckData?.salary ?? salaryData?.host_salary?.salary ?? 0,
-      );
-      const summaryDeduction = Number(
-        salaryCheckData?.deduction ?? salaryData?.host_salary?.deduction ?? 0,
-      );
-      const summaryNetRaw = Number(
-        salaryCheckData?.net ?? salaryData?.host_salary?.net ?? (summarySalary - summaryDeduction),
-      );
-
-      setSalarySummary({
-        salary: summarySalary,
-        deduction: summaryDeduction,
-        net: Math.max(0, summaryNetRaw),
-      });
-
-      if (localRequestsRes.error) {
-        console.error("Failed to fetch local salary requests:", localRequestsRes.error);
-      }
-
-      const externalUsedRefs = new Set<string>(
-        ((historyData?.requests || []) as Array<{ reference_id?: string }>)
-          .map((r) => String(r.reference_id || "").trim())
-          .filter(Boolean),
-      );
-
-      const localUsedRefs = new Set<string>(
-        (localRequestsRes.data || [])
-          .map((r) => String(r.transfer_id || r.transaction_id || "").trim())
-          .filter(Boolean),
-      );
-
-      const usedRefs = new Set<string>([
-        ...externalUsedRefs,
-        ...localUsedRefs,
-      ]);
-
-      const today = new Date().toISOString().slice(0, 10); // "2026-03-22"
-      const allTransfers = (data.transfers || []).map((transfer) => {
-        const ref = String(transfer.reference_id || "").trim();
-        // Filter out old transfers (not from today)
-        const transferDay = (transfer.time || "").slice(0, 10);
-        if (transferDay && transferDay < today) {
-          return { ...transfer, is_used: true, selectable: false };
-        }
-        if (usedRefs.has(ref)) {
-          return { ...transfer, is_used: true, selectable: false };
-        }
-        return transfer;
-      });
-
-      setTransfers(allTransfers);
-      setUsedTransfersCount(allTransfers.filter((t) => t.is_used).length);
-
-      // Build details map for used transfers
-      const detailsMap: Record<string, UsedTransferDetail> = {};
-      ((historyData?.requests || []) as any[]).forEach((r: any) => {
-        const ref = String(r.reference_id || r.transfer_id || r.transaction_id || "").trim();
-        if (!ref) return;
-        detailsMap[ref] = {
-          request_type: r.request_type || "",
-          target_name: r.target_name || null,
-          target_uuid: r.target_uuid || null,
-          recipient_name: r.recipient_name || r.account_name || "",
-          status: r.status || "",
-        };
-      });
-
-      (localRequestsRes.data || []).forEach((r: any) => {
-        const ref = String(r.transfer_id || r.transaction_id || "").trim();
-        if (ref) {
-          detailsMap[ref] = {
-            request_type: r.request_type || "",
-            target_name: r.target_name || null,
-            target_uuid: r.target_uuid || null,
-            recipient_name: r.recipient_name || "",
-            status: r.status || "",
-          };
-        }
-      });
-      setUsedDetails(detailsMap);
-      const agencyOwner = !!(salaryData?.is_agency_owner || data.is_agency_owner);
-      setIsAgencyOwner(agencyOwner);
-
-      // Only count CASH withdrawals toward the limit (coins are unlimited)
-      const cashUsedRefs = new Set<string>(
-        (localRequestsRes.data || [])
-          .filter((r: any) => r.request_type === "cash")
-          .map((r: any) => String(r.transfer_id || r.transaction_id || "").trim())
-          .filter(Boolean),
-      );
-      const cashUsed = allTransfers.filter(t => t.is_used && cashUsedRefs.has(String(t.reference_id || "").trim())).length;
-      setUsedCount(cashUsed);
-
-      const newTransfers = allTransfers.filter(t => !t.is_used && t.selectable);
-      const { maxTotal } = getWithdrawalLimits(agencyOwner);
-
-      // Only block for cash mode when cash limit reached
-      if (pathMode === "cash" && cashUsed >= maxTotal) {
-        setStep("exhausted");
-      } else if (newTransfers.length === 0 && allTransfers.length === 0) {
-        setStep("no_transfers");
-      } else if (newTransfers.length === 0 && allTransfers.length > 0) {
-        setStep("all_used");
+      if (data.is_suspicious) {
+        setSalaryWarning({
+          show: true,
+          message: `الراتب مشبوه! المسجل: $${data.salary_actual} — المتوقع: $${data.salary_expected}`,
+        });
+        setStep("blocked");
+      } else if (!data.can_withdraw) {
+        setStep("no_salary");
       } else {
-        setStep("transfers_list");
+        // For cash mode, check frequency limits
+        if (pathMode === "cash") {
+          const cashCount = data.cash_count || 0;
+          const maxCash = data.max_cash || 1;
+          if (cashCount >= maxCash) {
+            setStep("exhausted");
+            return;
+          }
+        }
+        setStep("amount");
       }
     } catch {
       setError("فشل الاتصال بالخادم");
@@ -464,311 +229,145 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
-  const checkSalaryReport = async (_transfer: Transfer, _mode: string) => {
-    setSalaryCheckLoading(true);
-    try {
-      const reportRes = await fetch(`${API}?action=salary_report&uuid=${user!.uuid}`);
-      const report = await reportRes.json();
-      if (report.is_suspicious || report.is_manual) {
-        setSalaryWarning({
-          show: true,
-          manual_amount: report.manual_amount || 0,
-          message: report.is_suspicious
-            ? "راتبك يحتوي على مبلغ مشبوه ويحتاج مراجعة"
-            : `راتبك يحتوي على مبلغ يدوي ($${report.manual_amount || 0} غير مدعوم)`,
-        });
-        setSalaryCheckLoading(false);
-        return false;
-      }
-      setSalaryCheckLoading(false);
-      return true;
-    } catch {
-      setSalaryCheckLoading(false);
-      // Allow on network error — don't block
-      return true;
-    }
-  };
-
-  const handleSelectTransfer = async (transfer: Transfer, mode: "cash" | "charge_self" | "charge_other") => {
-    // Double-spend protection: re-check if transfer is still usable
-    const currentTransfer = transfers.find(t => t.reference_id === transfer.reference_id);
-    if (!currentTransfer || currentTransfer.is_used || !currentTransfer.selectable) {
-      toast.error("هذه الحوالة تم استخدامها بالفعل");
-      return;
-    }
-
-    const alreadyUsed = await isReferenceAlreadyUsed(transfer.reference_id);
-    if (alreadyUsed) {
-      markTransferAsUsedLocally(transfer.reference_id);
-      toast.error("هذه الحوالة مستخدمة مسبقاً");
-      return;
-    }
-
-    // Only enforce limits for cash mode — coins are unlimited
-    if (mode === "cash") {
-      const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
-      if (usedCount >= maxTotal) {
-        toast.error("وصلت الحد الأقصى لسحب الراتب النقدي هذا الشهر");
-        setStep("exhausted");
-        return;
-      }
-    }
-    setSelectedTransfer(transfer);
-    setSalaryWarning(null);
-
-    const safe = await checkSalaryReport(transfer, mode);
-    if (!safe) return;
-
-    if (mode === "cash") {
-      const { canWithdrawCash, startDay, lastDay } = getCashWithdrawDates();
-      if (!canWithdrawCash) {
-        toast.error(`سحب الراتب النقدي متاح فقط من يوم ${startDay} إلى ${lastDay} من الشهر`);
-        return;
-      }
-      setWithdrawalMode("cash");
-      setStep("bank");
-    } else if (mode === "charge_self") {
-      setWithdrawalMode("charge_self");
-      setStep("coins_confirm");
-    } else {
-      setWithdrawalMode("charge_other");
-      setTargetUuid("");
-      setTargetInfo(null);
-      setTargetConfirmed(false);
-      setStep("charge_other_search");
-    }
-  };
-
   const searchTargetUser = async () => {
     if (!targetUuid.trim() || targetSearching) return;
     setTargetSearching(true);
     setTargetInfo(null);
     setTargetConfirmed(false);
-    setError("");
     try {
-      const { data } = await fetchJsonWithTimeout(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${targetUuid.trim()}`,
-        undefined,
-        12000,
+      const res = await fetch(
+        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${targetUuid.trim()}`
       );
+      const data = await res.json();
       const name = data.data?.name;
       if (name && data.ok !== false) {
-        setTargetInfo({
-          name,
-          avatar: data.data?.avatar || "",
-          uuid: targetUuid.trim(),
-        });
+        setTargetInfo({ name, avatar: data.data?.avatar || "", uuid: targetUuid.trim() });
       } else {
         toast.error("لم يتم العثور على المستخدم");
       }
-    } catch (error) {
-      toast.error(isTimeoutError(error) ? "البحث تأخر، حاول مرة أخرى" : "فشل البحث");
+    } catch {
+      toast.error("فشل البحث");
     } finally {
       setTargetSearching(false);
     }
   };
 
-  const chargeCoins = async (chargeTarget?: string) => {
-    if (!selectedTransfer || chargingCoins || chargeInFlightRef.current) return;
-    chargeInFlightRef.current = true;
-    setChargingCoins(true);
-    setChargeStage("verify");
+  const executeWithdrawal = async () => {
+    if (processing || processInFlightRef.current) return;
+    processInFlightRef.current = true;
+    setProcessing(true);
+    setProcessStage("check");
     setError("");
-    const targetId = chargeTarget || user!.uuid;
+
+    const amount = parseFloat(amountUsd);
+    const chargeTarget = pathMode === "charge_other" ? targetInfo?.uuid : undefined;
 
     try {
-      const alreadyUsed = await isReferenceAlreadyUsed(selectedTransfer.reference_id);
-      if (alreadyUsed) {
-        markTransferAsUsedLocally(selectedTransfer.reference_id);
-        toast.error("هذه الحوالة مستخدمة مسبقاً");
-        setStep("transfers_list");
-        return;
+      // 1. Re-check salary
+      setProcessStage("check");
+      const checkRes = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=salary-check&uuid=${user!.uuid}`);
+      const check = await checkRes.json();
+
+      if (check.is_suspicious) {
+        throw new Error(`الراتب مشبوه! المسجل: $${check.salary_actual} — المتوقع: $${check.salary_expected}`);
+      }
+      if (!check.can_withdraw) {
+        throw new Error("لا يوجد دعم هالشهر — ما يقدر يسحب");
+      }
+      if (amount > (check.remaining || 0)) {
+        throw new Error(`المبلغ أكبر من المتبقي ($${check.remaining})`);
       }
 
-      setChargeStage("charging");
-      const { ok, data } = await fetchJsonWithTimeout(API, {
+      // 2. Execute auto-transfer
+      setProcessStage("transfer");
+      const transferRes = await fetch(DB_PROXY, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "salary_charge_manual",
-          admin_key: "ghala2026owner",
-          uuid: targetId,
-          amount: selectedTransfer.amount_usd,
-          reference_id: selectedTransfer.reference_id,
-        }),
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `key=${PROXY_KEY}&action=transfer&from_uuid=${user!.uuid}&to_uuid=10000&usd=${amount}`,
       });
-      if (ok && data.success) {
-        const targetName = targetInfo?.uuid === targetId
-          ? targetInfo.name
-          : (targetId === user!.uuid ? user!.name : "مستخدم آخر");
+      const result: TransferResult = await transferRes.json();
 
-        setChargeStage("saving");
+      if (!result.ok) {
+        throw new Error(result.error || "فشل التحويل");
+      }
 
-        const { error: insertError } = await supabase.from("salary_requests").insert({
-          user_uuid: user!.uuid,
-          user_name: user!.name,
-          user_phone: user!.phone || null,
-          request_type: targetId === user!.uuid ? "charge_self" : "charge_other",
-          amount_usd: selectedTransfer.amount_usd,
-          amount_coins: selectedTransfer.amount_usd * USD_TO_COINS,
-          recipient_name: targetName,
-          recipient_country: "coins",
-          payment_method: "coins_charge",
-          payment_details: `target_uuid:${targetId}`,
-          status: "approved",
-          transfer_id: selectedTransfer.reference_id,
-          transaction_id: selectedTransfer.reference_id,
-          transaction_date: new Date().toISOString(),
-          target_uuid: targetId,
-          target_name: targetName,
-          admin_note: `تم شحن الكوينز من الحوالة #${selectedTransfer.reference_id}`,
-        } as any);
+      // 3. Save to database
+      setProcessStage("save");
 
-        if (insertError) {
-          const alreadyUsedError = insertError.message?.includes("TRANSFER_ALREADY_USED") || insertError.code === "23505";
-          if (alreadyUsedError) {
-            markTransferAsUsedLocally(selectedTransfer.reference_id);
-            toast.error("هذه الحوالة تم صرفها مسبقاً");
-            setStep("transfers_list");
-            return;
-          }
-          console.error("Failed to save charge request:", insertError);
-          toast.error("تم الشحن لكن فشل تسجيل العملية، تواصل مع الدعم فوراً");
-          return;
+      const requestType = pathMode === "charge_other" ? "charge_other" : pathMode === "charge_self" ? "charge_self" : "cash";
+      const targetName = chargeTarget
+        ? targetInfo?.name || "مستخدم آخر"
+        : pathMode === "charge_self"
+          ? user!.name
+          : recipientName;
+
+      // For coin charges, also charge the target
+      if (pathMode === "charge_self" || pathMode === "charge_other") {
+        const chargeTargetUuid = chargeTarget || user!.uuid;
+        const chargeRes = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "salary_charge_manual",
+            admin_key: "ghala2026owner",
+            uuid: chargeTargetUuid,
+            amount,
+            reference_id: result.reference_id || "auto",
+          }),
+        });
+        const chargeData = await chargeRes.json();
+        if (!chargeData.success) {
+          throw new Error(chargeData.message || "فشل شحن الكوينز بعد التحويل");
         }
-
-        setCoinsCharged(selectedTransfer.amount_usd * USD_TO_COINS);
-        markTransferAsUsedLocally(selectedTransfer.reference_id);
-        setStep("coins_success");
-      } else {
-        setError(data.message || data.error || "فشل شحن الكوينز");
       }
-    } catch (error) {
-      setError(isTimeoutError(error) ? "الخادم تأخر في الرد، حاول مرة أخرى" : "فشل الاتصال بالخادم");
+
+      const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
+      const bank = country?.banks.find(b => b.id === selectedBank);
+      const isOtherBank = selectedBank?.endsWith("_other");
+      const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
+
+      await supabase.from("salary_requests").insert({
+        user_uuid: user!.uuid,
+        user_name: user!.name,
+        user_phone: pathMode === "cash" ? `${whatsappCode}${whatsappNumber}` : null,
+        request_type: requestType,
+        amount_usd: amount,
+        amount_coins: amount * USD_TO_COINS,
+        recipient_name: targetName,
+        recipient_country: pathMode === "cash" ? (country?.name || selectedCountry) : "coins",
+        payment_method: pathMode === "cash" ? (effectiveBankLabel || selectedBank) : "coins_charge",
+        payment_details: pathMode === "cash"
+          ? `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`
+          : `target_uuid:${chargeTarget || user!.uuid}`,
+        status: pathMode === "cash" ? "pending" : "approved",
+        transfer_id: result.reference_id || null,
+        transaction_id: result.reference_id || null,
+        transaction_date: result.time || new Date().toISOString(),
+        target_uuid: chargeTarget || user!.uuid,
+        target_name: targetName,
+        admin_note: pathMode === "cash"
+          ? `تحويل تلقائي #${result.reference_id} | ${notes || ""}`
+          : `شحن تلقائي #${result.reference_id}`,
+      } as any);
+
+      setTransferResult(result);
+      setResultRemaining(Math.max(0, (check.remaining || 0) - amount));
+      setStep("success");
+
+    } catch (err: any) {
+      setError(err.message || "فشل في العملية");
     } finally {
-      setChargingCoins(false);
-      setChargeStage("verify");
-      chargeInFlightRef.current = false;
+      setProcessing(false);
+      processInFlightRef.current = false;
     }
-  };
-
-
-  const handleSubmit = async () => {
-    if (!selectedTransfer || submitting || submitInFlightRef.current) return;
-    submitInFlightRef.current = true;
-    setSubmitting(true);
-    setError("");
-    try {
-      const alreadyUsed = await isReferenceAlreadyUsed(selectedTransfer.reference_id);
-      if (alreadyUsed) {
-        markTransferAsUsedLocally(selectedTransfer.reference_id);
-        toast.error("هذه الحوالة مستخدمة مسبقاً");
-        setStep("transfers_list");
-        return;
-      }
-
-      const { ok, data } = await fetchJsonWithTimeout(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "salary_withdraw",
-          uuid: user!.uuid,
-          amount: selectedTransfer.amount_usd,
-          country: selectedCountry,
-          bank: isOtherBank ? customBankName : selectedBank,
-          account_name: recipientName,
-          account_number: accountNumber || "",
-          whatsapp: `${whatsappCode}${whatsappNumber}`,
-          notes,
-          reference_id: selectedTransfer.reference_id,
-          screenshot: screenshotBase64 || null,
-          transfer_time: selectedTransfer.time || "",
-        }),
-      });
-      if (ok && data.success) {
-        const { error: insertError } = await supabase.from("salary_requests").insert({
-          user_uuid: user!.uuid,
-          user_name: user!.name,
-          user_phone: `${whatsappCode}${whatsappNumber}`,
-          request_type: "cash",
-          amount_usd: selectedTransfer.amount_usd,
-          amount_coins: selectedTransfer.amount_usd * USD_TO_COINS,
-          recipient_name: recipientName,
-          recipient_country: country?.name || selectedCountry,
-          payment_method: effectiveBankLabel || selectedBank,
-          payment_details: `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`,
-          status: "pending",
-          transfer_id: selectedTransfer.reference_id,
-          transaction_id: selectedTransfer.reference_id,
-          transaction_date: new Date().toISOString(),
-          target_uuid: user!.uuid,
-          target_name: recipientName,
-          transfer_image_url: screenshotBase64 || null,
-          admin_note: notes || null,
-        } as any);
-
-        if (insertError) {
-          const alreadyUsedError = insertError.message?.includes("TRANSFER_ALREADY_USED") || insertError.code === "23505";
-          if (alreadyUsedError) {
-            markTransferAsUsedLocally(selectedTransfer.reference_id);
-            toast.error("هذه الحوالة تم صرفها مسبقاً");
-            setStep("transfers_list");
-            return;
-          }
-          console.error("Failed to save withdraw request:", insertError);
-          toast.error("تم إرسال الطلب لكن فشل تسجيله، تواصل مع الدعم");
-          return;
-        }
-
-        setSubmitResult(data);
-        markTransferAsUsedLocally(selectedTransfer.reference_id);
-        setStep("success");
-      } else {
-        setError(data.message || data.error || "فشل في رفع الطلب");
-      }
-    } catch (error) {
-      setError(isTimeoutError(error) ? "الخادم تأخر في الرد، حاول مرة أخرى." : "فشل الاتصال. حاول مرة أخرى.");
-    } finally {
-      setSubmitting(false);
-      submitInFlightRef.current = false;
-    }
-  };
-
-  const getUsedLabel = (t: Transfer) => {
-    const detail = usedDetails[t.reference_id] || {
-      request_type: t.request_type || "",
-      target_name: t.target_name || null,
-      target_uuid: t.target_uuid || null,
-      recipient_name: t.recipient_name || "",
-      status: "",
-    };
-
-    if (!detail) return { label: "تم الصرف ✅", sub: "" };
-    if (detail.request_type === "charge_self") {
-      return { label: "تم شحن كوينزات لحسابك ✅", sub: "" };
-    }
-    if (detail.request_type === "charge_other") {
-      const name = detail.target_name || detail.recipient_name || "";
-      const uuid = detail.target_uuid || "";
-      return {
-        label: "تم شحن كوينزات ✅",
-        sub: name ? `🎁 ${name}${uuid ? ` (${uuid})` : ""}` : "",
-      };
-    }
-    if (detail.request_type === "cash") {
-      const name = detail.recipient_name || "";
-      return {
-        label: "سحب نقدي 💵",
-        sub: name ? `المستلم: ${name}` : "",
-      };
-    }
-    return {
-      label: "تم الصرف ✅",
-      sub: detail.recipient_name ? `المستلم: ${detail.recipient_name}` : "تفاصيل إضافية غير متاحة (عملية قديمة)",
-    };
   };
 
   if (!user) return null;
+
+  const headerTitle = modeConfig[pathMode]?.title || "سحب الراتب";
+  const parsedAmount = parseFloat(amountUsd) || 0;
+  const remaining = salaryInfo?.remaining || 0;
+  const canProceedAmount = parsedAmount >= 1 && parsedAmount <= remaining;
 
   const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
   const bank = country?.banks.find(b => b.id === selectedBank);
@@ -776,209 +375,24 @@ const SalaryWithdraw: React.FC = () => {
   const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
   const canProceedBank = selectedCountry && selectedBank && (!isOtherBank || customBankName.trim().length >= 2);
   const canProceedAccount = recipientName.trim().length >= 2 && whatsappNumber.trim().length >= 6;
-  const withdrawAmount = selectedTransfer?.amount_usd || 0;
 
   const getBackAction = () => {
     switch (step) {
-      case "transfers_list": return () => navigate("/salary");
-      case "all_used": return () => navigate("/salary");
-      case "bank": return () => setStep("transfers_list");
+      case "amount": return () => navigate("/salary");
+      case "bank": return () => setStep("amount");
       case "account": return () => setStep("bank");
-      case "coins_confirm": return () => setStep("transfers_list");
-      case "charge_other_search": return () => setStep("transfers_list");
+      case "charge_other_search": return () => setStep("amount");
       default: return () => navigate("/salary");
     }
   };
-
-  const headerTitle = modeConfig[pathMode]?.title || "سحب الراتب";
 
   // ── LOADING ──
   if (loading || step === "loading") {
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center py-24 gap-6 px-6">
-          <div className="relative">
-            <Loader2 className="w-12 h-12 animate-spin text-primary" />
-            <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-primary/20 animate-pulse" />
-          </div>
-          <div className="w-full max-w-xs space-y-3">
-            {[
-              { label: "جاري التأكد من الحوالات...", step: 1 },
-              { label: "جاري التحقق من المبالغ...", step: 2 },
-              { label: "جاري التأكد من تكرار الحوالات...", step: 3 },
-            ].map((item) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{
-                  opacity: loadingStep >= item.step ? 1 : 0.3,
-                  x: 0,
-                }}
-                transition={{ delay: item.step * 0.3, duration: 0.4 }}
-                className="flex items-center gap-3 rtl:flex-row-reverse"
-              >
-                {loadingStep > item.step ? (
-                  <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                ) : loadingStep === item.step ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
-                ) : (
-                  <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30 shrink-0" />
-                )}
-                <span className={cn(
-                  "text-sm transition-colors duration-300",
-                  loadingStep >= item.step ? "text-foreground" : "text-muted-foreground/50"
-                )}>
-                  {loadingStep > item.step
-                    ? item.label.replace("جاري", "تم").replace("...", " ✓")
-                    : item.label}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  // ── NO TRANSFERS ──
-  if (step === "no_transfers") {
-    return (
-      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="px-5 py-8 space-y-6">
-          <div className="flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-5">
-              <Frown className="w-10 h-10 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-bold text-foreground mb-3">لم نجد حوالات لحسابك</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-6">حوّل راتبك من التطبيق أولاً:</p>
-          </div>
-
-          <div className="glass-card p-5 space-y-3 text-right">
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-primary">1</span>
-              </div>
-              <span className="text-xs text-foreground font-semibold">افتح غلا لايف → تحويل الرصيد</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-primary">2</span>
-              </div>
-              <div className="flex-1 flex items-center justify-between bg-muted/30 rounded-xl p-3">
-                <span className="text-xs text-muted-foreground">UUID:</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-black text-primary font-mono">{TRANSFER_TARGET_ID}</span>
-                  <button onClick={() => { navigator.clipboard.writeText(TRANSFER_TARGET_ID); toast.success("تم النسخ!"); }}
-                    className="p-1.5 rounded-lg bg-primary/15 active:scale-90 transition-transform">
-                    <Copy className="w-3.5 h-3.5 text-primary" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-primary">3</span>
-              </div>
-              <span className="text-xs text-foreground font-semibold">المبلغ: راتبك كامل</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }}
-              className="w-full gold-gradient text-primary-foreground font-bold h-12">
-              <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
-            </Button>
-            <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
-          </div>
-
-          <SalaryRequestsHistory userUuid={user.uuid} />
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  // ── ALL USED (transfers exist but all spent) ──
-  if (step === "all_used") {
-    const usedTransfers = transfers.filter(t => t.is_used);
-    return (
-      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="px-5 py-8 space-y-6">
-          <div className="flex flex-col items-center text-center">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
-              className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-5">
-              <CheckCircle className="w-10 h-10 text-emerald-400" />
-            </motion.div>
-            <h2 className="text-lg font-bold text-foreground mb-2">✅ تم صرف جميع حوالاتك</h2>
-            <p className="text-xs text-muted-foreground">جميع الحوالات تم استخدامها — حوّل حوالة جديدة لسحبها</p>
-          </div>
-
-          {usedTransfers.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] text-muted-foreground font-bold px-1 text-center">━━━ حوالات مصروفة ━━━</p>
-              {usedTransfers.map((t, i) => (
-                <motion.div key={t.reference_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="glass-card p-3 rounded-xl border border-emerald-500/10 opacity-60 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">✅</span>
-                      <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
-                    </div>
-                    <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
-                  </div>
-                  {(() => {
-                    const info = getUsedLabel(t);
-                    return (
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                          <span className="text-[10px] text-emerald-400 font-bold">{info.label}</span>
-                        </div>
-                        {info.sub && (
-                          <p className="text-[10px] text-muted-foreground text-left font-mono">{info.sub}</p>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }}
-              className="w-full gold-gradient text-primary-foreground font-bold h-12">
-              <RefreshCw className="w-4 h-4 ml-2" /> تحديث الحوالات
-            </Button>
-            <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
-          </div>
-
-          <SalaryRequestsHistory userUuid={user.uuid} />
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  // ── EXHAUSTED ──
-  if (step === "exhausted") {
-    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
-    return (
-      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="px-5 py-8 space-y-6">
-          <div className="flex flex-col items-center text-center">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.5 }}
-              className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-5">
-              <CheckCircle className="w-10 h-10 text-emerald-400" />
-            </motion.div>
-            <h2 className="text-lg font-bold text-foreground mb-2">تم صرف راتبك بالكامل</h2>
-            <div className="space-y-1 text-center">
-              <p className="text-xs text-muted-foreground">إجمالي الراتب: <span className="font-bold text-foreground" dir="ltr">${salarySummary.salary.toFixed(2)}</span></p>
-              <p className="text-xs text-red-400">المصروف: <span className="font-bold" dir="ltr">${salarySummary.deduction.toFixed(2)}</span></p>
-              <p className="text-xs text-emerald-400">المتبقي: <span className="font-bold" dir="ltr">${salarySummary.net.toFixed(2)}</span></p>
-              <p className="text-[11px] text-muted-foreground pt-1">السحب النقدي: {usedCount} من {maxTotal} هذا الشهر</p>
-            </div>
-          </div>
-          <SalaryRequestsHistory userUuid={user.uuid} />
-          <Button onClick={() => navigate("/salary")} variant="outline" className="w-full h-12 border-border/30 font-bold">الرجوع</Button>
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">جاري فحص الراتب...</p>
         </div>
       </MobileLayout>
     );
@@ -988,144 +402,144 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "error") {
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center mb-4">
-            <AlertCircle className="w-8 h-8 text-destructive" />
-          </div>
-          <p className="text-sm text-muted-foreground mb-6">{error}</p>
-          <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }} className="gold-gradient text-primary-foreground font-bold px-8">إعادة المحاولة</Button>
+        <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
+          <AlertCircle className="w-12 h-12 text-destructive" />
+          <p className="text-sm text-destructive text-center">{error}</p>
+          <Button onClick={() => { hasFetchedRef.current = false; fetchSalaryInfo(); }} className="mt-4">
+            إعادة المحاولة
+          </Button>
         </div>
       </MobileLayout>
     );
   }
 
-  // ── SUCCESS (cash withdrawal) ──
-  if (step === "success" && submitResult) {
+  // ── BLOCKED (suspicious) ──
+  if (step === "blocked") {
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center px-6 py-16">
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", duration: 0.6 }}
-            className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mb-6">
-            <CheckCircle className="w-10 h-10 text-emerald-400" />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-center w-full">
-            <h2 className="text-lg font-bold text-foreground mb-2">تم رفع طلب سحب الراتب!</h2>
-            <p className="text-xs text-muted-foreground mb-4">سيتم مراجعته خلال 1-3 أيام</p>
-            {submitResult.request_id && (
-              <div className="mt-4 rounded-xl p-4 bg-muted/30 border border-border/20 space-y-2">
-                <p className="text-[10px] text-muted-foreground">رقم الطلب</p>
-                <p className="text-xl font-black text-primary font-mono tracking-wider">{submitResult.request_id}</p>
-              </div>
-            )}
-            <div className="mt-4 rounded-xl p-4 bg-muted/30 border border-border/20 space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">المبلغ</span>
-                <span className="font-bold text-foreground">${withdrawAmount}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">الحوالة</span>
-                <span className="font-bold text-foreground">#{selectedTransfer?.reference_id}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">البنك</span>
-                <span className="font-bold text-foreground">{effectiveBankLabel} — {country?.name}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">الحالة</span>
-                <span className="font-bold text-amber-400">قيد المراجعة</span>
-              </div>
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="flex gap-3 mt-8 w-full">
-            <Button onClick={() => navigate("/my-requests")} variant="outline" className="flex-1 border-border/30 font-bold">طلباتي</Button>
-            <Button onClick={() => navigate("/salary")} className="flex-1 gold-gradient text-primary-foreground font-bold">الرئيسية</Button>
-          </motion.div>
+        <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
+          <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">تحذير أمان</h2>
+          <p className="text-sm text-muted-foreground text-center">{salaryWarning?.message}</p>
+          <Button onClick={() => navigate("/support")} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+            تواصل مع الدعم
+          </Button>
         </div>
       </MobileLayout>
     );
   }
 
-  // ── COINS SUCCESS (receipt) ──
-  if (step === "coins_success") {
-    const receiptCode = `GC-${selectedTransfer?.reference_id || "0000"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-    const receiptDate = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  // ── NO SALARY ──
+  if (step === "no_salary") {
+    return (
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
+        <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
+          <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center">
+            <DollarSign className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">لا يوجد رصيد</h2>
+          <p className="text-sm text-muted-foreground text-center">لا يوجد دعم هالشهر — ما يقدر يسحب</p>
+          <Button onClick={() => navigate("/salary")} variant="outline">رجوع</Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // ── EXHAUSTED (cash limit reached) ──
+  if (step === "exhausted") {
+    return (
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
+        <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
+          <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-amber-400" />
+          </div>
+          <h2 className="text-lg font-bold text-foreground">وصلت الحد الأقصى</h2>
+          <p className="text-sm text-muted-foreground text-center">
+            وصلت الحد الأقصى لسحب الراتب النقدي هذا الشهر ({salaryInfo?.cash_count || 0} من {salaryInfo?.max_cash || 1})
+          </p>
+          <Button onClick={() => navigate("/salary")} variant="outline">رجوع</Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  // ── SUCCESS ──
+  if (step === "success" && transferResult) {
+    const receiptCode = `GC-${transferResult.reference_id || "AUTO"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+    const receiptDate = transferResult.time || new Date().toLocaleDateString("ar-EG", {
+      year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
+    });
 
     return (
-      <MobileLayout showHeader headerTitle="إيصال الشحن" onBack={() => navigate("/salary", { replace: true })}>
+      <MobileLayout showHeader headerTitle="إيصال السحب" onBack={() => navigate("/salary", { replace: true })}>
         <div className="px-5 py-6 space-y-5">
-          {/* Receipt card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 space-y-5"
-          >
-            {/* Header */}
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 space-y-5">
+
             <div className="text-center space-y-2">
               <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
                 <CheckCircle className="w-8 h-8 text-emerald-400" />
               </div>
-              <h2 className="text-lg font-black text-foreground">
-                {targetInfo ? "تم شحن الكوينز بنجاح" : "تم شحن حسابك بنجاح"}
-              </h2>
+              <h2 className="text-lg font-black text-foreground">✅ تم السحب!</h2>
             </div>
 
-            {/* Amount */}
-            <div className="rounded-xl bg-background/50 border border-border/20 p-4 text-center space-y-1">
-              <p className="text-xs text-muted-foreground">المبلغ</p>
-              <p className="text-3xl font-black text-emerald-400">{coinsCharged.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">كوينز</p>
-            </div>
-
-            {/* Details */}
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">رقم الحوالة</span>
-                <span className="font-mono font-bold text-foreground">#{selectedTransfer?.reference_id}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">المبلغ بالدولار</span>
-                <span className="font-bold text-foreground" dir="ltr">${selectedTransfer?.amount_usd.toFixed(2)}</span>
-              </div>
-              {targetInfo && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">المستلم</span>
-                    <span className="font-bold text-foreground">{targetInfo.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">UUID المستلم</span>
-                    <span className="font-mono text-xs text-foreground">{targetInfo.uuid}</span>
-                  </div>
-                </>
-              )}
+            <div className="rounded-xl bg-background/50 border border-border/20 p-4 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">التاريخ</span>
                 <span className="text-xs text-foreground">{receiptDate}</span>
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">المبلغ</span>
+                <span className="font-bold text-emerald-400" dir="ltr">
+                  ${parsedAmount} ({(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز)
+                </span>
+              </div>
+              {transferResult.reference_id && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">رقم الحوالة</span>
+                  <span className="font-mono font-bold text-foreground">#{transferResult.reference_id}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">الراتب المتبقي</span>
+                <span className="font-bold text-foreground" dir="ltr">${resultRemaining.toFixed(2)}</span>
+              </div>
+              {pathMode === "cash" && effectiveBankLabel && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">البنك</span>
+                  <span className="font-bold text-foreground">{effectiveBankLabel} — {country?.name}</span>
+                </div>
+              )}
+              {pathMode === "charge_other" && targetInfo && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">المستلم</span>
+                  <span className="font-bold text-foreground">{targetInfo.name} ({targetInfo.uuid})</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">الحالة</span>
+                <span className={`font-bold ${pathMode === "cash" ? "text-amber-400" : "text-emerald-400"}`}>
+                  {pathMode === "cash" ? "قيد المراجعة" : "تم ✓"}
+                </span>
+              </div>
             </div>
 
-            {/* Receipt code */}
             <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 text-center space-y-2">
               <p className="text-[10px] text-muted-foreground">كود العملية</p>
               <div className="flex items-center justify-center gap-2">
                 <span className="text-lg font-black font-mono text-primary tracking-wider">{receiptCode}</span>
-                <button
-                  onClick={() => { navigator.clipboard.writeText(receiptCode); toast.success("تم نسخ الكود"); }}
-                  className="p-1.5 rounded-lg bg-primary/15 active:scale-90 transition-transform"
-                >
+                <button onClick={() => { navigator.clipboard.writeText(receiptCode); toast.success("تم نسخ الكود"); }}
+                  className="p-1.5 rounded-lg bg-primary/15 active:scale-90 transition-transform">
                   <Copy className="w-3.5 h-3.5 text-primary" />
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground">احتفظ بهذا الكود كمرجع</p>
             </div>
           </motion.div>
 
-          {/* Forced navigation to salary home only */}
-          <Button
-            onClick={() => navigate("/salary", { replace: true })}
-            className="w-full h-12 gold-gradient text-primary-foreground font-bold text-sm"
-          >
+          <Button onClick={() => navigate("/salary", { replace: true })}
+            className="w-full h-12 gold-gradient text-primary-foreground font-bold">
             العودة للرئيسية
           </Button>
         </div>
@@ -1133,230 +547,134 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── TRANSFERS LIST ──
-  if (step === "transfers_list") {
-    const newTransfers = transfers.filter(t => !t.is_used && t.selectable);
-    const usedTransfers = transfers.filter(t => t.is_used);
-    const oldTransfers = transfers.filter(t => !t.is_used && !t.selectable);
-    const { maxTotal } = getWithdrawalLimits(isAgencyOwner);
-
+  // ── AMOUNT INPUT ──
+  if (step === "amount") {
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
         <div className="px-5 py-6 space-y-5">
-          <div className="text-center space-y-2">
-            <h2 className="text-lg font-bold text-foreground">{headerTitle}</h2>
-            <p className="text-[10px] text-muted-foreground">حوّل راتبك إلى UUID: {TRANSFER_TARGET_ID}</p>
-            <div className="rounded-xl bg-muted/20 border border-border/20 px-3 py-2.5 space-y-1 text-center">
-              <p className="text-xs text-muted-foreground">
-                راتب الشهر: <span className="font-bold text-foreground" dir="ltr">${salarySummary.salary.toFixed(2)}</span>
+          {/* Salary Summary */}
+          <div className="rounded-2xl bg-muted/10 border border-border/20 p-5 space-y-3 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <DollarSign className="w-5 h-5 text-emerald-400" />
+              <span className="text-sm font-bold text-foreground">معلومات الراتب</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
+                <p className="text-[10px] text-muted-foreground">الراتب الكلي</p>
+                <p className="text-lg font-black text-emerald-400" dir="ltr">${salaryInfo?.salary_actual?.toFixed(2) || "0"}</p>
+              </div>
+              <div className="rounded-xl bg-primary/10 border border-primary/20 p-3">
+                <p className="text-[10px] text-muted-foreground">المتبقي</p>
+                <p className="text-lg font-black text-primary" dir="ltr">${remaining.toFixed(2)}</p>
+              </div>
+            </div>
+            {(salaryInfo?.total_withdrawn || 0) > 0 && (
+              <p className="text-[10px] text-red-400">
+                تم صرف: <span className="font-bold" dir="ltr">${salaryInfo?.total_withdrawn?.toFixed(2)}</span>
               </p>
-              <p className="text-xs text-red-400">
-                تم صرف: <span className="font-bold" dir="ltr">${salarySummary.deduction.toFixed(2)}</span>
+            )}
+          </div>
+
+          {/* Amount Input */}
+          <div className="glass-card p-5 space-y-4">
+            <h3 className="text-sm font-bold text-foreground text-center">كم تبي تسحب؟</h3>
+            <div className="relative">
+              <Input
+                type="number"
+                value={amountUsd}
+                onChange={e => setAmountUsd(e.target.value)}
+                placeholder="0.00"
+                className="bg-muted/20 border-border/30 text-center text-2xl font-black h-16 pr-10"
+                dir="ltr"
+                min="1"
+                max={remaining}
+                step="0.01"
+              />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-muted-foreground">$</span>
+            </div>
+            {parsedAmount > 0 && (
+              <p className="text-center text-sm text-amber-400 font-bold">
+                = {(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز
               </p>
-              <p className="text-xs text-emerald-400">
-                المتبقي: <span className="font-bold" dir="ltr">${salarySummary.net.toFixed(2)}</span>
-              </p>
-              <p className="text-[11px] text-muted-foreground pt-1">
-                حوالات مستخدمة: <span className="font-bold">{usedTransfersCount}</span> • السحب النقدي: {usedCount} من {maxTotal}
-              </p>
+            )}
+            {parsedAmount > remaining && (
+              <p className="text-center text-xs text-destructive">المبلغ أكبر من المتبقي!</p>
+            )}
+
+            {/* Quick amounts */}
+            <div className="flex gap-2 justify-center flex-wrap">
+              {[10, 25, 50, 100].filter(v => v <= remaining).map(v => (
+                <button key={v} onClick={() => setAmountUsd(String(v))}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-xs font-bold border transition-all",
+                    parsedAmount === v
+                      ? "bg-primary/15 border-primary/30 text-primary"
+                      : "bg-muted/10 border-border/20 text-muted-foreground hover:bg-muted/20"
+                  )}>
+                  ${v}
+                </button>
+              ))}
+              {remaining > 0 && (
+                <button onClick={() => setAmountUsd(String(Math.floor(remaining * 100) / 100))}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-xs font-bold border transition-all",
+                    parsedAmount === Math.floor(remaining * 100) / 100
+                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                      : "bg-muted/10 border-border/20 text-muted-foreground hover:bg-muted/20"
+                  )}>
+                  الكل (${Math.floor(remaining * 100) / 100})
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Selectable transfers */}
-          {newTransfers.length > 0 && (
-            <div className="space-y-3">
-              {newTransfers.map((t, i) => (
-                <motion.div
-                  key={t.reference_id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="w-full glass-card p-4 rounded-2xl border border-emerald-500/20 text-right space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg"></span>
-                      <span className="text-sm font-mono font-bold text-foreground">#{t.reference_id}</span>
-                    </div>
-                    <span className="text-lg font-black text-emerald-400" dir="ltr">${t.amount_usd.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                  </div>
-                  {/* Single action button based on mode */}
-                  <Button
-                    onClick={() => handleSelectTransfer(t, pathMode)}
-                    size="sm"
-                    className={`w-full h-10 text-xs font-bold ${
-                      pathMode === "cash"
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : pathMode === "charge_self"
-                          ? "bg-amber-600 hover:bg-amber-700 text-white"
-                          : "bg-violet-600 hover:bg-violet-700 text-white"
-                    }`}
-                  >
-                    {pathMode === "cash" && <><Wallet className="w-3.5 h-3.5 ml-1.5" /> سحب نقدي</>}
-                    {pathMode === "charge_self" && <><Coins className="w-3.5 h-3.5 ml-1.5" /> شحن لحسابي</>}
-                    {pathMode === "charge_other" && <><Gift className="w-3.5 h-3.5 ml-1.5" /> شحن لحساب آخر</>}
-                  </Button>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {/* Old (non-selectable) transfers */}
-          {oldTransfers.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] text-muted-foreground font-bold px-1">حوالات قديمة:</p>
-              {oldTransfers.map(t => (
-                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-muted/20 opacity-50 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg"></span>
-                      <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
-                    </div>
-                    <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                    <span className="text-[10px] text-muted-foreground font-bold">(قديمة)</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Used transfers */}
-          {usedTransfers.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] text-muted-foreground font-bold px-1">حوالات مستخدمة:</p>
-              {usedTransfers.map(t => (
-                <div key={t.reference_id} className="glass-card p-3 rounded-xl border border-emerald-500/10 opacity-60 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">✅</span>
-                      <span className="text-xs font-mono font-bold text-muted-foreground">#{t.reference_id}</span>
-                    </div>
-                    <span className="text-sm font-bold text-muted-foreground" dir="ltr">${t.amount_usd.toFixed(2)}</span>
-                  </div>
-                  {(() => {
-                    const info = getUsedLabel(t);
-                    return (
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground">{t.time}</span>
-                          <span className="text-[10px] text-emerald-400 font-bold">{info.label}</span>
-                        </div>
-                        {info.sub && (
-                          <p className="text-[10px] text-muted-foreground text-left font-mono">{info.sub}</p>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <Button onClick={() => { hasFetchedRef.current = false; fetchTransfers(); }}
-            variant="outline" className="w-full h-10 border-border/30 text-xs font-bold">
-            <RefreshCw className="w-3.5 h-3.5 ml-2" /> تحديث الحوالات
+          {/* Proceed button */}
+          <Button
+            onClick={() => {
+              if (pathMode === "cash") {
+                setStep("bank");
+              } else if (pathMode === "charge_other") {
+                setTargetUuid("");
+                setTargetInfo(null);
+                setTargetConfirmed(false);
+                setStep("charge_other_search");
+              } else {
+                // charge_self → go directly to confirm/execute
+                executeWithdrawal();
+              }
+            }}
+            disabled={!canProceedAmount || processing}
+            className="w-full h-12 gold-gradient text-primary-foreground font-bold disabled:opacity-40"
+          >
+            {processing ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : pathMode === "charge_self" ? (
+              <>شحن {(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز لحسابي</>
+            ) : (
+              <>متابعة <ArrowLeft className="w-4 h-4 mr-1" /></>
+            )}
           </Button>
 
           <SalaryRequestsHistory userUuid={user.uuid} />
 
-          {/* Salary Warning Dialog */}
-          <Dialog open={!!salaryWarning?.show} onOpenChange={() => setSalaryWarning(null)}>
-            <DialogContent className="max-w-[360px] rounded-2xl" dir="rtl">
-              <DialogHeader>
-                <DialogTitle className="text-center text-base flex items-center justify-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-destructive" /> تحذير أمان
-                </DialogTitle>
-                <DialogDescription className="text-center text-sm text-muted-foreground pt-2">
-                  {salaryWarning?.message}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 pt-2">
-                <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  يرجى التواصل مع خدمة العملاء قبل سحب الراتب
-                </p>
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setSalaryWarning(null)} className="flex-1 h-11 border-border/30">
-                    إلغاء
-                  </Button>
-                  <Button onClick={() => { setSalaryWarning(null); navigate("/support"); }}
-                    className="flex-1 h-11 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold">
-                    تواصل مع الدعم
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Loading overlay for salary check */}
-          {salaryCheckLoading && (
-            <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-              <div className="glass-card p-6 rounded-2xl flex flex-col items-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-xs text-muted-foreground">جاري فحص الراتب...</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  // ── COINS CONFIRM ──
-  if (step === "coins_confirm" && selectedTransfer) {
-    return (
-      <MobileLayout showHeader headerTitle={headerTitle} onBack={getBackAction()}>
-        <div className="px-5 py-6 space-y-5">
-          <div className="glass-card p-5 space-y-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto">
-              <Coins className="w-8 h-8 text-amber-400" />
-            </div>
-            <h3 className="text-base font-bold text-foreground">استلام الراتب ككوينز</h3>
-
-            <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">الحوالة</span>
-              <span className="text-sm font-mono font-bold text-foreground">#{selectedTransfer.reference_id}</span>
-            </div>
-
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 space-y-1">
-              <p className="text-xs text-muted-foreground">المبلغ</p>
-              <p className="text-2xl font-black text-emerald-400" dir="ltr">${selectedTransfer.amount_usd}</p>
-              <p className="text-sm font-bold text-amber-400">= {(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز</p>
-            </div>
-
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              سيتم تحويل المبلغ إلى كوينز وإضافتها لحسابك فوراً
-            </p>
-          </div>
-
-          {error && (
-            <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
-              <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep("transfers_list")} className="flex-1 h-12 border-border/30">
-              <ArrowRight className="w-4 h-4 ml-1" /> رجوع
-            </Button>
-            <Button onClick={() => chargeCoins()} disabled={chargingCoins}
-              className="flex-1 gold-gradient text-primary-foreground font-bold h-12">
-              {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : "تأكيد الشحن"}
-            </Button>
-          </div>
+          {/* Processing overlay */}
+          <SubmissionOverlay
+            visible={processing}
+            title="جاري تنفيذ العملية"
+            activeStep={processStage === "check" ? 0 : processStage === "transfer" ? 1 : 2}
+            steps={[
+              { label: "جاري فحص الراتب...", completedLabel: "تم الفحص ✓", icon: <></> },
+              { label: "جاري التحويل التلقائي...", completedLabel: "تم التحويل ✓", icon: <></> },
+              { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
+            ]}
+          />
         </div>
       </MobileLayout>
     );
   }
 
   // ── CHARGE OTHER SEARCH ──
-  if (step === "charge_other_search" && selectedTransfer) {
+  if (step === "charge_other_search") {
     return (
       <MobileLayout showHeader headerTitle="شحن لحساب آخر" onBack={getBackAction()}>
         <div className="px-5 py-6 space-y-5">
@@ -1365,21 +683,13 @@ const SalaryWithdraw: React.FC = () => {
               <Search className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-base font-bold text-foreground">شحن كوينز لحساب آخر</h3>
-            <p className="text-xs text-muted-foreground">أدخل UUID الشخص المراد شحنه</p>
-
-            <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">الحوالة</span>
-              <span className="text-sm font-mono font-bold text-foreground">#{selectedTransfer.reference_id}</span>
-            </div>
-
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-1">
               <p className="text-xs text-muted-foreground">المبلغ</p>
-              <p className="text-xl font-black text-emerald-400" dir="ltr">${selectedTransfer.amount_usd}</p>
-              <p className="text-sm font-bold text-amber-400">= {(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز</p>
+              <p className="text-xl font-black text-emerald-400" dir="ltr">${parsedAmount}</p>
+              <p className="text-sm font-bold text-amber-400">= {(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز</p>
             </div>
           </div>
 
-          {/* UUID Search */}
           <div className="glass-card p-4 space-y-3">
             <label className="text-xs font-bold text-foreground">UUID المستلم</label>
             <div className="flex gap-2" dir="ltr">
@@ -1389,7 +699,6 @@ const SalaryWithdraw: React.FC = () => {
                   setTargetUuid(e.target.value.replace(/\D/g, ""));
                   setTargetInfo(null);
                   setTargetConfirmed(false);
-                  setError("");
                 }}
                 placeholder="أدخل UUID..."
                 className="bg-muted/20 border-border/30 flex-1 text-center font-mono"
@@ -1402,7 +711,6 @@ const SalaryWithdraw: React.FC = () => {
             </div>
           </div>
 
-          {/* Target Info */}
           {targetInfo && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
               className="glass-card p-4 space-y-3 border border-emerald-500/20">
@@ -1431,21 +739,10 @@ const SalaryWithdraw: React.FC = () => {
                     <CheckCircle className="w-5 h-5" />
                     <span className="text-sm font-bold">تم تأكيد المستلم</span>
                   </div>
-                  <Button onClick={() => chargeCoins(targetInfo.uuid)} disabled={chargingCoins || chargeInFlightRef.current}
+                  <Button onClick={executeWithdrawal} disabled={processing}
                     className="w-full h-12 gold-gradient text-primary-foreground font-bold">
-                    {chargingCoins ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري الشحن...</> : `شحن ${(selectedTransfer.amount_usd * USD_TO_COINS).toLocaleString()} كوينز`}
+                    {processing ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري التنفيذ...</> : `شحن ${(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز`}
                   </Button>
-                  <p className="text-[11px] text-muted-foreground text-center">اضغط مرة واحدة وانتظر إتمام العملية</p>
-                  <SubmissionOverlay
-                    visible={chargingCoins}
-                    title="جاري شحن الكوينز"
-                    activeStep={chargeStage === "verify" ? 0 : chargeStage === "charging" ? 1 : 2}
-                    steps={[
-                      { label: "جاري التحقق من الحوالة...", completedLabel: "تم التحقق ✓", icon: <></> },
-                      { label: "جاري شحن الكوينز...", completedLabel: "تم الشحن ✓", icon: <></> },
-                      { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
-                    ]}
-                  />
                 </div>
               )}
             </motion.div>
@@ -1458,18 +755,27 @@ const SalaryWithdraw: React.FC = () => {
             </div>
           )}
 
-          <Button variant="outline" onClick={() => setStep("transfers_list")} className="w-full h-11 border-border/30">
+          <Button variant="outline" onClick={() => setStep("amount")} className="w-full h-11 border-border/30">
             <ArrowRight className="w-4 h-4 ml-1" /> رجوع
           </Button>
+
+          <SubmissionOverlay
+            visible={processing}
+            title="جاري شحن الكوينز"
+            activeStep={processStage === "check" ? 0 : processStage === "transfer" ? 1 : 2}
+            steps={[
+              { label: "جاري فحص الراتب...", completedLabel: "تم الفحص ✓", icon: <></> },
+              { label: "جاري التحويل والشحن...", completedLabel: "تم الشحن ✓", icon: <></> },
+              { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
+            ]}
+          />
         </div>
       </MobileLayout>
     );
   }
 
-  // STEPPER FLOW (bank → account for cash)
-  // ══════════════════════════════════════════
-
-  const stepperLabels = ["الحوالة", "البنك", "التأكيد"];
+  // ── STEPPER FLOW (bank → account for cash) ──
+  const stepperLabels = ["المبلغ", "البنك", "التأكيد"];
   const stepperIndex = { bank: 1, account: 2 }[step] ?? 0;
 
   return (
@@ -1485,15 +791,12 @@ const SalaryWithdraw: React.FC = () => {
           ))}
         </div>
 
-        {/* Selected transfer summary */}
-        {selectedTransfer && (
-          <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">الحوالة #{selectedTransfer.reference_id}</span>
-            <span className="text-sm font-black text-emerald-400" dir="ltr">${selectedTransfer.amount_usd}</span>
-          </div>
-        )}
+        {/* Amount summary */}
+        <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
+          <span className="text-xs text-muted-foreground">المبلغ</span>
+          <span className="text-sm font-black text-emerald-400" dir="ltr">${parsedAmount}</span>
+        </div>
 
-        {/* Error */}
         {error && (
           <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-xl">
             <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
@@ -1519,20 +822,21 @@ const SalaryWithdraw: React.FC = () => {
                           onClick={() => { setSelectedCountry(isOpen ? "" : c.id); setSelectedBank(""); setCustomBankName(""); }}
                           className={cn(
                             "w-full flex items-center justify-between p-3.5 rounded-xl border transition-all",
-                            isOpen ? "bg-white/[0.06] border-primary/30" : "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20"
+                            isOpen ? "bg-white/[0.06] border-primary/30" : "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:bg-white/20"
                           )}
                         >
                           <div className="flex items-center gap-2.5">
                             <span className="text-lg">{flag}</span>
                             <span className="text-sm font-bold text-foreground">{c.name}</span>
-                            {isOpen && <span className="text-[10px] text-muted-foreground">({c.banks.length} خيار)</span>}
                           </div>
-                          <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
+                          <motion.div animate={{ rotate: isOpen ? 180 : 0 }}>
+                            <ArrowRight className="w-4 h-4 text-muted-foreground rotate-90" />
+                          </motion.div>
                         </button>
                         <AnimatePresence>
                           {isOpen && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2, ease: "easeInOut" }} className="overflow-hidden">
+                              className="overflow-hidden">
                               <div className="grid grid-cols-2 gap-2 pt-2.5 pr-3">
                                 {c.banks.map(b => {
                                   const bankStyle = BANK_ICONS[b.id] || { icon: "", color: "from-white/5 to-white/[0.02] border-white/10" };
@@ -1541,7 +845,7 @@ const SalaryWithdraw: React.FC = () => {
                                     <button key={b.id} onClick={() => { setSelectedBank(b.id); setCustomBankName(""); }}
                                       className={cn(
                                         "flex items-center gap-2.5 p-3 rounded-xl border transition-all text-right bg-gradient-to-br",
-                                        isSelected ? "ring-2 ring-primary border-primary/50 scale-[0.98]" : `${bankStyle.color} hover:border-white/20 hover:scale-[1.01]`
+                                        isSelected ? "ring-2 ring-primary border-primary/50 scale-[0.98]" : `${bankStyle.color} hover:border-white/20`
                                       )}>
                                       <span className="text-lg shrink-0">{bankStyle.icon}</span>
                                       <span className={cn("text-xs font-medium flex-1", isSelected ? "text-primary font-bold" : "text-foreground")}>{b.label}</span>
@@ -1553,7 +857,7 @@ const SalaryWithdraw: React.FC = () => {
                               {isOtherBank && (
                                 <div className="mt-2.5 pr-3">
                                   <Input value={customBankName} onChange={e => setCustomBankName(e.target.value)}
-                                    placeholder="اكتب اسم البنك أو الشبكة" className="bg-white/[0.03] border-white/10" dir="rtl" />
+                                    placeholder="اكتب اسم البنك" className="bg-white/[0.03] border-white/10" dir="rtl" />
                                 </div>
                               )}
                             </motion.div>
@@ -1565,7 +869,7 @@ const SalaryWithdraw: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep("transfers_list")} className="flex-1 h-12 border-border/30">
+                <Button variant="outline" onClick={() => setStep("amount")} className="flex-1 h-12 border-border/30">
                   <ArrowRight className="w-4 h-4 ml-1" /> رجوع
                 </Button>
                 <Button onClick={() => setStep("account")} disabled={!canProceedBank}
@@ -1576,7 +880,7 @@ const SalaryWithdraw: React.FC = () => {
             </motion.div>
           )}
 
-          {/* ── ACCOUNT DETAILS + CONFIRM ── */}
+          {/* ── ACCOUNT DETAILS ── */}
           {step === "account" && (
             <motion.div key="account" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
               <div className="glass-card p-4 space-y-4">
@@ -1615,18 +919,13 @@ const SalaryWithdraw: React.FC = () => {
                 </div>
               </div>
 
-              {/* Summary */}
               {canProceedAccount && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-4 space-y-3">
                   <h3 className="text-sm font-bold text-foreground text-center">ملخص الطلب</h3>
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">المبلغ</span>
-                      <span className="font-bold text-primary">${withdrawAmount}</span>
-                    </div>
-                    <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                      <span className="text-muted-foreground">الحوالة</span>
-                      <span className="font-bold text-foreground">#{selectedTransfer?.reference_id}</span>
+                      <span className="font-bold text-primary">${parsedAmount}</span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">البنك</span>
@@ -1636,12 +935,6 @@ const SalaryWithdraw: React.FC = () => {
                       <span className="text-muted-foreground">المستلم</span>
                       <span className="font-bold text-foreground">{recipientName}</span>
                     </div>
-                    {accountNumber && (
-                      <div className="flex justify-between bg-muted/30 rounded-xl p-3">
-                        <span className="text-muted-foreground">🔢 الحساب</span>
-                        <span className="font-bold text-foreground" dir="ltr">{accountNumber}</span>
-                      </div>
-                    )}
                   </div>
                 </motion.div>
               )}
@@ -1650,16 +943,26 @@ const SalaryWithdraw: React.FC = () => {
                 <Button variant="outline" onClick={() => setStep("bank")} className="flex-1 h-12 border-border/30">
                   <ArrowRight className="w-4 h-4 ml-1" /> رجوع
                 </Button>
-                <Button onClick={handleSubmit} disabled={!canProceedAccount || submitting}
+                <Button onClick={executeWithdrawal} disabled={!canProceedAccount || processing}
                   className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40">
-                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "تأكيد السحب"}
+                  {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : "تأكيد وسحب"}
                 </Button>
               </div>
+
+              <SubmissionOverlay
+                visible={processing}
+                title="جاري سحب الراتب"
+                activeStep={processStage === "check" ? 0 : processStage === "transfer" ? 1 : 2}
+                steps={[
+                  { label: "جاري فحص الراتب...", completedLabel: "تم الفحص ✓", icon: <></> },
+                  { label: "جاري التحويل التلقائي...", completedLabel: "تم التحويل ✓", icon: <></> },
+                  { label: "جاري تسجيل الطلب...", completedLabel: "تم التسجيل ✓", icon: <></> },
+                ]}
+              />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      <SubmissionOverlay visible={submitting} title="جاري رفع طلب السحب" />
     </MobileLayout>
   );
 };
