@@ -93,6 +93,14 @@ const AdminDeductionsPage: React.FC = () => {
   const [restoreAmount, setRestoreAmount] = useState("");
   const [restoreLoading, setRestoreLoading] = useState(false);
 
+  // Manual deduct
+  const [deductUuid, setDeductUuid] = useState("");
+  const [deductAmount, setDeductAmount] = useState("");
+  const [deductManualLoading, setDeductManualLoading] = useState(false);
+  const [deductManualResult, setDeductManualResult] = useState<{
+    uuid: string; name?: string; amount: number; balance_before?: number; balance_after?: number;
+  } | null>(null);
+
   const buildParams = () => {
     const p = new URLSearchParams();
     p.set("key", "ghala2026proxy");
@@ -412,6 +420,38 @@ const AdminDeductionsPage: React.FC = () => {
           <Button onClick={handleRestore} disabled={restoreLoading} className="w-full h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700">
             {restoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-3.5 h-3.5 ml-1" /> استعادة</>}
           </Button>
+        </div>
+
+        {/* Manual Deduct Section */}
+        <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)' }}>
+          <p className="text-xs font-bold text-red-400 flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" /> خصم يدوي</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input value={deductUuid} onChange={e => { setDeductUuid(e.target.value); setDeductManualResult(null); }} placeholder="UUID" dir="ltr" className="h-9 text-xs font-mono" />
+            <Input value={deductAmount} onChange={e => { setDeductAmount(e.target.value); setDeductManualResult(null); }} placeholder="المبلغ (كوينز)" dir="ltr" type="number" className="h-9 text-xs font-mono" />
+          </div>
+          {parsedDeductAmount > 0 && (
+            <p className="text-[10px] text-muted-foreground text-center">≈ ${(parsedDeductAmount / COINS_PER_USD).toFixed(2)}</p>
+          )}
+          <Button onClick={handleManualDeduct} disabled={deductManualLoading} className="w-full h-9 text-xs font-bold bg-red-600 hover:bg-red-700">
+            {deductManualLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-3.5 h-3.5 ml-1" /> خصم</>}
+          </Button>
+
+          {deductManualResult && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl p-3.5 space-y-2" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
+              <p className="text-xs font-bold text-emerald-400">✅ تم الخصم!</p>
+              <div className="text-[11px] text-muted-foreground space-y-1">
+                <p>UUID: <span className="text-white font-bold font-mono">{deductManualResult.uuid}</span>{deductManualResult.name && <span className="text-white"> ({deductManualResult.name})</span>}</p>
+                <p>المبلغ: <span className="text-red-400 font-bold">{deductManualResult.amount.toLocaleString()} كوينز</span> <span className="text-muted-foreground">(${(deductManualResult.amount / COINS_PER_USD).toFixed(2)})</span></p>
+                {deductManualResult.balance_before !== undefined && (
+                  <p>الرصيد قبل: <span className="text-white font-bold">{deductManualResult.balance_before.toLocaleString()}</span></p>
+                )}
+                {deductManualResult.balance_after !== undefined && (
+                  <p>الرصيد بعد: <span className="text-white font-bold">{deductManualResult.balance_after.toLocaleString()}</span></p>
+                )}
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
       {ConfirmDialog}
