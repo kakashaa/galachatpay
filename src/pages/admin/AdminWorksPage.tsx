@@ -548,8 +548,8 @@ const AdminWorksPage: React.FC = () => {
                       <span className="text-xs font-mono text-emerald-400">{a.works_code}</span>
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
-                      <div><p className="font-bold text-green-400">${Number(a.balance_usd).toFixed(2)}</p><p className="text-muted-foreground">الرصيد</p></div>
-                      <div><p className="font-bold text-emerald-400">${Number(a.total_earnings_usd).toFixed(2)}</p><p className="text-muted-foreground">الأرباح</p></div>
+                      <div><p className="font-bold text-green-400">${Number(a.available_balance || a.balance_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">الرصيد</p></div>
+                      <div><p className="font-bold text-emerald-400">${Number(a.total_earned || a.total_earnings_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">الأرباح</p></div>
                       <div><p className="font-bold text-primary">{a.supporter_count}</p><p className="text-muted-foreground">داعمين</p></div>
                       <div><p className="font-bold text-accent-foreground">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
