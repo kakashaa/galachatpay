@@ -1,21 +1,59 @@
 import React, { useState } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
-import { Loader2, Search, Eye, Trash2, RotateCcw, Check, AlertTriangle } from "lucide-react";
+import { Loader2, Search, Eye, Trash2, RotateCcw, Check, AlertTriangle, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { cn } from "@/lib/utils";
 
 const DB_PROXY = "https://hola-chat.com/db-proxy.php";
+const PROXY_KEY = "ghala2026proxy";
 const COINS_PER_USD = 7500;
+const FETCH_TIMEOUT = 120000;
 
-interface Gift {
-  id: number;
-  name: string;
-  price: number;
-  date: string;
+type DatePeriod = "today" | "yesterday" | "week" | "month";
+
+const DATE_PERIODS: { id: DatePeriod; label: string; emoji: string; color: string }[] = [
+  { id: "today", label: "اليوم", emoji: "🟢", color: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" },
+  { id: "yesterday", label: "أمس", emoji: "🔵", color: "border-blue-500/30 bg-blue-500/10 text-blue-400" },
+  { id: "week", label: "آخر أسبوع", emoji: "🟡", color: "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" },
+  { id: "month", label: "الشهر كامل", emoji: "🟣", color: "border-violet-500/30 bg-violet-500/10 text-violet-400" },
+];
+
+function getDateRange(period: DatePeriod): { from: string; to: string } {
+  const today = new Date();
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  switch (period) {
+    case "today": return { from: fmt(today), to: fmt(today) };
+    case "yesterday": {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      return { from: fmt(y), to: fmt(y) };
+    }
+    case "week": {
+      const w = new Date(today);
+      w.setDate(w.getDate() - 7);
+      return { from: fmt(w), to: fmt(today) };
+    }
+    case "month": {
+      const m = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { from: fmt(m), to: fmt(today) };
+    }
+  }
+}
+
+async function fetchWithTimeout(url: string, timeout = FETCH_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
 }
 
 interface Receiver {
@@ -23,13 +61,7 @@ interface Receiver {
   name: string;
   total: number;
   count: number;
-  gifts: Gift[];
-  // impact fields (filled after preview)
-  deduct_diamonds?: number;
-  salary_before?: number;
-  salary_after?: number;
-  agency_before?: number;
-  agency_after?: number;
+  gifts?: any[];
 }
 
 interface LookupResult {
@@ -41,31 +73,24 @@ interface LookupResult {
   receivers: Receiver[];
 }
 
-interface ImpactResult {
-  ok: boolean;
-  total_deduct_coins: number;
-  total_salary_impact: number;
-  total_agency_impact: number;
-  receivers: {
-    uuid: string;
-    name: string;
-    deduct_diamonds: number;
-    salary_before: number;
-    salary_after: number;
-    agency_before: number;
-    agency_after: number;
-  }[];
-  agencies: Record<string, number>;
+interface ImpactReceiver {
+  uuid: string;
+  name: string;
+  deduct_diamonds: number;
+  deduct_usd?: number;
+  monthly_before?: number;
+  monthly_after?: number;
+  salary_before: number;
+  salary_after: number;
+  agency_before: number;
+  agency_after: number;
 }
 
-interface DeductResult {
+interface ImpactResult {
   ok: boolean;
-  receivers_affected?: number;
-  total_deducted?: number;
-  total_deducted_usd?: number;
-  salary_impact?: number;
-  agencies?: Record<string, number>;
-  rankings_cleared?: boolean;
+  sender: { uuid: string; name: string };
+  total_deduct_coins: number;
+  receivers: ImpactReceiver[];
 }
 
 const AdminDeductionsPage: React.FC = () => {
@@ -75,44 +100,38 @@ const AdminDeductionsPage: React.FC = () => {
   // Search form
   const [senderUuid, setSenderUuid] = useState("");
   const [receiverUuid, setReceiverUuid] = useState("");
-  const [singleDate, setSingleDate] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [period, setPeriod] = useState<DatePeriod>("month");
 
   // State
   const [loading, setLoading] = useState(false);
   const [impactLoading, setImpactLoading] = useState(false);
-  const [deductLoading, setDeductLoading] = useState(false);
   const [lookupData, setLookupData] = useState<LookupResult | null>(null);
   const [impactData, setImpactData] = useState<ImpactResult | null>(null);
-  const [deductResult, setDeductResult] = useState<DeductResult | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Execute deduction
+  const [execLoading, setExecLoading] = useState(false);
+  const [execProgress, setExecProgress] = useState<{ done: number; total: number; results: any[] }>({ done: 0, total: 0, results: [] });
+  const [execDone, setExecDone] = useState(false);
 
   // Restore
   const [restoreUuid, setRestoreUuid] = useState("");
   const [restoreAmount, setRestoreAmount] = useState("");
   const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreResult, setRestoreResult] = useState<{ before: number; restored: number; after: number } | null>(null);
 
   // Manual deduct
   const [deductUuid, setDeductUuid] = useState("");
   const [deductAmount, setDeductAmount] = useState("");
   const [deductManualLoading, setDeductManualLoading] = useState(false);
   const [deductManualResult, setDeductManualResult] = useState<{
-    uuid: string; name?: string; amount: number; balance_before?: number; balance_after?: number;
+    uuid: string; user?: string; deducted: number; before: number; after: number;
   } | null>(null);
 
-  const buildParams = () => {
-    const p = new URLSearchParams();
-    p.set("key", "ghala2026proxy");
-    if (senderUuid.trim()) p.set("sender_uuid", senderUuid.trim());
-    if (receiverUuid.trim()) p.set("receiver_uuid", receiverUuid.trim());
-    if (singleDate) {
-      p.set("date", singleDate);
-    } else {
-      if (dateFrom) p.set("start", dateFrom);
-      if (dateTo) p.set("end", dateTo);
-    }
-    return p;
+  const buildUrl = (action: string) => {
+    const { from, to } = getDateRange(period);
+    let url = `${DB_PROXY}?key=${PROXY_KEY}&action=${action}&sender_uuid=${encodeURIComponent(senderUuid.trim())}&date_from=${from}&date_to=${to}`;
+    if (receiverUuid.trim()) url += `&receiver_uuid=${encodeURIComponent(receiverUuid.trim())}`;
+    return url;
   };
 
   const handleSearch = async () => {
@@ -120,86 +139,71 @@ const AdminDeductionsPage: React.FC = () => {
     setLoading(true);
     setLookupData(null);
     setImpactData(null);
-    setDeductResult(null);
-    setSelected(new Set());
+    setExecDone(false);
     try {
-      const p = buildParams();
-      p.set("action", "gift-lookup");
-      const res = await fetch(`${DB_PROXY}?${p.toString()}`);
+      const res = await fetchWithTimeout(buildUrl("gift-lookup"));
       const data = await res.json();
       if (!data.ok) { toast.error(data.error || "فشل البحث"); return; }
       setLookupData(data);
-      if (data.receivers?.length === 0) toast("لا توجد نتائج");
-    } catch { toast.error("خطأ بالاتصال"); }
-    finally { setLoading(false); }
+      if (!data.receivers?.length) toast("لا توجد نتائج");
+    } catch (e: any) {
+      toast.error(e.name === "AbortError" ? "انتهت المهلة — حاول تقليل الفترة" : "خطأ بالاتصال");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePreviewImpact = async () => {
-    if (!senderUuid.trim()) { toast.error("ابحث أولاً"); return; }
+    if (!senderUuid.trim()) { toast.error("أدخل UUID المرسل أولاً"); return; }
     setImpactLoading(true);
+    setImpactData(null);
+    setExecDone(false);
     try {
-      const p = buildParams();
-      p.set("action", "gift-impact");
-      const res = await fetch(`${DB_PROXY}?${p.toString()}`);
+      const res = await fetchWithTimeout(buildUrl("gift-impact"));
       const data: ImpactResult = await res.json();
       if (!data.ok) { toast.error("فشل عرض التأثير"); return; }
       setImpactData(data);
-      if (lookupData) {
-        const merged = lookupData.receivers.map(r => {
-          const impact = data.receivers?.find(ir => ir.uuid === r.uuid);
-          return impact ? { ...r, ...impact } : r;
-        });
-        setLookupData({ ...lookupData, receivers: merged });
-      }
-    } catch { toast.error("خطأ بالاتصال"); }
-    finally { setImpactLoading(false); }
+    } catch (e: any) {
+      toast.error(e.name === "AbortError" ? "انتهت المهلة" : "خطأ بالاتصال");
+    } finally {
+      setImpactLoading(false);
+    }
   };
 
-  const handleDeduct = async (mode: "all" | "selected") => {
-    const receiversToDeduct = mode === "all"
-      ? lookupData?.receivers || []
-      : lookupData?.receivers.filter(r => selected.has(r.uuid)) || [];
+  const handleExecuteDeduction = async () => {
+    if (!impactData || !senderUuid.trim()) return;
+    const affected = impactData.receivers.filter(r => r.salary_before !== r.salary_after || r.agency_before !== r.agency_after);
+    if (affected.length === 0) { toast("لا يوجد متأثرين"); return; }
 
-    if (receiversToDeduct.length === 0) { toast.error("لا يوجد مستلمين"); return; }
-
-    const totalCoins = receiversToDeduct.reduce((s, r) => s + r.total, 0);
     const ok = await confirm({
-      title: "تأكيد الخصم",
-      message: `سيتم خصم ${totalCoins.toLocaleString()} كوينز ($${(totalCoins / COINS_PER_USD).toFixed(0)}) من ${receiversToDeduct.length} مستلم، وتعديل الرواتب والوكالات وحذف الترتيب.`,
+      title: "تأكيد تنفيذ الخصم",
+      message: `سيتم خصم ${impactData.total_deduct_coins.toLocaleString()} كوينز من ${affected.length} مستخدم وتعديل رواتبهم`,
       danger: true,
-      confirmText: "تنفيذ الخصم",
+      confirmText: "⚡ تنفيذ الخصم",
     });
     if (!ok) return;
 
-    setDeductLoading(true);
-    try {
-      const body: any = {
-        sender_uuid: senderUuid.trim(),
-      };
-      if (mode === "selected") {
-        body.receiver_uuids = receiversToDeduct.map(r => r.uuid);
-      }
-      if (receiverUuid.trim()) body.receiver_uuid = receiverUuid.trim();
-      if (singleDate) body.date = singleDate;
-      else {
-        if (dateFrom) body.start = dateFrom;
-        if (dateTo) body.end = dateTo;
-      }
+    setExecLoading(true);
+    setExecProgress({ done: 0, total: affected.length, results: [] });
 
-      const res = await fetch(`${DB_PROXY}?key=${encodeURIComponent("ghala2026proxy")}&action=gift-deduct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data: DeductResult = await res.json();
-      if (data.ok) {
-        setDeductResult(data);
-        toast.success("تم تنفيذ الخصم بنجاح");
-      } else {
-        toast.error("فشل تنفيذ الخصم");
+    const { from, to } = getDateRange(period);
+    const results: any[] = [];
+
+    for (const recv of affected) {
+      try {
+        let url = `${DB_PROXY}?key=${PROXY_KEY}&action=gift-deduct&sender_uuid=${encodeURIComponent(senderUuid.trim())}&receiver_uuid=${encodeURIComponent(recv.uuid)}&date_from=${from}&date_to=${to}`;
+        const res = await fetchWithTimeout(url);
+        const data = await res.json();
+        results.push({ ...data, receiver_name: recv.name, receiver_uuid: recv.uuid });
+      } catch {
+        results.push({ ok: false, receiver_name: recv.name, receiver_uuid: recv.uuid, error: "timeout" });
       }
-    } catch { toast.error("خطأ بالاتصال"); }
-    finally { setDeductLoading(false); }
+      setExecProgress({ done: results.length, total: affected.length, results: [...results] });
+    }
+
+    setExecLoading(false);
+    setExecDone(true);
+    toast.success("تم تنفيذ الخصم");
   };
 
   const handleRestore = async () => {
@@ -211,16 +215,19 @@ const AdminDeductionsPage: React.FC = () => {
     });
     if (!ok) return;
     setRestoreLoading(true);
+    setRestoreResult(null);
     try {
-      const res = await fetch(`${DB_PROXY}?key=${encodeURIComponent("ghala2026proxy")}&action=gift-restore`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uuid: restoreUuid.trim(), amount: Number(restoreAmount) }),
-      });
+      const res = await fetchWithTimeout(
+        `${DB_PROXY}?key=${PROXY_KEY}&action=gift-restore&uuid=${encodeURIComponent(restoreUuid.trim())}&amount=${encodeURIComponent(restoreAmount.trim())}`
+      );
       const data = await res.json();
-      if (data.ok) toast.success("تم الاستعادة بنجاح");
-      else toast.error(data.error || "فشل الاستعادة");
-    } catch { toast.error("خطأ"); }
+      if (data.ok) {
+        setRestoreResult({ before: data.before, restored: data.restored, after: data.after });
+        toast.success(`تم استعادة ${data.restored?.toLocaleString()} كوينز — الرصيد: ${data.before?.toLocaleString()} → ${data.after?.toLocaleString()}`);
+      } else {
+        toast.error(data.error || "فشل الاستعادة");
+      }
+    } catch { toast.error("خطأ بالاتصال"); }
     finally { setRestoreLoading(false); }
   };
 
@@ -230,7 +237,7 @@ const AdminDeductionsPage: React.FC = () => {
     if (!deductUuid.trim() || !deductAmount.trim()) { toast.error("أدخل UUID والمبلغ"); return; }
     const ok = await confirm({
       title: "تأكيد الخصم اليدوي",
-      message: `خصم ${parsedDeductAmount.toLocaleString()} كوينز ($${(parsedDeductAmount / COINS_PER_USD).toFixed(2)}) من UUID ${deductUuid}`,
+      message: `هل أنت متأكد من خصم ${parsedDeductAmount.toLocaleString()} كوينز من ${deductUuid}؟`,
       danger: true,
       confirmText: "تنفيذ الخصم",
     });
@@ -238,205 +245,240 @@ const AdminDeductionsPage: React.FC = () => {
     setDeductManualLoading(true);
     setDeductManualResult(null);
     try {
-      const res = await fetch(
-        `${DB_PROXY}?key=ghala2026proxy&action=deduct-diamonds&uuid=${encodeURIComponent(deductUuid.trim())}&amount=${parsedDeductAmount}`
+      const res = await fetchWithTimeout(
+        `${DB_PROXY}?key=${PROXY_KEY}&action=deduct-diamonds&uuid=${encodeURIComponent(deductUuid.trim())}&amount=${parsedDeductAmount}`
       );
-      const result = await res.json();
-      if (result.ok) {
+      const data = await res.json();
+      if (data.ok) {
         setDeductManualResult({
-          uuid: result.uuid || deductUuid.trim(),
-          name: result.user || result.name || undefined,
-          amount: parsedDeductAmount,
-          balance_before: result.before ?? result.balance_before,
-          balance_after: result.after ?? result.balance_after,
+          uuid: data.uuid || deductUuid.trim(),
+          user: data.user,
+          deducted: data.deducted ?? parsedDeductAmount,
+          before: data.before,
+          after: data.after,
         });
-        toast.success(`تم خصم ${parsedDeductAmount.toLocaleString()} كوينز`);
+        toast.success(`تم خصم ${(data.deducted ?? parsedDeductAmount).toLocaleString()} كوينز من ${data.user || deductUuid}`);
       } else {
-        toast.error(result.error || "فشل الخصم");
+        toast.error(data.error || "فشل الخصم");
       }
     } catch { toast.error("خطأ بالاتصال"); }
     finally { setDeductManualLoading(false); }
   };
 
-  const toggleSelect = (uuid: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(uuid) ? next.delete(uuid) : next.add(uuid);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    if (!lookupData) return;
-    if (selected.size === lookupData.receivers.length) setSelected(new Set());
-    else setSelected(new Set(lookupData.receivers.map(r => r.uuid)));
-  };
+  const affectedReceivers = impactData?.receivers.filter(r => r.salary_before !== r.salary_after || r.agency_before !== r.agency_after) || [];
 
   return (
     <AdminPageLayout title="الخصومات" accentColor="hsl(0 84% 60%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
 
-        {/* Search Form */}
+        {/* ── Gift Search Section ── */}
         <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(239,68,68,0.15)' }}>
           <p className="text-xs font-bold text-red-400 flex items-center gap-1.5"><Search className="w-3.5 h-3.5" /> بحث الهدايا</p>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="col-span-2">
+          <div className="space-y-2">
+            <div>
               <label className="text-[10px] text-muted-foreground mb-1 block">UUID المرسل *</label>
-              <Input value={senderUuid} onChange={e => setSenderUuid(e.target.value)} placeholder="مثال: 4282859" dir="ltr" className="h-9 text-xs font-mono" />
+              <Input value={senderUuid} onChange={e => setSenderUuid(e.target.value.replace(/\D/g, ""))}
+                placeholder="مثال: 4282859" dir="ltr" className="h-9 text-xs font-mono" />
             </div>
-            <div className="col-span-2">
+            <div>
               <label className="text-[10px] text-muted-foreground mb-1 block">UUID المستقبل (اختياري)</label>
-              <Input value={receiverUuid} onChange={e => setReceiverUuid(e.target.value)} placeholder="اتركه فارغاً للكل" dir="ltr" className="h-9 text-xs font-mono" />
+              <Input value={receiverUuid} onChange={e => setReceiverUuid(e.target.value.replace(/\D/g, ""))}
+                placeholder="اتركه فارغاً للكل" dir="ltr" className="h-9 text-xs font-mono" />
             </div>
+
+            {/* Quick date buttons */}
             <div>
-              <label className="text-[10px] text-muted-foreground mb-1 block">تاريخ محدد</label>
-              <Input type="date" value={singleDate} onChange={e => { setSingleDate(e.target.value); setDateFrom(""); setDateTo(""); }} className="h-9 text-xs" />
-            </div>
-            <div className="flex items-end">
-              <span className="text-[9px] text-muted-foreground/50 pb-2">أو نطاق ↓</span>
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground mb-1 block">من تاريخ</label>
-              <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setSingleDate(""); }} className="h-9 text-xs" />
-            </div>
-            <div>
-              <label className="text-[10px] text-muted-foreground mb-1 block">إلى تاريخ</label>
-              <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setSingleDate(""); }} className="h-9 text-xs" />
+              <label className="text-[10px] text-muted-foreground mb-1.5 block">فترة البحث</label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {DATE_PERIODS.map(p => (
+                  <button key={p.id} onClick={() => setPeriod(p.id)}
+                    className={cn(
+                      "py-2 px-1 rounded-xl text-[10px] font-bold border transition-all text-center",
+                      period === p.id
+                        ? `${p.color} ring-1 ring-offset-1 ring-offset-background`
+                        : "border-border/20 bg-muted/5 text-muted-foreground hover:bg-muted/10"
+                    )}>
+                    <span className="block text-sm">{p.emoji}</span>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
+          {/* Buttons */}
           <div className="flex gap-2">
-            <Button onClick={handleSearch} disabled={loading} className="flex-1 h-9 text-xs font-bold bg-red-600 hover:bg-red-700">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Search className="w-3.5 h-3.5 ml-1" /> بحث</>}
+            <Button onClick={handleSearch} disabled={loading || !senderUuid.trim()}
+              className="flex-1 h-9 text-xs font-bold bg-red-600 hover:bg-red-700">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin ml-1" /> جاري البحث...</> : <><Search className="w-3.5 h-3.5 ml-1" /> بحث</>}
             </Button>
-            <Button onClick={handlePreviewImpact} disabled={impactLoading || !lookupData} variant="outline" className="flex-1 h-9 text-xs font-bold border-amber-500/30 text-amber-400 hover:bg-amber-500/10">
-              {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Eye className="w-3.5 h-3.5 ml-1" /> معاينة التأثير</>}
+            <Button onClick={handlePreviewImpact} disabled={impactLoading || !senderUuid.trim()}
+              variant="outline" className="flex-1 h-9 text-xs font-bold border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">
+              {impactLoading ? <><Loader2 className="w-4 h-4 animate-spin ml-1" /> جاري المعاينة...</> : <><Eye className="w-3.5 h-3.5 ml-1" /> معاينة التأثير</>}
             </Button>
           </div>
+
+          {/* Explanation */}
+          <div className="rounded-xl bg-muted/5 border border-border/10 p-2.5 space-y-1">
+            <p className="text-[10px] text-muted-foreground">🔍 <span className="font-bold text-foreground/80">بحث</span>: يعرض كل الهدايا المرسلة مع تفاصيل المستقبلين</p>
+            <p className="text-[10px] text-muted-foreground">👁 <span className="font-bold text-foreground/80">معاينة التأثير</span>: يحسب كيف راح يتأثر راتب كل مستقبل لو تم الخصم — بدون تنفيذ أي خصم فعلي</p>
+          </div>
+
+          {/* Loading indicator */}
+          {(loading || impactLoading) && (
+            <div className="flex items-center justify-center gap-2 py-3">
+              <Loader2 className="w-5 h-5 animate-spin text-red-400" />
+              <span className="text-xs text-muted-foreground">جاري البحث... قد يستغرق دقيقة</span>
+            </div>
+          )}
         </div>
 
-        {/* Results */}
+        {/* ── Search Results ── */}
         <AnimatePresence mode="wait">
           {lookupData && (
-            <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
-
+            <motion.div key="lookup" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
               {/* Summary */}
               <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
                 <div>
-                  <p className="text-xs text-muted-foreground">المرسل: <span className="text-white font-bold">{lookupData.sender.name}</span> <span className="text-red-400 font-mono text-[10px]">({lookupData.sender.uuid})</span></p>
-                  <p className="text-lg font-bold text-red-400 tabular-nums">{lookupData.total_coins.toLocaleString()} <span className="text-xs text-muted-foreground">(${lookupData.total_usd.toLocaleString()})</span></p>
+                  <p className="text-xs text-muted-foreground">المرسل: <span className="text-foreground font-bold">{lookupData.sender.name}</span> <span className="text-red-400 font-mono text-[10px]">({lookupData.sender.uuid})</span></p>
+                  <p className="text-lg font-bold text-red-400 tabular-nums">{lookupData.total_coins.toLocaleString()} <span className="text-xs text-muted-foreground">(${lookupData.total_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span></p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-black text-white tabular-nums">{lookupData.total_gifts}</p>
+                  <p className="text-2xl font-black text-foreground tabular-nums">{lookupData.total_gifts}</p>
                   <p className="text-[9px] text-muted-foreground">هدية</p>
                 </div>
               </div>
 
-              {/* Table */}
+              {/* Receivers table */}
               <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                {/* Header */}
-                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-1 px-3 py-2 text-[9px] font-bold text-muted-foreground" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                  <button onClick={toggleAll} className="w-5 h-5 rounded border border-white/20 flex items-center justify-center hover:bg-white/10">
-                    {selected.size === lookupData.receivers.length && lookupData.receivers.length > 0 && <Check className="w-3 h-3 text-red-400" />}
-                  </button>
-                  <span>المستقبل</span>
+                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-3 py-2 text-[9px] font-bold text-muted-foreground" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span>#  المستقبل</span>
+                  <span>UUID</span>
                   <span>الهدايا</span>
-                  <span>الكوينز</span>
+                  <span>المبلغ</span>
                 </div>
-
-                {lookupData.receivers.map((r, i) => (
-                  <motion.div key={r.uuid} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                    className="grid grid-cols-[auto_1fr_auto_auto] gap-1 px-3 py-2.5 items-center"
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', background: selected.has(r.uuid) ? 'rgba(239,68,68,0.08)' : 'transparent' }}
-                  >
-                    <button onClick={() => toggleSelect(r.uuid)} className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selected.has(r.uuid) ? 'border-red-500 bg-red-500/20' : 'border-white/15 hover:bg-white/10'}`}>
-                      {selected.has(r.uuid) && <Check className="w-3 h-3 text-red-400" />}
-                    </button>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white truncate">{r.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono">{r.uuid}</p>
-                      {r.salary_before !== undefined && (
-                        <p className="text-[9px] text-amber-400 mt-0.5">
-                          الراتب: ${r.salary_before} → ${r.salary_after}
-                          {r.agency_before !== undefined && ` | وكالة: $${r.agency_before} → $${r.agency_after}`}
-                        </p>
-                      )}
+                {[...lookupData.receivers].sort((a, b) => b.total - a.total).map((r, i) => (
+                  <div key={r.uuid} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-3 py-2 items-center"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[9px] text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                      <span className="text-xs font-bold text-foreground truncate">{r.name}</span>
                     </div>
+                    <span className="text-[10px] text-muted-foreground font-mono">{r.uuid}</span>
                     <span className="text-xs text-muted-foreground tabular-nums">{r.count}</span>
                     <div className="text-left">
-                      <p className="text-xs font-bold text-white tabular-nums">{r.total.toLocaleString()}</p>
-                      <p className="text-[9px] text-muted-foreground tabular-nums">${(r.total / COINS_PER_USD).toFixed(1)}</p>
+                      <p className="text-xs font-bold text-foreground tabular-nums">{r.total.toLocaleString()}</p>
+                      <p className="text-[9px] text-muted-foreground tabular-nums">${(r.total / COINS_PER_USD).toFixed(2)}</p>
                     </div>
-                  </motion.div>
+                  </div>
                 ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                {/* Totals */}
-                <div className="grid grid-cols-[auto_1fr_auto_auto] gap-1 px-3 py-2.5" style={{ background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.15)' }}>
-                  <div className="w-5" />
-                  <p className="text-xs font-bold text-red-400">المجموع ({lookupData.receivers.length} مستقبل)</p>
-                  <span className="text-xs font-bold text-white tabular-nums">{lookupData.total_gifts}</span>
-                  <div className="text-left">
-                    <p className="text-xs font-bold text-red-400 tabular-nums">{lookupData.total_coins.toLocaleString()}</p>
-                    <p className="text-[9px] text-muted-foreground tabular-nums">${lookupData.total_usd.toLocaleString()}</p>
+        {/* ── Impact Results ── */}
+        <AnimatePresence>
+          {impactData && (
+            <motion.div key="impact" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-3">
+              <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> معاينة التأثير</p>
+
+                {/* Impact table */}
+                <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-1 px-2 py-1.5 text-[8px] font-bold text-muted-foreground" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <span>المستقبل</span>
+                    <span>الخصم</span>
+                    <span>الراتب قبل</span>
+                    <span>الراتب بعد</span>
+                    <span>التغيير</span>
+                  </div>
+                  {impactData.receivers.map(r => {
+                    const salaryDiff = r.salary_after - r.salary_before;
+                    const changed = salaryDiff !== 0 || r.agency_before !== r.agency_after;
+                    return (
+                      <div key={r.uuid} className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-1 px-2 py-2 items-center"
+                        style={{
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                          background: changed ? 'rgba(245,158,11,0.06)' : 'transparent',
+                        }}>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold text-foreground truncate">{r.name}</p>
+                          <p className="text-[8px] text-muted-foreground font-mono">{r.uuid}</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[10px] font-bold text-red-400 tabular-nums">{r.deduct_diamonds.toLocaleString()}</p>
+                          <p className="text-[8px] text-muted-foreground tabular-nums">${(r.deduct_diamonds / COINS_PER_USD).toFixed(2)}</p>
+                        </div>
+                        <span className="text-[10px] text-foreground tabular-nums">${r.salary_before.toFixed(0)}</span>
+                        <span className="text-[10px] text-foreground tabular-nums">${r.salary_after.toFixed(0)}</span>
+                        <span className={cn("text-[10px] font-bold tabular-nums", salaryDiff < 0 ? "text-red-400" : "text-muted-foreground")}>
+                          {salaryDiff < 0 ? `↓ $${Math.abs(salaryDiff).toFixed(0)}` : "= $0"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {/* Total */}
+                  <div className="px-2 py-2" style={{ background: 'rgba(245,158,11,0.1)', borderTop: '1px solid rgba(245,158,11,0.2)' }}>
+                    <p className="text-[10px] font-bold text-amber-400">
+                      إجمالي الخصم: {impactData.total_deduct_coins.toLocaleString()} كوينز (${(impactData.total_deduct_coins / COINS_PER_USD).toFixed(2)})
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Impact summary */}
-              {impactData && (
+              {/* ── Execute Deduction Section ── */}
+              {affectedReceivers.length > 0 && !execDone && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
-                  <p className="text-xs font-bold text-amber-400 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> معاينة التأثير</p>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="text-sm font-bold text-white tabular-nums">{impactData.total_deduct_coins.toLocaleString()}</p>
-                      <p className="text-[9px] text-muted-foreground">كوينز مخصومة</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-amber-400 tabular-nums">${Math.abs(impactData.total_salary_impact)}</p>
-                      <p className="text-[9px] text-muted-foreground">تأثير الراتب</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-orange-400 tabular-nums">${Math.abs(impactData.total_agency_impact)}</p>
-                      <p className="text-[9px] text-muted-foreground">تأثير الوكالة</p>
-                    </div>
+                  className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  <p className="text-xs font-bold text-red-400 flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> تنفيذ خصم الهدايا</p>
+                  <div className="text-[10px] text-muted-foreground space-y-0.5">
+                    <p>المرسل: <span className="text-foreground font-bold">{impactData.sender?.name} ({senderUuid})</span></p>
+                    <p>إجمالي الخصم: <span className="text-red-400 font-bold">{impactData.total_deduct_coins.toLocaleString()} كوينز</span></p>
+                    <p>عدد المتأثرين: <span className="text-foreground font-bold">{affectedReceivers.length}</span></p>
                   </div>
-                  {impactData.agencies && Object.keys(impactData.agencies).length > 0 && (
-                    <p className="text-[10px] text-muted-foreground">
-                      الوكالات: {Object.entries(impactData.agencies).map(([id, val]) => `#${id}: $${val}`).join("، ")}
-                    </p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {affectedReceivers.map(r => (
+                      <div key={r.uuid} className="flex justify-between text-[9px] bg-muted/10 rounded-lg px-2 py-1">
+                        <span className="text-foreground">{r.name} ({r.uuid})</span>
+                        <span className="text-amber-400">${r.salary_before} → ${r.salary_after}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {execLoading && (
+                    <div className="space-y-2">
+                      <div className="h-2 rounded-full bg-muted/20 overflow-hidden">
+                        <div className="h-full bg-red-500 transition-all" style={{ width: `${(execProgress.done / execProgress.total) * 100}%` }} />
+                      </div>
+                      <p className="text-[10px] text-center text-muted-foreground">{execProgress.done} / {execProgress.total}</p>
+                    </div>
                   )}
+
+                  <Button onClick={handleExecuteDeduction} disabled={execLoading}
+                    className="w-full h-10 text-xs font-bold bg-red-600 hover:bg-red-700">
+                    {execLoading ? <><Loader2 className="w-4 h-4 animate-spin ml-1" /> جاري التنفيذ...</> : <><Zap className="w-3.5 h-3.5 ml-1" /> تنفيذ الخصم</>}
+                  </Button>
                 </motion.div>
               )}
 
-              {/* Action buttons */}
-              {!deductResult && (
-                <div className="flex gap-2">
-                  <Button onClick={() => handleDeduct("all")} disabled={deductLoading} className="flex-1 h-10 text-xs font-bold bg-red-600 hover:bg-red-700">
-                    {deductLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-3.5 h-3.5 ml-1" /> خصم الكل</>}
-                  </Button>
-                  {selected.size > 0 && (
-                    <Button onClick={() => handleDeduct("selected")} disabled={deductLoading} variant="outline" className="flex-1 h-10 text-xs font-bold border-red-500/30 text-red-400 hover:bg-red-500/10">
-                      <Trash2 className="w-3.5 h-3.5 ml-1" /> خصم المحدد ({selected.size})
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* Deduction Result */}
-              {deductResult && (
+              {/* Execution results */}
+              {execDone && execProgress.results.length > 0 && (
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  className="rounded-2xl p-5 space-y-2" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                  <p className="text-sm font-bold text-emerald-400 flex items-center gap-1.5">✅ تم الخصم بنجاح</p>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    {deductResult.receivers_affected !== undefined && <p>المستقبلين المتأثرين: <span className="text-white font-bold">{deductResult.receivers_affected}</span></p>}
-                    {deductResult.total_deducted !== undefined && <p>إجمالي المخصوم: <span className="text-white font-bold">{deductResult.total_deducted.toLocaleString()} كوينز (${deductResult.total_deducted_usd?.toLocaleString()})</span></p>}
-                    {deductResult.salary_impact !== undefined && <p>تأثير الراتب: <span className="text-amber-400 font-bold">-${Math.abs(deductResult.salary_impact)}</span></p>}
-                    {deductResult.agencies && Object.keys(deductResult.agencies).length > 0 && (
-                      <p>الوكالات: {Object.entries(deductResult.agencies).map(([id, val]) => `#${id}: $${val}`).join("، ")}</p>
-                    )}
-                    {deductResult.rankings_cleared && <p>الترتيب: <span className="text-emerald-400 font-bold">تم مسحه ✓</span></p>}
+                  className="rounded-2xl p-4 space-y-2" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                  <p className="text-sm font-bold text-emerald-400">✅ تم تنفيذ الخصم</p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {execProgress.results.map((r, i) => (
+                      <div key={i} className={cn("text-[10px] rounded-lg px-2 py-1.5", r.ok ? "bg-emerald-500/10" : "bg-red-500/10")}>
+                        <span className="font-bold text-foreground">{r.receiver_name}</span>
+                        {r.ok ? (
+                          <span className="text-emerald-400 mr-2">✓ خصم {r.deducted?.toLocaleString()} — الراتب: ${r.salary_before} → ${r.salary_after}</span>
+                        ) : (
+                          <span className="text-red-400 mr-2">✗ فشل: {r.error}</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -444,24 +486,34 @@ const AdminDeductionsPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Restore Section */}
+        {/* ── Restore Section ── */}
         <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.1)' }}>
           <p className="text-xs font-bold text-emerald-400 flex items-center gap-1.5"><RotateCcw className="w-3.5 h-3.5" /> استعادة كوينز</p>
           <div className="grid grid-cols-2 gap-2">
-            <Input value={restoreUuid} onChange={e => setRestoreUuid(e.target.value)} placeholder="UUID المستقبل" dir="ltr" className="h-9 text-xs font-mono" />
-            <Input value={restoreAmount} onChange={e => setRestoreAmount(e.target.value)} placeholder="المبلغ (كوينز)" dir="ltr" type="number" className="h-9 text-xs font-mono" />
+            <Input value={restoreUuid} onChange={e => setRestoreUuid(e.target.value.replace(/\D/g, ""))}
+              placeholder="UUID المستقبل" dir="ltr" className="h-9 text-xs font-mono" />
+            <Input value={restoreAmount} onChange={e => setRestoreAmount(e.target.value)}
+              placeholder="المبلغ (كوينز)" dir="ltr" type="number" className="h-9 text-xs font-mono" />
           </div>
           <Button onClick={handleRestore} disabled={restoreLoading} className="w-full h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700">
             {restoreLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><RotateCcw className="w-3.5 h-3.5 ml-1" /> استعادة</>}
           </Button>
+          {restoreResult && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl p-3 text-[11px] text-emerald-400 font-bold" style={{ background: 'rgba(16,185,129,0.1)' }}>
+              ✅ تم استعادة {restoreResult.restored?.toLocaleString()} كوينز — الرصيد: {restoreResult.before?.toLocaleString()} → {restoreResult.after?.toLocaleString()}
+            </motion.div>
+          )}
         </div>
 
-        {/* Manual Deduct Section */}
+        {/* ── Manual Deduct Section ── */}
         <div className="rounded-2xl p-4 space-y-3" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)' }}>
           <p className="text-xs font-bold text-red-400 flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" /> خصم يدوي</p>
           <div className="grid grid-cols-2 gap-2">
-            <Input value={deductUuid} onChange={e => { setDeductUuid(e.target.value); setDeductManualResult(null); }} placeholder="UUID" dir="ltr" className="h-9 text-xs font-mono" />
-            <Input value={deductAmount} onChange={e => { setDeductAmount(e.target.value); setDeductManualResult(null); }} placeholder="المبلغ (كوينز)" dir="ltr" type="number" className="h-9 text-xs font-mono" />
+            <Input value={deductUuid} onChange={e => { setDeductUuid(e.target.value.replace(/\D/g, "")); setDeductManualResult(null); }}
+              placeholder="UUID" dir="ltr" className="h-9 text-xs font-mono" />
+            <Input value={deductAmount} onChange={e => { setDeductAmount(e.target.value); setDeductManualResult(null); }}
+              placeholder="المبلغ (كوينز)" dir="ltr" type="number" className="h-9 text-xs font-mono" />
           </div>
           {parsedDeductAmount > 0 && (
             <p className="text-[10px] text-muted-foreground text-center">≈ ${(parsedDeductAmount / COINS_PER_USD).toFixed(2)}</p>
@@ -472,18 +524,11 @@ const AdminDeductionsPage: React.FC = () => {
 
           {deductManualResult && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl p-3.5 space-y-2" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
-              <p className="text-xs font-bold text-emerald-400">✅ تم الخصم!</p>
-              <div className="text-[11px] text-muted-foreground space-y-1">
-                <p>UUID: <span className="text-white font-bold font-mono">{deductManualResult.uuid}</span>{deductManualResult.name && <span className="text-white"> ({deductManualResult.name})</span>}</p>
-                <p>المبلغ: <span className="text-red-400 font-bold">{deductManualResult.amount.toLocaleString()} كوينز</span> <span className="text-muted-foreground">(${(deductManualResult.amount / COINS_PER_USD).toFixed(2)})</span></p>
-                {deductManualResult.balance_before !== undefined && (
-                  <p>الرصيد قبل: <span className="text-white font-bold">{deductManualResult.balance_before.toLocaleString()}</span></p>
-                )}
-                {deductManualResult.balance_after !== undefined && (
-                  <p>الرصيد بعد: <span className="text-white font-bold">{deductManualResult.balance_after.toLocaleString()}</span></p>
-                )}
-              </div>
+              className="rounded-xl p-3.5 space-y-1.5" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
+              <p className="text-xs font-bold text-emerald-400">✅ تم خصم {deductManualResult.deducted.toLocaleString()} كوينز من {deductManualResult.user || deductManualResult.uuid}</p>
+              <p className="text-[10px] text-muted-foreground">
+                الرصيد: <span className="text-foreground font-bold">{deductManualResult.before?.toLocaleString()}</span> → <span className="text-foreground font-bold">{deductManualResult.after?.toLocaleString()}</span>
+              </p>
             </motion.div>
           )}
         </div>
