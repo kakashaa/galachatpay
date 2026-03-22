@@ -177,7 +177,23 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
   };
 
   const isCoinsRequest = (req: SalaryRequest) =>
-    req.request_type === "charge_self" || req.request_type === "charge_other";
+    req.request_type === "charge_self" || req.request_type === "charge_other"
+    || req.request_type === "agency_coins" || req.request_type === "agency_transfer";
+
+  const getRequestTypeLabel = (type?: string): string => {
+    switch (type) {
+      case "agency_cash": return "سحب نقدي (وكالة)";
+      case "agency_coins": return "شحن كوينز (وكالة)";
+      case "agency_transfer": return "تحويل لمستخدم (وكالة)";
+      case "charge_self": return "شحن لنفسي";
+      case "charge_other": return "شحن لمستخدم آخر";
+      case "cash": return "سحب نقدي";
+      case "monthly": return "راتب شهري";
+      case "instant": return "سحب فوري";
+      case "star_code": return "كود نجوم";
+      default: return "";
+    }
+  };
 
   return (
     <>
