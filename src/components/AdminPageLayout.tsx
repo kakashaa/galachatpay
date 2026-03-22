@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, LogOut } from "lucide-react";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import AdminBottomNav from "@/components/AdminBottomNav";
+import { useMonitorBadge } from "@/hooks/use-monitor-badge";
 
 interface Props {
   title: string;
@@ -16,6 +17,7 @@ const AdminPageLayout: React.FC<Props> = ({ title, children, accentColor, onLogo
   const navigate = useNavigate();
   const { confirm, ConfirmDialog } = useConfirmModal();
   const [bottomTab, setBottomTab] = useState<'home' | 'search' | 'chat' | 'monitor' | 'favorites'>('home');
+  const monitorBadge = useMonitorBadge();
 
   const handleLogoutClick = async () => {
     if (!onLogout) return;
@@ -117,6 +119,7 @@ const AdminPageLayout: React.FC<Props> = ({ title, children, accentColor, onLogo
           if (tab === 'chat') { navigate('/admin/chat'); return; }
           setBottomTab(tab);
         }}
+        monitorBadge={monitorBadge}
       />
     </div>
     {ConfirmDialog}
