@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   CheckCircle, XCircle, Clock, Search, Upload,
   Loader2, FileText, Image, Printer, Building2,
@@ -271,55 +272,112 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await galaApi.salaryWithdrawList(selectedMonth) as any;
-      if (data.success || data.requests) {
-        const rawRequests: WithdrawRequest[] = (data.requests || []).map((r: any) => ({
-          ...r,
-          user_uuid: r.uuid || r.user_uuid || "",
-          user_name: r.user_name || r.account_name || "",
-          request_code: r.id || "",
-          status: mapStatus(r.status),
-          coins: r.coins || 0,
-          bank: r.bank || "",
-          country: r.country || "",
-          account_name: r.account_name || "",
-          account_number: r.account_number || "",
-          whatsapp: r.whatsapp || "",
-          notes: r.notes || "",
-          admin_note: r.admin_note || r.reason || "",
-          transfer_verified: r.transfer_verified ?? true,
-          screenshot: r.screenshot || "",
-          approved_at: r.approved_at || null,
-          rejected_at: r.rejected_at || null,
-          reference_id: r.reference_id || null,
-          transferred_usd: r.transferred_usd || null,
-          approved_amount: r.approved_amount || null,
-          salary_type: r.salary_type || "host",
-          is_duplicate_flagged: r.is_duplicate_flagged || false,
-          reject_reason: r.reject_reason || r.admin_note || "",
-          reserve_reason: r.reserve_reason || "",
-          user_edited: r.user_edited || false,
-          transaction_date: r.transaction_date || null,
-        }));
-        setRequests(rawRequests);
-        enrichWithAvatars(rawRequests).then(enriched => setRequests(enriched)).catch(() => {});
-        const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
-        const pendingReqs = rawRequests.filter(r => r.status === "pending" || r.status === "review" as any);
-        const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
-        const reservedReqs = rawRequests.filter(r => r.status === "reserved");
-        const apiStats = data.stats || {};
-        setStats({
-          total: apiStats.total || rawRequests.length,
-          delivered: apiStats.delivered || deliveredReqs.length,
-          delivered_amount: deliveredReqs.reduce((s, r) => s + (r.amount || 0), 0),
-          pending: apiStats.pending || pendingReqs.length,
-          pending_amount: pendingReqs.reduce((s, r) => s + (r.amount || 0), 0),
-          rejected: apiStats.rejected || rejectedReqs.length,
-          rejected_amount: rejectedReqs.reduce((s, r) => s + (r.amount || 0), 0),
-          reserved: reservedReqs.length,
-          reserved_amount: reservedReqs.reduce((s, r) => s + (r.amount || 0), 0),
-        });
-      }
+      // Fetch from external API + Supabase in parallel
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const startDate = new Date(year, month - 1, 1).toISOString();
+      const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
+
+      const [apiResult, supabaseResult] = await Promise.all([
+        galaApi.salaryWithdrawList(selectedMonth).catch(() => ({ success: false, requests: [] })),
+        supabase
+          .from("salary_requests")
+          .select("*")
+          .in("request_type", ["agency_cash", "agency_coins", "agency_transfer", "cash", "monthly"])
+          .gte("created_at", startDate)
+          .lte("created_at", endDate)
+          .order("created_at", { ascending: false })
+          .then(r => r.data || []),
+      ]);
+
+      const data = apiResult as any;
+      // Map API requests
+      const apiRequests: WithdrawRequest[] = (data.requests || []).map((r: any) => ({
+        ...r,
+        user_uuid: r.uuid || r.user_uuid || "",
+        user_name: r.user_name || r.account_name || "",
+        request_code: r.id || "",
+        status: mapStatus(r.status),
+        coins: r.coins || 0,
+        bank: r.bank || "",
+        country: r.country || "",
+        account_name: r.account_name || "",
+        account_number: r.account_number || "",
+        whatsapp: r.whatsapp || "",
+        notes: r.notes || "",
+        admin_note: r.admin_note || r.reason || "",
+        transfer_verified: r.transfer_verified ?? true,
+        screenshot: r.screenshot || "",
+        approved_at: r.approved_at || null,
+        rejected_at: r.rejected_at || null,
+        reference_id: r.reference_id || null,
+        transferred_usd: r.transferred_usd || null,
+        approved_amount: r.approved_amount || null,
+        salary_type: r.salary_type || "host",
+        is_duplicate_flagged: r.is_duplicate_flagged || false,
+        reject_reason: r.reject_reason || r.admin_note || "",
+        reserve_reason: r.reserve_reason || "",
+        user_edited: r.user_edited || false,
+        transaction_date: r.transaction_date || null,
+      }));
+
+      // Map Supabase-only requests
+      const supabaseRequests: WithdrawRequest[] = (supabaseResult as any[]).map((r: any) => ({
+        id: r.id,
+        user_uuid: r.user_uuid || "",
+        user_name: r.user_name || r.recipient_name || "",
+        request_code: r.id?.substring(0, 8) || "",
+        amount: r.amount_usd || 0,
+        status: mapStatus(r.status),
+        coins: r.amount_coins || 0,
+        bank: r.payment_method || "",
+        country: r.recipient_country || "",
+        account_name: r.recipient_name || "",
+        account_number: r.payment_details || "",
+        whatsapp: r.user_phone || "",
+        notes: r.admin_note || "",
+        admin_note: r.admin_note || "",
+        transfer_verified: true,
+        screenshot: "",
+        approved_at: null,
+        rejected_at: null,
+        reference_id: r.transfer_id || r.transaction_id || null,
+        transferred_usd: null,
+        approved_amount: r.amount_usd || null,
+        salary_type: r.request_type?.includes("agency") ? "agency" : "host",
+        is_duplicate_flagged: false,
+        reject_reason: r.admin_note || "",
+        reserve_reason: "",
+        user_edited: false,
+        transaction_date: r.transaction_date || null,
+        created_at: r.created_at,
+        receipt_image: r.transfer_image_url || "",
+      }));
+
+      // Merge: deduplicate by id
+      const apiIds = new Set(apiRequests.map(r => r.id));
+      const merged = [...apiRequests, ...supabaseRequests.filter(r => !apiIds.has(r.id))];
+      // Sort by date descending
+      merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      const rawRequests = merged;
+      setRequests(rawRequests);
+      enrichWithAvatars(rawRequests).then(enriched => setRequests(enriched)).catch(() => {});
+      const deliveredReqs = rawRequests.filter(r => r.status === "delivered");
+      const pendingReqs = rawRequests.filter(r => r.status === "pending" || r.status === "review" as any);
+      const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
+      const reservedReqs = rawRequests.filter(r => r.status === "reserved");
+      const _apiStats = data.stats || {};
+      setStats({
+        total: rawRequests.length,
+        delivered: deliveredReqs.length,
+        delivered_amount: deliveredReqs.reduce((s, r) => s + (r.amount || 0), 0),
+        pending: pendingReqs.length,
+        pending_amount: pendingReqs.reduce((s, r) => s + (r.amount || 0), 0),
+        rejected: rejectedReqs.length,
+        rejected_amount: rejectedReqs.reduce((s, r) => s + (r.amount || 0), 0),
+        reserved: reservedReqs.length,
+        reserved_amount: reservedReqs.reduce((s, r) => s + (r.amount || 0), 0),
+      });
     } catch {
       toast.error("فشل في جلب البيانات");
     } finally {
