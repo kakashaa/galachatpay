@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
-import { Loader2, Search, Eye, Trash2, RotateCcw, Check, AlertTriangle, Zap } from "lucide-react";
+import { Loader2, Search, Eye, Trash2, RotateCcw, AlertTriangle, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
