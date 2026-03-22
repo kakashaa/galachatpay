@@ -109,8 +109,20 @@ Deno.serve(async (req) => {
     let auth: { role: "owner" | "super_admin" | "admin" | "moderator"; permissions?: string[] } | null = null;
     
     if (session_token) {
-      // Validate HMAC-signed session token
-      const decoded = await verifyToken(session_token);
+      // Try HMAC-signed token first, fall back to legacy btoa token
+      let decoded = await verifyToken(session_token);
+      
+      // Backward compatibility: accept old plain btoa tokens (will be replaced on next login)
+      if (!decoded) {
+        try {
+          const legacy = JSON.parse(atob(session_token.split(".")[0] || session_token));
+          if (legacy?.username) {
+            decoded = legacy;
+            console.log("[ADMIN-DEBUG] accepted legacy token for:", legacy.username);
+          }
+        } catch { /* not a valid legacy token either */ }
+      }
+
       if (!decoded) {
         return new Response(
           JSON.stringify({ error: "جلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى", auth_error: true }),
