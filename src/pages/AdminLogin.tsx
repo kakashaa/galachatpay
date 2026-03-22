@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const API_URL = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -30,16 +30,7 @@ const AdminLogin: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "admin_login",
-          username: username.trim(),
-          password,
-        }),
-      });
-      const data = await res.json();
+      const data = await galaApi.adminLogin(username.trim(), password) as any;
 
       if (!data.success) {
         setError(data.message || "بيانات الدخول غير صحيحة");
@@ -75,18 +66,7 @@ const AdminLogin: React.FC = () => {
     }
     setLoading(true);
     try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "admin_first_setup",
-          admin_key: "ghala2026owner",
-          username: username.trim(),
-          new_password: newPassword,
-          phone: whatsapp.trim() || "",
-        }),
-      });
-      const data = await res.json();
+      const data = await galaApi.adminFirstSetup(username.trim(), newPassword, whatsapp.trim() || "") as any;
       if (!data.success) {
         toast.error(data.message || "فشل تحديث البيانات");
         setLoading(false);
@@ -94,16 +74,7 @@ const AdminLogin: React.FC = () => {
       }
       toast.success("تم تحديث بياناتك بنجاح");
       // Re-login with new password
-      const loginRes = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "admin_login",
-          username: username.trim(),
-          password: newPassword,
-        }),
-      });
-      const loginResult = await loginRes.json();
+      const loginResult = await galaApi.adminLogin(username.trim(), newPassword) as any;
       if (loginResult.success) {
         completeLogin(loginResult);
       } else {
