@@ -139,7 +139,7 @@ const AdminMonitorPage: React.FC = () => {
   const suspicious: any[] = auditData?.suspicious || [];
 
   return (
-    <AdminPageLayout title="المراقبة" onLogout={handleLogout} hideBottomNav>
+    <AdminPageLayout title="المراقبة" onLogout={handleLogout}>
       <div className="space-y-6 pb-10" dir="rtl">
         {/* ── Header with Refresh ── */}
         <div className="flex items-center justify-between">
