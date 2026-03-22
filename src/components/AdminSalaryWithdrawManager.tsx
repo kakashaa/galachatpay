@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   CheckCircle, XCircle, Clock, Search, Upload,
   Loader2, FileText, Image, Printer, Building2,
