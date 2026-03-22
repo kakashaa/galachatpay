@@ -101,8 +101,8 @@ const AdminDeductionsPage: React.FC = () => {
     if (singleDate) {
       p.set("date", singleDate);
     } else {
-      if (dateFrom) p.set("date_from", dateFrom);
-      if (dateTo) p.set("date_to", dateTo);
+      if (dateFrom) p.set("start", dateFrom);
+      if (dateTo) p.set("end", dateTo);
     }
     return p;
   };
