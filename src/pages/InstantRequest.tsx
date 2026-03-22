@@ -20,7 +20,7 @@ import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { supabase } from "@/integrations/supabase/client";
 import { countries, isValidERC20Address, type CountryConfig, type PaymentMethod } from "@/data/salaryCountries";
 
-const API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 const COINS_PER_DOLLAR = 8500;
 
 interface Transfer {
@@ -85,8 +85,7 @@ const InstantRequest: React.FC = () => {
     const fetchTransfers = async () => {
       setLoadingTransfers(true);
       try {
-        const res = await fetch(`${API}?action=user_transfers&uuid=${user.uuid}`);
-        const data = await res.json();
+        const data = await galaApi.userTransfers(user.uuid) as any;
         const today = new Date().toISOString().slice(0, 10);
         const available = (data.transfers || []).filter((t: Transfer) => {
           if (t.is_used || !t.selectable) return false;
@@ -121,12 +120,9 @@ const InstantRequest: React.FC = () => {
     try {
       const uid = supporterUuid.trim();
 
-      // Method 1: admin-actions
+      // Method 1: aws user-info
       try {
-        const r1 = await fetch(
-          `https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${uid}`
-        );
-        const d1 = await r1.json();
+        const d1 = await galaApi.awsUserInfo(uid) as any;
         if (d1.ok && d1.data?.name) {
           setSupporterInfo({ name: d1.data.name, avatar: d1.data.avatar || "", uuid: uid });
           return;
@@ -135,10 +131,7 @@ const InstantRequest: React.FC = () => {
 
       // Method 2: check-supporter
       try {
-        const r2 = await fetch(
-          `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${uid}`
-        );
-        const d2 = await r2.json();
+        const d2 = await galaApi.checkSupporter(uid) as any;
         if (d2.data?.name) {
           setSupporterInfo({ name: d2.data.name, avatar: d2.data.avatar || "", uuid: uid });
           return;
@@ -162,8 +155,7 @@ const InstantRequest: React.FC = () => {
 
       // Fallback: original API
       try {
-        const res = await fetch(`${API}?action=user_info&uuid=${uid}`);
-        const data = await res.json();
+        const data = await galaApi.getUserInfo(uid) as any;
         if (data?.data?.name) {
           setSupporterInfo({ name: data.data.name, avatar: data.data.profile?.image || "", uuid: uid });
           return;

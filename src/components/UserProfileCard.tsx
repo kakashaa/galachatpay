@@ -3,6 +3,7 @@ import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, Crown } from "lucide-re
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { galaApi } from "@/services/galaApi";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
 import { getAvatar, fixAvatarUrl, getAvatarUrl } from "@/lib/avatarHelper";
@@ -103,9 +104,8 @@ const UserProfileCard: React.FC = () => {
     let cancelled = false;
     setSalaryLoading(true);
     
-    fetch(`https://galachat.site/project-z/api.php?action=salary_check_all&uuid=${user.uuid}`)
-      .then(res => res.json())
-      .then(data => {
+    galaApi.salaryCheckAll(user.uuid)
+      .then((data: any) => {
         if (cancelled) return;
         const hostNet = data.host_salary?.net || 0;
         const agencyAmount = data.agency_salary?.amount || 0;

@@ -21,8 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { getAvatarUrl } from "@/lib/utils";
 import { useAdminSession } from "@/hooks/use-admin-session";
-
-const API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 const COINS_PER_USD = 8500;
 
 interface InstantRequest {
@@ -172,8 +171,7 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const results = await Promise.all(
         batch.map(async (uuid) => {
           try {
-            const res = await fetch(`${API}?action=agent_lookup_user&admin_key=ghala2026owner&uuid=${uuid}`);
-            const data = await res.json();
+            const data = await galaApi.agentLookupUser(uuid) as any;
             return { uuid, avatar: data.avatar ? getAvatarUrl(data.avatar) : "" };
           } catch { return { uuid, avatar: "" }; }
         })
@@ -222,19 +220,13 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
       // Also call external API to charge coins to supporter
       try {
-        await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "salary_charge_manual",
-            admin_key: "ghala2026owner",
-            uuid: approveSheet.user_uuid,
-            target_uuid: approveSheet.target_uuid,
-            amount: approveSheet.amount_usd,
-            reference_id: approveSheet.transfer_id,
-            request_type: "instant_approved",
-          }),
-        });
+        await galaApi.chargeCoins(
+          approveSheet.user_uuid,
+          approveSheet.amount_usd,
+          approveSheet.transfer_id || "instant_approved",
+          approveSheet.target_uuid,
+          "instant_approved",
+        );
       } catch { /* non-critical */ }
 
       // Send notification

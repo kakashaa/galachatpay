@@ -33,21 +33,18 @@ function getDateRange(range: DateFilter['range'], customFrom?: string, customTo?
 }
 
 /* ─── db-proxy API helpers ─── */
-const DB_PROXY = "https://hola-chat.com/db-proxy.php?key=ghala2026proxy";
+// db-proxy helpers now use galaApi
 
 async function fetchGiftsSent(uuid: string, start: string, end: string) {
-  const res = await fetch(`${DB_PROXY}&action=gifts-sent&uuid=${uuid}&start=${start}&end=${end}`);
-  return await res.json();
+  return galaApi.giftsSent(uuid, start, end);
 }
 
 async function fetchGiftsReceived(uuid: string, start: string, end: string) {
-  const res = await fetch(`${DB_PROXY}&action=gifts-received&uuid=${uuid}&start=${start}&end=${end}`);
-  return await res.json();
+  return galaApi.giftsReceived(uuid, start, end);
 }
 
 async function fetchCharges(uuid: string, start: string, end: string) {
-  const res = await fetch(`${DB_PROXY}&action=charges-by-uuid&uuid=${uuid}&start=${start}&end=${end}`);
-  return await res.json();
+  return galaApi.chargesByUuid(uuid, start, end);
 }
 
 /* ─── Filter Pills ─── */

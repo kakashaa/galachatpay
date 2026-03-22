@@ -1,5 +1,6 @@
+import { galaApi } from "@/services/galaApi";
+
 const AVATAR_CACHE: Record<string, string> = {};
-const API = "https://galachat.site/project-z/api.php";
 
 const DEFAULT_AVATAR = "/placeholder.svg";
 
@@ -36,10 +37,9 @@ export async function getAvatar(uuid: string): Promise<string> {
     return cached;
   }
 
-  // Fetch from API
+  // Fetch from API via proxy
   try {
-    const res = await fetch(`${API}?action=get_avatar&uuid=${uuid}`);
-    const data = await res.json();
+    const data = await galaApi.getAvatar(uuid) as any;
     if (data.success && data.avatar) {
       const url = getAvatarUrl(uuid, data.avatar);
       AVATAR_CACHE[uuid] = url;

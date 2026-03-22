@@ -1097,11 +1097,7 @@ const AdminHomeView: React.FC<Props> = ({
       let fromDiamonds = false;
 
       try {
-        const res = await fetch(
-          `https://hola-chat.com/db-proxy.php?key=ghala2026proxy&action=user-diamonds&uuid=${target}`
-        );
-        const text = await res.text();
-        const json = JSON.parse(text);
+        const json = await galaApi.userDiamonds(target) as any;
         diamondsData = json?.data?.[0] || null;
         d = diamondsData;
         if (d?.name) fromDiamonds = true;
@@ -1113,10 +1109,7 @@ const AdminHomeView: React.FC<Props> = ({
       // Fallback to user-full if db-proxy failed
       if (!d?.name) {
         try {
-          const res2 = await fetch(
-            `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
-          );
-          const json2 = await res2.json();
+          const json2 = await galaApi.userFull(target) as any;
           const fd = json2?.data ?? json2;
           if (fd?.name) {
             d = {
@@ -1178,9 +1171,7 @@ const AdminHomeView: React.FC<Props> = ({
         (async () => {
           try {
             if (fromDiamonds) {
-              const salaryRes = await fetch(
-                `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-full&uuid=${target}`
-              ).then(r => r.json()).catch(() => null);
+              const salaryRes = await galaApi.userFull(target).catch(() => null) as any;
               const sd = salaryRes?.data ?? salaryRes;
               if (sd?.salary || sd?.net_salary) {
                 setSearchResult((prev: any) => prev ? {

@@ -13,7 +13,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 
-const API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 const COINS_PER_USD = 8500;
 
 interface SalaryCharge {
@@ -92,8 +92,7 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
     setLoading(true);
     try {
       // Fetch from external API (same pattern as withdraw list)
-      const res = await fetch(`${API}?action=salary_charge_list&admin_key=ghala2026owner&month=${selectedMonth}`);
-      const data = await res.json();
+      const data = await galaApi.salaryChargeList(selectedMonth) as any;
 
       if (data.success || data.charges) {
         setCharges((data.charges || []).map((c: any) => {
@@ -168,18 +167,11 @@ const AdminSalaryChargeManager: React.FC<Props> = ({ canAct }) => {
     }
     setChargeLoading(true);
     try {
-      const res = await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "salary_charge_manual",
-          admin_key: "ghala2026owner",
-          uuid: chargeUuid.trim(),
-          amount: amountNum,
-          reference_id: chargeRef.trim(),
-        }),
-      });
-      const data = await res.json();
+      const data = await galaApi.chargeCoins(
+        chargeUuid.trim(),
+        amountNum,
+        chargeRef.trim(),
+      ) as any;
       if (data.success) {
         const coinsCharged = (amountNum * COINS_PER_USD).toLocaleString();
         await sendUserNotification(

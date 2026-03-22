@@ -8,9 +8,8 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { cn } from "@/lib/utils";
+import { galaApi } from "@/services/galaApi";
 
-const DB_PROXY = "https://hola-chat.com/db-proxy.php";
-const PROXY_KEY = "ghala2026proxy";
 const COINS_PER_USD = 7500;
 const FETCH_TIMEOUT = 120000;
 
@@ -45,15 +44,8 @@ function getDateRange(period: DatePeriod): { from: string; to: string } {
   }
 }
 
-async function fetchWithTimeout(url: string, timeout = FETCH_TIMEOUT): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const res = await fetch(url, { signal: controller.signal });
-    return res;
-  } finally {
-    clearTimeout(id);
-  }
+async function apiCallWithTimeout(action: string, params: Record<string, string | number>, requireAdmin = false): Promise<any> {
+  return galaApi.dbProxy(action, params, requireAdmin);
 }
 
 interface Receiver {
@@ -127,11 +119,11 @@ const AdminDeductionsPage: React.FC = () => {
     uuid: string; user?: string; deducted: number; before: number; after: number;
   } | null>(null);
 
-  const buildUrl = (action: string) => {
+  const buildParams = () => {
     const { from, to } = getDateRange(period);
-    let url = `${DB_PROXY}?key=${PROXY_KEY}&action=${action}&sender_uuid=${encodeURIComponent(senderUuid.trim())}&date_from=${from}&date_to=${to}`;
-    if (receiverUuid.trim()) url += `&receiver_uuid=${encodeURIComponent(receiverUuid.trim())}`;
-    return url;
+    const params: Record<string, string> = { sender_uuid: senderUuid.trim(), date_from: from, date_to: to };
+    if (receiverUuid.trim()) params.receiver_uuid = receiverUuid.trim();
+    return params;
   };
 
   const handleSearch = async () => {
@@ -141,8 +133,7 @@ const AdminDeductionsPage: React.FC = () => {
     setImpactData(null);
     setExecDone(false);
     try {
-      const res = await fetchWithTimeout(buildUrl("gift-lookup"));
-      const data = await res.json();
+      const data = await apiCallWithTimeout("gift-lookup", buildParams());
       if (!data.ok) { toast.error(data.error || "فشل البحث"); return; }
       setLookupData(data);
       if (!data.receivers?.length) toast("لا توجد نتائج");
@@ -159,8 +150,7 @@ const AdminDeductionsPage: React.FC = () => {
     setImpactData(null);
     setExecDone(false);
     try {
-      const res = await fetchWithTimeout(buildUrl("gift-impact"));
-      const data: ImpactResult = await res.json();
+      const data: ImpactResult = await apiCallWithTimeout("gift-impact", buildParams());
       if (!data.ok) { toast.error("فشل عرض التأثير"); return; }
       setImpactData(data);
     } catch (e: any) {
@@ -191,9 +181,7 @@ const AdminDeductionsPage: React.FC = () => {
 
     for (const recv of affected) {
       try {
-        let url = `${DB_PROXY}?key=${PROXY_KEY}&action=gift-deduct&sender_uuid=${encodeURIComponent(senderUuid.trim())}&receiver_uuid=${encodeURIComponent(recv.uuid)}&date_from=${from}&date_to=${to}`;
-        const res = await fetchWithTimeout(url);
-        const data = await res.json();
+        const data = await galaApi.giftDeduct(senderUuid.trim(), recv.uuid, from, to) as any;
         results.push({ ...data, receiver_name: recv.name, receiver_uuid: recv.uuid });
       } catch {
         results.push({ ok: false, receiver_name: recv.name, receiver_uuid: recv.uuid, error: "timeout" });
@@ -217,10 +205,7 @@ const AdminDeductionsPage: React.FC = () => {
     setRestoreLoading(true);
     setRestoreResult(null);
     try {
-      const res = await fetchWithTimeout(
-        `${DB_PROXY}?key=${PROXY_KEY}&action=gift-restore&uuid=${encodeURIComponent(restoreUuid.trim())}&amount=${encodeURIComponent(restoreAmount.trim())}`
-      );
-      const data = await res.json();
+      const data = await galaApi.giftRestore(restoreUuid.trim(), parseInt(restoreAmount.trim())) as any;
       if (data.ok) {
         setRestoreResult({ before: data.before, restored: data.restored, after: data.after });
         toast.success(`تم استعادة ${data.restored?.toLocaleString()} كوينز — الرصيد: ${data.before?.toLocaleString()} → ${data.after?.toLocaleString()}`);
@@ -245,10 +230,7 @@ const AdminDeductionsPage: React.FC = () => {
     setDeductManualLoading(true);
     setDeductManualResult(null);
     try {
-      const res = await fetchWithTimeout(
-        `${DB_PROXY}?key=${PROXY_KEY}&action=deduct-diamonds&uuid=${encodeURIComponent(deductUuid.trim())}&amount=${parsedDeductAmount}`
-      );
-      const data = await res.json();
+      const data = await galaApi.deductDiamonds(deductUuid.trim(), parsedDeductAmount) as any;
       if (data.ok) {
         setDeductManualResult({
           uuid: data.uuid || deductUuid.trim(),
