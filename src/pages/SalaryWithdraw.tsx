@@ -17,9 +17,6 @@ import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
 
 const DB_PROXY = "https://hola-chat.com/db-proxy.php";
 const PROXY_KEY = "ghala2026proxy";
