@@ -523,9 +523,88 @@ const AdminMonitorPage: React.FC = () => {
     }
   };
 
+  /* ── Salary Audit ── */
+  const handleSalaryAudit = async () => {
+    setSalaryLoading(true);
+    try {
+      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-audit`);
+      const data = await res.json();
+      setSalaryAudit(data);
+    } catch { toast.error("فشل فحص الرواتب"); }
+    finally { setSalaryLoading(false); }
+  };
+
+  const handleSalaryFix = async (uuid: string) => {
+    try {
+      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-block-withdraw`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `uuid=${uuid}`,
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast.success(`تم تصحيح الراتب لـ ${uuid}`);
+        handleSalaryAudit();
+      } else toast.error(data.error || "فشل التصحيح");
+    } catch { toast.error("خطأ في التصحيح"); }
+  };
+
+  /* ── Transaction Monitor ── */
+  const handleLoadTransactions = async () => {
+    setTxLoading(true);
+    try {
+      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=recent-charges&limit=50`);
+      const data = await res.json();
+      setTxCharges(data.charges || []);
+    } catch { toast.error("فشل تحميل العمليات"); }
+    finally { setTxLoading(false); }
+  };
+
+  /* ── Alerts Summary ── */
+  const handleLoadAlertsSummary = async () => {
+    setAlertsSummaryLoading(true);
+    try {
+      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=monitor-alerts`);
+      const data = await res.json();
+      setAlertsSummary(data.alerts || null);
+    } catch { toast.error("فشل تحميل التنبيهات"); }
+    finally { setAlertsSummaryLoading(false); }
+  };
+
+  /* ── User Check ── */
+  const handleUserCheck = async () => {
+    if (!checkUuid.trim()) { toast.error("أدخل UUID"); return; }
+    setUserCheckLoading(true);
+    try {
+      const [salaryRes, chargesRes] = await Promise.all([
+        fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-check&uuid=${checkUuid.trim()}`),
+        fetch(`${DB_PROXY}?key=ghala2026proxy&action=recent-charges&uuid=${checkUuid.trim()}&limit=10`),
+      ]);
+      const [salaryData, chargesData] = await Promise.all([salaryRes.json(), chargesRes.json()]);
+      setUserCheckData(salaryData);
+      setUserCheckCharges(chargesData.charges || []);
+    } catch { toast.error("فشل الفحص"); }
+    finally { setUserCheckLoading(false); }
+  };
+
+  /* ── Daily Summary ── */
+  const handleLoadDaily = async () => {
+    setDailyLoading(true);
+    try {
+      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=daily-summary`);
+      const data = await res.json();
+      setDailySummary(data);
+    } catch { toast.error("فشل تحميل الملخص"); }
+    finally { setDailyLoading(false); }
+  };
+
   /* ── Sections nav ── */
   const sections = [
     { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
+    { key: "salary" as const, label: "الرواتب", icon: Wallet, badge: 0 },
+    { key: "transactions" as const, label: "العمليات", icon: Activity, badge: 0 },
+    { key: "usercheck" as const, label: "فحص", icon: UserSearch, badge: 0 },
+    { key: "daily" as const, label: "يومي", icon: TrendingUp, badge: 0 },
     { key: "bot" as const, label: "البوت", icon: Bot, badge: 0 },
     { key: "stats" as const, label: "إحصائيات", icon: BarChart3, badge: 0 },
     { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: safePusherMessages.length },
