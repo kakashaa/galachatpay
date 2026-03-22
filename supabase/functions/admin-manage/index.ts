@@ -1254,22 +1254,28 @@ Deno.serve(async (req) => {
 
       case "works_list_withdrawals": {
         const { data: withdrawals, error } = await supabase
-          .from("works_withdrawals").select("*").order("created_at", { ascending: false });
+          .from("bd_withdrawals").select("*").order("created_at", { ascending: false });
         if (error) throw error;
+        // Map fields for frontend compatibility
+        for (const w of (withdrawals || [])) {
+          (w as any).works_id = w.bd_uuid;
+          (w as any).amount_usd = w.amount;
+        }
         result = withdrawals;
         break;
       }
 
       case "works_approve_withdrawal": {
         const { id: awId } = data;
-        const w = await supabase.from("works_withdrawals").select("*").eq("id", awId).single();
+        const w = await supabase.from("bd_withdrawals").select("*").eq("id", awId).single();
         if (!w.data) throw new Error("Not found");
-        await supabase.from("works_withdrawals").update({ status: "approved" }).eq("id", awId);
-        const accW = await supabase.from("works_accounts").select("balance_usd").eq("id", w.data.works_id).single();
+        await supabase.from("bd_withdrawals").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", awId);
+        // Deduct from available_balance
+        const accW = await supabase.from("bd_commission_settings").select("available_balance").eq("bd_uuid", w.data.bd_uuid).single();
         if (accW.data) {
-          await supabase.from("works_accounts").update({
-            balance_usd: Math.max(0, (Number(accW.data.balance_usd) || 0) - Number(w.data.amount_usd))
-          }).eq("id", w.data.works_id);
+          await supabase.from("bd_commission_settings").update({
+            available_balance: Math.max(0, (Number(accW.data.available_balance) || 0) - Number(w.data.amount))
+          }).eq("bd_uuid", w.data.bd_uuid);
         }
         result = { success: true };
         break;
@@ -1277,7 +1283,7 @@ Deno.serve(async (req) => {
 
       case "works_reject_withdrawal": {
         const { id: rwId, reason: rwReason } = data;
-        await supabase.from("works_withdrawals").update({ status: "rejected", admin_note: rwReason }).eq("id", rwId);
+        await supabase.from("bd_withdrawals").update({ status: "rejected", admin_note: rwReason, rejected_at: new Date().toISOString() }).eq("id", rwId);
         result = { success: true };
         break;
       }
