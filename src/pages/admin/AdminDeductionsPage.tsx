@@ -238,19 +238,17 @@ const AdminDeductionsPage: React.FC = () => {
     setDeductManualLoading(true);
     setDeductManualResult(null);
     try {
-      const res = await fetch(DB_PROXY, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `key=ghala2026proxy&action=deduct-diamonds&uuid=${deductUuid.trim()}&amount=${parsedDeductAmount}`,
-      });
+      const res = await fetch(
+        `${DB_PROXY}?key=ghala2026proxy&action=deduct-diamonds&uuid=${encodeURIComponent(deductUuid.trim())}&amount=${parsedDeductAmount}`
+      );
       const result = await res.json();
       if (result.ok) {
         setDeductManualResult({
-          uuid: deductUuid.trim(),
-          name: result.name || undefined,
+          uuid: result.uuid || deductUuid.trim(),
+          name: result.user || result.name || undefined,
           amount: parsedDeductAmount,
-          balance_before: result.balance_before,
-          balance_after: result.balance_after,
+          balance_before: result.before ?? result.balance_before,
+          balance_after: result.after ?? result.balance_after,
         });
         toast.success(`تم خصم ${parsedDeductAmount.toLocaleString()} كوينز`);
       } else {
