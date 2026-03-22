@@ -209,13 +209,34 @@ const SalaryWithdraw: React.FC = () => {
 
   const hasFetchedRef = useRef(false);
   const processInFlightRef = useRef(false);
+  const [cashResetOverride, setCashResetOverride] = useState<{ host: boolean; agency: boolean }>({ host: false, agency: false });
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
     fetchWithdrawStatus();
+    checkCashResetOverrides();
   }, [user?.uuid]);
+
+  const checkCashResetOverrides = async () => {
+    if (!user?.uuid) return;
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const { data } = await supabase
+      .from("app_settings")
+      .select("key")
+      .in("key", [
+        `cash_reset:${user.uuid}:host:${monthKey}`,
+        `cash_reset:${user.uuid}:agency:${monthKey}`,
+      ]);
+    if (data && data.length > 0) {
+      setCashResetOverride({
+        host: data.some(r => r.key.includes(":host:")),
+        agency: data.some(r => r.key.includes(":agency:")),
+      });
+    }
+  };
 
   const fetchWithdrawStatus = async () => {
     setLoading(true);
@@ -279,7 +300,11 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const isCashUsed = (): boolean => {
-    if (salaryType === "agency") return statusData?.agency_salary?.cash_used_this_month || false;
+    if (salaryType === "agency") {
+      if (cashResetOverride.agency) return false;
+      return statusData?.agency_salary?.cash_used_this_month || false;
+    }
+    if (cashResetOverride.host) return false;
     return statusData?.host_salary?.cash_used_this_month || false;
   };
 
@@ -517,8 +542,8 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "select_type") {
     const hostAvail = statusData?.host_salary?.available || 0;
     const agencyAvail = statusData?.agency_salary?.pool_available || 0;
-    const hostCashUsed = statusData?.host_salary?.cash_used_this_month || false;
-    const agencyCashUsed = statusData?.agency_salary?.cash_used_this_month || false;
+    const hostCashUsed = cashResetOverride.host ? false : (statusData?.host_salary?.cash_used_this_month || false);
+    const agencyCashUsed = cashResetOverride.agency ? false : (statusData?.agency_salary?.cash_used_this_month || false);
 
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
