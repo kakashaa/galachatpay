@@ -58,8 +58,14 @@ interface TransferResult {
   reference_id?: string;
   amount_usd?: number;
   coins?: number;
+  usd?: number;
   time?: string;
   remaining?: number;
+  transfer?: {
+    reference_id?: string;
+    time?: string;
+    from?: { remaining_after?: number };
+  };
 }
 
 interface SalaryCountry {
