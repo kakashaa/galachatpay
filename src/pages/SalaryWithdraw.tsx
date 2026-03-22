@@ -5,7 +5,7 @@ import {
   CheckCircle, AlertCircle, Globe,
   UserCheck, ArrowRight, ArrowLeft, Phone,
   Loader2, Copy, Coins, Search, User,
-  Wallet, Gift, DollarSign,
+  Wallet, Gift, DollarSign, Building2,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -22,17 +22,37 @@ const DB_PROXY = "https://hola-chat.com/db-proxy.php";
 const PROXY_KEY = "ghala2026proxy";
 const API = "https://galachat.site/project-z/api.php";
 
-const USD_TO_COINS = 8500;
+const HOST_RATE = 8500;
+const AGENCY_RATE = 7500;
 
-interface SalaryCheckResult {
-  salary_actual: number;
-  salary_expected: number;
-  remaining: number;
-  is_suspicious: boolean;
-  can_withdraw: boolean;
-  total_withdrawn?: number;
-  cash_count?: number;
-  max_cash?: number;
+interface WithdrawStatusData {
+  ok: boolean;
+  user?: { uuid: string; name: string; agency_id?: number };
+  monthly_diamonds?: number;
+  is_agency_owner?: boolean;
+  host_salary?: {
+    current_month: number;
+    expected: number;
+    is_valid: boolean;
+    total_unpaid: number;
+    total_cut: number;
+    available: number;
+    cash_used_this_month: boolean;
+  };
+  agency_salary?: {
+    user_share_this_month: number;
+    pool_total: number;
+    pool_cut: number;
+    pool_available: number;
+    cash_used_this_month: boolean;
+    can_withdraw: boolean;
+  };
+  withdrawal_options?: {
+    cash_host: boolean;
+    cash_agency: boolean;
+    coins_transfer: boolean;
+    instant: boolean;
+  };
 }
 
 interface TransferResult {
@@ -42,6 +62,7 @@ interface TransferResult {
   amount_usd?: number;
   coins?: number;
   time?: string;
+  remaining?: number;
 }
 
 interface SalaryCountry {
@@ -130,6 +151,8 @@ const countryCodes = [
   { code: "+880", flag: "🇧🇩" },
 ];
 
+type SalaryType = "host" | "agency";
+
 const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -151,7 +174,8 @@ const SalaryWithdraw: React.FC = () => {
   const [step, setStep] = useState<string>("loading");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [salaryInfo, setSalaryInfo] = useState<SalaryCheckResult | null>(null);
+  const [statusData, setStatusData] = useState<WithdrawStatusData | null>(null);
+  const [salaryType, setSalaryType] = useState<SalaryType>("host");
 
   // Amount
   const [amountUsd, setAmountUsd] = useState("");
@@ -180,9 +204,6 @@ const SalaryWithdraw: React.FC = () => {
   const [transferResult, setTransferResult] = useState<TransferResult | null>(null);
   const [resultRemaining, setResultRemaining] = useState(0);
 
-  // Salary warning
-  const [salaryWarning, setSalaryWarning] = useState<{ show: boolean; message?: string } | null>(null);
-
   const hasFetchedRef = useRef(false);
   const processInFlightRef = useRef(false);
 
@@ -190,35 +211,55 @@ const SalaryWithdraw: React.FC = () => {
     if (!user) { navigate("/"); return; }
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    fetchSalaryInfo();
+    fetchWithdrawStatus();
   }, [user?.uuid]);
 
-  const fetchSalaryInfo = async () => {
+  const fetchWithdrawStatus = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=salary-check&uuid=${user!.uuid}`);
-      const data = await res.json();
-      setSalaryInfo(data);
+      const res = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=withdraw-status&uuid=${user!.uuid}`);
+      const data: WithdrawStatusData = await res.json();
+      setStatusData(data);
 
-      if (data.is_suspicious) {
-        setSalaryWarning({
-          show: true,
-          message: `الراتب مشبوه! المسجل: $${data.salary_actual} — المتوقع: $${data.salary_expected}`,
-        });
-        setStep("blocked");
-      } else if (!data.can_withdraw) {
-        setStep("no_salary");
-      } else {
-        // For cash mode, check frequency limits
-        if (pathMode === "cash") {
-          const cashCount = data.cash_count || 0;
-          const maxCash = data.max_cash || 1;
-          if (cashCount >= maxCash) {
-            setStep("exhausted");
-            return;
-          }
+      const hostAvail = data.host_salary?.available || 0;
+      const agencyAvail = data.agency_salary?.pool_available || 0;
+      const isAgency = data.is_agency_owner || false;
+
+      // If host has no salary but agency does, default to agency
+      if (hostAvail <= 0 && isAgency && agencyAvail > 0) {
+        setSalaryType("agency");
+      }
+
+      // Check if host salary is suspicious
+      if (data.host_salary && !data.host_salary.is_valid) {
+        // Still allow but show warning
+      }
+
+      // Check cash limits for cash mode
+      if (pathMode === "cash") {
+        const hostCashUsed = data.host_salary?.cash_used_this_month || false;
+        const agencyCashUsed = data.agency_salary?.cash_used_this_month || false;
+        
+        if (hostAvail <= 0 && (!isAgency || agencyAvail <= 0)) {
+          setStep("no_salary");
+          return;
         }
+      } else {
+        if (hostAvail <= 0 && (!isAgency || agencyAvail <= 0)) {
+          setStep("no_salary");
+          return;
+        }
+      }
+
+      // If both host and agency have salary, show type selector
+      if (isAgency && agencyAvail > 0 && hostAvail > 0) {
+        setStep("select_type");
+      } else if (isAgency && agencyAvail > 0 && hostAvail <= 0) {
+        setSalaryType("agency");
+        setStep("amount");
+      } else {
+        setSalaryType("host");
         setStep("amount");
       }
     } catch {
@@ -227,6 +268,20 @@ const SalaryWithdraw: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getAvailableForType = (): number => {
+    if (salaryType === "agency") return statusData?.agency_salary?.pool_available || 0;
+    return statusData?.host_salary?.available || 0;
+  };
+
+  const getCoinsRate = (): number => {
+    return salaryType === "agency" ? AGENCY_RATE : HOST_RATE;
+  };
+
+  const isCashUsed = (): boolean => {
+    if (salaryType === "agency") return statusData?.agency_salary?.cash_used_this_month || false;
+    return statusData?.host_salary?.cash_used_this_month || false;
   };
 
   const searchTargetUser = async () => {
@@ -263,29 +318,47 @@ const SalaryWithdraw: React.FC = () => {
     const chargeTarget = pathMode === "charge_other" ? targetInfo?.uuid : undefined;
 
     try {
-      // 1. Re-check salary
+      // 1. Re-check status
       setProcessStage("check");
-      const checkRes = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=salary-check&uuid=${user!.uuid}`);
-      const check = await checkRes.json();
+      const checkRes = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=withdraw-status&uuid=${user!.uuid}`);
+      const check: WithdrawStatusData = await checkRes.json();
 
-      if (check.is_suspicious) {
-        throw new Error(`الراتب مشبوه! المسجل: $${check.salary_actual} — المتوقع: $${check.salary_expected}`);
-      }
-      if (!check.can_withdraw) {
-        throw new Error("لا يوجد دعم هالشهر — ما يقدر يسحب");
-      }
-      if (amount > (check.remaining || 0)) {
-        throw new Error(`المبلغ أكبر من المتبقي ($${check.remaining})`);
+      const available = salaryType === "agency"
+        ? (check.agency_salary?.pool_available || 0)
+        : (check.host_salary?.available || 0);
+
+      if (amount > available) {
+        throw new Error(`المبلغ أكبر من المتبقي ($${available.toFixed(2)})`);
       }
 
-      // 2. Execute auto-transfer
+      // 2. Execute transfer
       setProcessStage("transfer");
-      const transferRes = await fetch(DB_PROXY, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `key=${PROXY_KEY}&action=transfer&from_uuid=${user!.uuid}&to_uuid=10000&usd=${amount}`,
-      });
-      const result: TransferResult = await transferRes.json();
+
+      let result: TransferResult;
+
+      if (salaryType === "agency") {
+        // Use withdraw-agency endpoint
+        const method = pathMode === "cash" ? "cash"
+          : pathMode === "charge_other" ? "transfer"
+          : "coins";
+        
+        let agencyUrl = `${DB_PROXY}?key=${PROXY_KEY}&action=withdraw-agency&uuid=${user!.uuid}&usd=${amount}&method=${method}`;
+        if (method === "transfer" && chargeTarget) {
+          agencyUrl += `&to_uuid=${chargeTarget}`;
+        }
+        
+        const transferRes = await fetch(agencyUrl);
+        result = await transferRes.json();
+      } else {
+        // Use transfer endpoint for host salary
+        const toUuid = pathMode === "charge_other" && chargeTarget ? chargeTarget : "10000";
+        const transferRes = await fetch(DB_PROXY, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `key=${PROXY_KEY}&action=transfer&from_uuid=${user!.uuid}&to_uuid=${toUuid}&usd=${amount}`,
+        });
+        result = await transferRes.json();
+      }
 
       if (!result.ok) {
         throw new Error(result.error || "فشل التحويل");
@@ -294,15 +367,20 @@ const SalaryWithdraw: React.FC = () => {
       // 3. Save to database
       setProcessStage("save");
 
-      const requestType = pathMode === "charge_other" ? "charge_other" : pathMode === "charge_self" ? "charge_self" : "cash";
+      const requestType = salaryType === "agency"
+        ? `agency_${pathMode}`
+        : pathMode === "charge_other" ? "charge_other"
+        : pathMode === "charge_self" ? "charge_self"
+        : "cash";
+
       const targetName = chargeTarget
         ? targetInfo?.name || "مستخدم آخر"
         : pathMode === "charge_self"
           ? user!.name
           : recipientName;
 
-      // For coin charges, also charge the target
-      if (pathMode === "charge_self" || pathMode === "charge_other") {
+      // For coin charges (host only), also charge the target
+      if (salaryType === "host" && (pathMode === "charge_self" || pathMode === "charge_other")) {
         const chargeTargetUuid = chargeTarget || user!.uuid;
         const chargeRes = await fetch(API, {
           method: "POST",
@@ -326,13 +404,15 @@ const SalaryWithdraw: React.FC = () => {
       const isOtherBank = selectedBank?.endsWith("_other");
       const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
 
+      const rate = getCoinsRate();
+
       await supabase.from("salary_requests").insert({
         user_uuid: user!.uuid,
         user_name: user!.name,
         user_phone: pathMode === "cash" ? `${whatsappCode}${whatsappNumber}` : null,
         request_type: requestType,
         amount_usd: amount,
-        amount_coins: amount * USD_TO_COINS,
+        amount_coins: amount * rate,
         recipient_name: targetName,
         recipient_country: pathMode === "cash" ? (country?.name || selectedCountry) : "coins",
         payment_method: pathMode === "cash" ? (effectiveBankLabel || selectedBank) : "coins_charge",
@@ -345,13 +425,15 @@ const SalaryWithdraw: React.FC = () => {
         transaction_date: result.time || new Date().toISOString(),
         target_uuid: chargeTarget || user!.uuid,
         target_name: targetName,
-        admin_note: pathMode === "cash"
-          ? `تحويل تلقائي #${result.reference_id} | ${notes || ""}`
-          : `شحن تلقائي #${result.reference_id}`,
+        admin_note: salaryType === "agency"
+          ? `سحب وكالة ${pathMode === "cash" ? "نقدي" : "شحن"} #${result.reference_id || "auto"}`
+          : pathMode === "cash"
+            ? `تحويل تلقائي #${result.reference_id} | ${notes || ""}`
+            : `شحن تلقائي #${result.reference_id}`,
       } as any);
 
       setTransferResult(result);
-      setResultRemaining(Math.max(0, (check.remaining || 0) - amount));
+      setResultRemaining(result.remaining ?? Math.max(0, available - amount));
       setStep("success");
 
     } catch (err: any) {
@@ -366,8 +448,9 @@ const SalaryWithdraw: React.FC = () => {
 
   const headerTitle = modeConfig[pathMode]?.title || "سحب الراتب";
   const parsedAmount = parseFloat(amountUsd) || 0;
-  const remaining = salaryInfo?.remaining || 0;
+  const remaining = getAvailableForType();
   const canProceedAmount = parsedAmount >= 1 && parsedAmount <= remaining;
+  const coinsRate = getCoinsRate();
 
   const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
   const bank = country?.banks.find(b => b.id === selectedBank);
@@ -378,7 +461,14 @@ const SalaryWithdraw: React.FC = () => {
 
   const getBackAction = () => {
     switch (step) {
-      case "amount": return () => navigate("/salary");
+      case "select_type": return () => navigate("/salary");
+      case "amount": return () => {
+        if (statusData?.is_agency_owner && (statusData.host_salary?.available || 0) > 0 && (statusData.agency_salary?.pool_available || 0) > 0) {
+          setStep("select_type");
+        } else {
+          navigate("/salary");
+        }
+      };
       case "bank": return () => setStep("amount");
       case "account": return () => setStep("bank");
       case "charge_other_search": return () => setStep("amount");
@@ -405,26 +495,8 @@ const SalaryWithdraw: React.FC = () => {
         <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
           <AlertCircle className="w-12 h-12 text-destructive" />
           <p className="text-sm text-destructive text-center">{error}</p>
-          <Button onClick={() => { hasFetchedRef.current = false; fetchSalaryInfo(); }} className="mt-4">
+          <Button onClick={() => { hasFetchedRef.current = false; fetchWithdrawStatus(); }} className="mt-4">
             إعادة المحاولة
-          </Button>
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  // ── BLOCKED (suspicious) ──
-  if (step === "blocked") {
-    return (
-      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
-          <div className="w-16 h-16 rounded-full bg-destructive/15 flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-destructive" />
-          </div>
-          <h2 className="text-lg font-bold text-foreground">تحذير أمان</h2>
-          <p className="text-sm text-muted-foreground text-center">{salaryWarning?.message}</p>
-          <Button onClick={() => navigate("/support")} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-            تواصل مع الدعم
           </Button>
         </div>
       </MobileLayout>
@@ -447,19 +519,83 @@ const SalaryWithdraw: React.FC = () => {
     );
   }
 
-  // ── EXHAUSTED (cash limit reached) ──
-  if (step === "exhausted") {
+  // ── SELECT TYPE (host vs agency) ──
+  if (step === "select_type") {
+    const hostAvail = statusData?.host_salary?.available || 0;
+    const agencyAvail = statusData?.agency_salary?.pool_available || 0;
+    const hostCashUsed = statusData?.host_salary?.cash_used_this_month || false;
+    const agencyCashUsed = statusData?.agency_salary?.cash_used_this_month || false;
+
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
-          <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-amber-400" />
+        <div className="px-5 py-6 space-y-5">
+          <div className="text-center space-y-2">
+            <h2 className="text-base font-bold text-foreground">اختر نوع الراتب</h2>
+            <p className="text-xs text-muted-foreground">من أي رصيد تبي تسحب؟</p>
           </div>
-          <h2 className="text-lg font-bold text-foreground">وصلت الحد الأقصى</h2>
-          <p className="text-sm text-muted-foreground text-center">
-            وصلت الحد الأقصى لسحب الراتب النقدي هذا الشهر ({salaryInfo?.cash_count || 0} من {salaryInfo?.max_cash || 1})
-          </p>
-          <Button onClick={() => navigate("/salary")} variant="outline">رجوع</Button>
+
+          <div className="space-y-3">
+            {/* Host option */}
+            <motion.button
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => {
+                if (pathMode === "cash" && hostCashUsed) return;
+                setSalaryType("host");
+                setAmountUsd("");
+                setStep("amount");
+              }}
+              disabled={pathMode === "cash" && hostCashUsed}
+              className={cn(
+                "w-full rounded-2xl border p-5 text-right space-y-2 transition-all",
+                pathMode === "cash" && hostCashUsed
+                  ? "opacity-50 border-border/20 bg-muted/5"
+                  : "border-emerald-500/20 bg-emerald-500/5 active:scale-[0.98]"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-emerald-400" />
+                  <span className="font-bold text-foreground">راتب المضيف</span>
+                </div>
+                <span className="text-lg font-black text-emerald-400" dir="ltr">${hostAvail.toFixed(2)}</span>
+              </div>
+              {pathMode === "cash" && hostCashUsed && (
+                <p className="text-[10px] text-amber-400">⚠️ تم السحب النقدي هذا الشهر</p>
+              )}
+            </motion.button>
+
+            {/* Agency option */}
+            <motion.button
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              onClick={() => {
+                if (pathMode === "cash" && agencyCashUsed) return;
+                setSalaryType("agency");
+                setAmountUsd("");
+                setStep("amount");
+              }}
+              disabled={pathMode === "cash" && agencyCashUsed}
+              className={cn(
+                "w-full rounded-2xl border p-5 text-right space-y-2 transition-all",
+                pathMode === "cash" && agencyCashUsed
+                  ? "opacity-50 border-border/20 bg-muted/5"
+                  : "border-violet-500/20 bg-violet-500/5 active:scale-[0.98]"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-violet-400" />
+                  <span className="font-bold text-foreground">راتب الوكالة</span>
+                </div>
+                <span className="text-lg font-black text-violet-400" dir="ltr">${agencyAvail.toFixed(2)}</span>
+              </div>
+              {pathMode === "cash" && agencyCashUsed && (
+                <p className="text-[10px] text-amber-400">⚠️ تم السحب النقدي هذا الشهر</p>
+              )}
+            </motion.button>
+          </div>
         </div>
       </MobileLayout>
     );
@@ -483,6 +619,9 @@ const SalaryWithdraw: React.FC = () => {
                 <CheckCircle className="w-8 h-8 text-emerald-400" />
               </div>
               <h2 className="text-lg font-black text-foreground">✅ تم السحب!</h2>
+              <p className="text-xs text-muted-foreground">
+                {salaryType === "agency" ? "سحب من راتب الوكالة" : "سحب من راتب المضيف"}
+              </p>
             </div>
 
             <div className="rounded-xl bg-background/50 border border-border/20 p-4 space-y-3 text-sm">
@@ -493,7 +632,13 @@ const SalaryWithdraw: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">المبلغ</span>
                 <span className="font-bold text-emerald-400" dir="ltr">
-                  ${parsedAmount} ({(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز)
+                  ${parsedAmount.toFixed(2)} ({(parsedAmount * coinsRate).toLocaleString()} كوينز)
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">النوع</span>
+                <span className={`font-bold ${salaryType === "agency" ? "text-violet-400" : "text-emerald-400"}`}>
+                  {salaryType === "agency" ? "وكالة" : "مضيف"}
                 </span>
               </div>
               {transferResult.reference_id && (
@@ -549,30 +694,50 @@ const SalaryWithdraw: React.FC = () => {
 
   // ── AMOUNT INPUT ──
   if (step === "amount") {
+    const cashUsed = isCashUsed();
+    // If cash mode and cash already used, block
+    if (pathMode === "cash" && cashUsed) {
+      return (
+        <MobileLayout showHeader headerTitle={headerTitle} onBack={getBackAction()}>
+          <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
+            <div className="w-16 h-16 rounded-full bg-amber-500/15 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-amber-400" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">وصلت الحد الأقصى</h2>
+            <p className="text-sm text-muted-foreground text-center">
+              تم السحب النقدي لـ{salaryType === "agency" ? "الوكالة" : "المضيف"} هذا الشهر
+            </p>
+            <Button onClick={getBackAction()} variant="outline">رجوع</Button>
+          </div>
+        </MobileLayout>
+      );
+    }
+
     return (
-      <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
+      <MobileLayout showHeader headerTitle={headerTitle} onBack={getBackAction()}>
         <div className="px-5 py-6 space-y-5">
+          {/* Salary type badge */}
+          <div className="flex justify-center">
+            <span className={cn(
+              "px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5",
+              salaryType === "agency"
+                ? "bg-violet-500/15 text-violet-400 border border-violet-500/20"
+                : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+            )}>
+              {salaryType === "agency" ? <Building2 className="w-3 h-3" /> : <Wallet className="w-3 h-3" />}
+              {salaryType === "agency" ? "راتب الوكالة" : "راتب المضيف"}
+            </span>
+          </div>
+
           {/* Salary Summary */}
           <div className="rounded-2xl bg-muted/10 border border-border/20 p-5 space-y-3 text-center">
             <div className="flex items-center justify-center gap-2">
               <DollarSign className="w-5 h-5 text-emerald-400" />
-              <span className="text-sm font-bold text-foreground">معلومات الراتب</span>
+              <span className="text-sm font-bold text-foreground">المتبقي للسحب</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
-                <p className="text-[10px] text-muted-foreground">الراتب الكلي</p>
-                <p className="text-lg font-black text-emerald-400" dir="ltr">${salaryInfo?.salary_actual?.toFixed(2) || "0"}</p>
-              </div>
-              <div className="rounded-xl bg-primary/10 border border-primary/20 p-3">
-                <p className="text-[10px] text-muted-foreground">المتبقي</p>
-                <p className="text-lg font-black text-primary" dir="ltr">${remaining.toFixed(2)}</p>
-              </div>
-            </div>
-            {(salaryInfo?.total_withdrawn || 0) > 0 && (
-              <p className="text-[10px] text-red-400">
-                تم صرف: <span className="font-bold" dir="ltr">${salaryInfo?.total_withdrawn?.toFixed(2)}</span>
-              </p>
-            )}
+            <p className="text-3xl font-black text-primary" dir="ltr">${remaining.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">= {(remaining * coinsRate).toLocaleString()} كوينز</p>
+            <p className="text-[10px] text-muted-foreground">سعر الصرف: $1 = {coinsRate.toLocaleString()} كوينز</p>
           </div>
 
           {/* Amount Input */}
@@ -594,7 +759,7 @@ const SalaryWithdraw: React.FC = () => {
             </div>
             {parsedAmount > 0 && (
               <p className="text-center text-sm text-amber-400 font-bold">
-                = {(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز
+                = {(parsedAmount * coinsRate).toLocaleString()} كوينز
               </p>
             )}
             {parsedAmount > remaining && (
@@ -639,7 +804,6 @@ const SalaryWithdraw: React.FC = () => {
                 setTargetConfirmed(false);
                 setStep("charge_other_search");
               } else {
-                // charge_self → go directly to confirm/execute
                 executeWithdrawal();
               }
             }}
@@ -649,7 +813,7 @@ const SalaryWithdraw: React.FC = () => {
             {processing ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : pathMode === "charge_self" ? (
-              <>شحن {(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز لحسابي</>
+              <>شحن {(parsedAmount * coinsRate).toLocaleString()} كوينز لحسابي</>
             ) : (
               <>متابعة <ArrowLeft className="w-4 h-4 mr-1" /></>
             )}
@@ -657,7 +821,6 @@ const SalaryWithdraw: React.FC = () => {
 
           <SalaryRequestsHistory userUuid={user.uuid} />
 
-          {/* Processing overlay */}
           <SubmissionOverlay
             visible={processing}
             title="جاري تنفيذ العملية"
@@ -685,8 +848,8 @@ const SalaryWithdraw: React.FC = () => {
             <h3 className="text-base font-bold text-foreground">شحن كوينز لحساب آخر</h3>
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-1">
               <p className="text-xs text-muted-foreground">المبلغ</p>
-              <p className="text-xl font-black text-emerald-400" dir="ltr">${parsedAmount}</p>
-              <p className="text-sm font-bold text-amber-400">= {(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز</p>
+              <p className="text-xl font-black text-emerald-400" dir="ltr">${parsedAmount.toFixed(2)}</p>
+              <p className="text-sm font-bold text-amber-400">= {(parsedAmount * coinsRate).toLocaleString()} كوينز</p>
             </div>
           </div>
 
@@ -741,7 +904,7 @@ const SalaryWithdraw: React.FC = () => {
                   </div>
                   <Button onClick={executeWithdrawal} disabled={processing}
                     className="w-full h-12 gold-gradient text-primary-foreground font-bold">
-                    {processing ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري التنفيذ...</> : `شحن ${(parsedAmount * USD_TO_COINS).toLocaleString()} كوينز`}
+                    {processing ? <><Loader2 className="w-5 h-5 animate-spin ml-2" /> جاري التنفيذ...</> : `شحن ${(parsedAmount * coinsRate).toLocaleString()} كوينز`}
                   </Button>
                 </div>
               )}
@@ -794,7 +957,19 @@ const SalaryWithdraw: React.FC = () => {
         {/* Amount summary */}
         <div className="bg-muted/20 rounded-xl p-3 flex justify-between items-center">
           <span className="text-xs text-muted-foreground">المبلغ</span>
-          <span className="text-sm font-black text-emerald-400" dir="ltr">${parsedAmount}</span>
+          <span className="text-sm font-black text-emerald-400" dir="ltr">${parsedAmount.toFixed(2)}</span>
+        </div>
+
+        {/* Salary type badge */}
+        <div className="flex justify-center">
+          <span className={cn(
+            "px-2 py-0.5 rounded-full text-[10px] font-bold",
+            salaryType === "agency"
+              ? "bg-violet-500/15 text-violet-400"
+              : "bg-emerald-500/15 text-emerald-400"
+          )}>
+            {salaryType === "agency" ? "وكالة" : "مضيف"}
+          </span>
         </div>
 
         {error && (
@@ -925,7 +1100,13 @@ const SalaryWithdraw: React.FC = () => {
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">المبلغ</span>
-                      <span className="font-bold text-primary">${parsedAmount}</span>
+                      <span className="font-bold text-primary">${parsedAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between bg-muted/30 rounded-xl p-3">
+                      <span className="text-muted-foreground">النوع</span>
+                      <span className={`font-bold ${salaryType === "agency" ? "text-violet-400" : "text-emerald-400"}`}>
+                        {salaryType === "agency" ? "وكالة" : "مضيف"}
+                      </span>
                     </div>
                     <div className="flex justify-between bg-muted/30 rounded-xl p-3">
                       <span className="text-muted-foreground">البنك</span>
