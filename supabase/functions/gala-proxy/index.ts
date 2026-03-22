@@ -24,6 +24,7 @@ const URLS: Record<string, string> = {
   "bd-data": "https://hola-chat.com/bd-data-api.php",
   "aws": "https://18.219.229.240/website/admin-actions.php",
   "gala-api": "https://galalivechat.com/api",
+  "db-proxy": "https://hola-chat.com/db-proxy.php",
 };
 
 // Primary admin accounts (same auth model used in admin-manage)
@@ -73,6 +74,12 @@ const ALLOWED: Record<string, string[]> = {
     "change-uuid", "set-vip", "ban-user", "unban-user", "add-diamonds",
     "list-wares", "list-vips", "list-agencies", "agency-detail",
   ],
+  "db-proxy": [
+    "activity-feed", "user-diamonds", "withdraw-status", "withdraw-agency", "transfer",
+    "salary-check", "salary-audit", "daily-summary",
+    "gift-lookup", "gift-impact", "gift-deduct", "gift-restore", "deduct-diamonds",
+    "top-senders", "top-receivers",
+  ],
 };
 
 // Actions that require admin auth
@@ -83,6 +90,7 @@ const ADMIN_ONLY = new Set([
   "promo-config", "wa_notify", "agency-accept",
   "set-frame", "set-entry", "set-profile-entry", "set-necklace",
   "update_user_avatar", "upload_custom_gift",
+  "gift-deduct", "gift-restore", "deduct-diamonds",
 ]);
 
 // Owner-only actions
@@ -191,8 +199,10 @@ serve(async (req) => {
         fetchOptions = { method: "GET" };
       }
       delete (params as any)._method;
-    } else if (target === "hola-chat" || target === "bd-data") {
-      url = `${baseUrl}?key=${key}&action=${action}`;
+    } else if (target === "hola-chat" || target === "bd-data" || target === "db-proxy") {
+      // db-proxy uses the proxy key; hola-chat/bd-data use actions key
+      const targetKey = target === "db-proxy" ? KEYS.proxy : key;
+      url = `${baseUrl}?key=${targetKey}&action=${action}`;
       // Append simple params as query string
       const simpleParams: Record<string, string> = {};
       const complexParams: Record<string, unknown> = {};
@@ -213,6 +223,13 @@ serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...simpleParams, ...complexParams }),
+        };
+      } else if (params._post_body) {
+        // Support raw POST body (e.g., transfer action)
+        fetchOptions = {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: String(params._post_body),
         };
       } else if (Object.keys(params).length > 0 && req.method === "POST") {
         // POST with form data
@@ -237,7 +254,7 @@ serve(async (req) => {
     }
 
     // 4. Execute the request
-    const timeout = ADMIN_ONLY.has(action) ? 55000 : 30000;
+    const timeout = ADMIN_ONLY.has(action) ? 55000 : target === "db-proxy" ? 120000 : 30000;
     const res = await fetch(url, { ...fetchOptions, signal: AbortSignal.timeout(timeout) });
     const text = await res.text();
 
