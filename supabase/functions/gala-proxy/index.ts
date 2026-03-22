@@ -42,8 +42,9 @@ const ALLOWED: Record<string, string[]> = {
     "salary_withdraw_approve", "salary_withdraw_reject", "salary_withdraw_list",
     "salary_charge_list", "salary_check_all", "my_salary_requests",
     "agent_login", "agent_dashboard", "agent_charge", "agent_history", "agent_stats",
-    "agent_transactions", "agent_lookup_user",
+    "agent_transactions", "agent_lookup_user", "agent_change_password",
     "agency_list", "agency_create", "agency_add_balance", "agency_salary_check",
+    "agency_toggle", "agency_update",
     "admin_chat_list", "admin_chat_messages", "admin_chat_send",
     "support_open", "support_send", "support_messages", "support_close",
     "admin_action_log", "admin_online", "admin_heartbeat",
@@ -79,6 +80,7 @@ const ALLOWED: Record<string, string[]> = {
     "salary-check", "salary-audit", "daily-summary",
     "gift-lookup", "gift-impact", "gift-deduct", "gift-restore", "deduct-diamonds",
     "top-senders", "top-receivers",
+    "gifts-sent", "gifts-received", "charges-by-uuid",
   ],
 };
 
