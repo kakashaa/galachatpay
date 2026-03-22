@@ -386,12 +386,12 @@ const SalaryWithdraw: React.FC = () => {
         ...localUsedRefs,
       ]);
 
-      const currentMonth = new Date().toISOString().slice(0, 7); // "2026-03"
+      const today = new Date().toISOString().slice(0, 10); // "2026-03-22"
       const allTransfers = (data.transfers || []).map((transfer) => {
         const ref = String(transfer.reference_id || "").trim();
-        // Filter out old transfers (not from current month)
-        const transferMonth = (transfer.time || "").slice(0, 7);
-        if (transferMonth && transferMonth < currentMonth) {
+        // Filter out old transfers (not from today)
+        const transferDay = (transfer.time || "").slice(0, 10);
+        if (transferDay && transferDay < today) {
           return { ...transfer, is_used: true, selectable: false };
         }
         if (usedRefs.has(ref)) {
