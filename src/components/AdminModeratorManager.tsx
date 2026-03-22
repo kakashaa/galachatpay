@@ -34,6 +34,15 @@ interface Props {
   adminCall: (action: string, data?: any) => Promise<any>;
 }
 
+const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + "gala_salt_2024");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+};
+
 const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
   const { confirm, ConfirmDialog } = useConfirmModal();
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
@@ -83,11 +92,12 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
     if (!newName.trim() || !uname) { toast.error("الاسم مطلوب"); return; }
     setActionLoading(true);
     try {
+      const hashedPw = await hashPassword("1122");
       const { error } = await supabase.from("admin_accounts").insert({
         username: uname,
         display_name: newName.trim(),
         role: newRole,
-        password_hash: "1122",
+        password_hash: hashedPw,
         is_active: true,
         permissions: {},
       });
@@ -120,7 +130,7 @@ const AdminModeratorManager: React.FC<Props> = ({ adminCall }) => {
         display_name: editName.trim() || admin.display_name,
         role: editRole,
       };
-      if (editPassword.trim()) updateData.password_hash = editPassword.trim();
+      if (editPassword.trim()) updateData.password_hash = await hashPassword(editPassword.trim());
 
       const { error } = await supabase.from("admin_accounts").update(updateData).eq("id", admin.id);
       if (error) throw error;
