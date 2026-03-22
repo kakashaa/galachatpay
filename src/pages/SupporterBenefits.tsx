@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import MobileLayout from "@/components/MobileLayout";
+import { galaApi } from "@/services/galaApi";
 
 interface Tier {
   id: string;
@@ -128,12 +129,7 @@ const SupporterBenefits: React.FC = () => {
 
         // Fetch fresh from API
         try {
-          const res = await fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `question=كم+شحن+UUID+${user.uuid}+هالشهر`,
-          });
-          const apiData = await res.json();
+          const apiData = await galaApi.askBot(`كم شحن UUID ${user.uuid} هالشهر`);
           const coins = apiData?.total_coins || apiData?.coins || 0;
           if (coins > 0) setMonthlyCoins(coins);
         } catch { /* cached */ }
@@ -141,12 +137,7 @@ const SupporterBenefits: React.FC = () => {
 
       // Leaderboard
       try {
-        const res = await fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "question=أعلى+الداعمين+هالشهر",
-        });
-        const lbData = await res.json();
+        const lbData = await galaApi.askBot("أعلى الداعمين هالشهر");
         if (Array.isArray(lbData)) setLeaderboard(lbData.slice(0, 10));
         else if (lbData?.users) setLeaderboard(lbData.users.slice(0, 10));
       } catch { /* silent */ }
@@ -160,12 +151,7 @@ const SupporterBenefits: React.FC = () => {
   useEffect(() => {
     const iv = setInterval(async () => {
       try {
-        const res = await fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=monitor-query", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "question=أعلى+الداعمين+هالشهر",
-        });
-        const d = await res.json();
+        const d = await galaApi.askBot("أعلى الداعمين هالشهر");
         if (Array.isArray(d)) setLeaderboard(d.slice(0, 10));
         else if (d?.users) setLeaderboard(d.users.slice(0, 10));
       } catch {}
@@ -208,27 +194,16 @@ const SupporterBenefits: React.FC = () => {
     setProcessing(true);
     try {
       if (reward.type === "vip") {
-        await fetch("https://galachat.site/project-z/api.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "admin_give_vip", admin_key: "ghala2026owner",
-            uuid, level: reward.value, duration: reward.item_duration_days,
-          }),
-        });
+        await galaApi.giveVip(uuid, reward.value, String(reward.item_duration_days));
       } else if (["frame", "entry", "necklace"].includes(reward.type)) {
-        const actionMap: Record<string, string> = { frame: "set-frame", entry: "set-entry", necklace: "set-necklace" };
-        await fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=${actionMap[reward.type]}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uuid, ware_id: reward.ware_id }),
-        });
+        const methodMap: Record<string, (u: string, w: number) => Promise<any>> = {
+          frame: galaApi.setFrame.bind(galaApi),
+          entry: galaApi.setEntry.bind(galaApi),
+          necklace: galaApi.setNecklace.bind(galaApi),
+        };
+        await methodMap[reward.type](uuid, reward.ware_id);
       } else if (reward.type === "coins" && isGift) {
-        await fetch("https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=add-diamonds", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uuid, amount: reward.value }),
-        });
+        await galaApi.addDiamonds(uuid, reward.value);
       } else if (reward.type === "uuid_change") {
         navigate(`/change-id?free=true&reward_id=${reward.id}`);
         setProcessing(false);
@@ -257,8 +232,7 @@ const SupporterBenefits: React.FC = () => {
     setLookingUp(true);
     setGiftUserName("");
     try {
-      const res = await fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${uuid}`);
-      const data = await res.json();
+      const data = await galaApi.awsUserInfo(uuid);
       if (data?.name || data?.data?.name) setGiftUserName(data.name || data.data?.name);
       else toast.error("UUID غير موجود");
     } catch { toast.error("فشل البحث"); }
