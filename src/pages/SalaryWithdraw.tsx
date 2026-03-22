@@ -807,7 +807,7 @@ const SalaryWithdraw: React.FC = () => {
   }
 
   // ── SUCCESS ──
-  if (step === "success" && selectedTransfer) {
+  if (step === "receipt" && selectedTransfer) {
     const receiptCode = `GC-${selectedTransfer.reference_id || "MAN"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
     const receiptDate = selectedTransfer.time || new Date().toLocaleDateString("ar-EG", {
       year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
