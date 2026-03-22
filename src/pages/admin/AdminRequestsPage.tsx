@@ -164,8 +164,7 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   // --- auto upload logic ---
-  const GALA_API = "https://galachat.site/project-z/api.php";
-  const ADMIN_KEY = "ghala2026owner";
+  const GALA_API_UNUSED = ""; // migrated to galaApi
 
   // Helper to call wares-api through edge function proxy
   const callWaresApi = async (action: string, params: Record<string, string>) => {
@@ -244,7 +243,7 @@ const AdminRequestsPage: React.FC = () => {
         });
         // Also call hola-chat direct endpoint
         try {
-          await fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=upload-room-background&uuid=" + item.user_uuid + "&image_url=" + encodeURIComponent(imageUrl));
+          await galaApi.uploadRoomBackground(item.user_uuid, imageUrl);
         } catch { /* silent fallback */ }
         if (data.ok || data.success) toast.success("تم تغيير خلفية الغرفة"); else { toast.warning("تم القبول — تغيير الخلفية فشل."); console.error("Room bg upload failed:", data); }
 
