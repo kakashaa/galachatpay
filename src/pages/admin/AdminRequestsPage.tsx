@@ -164,7 +164,7 @@ const AdminRequestsPage: React.FC = () => {
   };
 
   // --- auto upload logic ---
-  const GALA_API_UNUSED = ""; // migrated to galaApi
+  
 
   // Helper to call wares-api through edge function proxy
   const callWaresApi = async (action: string, params: Record<string, string>) => {
@@ -181,8 +181,7 @@ const AdminRequestsPage: React.FC = () => {
         // Only update_user_avatar — nothing else
         const gifUrl = item.gif_url || item.details?.gif_url;
         if (!gifUrl) return;
-        const res = await fetch(GALA_API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "update_user_avatar", admin_key: ADMIN_KEY, uuid: item.user_uuid, avatar_url: gifUrl }) });
-        const data = await res.json();
+        const data = await galaApi.updateUserAvatar(item.user_uuid, gifUrl) as any;
         if (data.success) toast.success("تم رفع الصورة لغلا لايف"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
 
       } else if (type === "custom") {
@@ -191,8 +190,7 @@ const AdminRequestsPage: React.FC = () => {
         if (!thumbnailUrl && item.video_url) {
           thumbnailUrl = await captureThumbnailUrl(item.video_url, item.id);
         }
-        const res = await fetch(GALA_API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ action: "upload_custom_gift", admin_key: ADMIN_KEY, user_name: item.user_name || item.title || "", video_url: item.video_url || "", thumbnail_url: thumbnailUrl, price: "20000" }) });
-        const data = await res.json();
+        const data = await galaApi.uploadCustomGift(item.user_name || item.title || "", item.video_url || "", thumbnailUrl, "20000") as any;
         if (data.success) toast.success("تم رفع الهدية لغلا لايف"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
 
       } else if (type === "entries" || type === "frames") {
@@ -252,10 +250,9 @@ const AdminRequestsPage: React.FC = () => {
         const fileUrl = item.file_url || item.details?.file_url;
         if (!fileUrl || !item.user_uuid) return;
         const thumbnailUrl = await captureThumbnailUrl(fileUrl, item.id);
-        const params: Record<string, string> = { action: "upload_ware", admin_key: ADMIN_KEY, ware_type: "badge", name: item.title || "شعار", file_url: fileUrl, uuid: item.user_uuid, file_format: "svga", expire: "30" };
+        const params: Record<string, string> = { ware_type: "badge", name: item.title || "شعار", file_url: fileUrl, uuid: item.user_uuid, file_format: "svga", expire: "30" };
         if (thumbnailUrl) params.show_img = thumbnailUrl;
-        const res = await fetch(GALA_API, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params) });
-        const data = await res.json();
+        const data = await callWaresApi("upload-ware", params);
         if (data.success) toast.success("تم رفع الشعار لغلا لايف"); else { toast.warning("تم القبول — الرفع التلقائي فشل."); console.error("Auto-upload failed:", data); }
       }
     } catch (err) {

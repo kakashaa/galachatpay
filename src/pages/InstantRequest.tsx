@@ -85,8 +85,7 @@ const InstantRequest: React.FC = () => {
     const fetchTransfers = async () => {
       setLoadingTransfers(true);
       try {
-        const res = await fetch(`${API}?action=user_transfers&uuid=${user.uuid}`);
-        const data = await res.json();
+        const data = await galaApi.userTransfers(user.uuid) as any;
         const today = new Date().toISOString().slice(0, 10);
         const available = (data.transfers || []).filter((t: Transfer) => {
           if (t.is_used || !t.selectable) return false;
@@ -156,8 +155,7 @@ const InstantRequest: React.FC = () => {
 
       // Fallback: original API
       try {
-        const res = await fetch(`${API}?action=user_info&uuid=${uid}`);
-        const data = await res.json();
+        const data = await galaApi.getUserInfo(uid) as any;
         if (data?.data?.name) {
           setSupporterInfo({ name: data.data.name, avatar: data.data.profile?.image || "", uuid: uid });
           return;
