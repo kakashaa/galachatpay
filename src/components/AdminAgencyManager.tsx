@@ -12,8 +12,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
 import AgencyDetailsSheet from "./AgencyDetailsSheet";
-
-const ADMIN_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 interface Agency {
   username: string;
@@ -85,8 +84,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   const fetchAgencies = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${ADMIN_API}?action=agency_list&admin_key=ghala2026owner`);
-      const data = await res.json();
+      const data = await galaApi.agencyList() as any;
       if (data.success) {
         setAgencies(data.agencies || []);
       } else {
@@ -127,21 +125,15 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const coins = isCustom ? parseInt(createForm.custom_coins) || 0 : tier!.coins;
       const bonusPercent = isCustom ? 0 : tier!.bonusPercent;
 
-      const res = await fetch(`${ADMIN_API}?action=agency_create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          admin_key: "ghala2026owner",
-          username: createForm.username,
-          name: createForm.name,
-          agency_id: createForm.agency_id,
-          balance: coins,
-          bonus_percent: bonusPercent,
-          tier: createForm.tier,
-          phone: createForm.phone,
-        }),
-      });
-      const data = await res.json();
+      const data = await galaApi.agencyCreate({
+        username: createForm.username,
+        name: createForm.name,
+        agency_id: createForm.agency_id,
+        balance: coins,
+        bonus_percent: bonusPercent,
+        tier: createForm.tier,
+        phone: createForm.phone,
+      }) as any;
       if (data.success) {
         toast.success("تم إنشاء الوكالة بنجاح");
         setShowCreate(false);
@@ -164,12 +156,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const coins = tier ? tier.total : parseInt(addBalanceCustom) || 0;
       if (coins <= 0) { toast.error("أدخل كمية صحيحة"); return; }
 
-      const res = await fetch(`${ADMIN_API}?action=agency_add_balance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_key: "ghala2026owner", username, coins }),
-      });
-      const data = await res.json();
+      const data = await galaApi.agencyAddBalance(username, coins) as any;
       if (data.success) {
         toast.success("تم إضافة الرصيد");
         setAddBalanceTarget(null);
@@ -187,12 +174,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
   const handleToggle = async (username: string) => {
     setToggleLoading(username);
     try {
-      const res = await fetch(`${ADMIN_API}?action=agency_toggle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ admin_key: "ghala2026owner", username }),
-      });
-      const data = await res.json();
+      const data = await galaApi.agencyToggle(username) as any;
       if (data.success) {
         toast.success("تم تحديث الحالة");
         fetchAgencies();
@@ -208,22 +190,17 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
 
   const handleEditAgency = async () => {
     if (!editAgency) return;
-    const body: Record<string, string> = { admin_key: "ghala2026owner", username: editAgency.username };
+    const body: Record<string, string> = { username: editAgency.username };
     if (editForm.name.trim()) body.name = editForm.name.trim();
     if (editForm.phone.trim()) body.phone = editForm.phone.trim();
     if (editForm.new_password.trim()) body.new_password = editForm.new_password.trim();
     if (editForm.transfer_to_uuid.trim()) body.transfer_to_uuid = editForm.transfer_to_uuid.trim();
 
-    if (Object.keys(body).length <= 2) { toast.error("لم يتم تعديل أي بيانات"); return; }
+    if (Object.keys(body).length <= 1) { toast.error("لم يتم تعديل أي بيانات"); return; }
 
     setEditLoading(true);
     try {
-      const res = await fetch(`${ADMIN_API}?action=agency_update`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      const data = await galaApi.agencyUpdate(body) as any;
       if (data.success) {
         toast.success("تم تحديث بيانات الوكالة");
         setEditAgency(null);
