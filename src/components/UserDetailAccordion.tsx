@@ -46,7 +46,6 @@ async function fetchGiftsReceived(uuid: string, start: string, end: string) {
 async function fetchCharges(uuid: string, start: string, end: string) {
   return galaApi.chargesByUuid(uuid, start, end);
 }
-}
 
 /* ─── Filter Pills ─── */
 const FilterPills: React.FC<{ filter: DateFilter; onChange: (f: DateFilter) => void; onSearch: () => void }> = ({ filter, onChange, onSearch }) => {
