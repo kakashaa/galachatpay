@@ -542,8 +542,8 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "select_type") {
     const hostAvail = statusData?.host_salary?.available || 0;
     const agencyAvail = statusData?.agency_salary?.pool_available || 0;
-    const hostCashUsed = statusData?.host_salary?.cash_used_this_month || false;
-    const agencyCashUsed = statusData?.agency_salary?.cash_used_this_month || false;
+    const hostCashUsed = cashResetOverride.host ? false : (statusData?.host_salary?.cash_used_this_month || false);
+    const agencyCashUsed = cashResetOverride.agency ? false : (statusData?.agency_salary?.cash_used_this_month || false);
 
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
