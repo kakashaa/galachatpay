@@ -22,6 +22,7 @@ import { Clock, CheckCircle, XCircle } from "lucide-react";
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [bottomTab, setBottomTab] = useState<'home' | 'search' | 'chat' | 'monitor' | 'favorites'>('home');
+  const monitorBadge = useMonitorBadge();
 
   // Pull-to-refresh
   const PULL_THRESHOLD = 80;
