@@ -366,7 +366,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const pendingReqs = rawRequests.filter(r => r.status === "pending" || r.status === "review" as any);
       const rejectedReqs = rawRequests.filter(r => r.status === "rejected");
       const reservedReqs = rawRequests.filter(r => r.status === "reserved");
-      const apiStats = data.stats || {};
+      const _apiStats = data.stats || {};
       setStats({
         total: rawRequests.length,
         delivered: deliveredReqs.length,
