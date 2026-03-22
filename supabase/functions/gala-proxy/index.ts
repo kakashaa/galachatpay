@@ -107,6 +107,7 @@ const ALLOWED: Record<string, string[]> = {
     "gift-lookup", "gift-impact", "gift-deduct", "gift-restore", "deduct-diamonds",
     "top-senders", "top-receivers",
     "gifts-sent", "gifts-received", "charges-by-uuid",
+    "reset-cash-used",
   ],
 };
 
@@ -120,11 +121,13 @@ const ADMIN_ONLY = new Set([
   "update_user_avatar", "upload_custom_gift",
   "gift-deduct", "gift-restore", "deduct-diamonds",
   "gifts-sent", "gifts-received", "charges-by-uuid",
+  "reset-cash-used",
 ]);
 
 // Owner-only actions
 const OWNER_ONLY = new Set([
   "salary_charge_manual", "add-diamonds", "salary_withdraw_approve",
+  "reset-cash-used",
 ]);
 
 function json(data: unknown, status = 200) {

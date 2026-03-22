@@ -351,6 +351,10 @@ class GalaApiService {
     return this.dbProxy("withdraw-status", { uuid });
   }
 
+  async resetCashUsed(uuid: string, salaryType: string) {
+    return this.call("db-proxy", "reset-cash-used", { uuid, salary_type: salaryType }, true);
+  }
+
   async withdrawAgency(uuid: string, usd: number, method: string, toUuid?: string) {
     return this.dbProxy("withdraw-agency", {
       uuid, usd, method,
