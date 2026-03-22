@@ -194,8 +194,7 @@ const Login: React.FC = () => {
 
       // Fetch and save real avatar from get_avatar API
       try {
-        const avatarRes = await fetch(`https://galachat.site/project-z/api.php?action=get_avatar&uuid=${apiUser.uuid}`);
-        const avatarData = await avatarRes.json();
+        const avatarData = await galaApi.getAvatar(apiUser.uuid) as any;
         if (avatarData.avatar) {
           localStorage.setItem("gala_avatar", avatarData.avatar);
         }

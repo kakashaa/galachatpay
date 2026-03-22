@@ -103,9 +103,8 @@ const UserProfileCard: React.FC = () => {
     let cancelled = false;
     setSalaryLoading(true);
     
-    fetch(`https://galachat.site/project-z/api.php?action=salary_check_all&uuid=${user.uuid}`)
-      .then(res => res.json())
-      .then(data => {
+    galaApi.salaryCheckAll(user.uuid)
+      .then((data: any) => {
         if (cancelled) return;
         const hostNet = data.host_salary?.net || 0;
         const agencyAmount = data.agency_salary?.amount || 0;
