@@ -141,7 +141,7 @@ const InstantRequest: React.FC = () => {
       // Method 3: search API
       try {
         const r3 = await fetch(
-          `https://galalivechat.com/api/search/all-users?q=${uid}`,
+          `${API_URLS.GALA_API}/search/all-users?q=${uid}`,
           { headers: { Authorization: "Bearer a6a6934df3dc4f8d99fbdf56a16d1cf05994039747ee7b76bf14383a3ee254a4" } }
         );
         const d3 = await r3.json();

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+import { API_URLS } from "@/config/api";
 
-const GALA_MEDIA_BASE = "https://media.galalivechat.com/";
+const GALA_MEDIA_BASE = API_URLS.MEDIA;
 
 class GalaApiService {
   // === Generic proxy call ===
@@ -416,7 +417,7 @@ class GalaApiService {
   async getRanking(rankClass: number, type: number) {
     const token = await this.getToken();
     if (!token) return { success: false, data: { top: [], other: [] } };
-    const res = await fetch("https://galalivechat.com/api/ranking", {
+    const res = await fetch(`${API_URLS.GALA_API}/ranking`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -431,7 +432,7 @@ class GalaApiService {
   async searchAgencies(page: number) {
     const token = await this.getToken();
     if (!token) return { data: { agencies: [] } };
-    const res = await fetch(`https://galalivechat.com/api/agencies/filter?page=${page}`, {
+    const res = await fetch(`${API_URLS.GALA_API}/agencies/filter?page=${page}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -446,7 +447,7 @@ class GalaApiService {
   async getProfile(userId: string | number) {
     const token = await this.getToken();
     if (!token) return { data: {} };
-    const res = await fetch(`https://galalivechat.com/api/profile/get/${userId}`, {
+    const res = await fetch(`${API_URLS.GALA_API}/profile/get/${userId}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     });
     return res.json();
@@ -455,7 +456,7 @@ class GalaApiService {
   async getGiftHistory(type: "sender" | "receiver", from?: string, to?: string) {
     const token = await this.getToken();
     if (!token) return { data: [] };
-    let url = `https://galalivechat.com/api/gift_history?type=${type}&perPage=100`;
+    let url = `${API_URLS.GALA_API}/gift_history?type=${type}&perPage=100`;
     if (from && to) url += `&from=${from}&to=${to}`;
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
@@ -466,7 +467,7 @@ class GalaApiService {
   async getAgencyHistoryData(month: number, year: number) {
     const token = await this.getToken();
     if (!token) return { data: {} };
-    const res = await fetch("https://galalivechat.com/api/agencies/history-data-agency", {
+    const res = await fetch(`${API_URLS.GALA_API}/agencies/history-data-agency`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -481,7 +482,7 @@ class GalaApiService {
   async getShowRequest() {
     const token = await this.getToken();
     if (!token) return { data: [] };
-    const res = await fetch("https://galalivechat.com/api/agencies/show_request", {
+    const res = await fetch(`${API_URLS.GALA_API}/agencies/show_request`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     });
     return res.json();
