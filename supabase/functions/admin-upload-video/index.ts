@@ -16,10 +16,27 @@ const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: string }> = {
   blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
 };
 
-function validateSessionToken(token: string): boolean {
+async function validateSessionToken(token: string, supabase: any): Promise<boolean> {
   try {
-    const decoded = JSON.parse(atob(token));
-    return !!(decoded.username && ADMIN_ACCOUNTS[decoded.username]);
+    // Try legacy btoa token
+    let decoded: any = null;
+    try {
+      decoded = JSON.parse(atob(token.split(".")[0] || token));
+    } catch { /* not legacy */ }
+
+    if (decoded?.username) {
+      // Check hardcoded admins
+      if (ADMIN_ACCOUNTS[decoded.username]) return true;
+      // Check DB admins
+      const { data } = await supabase
+        .from("admin_accounts")
+        .select("id")
+        .eq("username", decoded.username)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (data) return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -31,12 +48,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     const formData = await req.formData();
     const sessionToken = formData.get("session_token") as string;
     const file = formData.get("file") as File;
 
     // Validate session token
-    if (!sessionToken || !validateSessionToken(sessionToken)) {
+    if (!sessionToken || !(await validateSessionToken(sessionToken, supabase))) {
       return new Response(
         JSON.stringify({ error: "غير مصرح" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -71,15 +93,9 @@ Deno.serve(async (req) => {
     }
 
     const bucket = isAsset ? "attachments" : isImage ? "attachments" : "videos";
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
     const fileName = `${crypto.randomUUID()}.${ext}`;
-
     const defaultContentType = isAsset ? "application/octet-stream" : isImage ? `image/${ext === "jpg" ? "jpeg" : ext}` : "video/mp4";
+
     const { error: uploadError } = await supabase.storage
       .from(bucket)
       .upload(fileName, file, {
@@ -99,8 +115,7 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    const errStack = error instanceof Error ? error.stack : "";
-    console.error("admin-upload-video error:", errMsg, errStack);
+    console.error("admin-upload-video error:", errMsg);
     return new Response(
       JSON.stringify({ error: "حدث خطأ أثناء رفع الملف", details: errMsg }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
