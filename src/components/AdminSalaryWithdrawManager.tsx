@@ -242,15 +242,14 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     setDetailAvatar(req.avatar || "");
     setDetailReportLoading(true);
     try {
-      const [reportRes, avatarRes] = await Promise.all([
-        fetch(`${API}?action=salary_report&uuid=${req.user_uuid}`),
-        !req.avatar ? fetch(`${API}?action=get_avatar&uuid=${req.user_uuid}`) : Promise.resolve(null),
+      const [reportData, avatarData] = await Promise.all([
+        galaApi.salaryReport(req.user_uuid),
+        !req.avatar ? galaApi.getAvatar(req.user_uuid) : Promise.resolve(null),
       ]);
-      const reportData = await reportRes.json();
-      setDetailReport(reportData);
-      if (avatarRes) {
+      setDetailReport(reportData as any);
+      if (avatarData) {
         try {
-          const ad = await avatarRes.json();
+          const ad = avatarData as any;
           if (ad.success && ad.avatar) setDetailAvatar(ad.avatar.startsWith("http") ? ad.avatar : getAvatarUrl(ad.avatar));
         } catch { /* silent */ }
       }
