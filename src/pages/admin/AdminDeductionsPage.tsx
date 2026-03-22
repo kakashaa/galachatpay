@@ -238,11 +238,9 @@ const AdminDeductionsPage: React.FC = () => {
     setDeductManualLoading(true);
     setDeductManualResult(null);
     try {
-      const res = await fetch(DB_PROXY, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `key=ghala2026proxy&action=deduct-diamonds&uuid=${deductUuid.trim()}&amount=${parsedDeductAmount}`,
-      });
+      const res = await fetch(
+        `${DB_PROXY}?key=ghala2026proxy&action=deduct-diamonds&uuid=${encodeURIComponent(deductUuid.trim())}&amount=${parsedDeductAmount}`
+      );
       const result = await res.json();
       if (result.ok) {
         setDeductManualResult({
