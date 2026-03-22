@@ -16,7 +16,7 @@ import {
   COUNTRIES, BANK_LABELS, COUNTRY_LABELS, BANK_COLORS, COINS_PER_DOLLAR,
 } from "@/lib/constants";
 
-const API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/receipts/";
 
 interface Agency {
@@ -99,9 +99,7 @@ const AgencyDetailsSheet: React.FC<AgencyDetailsSheetProps> = ({ agency, open, o
     if (!agency) return;
     setLoading(true);
     try {
-      const url = `${API}?action=agent_transactions&admin_key=ghala2026owner&username=${agency.username}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const data = await galaApi.agentTransactions(agency.username) as any;
       if (data.success) {
         setTransactions(data.transactions || []);
         setTotalCount(data.total_count || 0);
