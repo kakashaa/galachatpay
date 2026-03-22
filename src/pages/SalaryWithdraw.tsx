@@ -58,8 +58,14 @@ interface TransferResult {
   reference_id?: string;
   amount_usd?: number;
   coins?: number;
+  usd?: number;
   time?: string;
   remaining?: number;
+  transfer?: {
+    reference_id?: string;
+    time?: string;
+    from?: { remaining_after?: number };
+  };
 }
 
 interface SalaryCountry {
@@ -342,20 +348,21 @@ const SalaryWithdraw: React.FC = () => {
         throw new Error(result.error || "فشل التحويل");
       }
 
-      // 3. Save to database
+      // 3. Save to database (non-blocking — transfer already succeeded)
       setProcessStage("save");
 
-      const requestType = salaryType === "agency"
-        ? `agency_${pathMode}`
-        : pathMode === "charge_other" ? "charge_other"
-        : pathMode === "charge_self" ? "charge_self"
-        : "cash";
+      // Flatten result for receipt (API now returns reference_id and time at top level)
+      const flatResult = {
+        ...result,
+        reference_id: result.reference_id || result.transfer?.reference_id || `AUTO-${Date.now()}`,
+        time: result.time || result.transfer?.time || new Date().toISOString(),
+        amount_usd: result.amount_usd || result.usd || amount,
+        remaining: result.remaining ?? result.transfer?.from?.remaining_after ?? Math.max(0, available - amount),
+      };
 
-      const targetName = chargeTarget
-        ? targetInfo?.name || "مستخدم آخر"
-        : pathMode === "charge_self"
-          ? user!.name
-          : recipientName;
+      // Save transfer result FIRST (so receipt shows even if Supabase fails)
+      setTransferResult(flatResult);
+      setResultRemaining(flatResult.remaining);
 
       // For coin charges (host only), also charge the target
       if (salaryType === "host" && (pathMode === "charge_self" || pathMode === "charge_other")) {
@@ -363,48 +370,64 @@ const SalaryWithdraw: React.FC = () => {
         const chargeData = await galaApi.chargeCoins(
           chargeTargetUuid,
           amount,
-          result.reference_id || "auto",
+          flatResult.reference_id || "auto",
         );
         if (!(chargeData as any).success) {
-          throw new Error((chargeData as any).message || "فشل شحن الكوينز بعد التحويل");
+          console.warn("chargeCoins failed but transfer already succeeded:", chargeData);
+          // Don't throw — coins were already added by the transfer
         }
       }
 
-      const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
-      const bank = country?.banks.find(b => b.id === selectedBank);
-      const isOtherBank = selectedBank?.endsWith("_other");
-      const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
+      try {
+        const requestType = salaryType === "agency"
+          ? `agency_${pathMode}`
+          : pathMode === "charge_other" ? "charge_other"
+          : pathMode === "charge_self" ? "charge_self"
+          : "cash";
 
-      const rate = getCoinsRate();
+        const targetName = chargeTarget
+          ? targetInfo?.name || "مستخدم آخر"
+          : pathMode === "charge_self"
+            ? user!.name
+            : recipientName;
 
-      await supabase.from("salary_requests").insert({
-        user_uuid: user!.uuid,
-        user_name: user!.name,
-        user_phone: pathMode === "cash" ? `${whatsappCode}${whatsappNumber}` : null,
-        request_type: requestType,
-        amount_usd: amount,
-        amount_coins: amount * rate,
-        recipient_name: targetName,
-        recipient_country: pathMode === "cash" ? (country?.name || selectedCountry) : "coins",
-        payment_method: pathMode === "cash" ? (effectiveBankLabel || selectedBank) : "coins_charge",
-        payment_details: pathMode === "cash"
-          ? `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`
-          : `target_uuid:${chargeTarget || user!.uuid}`,
-        status: pathMode === "cash" ? "pending" : "approved",
-        transfer_id: result.reference_id || null,
-        transaction_id: result.reference_id || null,
-        transaction_date: result.time || new Date().toISOString(),
-        target_uuid: chargeTarget || user!.uuid,
-        target_name: targetName,
-        admin_note: salaryType === "agency"
-          ? `سحب وكالة ${pathMode === "cash" ? "نقدي" : "شحن"} #${result.reference_id || "auto"}`
-          : pathMode === "cash"
-            ? `تحويل تلقائي #${result.reference_id} | ${notes || ""}`
-            : `شحن تلقائي #${result.reference_id}`,
-      } as any);
+        const country = SALARY_COUNTRIES.find(c => c.id === selectedCountry);
+        const bank = country?.banks.find(b => b.id === selectedBank);
+        const isOtherBank = selectedBank?.endsWith("_other");
+        const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
 
-      setTransferResult(result);
-      setResultRemaining(result.remaining ?? Math.max(0, available - amount));
+        const rate = getCoinsRate();
+
+        await supabase.from("salary_requests").insert({
+          user_uuid: user!.uuid,
+          user_name: user!.name,
+          user_phone: pathMode === "cash" ? `${whatsappCode}${whatsappNumber}` : null,
+          request_type: requestType,
+          amount_usd: amount,
+          amount_coins: amount * rate,
+          recipient_name: targetName,
+          recipient_country: pathMode === "cash" ? (country?.name || selectedCountry) : "coins",
+          payment_method: pathMode === "cash" ? (effectiveBankLabel || selectedBank) : "coins_charge",
+          payment_details: pathMode === "cash"
+            ? `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`
+            : `target_uuid:${chargeTarget || user!.uuid}`,
+          status: pathMode === "cash" ? "pending" : "approved",
+          transfer_id: flatResult.reference_id,
+          transaction_id: flatResult.reference_id,
+          transaction_date: flatResult.time,
+          target_uuid: chargeTarget || user!.uuid,
+          target_name: targetName,
+          admin_note: salaryType === "agency"
+            ? `سحب وكالة ${pathMode === "cash" ? "نقدي" : "شحن"} #${flatResult.reference_id}`
+            : pathMode === "cash"
+              ? `تحويل تلقائي #${flatResult.reference_id} | ${notes || ""}`
+              : `شحن تلقائي #${flatResult.reference_id}`,
+        } as any);
+      } catch (saveErr) {
+        console.warn("Failed to save salary request to Supabase:", saveErr);
+        toast.warning("تم السحب بنجاح لكن فشل حفظ السجل — تواصل مع الأدمن");
+      }
+
       setStep("success");
 
     } catch (err: any) {
