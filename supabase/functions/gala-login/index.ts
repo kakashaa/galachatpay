@@ -2,13 +2,67 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, getGalaHeaders } from "../_shared/hmac.ts";
 
+// AES-GCM encryption for session tokens (password never stored in plaintext on client)
+async function deriveAesKey(secret: string): Promise<CryptoKey> {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+  return crypto.subtle.importKey("raw", hash, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptForToken(password: string, uuid: string): Promise<string> {
+  const secret = Deno.env.get("GALA_API_SECRET") || "fallback_secret_key_2024";
+  const key = await deriveAesKey(secret);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const payload = JSON.stringify({ p: password, u: uuid, t: Date.now() });
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(payload));
+  const combined = new Uint8Array(iv.length + new Uint8Array(encrypted).length);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptFromToken(token: string): Promise<{ p: string; u: string; t: number } | null> {
+  try {
+    const secret = Deno.env.get("GALA_API_SECRET") || "fallback_secret_key_2024";
+    const key = await deriveAesKey(secret);
+    const combined = Uint8Array.from(atob(token), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+    return JSON.parse(new TextDecoder().decode(decrypted));
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { uuid, password } = await req.json();
+    const body = await req.json();
+    let { uuid, password } = body;
+    const { session_token } = body;
+
+    // If session_token provided, decrypt to get password (for refresh/verify)
+    if (session_token && !password) {
+      const decoded = await decryptFromToken(session_token);
+      if (!decoded) {
+        return new Response(
+          JSON.stringify({ success: false, error: "جلسة غير صالحة", session_expired: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      // Check 8-hour expiry
+      if (Date.now() - decoded.t > 8 * 60 * 60 * 1000) {
+        return new Response(
+          JSON.stringify({ success: false, error: "انتهت الجلسة، سجّل دخولك مرة أخرى", session_expired: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      password = decoded.p;
+      if (!uuid) uuid = decoded.u;
+    }
 
     if (!uuid || !password) {
       return new Response(
@@ -368,6 +422,12 @@ serve(async (req) => {
       }
 
       // Salary is now fetched separately via gala-salary edge function
+    }
+
+    // Generate encrypted session token (password encrypted, not stored in plaintext on client)
+    const newSessionToken = await encryptForToken(password, uuid.trim());
+    if (data.session_token === undefined) {
+      data.session_token = newSessionToken;
     }
 
     return new Response(JSON.stringify(data), {
