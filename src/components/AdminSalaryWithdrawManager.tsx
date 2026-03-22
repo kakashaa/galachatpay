@@ -168,7 +168,7 @@ const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
       checks.push(hs.deduction > hs.salary && hs.salary > 0
         ? { status: "danger", text: `راتب مشبوه — مبلغ يدوي $${(hs.deduction - hs.salary).toFixed(2)}` }
         : { status: "safe", text: "الراتب رسمي (من الدعم)" });
-      checks.push(hs.salary === 0 && hs.net > 0
+      checks.push(hs.salary === 0 && (hs.net_salary ?? hs.net ?? 0) > 0
         ? { status: "danger", text: "الراتب كله يدوي — غير مدعوم" }
         : { status: "safe", text: "لا يوجد مبالغ يدوية" });
     }
@@ -907,7 +907,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         )}
                         <div className="flex justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-3 py-2">
                           <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
-                          <span className="text-xs font-bold font-mono text-emerald-400">${detailReport.net?.toLocaleString() || 0}</span>
+                          <span className="text-xs font-bold font-mono text-emerald-400">${(detailReport.net_salary ?? detailReport.net ?? 0).toLocaleString()}</span>
                         </div>
                         {detailReport.agency_salary > 0 && (
                           <div className="flex justify-between bg-amber-500/5 border border-amber-500/10 rounded-lg px-3 py-2">
@@ -936,7 +936,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                         )}
                         <div className="flex justify-between bg-emerald-500/5 border border-emerald-500/10 rounded-lg px-3 py-2">
                           <span className="text-[10px] text-emerald-400 font-bold">الصافي</span>
-                          <span className="text-xs font-bold font-mono text-emerald-400">${detailReport.host_salary.net?.toLocaleString() || 0}</span>
+                          <span className="text-xs font-bold font-mono text-emerald-400">${(detailReport.host_salary.net_salary ?? detailReport.host_salary.net ?? 0).toLocaleString()}</span>
                         </div>
                       </div>
                     ) : null}
