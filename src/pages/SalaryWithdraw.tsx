@@ -814,7 +814,7 @@ const SalaryWithdraw: React.FC = () => {
     });
 
     return (
-      <MobileLayout showHeader headerTitle="إيصال السحب" onBack={() => navigate("/salary", { replace: true })}>
+      <MobileLayout showHeader headerTitle="إيصال السحب" onBack={() => navigate("/dashboard", { replace: true })}>
         <div className="px-5 py-6 space-y-5">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
             className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 space-y-5">
