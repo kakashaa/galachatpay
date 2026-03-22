@@ -49,12 +49,21 @@ const AdminSalaryPage: React.FC = () => {
     if (!resetUuid.trim()) { toast.error("أدخل UUID"); return; }
     setResetLoading(true);
     try {
-      const res = await galaApi.resetCashUsed(resetUuid.trim(), resetType);
-      if (res?.ok || res?.success) {
-        toast.success(`✅ تم إعادة تعيين عداد السحب النقدي (${resetType === "agency" ? "وكالة" : "مضيف"}) للـ ${resetUuid}`);
-        setResetUuid("");
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const settingKey = `cash_reset:${resetUuid.trim()}:${resetType}:${monthKey}`;
+
+      const { error } = await supabase.from("app_settings").upsert({
+        key: settingKey,
+        value: "true",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "key" });
+
+      if (error) {
+        toast.error("فشل إعادة التعيين: " + error.message);
       } else {
-        toast.error(res?.error || "فشل إعادة التعيين");
+        toast.success(`✅ تم فتح السحب النقدي (${resetType === "agency" ? "وكالة" : "مضيف"}) للـ ${resetUuid} لهذا الشهر`);
+        setResetUuid("");
       }
     } catch (e: any) {
       toast.error(e?.message || "حدث خطأ");

@@ -209,13 +209,34 @@ const SalaryWithdraw: React.FC = () => {
 
   const hasFetchedRef = useRef(false);
   const processInFlightRef = useRef(false);
+  const [cashResetOverride, setCashResetOverride] = useState<{ host: boolean; agency: boolean }>({ host: false, agency: false });
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
     fetchWithdrawStatus();
+    checkCashResetOverrides();
   }, [user?.uuid]);
+
+  const checkCashResetOverrides = async () => {
+    if (!user?.uuid) return;
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const { data } = await supabase
+      .from("app_settings")
+      .select("key")
+      .in("key", [
+        `cash_reset:${user.uuid}:host:${monthKey}`,
+        `cash_reset:${user.uuid}:agency:${monthKey}`,
+      ]);
+    if (data && data.length > 0) {
+      setCashResetOverride({
+        host: data.some(r => r.key.includes(":host:")),
+        agency: data.some(r => r.key.includes(":agency:")),
+      });
+    }
+  };
 
   const fetchWithdrawStatus = async () => {
     setLoading(true);
