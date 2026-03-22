@@ -1,1805 +1,456 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
-import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { toast } from "sonner";
-import Pusher from "pusher-js";
 import {
-  Shield, AlertTriangle, Eye, Bell, Search, Settings,
-  RefreshCw, Volume2, VolumeX, Send, Loader2, Bot, Trash2, CheckCheck,
-  Zap, DollarSign, Megaphone, Gift, Monitor, Clock, ChevronDown, ChevronUp,
-  BarChart3, Users, Radio, MessageSquare, Wifi, WifiOff, Ban,
-  UserSearch, Activity, TrendingUp, Wallet, ArrowDownCircle, ArrowUpCircle,
+  RefreshCw, Loader2, Search, AlertTriangle, Shield,
+  TrendingUp, Activity, CheckCircle, XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 
-/* ─── API Layer (via secure proxy) ─── */
-import { galaApi } from "@/services/galaApi";
-
-async function fetchPromoConfig() {
-  const data = await galaApi.getPromoConfig();
-  return data?.data || data;
-}
-
-async function updatePromoConfig(
-  action: "add_competitor" | "remove_competitor" | "add_phrase" | "remove_phrase" | "add_safe" | "remove_safe",
-  value: string
-) {
-  return galaApi.updatePromoConfig({ [action]: value });
-}
-
-async function banUserApi(uuid: string, duration: number = 24) {
-  return galaApi.banUserReal(uuid, "monitor-ban", duration, "normal");
-}
-
-/* ─── Types ─── */
-interface MonitorAlert {
-  id: string;
-  alert_type: string;
-  severity?: "high" | "medium" | "low";
-  sender_uuid: string | null;
-  sender_name?: string;
-  receiver_uuid: string | null;
-  receiver_name?: string;
-  amount: number;
-  details: any;
-  is_read: boolean;
-  created_at: string;
-}
-
-interface ChatMsg {
-  role: "user" | "bot";
-  text: string;
-  time: string;
-}
-
-interface PusherMessage {
-  id: string;
-  conversationId: string;
-  senderName: string;
-  senderUuid: string;
-  text: string;
-  keyword?: string;
-  time: string;
-  severity: "high" | "medium" | "low";
-}
-
-/* ─── DB Proxy ─── */
+/* ─── DB Proxy Helper ─── */
 const DB_PROXY = "https://hola-chat.com/db-proxy.php";
+const API_KEY = "ghala2026proxy";
 
-/* ─── Constants ─── */
-const PUSHER_KEY = "7308273f9bbb39599189";
-const PUSHER_CLUSTER = "mt1";
+async function apiCall(action: string, params?: Record<string, string | number>) {
+  const url = new URL(DB_PROXY);
+  url.searchParams.set("key", API_KEY);
+  url.searchParams.set("action", action);
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, String(v));
+    }
+  }
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  const json = await res.json();
+  if (json.ok === false) throw new Error(json.error || json.message || "API returned error");
+  return json.data !== undefined ? json.data : json;
+}
 
-const PROMO_KEYWORDS = [
-  "واتساب", "whatsapp", "تلقرام", "telegram", "رقمي", "حسابي",
-  "يوي", "yooy", "بيقو", "bigo", "تانقو", "tango", "حمّل", "download",
-  "برنامج", "تطبيق", "نزلي", "حملي", "تعال", "انتقل", "لايكي", "likee",
-];
-
-const COINS_PER_USD = 7500;
+/* ─── Helpers ─── */
 const formatCoins = (n: number) => {
-  if (!n) return "0";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  if (!n && n !== 0) return "0";
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
   return n.toLocaleString("en-US");
 };
-const formatMoney = (coins: number) => {
-  const usd = (coins / COINS_PER_USD).toFixed(2);
-  return `${coins.toLocaleString("en-US")} كوينز ($${usd})`;
-};
-const formatTime = (d: string) => {
+
+const formatDateTime = (d: string) => {
   try {
-    return new Date(d).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
-  } catch { return "—"; }
-};
-const formatDate = (d: string) => {
-  try {
-    return new Date(d).toLocaleDateString("ar-SA", { day: "numeric", month: "short" });
+    const date = new Date(d);
+    return date.toLocaleString("ar-SA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch { return "—"; }
 };
 
-/* ─── Severity Config ─── */
-const severityConfig = {
-  high: { label: "عالية", color: "hsl(0 84% 60%)", bg: "hsla(0,84%,60%,0.08)", border: "hsla(0,84%,60%,0.2)", icon: AlertTriangle },
-  medium: { label: "متوسطة", color: "hsl(25 95% 53%)", bg: "hsla(25,95%,53%,0.08)", border: "hsla(25,95%,53%,0.2)", icon: Shield },
-  low: { label: "منخفضة", color: "hsl(48 96% 53%)", bg: "hsla(48,96%,53%,0.08)", border: "hsla(48,96%,53%,0.2)", icon: Eye },
+/* ─── Category Config ─── */
+const categoryConfig: Record<string, { label: string; icon: string; color: string }> = {
+  purchase: { label: "شحن", icon: "💳", color: "emerald" },
+  salary_withdraw: { label: "سحب راتب", icon: "💰", color: "indigo" },
+  admin_manual: { label: "يدوي (أدمن)", icon: "🔴", color: "red" },
+  host_withdraw: { label: "سحب هوست", icon: "🏠", color: "amber" },
+  freight: { label: "شحن وكالة", icon: "📦", color: "blue" },
+  room_reward: { label: "مكافأة غرفة", icon: "🎁", color: "green" },
+  target_reward: { label: "مكافأة تارقت", icon: "🎯", color: "purple" },
+  game_reward: { label: "لعبة", icon: "🎮", color: "cyan" },
 };
 
-/* ─── Alert Type Config ─── */
-const alertTypeConfig: Record<string, { label: string; icon: any; filterKey: string }> = {
-  big_charge: { label: "شحنة كبيرة", icon: Zap, filterKey: "charges" },
-  repeated_charge: { label: "شحنات متكررة", icon: RefreshCw, filterKey: "charges" },
-  promotion: { label: "ترويج مشبوه", icon: Megaphone, filterKey: "promotion" },
-  manual_salary: { label: "شحنة داشبورد", icon: DollarSign, filterKey: "admin" },
-  big_gift: { label: "هدية كبيرة", icon: Gift, filterKey: "gifts" },
-  fake_account: { label: "حساب وهمي", icon: Users, filterKey: "accounts" },
-  admin_action: { label: "عملية أدمن", icon: Shield, filterKey: "admin" },
-  pusher_promo: { label: "ترويج (رسائل)", icon: MessageSquare, filterKey: "promotion" },
+const colorMap: Record<string, string> = {
+  emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  red: "bg-red-500/10 text-red-400 border-red-500/20",
+  amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  green: "bg-green-500/10 text-green-400 border-green-500/20",
+  purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  cyan: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
 };
-
-const alertFilters = [
-  { key: "all", label: "الكل", icon: Bell },
-  { key: "charges", label: "شحنات", icon: Zap },
-  { key: "gifts", label: "هدايا", icon: Gift },
-  { key: "promotion", label: "ترويج", icon: Megaphone },
-  { key: "accounts", label: "حسابات", icon: Users },
-  { key: "admin", label: "أدمن", icon: Shield },
-];
-
-/* ─── Monitor Types ─── */
-const monitorTypes = [
-  { key: "big_charge", label: "شحنات كبيرة (> 500K)", interval: "كل 1 دقيقة", connected: true },
-  { key: "repeated_charge", label: "شحنات متكررة (> 3/ساعة)", interval: "كل 2 دقيقة", connected: true },
-  { key: "promotion", label: "رسائل ترويج (كلمات ممنوعة)", interval: "كل 1 دقيقة", connected: true },
-  { key: "pusher_promo", label: "مراقبة رسائل Pusher", interval: "مباشر (WebSocket)", connected: true },
-  { key: "big_gift", label: "هدايا كبيرة (> 500K)", interval: "كل 2 دقيقة", connected: true },
-  { key: "dashboard_charge", label: "شحنات من الداشبورد", interval: "كل 1 دقيقة", connected: true },
-  { key: "admin_sensitive", label: "عمليات Admin حساسة", interval: "كل 2 دقيقة", connected: true },
-  { key: "fake_account", label: "حسابات وهمية (نفس الجهاز)", interval: "—", connected: false },
-  { key: "stolen_account", label: "سرقة حساب", interval: "—", connected: false },
-  { key: "coin_laundering", label: "غسيل كوينز", interval: "—", connected: false },
-  { key: "vip_no_charge", label: "VIP بدون شحن", interval: "—", connected: false },
-];
-
-/* ─── Quick Questions ─── */
-const quickQuestions = [
-  "مين شحن فوق 500 ألف؟",
-  "أعلى الداعمين اليوم",
-  "أعلى الداعمين هالشهر",
-  "أعلى المستلمين اليوم",
-  "تنبيهات اليوم",
-  "شحنات الشهر",
-];
 
 /* ═══════════════════════════════════════ */
 /*             MAIN COMPONENT             */
 /* ═══════════════════════════════════════ */
 const AdminMonitorPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
-  const [activeSection, setActiveSection] = useState<"alerts" | "bot" | "stats" | "monitors" | "history" | "settings" | "salary" | "transactions" | "usercheck" | "daily">("alerts");
 
-  /* ── Alerts State ── */
-  const [alerts, setAlerts] = useState<MonitorAlert[]>([]);
+  /* ── All Data States ── */
+  const [alertsData, setAlertsData] = useState<any>(null);
+  const [feedData, setFeedData] = useState<any>(null);
+  const [dailyData, setDailyData] = useState<any>(null);
+  const [auditData, setAuditData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [alertFilter, setAlertFilter] = useState("all");
-  const prevCountRef = useRef(0);
-  const lastUpdateRef = useRef<string>("");
+  const [lastRefresh, setLastRefresh] = useState("");
 
-  /* ── Online count ── */
-  const [onlineCount, setOnlineCount] = useState(0);
-
-  /* ── Pusher State ── */
-  const [pusherConnected, setPusherConnected] = useState(false);
-  const [pusherMessages, setPusherMessages] = useState<PusherMessage[]>([]);
-  const [activeConversations, setActiveConversations] = useState<string[]>([]);
-  const pusherRef = useRef<Pusher | null>(null);
-  const subscribedChannelsRef = useRef<Set<string>>(new Set());
-
-  /* ── Monitor toggles ── */
-  const [enabledMonitors, setEnabledMonitors] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem("monitor_toggles");
-    return saved ? JSON.parse(saved) : Object.fromEntries(monitorTypes.filter(m => m.connected).map(m => [m.key, true]));
-  });
-
-  /* ── Bot State ── */
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
-  const [botInput, setBotInput] = useState("");
-  const [botLoading, setBotLoading] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  /* ── History state ── */
-  const [historyFilter, setHistoryFilter] = useState<"today" | "week" | "month">("today");
-  const [historySearch, setHistorySearch] = useState("");
-
-  /* ── Settings state ── */
-  const [settingsRefreshSec, setSettingsRefreshSec] = useState(30);
-  const [settingsBigChargeThreshold, setSettingsBigChargeThreshold] = useState(500000);
-  const [settingsRepeatThreshold, setSettingsRepeatThreshold] = useState(3);
-  const [settingsBigGiftThreshold, setSettingsBigGiftThreshold] = useState(500000);
-
-  /* ── Salary Monitor State ── */
-  const [salaryAudit, setSalaryAudit] = useState<any>(null);
+  /* ── Salary Check ── */
+  const [salaryUuid, setSalaryUuid] = useState("");
+  const [salaryResult, setSalaryResult] = useState<any>(null);
   const [salaryLoading, setSalaryLoading] = useState(false);
 
-  /* ── Transaction Monitor State ── */
-  const [txCharges, setTxCharges] = useState<any[]>([]);
-  const [txLoading, setTxLoading] = useState(false);
-  const [txTab, setTxTab] = useState<"all" | "suspicious" | "withdrawals" | "rewards">("all");
+  /* ── Feed Filter ── */
+  const [feedFilter, setFeedFilter] = useState("all");
 
-  /* ── Alerts Summary State ── */
-  const [alertsSummary, setAlertsSummary] = useState<any>(null);
-  const [alertsSummaryLoading, setAlertsSummaryLoading] = useState(false);
-
-  /* ── User Check State ── */
-  const [checkUuid, setCheckUuid] = useState("");
-  const [userCheckData, setUserCheckData] = useState<any>(null);
-  const [userCheckCharges, setUserCheckCharges] = useState<any[]>([]);
-  const [userCheckLoading, setUserCheckLoading] = useState(false);
-
-  /* ── Daily Summary State ── */
-  const [dailySummary, setDailySummary] = useState<any>(null);
-  const [dailyLoading, setDailyLoading] = useState(false);
-
-  /* ══════════════════════════════════════ */
-  /* ── Pusher Integration ──              */
-  /* ══════════════════════════════════════ */
-  const initPusher = useCallback(() => {
-    if (pusherRef.current) return;
-    try {
-      const pusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
-      pusherRef.current = pusher;
-
-      pusher.connection.bind("connected", () => {
-        setPusherConnected(true);
-      });
-      pusher.connection.bind("disconnected", () => setPusherConnected(false));
-      pusher.connection.bind("error", () => setPusherConnected(false));
-    } catch (e) {
-      console.error("Pusher init error:", e);
-    }
-  }, []);
-
-  const subscribeToConversation = useCallback((conversationId: string) => {
-    if (!pusherRef.current || subscribedChannelsRef.current.has(conversationId)) return;
-    subscribedChannelsRef.current.add(conversationId);
-
-    const channel = pusherRef.current.subscribe(`conversation-${conversationId}`);
-    channel.bind("App\\Events\\NewConversationMessage", (data: any) => {
-      const text = (data.text || "").toLowerCase();
-      const found = PROMO_KEYWORDS.find(kw => text.includes(kw));
-
-      if (found) {
-        const msg: PusherMessage = {
-          id: `pusher-${Date.now()}-${Math.random()}`,
-          conversationId,
-          senderName: data.sender?.name || "مجهول",
-          senderUuid: String(data.sender?.uuid || data.sender?.id || ""),
-          text: data.text || "",
-          keyword: found,
-          time: data.created_at || new Date().toISOString(),
-          severity: "high",
-        };
-        setPusherMessages(prev => [msg, ...prev].slice(0, 200));
-
-        if (soundEnabled) playUrgentSound();
-        toast.error(`ترويج مكتشف: "${found}"`, {
-          description: `${msg.senderName} (محادثة #${conversationId})`,
-          duration: 10000,
-        });
-      }
-    });
-  }, [soundEnabled]);
-
-  // Fetch active conversations and subscribe
-  const fetchAndSubscribeConversations = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("pusher-monitor", {
-        body: { action: "active_conversations" },
-      });
-      if (!error && data?.channels) {
-        const ids = (data.channels as string[]).map((ch: string) => ch.replace("conversation-", ""));
-        setActiveConversations(ids);
-        ids.forEach(id => subscribeToConversation(id));
-      }
-    } catch { /* silent */ }
-  }, [subscribeToConversation]);
-
-  // Fetch online count
-  const fetchOnlineCount = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("pusher-monitor", {
-        body: { action: "online_count" },
-      });
-      if (!error && data?.online_count !== undefined) {
-        setOnlineCount(data.online_count);
-      }
-    } catch { /* silent */ }
-  }, []);
-
-  useEffect(() => {
-    if (enabledMonitors.pusher_promo) {
-      initPusher();
-      fetchAndSubscribeConversations();
-      fetchOnlineCount();
-      const iv = setInterval(() => {
-        fetchAndSubscribeConversations();
-        fetchOnlineCount();
-      }, 60000);
-      return () => {
-        clearInterval(iv);
-        if (pusherRef.current) {
-          pusherRef.current.disconnect();
-          pusherRef.current = null;
-          subscribedChannelsRef.current.clear();
-          setPusherConnected(false);
-        }
-      };
-    } else {
-      if (pusherRef.current) {
-        pusherRef.current.disconnect();
-        pusherRef.current = null;
-        subscribedChannelsRef.current.clear();
-        setPusherConnected(false);
-      }
-    }
-  }, [enabledMonitors.pusher_promo, initPusher, fetchAndSubscribeConversations, fetchOnlineCount]);
-
-  /* ══════════════════════════════════════ */
-  /* ── Load Alerts ──                     */
-  /* ══════════════════════════════════════ */
-  const loadAlerts = useCallback(async () => {
+  /* ── Refresh All ── */
+  const refreshAll = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await galaApi.getAlerts();
-      const rawAlerts = data?.data?.alerts || data?.alerts || [];
-
-      // Map API response to MonitorAlert interface
-      const apiAlerts: MonitorAlert[] = rawAlerts.map((a: any, idx: number) => ({
-        id: a.id || `api-${a.time || Date.now()}-${idx}`,
-        alert_type: a.alert_type || a.type || "promotion",
-        severity: a.severity || "medium",
-        sender_uuid: a.sender_uuid || a.uuid || null,
-        sender_name: a.sender_name || a.name || a.keyword || null,
-        receiver_uuid: a.receiver_uuid || null,
-        receiver_name: a.receiver_name || null,
-        amount: a.amount || 0,
-        details: a.details || { note: a.keyword || a.message || a.note || "" },
-        is_read: a.is_read ?? false,
-        created_at: a.created_at || a.time || new Date().toISOString(),
-      }));
-
-      if (soundEnabled && apiAlerts.length > prevCountRef.current && prevCountRef.current > 0) {
-        const hasHigh = apiAlerts.some(a => a.severity === "high");
-        if (hasHigh) playUrgentSound();
-        else playNotificationSound();
-      }
-      prevCountRef.current = apiAlerts.length;
-      lastUpdateRef.current = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      setAlerts(apiAlerts);
-    } catch {
-      try {
-        const { data } = await supabase
-          .from("monitor_alerts" as any)
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(200);
-        setAlerts((data || []) as unknown as MonitorAlert[]);
-        lastUpdateRef.current = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      } catch { /* silent */ }
-    } finally {
-      setLoading(false);
+      const [alerts, feed, daily, audit] = await Promise.all([
+        apiCall("monitor-alerts").catch(() => null),
+        apiCall("activity-feed", { limit: 100 }).catch(() => null),
+        apiCall("daily-summary").catch(() => null),
+        apiCall("salary-audit").catch(() => null),
+      ]);
+      setAlertsData(alerts);
+      setFeedData(feed);
+      setDailyData(daily);
+      setAuditData(audit);
+      setLastRefresh(new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      toast.success("تم التحديث");
+    } catch (e: any) {
+      toast.error("فشل التحديث: " + (e.message || "خطأ"));
     }
-  }, [soundEnabled]);
-
-  useEffect(() => {
-    loadAlerts();
-    const iv = setInterval(loadAlerts, settingsRefreshSec * 1000);
-    return () => clearInterval(iv);
-  }, [loadAlerts, settingsRefreshSec]);
-
-  /* ── Computed ── */
-  const safeAlerts = Array.isArray(alerts) ? alerts : [];
-  const safePusherMessages = Array.isArray(pusherMessages) ? pusherMessages : [];
-  const todayAlerts = safeAlerts.filter(a => {
-    try { return new Date(a.created_at).toDateString() === new Date().toDateString(); } catch { return false; }
-  });
-  const highCount = todayAlerts.filter(a => getSeverity(a) === "high").length + safePusherMessages.length;
-  const unreadCount = safeAlerts.filter(a => !a.is_read).length;
-
-  const filteredAlerts = safeAlerts.filter(a => {
-    if (alertFilter === "all") return true;
-    const cfg = alertTypeConfig[a.alert_type];
-    return cfg?.filterKey === alertFilter;
-  });
-
-  /* ── History filtered ── */
-  const historyAlerts = safeAlerts.filter(a => {
-    try {
-      const d = new Date(a.created_at);
-      const now = new Date();
-      if (historyFilter === "today") return d.toDateString() === now.toDateString();
-      if (historyFilter === "week") return (now.getTime() - d.getTime()) < 7 * 86400000;
-      return (now.getTime() - d.getTime()) < 30 * 86400000;
-    } catch { return false; }
-  }).filter(a => {
-    if (!historySearch) return true;
-    const s = historySearch.toLowerCase();
-    return (a.sender_uuid?.includes(s) || a.receiver_uuid?.includes(s) || a.sender_name?.toLowerCase().includes(s) || a.details?.note?.toLowerCase().includes(s));
-  });
-
-  /* ── Mark as read ── */
-  const markAllRead = async () => {
-    const unread = safeAlerts.filter(a => !a.is_read).map(a => a.id);
-    if (unread.length === 0) return;
-    await (supabase.from("monitor_alerts" as any) as any).update({ is_read: true }).in("id", unread);
-    setAlerts(prev => (prev || []).map(a => ({ ...a, is_read: true })));
-    toast.success("تم تعليم الكل كمقروء");
-  };
-
-  const deleteAlert = async (id: string) => {
-    await (supabase.from("monitor_alerts" as any) as any).delete().eq("id", id);
-    setAlerts(prev => prev.filter(a => a.id !== id));
-  };
-
-  const toggleMonitor = (key: string) => {
-    setEnabledMonitors(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem("monitor_toggles", JSON.stringify(next));
-      return next;
-    });
-  };
-
-  /* ── Bot ── */
-  const handleBotQuery = async (q?: string) => {
-    const question = (q || botInput).trim();
-    if (!question || botLoading) return;
-    setBotInput("");
-    setChatMessages(prev => [...prev, { role: "user", text: question, time: formatTime(new Date().toISOString()) }]);
-    setBotLoading(true);
-    try {
-      const data = await galaApi.askBot(question);
-      setChatMessages(prev => [...prev, { role: "bot", text: data?.data?.answer || data?.answer || data?.message || "ما لقيت معلومات", time: formatTime(new Date().toISOString()) }]);
-    } catch {
-      setChatMessages(prev => [...prev, { role: "bot", text: "خطأ في الاتصال — حاول مرة أخرى", time: formatTime(new Date().toISOString()) }]);
-    } finally {
-      setBotLoading(false);
-    }
-  };
-
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
-
-  /* ── Promo Config ── */
-  const [promoConfig, setPromoConfig] = useState<{ competitors: string[]; suspicious_phrases: string[]; safe_apps: string[] } | null>(null);
-  const [promoLoading, setPromoLoading] = useState(false);
-  const [promoSaving, setPromoSaving] = useState(false);
-  const [newCompetitor, setNewCompetitor] = useState("");
-  const [newPhrase, setNewPhrase] = useState("");
-
-  const loadPromoConfig = useCallback(async () => {
-    try {
-      setPromoLoading(true);
-      const data = await fetchPromoConfig();
-      setPromoConfig(data);
-    } catch { /* silent */ }
-    finally { setPromoLoading(false); }
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    if (activeSection === "settings") loadPromoConfig();
-  }, [activeSection, loadPromoConfig]);
-
-  const handleAddCompetitor = async () => {
-    if (!newCompetitor.trim() || promoSaving) return;
-    setPromoSaving(true);
-    try {
-      await updatePromoConfig("add_competitor", newCompetitor.trim());
-      setNewCompetitor("");
-      await loadPromoConfig();
-      toast.success("تمت الإضافة");
-    } catch { toast.error("فشل الإضافة"); }
-    finally { setPromoSaving(false); }
-  };
-
-  const handleRemoveCompetitor = async (name: string) => {
-    setPromoSaving(true);
-    try {
-      await updatePromoConfig("remove_competitor", name);
-      await loadPromoConfig();
-    } catch { toast.error("فشل الحذف"); }
-    finally { setPromoSaving(false); }
-  };
-
-  const handleAddPhrase = async () => {
-    if (!newPhrase.trim() || promoSaving) return;
-    setPromoSaving(true);
-    try {
-      await updatePromoConfig("add_phrase", newPhrase.trim());
-      setNewPhrase("");
-      await loadPromoConfig();
-      toast.success("تمت الإضافة");
-    } catch { toast.error("فشل الإضافة"); }
-    finally { setPromoSaving(false); }
-  };
-
-  const handleRemovePhrase = async (phrase: string) => {
-    setPromoSaving(true);
-    try {
-      await updatePromoConfig("remove_phrase", phrase);
-      await loadPromoConfig();
-    } catch { toast.error("فشل الحذف"); }
-    finally { setPromoSaving(false); }
-  };
-
-  /* ── Ban User ── */
-  const handleBanUser = async (uuid: string, name: string) => {
-    try {
-      await banUserApi(uuid, 24);
-      toast.success(`تم حظر ${name} لمدة 24 ساعة`);
-    } catch (err: any) {
-      toast.error(`فشل الحظر: ${err.message}`);
-    }
-  };
-
-  /* ── Salary Audit ── */
-  const handleSalaryAudit = async () => {
+  /* ── Salary Check ── */
+  const checkSalary = useCallback(async () => {
+    if (!salaryUuid.trim()) { toast.error("أدخل UUID"); return; }
     setSalaryLoading(true);
+    setSalaryResult(null);
     try {
-      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-audit`);
-      const data = await res.json();
-      setSalaryAudit(data);
-    } catch { toast.error("فشل فحص الرواتب"); }
-    finally { setSalaryLoading(false); }
-  };
+      const result = await apiCall("salary-check", { uuid: salaryUuid.trim() });
+      setSalaryResult(result);
+    } catch (e: any) {
+      toast.error(e.message || "فشل الفحص");
+    }
+    setSalaryLoading(false);
+  }, [salaryUuid]);
 
-  const handleSalaryFix = async (uuid: string) => {
-    try {
-      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-block-withdraw`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `uuid=${uuid}`,
-      });
-      const data = await res.json();
-      if (data.ok) {
-        toast.success(`تم تصحيح الراتب لـ ${uuid}`);
-        handleSalaryAudit();
-      } else toast.error(data.error || "فشل التصحيح");
-    } catch { toast.error("خطأ في التصحيح"); }
-  };
+  /* ── Alerts Section ── */
+  const alerts = alertsData?.alerts || {};
+  const summary = alertsData?.summary || {};
 
-  /* ── Transaction Monitor ── */
-  const handleLoadTransactions = async () => {
-    setTxLoading(true);
-    try {
-      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=recent-charges&limit=50`);
-      const data = await res.json();
-      setTxCharges(data.charges || []);
-    } catch { toast.error("فشل تحميل العمليات"); }
-    finally { setTxLoading(false); }
-  };
+  /* ── Feed ── */
+  const activities: any[] = feedData?.activities || [];
+  const feedSummary = feedData?.summary || {};
+  const categoryCounts: Record<string, number> = {};
+  activities.forEach(a => { categoryCounts[a.category] = (categoryCounts[a.category] || 0) + 1; });
+  const filteredActivities = feedFilter === "all" ? activities : activities.filter(a => a.category === feedFilter);
 
-  /* ── Alerts Summary ── */
-  const handleLoadAlertsSummary = async () => {
-    setAlertsSummaryLoading(true);
-    try {
-      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=monitor-alerts`);
-      const data = await res.json();
-      setAlertsSummary(data.alerts || null);
-    } catch { toast.error("فشل تحميل التنبيهات"); }
-    finally { setAlertsSummaryLoading(false); }
-  };
-
-  /* ── User Check ── */
-  const handleUserCheck = async () => {
-    if (!checkUuid.trim()) { toast.error("أدخل UUID"); return; }
-    setUserCheckLoading(true);
-    try {
-      const [salaryRes, chargesRes] = await Promise.all([
-        fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-check&uuid=${checkUuid.trim()}`),
-        fetch(`${DB_PROXY}?key=ghala2026proxy&action=recent-charges&uuid=${checkUuid.trim()}&limit=10`),
-      ]);
-      const [salaryData, chargesData] = await Promise.all([salaryRes.json(), chargesRes.json()]);
-      setUserCheckData(salaryData);
-      setUserCheckCharges(chargesData.charges || []);
-    } catch { toast.error("فشل الفحص"); }
-    finally { setUserCheckLoading(false); }
-  };
-
-  /* ── Daily Summary ── */
-  const handleLoadDaily = async () => {
-    setDailyLoading(true);
-    try {
-      const res = await fetch(`${DB_PROXY}?key=ghala2026proxy&action=daily-summary`);
-      const data = await res.json();
-      setDailySummary(data);
-    } catch { toast.error("فشل تحميل الملخص"); }
-    finally { setDailyLoading(false); }
-  };
-
-  /* ── Sections nav ── */
-  const sections = [
-    { key: "alerts" as const, label: "التنبيهات", icon: Bell, badge: unreadCount },
-    { key: "salary" as const, label: "الرواتب", icon: Wallet, badge: 0 },
-    { key: "transactions" as const, label: "العمليات", icon: Activity, badge: 0 },
-    { key: "usercheck" as const, label: "فحص", icon: UserSearch, badge: 0 },
-    { key: "daily" as const, label: "يومي", icon: TrendingUp, badge: 0 },
-    { key: "bot" as const, label: "البوت", icon: Bot, badge: 0 },
-    { key: "stats" as const, label: "إحصائيات", icon: BarChart3, badge: 0 },
-    { key: "monitors" as const, label: "المراقبات", icon: Monitor, badge: safePusherMessages.length },
-    { key: "history" as const, label: "السجل", icon: Clock, badge: 0 },
-    { key: "settings" as const, label: "إعدادات", icon: Settings, badge: 0 },
-  ];
-
-  const todayCountByType = monitorTypes.filter(m => m.connected).map(m => ({
-    ...m,
-    count: m.key === "pusher_promo"
-      ? safePusherMessages.length
-      : todayAlerts.filter(a => a.alert_type === m.key).length,
-  }));
-
-  const connectedCount = monitorTypes.filter(m => m.connected).length;
-  const needsDbCount = monitorTypes.filter(m => !m.connected).length;
+  /* ── Audit ── */
+  const suspicious: any[] = auditData?.suspicious || [];
 
   return (
     <AdminPageLayout title="المراقبة" onLogout={handleLogout}>
-      {/* ═══ HEADER STATS ═══ */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        {[
-          { value: todayAlerts.length, label: "تنبيهات اليوم", color: "hsl(160 84% 39%)" },
-          { value: highCount, label: "عالية الخطورة", color: "hsl(0 84% 60%)" },
-          { value: onlineCount, label: "أونلاين الآن", color: "hsl(217 91% 60%)" },
-          { value: unreadCount, label: "غير مقروءة", color: "hsl(25 95% 53%)" },
-        ].map((s, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="rounded-2xl p-3 text-center"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+      <div className="space-y-6 pb-10" dir="rtl">
+        {/* ── Header with Refresh ── */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-foreground">لوحة المراقبة</h1>
+            {lastRefresh && <p className="text-xs text-muted-foreground">آخر تحديث: {lastRefresh}</p>}
+          </div>
+          <button
+            onClick={refreshAll}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 disabled:opacity-50 transition"
           >
-            <p className="text-xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            تحديث
+          </button>
+        </div>
+
+        {!alertsData && !loading && (
+          <div className="text-center py-16 text-muted-foreground">
+            <Activity className="w-12 h-12 mx-auto mb-3 opacity-40" />
+            <p className="text-sm">اضغط "تحديث" لتحميل البيانات</p>
+          </div>
+        )}
+
+        {/* ═══ Section 1: Alert Cards ═══ */}
+        {alertsData && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <h2 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> التنبيهات
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <AlertCard
+                icon="🔴" title="عمليات يدوية (أدمن)"
+                count={alerts.dash_additions?.count || 0}
+                sub={`${formatCoins(alerts.dash_additions?.total_coins || 0)} كوينز`}
+                danger={alerts.dash_additions?.count > 0}
+              />
+              <AlertCard
+                icon="⚠️" title="رواتب مشبوهة"
+                count={alerts.fake_salary?.count || 0}
+                sub={`فائض $${alerts.fake_salary?.total_excess || 0}`}
+                danger={alerts.fake_salary?.count > 0}
+              />
+              <AlertCard
+                icon="💰" title="سحوبات كبيرة (+$200)"
+                count={alerts.large_withdrawals?.count || 0}
+                sub={`$${alerts.large_withdrawals?.total_usd || 0}`}
+                danger={alerts.large_withdrawals?.count > 0} amber
+              />
+              <AlertCard
+                icon="💵" title="إجمالي السحوبات"
+                count={summary.total_withdrawals_today || 0}
+                sub={`$${summary.total_withdraw_usd_today || 0}`}
+              />
+              <AlertCard
+                icon="📦" title="شحن وكالات مشبوه"
+                count={alerts.suspicious_freight?.count || 0}
+                sub={`${formatCoins(alerts.suspicious_freight?.total_coins || 0)} كوينز`}
+                danger={alerts.suspicious_freight?.count > 0} amber
+              />
+            </div>
           </motion.div>
-        ))}
-      </div>
+        )}
 
-      {/* Last update + Pusher status + refresh */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <p className="text-[10px] text-muted-foreground">
-            آخر تحديث: <span className="tabular-nums">{lastUpdateRef.current || "—"}</span>
-          </p>
-          {enabledMonitors.pusher_promo && (
-            <div className="flex items-center gap-1">
-              {pusherConnected ? (
-                <>
-                  <Wifi size={10} style={{ color: "hsl(160 84% 39%)" }} />
-                  <span className="text-[9px] font-bold" style={{ color: "hsl(160 84% 39%)" }}>
-                    Pusher متصل ({subscribedChannelsRef.current.size})
-                  </span>
-                </>
-              ) : (
-                <>
-                  <WifiOff size={10} className="text-muted-foreground" />
-                  <span className="text-[9px] text-muted-foreground">Pusher غير متصل</span>
-                </>
+        {/* ═══ Section 2: Activity Feed ═══ */}
+        {feedData && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <h2 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+              <Activity className="w-4 h-4" /> سجل العمليات
+              <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{feedSummary.total || 0}</span>
+              {(feedSummary.danger_count || 0) > 0 && (
+                <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">{feedSummary.danger_count} خطر</span>
               )}
-            </div>
-          )}
-        </div>
-        <motion.button whileTap={{ scale: 0.9 }} onClick={loadAlerts}
-          className="h-7 px-3 rounded-xl text-[10px] font-bold flex items-center gap-1.5"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <RefreshCw size={11} className={loading ? "animate-spin" : ""} /> تحديث
-        </motion.button>
-      </div>
+            </h2>
 
-      {/* ═══ SECTION TABS ═══ */}
-      <div className="overflow-x-auto scrollbar-hide -mx-1 px-1 mb-4">
-        <div className="flex gap-1 min-w-max p-1 rounded-2xl" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          {sections.map(s => {
-            const Icon = s.icon;
-            const active = activeSection === s.key;
-            return (
-              <motion.button
-                key={s.key}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveSection(s.key)}
-                className={`py-2 px-3 rounded-xl text-[10px] font-bold flex items-center gap-1 whitespace-nowrap transition-all ${active ? "text-white" : "text-muted-foreground"}`}
-                style={active ? {
-                  background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                  boxShadow: "0 4px 16px rgba(16,185,129,0.25)",
-                } : {}}
-              >
-                <Icon size={12} />
-                {s.label}
-                {s.badge > 0 && (
-                  <span className="h-4 min-w-4 rounded-full text-[8px] font-bold flex items-center justify-center px-1 text-white"
-                    style={{ background: "hsl(0 84% 60%)" }}>
-                    {s.badge > 99 ? "99+" : s.badge}
-                  </span>
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════ */}
-      {/* SECTION 1: LIVE ALERTS                 */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "alerts" && (
-        <div className="space-y-3">
-          {/* Live indicator + filter */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "hsl(0 84% 60%)", boxShadow: "0 0 8px hsl(0 84% 60%)" }} />
-              <span className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>مباشر</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <motion.button whileTap={{ scale: 0.9 }} onClick={markAllRead}
-                className="h-7 px-2.5 rounded-xl text-[9px] font-bold flex items-center gap-1"
-                style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.15)", color: "hsl(160 84% 39%)" }}>
-                <CheckCheck size={10} /> مقروء
-              </motion.button>
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoundEnabled(!soundEnabled)}
-                className="h-7 w-7 rounded-xl flex items-center justify-center"
-                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                {soundEnabled ? <Volume2 size={11} style={{ color: "hsl(160 84% 39%)" }} /> : <VolumeX size={11} className="text-muted-foreground" />}
-              </motion.button>
-            </div>
-          </div>
-
-          {/* Filter chips */}
-          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
-            <div className="flex gap-1.5 min-w-max">
-              {alertFilters.map(f => {
-                const Icon = f.icon;
-                const active = alertFilter === f.key;
-                const count = f.key === "all" ? safeAlerts.length : safeAlerts.filter(a => alertTypeConfig[a.alert_type]?.filterKey === f.key).length;
-                return (
-                  <motion.button
-                    key={f.key}
-                    whileTap={{ scale: 0.93 }}
-                    onClick={() => setAlertFilter(f.key)}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold transition-all ${active ? "text-white" : "text-muted-foreground"}`}
-                    style={active ? {
-                      background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                    } : {
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <Icon size={10} />
-                    {f.label}
-                    {count > 0 && <span className="text-[8px] opacity-70">({count})</span>}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Pusher real-time alerts (shown at top when filter is promotion or all) */}
-          {(alertFilter === "all" || alertFilter === "promotion") && safePusherMessages.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 mb-1">
-                <Radio size={12} style={{ color: "hsl(0 84% 60%)" }} className="animate-pulse" />
-                <span className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>
-                  ترويج مكتشف عبر Pusher ({safePusherMessages.length})
-                </span>
-              </div>
-              {pusherMessages.slice(0, 10).map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="rounded-2xl p-3.5"
-                  style={{ background: "hsla(0,84%,60%,0.08)", border: "1px solid hsla(0,84%,60%,0.2)" }}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare size={12} style={{ color: "hsl(0 84% 60%)" }} />
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: "hsla(0,84%,60%,0.15)", color: "hsl(0 84% 60%)" }}>
-                        عالية
-                      </span>
-                      <span className="text-[10px] font-bold">ترويج (رسائل)</span>
-                    </div>
-                    <span className="text-[9px] text-muted-foreground tabular-nums">{formatTime(msg.time)}</span>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px]">
-                      <span className="text-muted-foreground">المرسل: </span>
-                      <span className="font-bold">{msg.senderName} </span>
-                      <span className="font-mono tabular-nums text-muted-foreground">(UUID: {msg.senderUuid})</span>
-                    </p>
-                    <p className="text-[11px]">
-                      <span className="text-muted-foreground">الكلمة: </span>
-                      <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>"{msg.keyword}"</span>
-                    </p>
-                    <p className="text-[11px]">
-                      <span className="text-muted-foreground">المحادثة: </span>
-                      <span className="font-mono tabular-nums">#{msg.conversationId}</span>
-                    </p>
-                    <div className="mt-2 rounded-xl p-2" style={{ background: "rgba(0,0,0,0.2)" }}>
-                      <p className="text-[10px] text-white/80 whitespace-pre-wrap break-words">{msg.text}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-3">
-                    <motion.button whileTap={{ scale: 0.95 }}
-                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-white flex items-center gap-1"
-                      style={{ background: "hsl(0 84% 50%)" }}
-                      onClick={() => handleBanUser(msg.senderUuid, msg.senderName)}>
-                      <Ban size={10} /> حظر 24h
-                    </motion.button>
-                    <motion.button whileTap={{ scale: 0.95 }}
-                      className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
-                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-                      onClick={() => setPusherMessages(prev => prev.filter(m => m.id !== msg.id))}>
-                      تجاهل
-                    </motion.button>
-                  </div>
-                </motion.div>
+            {/* Filter Tabs */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              <FilterTab label={`الكل (${feedSummary.total || 0})`} active={feedFilter === "all"} onClick={() => setFeedFilter("all")} />
+              {Object.entries(categoryCounts).map(([cat, count]) => (
+                <FilterTab
+                  key={cat}
+                  label={`${categoryConfig[cat]?.icon || "📋"} ${categoryConfig[cat]?.label || cat} (${count})`}
+                  active={feedFilter === cat}
+                  onClick={() => setFeedFilter(cat)}
+                />
               ))}
             </div>
-          )}
 
-          {/* API Alert cards */}
-          {loading && filteredAlerts.length === 0 && (
-            <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "hsl(160 84% 39%)" }} /></div>
-          )}
+            {/* Feed List */}
+            <div className="max-h-[500px] overflow-y-auto space-y-2 rounded-xl border border-border/40 bg-card/50 p-2">
+              {filteredActivities.length === 0 && (
+                <p className="text-center text-muted-foreground text-sm py-8">لا توجد عمليات</p>
+              )}
+              <AnimatePresence>
+                {filteredActivities.map((item, i) => (
+                  <FeedItem key={item.id || i} item={item} />
+                ))}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
 
-          {!loading && filteredAlerts.length === 0 && safePusherMessages.length === 0 && (
+        {/* ═══ Section 3: User Salary Check ═══ */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <h2 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+            <Search className="w-4 h-4" /> فحص راتب مستخدم
+          </h2>
+          <div className="flex gap-2 mb-3">
+            <input
+              value={salaryUuid}
+              onChange={e => setSalaryUuid(e.target.value)}
+              placeholder="UUID"
+              className="flex-1 px-3 py-2 rounded-xl bg-muted/50 border border-border/40 text-foreground text-sm placeholder:text-muted-foreground"
+              onKeyDown={e => e.key === "Enter" && checkSalary()}
+            />
+            <button
+              onClick={checkSalary}
+              disabled={salaryLoading}
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50"
+            >
+              {salaryLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "فحص"}
+            </button>
+          </div>
+
+          {salaryResult && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="text-center py-16 rounded-2xl"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <Eye size={32} className="mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-xs text-muted-foreground">لا توجد تنبيهات</p>
-              <p className="text-[10px] text-muted-foreground/60 mt-1">يتم الفحص كل {settingsRefreshSec} ثانية</p>
-            </motion.div>
-          )}
-
-          <AnimatePresence mode="popLayout">
-            {filteredAlerts.slice(0, 50).map((alert, i) => (
-              <AlertCard key={alert.id} alert={alert} index={i} onDelete={deleteAlert} onBan={handleBanUser} />
-            ))}
-          </AnimatePresence>
-
-          {filteredAlerts.length > 50 && (
-            <p className="text-center text-[10px] text-muted-foreground py-2">
-              عرض 50 من {filteredAlerts.length} — راجع السجل للمزيد
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════ */}
-      {/* SALARY MONITOR                          */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "salary" && (
-        <div className="space-y-4">
-          <motion.button whileTap={{ scale: 0.97 }} onClick={handleSalaryAudit} disabled={salaryLoading}
-            className="w-full py-3 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 45%))" }}>
-            {salaryLoading ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
-            فحص الرواتب
-          </motion.button>
-
-          {salaryAudit && (
-            <>
-              <div className="rounded-2xl p-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-[11px] text-muted-foreground">
-                  الشهر: <span className="font-bold text-foreground">{salaryAudit.month || "—"}</span>
-                  {" · "}مشبوه: <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>{salaryAudit.suspicious_count || 0}</span>
-                </p>
-              </div>
-
-              {(salaryAudit.suspicious || []).length === 0 && (
-                <div className="text-center py-10 rounded-2xl" style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.1)" }}>
-                  <p className="text-sm font-bold" style={{ color: "hsl(160 84% 39%)" }}>✅ لا توجد رواتب مشبوهة</p>
-                </div>
-              )}
-
-              {(salaryAudit.suspicious || []).map((s: any, i: number) => {
-                const isHighExcess = s.excess_usd > 50;
-                const isMedExcess = s.excess_usd > 10;
-                return (
-                  <motion.div key={s.uuid} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                    className="rounded-2xl p-4 space-y-2"
-                    style={{
-                      background: isHighExcess ? "hsla(0,84%,60%,0.06)" : isMedExcess ? "hsla(48,96%,53%,0.06)" : "rgba(255,255,255,0.03)",
-                      border: `1px solid ${isHighExcess ? "hsla(0,84%,60%,0.2)" : isMedExcess ? "hsla(48,96%,53%,0.2)" : "rgba(255,255,255,0.06)"}`,
-                    }}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[12px] font-bold">{s.name || "—"}</p>
-                      <span className="text-[9px] font-mono text-muted-foreground">UUID: {s.uuid}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-[10px]">
-                      <p><span className="text-muted-foreground">المسجل: </span><span className="font-bold">${s.salary_recorded?.toFixed(2)}</span></p>
-                      <p><span className="text-muted-foreground">المتوقع: </span><span className="font-bold">${s.salary_expected?.toFixed(2)}</span></p>
-                      <p><span className="text-muted-foreground">الزيادة: </span><span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>${s.excess_usd?.toFixed(2)}</span></p>
-                      <p><span className="text-muted-foreground">الماس: </span><span className="font-bold tabular-nums">{(s.monthly_diamonds || 0).toLocaleString()}</span></p>
-                    </div>
-                    {s.agency_id && <p className="text-[10px] text-muted-foreground">الوكالة: #{s.agency_id}</p>}
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleSalaryFix(s.uuid)}
-                      className="h-8 px-4 rounded-xl text-[10px] font-bold text-black"
-                      style={{ background: "hsl(48 96% 53%)" }}>
-                      تصحيح
-                    </motion.button>
-                  </motion.div>
-                );
-              })}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════ */}
-      {/* TRANSACTION MONITOR                     */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "transactions" && (
-        <div className="space-y-3">
-          <motion.button whileTap={{ scale: 0.97 }} onClick={handleLoadTransactions} disabled={txLoading}
-            className="w-full py-3 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
-            {txLoading ? <Loader2 size={16} className="animate-spin" /> : <Activity size={16} />}
-            تحديث العمليات
-          </motion.button>
-
-          <div className="flex gap-1">
-            {([
-              { key: "all" as const, label: "الكل" },
-              { key: "suspicious" as const, label: "⚠️ مشبوه" },
-              { key: "withdrawals" as const, label: "💰 سحوبات" },
-              { key: "rewards" as const, label: "🎁 مكافآت" },
-            ]).map(t => (
-              <motion.button key={t.key} whileTap={{ scale: 0.95 }} onClick={() => setTxTab(t.key)}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-bold ${txTab === t.key ? "text-white" : "text-muted-foreground"}`}
-                style={txTab === t.key ? { background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" } : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                {t.label}
-              </motion.button>
-            ))}
-          </div>
-
-          {txCharges.length === 0 && !txLoading && (
-            <div className="text-center py-12 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <Activity size={28} className="mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-[11px] text-muted-foreground">اضغط "تحديث العمليات" لتحميل البيانات</p>
-            </div>
-          )}
-
-          {txCharges.filter(c => {
-            if (txTab === "all") return true;
-            if (txTab === "suspicious") return c.charger_type === "dash" || (c.charger_type === "freight forwarder" && c.amount > 100000);
-            if (txTab === "withdrawals") return c.charger_type === "app" && c.usd > 0;
-            if (txTab === "rewards") return c.charger_type === "room_target_rewards" || c.charger_type === "profit_target";
-            return true;
-          }).map((c: any, i: number) => {
-            const typeIcons: Record<string, string> = { dash: "🔴", app: "🟢", host: "🟡", "freight forwarder": "🔵", room_target_rewards: "⚪", profit_target: "🟣" };
-            const isNegative = c.amount < 0;
-            return (
-              <motion.div key={c.id || i} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}
-                className="rounded-2xl p-3"
-                style={{ background: c.charger_type === "dash" ? "hsla(0,84%,60%,0.05)" : "rgba(255,255,255,0.03)", border: `1px solid ${c.charger_type === "dash" ? "hsla(0,84%,60%,0.15)" : "rgba(255,255,255,0.06)"}` }}>
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span>{typeIcons[c.charger_type] || "⚪"}</span>
-                    <span className="text-[10px] font-bold">{c.charger_name || "—"}</span>
-                    <span className="text-[9px] font-mono text-muted-foreground">({c.charger_uuid})</span>
-                  </div>
-                  <span className="text-[9px] text-muted-foreground tabular-nums">{c.created_at?.slice(11, 16) || "—"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-muted-foreground">
-                    → {c.user_name || "—"} <span className="font-mono">({c.user_uuid})</span>
-                  </p>
-                  <div className="text-left">
-                    <p className="text-[11px] font-bold tabular-nums" style={{ color: isNegative ? "hsl(0 84% 60%)" : "hsl(160 84% 39%)" }}>
-                      {isNegative ? "" : "+"}{(c.amount || 0).toLocaleString()}
-                    </p>
-                    {c.usd > 0 && <p className="text-[9px] text-muted-foreground tabular-nums">${c.usd}</p>}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════ */}
-      {/* USER CHECK                              */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "usercheck" && (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input value={checkUuid} onChange={e => setCheckUuid(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleUserCheck()}
-              placeholder="UUID..."
-              className="flex-1 h-10 rounded-xl px-4 text-sm placeholder:text-muted-foreground focus:outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-            <motion.button whileTap={{ scale: 0.95 }} onClick={handleUserCheck} disabled={userCheckLoading}
-              className="h-10 px-5 rounded-xl text-sm font-bold text-white flex items-center gap-2 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
-              {userCheckLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-              فحص
-            </motion.button>
-          </div>
-
-          {userCheckData && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl p-4 space-y-3"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              className={`rounded-xl border p-4 space-y-3 ${salaryResult.is_suspicious ? "border-red-500/40 bg-red-500/5" : "border-green-500/40 bg-green-500/5"}`}
+            >
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold">{userCheckData.name || "—"}</p>
-                <span className="text-[10px] font-mono text-muted-foreground">UUID: {checkUuid}</span>
+                <div>
+                  <p className="font-bold text-foreground">{salaryResult.user?.name || "—"} ({salaryResult.user?.uuid})</p>
+                  <p className="text-xs text-muted-foreground">وكالة: {salaryResult.user?.agency_id || "—"}</p>
+                </div>
+                {salaryResult.is_suspicious
+                  ? <span className="flex items-center gap-1 text-red-400 text-sm font-bold"><XCircle className="w-4 h-4" /> 🚨 مشبوه</span>
+                  : <span className="flex items-center gap-1 text-green-400 text-sm font-bold"><CheckCircle className="w-4 h-4" /> ✅ نظيف</span>
+                }
               </div>
-              {userCheckData.agency_id && <p className="text-[10px] text-muted-foreground">الوكالة: #{userCheckData.agency_id}</p>}
-
-              <div className="rounded-xl p-3 space-y-2" style={{ background: "rgba(0,0,0,0.15)", border: "1px solid rgba(255,255,255,0.04)" }}>
-                <div className="grid grid-cols-2 gap-2 text-[10px]">
-                  <p><span className="text-muted-foreground">الماس الشهري: </span><span className="font-bold tabular-nums">{(userCheckData.monthly_diamonds || 0).toLocaleString()}</span></p>
-                  <p><span className="text-muted-foreground">الراتب المسجل: </span><span className="font-bold">${userCheckData.salary_actual?.toFixed(2) || "0"}</span></p>
-                  <p><span className="text-muted-foreground">الراتب المتوقع: </span><span className="font-bold">${userCheckData.salary_expected?.toFixed(2) || "0"}</span></p>
-                  <p><span className="text-muted-foreground">المتبقي: </span><span className="font-bold">${userCheckData.remaining?.toFixed(2) || "0"}</span></p>
-                </div>
-                <div className="flex items-center gap-3 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[10px]">
-                    الحالة: {userCheckData.is_suspicious
-                      ? <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>⚠️ مشبوه</span>
-                      : <span className="font-bold" style={{ color: "hsl(160 84% 39%)" }}>✅ نظيف</span>}
-                  </p>
-                  <p className="text-[10px]">
-                    يقدر يسحب: {userCheckData.can_withdraw
-                      ? <span className="font-bold" style={{ color: "hsl(160 84% 39%)" }}>✅ نعم</span>
-                      : <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>❌ لا</span>}
-                  </p>
-                </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <InfoCell label="ألماسات الشهر" value={formatCoins(salaryResult.monthly_diamonds || 0)} />
+                <InfoCell label="الراتب المتوقع" value={`$${salaryResult.salary_expected || 0}`} />
+                <InfoCell label="الراتب الفعلي" value={`$${salaryResult.salary_actual || 0}`} />
+                <InfoCell label="الفائض" value={`$${salaryResult.excess || 0}`} highlight={salaryResult.excess > 0} />
+                <InfoCell label="يمكنه السحب" value={salaryResult.can_withdraw ? "نعم ✅" : "لا ❌"} />
+                {salaryResult.salary_record && (
+                  <InfoCell label="الشهر" value={`${salaryResult.salary_record.month}/${salaryResult.salary_record.year}`} />
+                )}
               </div>
-
-              {userCheckCharges.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-muted-foreground">آخر العمليات:</p>
-                  {userCheckCharges.map((c: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between py-1.5 text-[10px]" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                      <div>
-                        <span>{c.charger_type === "app" ? "🟢" : c.charger_type === "dash" ? "🔴" : "⚪"} </span>
-                        <span>{c.charger_type} → {c.user_name || c.user_uuid}</span>
-                      </div>
-                      <div className="text-left">
-                        <span className="font-bold tabular-nums" style={{ color: c.amount < 0 ? "hsl(0 84% 60%)" : "hsl(160 84% 39%)" }}>
-                          {(c.amount || 0).toLocaleString()}
-                        </span>
-                        {c.usd > 0 && <span className="text-muted-foreground ml-1">(${c.usd})</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {salaryResult.salary_record && (
+                <p className="text-xs text-muted-foreground">
+                  Diamond: {salaryResult.salary_record.diamond} | Cut: ${salaryResult.salary_record.cut_amount}
+                </p>
               )}
-
-              <div className="flex gap-2 pt-2">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleSalaryFix(checkUuid)}
-                  className="h-8 px-4 rounded-xl text-[10px] font-bold text-black"
-                  style={{ background: "hsl(48 96% 53%)" }}>
-                  تصحيح الراتب
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.95 }}
-                  onClick={async () => {
-                    try {
-                      await fetch(`${DB_PROXY}?key=ghala2026proxy&action=salary-block-withdraw`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                        body: `uuid=${checkUuid}`,
-                      });
-                      toast.success("تم حظر السحب");
-                    } catch { toast.error("فشل"); }
-                  }}
-                  className="h-8 px-4 rounded-xl text-[10px] font-bold text-white"
-                  style={{ background: "hsl(0 84% 50%)" }}>
-                  حظر السحب
-                </motion.button>
-              </div>
             </motion.div>
           )}
-        </div>
-      )}
+        </motion.div>
 
-      {/* ═══════════════════════════════════════ */}
-      {/* DAILY SUMMARY                           */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "daily" && (
-        <div className="space-y-4">
-          <motion.button whileTap={{ scale: 0.97 }} onClick={() => { handleLoadDaily(); handleLoadAlertsSummary(); }} disabled={dailyLoading}
-            className="w-full py-3 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
-            {dailyLoading ? <Loader2 size={16} className="animate-spin" /> : <TrendingUp size={16} />}
-            تحديث الملخص اليومي
-          </motion.button>
-
-          {/* Alert Summary Cards */}
-          {alertsSummary && (
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: "رواتب وهمية", count: alertsSummary.fake_salary?.count || 0, detail: `+$${alertsSummary.fake_salary?.total_excess?.toFixed(0) || 0}`, color: "hsl(0 84% 60%)", bg: "hsla(0,84%,60%,0.06)" },
-                { label: "إضافة يدوية", count: alertsSummary.dash_additions?.count || 0, detail: `${((alertsSummary.dash_additions?.total_coins || 0) / 1000).toFixed(0)}K`, color: "hsl(0 84% 60%)", bg: "hsla(0,84%,60%,0.06)" },
-                { label: "سحوبات كبيرة", count: alertsSummary.large_withdrawals?.count || 0, detail: `$${alertsSummary.large_withdrawals?.total_usd || 0}`, color: "hsl(48 96% 53%)", bg: "hsla(48,96%,53%,0.06)" },
-                { label: "شحن مشبوه", count: alertsSummary.suspicious_freight?.count || 0, detail: `${((alertsSummary.suspicious_freight?.total_coins || 0) / 1000).toFixed(0)}K`, color: "hsl(48 96% 53%)", bg: "hsla(48,96%,53%,0.06)" },
-              ].map((a, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                  className="rounded-2xl p-3 text-center"
-                  style={{ background: a.bg, border: `1px solid ${a.color}30` }}>
-                  <p className="text-xl font-bold tabular-nums" style={{ color: a.color }}>{a.count}</p>
-                  <p className="text-[9px] text-muted-foreground">{a.label}</p>
-                  <p className="text-[9px] font-bold tabular-nums mt-0.5" style={{ color: a.color }}>{a.detail}</p>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {/* Daily Stats */}
-          {dailySummary && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: "💰 إجمالي السحوبات", value: dailySummary.total_withdrawals_count || 0, detail: `$${dailySummary.total_withdrawals_usd || 0}`, color: "hsl(217 91% 60%)" },
-                  { label: "🎁 إجمالي الهدايا", value: dailySummary.total_gifts_count || 0, detail: `${((dailySummary.total_gifts_coins || 0) / 1000).toFixed(0)}K`, color: "hsl(160 84% 39%)" },
-                  { label: "⚠️ عمليات مشبوهة", value: dailySummary.suspicious_count || 0, detail: "", color: "hsl(25 95% 53%)" },
-                  { label: "👥 نشطين", value: dailySummary.active_users || 0, detail: "", color: "hsl(280 67% 60%)" },
-                ].map((s, i) => (
-                  <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.05 }}
-                    className="rounded-2xl p-3 text-center"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <p className="text-xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</p>
-                    <p className="text-[9px] text-muted-foreground">{s.label}</p>
-                    {s.detail && <p className="text-[9px] font-bold tabular-nums mt-0.5" style={{ color: s.color }}>{s.detail}</p>}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!dailySummary && !alertsSummary && !dailyLoading && (
-            <div className="text-center py-12 rounded-2xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-              <TrendingUp size={28} className="mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-[11px] text-muted-foreground">اضغط الزر لتحميل الملخص اليومي</p>
-            </div>
-          )}
-        </div>
-      )}
-
-
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "bot" && (
-        <div className="flex flex-col" style={{ height: "calc(100vh - 300px)" }}>
-          <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-1">
-            {chatMessages.length === 0 && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-                <Bot size={36} className="mx-auto mb-3" style={{ color: "hsla(160,84%,39%,0.4)" }} />
-                <p className="text-xs text-muted-foreground mb-4">اسأل أي سؤال عن المستخدمين والشحنات</p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {quickQuestions.map((q, i) => (
-                    <motion.button
-                      key={i}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + i * 0.06 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => handleBotQuery(q)}
-                      className="text-[10px] py-2 px-3 rounded-xl text-muted-foreground"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
-                    >
-                      {q}
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {chatMessages.map((msg, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className="max-w-[85%] rounded-2xl px-4 py-3"
-                  style={msg.role === "user" ? {
-                    background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                    borderBottomLeftRadius: "20px", borderBottomRightRadius: "6px",
-                  } : {
-                    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
-                    borderBottomLeftRadius: "6px", borderBottomRightRadius: "20px",
-                  }}>
-                  <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                  <p className={`text-[8px] mt-1 tabular-nums ${msg.role === "user" ? "text-white/50" : "text-muted-foreground/50"}`}>{msg.time}</p>
-                </div>
-              </motion.div>
-            ))}
-
-            {botLoading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-                <div className="rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <div className="flex items-center gap-2">
-                    <Loader2 size={14} className="animate-spin" style={{ color: "hsl(160 84% 39%)" }} />
-                    <span className="text-[11px] text-muted-foreground">جاري التحليل...</span>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          <div className="flex gap-2 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <input
-              value={botInput}
-              onChange={e => setBotInput(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleBotQuery()}
-              placeholder="اسأل البوت..."
-              className="flex-1 h-11 rounded-2xl px-4 text-sm placeholder:text-muted-foreground focus:outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-            />
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleBotQuery()}
-              disabled={botLoading || !botInput.trim()}
-              className="w-11 h-11 rounded-2xl flex items-center justify-center disabled:opacity-40"
-              style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
-              <Send size={16} className="text-white" />
-            </motion.button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════ */}
-      {/* SECTION 3: STATS DASHBOARD             */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "stats" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "تنبيهات اليوم", value: todayAlerts.length, color: "hsl(160 84% 39%)" },
-              { label: "عالية الخطورة", value: highCount, color: "hsl(0 84% 60%)" },
-              { label: "أونلاين الآن", value: onlineCount, color: "hsl(217 91% 60%)" },
-            ].map((s, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                className="rounded-2xl p-3 text-center"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-2xl font-bold tabular-nums" style={{ color: s.color }}>{s.value}</p>
-                <p className="text-[9px] text-muted-foreground mt-0.5">{s.label}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Alert type breakdown */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="rounded-2xl p-4 space-y-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-bold">توزيع التنبيهات اليوم</p>
-            {todayCountByType.filter(m => m.count > 0).map((m, i) => {
-              const maxCount = Math.max(...todayCountByType.map(x => x.count), 1);
-              const pct = (m.count / maxCount) * 100;
-              return (
-                <div key={m.key} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground">{m.label}</span>
-                    <span className="text-[10px] font-bold tabular-nums">{m.count}</span>
-                  </div>
-                  <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ delay: 0.2 + i * 0.05, duration: 0.5 }}
-                      className="h-full rounded-full"
-                      style={{ background: "linear-gradient(90deg, hsl(160 84% 39%), hsl(160 84% 50%))" }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            {todayCountByType.every(m => m.count === 0) && (
-              <p className="text-[10px] text-muted-foreground text-center py-4">لا توجد تنبيهات اليوم</p>
-            )}
-          </motion.div>
-
-          {/* Severity breakdown */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="rounded-2xl p-4"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-bold mb-3">مستوى الخطورة</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(["high", "medium", "low"] as const).map(sev => {
-                const cfg = severityConfig[sev];
-                const count = todayAlerts.filter(a => getSeverity(a) === sev).length + (sev === "high" ? safePusherMessages.length : 0);
-                return (
-                  <div key={sev} className="rounded-xl p-3 text-center" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}>
-                    <p className="text-lg font-bold tabular-nums" style={{ color: cfg.color }}>{count}</p>
-                    <p className="text-[9px]" style={{ color: cfg.color }}>{cfg.label}</p>
-                  </div>
-                );
-              })}
+        {/* ═══ Section 4: Daily Summary ═══ */}
+        {dailyData && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <h2 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" /> الملخص اليومي
+              <span className="text-xs text-muted-foreground">({dailyData.date})</span>
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <SummaryCard icon="💰" title="سحوبات رواتب" count={dailyData.withdrawals?.count || 0} sub={`$${dailyData.withdrawals?.total_usd || 0}`} />
+              <SummaryCard icon="🏠" title="سحوبات هوست" count={dailyData.host_withdrawals?.count || 0} sub={`$${dailyData.host_withdrawals?.total_usd || 0}`} />
+              <SummaryCard icon="🎁" title="مكافآت غرف" count={dailyData.room_rewards?.count || 0} sub={`${formatCoins(dailyData.room_rewards?.total_coins || 0)} كوينز`} />
+              <SummaryCard icon="📦" title="شحن وكالات" count={dailyData.freight?.count || 0} sub={`${formatCoins(dailyData.freight?.total_coins || 0)} كوينز`} />
+              <SummaryCard icon="🔧" title="عمليات أدمن" count={dailyData.dashboard_ops?.count || 0} sub={`${formatCoins(dailyData.dashboard_ops?.total_coins || 0)} كوينز`} />
             </div>
           </motion.div>
+        )}
 
-          {/* Pusher stats */}
-          {enabledMonitors.pusher_promo && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-              className="rounded-2xl p-4"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-xs font-bold mb-3">مراقبة Pusher</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl p-3 text-center" style={{ background: pusherConnected ? "hsla(160,84%,39%,0.08)" : "hsla(0,84%,60%,0.08)" }}>
-                  <p className="text-lg font-bold" style={{ color: pusherConnected ? "hsl(160 84% 39%)" : "hsl(0 84% 60%)" }}>
-                    {pusherConnected ? "متصل" : "منقطع"}
-                  </p>
-                  <p className="text-[9px] text-muted-foreground">الحالة</p>
-                </div>
-                <div className="rounded-xl p-3 text-center" style={{ background: "hsla(217,91%,60%,0.08)" }}>
-                  <p className="text-lg font-bold tabular-nums" style={{ color: "hsl(217 91% 60%)" }}>{subscribedChannelsRef.current.size}</p>
-                  <p className="text-[9px] text-muted-foreground">محادثة مُراقبة</p>
-                </div>
-                <div className="rounded-xl p-3 text-center" style={{ background: "hsla(0,84%,60%,0.08)" }}>
-                  <p className="text-lg font-bold tabular-nums" style={{ color: "hsl(0 84% 60%)" }}>{safePusherMessages.length}</p>
-                  <p className="text-[9px] text-muted-foreground">ترويج مكتشف</p>
-                </div>
+        {/* ═══ Section 5: Salary Audit ═══ */}
+        {auditData && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <h2 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
+              <Shield className="w-4 h-4" /> تدقيق الرواتب
+              <span className="text-xs text-muted-foreground">({auditData.month})</span>
+            </h2>
+
+            {suspicious.length === 0 ? (
+              <div className="text-center py-8 rounded-xl border border-green-500/20 bg-green-500/5">
+                <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-2" />
+                <p className="text-green-400 font-bold text-sm">لا توجد رواتب مشبوهة</p>
+                <p className="text-xs text-muted-foreground">{auditData.clean || 0} راتب نظيف ✅</p>
               </div>
-            </motion.div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════ */}
-      {/* SECTION 4: MONITOR TYPES               */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "monitors" && (
-        <div className="space-y-3">
-          <p className="text-[11px] text-muted-foreground mb-1">أنواع المراقبة — {connectedCount}/{monitorTypes.length} متصل</p>
-          {monitorTypes.map((m, i) => {
-            const todayCount = m.key === "pusher_promo"
-              ? safePusherMessages.length
-              : todayAlerts.filter(a => a.alert_type === m.key).length;
-            const isPusher = m.key === "pusher_promo";
-            return (
-              <motion.div
-                key={m.key}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="rounded-2xl p-3.5 flex items-center justify-between"
-                style={{
-                  background: isPusher && pusherConnected ? "rgba(16,185,129,0.04)" : "rgba(255,255,255,0.03)",
-                  border: isPusher && pusherConnected ? "1px solid rgba(16,185,129,0.15)" : "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[11px] font-bold truncate">{m.label}</p>
-                    {isPusher && pusherConnected && (
-                      <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "hsl(160 84% 39%)" }} />
-                    )}
-                  </div>
-                  {m.connected ? (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[9px] text-muted-foreground">{m.interval}</span>
-                      {todayCount > 0 && (
-                        <span className="text-[9px] font-bold tabular-nums" style={{ color: "hsl(25 95% 53%)" }}>{todayCount} اليوم</span>
-                      )}
-                      {isPusher && (
-                        <span className="text-[9px] text-muted-foreground">({subscribedChannelsRef.current.size} محادثة)</span>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-[9px] mt-0.5" style={{ color: "hsl(25 95% 53%)" }}>غير متصل — يحتاج ربط</p>
-                  )}
-                </div>
-                {m.connected ? (
-                  <motion.button whileTap={{ scale: 0.9 }} onClick={() => toggleMonitor(m.key)}
-                    className="w-10 h-5 rounded-full relative shrink-0 transition-colors"
-                    style={{ background: enabledMonitors[m.key] ? "hsl(160 84% 39%)" : "hsl(240 5% 34%)" }}>
-                    <motion.div
-                      className="w-4 h-4 rounded-full bg-white absolute top-0.5"
-                      animate={{ x: enabledMonitors[m.key] ? 0 : 22 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  </motion.button>
-                ) : (
-                  <span className="text-[9px] px-2 py-1 rounded-lg text-muted-foreground"
-                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    قريباً
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">
+                    {auditData.suspicious_count} مشبوه
                   </span>
-                )}
-              </motion.div>
-            );
-          })}
-
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            className="rounded-2xl p-3 mt-2"
-            style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.1)" }}>
-            <p className="text-[10px] text-muted-foreground">
-              متصل: <span className="font-bold" style={{ color: "hsl(160 84% 39%)" }}>{connectedCount}</span> — يحتاج ربط: <span className="font-bold" style={{ color: "hsl(25 95% 53%)" }}>{needsDbCount}</span>
-            </p>
-          </motion.div>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════ */}
-      {/* SECTION 5: HISTORY                     */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "history" && (
-        <div className="space-y-3">
-          <div className="flex gap-1.5">
-            {([
-              { key: "today" as const, label: "اليوم" },
-              { key: "week" as const, label: "الأسبوع" },
-              { key: "month" as const, label: "الشهر" },
-            ]).map(f => (
-              <motion.button key={f.key} whileTap={{ scale: 0.95 }}
-                onClick={() => setHistoryFilter(f.key)}
-                className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all ${historyFilter === f.key ? "text-white" : "text-muted-foreground"}`}
-                style={historyFilter === f.key ? {
-                  background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                } : {
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
-                }}>
-                {f.label}
-              </motion.button>
-            ))}
-          </div>
-
-          <div className="relative">
-            <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)}
-              placeholder="بحث UUID أو اسم..."
-              className="w-full h-9 rounded-xl pr-9 pl-3 text-[11px] placeholder:text-muted-foreground focus:outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-            />
-          </div>
-
-          <p className="text-[10px] text-muted-foreground">{historyAlerts.length} تنبيه</p>
-
-          {historyAlerts.slice(0, 100).map((alert, i) => {
-            const sev = getSeverity(alert);
-            const sevCfg = severityConfig[sev];
-            const typeCfg = alertTypeConfig[alert.alert_type];
-            return (
-              <motion.div key={alert.id}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.02 }}
-                className="flex items-start gap-2 py-2"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: sevCfg.color }} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold">{typeCfg?.label || alert.alert_type}</span>
-                    <span className="text-[8px] px-1.5 py-0.5 rounded" style={{ background: sevCfg.bg, color: sevCfg.color }}>{sevCfg.label}</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-                    {alert.sender_name || alert.sender_uuid || "—"}
-                    {alert.amount > 0 && ` — ${formatCoins(alert.amount)}`}
-                    {alert.details?.note && ` — ${alert.details.note}`}
-                  </p>
+                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                    {auditData.clean} نظيف
+                  </span>
                 </div>
-                <div className="text-left shrink-0">
-                  <p className="text-[9px] text-muted-foreground tabular-nums">{formatDate(alert.created_at)}</p>
-                  <p className="text-[9px] text-muted-foreground tabular-nums">{formatTime(alert.created_at)}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-
-          {historyAlerts.length === 0 && (
-            <div className="text-center py-12">
-              <Clock size={28} className="mx-auto mb-2 text-muted-foreground/30" />
-              <p className="text-[11px] text-muted-foreground">لا توجد تنبيهات في هذه الفترة</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════ */}
-      {/* SECTION 6: SETTINGS                    */}
-      {/* ═══════════════════════════════════════ */}
-      {activeSection === "settings" && (
-        <div className="space-y-4">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl p-4 space-y-4"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-bold">إعدادات المراقبة</p>
-
-            {/* Sound */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold">صوت التنبيه</p>
-                <p className="text-[9px] text-muted-foreground">تشغيل صوت عند تنبيه جديد</p>
-              </div>
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoundEnabled(!soundEnabled)}
-                className="w-10 h-5 rounded-full relative transition-colors"
-                style={{ background: soundEnabled ? "hsl(160 84% 39%)" : "hsl(240 5% 34%)" }}>
-                <motion.div className="w-4 h-4 rounded-full bg-white absolute top-0.5"
-                  animate={{ x: soundEnabled ? 0 : 22 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }} />
-              </motion.button>
-            </div>
-
-            {/* Refresh rate */}
-            <div>
-              <p className="text-[11px] font-bold mb-1">تحديث تلقائي كل</p>
-              <div className="flex gap-2">
-                {[15, 30, 60].map(s => (
-                  <motion.button key={s} whileTap={{ scale: 0.95 }}
-                    onClick={() => setSettingsRefreshSec(s)}
-                    className={`flex-1 py-2 rounded-xl text-[10px] font-bold ${settingsRefreshSec === s ? "text-white" : "text-muted-foreground"}`}
-                    style={settingsRefreshSec === s ? {
-                      background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))",
-                    } : {
-                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
-                    }}>
-                    {s} ثانية
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-
-            {/* Thresholds */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-bold">حدود التنبيه</p>
-              {[
-                { label: "شحنة كبيرة", value: settingsBigChargeThreshold, set: setSettingsBigChargeThreshold, suffix: "كوينز" },
-                { label: "شحنات متكررة", value: settingsRepeatThreshold, set: setSettingsRepeatThreshold, suffix: "مرات / ساعة" },
-                { label: "هدية كبيرة", value: settingsBigGiftThreshold, set: setSettingsBigGiftThreshold, suffix: "كوينز" },
-              ].map(th => (
-                <div key={th.label} className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">{th.label} &gt;</span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      value={th.value}
-                      onChange={e => th.set(Number(e.target.value))}
-                      className="w-24 h-7 rounded-lg px-2 text-[10px] text-left tabular-nums focus:outline-none"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
-                    />
-                    <span className="text-[9px] text-muted-foreground">{th.suffix}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Pusher settings */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="rounded-2xl p-4 space-y-3"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <p className="text-xs font-bold">إعدادات Pusher</p>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold">مراقبة الرسائل الخاصة</p>
-                <p className="text-[9px] text-muted-foreground">اكتشاف كلمات ترويج بالمحادثات</p>
-              </div>
-              <motion.button whileTap={{ scale: 0.9 }} onClick={() => toggleMonitor("pusher_promo")}
-                className="w-10 h-5 rounded-full relative transition-colors"
-                style={{ background: enabledMonitors.pusher_promo ? "hsl(160 84% 39%)" : "hsl(240 5% 34%)" }}>
-                <motion.div className="w-4 h-4 rounded-full bg-white absolute top-0.5"
-                  animate={{ x: enabledMonitors.pusher_promo ? 0 : 22 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }} />
-              </motion.button>
-            </div>
-            {enabledMonitors.pusher_promo && (
-              <div className="text-[9px] text-muted-foreground space-y-1 pt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <p>الحالة: {pusherConnected ? <span style={{ color: "hsl(160 84% 39%)" }}>متصل</span> : <span style={{ color: "hsl(0 84% 60%)" }}>غير متصل</span>}</p>
-                <p>محادثات مُراقبة: {subscribedChannelsRef.current.size}</p>
-                <p>ترويج مكتشف: {safePusherMessages.length}</p>
-                <p className="pt-1">الكلمات المراقبة: {PROMO_KEYWORDS.slice(0, 8).join("، ")}...</p>
-              </div>
-            )}
-          </motion.div>
-
-          {/* ═══ Promo Config Panel ═══ */}
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="rounded-2xl p-4 space-y-4"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold">🚫 إعدادات كشف الترويج</p>
-              <motion.button whileTap={{ scale: 0.9 }} onClick={loadPromoConfig}
-                className="h-6 px-2 rounded-lg text-[9px] font-bold flex items-center gap-1 text-muted-foreground"
-                style={{ background: "rgba(255,255,255,0.05)" }}>
-                <RefreshCw size={9} className={promoLoading ? "animate-spin" : ""} /> تحديث
-              </motion.button>
-            </div>
-
-            {promoLoading && !promoConfig && (
-              <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color: "hsl(160 84% 39%)" }} /></div>
-            )}
-
-            {promoConfig && (
-              <div className="space-y-4">
-                {/* التطبيقات المنافسة */}
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>التطبيقات المنافسة ({promoConfig.competitors.length})</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {promoConfig.competitors.map(name => (
-                      <span key={name} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold"
-                        style={{ background: "hsla(0,84%,60%,0.1)", color: "hsl(0 84% 60%)" }}>
-                        {name}
-                        <button onClick={() => handleRemoveCompetitor(name)} disabled={promoSaving}
-                          className="hover:opacity-70 font-bold text-[10px]">✕</button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-1.5">
-                    <input value={newCompetitor} onChange={e => setNewCompetitor(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && handleAddCompetitor()}
-                      placeholder="أضف تطبيق..."
-                      className="flex-1 h-8 rounded-xl px-3 text-[10px] placeholder:text-muted-foreground focus:outline-none"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleAddCompetitor} disabled={promoSaving || !newCompetitor.trim()}
-                      className="h-8 px-3 rounded-xl text-[10px] font-bold text-white disabled:opacity-40"
-                      style={{ background: "hsl(0 84% 50%)" }}>+ إضافة</motion.button>
-                  </div>
-                </div>
-
-                {/* الجمل المشبوهة */}
-                <div className="space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
-                  <p className="text-[10px] font-bold" style={{ color: "hsl(25 95% 53%)" }}>الجمل المشبوهة ({promoConfig.suspicious_phrases.length})</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {promoConfig.suspicious_phrases.map(phrase => (
-                      <span key={phrase} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-bold"
-                        style={{ background: "hsla(25,95%,53%,0.1)", color: "hsl(25 95% 53%)" }}>
-                        {phrase}
-                        <button onClick={() => handleRemovePhrase(phrase)} disabled={promoSaving}
-                          className="hover:opacity-70 font-bold text-[10px]">✕</button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-1.5">
-                    <input value={newPhrase} onChange={e => setNewPhrase(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && handleAddPhrase()}
-                      placeholder="أضف جملة..."
-                      className="flex-1 h-8 rounded-xl px-3 text-[10px] placeholder:text-muted-foreground focus:outline-none"
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-                    <motion.button whileTap={{ scale: 0.9 }} onClick={handleAddPhrase} disabled={promoSaving || !newPhrase.trim()}
-                      className="h-8 px-3 rounded-xl text-[10px] font-bold text-white disabled:opacity-40"
-                      style={{ background: "hsl(25 95% 53%)" }}>+ إضافة</motion.button>
-                  </div>
-                </div>
-
-                {/* التطبيقات الآمنة */}
-                {promoConfig.safe_apps?.length > 0 && (
-                  <div className="space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
-                    <p className="text-[10px] font-bold" style={{ color: "hsl(160 84% 39%)" }}>التطبيقات الآمنة ({promoConfig.safe_apps.length})</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {promoConfig.safe_apps.map(name => (
-                        <span key={name} className="px-2 py-1 rounded-lg text-[9px] font-bold"
-                          style={{ background: "hsla(160,84%,39%,0.1)", color: "hsl(160 84% 39%)" }}>
-                          {name}
-                        </span>
-                      ))}
+                {suspicious.map((s, i) => (
+                  <div key={i} className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-foreground text-sm">{s.name} ({s.uuid})</p>
+                      <span className="text-xs text-muted-foreground">وكالة: {s.agency_id}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      <span className="text-muted-foreground">المسجل: <b className="text-foreground">${s.salary_recorded}</b></span>
+                      <span className="text-muted-foreground">المتوقع: <b className="text-foreground">${s.salary_expected}</b></span>
+                      <span className="text-red-400 font-bold">فائض: ${s.excess_usd}</span>
+                      <span className="text-muted-foreground">ألماسات: {formatCoins(s.monthly_diamonds)}</span>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
             )}
           </motion.div>
-
-          <motion.button whileTap={{ scale: 0.97 }}
-            onClick={() => toast.success("تم حفظ الإعدادات")}
-            className="w-full py-3 rounded-2xl text-sm font-bold text-white"
-            style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 28%))" }}>
-            حفظ الإعدادات
-          </motion.button>
-        </div>
-      )}
+        )}
+      </div>
     </AdminPageLayout>
   );
 };
 
-/* ─── Helper: get severity ─── */
-function getSeverity(alert: MonitorAlert): "high" | "medium" | "low" {
-  if (alert.severity) return alert.severity;
-  if (alert.alert_type === "promotion" || alert.alert_type === "pusher_promo") return "high";
-  if (alert.amount >= 2_000_000) return "high";
-  if (alert.amount >= 500_000) return "medium";
-  if (alert.alert_type === "repeated_charge") return "medium";
-  return "low";
+/* ─── Sub-Components ─── */
+
+function AlertCard({ icon, title, count, sub, danger, amber: isAmber }: {
+  icon: string; title: string; count: number; sub: string; danger?: boolean; amber?: boolean;
+}) {
+  const borderClass = danger
+    ? isAmber ? "border-amber-500/40" : "border-red-500/40"
+    : "border-border/40";
+  const bgClass = danger
+    ? isAmber ? "bg-amber-500/5" : "bg-red-500/5"
+    : "bg-card/50";
+  return (
+    <div className={`rounded-xl border ${borderClass} ${bgClass} p-3 text-center space-y-1`}>
+      <span className="text-lg">{icon}</span>
+      <p className="text-xs text-muted-foreground leading-tight">{title}</p>
+      <p className="text-2xl font-bold text-foreground">{count}</p>
+      <p className="text-xs text-muted-foreground">{sub}</p>
+    </div>
+  );
 }
 
-/* ─── Alert Card Component ─── */
-const AlertCard: React.FC<{ alert: MonitorAlert; index: number; onDelete: (id: string) => void; onBan: (uuid: string, name: string) => void }> = ({ alert, index, onDelete, onBan }) => {
-  const [expanded, setExpanded] = useState(false);
-  const sev = getSeverity(alert);
-  const sevCfg = severityConfig[sev];
-  const typeCfg = alertTypeConfig[alert.alert_type] || { label: alert.alert_type, icon: Bell, filterKey: "all" };
-  const _TypeIcon = typeCfg.icon;
-  const SevIcon = sevCfg.icon;
+function SummaryCard({ icon, title, count, sub }: { icon: string; title: string; count: number; sub: string }) {
+  return (
+    <div className="rounded-xl border border-border/40 bg-card/50 p-3 text-center space-y-1">
+      <span className="text-lg">{icon}</span>
+      <p className="text-xs text-muted-foreground leading-tight">{title}</p>
+      <p className="text-2xl font-bold text-foreground">{count}</p>
+      <p className="text-xs text-muted-foreground">{sub}</p>
+    </div>
+  );
+}
+
+function FilterTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`text-xs px-3 py-1.5 rounded-full transition font-medium ${
+        active
+          ? "bg-primary text-primary-foreground"
+          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function FeedItem({ item }: { item: any }) {
+  const cat = categoryConfig[item.category] || { label: item.category, icon: "📋", color: "blue" };
+  const borderClass = item.severity === "danger" ? "border-r-red-500" : item.severity === "warning" ? "border-r-amber-500" : "border-r-transparent";
+  const isPositive = item.amount_coins > 0;
+
+  let description = "";
+  if (item.category === "purchase") {
+    description = `${item.from_name} شحن عبر ${item.method || "—"}`;
+  } else {
+    description = `${item.from_name || "—"} (${item.from_uuid}) → ${item.to_name || "—"} (${item.to_uuid})`;
+  }
+
+  const amountDisplay = item.amount_usd
+    ? `${isPositive ? "+" : ""}${formatCoins(item.amount_coins)} ($${item.amount_usd})`
+    : `${isPositive ? "+" : ""}${formatCoins(item.amount_coins)}`;
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -80 }}
-      transition={{ delay: index * 0.02 }}
-      className={`rounded-2xl overflow-hidden relative ${!alert.is_read ? "ring-1" : ""}`}
-      style={{
-        background: sevCfg.bg,
-        border: `1px solid ${sevCfg.border}`,
-        ...((!alert.is_read) ? { ringColor: sevCfg.color } : {}),
-      }}
+      initial={{ opacity: 0, x: 10 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0 }}
+      className={`flex items-start gap-3 p-2.5 rounded-lg bg-background/50 border-r-[3px] ${borderClass}`}
     >
-      {!alert.is_read && (
-        <div className="absolute top-3 left-3 w-2 h-2 rounded-full" style={{ background: sevCfg.color, boxShadow: `0 0 8px ${sevCfg.color}` }} />
-      )}
-
-      <div className="p-3.5">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <SevIcon size={12} style={{ color: sevCfg.color }} />
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg" style={{ background: `${sevCfg.color}20`, color: sevCfg.color }}>
-              {sevCfg.label}
-            </span>
-            <span className="text-[10px] font-bold text-foreground">{typeCfg.label}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] text-muted-foreground tabular-nums">{formatTime(alert.created_at)}</span>
-            <motion.button whileTap={{ scale: 0.8 }} onClick={() => onDelete(alert.id)} className="p-1 rounded-lg hover:bg-white/5">
-              <Trash2 size={10} className="text-muted-foreground" />
-            </motion.button>
-          </div>
+      <span className="text-lg mt-0.5 shrink-0">{cat.icon}</span>
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <p className="text-sm text-foreground truncate">{description}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-xs font-bold ${isPositive ? "text-green-400" : "text-red-400"}`}>{amountDisplay}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${colorMap[cat.color] || colorMap.blue}`}>{cat.label}</span>
+          <span className="text-[10px] text-muted-foreground">{formatDateTime(item.date)}</span>
         </div>
-
-        <div className="space-y-1">
-          {alert.sender_uuid && (
-            <p className="text-[11px]">
-              <span className="text-muted-foreground">المرسل: </span>
-              <span className="font-bold">{alert.sender_name || ""} </span>
-              <span className="font-mono tabular-nums text-muted-foreground">(UUID: {alert.sender_uuid})</span>
-            </p>
-          )}
-          {alert.receiver_uuid && (
-            <p className="text-[11px]">
-              <span className="text-muted-foreground">المستقبل: </span>
-              <span className="font-bold">{alert.receiver_name || ""} </span>
-              <span className="font-mono tabular-nums text-muted-foreground">(UUID: {alert.receiver_uuid})</span>
-            </p>
-          )}
-          {alert.amount > 0 && (
-            <p className="text-[11px]">
-              <span className="text-muted-foreground">المبلغ: </span>
-              <span className="font-bold tabular-nums" style={{ color: sevCfg.color }}>{formatMoney(alert.amount)}</span>
-            </p>
-          )}
-          {alert.details?.keyword && (
-            <p className="text-[11px]">
-              <span className="text-muted-foreground">الكلمة: </span>
-              <span className="font-bold" style={{ color: "hsl(0 84% 60%)" }}>"{alert.details.keyword}"</span>
-            </p>
-          )}
-        </div>
-
-        {alert.alert_type === "promotion" && alert.details?.context && (
-          <>
-            <motion.button whileTap={{ scale: 0.95 }} onClick={() => setExpanded(!expanded)}
-              className="flex items-center gap-1 mt-2 text-[9px] text-muted-foreground">
-              {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-              {expanded ? "إخفاء السياق" : "عرض السياق"}
-            </motion.button>
-            <AnimatePresence>
-              {expanded && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden mt-2 rounded-xl p-2.5 space-y-1"
-                  style={{ background: "rgba(0,0,0,0.2)" }}>
-                  {alert.details.context_before?.map((line: string, i: number) => (
-                    <p key={i} className="text-[10px] text-muted-foreground">{line}</p>
-                  ))}
-                  <p className="text-[10px] font-bold" style={{ color: "hsl(0 84% 60%)" }}>
-                    {alert.details.flagged_message || ""}
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
-        )}
-
-        {sev === "high" && (alert.alert_type === "promotion" || alert.alert_type === "pusher_promo") && (
-          <div className="flex items-center gap-2 mt-3">
-            <motion.button whileTap={{ scale: 0.95 }}
-              className="h-7 px-3 rounded-xl text-[10px] font-bold text-white flex items-center gap-1"
-              style={{ background: "hsl(0 84% 50%)" }}
-              onClick={() => {
-                const uuid = alert.sender_uuid || alert.details?.user_uuid;
-                const name = alert.sender_name || alert.details?.user_name || "مجهول";
-                if (uuid) onBan(uuid, name);
-                else toast.error("لا يوجد UUID للحظر");
-              }}>
-              <Ban size={10} /> حظر 24h
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.95 }}
-              className="h-7 px-3 rounded-xl text-[10px] font-bold text-muted-foreground"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-              onClick={() => onDelete(alert.id)}>
-              تجاهل
-            </motion.button>
-          </div>
-        )}
       </div>
     </motion.div>
   );
-};
+}
+
+function InfoCell({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="bg-muted/30 rounded-lg p-2">
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className={`text-sm font-bold ${highlight ? "text-red-400" : "text-foreground"}`}>{value}</p>
+    </div>
+  );
+}
 
 export default AdminMonitorPage;
