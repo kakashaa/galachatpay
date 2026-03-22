@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 import { RefreshCw } from "lucide-react";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { useMonitorBadge } from "@/hooks/use-monitor-badge";
 
 import AdminNotificationListener from "@/components/AdminNotificationListener";
 import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime";
@@ -302,6 +303,7 @@ const AdminDashboardPage: React.FC = () => {
           setBottomTab(tab);
         }}
         chatBadge={badgeData.supportOpen + badgeData.chatWaiting}
+        monitorBadge={monitorBadge}
       />
     </div>
     {ConfirmDialog}
