@@ -283,14 +283,25 @@ const SalaryWithdraw: React.FC = () => {
     if (!user?.uuid) return;
     setTransfersLoading(true);
     try {
-      const data = await galaApi.userTransfers(user.uuid) as any;
-      // Filter: only transfers to UUID 10000, today only
+      const [apiData, usedRes] = await Promise.all([
+        galaApi.userTransfers(user.uuid) as any,
+        supabase
+          .from("salary_requests")
+          .select("transfer_id")
+          .eq("user_uuid", user.uuid)
+          .neq("status", "rejected"),
+      ]);
+
+      const usedIds = new Set((usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean));
+
+      // Filter: only transfers to UUID 10000, today only, not already used
       const today = new Date().toISOString().slice(0, 10);
-      const list: TransferItem[] = (data?.transfers || data?.data || [])
+      const list: TransferItem[] = (apiData?.transfers || apiData?.data || [])
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
           const date = (t.time || t.created_at || "").slice(0, 10);
-          return toUuid === "10000" && date === today;
+          const refId = String(t.reference_id || t.id || "");
+          return toUuid === "10000" && date === today && !usedIds.has(refId);
         })
         .map((t: any) => ({
           reference_id: t.reference_id || t.id || "",
@@ -348,8 +359,29 @@ const SalaryWithdraw: React.FC = () => {
     }
   };
 
+  // Layer 4: Prevent back button on receipt
+  useEffect(() => {
+    if (step === "receipt") {
+      window.history.pushState(null, "", window.location.href);
+      const handleBack = () => {
+        window.history.pushState(null, "", window.location.href);
+        navigate("/dashboard", { replace: true });
+      };
+      window.addEventListener("popstate", handleBack);
+      return () => window.removeEventListener("popstate", handleBack);
+    }
+  }, [step, navigate]);
+
   const executeWithdrawal = async () => {
     if (processing || processInFlightRef.current || !selectedTransfer) return;
+
+    // Layer 1: Re-check transfer is from today
+    const today = new Date().toISOString().slice(0, 10);
+    if (!selectedTransfer.time?.startsWith(today)) {
+      toast.error("الحوالة قديمة — لازم تكون من اليوم. تواصل مع الإدارة.");
+      return;
+    }
+
     processInFlightRef.current = true;
     setProcessing(true);
     setProcessStage("check");
@@ -359,7 +391,7 @@ const SalaryWithdraw: React.FC = () => {
     const chargeTarget = pathMode === "charge_other" ? targetInfo?.uuid : undefined;
 
     try {
-      // 1. Salary check (security)
+      // Layer 2: Salary check (security)
       setProcessStage("check");
       const check: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
 
@@ -433,7 +465,8 @@ const SalaryWithdraw: React.FC = () => {
         toast.warning("تم السحب لكن فشل حفظ السجل — تواصل مع الأدمن");
       }
 
-      setStep("success");
+      // Layer 3: Go to receipt step (no re-submit)
+      setStep("receipt");
 
     } catch (err: any) {
       setError(err.message || "فشل في العملية");
@@ -774,14 +807,14 @@ const SalaryWithdraw: React.FC = () => {
   }
 
   // ── SUCCESS ──
-  if (step === "success" && selectedTransfer) {
+  if (step === "receipt" && selectedTransfer) {
     const receiptCode = `GC-${selectedTransfer.reference_id || "MAN"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
     const receiptDate = selectedTransfer.time || new Date().toLocaleDateString("ar-EG", {
       year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
     });
 
     return (
-      <MobileLayout showHeader headerTitle="إيصال السحب" onBack={() => navigate("/salary", { replace: true })}>
+      <MobileLayout showHeader headerTitle="إيصال السحب" onBack={() => navigate("/dashboard", { replace: true })}>
         <div className="px-5 py-6 space-y-5">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
             className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 space-y-5">
@@ -849,7 +882,7 @@ const SalaryWithdraw: React.FC = () => {
             </div>
           </motion.div>
 
-          <Button onClick={() => navigate("/salary", { replace: true })}
+          <Button onClick={() => navigate("/dashboard", { replace: true })}
             className="w-full h-12 gold-gradient text-primary-foreground font-bold">
             العودة للرئيسية
           </Button>
