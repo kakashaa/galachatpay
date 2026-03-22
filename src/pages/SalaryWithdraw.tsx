@@ -882,9 +882,10 @@ const SalaryWithdraw: React.FC = () => {
             </div>
           </motion.div>
 
-          <Button onClick={() => navigate("/salary", { replace: true })}
+          <Button onClick={() => navigate("/dashboard", { replace: true })}
             className="w-full h-12 gold-gradient text-primary-foreground font-bold">
             العودة للرئيسية
+          </Button>
           </Button>
         </div>
       </MobileLayout>
