@@ -83,16 +83,33 @@ export function useAdminSession() {
   const uploadFile = useCallback(async (file: File) => {
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     const isVideo = ["mp4", "webm", "mov", "avi"].includes(ext);
-    const bucket = isVideo ? "videos" : "attachments";
+    const maxSize = isVideo ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (file.size > maxSize) throw new Error(`حجم الملف كبير جداً (الحد: ${isVideo ? "100" : "50"}MB)`);
+
+    // Use edge function for videos (supports larger files reliably)
+    if (isVideo) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("session_token", adminSessionToken || "");
+      const { data, error } = await supabase.functions.invoke("admin-upload-video", {
+        body: formData,
+      });
+      if (error) throw new Error("فشل الرفع: " + (error.message || error));
+      if (data?.error) throw new Error(data.error);
+      return data.url as string;
+    }
+
+    // Images/assets: direct upload
+    const bucket = "attachments";
     const fileName = `${crypto.randomUUID()}.${ext}`;
-    const defaultContentType = ext === "svga" ? "application/octet-stream" : isVideo ? "video/mp4" : file.type || "application/octet-stream";
+    const defaultContentType = ext === "svga" ? "application/octet-stream" : file.type || "application/octet-stream";
     const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, file, {
       contentType: file.type || defaultContentType, upsert: false,
     });
     if (uploadError) throw new Error("فشل الرفع: " + uploadError.message);
     const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
     return urlData.publicUrl;
-  }, []);
+  }, [adminSessionToken]);
 
   const handleLogout = useCallback(() => {
     ["admin_session_token", "admin_username", "admin_display_name", "admin_role",

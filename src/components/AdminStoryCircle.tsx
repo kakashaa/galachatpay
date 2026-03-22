@@ -243,21 +243,40 @@ export const AdminStoryCircle = () => {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !adminSession) return;
-    if (file.size > 8 * 1024 * 1024) { toast.error('الحد الأقصى 8MB'); return; }
+    const isVideo = file.type.startsWith('video');
+    const maxSize = isVideo ? 100 * 1024 * 1024 : 20 * 1024 * 1024;
+    if (file.size > maxSize) { toast.error(`الحد الأقصى ${isVideo ? '100' : '20'}MB`); return; }
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `stories/${adminSession.username}/${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from('attachments').upload(path, file);
-      if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
-      const mediaType = file.type.startsWith('video') ? 'video' : 'photo';
+      let publicUrl: string;
+
+      if (isVideo) {
+        // Use edge function for reliable large video upload
+        const formData = new FormData();
+        formData.append("file", file);
+        const token = localStorage.getItem("admin_session_token") || "";
+        formData.append("session_token", token);
+        const { data, error } = await supabase.functions.invoke("admin-upload-video", {
+          body: formData,
+        });
+        if (error || data?.error) throw new Error(data?.error || error?.message || "فشل الرفع");
+        publicUrl = data.url;
+      } else {
+        const ext = file.name.split('.').pop();
+        const path = `stories/${adminSession.username}/${Date.now()}.${ext}`;
+        const { error: uploadErr } = await supabase.storage.from('attachments').upload(path, file);
+        if (uploadErr) throw uploadErr;
+        const { data: urlData } = supabase.storage.from('attachments').getPublicUrl(path);
+        publicUrl = urlData.publicUrl;
+      }
+
+      const mediaType = isVideo ? 'video' : 'photo';
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
       await (supabase as any).from('admin_stories').insert({
         user_uuid: adminSession.uuid || adminSession.username,
         username: adminSession.display_name || adminSession.username,
-        media_url: urlData.publicUrl,
+        media_url: publicUrl,
         media_type: mediaType,
         expires_at: expiresAt,
       });
