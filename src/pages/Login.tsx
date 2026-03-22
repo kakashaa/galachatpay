@@ -5,6 +5,7 @@ import { Eye, EyeOff, AlertCircle, User, Lock, Shield, Wallet, Timer, Ban, Trash
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { galaApi } from "@/services/galaApi";
 import LoginInstructions from "@/components/LoginInstructions";
 import { resolveUserType } from "@/utils/userTypeResolver";
 

@@ -3,6 +3,7 @@ import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, Crown } from "lucide-re
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { galaApi } from "@/services/galaApi";
 import avatarMale from "@/assets/avatar-male.png";
 import avatarFemale from "@/assets/avatar-female.png";
 import { getAvatar, fixAvatarUrl, getAvatarUrl } from "@/lib/avatarHelper";
