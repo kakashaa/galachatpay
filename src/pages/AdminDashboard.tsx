@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
 import { RefreshCw } from "lucide-react";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { useMonitorBadge } from "@/hooks/use-monitor-badge";
 
 import AdminNotificationListener from "@/components/AdminNotificationListener";
 import { useSalaryRequestsRealtime } from "@/hooks/use-salary-requests-realtime";
@@ -21,6 +22,7 @@ import { Clock, CheckCircle, XCircle } from "lucide-react";
 const AdminDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [bottomTab, setBottomTab] = useState<'home' | 'search' | 'chat' | 'monitor' | 'favorites'>('home');
+  const monitorBadge = useMonitorBadge();
 
   // Pull-to-refresh
   const PULL_THRESHOLD = 80;
@@ -302,6 +304,7 @@ const AdminDashboardPage: React.FC = () => {
           setBottomTab(tab);
         }}
         chatBadge={badgeData.supportOpen + badgeData.chatWaiting}
+        monitorBadge={monitorBadge}
       />
     </div>
     {ConfirmDialog}
