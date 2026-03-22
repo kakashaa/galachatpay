@@ -10,7 +10,7 @@ import {
   ShieldAlert, Headphones, CheckCircle, AlertTriangle,
   Copy, ChevronLeft, LogOut, Crown, Fingerprint, Store,
   Inbox, FileText, Landmark, Eye, BarChart3, DollarSign,
-  MessageCircle, Sparkles
+  MessageCircle, Sparkles, Scissors
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
@@ -1247,6 +1247,7 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: Eye, label: "المراقبة", route: "/admin/monitor", gradient: "from-red-500 to-orange-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: 0 },
     { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", gradient: "from-yellow-400 to-amber-500", shadow: "shadow-yellow-500/40", roles: ["owner"], badge: 0 },
     { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", gradient: "from-green-500 to-emerald-600", shadow: "shadow-green-500/40", roles: ["owner", "super_admin"], badge: 0 },
+    { icon: Scissors, label: "الخصومات", route: "/admin/deductions", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0 },
   ];
 
   const visible = allServices.filter(s => adminRole && s.roles.includes(adminRole));
