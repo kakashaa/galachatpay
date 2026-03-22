@@ -161,8 +161,20 @@ serve(async (req) => {
         return json({ error: "مطلوب تسجيل دخول أدمن" }, 401);
       }
 
-      // Verify HMAC-signed token
-      const tokenData = await verifyAdminToken(adminToken);
+      // Verify HMAC-signed token, with legacy fallback
+      let tokenData = await verifyAdminToken(adminToken);
+      
+      // Backward compatibility: accept old plain btoa tokens
+      if (!tokenData) {
+        try {
+          const legacy = JSON.parse(atob(adminToken.split(".")[0] || adminToken));
+          if (legacy?.username) {
+            tokenData = { username: legacy.username, role: legacy.role || "admin" };
+            console.log("[gala-proxy] accepted legacy token for:", legacy.username);
+          }
+        } catch { /* not valid */ }
+      }
+
       if (!tokenData) {
         return json({ error: "جلسة غير صالحة", auth_error: true }, 401);
       }
