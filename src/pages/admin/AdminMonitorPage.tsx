@@ -9,6 +9,7 @@ import {
   RefreshCw, Volume2, VolumeX, Send, Loader2, Bot, Trash2, CheckCheck,
   Zap, DollarSign, Megaphone, Gift, Monitor, Clock, ChevronDown, ChevronUp,
   BarChart3, Users, Radio, MessageSquare, Wifi, WifiOff, Ban,
+  UserSearch, Activity, TrendingUp, Wallet, ArrowDownCircle, ArrowUpCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { playNotificationSound, playUrgentSound } from "@/lib/notificationSound";
@@ -63,6 +64,9 @@ interface PusherMessage {
   time: string;
   severity: "high" | "medium" | "low";
 }
+
+/* ─── DB Proxy ─── */
+const DB_PROXY = "https://hola-chat.com/db-proxy.php";
 
 /* ─── Constants ─── */
 const PUSHER_KEY = "7308273f9bbb39599189";
@@ -154,7 +158,7 @@ const quickQuestions = [
 /* ═══════════════════════════════════════ */
 const AdminMonitorPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
-  const [activeSection, setActiveSection] = useState<"alerts" | "bot" | "stats" | "monitors" | "history" | "settings">("alerts");
+  const [activeSection, setActiveSection] = useState<"alerts" | "bot" | "stats" | "monitors" | "history" | "settings" | "salary" | "transactions" | "usercheck" | "daily">("alerts");
 
   /* ── Alerts State ── */
   const [alerts, setAlerts] = useState<MonitorAlert[]>([]);
@@ -195,6 +199,29 @@ const AdminMonitorPage: React.FC = () => {
   const [settingsBigChargeThreshold, setSettingsBigChargeThreshold] = useState(500000);
   const [settingsRepeatThreshold, setSettingsRepeatThreshold] = useState(3);
   const [settingsBigGiftThreshold, setSettingsBigGiftThreshold] = useState(500000);
+
+  /* ── Salary Monitor State ── */
+  const [salaryAudit, setSalaryAudit] = useState<any>(null);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+
+  /* ── Transaction Monitor State ── */
+  const [txCharges, setTxCharges] = useState<any[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txTab, setTxTab] = useState<"all" | "suspicious" | "withdrawals" | "rewards">("all");
+
+  /* ── Alerts Summary State ── */
+  const [alertsSummary, setAlertsSummary] = useState<any>(null);
+  const [alertsSummaryLoading, setAlertsSummaryLoading] = useState(false);
+
+  /* ── User Check State ── */
+  const [checkUuid, setCheckUuid] = useState("");
+  const [userCheckData, setUserCheckData] = useState<any>(null);
+  const [userCheckCharges, setUserCheckCharges] = useState<any[]>([]);
+  const [userCheckLoading, setUserCheckLoading] = useState(false);
+
+  /* ── Daily Summary State ── */
+  const [dailySummary, setDailySummary] = useState<any>(null);
+  const [dailyLoading, setDailyLoading] = useState(false);
 
   /* ══════════════════════════════════════ */
   /* ── Pusher Integration ──              */
