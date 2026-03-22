@@ -13,14 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { galaApi } from "@/services/galaApi";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
-const DB_PROXY = "https://hola-chat.com/db-proxy.php";
-const PROXY_KEY = "ghala2026proxy";
-const API = "https://galachat.site/project-z/api.php";
 
 const HOST_RATE = 8500;
 const AGENCY_RATE = 7500;
@@ -218,8 +215,7 @@ const SalaryWithdraw: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=withdraw-status&uuid=${user!.uuid}`);
-      const data: WithdrawStatusData = await res.json();
+      const data: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
       setStatusData(data);
 
       const hostAvail = data.host_salary?.available || 0;
@@ -287,10 +283,7 @@ const SalaryWithdraw: React.FC = () => {
     setTargetInfo(null);
     setTargetConfirmed(false);
     try {
-      const res = await fetch(
-        `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=check-supporter&uuid=${targetUuid.trim()}`
-      );
-      const data = await res.json();
+      const data = await galaApi.checkSupporter(targetUuid.trim()) as any;
       const name = data.data?.name;
       if (name && data.ok !== false) {
         setTargetInfo({ name, avatar: data.data?.avatar || "", uuid: targetUuid.trim() });
@@ -317,8 +310,7 @@ const SalaryWithdraw: React.FC = () => {
     try {
       // 1. Re-check status
       setProcessStage("check");
-      const checkRes = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=withdraw-status&uuid=${user!.uuid}`);
-      const check: WithdrawStatusData = await checkRes.json();
+      const check: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
 
       const available = salaryType === "agency"
         ? (check.agency_salary?.pool_available || 0)
@@ -339,22 +331,11 @@ const SalaryWithdraw: React.FC = () => {
           : pathMode === "charge_other" ? "transfer"
           : "coins";
         
-        let agencyUrl = `${DB_PROXY}?key=${PROXY_KEY}&action=withdraw-agency&uuid=${user!.uuid}&usd=${amount}&method=${method}`;
-        if (method === "transfer" && chargeTarget) {
-          agencyUrl += `&to_uuid=${chargeTarget}`;
-        }
-        
-        const transferRes = await fetch(agencyUrl);
-        result = await transferRes.json();
+        result = await galaApi.withdrawAgency(user!.uuid, amount, method, chargeTarget) as any;
       } else {
         // Use transfer endpoint for host salary
         const toUuid = pathMode === "charge_other" && chargeTarget ? chargeTarget : "10000";
-        const transferRes = await fetch(DB_PROXY, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `key=${PROXY_KEY}&action=transfer&from_uuid=${user!.uuid}&to_uuid=${toUuid}&usd=${amount}`,
-        });
-        result = await transferRes.json();
+        result = await galaApi.dbTransfer(user!.uuid, toUuid, amount) as any;
       }
 
       if (!result.ok) {
@@ -379,20 +360,13 @@ const SalaryWithdraw: React.FC = () => {
       // For coin charges (host only), also charge the target
       if (salaryType === "host" && (pathMode === "charge_self" || pathMode === "charge_other")) {
         const chargeTargetUuid = chargeTarget || user!.uuid;
-        const chargeRes = await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "salary_charge_manual",
-            admin_key: "ghala2026owner",
-            uuid: chargeTargetUuid,
-            amount,
-            reference_id: result.reference_id || "auto",
-          }),
-        });
-        const chargeData = await chargeRes.json();
-        if (!chargeData.success) {
-          throw new Error(chargeData.message || "فشل شحن الكوينز بعد التحويل");
+        const chargeData = await galaApi.chargeCoins(
+          chargeTargetUuid,
+          amount,
+          result.reference_id || "auto",
+        );
+        if (!(chargeData as any).success) {
+          throw new Error((chargeData as any).message || "فشل شحن الكوينز بعد التحويل");
         }
       }
 
