@@ -8,9 +8,8 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { cn } from "@/lib/utils";
+import { galaApi } from "@/services/galaApi";
 
-const DB_PROXY = "https://hola-chat.com/db-proxy.php";
-const PROXY_KEY = "ghala2026proxy";
 const COINS_PER_USD = 7500;
 const FETCH_TIMEOUT = 120000;
 
@@ -127,11 +126,11 @@ const AdminDeductionsPage: React.FC = () => {
     uuid: string; user?: string; deducted: number; before: number; after: number;
   } | null>(null);
 
-  const buildUrl = (action: string) => {
+  const buildParams = (action: string) => {
     const { from, to } = getDateRange(period);
-    let url = `${DB_PROXY}?key=${PROXY_KEY}&action=${action}&sender_uuid=${encodeURIComponent(senderUuid.trim())}&date_from=${from}&date_to=${to}`;
-    if (receiverUuid.trim()) url += `&receiver_uuid=${encodeURIComponent(receiverUuid.trim())}`;
-    return url;
+    const params: Record<string, string> = { sender_uuid: senderUuid.trim(), date_from: from, date_to: to };
+    if (receiverUuid.trim()) params.receiver_uuid = receiverUuid.trim();
+    return { action, params };
   };
 
   const handleSearch = async () => {
