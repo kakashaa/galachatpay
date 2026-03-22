@@ -301,6 +301,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           reject_reason: r.reject_reason || r.admin_note || "",
           reserve_reason: r.reserve_reason || "",
           user_edited: r.user_edited || false,
+          transaction_date: r.transaction_date || null,
         }));
         setRequests(rawRequests);
         enrichWithAvatars(rawRequests).then(enriched => setRequests(enriched)).catch(() => {});
