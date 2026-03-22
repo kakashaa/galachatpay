@@ -8,9 +8,7 @@ import {
 import MobileLayout from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
-
-const DB_PROXY = "https://hola-chat.com/db-proxy.php";
-const PROXY_KEY = "ghala2026proxy";
+import { galaApi } from "@/services/galaApi";
 const USD_TO_COINS = 7500;
 
 interface WithdrawStatus {
@@ -59,8 +57,7 @@ const SalaryHome: React.FC = () => {
     setLoading(true);
     setError(false);
     try {
-      const res = await fetch(`${DB_PROXY}?key=${PROXY_KEY}&action=withdraw-status&uuid=${user!.uuid}`);
-      const data: WithdrawStatus = await res.json();
+      const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
       setStatus(data);
     } catch {
       setError(true);

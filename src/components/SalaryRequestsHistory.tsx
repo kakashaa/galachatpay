@@ -5,8 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { formatDateAr } from "@/utils/dateFormat";
 import { supabase } from "@/integrations/supabase/client";
-
-const API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 interface SalaryRequest {
   id: string;
@@ -72,7 +71,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
         // Fetch from external API + local DB + user_transfers in parallel
         const [externalRes, localRes, transfersRes] = await Promise.all([
-          fetch(`${API}?action=my_salary_requests&uuid=${userUuid}&month=${month}`).then(r => r.json()).catch(() => ({})),
+          galaApi.mySalaryRequests(userUuid, month).catch(() => ({})),
           supabase
             .from("salary_requests")
             .select("*")
@@ -80,7 +79,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             .gte("created_at", monthStart)
             .lt("created_at", monthEnd)
             .order("created_at", { ascending: false }),
-          fetch(`${API}?action=user_transfers&uuid=${userUuid}`).then(r => r.json()).catch(() => ({})),
+          galaApi.userTransfers(userUuid).catch(() => ({})),
         ]);
 
         const externalRequests: SalaryRequest[] = externalRes.requests || [];

@@ -10,8 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-const EXT_API = "https://galachat.site/project-z/api.php";
+import { galaApi } from "@/services/galaApi";
 
 /* ─── Types ─── */
 interface UnifiedRequest {
@@ -107,7 +106,7 @@ const MyRequests: React.FC = () => {
         supabase.from("custom_gifts").select("id, title, status, created_at, admin_note, rejection_image_url, is_final_rejection").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
         supabase.from("hair_selections").select("id, selection_week, status, created_at, admin_note, hairs(title)").eq("user_uuid", user.uuid).order("created_at", { ascending: false }).limit(20),
         supabase.from("id_changes").select("id, new_id, level_milestone, created_at").or(`user_uuid.eq.${user.uuid},new_id.eq.${user.uuid}`).order("created_at", { ascending: false }).limit(10),
-        fetch(`${EXT_API}?action=my_salary_requests&uuid=${user.uuid}&month=${month}`).then(r => r.json()).catch(() => ({ requests: [] })),
+        galaApi.mySalaryRequests(user.uuid, month).catch(() => ({ requests: [] })),
       ]);
 
     // Salary
