@@ -84,6 +84,14 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorB
                     {chatBadge > 99 ? '99+' : chatBadge}
                   </span>
                 )}
+                {item.key === 'monitor' && monitorBadge && monitorBadge > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[8px] text-white font-bold flex items-center justify-center px-1 bg-red-500 shadow-md shadow-red-500/50 animate-pulse"
+                    style={{ border: '2px solid rgba(0,0,0,0.6)' }}
+                  >
+                    {monitorBadge > 99 ? '99+' : monitorBadge}
+                  </span>
+                )}
                 {isActive && (
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
                 )}
