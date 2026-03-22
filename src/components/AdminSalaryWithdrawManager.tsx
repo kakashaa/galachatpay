@@ -40,6 +40,29 @@ const AvatarCircle = ({ src, name, size = "w-10 h-10" }: { src?: string; name: s
 const API = "https://galachat.site/project-z/api.php";
 const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
 
+/** How old (in hours) is the transfer relative to the request? */
+const getTransferAgeHours = (req: { created_at: string; transaction_date?: string }) => {
+  try {
+    const requestDate = new Date(req.created_at).getTime();
+    if (req.transaction_date) {
+      const txDate = new Date(req.transaction_date).getTime();
+      if (!isNaN(txDate) && txDate < requestDate) {
+        return Math.round((requestDate - txDate) / 3600000);
+      }
+    }
+    // fallback: how old is the request itself
+    return Math.round((Date.now() - requestDate) / 3600000);
+  } catch { return 0; }
+};
+
+const isOldTransfer = (req: { created_at: string; transaction_date?: string }) => getTransferAgeHours(req) > 48;
+
+const formatTransferAge = (hours: number) => {
+  if (hours < 24) return `${hours} ساعة`;
+  const days = Math.round(hours / 24);
+  return `${days} يوم`;
+};
+
 interface WithdrawRequest {
   id: string;
   request_code: string;
@@ -72,6 +95,7 @@ interface WithdrawRequest {
   reject_reason?: string;
   reserve_reason?: string;
   user_edited?: boolean;
+  transaction_date?: string;
 }
 
 interface Stats {
@@ -151,6 +175,13 @@ const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
     checks.push(req.reference_id
       ? { status: "safe", text: `الرقم المرجعي: ${req.reference_id}` }
       : { status: "warning", text: "بدون رقم مرجعي" });
+  }
+  // Old transfer check
+  const ageHours = getTransferAgeHours(req);
+  if (ageHours > 48) {
+    checks.push({ status: "danger", text: `⚠️ حوالة قديمة — عمرها ${formatTransferAge(ageHours)} — يُنصح بالرفض` });
+  } else {
+    checks.push({ status: "safe", text: `حوالة حديثة (${formatTransferAge(ageHours)})` });
   }
   return checks;
 };
@@ -621,6 +652,13 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-3 hover:border-white/[0.1] transition-all duration-200 css-fade-up"
                 style={{ animationDelay: `${i * 0.03}s` }}
               >
+                {/* Old transfer warning */}
+                {req.status === "pending" && isOldTransfer(req) && (
+                  <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                    <AlertTriangle className="w-3 h-3 text-rose-400 shrink-0" />
+                    <span className="text-[9px] text-rose-400 font-bold">⚠️ حوالة قديمة — عمرها {formatTransferAge(getTransferAgeHours(req))} — يُنصح بالرفض</span>
+                  </div>
+                )}
                 {/* Duplicate warning */}
                 {req.is_duplicate_flagged && (
                   <div className="flex items-center gap-1.5 mb-2 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
