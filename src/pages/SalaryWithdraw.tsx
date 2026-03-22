@@ -886,7 +886,6 @@ const SalaryWithdraw: React.FC = () => {
             className="w-full h-12 gold-gradient text-primary-foreground font-bold">
             العودة للرئيسية
           </Button>
-          </Button>
         </div>
       </MobileLayout>
     );
