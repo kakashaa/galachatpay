@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
+import { API_URLS } from '@/config/api';
 import { supabase } from '@/integrations/supabase/client';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
