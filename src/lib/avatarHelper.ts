@@ -1,4 +1,5 @@
 import { galaApi } from "@/services/galaApi";
+import { API_URLS } from "@/config/api";
 
 const AVATAR_CACHE: Record<string, string> = {};
 
@@ -8,14 +9,14 @@ const OLD_BUCKET = "storage.googleapis.com/galalivechat-bucket-01";
 
 /** Normalize any avatar URL to use the fast media domain */
 function normalizeMediaUrl(url: string): string {
-  return url.replace(`https://${OLD_BUCKET}/`, "https://media.galalivechat.com/");
+  return url.replace(`https://${OLD_BUCKET}/`, API_URLS.MEDIA);
 }
 
 /** Build the correct avatar URL from uuid + optional avatar path */
 export function getAvatarUrl(uuid: string, avatar?: string | null): string {
   if (avatar && avatar.startsWith("http")) return normalizeMediaUrl(avatar);
-  if (avatar) return `https://media.galalivechat.com/${avatar}`;
-  return `https://media.galalivechat.com/avatars/default.jpg`;
+  if (avatar) return `${API_URLS.MEDIA}${avatar}`;
+  return `${API_URLS.MEDIA}avatars/default.jpg`;
 }
 
 /** onError handler for avatar images — falls back to default */
@@ -50,12 +51,12 @@ export async function getAvatar(uuid: string): Promise<string> {
     // silent
   }
 
-  return `https://media.galalivechat.com/avatars/default.jpg`;
+  return `${API_URLS.MEDIA}avatars/default.jpg`;
 }
 
 // Legacy helper — kept for backward compat
 export function fixAvatarUrl(path?: string | null): string {
   if (!path) return DEFAULT_AVATAR;
   if (path.startsWith("http")) return normalizeMediaUrl(path);
-  return `https://media.galalivechat.com/${path}`;
+  return `${API_URLS.MEDIA}${path}`;
 }

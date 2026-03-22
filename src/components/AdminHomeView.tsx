@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { galaApi } from '@/services/galaApi';
+import { API_URLS } from '@/config/api';
 import { supabase } from '@/integrations/supabase/client';
 import { playUrgentSound } from '@/lib/notificationSound';
 import { checkPendingRequests, type DelayAlert } from '@/utils/adminMonitor';
@@ -22,21 +23,21 @@ import UserDetailAccordion from '@/components/UserDetailAccordion';
 
 
 const VIP_FRAMES: Record<number, string> = {
-  1: "https://hola-chat.com/vip-assets/frame-vip1.svga",
-  2: "https://hola-chat.com/vip-assets/frame-vip2.svga",
-  3: "https://hola-chat.com/vip-assets/frame-vip3.svga",
-  4: "https://hola-chat.com/vip-assets/frame-vip4.svga",
-  5: "https://hola-chat.com/vip-assets/frame-vip5.svga",
-  6: "https://hola-chat.com/vip-assets/frame-vip6.svga",
+  1: `${API_URLS.VIP_ASSETS}frame-vip1.svga`,
+  2: `${API_URLS.VIP_ASSETS}frame-vip2.svga`,
+  3: `${API_URLS.VIP_ASSETS}frame-vip3.svga`,
+  4: `${API_URLS.VIP_ASSETS}frame-vip4.svga`,
+  5: `${API_URLS.VIP_ASSETS}frame-vip5.svga`,
+  6: `${API_URLS.VIP_ASSETS}frame-vip6.svga`,
 };
 
 const VIP_CARDS: Record<number, string> = {
-  1: "https://hola-chat.com/vip-assets/card-vip1.svga",
-  2: "https://hola-chat.com/vip-assets/card-vip2.svga",
-  3: "https://hola-chat.com/vip-assets/card-vip3.svga",
-  4: "https://hola-chat.com/vip-assets/card-vip4.svga",
-  5: "https://hola-chat.com/vip-assets/card-vip5.svga",
-  6: "https://hola-chat.com/vip-assets/card-vip6.svga",
+  1: `${API_URLS.VIP_ASSETS}card-vip1.svga`,
+  2: `${API_URLS.VIP_ASSETS}card-vip2.svga`,
+  3: `${API_URLS.VIP_ASSETS}card-vip3.svga`,
+  4: `${API_URLS.VIP_ASSETS}card-vip4.svga`,
+  5: `${API_URLS.VIP_ASSETS}card-vip5.svga`,
+  6: `${API_URLS.VIP_ASSETS}card-vip6.svga`,
 };
 
 /* ─── parseExp: convert "4.3M" / "500K" → number ─── */
@@ -1188,12 +1189,12 @@ const AdminHomeView: React.FC<Props> = ({
             const tokenRes = await supabase.functions.invoke("gala-token");
             const token = tokenRes.data?.token;
             if (token) {
-              const searchRes = await fetch(`https://galalivechat.com/api/find/users?q=${target}`, {
+              const searchRes = await fetch(`${API_URLS.GALA_API}/find/users?q=${target}`, {
                 headers: { Authorization: `Bearer ${token}` },
               }).then(r => r.json()).catch(() => null);
               const internalId = searchRes?.data?.[0]?.id;
               if (internalId) {
-                const profileRes = await fetch(`https://galalivechat.com/api/profile/get/${internalId}`, {
+                const profileRes = await fetch(`${API_URLS.GALA_API}/profile/get/${internalId}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 }).then(r => r.json()).catch(() => null);
                 const vip = profileRes?.data?.vip;
