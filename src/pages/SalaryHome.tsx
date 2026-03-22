@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, Coins, Gift, Zap, Loader2, DollarSign, TrendingDown,
+  Wallet, Coins, Gift, Zap, Loader2, DollarSign,
   Building2, CheckCircle, XCircle, AlertCircle,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";

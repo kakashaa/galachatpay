@@ -238,9 +238,6 @@ const SalaryWithdraw: React.FC = () => {
 
       // Check cash limits for cash mode
       if (pathMode === "cash") {
-        const hostCashUsed = data.host_salary?.cash_used_this_month || false;
-        const agencyCashUsed = data.agency_salary?.cash_used_this_month || false;
-        
         if (hostAvail <= 0 && (!isAgency || agencyAvail <= 0)) {
           setStep("no_salary");
           return;
