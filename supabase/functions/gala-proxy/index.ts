@@ -24,6 +24,7 @@ const URLS: Record<string, string> = {
   "bd-data": "https://hola-chat.com/bd-data-api.php",
   "aws": "https://18.219.229.240/website/admin-actions.php",
   "gala-api": "https://galalivechat.com/api",
+  "db-proxy": "https://hola-chat.com/db-proxy.php",
 };
 
 // Primary admin accounts (same auth model used in admin-manage)
@@ -73,6 +74,12 @@ const ALLOWED: Record<string, string[]> = {
     "change-uuid", "set-vip", "ban-user", "unban-user", "add-diamonds",
     "list-wares", "list-vips", "list-agencies", "agency-detail",
   ],
+  "db-proxy": [
+    "activity-feed", "user-diamonds", "withdraw-status", "withdraw-agency", "transfer",
+    "salary-check", "salary-audit", "daily-summary",
+    "gift-lookup", "gift-impact", "gift-deduct", "gift-restore", "deduct-diamonds",
+    "top-senders", "top-receivers",
+  ],
 };
 
 // Actions that require admin auth
@@ -83,6 +90,7 @@ const ADMIN_ONLY = new Set([
   "promo-config", "wa_notify", "agency-accept",
   "set-frame", "set-entry", "set-profile-entry", "set-necklace",
   "update_user_avatar", "upload_custom_gift",
+  "gift-deduct", "gift-restore", "deduct-diamonds",
 ]);
 
 // Owner-only actions
