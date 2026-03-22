@@ -244,11 +244,11 @@ const AdminDeductionsPage: React.FC = () => {
       const result = await res.json();
       if (result.ok) {
         setDeductManualResult({
-          uuid: deductUuid.trim(),
-          name: result.name || undefined,
+          uuid: result.uuid || deductUuid.trim(),
+          name: result.user || result.name || undefined,
           amount: parsedDeductAmount,
-          balance_before: result.balance_before,
-          balance_after: result.balance_after,
+          balance_before: result.before ?? result.balance_before,
+          balance_after: result.after ?? result.balance_after,
         });
         toast.success(`تم خصم ${parsedDeductAmount.toLocaleString()} كوينز`);
       } else {
