@@ -5,14 +5,23 @@ import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager"
 import AdminSalaryChargeManager from "@/components/AdminSalaryChargeManager";
 import AdminInstantWithdrawManager from "@/components/AdminInstantWithdrawManager";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap } from "lucide-react";
+import { galaApi } from "@/services/galaApi";
+import { DollarSign, Loader2, TrendingUp, Wallet, CreditCard, BarChart3, Zap, Wrench, RotateCcw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 const AdminSalaryPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
-  const [subTab, setSubTab] = useState<"withdraw" | "charge" | "instant" | "report">("withdraw");
+  const [subTab, setSubTab] = useState<"withdraw" | "charge" | "instant" | "report" | "tools">("withdraw");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportStats, setReportStats] = useState({ total: 0, approved: 0, pending: 0, rejected: 0, totalUsd: 0, approvedUsd: 0, pendingUsd: 0 });
+
+  // Tools state
+  const [resetUuid, setResetUuid] = useState("");
+  const [resetType, setResetType] = useState<"host" | "agency">("agency");
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => { if (subTab === "report") loadReport(); }, [subTab]);
 
@@ -36,6 +45,24 @@ const AdminSalaryPage: React.FC = () => {
     finally { setReportLoading(false); }
   };
 
+  const handleResetCashUsed = async () => {
+    if (!resetUuid.trim()) { toast.error("أدخل UUID"); return; }
+    setResetLoading(true);
+    try {
+      const res = await galaApi.resetCashUsed(resetUuid.trim(), resetType);
+      if (res?.ok || res?.success) {
+        toast.success(`✅ تم إعادة تعيين عداد السحب النقدي (${resetType === "agency" ? "وكالة" : "مضيف"}) للـ ${resetUuid}`);
+        setResetUuid("");
+      } else {
+        toast.error(res?.error || "فشل إعادة التعيين");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "حدث خطأ");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   return (
     <AdminPageLayout title="إدارة الرواتب" accentColor="hsl(160 84% 39%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
@@ -45,6 +72,7 @@ const AdminSalaryPage: React.FC = () => {
             { key: "charge" as const, label: "الشحن", icon: CreditCard },
             { key: "instant" as const, label: "فوري", icon: Zap },
             { key: "report" as const, label: "التقرير", icon: BarChart3 },
+            { key: "tools" as const, label: "أدوات", icon: Wrench },
           ].map(t => {
             const Icon = t.icon;
             return (
@@ -61,6 +89,49 @@ const AdminSalaryPage: React.FC = () => {
           {subTab === "withdraw" && <motion.div key="w" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><AdminSalaryWithdrawManager canAct={true} /></motion.div>}
           {subTab === "charge" && <motion.div key="c" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><AdminSalaryChargeManager canAct={true} /></motion.div>}
           {subTab === "instant" && <motion.div key="i" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}><AdminInstantWithdrawManager canAct={true} /></motion.div>}
+
+          {subTab === "tools" && (
+            <motion.div key="t" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+              <div className="rounded-2xl p-5 space-y-4"
+                style={{ background: 'linear-gradient(145deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.12)' }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.15)' }}>
+                    <RotateCcw className="w-5 h-5 text-admin-emerald" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-admin-emerald block">إعادة تعيين عداد السحب</span>
+                    <span className="text-[10px] text-muted-foreground">فتح السحب النقدي لمستخدم وصل الحد الأقصى</span>
+                  </div>
+                </div>
+
+                <Input
+                  placeholder="UUID المستخدم"
+                  value={resetUuid}
+                  onChange={e => setResetUuid(e.target.value)}
+                  className="bg-background/50 border-white/10 text-sm"
+                  dir="ltr"
+                />
+
+                <div className="flex gap-2">
+                  {[
+                    { key: "agency" as const, label: "وكالة" },
+                    { key: "host" as const, label: "مضيف" },
+                  ].map(t => (
+                    <button key={t.key} onClick={() => setResetType(t.key)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${resetType === t.key ? "text-admin-emerald" : "text-muted-foreground"}`}
+                      style={resetType === t.key ? { background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.2)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                <Button onClick={handleResetCashUsed} disabled={resetLoading || !resetUuid.trim()}
+                  className="w-full bg-admin-emerald hover:bg-admin-emerald/90 text-white font-bold">
+                  {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "إعادة تعيين العداد"}
+                </Button>
+              </div>
+            </motion.div>
+          )}
 
           {subTab === "report" && (
             reportLoading ? (
