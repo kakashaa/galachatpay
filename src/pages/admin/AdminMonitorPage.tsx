@@ -99,7 +99,7 @@ const AdminMonitorPage: React.FC = () => {
     setLoading(true);
     try {
       const [alerts, feed, daily, audit] = await Promise.all([
-        apiCall("monitor-alerts").catch(() => null),
+        galaApi.getAlerts().catch(() => null),
         apiCall("activity-feed", { limit: 100 }).catch(() => null),
         apiCall("daily-summary").catch(() => null),
         apiCall("salary-audit").catch(() => null),
