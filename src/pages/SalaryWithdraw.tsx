@@ -300,7 +300,11 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const isCashUsed = (): boolean => {
-    if (salaryType === "agency") return statusData?.agency_salary?.cash_used_this_month || false;
+    if (salaryType === "agency") {
+      if (cashResetOverride.agency) return false;
+      return statusData?.agency_salary?.cash_used_this_month || false;
+    }
+    if (cashResetOverride.host) return false;
     return statusData?.host_salary?.cash_used_this_month || false;
   };
 
