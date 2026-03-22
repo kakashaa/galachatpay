@@ -27,6 +27,32 @@ const URLS: Record<string, string> = {
   "db-proxy": "https://hola-chat.com/db-proxy.php",
 };
 
+// HMAC-SHA256 admin token verification
+async function verifyAdminToken(token: string): Promise<{ username: string; role: string } | null> {
+  try {
+    const [payloadB64, sigHex] = token.split(".");
+    if (!payloadB64 || !sigHex) return null;
+    const payload = atob(payloadB64);
+    const secret = Deno.env.get("ADMIN_TOKEN_SECRET") || "ghala_admin_token_secret_2026";
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+    const sigBytes = new Uint8Array(sigHex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+    const valid = await crypto.subtle.verify("HMAC", key, sigBytes, new TextEncoder().encode(payload));
+    if (!valid) return null;
+    const data = JSON.parse(payload);
+    // 8-hour expiry
+    if (Date.now() - data.iat > 8 * 60 * 60 * 1000) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 // Primary admin accounts (same auth model used in admin-manage)
 const PRIMARY_ADMINS: Record<string, { role: "owner" | "super_admin" | "admin"; envKey: string }> = {
   naz: { role: "owner", envKey: "ADMIN_NAZ_PASSWORD" },
@@ -135,42 +161,36 @@ serve(async (req) => {
         return json({ error: "مطلوب تسجيل دخول أدمن" }, 401);
       }
 
-      try {
-        const decoded = JSON.parse(atob(adminToken));
-        const decodedUsername = String(decoded?.username || "").trim();
-        if (!decodedUsername) throw new Error("invalid");
-
-        const normalizedUsername = decodedUsername.toLowerCase();
-        let admin: { username: string; role: string } | null = null;
-
-        // 1) Primary admins from env-backed accounts
-        const primaryAdmin = PRIMARY_ADMINS[normalizedUsername];
-        if (primaryAdmin && Deno.env.get(primaryAdmin.envKey)) {
-          admin = { username: normalizedUsername, role: primaryAdmin.role };
-        } else {
-          // 2) Moderators/admins from DB
-          const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-          const { data: dbAdmin } = await supabase
-            .from("admin_accounts")
-            .select("username, role")
-            .ilike("username", decodedUsername)
-            .eq("is_active", true)
-            .single();
-
-          admin = dbAdmin;
-        }
-
-        if (!admin) return json({ error: "جلسة غير صالحة" }, 401);
-
-        // Owner-only check
-        if (OWNER_ONLY.has(action) && admin.role !== "owner") {
-          return json({ error: "صلاحية المالك فقط" }, 403);
-        }
-      } catch {
-        return json({ error: "جلسة غير صالحة" }, 401);
+      // Verify HMAC-signed token
+      const tokenData = await verifyAdminToken(adminToken);
+      if (!tokenData) {
+        return json({ error: "جلسة غير صالحة", auth_error: true }, 401);
       }
 
-      // Remove internal param before forwarding
+      const normalizedUsername = String(tokenData.username).trim().toLowerCase();
+      let admin: { username: string; role: string } | null = null;
+
+      const primaryAdmin = PRIMARY_ADMINS[normalizedUsername];
+      if (primaryAdmin && Deno.env.get(primaryAdmin.envKey)) {
+        admin = { username: normalizedUsername, role: primaryAdmin.role };
+      } else {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const { data: dbAdmin } = await supabase
+          .from("admin_accounts")
+          .select("username, role")
+          .ilike("username", tokenData.username)
+          .eq("is_active", true)
+          .single();
+        admin = dbAdmin;
+      }
+
+      if (!admin) return json({ error: "جلسة غير صالحة" }, 401);
+
+      // Owner-only check
+      if (OWNER_ONLY.has(action) && admin.role !== "owner") {
+        return json({ error: "صلاحية المالك فقط" }, 403);
+      }
+
       delete params._admin_token;
     }
 

@@ -13,7 +13,45 @@ const ADMIN_ACCOUNTS: Record<string, { envKey: string; role: "owner" | "super_ad
   blnawah: { envKey: "ADMIN_BLNAWAH_PASSWORD", role: "admin" },
 };
 
-// Simple hash for moderator passwords (not crypto-grade but sufficient for this use case)
+// HMAC-SHA256 token signing & verification
+const ADMIN_TOKEN_SECRET = () => Deno.env.get("ADMIN_TOKEN_SECRET") || "ghala_admin_token_secret_2026";
+
+async function getHmacKey(usage: KeyUsage[]): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(ADMIN_TOKEN_SECRET()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    usage
+  );
+}
+
+async function signToken(payload: string): Promise<string> {
+  const key = await getHmacKey(["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return btoa(payload) + "." + sigHex;
+}
+
+async function verifyToken(token: string): Promise<any | null> {
+  try {
+    const [payloadB64, sigHex] = token.split(".");
+    if (!payloadB64 || !sigHex) return null;
+    const payload = atob(payloadB64);
+    const key = await getHmacKey(["verify"]);
+    const sigBytes = new Uint8Array(sigHex.match(/.{2}/g)!.map(b => parseInt(b, 16)));
+    const valid = await crypto.subtle.verify("HMAC", key, sigBytes, new TextEncoder().encode(payload));
+    if (!valid) return null;
+    const data = JSON.parse(payload);
+    // 8-hour expiry
+    if (Date.now() - data.iat > 8 * 60 * 60 * 1000) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+// Simple hash for moderator passwords
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(password + "gala_salt_2024");
@@ -71,43 +109,33 @@ Deno.serve(async (req) => {
     let auth: { role: "owner" | "super_admin" | "admin" | "moderator"; permissions?: string[] } | null = null;
     
     if (session_token) {
-      // Validate existing session token
-      try {
-        let decoded: any;
-        try {
-          decoded = JSON.parse(atob(session_token));
-        } catch {
-          // Token is not valid base64-JSON — reject it
-          return new Response(
-            JSON.stringify({ error: "جلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى", auth_error: true }),
-            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        console.log("[ADMIN-DEBUG] decoded token:", JSON.stringify(decoded));
-        if (decoded.username) {
-          if (ADMIN_ACCOUNTS[decoded.username]) {
-            auth = { role: ADMIN_ACCOUNTS[decoded.username].role };
-            console.log("[ADMIN-DEBUG] auth via ADMIN_ACCOUNTS:", decoded.username, auth.role);
-          } else {
-            // Check moderator from DB
-            const { data: mod } = await supabase
-              .from("admin_accounts")
-              .select("*")
-              .eq("username", decoded.username)
-              .eq("is_active", true)
-              .single();
-            if (mod) {
-              auth = { role: "moderator", permissions: mod.permissions || [] };
-              console.log("[ADMIN-DEBUG] auth via DB mod:", decoded.username);
-            } else {
-              console.log("[ADMIN-DEBUG] mod not found for:", decoded.username);
-            }
-          }
+      // Validate HMAC-signed session token
+      const decoded = await verifyToken(session_token);
+      if (!decoded) {
+        return new Response(
+          JSON.stringify({ error: "جلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى", auth_error: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log("[ADMIN-DEBUG] decoded token:", JSON.stringify(decoded));
+      if (decoded.username) {
+        if (ADMIN_ACCOUNTS[decoded.username]) {
+          auth = { role: ADMIN_ACCOUNTS[decoded.username].role };
+          console.log("[ADMIN-DEBUG] auth via ADMIN_ACCOUNTS:", decoded.username, auth.role);
         } else {
-          console.log("[ADMIN-DEBUG] no username in decoded token");
+          const { data: mod } = await supabase
+            .from("admin_accounts")
+            .select("*")
+            .eq("username", decoded.username)
+            .eq("is_active", true)
+            .single();
+          if (mod) {
+            auth = { role: "moderator", permissions: mod.permissions || [] };
+            console.log("[ADMIN-DEBUG] auth via DB mod:", decoded.username);
+          } else {
+            console.log("[ADMIN-DEBUG] mod not found for:", decoded.username);
+          }
         }
-      } catch (e) {
-        console.error("Invalid session token:", e);
       }
     }
 
@@ -146,8 +174,9 @@ Deno.serve(async (req) => {
     switch (action) {
       // Auth check - returns role info and a session token
       case "auth_check": {
-        // Generate a session token
-        const sessionToken = btoa(JSON.stringify({ username, role: auth.role, iat: Date.now() }));
+        // Generate HMAC-signed session token
+        const payload = JSON.stringify({ username, role: auth.role, iat: Date.now() });
+        const sessionToken = await signToken(payload);
         result = { role: auth.role, username, session_token: sessionToken, permissions: auth.permissions || null };
         await logAudit({ action: "login", success: true });
         break;
