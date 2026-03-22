@@ -73,6 +73,18 @@ class GalaApiService {
     return this.call("project-z", "salary_report", { uuid });
   }
 
+  async salaryCheckAll(uuid: string) {
+    return this.call("project-z", "salary_check_all", { uuid });
+  }
+
+  async mySalaryRequests(uuid: string, month: string) {
+    return this.call("project-z", "my_salary_requests", { uuid, month });
+  }
+
+  async userTransfers(uuid: string) {
+    return this.call("project-z", "user_transfers", { uuid });
+  }
+
   // User detail reports
   async chargesReport(uuid: string, from?: string, to?: string) {
     return this.call("project-z", "admin_charges_report", { uuid, ...(from ? { from } : {}), ...(to ? { to } : {}) }, true);
@@ -102,11 +114,37 @@ class GalaApiService {
     return this.call("project-z", "salary_charge_list", { month }, true);
   }
 
-  async chargeCoins(uuid: string, amount: number, referenceId: string, targetUuid?: string) {
+  async chargeCoins(uuid: string, amount: number, referenceId: string, targetUuid?: string, requestType?: string) {
     return this.call("project-z", "salary_charge_manual", {
       uuid, amount, reference_id: referenceId,
       ...(targetUuid ? { target_uuid: targetUuid } : {}),
+      ...(requestType ? { request_type: requestType } : {}),
     }, true);
+  }
+
+  // Agencies
+  async agencyList() {
+    return this.call("project-z", "agency_list", {}, true);
+  }
+
+  async agencyCreate(params: Record<string, unknown>) {
+    return this.call("project-z", "agency_create", params, true);
+  }
+
+  async agencyAddBalance(username: string, coins: number) {
+    return this.call("project-z", "agency_add_balance", { username, coins }, true);
+  }
+
+  async agencyToggle(username: string) {
+    return this.call("project-z", "agency_toggle", { username }, true);
+  }
+
+  async agencyUpdate(params: Record<string, unknown>) {
+    return this.call("project-z", "agency_update", params, true);
+  }
+
+  async agencySalaryCheck(agencyId: string) {
+    return this.call("project-z", "agency_salary_check", { agency_id: agencyId }, true);
   }
 
   // Agents
@@ -221,6 +259,10 @@ class GalaApiService {
     return this.call("hola-chat", "upload-room-background", { uuid, image_url: imageUrl }, true);
   }
 
+  async userFull(uuid: string) {
+    return this.call("hola-chat", "user-full", { uuid });
+  }
+
   // bd-data
   async bdUserMonthlyCharges(uuid: string, month: string) {
     return this.call("bd-data", "user-monthly-charges", { uuid, month });
@@ -248,6 +290,85 @@ class GalaApiService {
 
   async addDiamonds(uuid: string, amount: number) {
     return this.call("aws", "add-diamonds", { uuid, amount, _method: "POST" }, true);
+  }
+
+  // ═══════════════════════════
+  //  db-proxy actions
+  // ═══════════════════════════
+
+  async dbProxy(action: string, params: Record<string, string | number> = {}, requireAdmin = false) {
+    return this.call("db-proxy", action, params, requireAdmin);
+  }
+
+  async activityFeed(limit?: number) {
+    return this.dbProxy("activity-feed", limit ? { limit } : {});
+  }
+
+  async userDiamonds(uuid: string) {
+    return this.dbProxy("user-diamonds", { uuid });
+  }
+
+  async withdrawStatus(uuid: string) {
+    return this.dbProxy("withdraw-status", { uuid });
+  }
+
+  async withdrawAgency(uuid: string, usd: number, method: string, toUuid?: string) {
+    return this.dbProxy("withdraw-agency", {
+      uuid, usd, method,
+      ...(toUuid ? { to_uuid: toUuid } : {}),
+    });
+  }
+
+  async dbTransfer(fromUuid: string, toUuid: string, usd: number) {
+    return this.dbProxy("transfer", { from_uuid: fromUuid, to_uuid: toUuid, usd });
+  }
+
+  async dbSalaryCheck(uuid: string) {
+    return this.dbProxy("salary-check", { uuid });
+  }
+
+  async salaryAudit() {
+    return this.dbProxy("salary-audit");
+  }
+
+  async dailySummary() {
+    return this.dbProxy("daily-summary");
+  }
+
+  async giftLookup(senderUuid: string, dateFrom: string, dateTo: string, receiverUuid?: string) {
+    return this.dbProxy("gift-lookup", {
+      sender_uuid: senderUuid, date_from: dateFrom, date_to: dateTo,
+      ...(receiverUuid ? { receiver_uuid: receiverUuid } : {}),
+    });
+  }
+
+  async giftImpact(senderUuid: string, dateFrom: string, dateTo: string, receiverUuid?: string) {
+    return this.dbProxy("gift-impact", {
+      sender_uuid: senderUuid, date_from: dateFrom, date_to: dateTo,
+      ...(receiverUuid ? { receiver_uuid: receiverUuid } : {}),
+    });
+  }
+
+  async giftDeduct(senderUuid: string, receiverUuid: string, dateFrom: string, dateTo: string) {
+    return this.dbProxy("gift-deduct", {
+      sender_uuid: senderUuid, receiver_uuid: receiverUuid, date_from: dateFrom, date_to: dateTo,
+    }, true);
+  }
+
+  async giftRestore(uuid: string, amount: number) {
+    return this.dbProxy("gift-restore", { uuid, amount }, true);
+  }
+
+  async deductDiamonds(uuid: string, amount: number) {
+    return this.dbProxy("deduct-diamonds", { uuid, amount }, true);
+  }
+
+  async topSenders() {
+    return this.dbProxy("top-senders");
+  }
+
+  async topReceivers() {
+    return this.dbProxy("top-receivers");
   }
 
   // ═══════════════════════════
