@@ -84,6 +84,7 @@ const AdminWorksPage: React.FC = () => {
   const [portalBanReason, setPortalBanReason] = useState("");
   const [portalBanLoading, setPortalBanLoading] = useState(false);
   const [portalBans, setPortalBans] = useState<any[]>([]);
+  const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(null);
 
   const fetchGlobalSettings = useCallback(async () => {
     const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled", "global_supporter_commission_pct", "global_agent_commission_pct"];
