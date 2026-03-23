@@ -263,10 +263,55 @@ const BDDashboard: React.FC = () => {
   if (!data?.bd) return null;
   const { bd, supporters, agents } = data;
 
-  // Compute live salary commission total — supporters are in coins, agents are in USD
-  const supporterCommissionCoins = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0);
+  const normalizeUsd = (value: unknown) => {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num) || num <= 0) return 0;
+    return num > 1000 ? num / 7500 : num;
+  };
+
+  const getSupporterChargesCoins = (supporter: any) => {
+    const liveCharges = Number(supporterSalaries[supporter.member_uuid]?.charges || 0);
+    if (liveCharges > 0) return liveCharges;
+    return Number(supporter.monthly_charges || supporter.total_charges || 0);
+  };
+
+  const getSupporterCommissionCoins = (supporter: any) => {
+    const liveCommissionCoins = Number(supporterSalaries[supporter.member_uuid]?.commission || 0);
+    if (liveCommissionCoins > 0) return liveCommissionCoins;
+
+    const monthlyCoins = Number(supporter.current_month_commission || 0);
+    if (monthlyCoins > 0) return monthlyCoins;
+
+    const fallbackUsd = normalizeUsd(
+      supporter.current_month_commission_usd
+      ?? supporter.total_commission_usd
+      ?? supporter.total_commission
+    );
+    return Math.round(fallbackUsd * 7500);
+  };
+
+  const getAgentSalaryUsd = (agent: any) => {
+    const liveSalary = Number(agentSalaries[agent.member_uuid]?.salary || 0);
+    if (liveSalary > 0) return liveSalary;
+    return normalizeUsd(agent.current_month_salary_usd ?? agent.total_salary_usd ?? agent.monthly_charges);
+  };
+
+  const getAgentCommissionUsd = (agent: any) => {
+    const liveCommissionUsd = Number(agentSalaries[agent.member_uuid]?.commission || 0);
+    if (liveCommissionUsd > 0) return liveCommissionUsd;
+
+    return normalizeUsd(
+      agent.current_month_commission_usd
+      ?? agent.total_commission_usd
+      ?? agent.current_month_commission
+      ?? agent.total_commission
+    );
+  };
+
+  // Compute commissions with reliable fallback from members table when external salary API is empty/slow
+  const supporterCommissionCoins = supporters.reduce((sum: number, s: any) => sum + getSupporterCommissionCoins(s), 0);
   const supporterCommissionUsd = supporterCommissionCoins / 7500;
-  const agentCommissionUsd = Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
+  const agentCommissionUsd = agents.reduce((sum: number, a: any) => sum + getAgentCommissionUsd(a), 0);
   const liveSalaryTotalUsd = supporterCommissionUsd + agentCommissionUsd;
   const liveSalaryTotal = Math.floor(liveSalaryTotalUsd * 7500);
 
@@ -625,9 +670,8 @@ const BDDashboard: React.FC = () => {
               </div>
               <div className="divide-y divide-border/20">
                 {supporters.map((s: any) => {
-                  const live = supporterSalaries[s.member_uuid];
-                  const charges = live?.charges || 0;
-                  const commission = live?.commission || 0;
+                  const charges = getSupporterChargesCoins(s);
+                  const commissionCoins = getSupporterCommissionCoins(s);
                   return (
                     <div key={s.member_uuid} className="px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
@@ -644,16 +688,15 @@ const BDDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-muted-foreground">نسبتك ({bd.user_commission_pct || 2}%):</span>
-                        <span className="font-bold text-emerald-400">{commission.toLocaleString()} كوينز</span>
+                        <span className="font-bold text-emerald-400">{commissionCoins.toLocaleString()} كوينز</span>
                       </div>
                     </div>
                   );
                 })}
                 {agents.map((a: any) => {
-                  const live = agentSalaries[a.member_uuid];
-                  const salary = live?.salary || 0;
-                  const commission = live?.commission || 0;
-                  const commCoins = Math.floor(commission * 7500);
+                  const salary = getAgentSalaryUsd(a);
+                  const commissionUsd = getAgentCommissionUsd(a);
+                  const commCoins = Math.floor(commissionUsd * 7500);
                   return (
                     <div key={a.member_uuid} className="px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
@@ -670,7 +713,7 @@ const BDDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-muted-foreground">نسبتك ({bd.agency_commission_pct || 5}%):</span>
-                        <span className="font-bold text-emerald-400">${commission.toFixed(2)} = {commCoins.toLocaleString()} كوينز</span>
+                        <span className="font-bold text-emerald-400">${commissionUsd.toFixed(2)} = {commCoins.toLocaleString()} كوينز</span>
                       </div>
                     </div>
                   );
@@ -913,13 +956,13 @@ const BDDashboard: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground">عمولة {bd.user_commission_pct || 2}%</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                   <div className="text-left">
                     <p className="text-sm font-black text-emerald-400" dir="ltr">
-                      ${(Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0) / 7500).toFixed(2)}
+                      ${supporterCommissionUsd.toFixed(2)}
                     </p>
                     <p className="text-[9px] text-muted-foreground">
-                      {Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0).toLocaleString()} كوينز
+                      {supporterCommissionCoins.toLocaleString()} كوينز
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-muted-foreground text-lg">chevron_left</span>
@@ -928,9 +971,8 @@ const BDDashboard: React.FC = () => {
 
               {/* Show first 2 supporters inline */}
               {supporters.slice(0, 2).map((s: any) => {
-                const live = supporterSalaries[s.member_uuid];
-                const charges = live?.charges || 0;
-                const commission = live?.commission || 0;
+                const charges = getSupporterChargesCoins(s);
+                const commissionCoins = getSupporterCommissionCoins(s);
                 return (
                   <div key={s.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
@@ -948,8 +990,8 @@ const BDDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-black text-emerald-400">{commission.toLocaleString()} ك</p>
-                      <p className="text-[9px] text-muted-foreground">(${(commission / 7500).toFixed(2)})</p>
+                      <p className="text-xs font-black text-emerald-400">{commissionCoins.toLocaleString()} ك</p>
+                      <p className="text-[9px] text-muted-foreground">(${(commissionCoins / 7500).toFixed(2)})</p>
                     </div>
                   </div>
                 );
@@ -972,10 +1014,10 @@ const BDDashboard: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="text-left">
                     <p className="text-sm font-black text-emerald-400" dir="ltr">
-                      ${Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0).toFixed(2)}
+                      ${agentCommissionUsd.toFixed(2)}
                     </p>
                     <p className="text-[9px] text-muted-foreground">
-                      {Math.floor(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) * 7500).toLocaleString()} كوينز
+                      {Math.floor(agentCommissionUsd * 7500).toLocaleString()} كوينز
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-muted-foreground text-lg">chevron_left</span>
@@ -983,9 +1025,8 @@ const BDDashboard: React.FC = () => {
               </button>
 
               {agents.slice(0, 2).map((a: any) => {
-                const live = agentSalaries[a.member_uuid];
-                const salary = live?.salary || 0;
-                const commission = live?.commission || 0;
+                const salary = getAgentSalaryUsd(a);
+                const commissionUsd = getAgentCommissionUsd(a);
                 return (
                   <div key={a.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
@@ -1003,8 +1044,8 @@ const BDDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-black text-emerald-400">${commission.toFixed(2)}</p>
-                      <p className="text-[9px] text-muted-foreground">({Math.floor(commission * 7500).toLocaleString()} ك)</p>
+                      <p className="text-xs font-black text-emerald-400">${commissionUsd.toFixed(2)}</p>
+                      <p className="text-[9px] text-muted-foreground">({Math.floor(commissionUsd * 7500).toLocaleString()} ك)</p>
                     </div>
                   </div>
                 );
