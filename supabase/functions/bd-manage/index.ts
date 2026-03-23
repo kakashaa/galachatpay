@@ -110,7 +110,18 @@ async function checkDeviceIsBdMember(sb: any, userUuid: string): Promise<string 
 
   const allUuids = sameDeviceUsers.map((d: any) => d.user_uuid);
 
-  // Check if any user on this device is an active BD member
+  // Check works_members first (new system)
+  const { data: worksMembers } = await sb
+    .from("works_members")
+    .select("member_uuid")
+    .in("member_uuid", allUuids)
+    .eq("status", "active");
+
+  if (worksMembers && worksMembers.length > 0) {
+    return "member_exists";
+  }
+
+  // Fallback: check bd_members (legacy)
   const { data: existingMembers } = await sb
     .from("bd_members")
     .select("member_uuid, bd_uuid")
@@ -118,7 +129,7 @@ async function checkDeviceIsBdMember(sb: any, userUuid: string): Promise<string 
     .eq("is_active", true);
 
   if (existingMembers && existingMembers.length > 0) {
-    return "member_exists"; // Device has a BD member
+    return "member_exists";
   }
   return null;
 }
@@ -140,7 +151,18 @@ async function checkDeviceIsBd(sb: any, userUuid: string): Promise<string | null
 
   const allUuids = sameDeviceUsers.map((d: any) => d.user_uuid);
 
-  // Check if any user on this device is an active BD
+  // Check works_accounts first (new system)
+  const { data: worksAccs } = await sb
+    .from("works_accounts")
+    .select("user_uuid")
+    .in("user_uuid", allUuids)
+    .eq("status", "active");
+
+  if (worksAccs && worksAccs.length > 0) {
+    return "bd_exists";
+  }
+
+  // Fallback: check bd_commission_settings (legacy)
   const { data: existingBDs } = await sb
     .from("bd_commission_settings")
     .select("bd_uuid")
@@ -149,7 +171,7 @@ async function checkDeviceIsBd(sb: any, userUuid: string): Promise<string | null
     .eq("is_approved", true);
 
   if (existingBDs && existingBDs.length > 0) {
-    return "bd_exists"; // Device has a BD
+    return "bd_exists";
   }
   return null;
 }
