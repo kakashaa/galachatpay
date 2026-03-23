@@ -693,9 +693,14 @@ const WorksPage: React.FC = () => {
                   </div>
                 </div>
                 {m.monthly_charges !== undefined && (
-                  <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
-                    <span className="text-muted-foreground font-bold">شحن: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
-                    <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
+                  <div className="space-y-1 px-1 pt-1 border-t border-border/50">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground font-bold">شحن: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
+                      <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
+                    </div>
+                    {toFiniteNumber(m.total_commission_usd) > 0 && (
+                      <p className="text-[11px] font-black text-emerald-400">💰 عمولتك: ${toFiniteNumber(m.total_commission_usd).toFixed(2)}</p>
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -744,9 +749,14 @@ const WorksPage: React.FC = () => {
                   </div>
                 </div>
                 {m.agency_salary !== undefined && (
-                  <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
-                    <span className="text-muted-foreground font-bold">راتب: ${m.agency_salary?.toFixed(2)}</span>
-                    <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
+                  <div className="space-y-1 px-1 pt-1 border-t border-border/50">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground font-bold">راتب: ${m.agency_salary?.toFixed(2)}</span>
+                      <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
+                    </div>
+                    {toFiniteNumber(m.total_commission_usd) > 0 && (
+                      <p className="text-[11px] font-black text-emerald-400">💰 عمولتك: ${toFiniteNumber(m.total_commission_usd).toFixed(2)}</p>
+                    )}
                   </div>
                 )}
               </motion.div>
