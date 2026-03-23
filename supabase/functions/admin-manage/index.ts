@@ -1240,10 +1240,7 @@ Deno.serve(async (req) => {
           const counters = countsByWorksId.get(String(acc.id)) || { supporterCount: 0, agentCount: 0 };
           const supporterPct = toFiniteNumber(acc.supporter_commission_pct);
           const agentPct = toFiniteNumber(acc.agent_commission_pct);
-          const liveEarnings = earningsByWorksId.get(String(acc.id));
-          const dynamicEarnings = liveEarnings !== undefined
-            ? Math.round(liveEarnings * 100) / 100
-            : Math.round(toFiniteNumber(acc.total_earnings_usd) * 100) / 100;
+          const dynamicEarnings = Math.round(toFiniteNumber(acc.total_earnings_usd) * 100) / 100;
           const activeMembersCount = counters.supporterCount + counters.agentCount;
 
           return {
