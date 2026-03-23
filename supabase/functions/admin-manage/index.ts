@@ -1218,24 +1218,34 @@ Deno.serve(async (req) => {
               const agentPct = Number(acc.agent_commission_pct || 5);
               let totalDynamic = 0;
 
+              console.log(`[WORKS-EARN] account ${acc.id} (${acc.bd_name}) has ${(activeMembers||[]).length} active members`);
               const results = await Promise.all((activeMembers || []).map(async (m: any) => {
                 try {
                   if (m.member_type === "supporter") {
-                    const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`, { signal: AbortSignal.timeout(8000) });
+                    const url = `${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`;
+                    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
                     const json = await res.json();
+                    console.log(`[WORKS-EARN] supporter ${m.member_uuid} raw response:`, JSON.stringify(json).slice(0, 300));
                     const charges = Number(json?.data?.total_charges || json?.total_charges || 0);
                     const pct = Number(m.commission_pct || supporterPct);
                     const commissionCoins = Math.floor(charges * pct / 100);
-                    // Convert coins to USD (~7500 coins per $1)
-                    return commissionCoins / 7500;
-                  } else if (m.member_type === "agent" && m.agency_id) {
-                    const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`, { signal: AbortSignal.timeout(8000) });
+                    const usd = commissionCoins / 7500;
+                    console.log(`[WORKS-EARN] supporter ${m.member_uuid}: charges=${charges} pct=${pct} coins=${commissionCoins} usd=${usd}`);
+                    return usd;
+                  } else if (m.member_type === "agent") {
+                    const agencyId = m.agency_id || "";
+                    if (!agencyId) { console.log(`[WORKS-EARN] agent ${m.member_uuid} has no agency_id`); return 0; }
+                    const url = `${WARES_API}&action=agency-salary&agency_id=${agencyId}`;
+                    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
                     const json = await res.json();
+                    console.log(`[WORKS-EARN] agent ${m.member_uuid} agency ${agencyId} raw response:`, JSON.stringify(json).slice(0, 300));
                     const salary = Number(json?.data?.salary || json?.salary || 0);
                     const pct = Number(m.commission_pct || agentPct);
-                    return salary * pct / 100;
+                    const usd = salary * pct / 100;
+                    console.log(`[WORKS-EARN] agent ${m.member_uuid}: salary=${salary} pct=${pct} usd=${usd}`);
+                    return usd;
                   }
-                } catch { /* timeout or error — skip */ }
+                } catch (err) { console.log(`[WORKS-EARN] error for ${m.member_uuid}:`, err?.message); }
                 return 0;
               }));
 
