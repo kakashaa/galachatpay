@@ -135,6 +135,7 @@ const TIMEOUT_TOLERANT_ACTIONS = new Set([
   "user-monthly-charges",
   "agency-salary",
   "salary_check_all",
+  "activity-feed",
 ]);
 
 function json(data: unknown, status = 200) {
@@ -319,14 +320,27 @@ serve(async (req) => {
       message.toLowerCase().includes("timed out") ||
       message.includes("aborted");
 
-    if (isTimeout && TIMEOUT_TOLERANT_ACTIONS.has(currentAction)) {
-      console.warn(`[gala-proxy] Timeout tolerated for action=${currentAction}`);
+    const isNetworkDisconnect =
+      message.toLowerCase().includes("connection error") ||
+      message.toLowerCase().includes("sendrequest") ||
+      message.toLowerCase().includes("unexpected-eof") ||
+      message.toLowerCase().includes("peer closed connection") ||
+      message.toLowerCase().includes("tls close_notify");
+
+    if ((isTimeout || isNetworkDisconnect) && TIMEOUT_TOLERANT_ACTIONS.has(currentAction)) {
+      console.warn(`[gala-proxy] transient upstream error tolerated for action=${currentAction}`);
+
+      const safeData = currentAction === "activity-feed"
+        ? { activities: [], summary: { danger_count: 0 } }
+        : null;
+
       return json({
         success: false,
-        timeout: true,
+        timeout: isTimeout,
+        transient_error: true,
         action: currentAction,
-        data: null,
-        message: "Upstream timeout",
+        data: safeData,
+        message: isTimeout ? "Upstream timeout" : "Upstream connection dropped",
       }, 200);
     }
 
