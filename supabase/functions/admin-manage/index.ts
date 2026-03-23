@@ -1251,7 +1251,7 @@ Deno.serve(async (req) => {
         }
 
         // Fetch live data for all members in parallel (batch of 30 at a time to avoid overwhelming)
-        const BATCH_SIZE = 30;
+        const BATCH_SIZE = 3;
         const liveResults: { worksId: string; commission: number }[] = [];
         for (let i = 0; i < allActiveMembers.length; i += BATCH_SIZE) {
           const batch = allActiveMembers.slice(i, i + BATCH_SIZE);
