@@ -1291,7 +1291,17 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "وكيل"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => refreshSingleMember(m.id)}
+                                      disabled={refreshingMemberId === m.id}
+                                      className="p-1 rounded-lg bg-primary/10 text-primary disabled:opacity-50"
+                                      title="تحديث البيانات"
+                                    >
+                                      {refreshingMemberId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart3 className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  </div>
                                 </div>
                                 <div className="rounded-lg bg-muted/30 p-2 text-[10px]">
                                   <div className="flex items-center gap-2">
@@ -1305,17 +1315,20 @@ const AdminWorksPage: React.FC = () => {
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">راتب الوكالة</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
-                                    <p className="text-muted-foreground">العمولة (live)</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
+                                    <p className="text-muted-foreground">العمولة</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">النسبة</p>
                                     <p className="font-bold text-foreground">{Number(m.commission_pct ?? agentPct)}%</p>
                                   </div>
                                 </div>
+                                {m.needs_refresh && !refreshingMemberId && (
+                                  <p className="text-[9px] text-muted-foreground text-center">⚡ اضغط 🔄 لتحديث البيانات الحية</p>
+                                )}
                                 {renderMemberActions(m)}
                               </div>
                             ))}
