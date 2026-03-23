@@ -214,7 +214,7 @@ const WorksPage: React.FC = () => {
               } else {
                 // Fallback: use configured percentage on charges (coins)
                 const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-                commission = Math.floor(charges * (pct / 100) / COINS_PER_USD);
+                commission = Math.floor(charges * (pct / 100));
               }
             } catch {
               /* silent */
@@ -239,7 +239,7 @@ const WorksPage: React.FC = () => {
                   commission = Math.floor(apiCommissionUsd * COINS_PER_USD);
                 } else {
                   const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-                  commission = Math.floor(charges * (pct / 100) / COINS_PER_USD);
+                  commission = Math.floor(charges * (pct / 100));
                 }
               } catch {
                 /* silent */
@@ -267,7 +267,7 @@ const WorksPage: React.FC = () => {
                   if (monthlyCharges > 0) {
                     charges = monthlyCharges;
                     const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-                    commission = Math.floor(monthlyCharges * (pct / 100) / COINS_PER_USD);
+                    commission = Math.floor(monthlyCharges * (pct / 100));
                   }
                 }
               } catch {
