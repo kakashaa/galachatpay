@@ -74,8 +74,13 @@ class GalaApiService {
     return this.call("project-z", "admin_login", { username, password });
   }
 
-  async adminFirstSetup(username: string, newPassword: string, phone: string) {
-    return this.call("project-z", "admin_first_setup", { username, new_password: newPassword, phone }, true);
+  async adminFirstSetup(username: string, oldPassword: string, newPassword: string, phone: string) {
+    const { data, error } = await supabase.functions.invoke("admin-manage", {
+      body: { username, password: oldPassword, action: "admin_first_setup", data: { new_password: newPassword, phone } },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return { success: true, ...data };
   }
 
   // Salary

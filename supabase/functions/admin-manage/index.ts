@@ -1599,6 +1599,36 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // First-login password change for moderator accounts
+      case "admin_first_setup": {
+        const { new_password, phone } = data || {};
+        if (!new_password || new_password.length < 4) throw new Error("كلمة المرور يجب أن تكون 4 أحرف على الأقل");
+        
+        const currentUsername = username;
+        // Only moderators from DB need first-setup
+        const { data: mod, error: modErr } = await supabase
+          .from("admin_accounts")
+          .select("id, username")
+          .eq("username", currentUsername)
+          .eq("is_active", true)
+          .single();
+        if (modErr || !mod) throw new Error("حساب غير موجود");
+        
+        const newHash = await hashPassword(new_password);
+        const updatePayload: any = { password_hash: newHash, updated_at: new Date().toISOString() };
+        if (phone) updatePayload.phone = phone;
+        
+        const { error: updErr } = await supabase
+          .from("admin_accounts")
+          .update(updatePayload)
+          .eq("id", mod.id);
+        if (updErr) throw new Error("فشل تحديث البيانات: " + updErr.message);
+        
+        await logAudit({ action: "first_setup", target: currentUsername });
+        result = { success: true, message: "تم تحديث البيانات بنجاح" };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),

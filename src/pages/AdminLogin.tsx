@@ -66,7 +66,7 @@ const AdminLogin: React.FC = () => {
     }
     setLoading(true);
     try {
-      const data = await galaApi.adminFirstSetup(username.trim(), newPassword, whatsapp.trim() || "") as any;
+      const data = await galaApi.adminFirstSetup(username.trim(), password, newPassword, whatsapp.trim() || "") as any;
       if (!data.success) {
         toast.error(data.message || "فشل تحديث البيانات");
         setLoading(false);
