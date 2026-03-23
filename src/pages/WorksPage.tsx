@@ -186,11 +186,6 @@ const WorksPage: React.FC = () => {
     const year = new Date().getFullYear();
     const monthNum = new Date().getMonth() + 1;
 
-    // Helper: wrap a promise with a timeout (returns fallback on timeout)
-    const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
-      Promise.race([promise, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))]);
-
-    const MEMBER_TIMEOUT = 20_000; // 20s per member max
 
     // Process members ONE AT A TIME to avoid flooding gala-proxy
     const updatedMembers: MemberWithSalary[] = [];
