@@ -639,7 +639,14 @@ const AdminWorksPage: React.FC = () => {
                       <div><p className="font-bold text-accent-foreground">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setSelectedWorksId(a.id); fetchMembers(a.id); setTab("members"); }}
+                      <button onClick={async () => {
+                        setSelectedWorksId(a.id);
+                        setTab("members");
+                        const d = await adminCall("works_get_members", { works_id: a.id });
+                        const membersList = d || [];
+                        setMembers(membersList);
+                        fetchMemberLiveData(membersList, a);
+                      }}
                         className="flex-1 bg-muted py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                         <Users className="w-3 h-3" /> الأعضاء
                       </button>
