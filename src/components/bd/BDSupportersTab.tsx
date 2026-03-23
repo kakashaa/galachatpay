@@ -5,8 +5,11 @@ interface Supporter {
   member_uuid: string;
   member_name: string;
   monthly_charges: number;
+  total_charges?: number;
   current_month_commission: number;
+  current_month_commission_usd?: number;
   total_commission: number;
+  total_commission_usd?: number;
   is_active: boolean;
 }
 
@@ -20,14 +23,38 @@ interface BDSupportersTabProps {
 const BDSupportersTab: React.FC<BDSupportersTabProps> = ({ supporters, commissionPct, salaryData = {}, salaryLoading = false }) => {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const normalizeUsd = (value: unknown) => {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num) || num <= 0) return 0;
+    return num > 1000 ? num / 7500 : num;
+  };
   
   const filtered = supporters.filter(s => 
     s.member_name?.toLowerCase().includes(search.toLowerCase()) || 
     s.member_uuid?.includes(search)
   );
 
-  const totalLiveCommission = Object.values(salaryData).reduce((sum, d) => sum + d.commission, 0);
-  const totalCharges = Object.values(salaryData).reduce((sum, d) => sum + d.charges, 0);
+  const getCommissionCoins = (supporter: Supporter) => {
+    const liveCoins = Number(salaryData[supporter.member_uuid]?.commission || 0);
+    if (liveCoins > 0) return liveCoins;
+
+    const monthlyCoins = Number(supporter.current_month_commission || 0);
+    if (monthlyCoins > 0) return monthlyCoins;
+
+    const usd = normalizeUsd(
+      supporter.current_month_commission_usd
+      ?? supporter.total_commission_usd
+      ?? supporter.total_commission
+    );
+    return Math.round(usd * 7500);
+  };
+
+  const totalLiveCommission = supporters.reduce((sum, supporter) => sum + getCommissionCoins(supporter), 0);
+  const totalCharges = supporters.reduce((sum, supporter) => {
+    const liveCharges = Number(salaryData[supporter.member_uuid]?.charges || 0);
+    return sum + (liveCharges > 0 ? liveCharges : Number(supporter.monthly_charges || supporter.total_charges || 0));
+  }, 0);
 
   return (
     <div className="space-y-4">
@@ -81,8 +108,8 @@ const BDSupportersTab: React.FC<BDSupportersTabProps> = ({ supporters, commissio
         <div className="space-y-3">
           {filtered.map((supporter) => {
             const liveSalary = salaryData[supporter.member_uuid];
-            const charges = liveSalary?.charges || supporter.monthly_charges || 0;
-            const commission = liveSalary?.commission || 0;
+            const charges = Number(liveSalary?.charges || supporter.monthly_charges || supporter.total_charges || 0);
+            const commission = getCommissionCoins(supporter);
             const chargesUsd = charges / 7500;
             const isExpanded = expandedId === supporter.member_uuid;
 

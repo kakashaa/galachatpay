@@ -6,7 +6,11 @@ interface Agent {
   member_name: string;
   monthly_charges: number;
   current_month_commission: number;
+  current_month_commission_usd?: number;
   total_commission: number;
+  total_commission_usd?: number;
+  total_salary_usd?: number;
+  current_month_salary_usd?: number;
   is_active: boolean;
   agency_id?: string;
 }
@@ -21,15 +25,40 @@ interface BDAgentsTabProps {
 const BDAgentsTab: React.FC<BDAgentsTabProps> = ({ agents, commissionPct, salaryData = {}, salaryLoading = false }) => {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  
+
+  const normalizeUsd = (value: unknown) => {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num) || num <= 0) return 0;
+    return num > 1000 ? num / 7500 : num;
+  };
+
   const filtered = agents.filter(a => 
     a.member_name?.toLowerCase().includes(search.toLowerCase()) || 
     a.member_uuid?.includes(search)
   );
 
-  const totalLiveCommission = Object.values(salaryData).reduce((sum, d) => sum + d.commission, 0);
+  const getCommissionUsd = (agent: Agent) => {
+    const liveUsd = Number(salaryData[agent.member_uuid]?.commission || 0);
+    if (liveUsd > 0) return liveUsd;
+
+    return normalizeUsd(
+      agent.current_month_commission_usd
+      ?? agent.total_commission_usd
+      ?? agent.current_month_commission
+      ?? agent.total_commission
+    );
+  };
+
+  const getSalaryUsd = (agent: Agent) => {
+    const liveSalary = Number(salaryData[agent.member_uuid]?.salary || 0);
+    if (liveSalary > 0) return liveSalary;
+
+    return normalizeUsd(agent.current_month_salary_usd ?? agent.total_salary_usd ?? agent.monthly_charges);
+  };
+
+  const totalLiveCommission = agents.reduce((sum, agent) => sum + getCommissionUsd(agent), 0);
   const totalLiveCommissionCoins = Math.floor(totalLiveCommission * 7500);
-  const totalSalary = Object.values(salaryData).reduce((sum, d) => sum + d.salary, 0);
+  const totalSalary = agents.reduce((sum, agent) => sum + getSalaryUsd(agent), 0);
 
   return (
     <div className="space-y-4">
@@ -81,9 +110,8 @@ const BDAgentsTab: React.FC<BDAgentsTabProps> = ({ agents, commissionPct, salary
       ) : (
         <div className="space-y-3">
           {filtered.map((agent) => {
-            const liveSalary = salaryData[agent.member_uuid];
-            const agencySalary = liveSalary?.salary || 0;
-            const commission = liveSalary?.commission || 0;
+            const agencySalary = getSalaryUsd(agent);
+            const commission = getCommissionUsd(agent);
             const commissionCoins = Math.floor(commission * 7500);
             const isExpanded = expandedId === agent.member_uuid;
 
