@@ -318,7 +318,9 @@ const WorksPage: React.FC = () => {
       if (works) {
         setMyWorks(works);
 
-        const todayDate = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const todayStartUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
+        const todayDate = todayStartUtc.toISOString().slice(0, 10);
         const [{ data: m }, { data: todayRows }] = await Promise.all([
           supabase
             .from("works_members")
@@ -326,31 +328,42 @@ const WorksPage: React.FC = () => {
             .eq("works_id", works.id)
             .eq("status", "active"),
           supabase
-            .from("works_earnings")
-            .select("commission_usd")
-            .eq("works_id", works.id)
-            .eq("period_date", todayDate),
+            .from("works_commission_logs" as any)
+            .select("amount,created_at")
+            .eq("bd_uuid", user.uuid)
+            .gte("created_at", todayStartUtc.toISOString()),
         ]);
 
         const rawMembers = (m || []) as any as MemberWithSalary[];
         setMembers(rawMembers);
 
-        const todayUsd = (todayRows || []).reduce(
-          (sum: number, row: any) => sum + Number(row.commission_usd || 0),
-          0
-        );
+        const todayUsd = (todayRows || []).reduce((sum: number, row: any) => {
+          if (String(row?.created_at || "").slice(0, 10) !== todayDate) return sum;
+          return sum + toFiniteNumber(row?.amount ?? 0);
+        }, 0);
         setTodayEarnings(todayUsd);
 
-        // Auto-fetch salary data for live calculations (month only)
+        // Auto-fetch salary data for live calculations (month only) in background
         if (rawMembers.length > 0) {
           setSalaryLoading(true);
-          try {
-            const { totalMonthCommissionCoins, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
-            setMembers(updatedMembers);
-            setMonthEarnings(totalMonthCommissionCoins);
-          } catch { /* silent */ }
-          setSalaryLoading(false);
+          const requestId = ++salaryFetchIdRef.current;
+          void fetchSalaryData(works.id, rawMembers)
+            .then(({ totalMonthCommissionCoins, updatedMembers }) => {
+              if (requestId !== salaryFetchIdRef.current) return;
+              setMembers(updatedMembers);
+              setMonthEarnings(totalMonthCommissionCoins);
+            })
+            .catch(() => {
+              if (requestId !== salaryFetchIdRef.current) return;
+              setMonthEarnings(0);
+            })
+            .finally(() => {
+              if (requestId !== salaryFetchIdRef.current) return;
+              setSalaryLoading(false);
+            });
         } else {
+          salaryFetchIdRef.current += 1;
+          setSalaryLoading(false);
           setMonthEarnings(0);
         }
       } else {
@@ -549,7 +562,7 @@ const WorksPage: React.FC = () => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const withdrawMonth = lastMonth.toISOString().slice(0, 7);
-    const usdAmount = monthEarnings / 7500;
+    const usdAmount = monthEarnings / COINS_PER_USD;
 
     try {
       await (supabase.from("works_withdrawals" as any)).insert({
@@ -571,7 +584,10 @@ const WorksPage: React.FC = () => {
   const supporterCount = members.filter(m => m.member_type === "supporter").length;
   const agentCount = members.filter(m => m.member_type === "agent").length;
   const balance = Number(myWorks?.balance_usd || 0);
-  const totalEarnings = Number(myWorks?.total_earnings_usd || 0);
+  const storedTotalEarningsUsd = Number(myWorks?.total_earnings_usd || 0);
+  const monthEarningsUsd = monthEarnings / COINS_PER_USD;
+  const totalEarningsUsd = Math.max(storedTotalEarningsUsd, monthEarningsUsd);
+  const totalEarningsCoins = Math.floor(totalEarningsUsd * COINS_PER_USD);
   const supporterPct = Number(myWorks?.supporter_commission_pct || 2);
   const agentPct = Number(myWorks?.agent_commission_pct || 3);
 
@@ -700,7 +716,7 @@ const WorksPage: React.FC = () => {
                 <InfoTip text="الرصيد المتاح للسحب. يمكنك طلب سحبه في أول 5 أيام من كل شهر" />
               </div>
               <p className="text-2xl font-mono font-black text-foreground">${balance.toFixed(2)}</p>
-              <p className="text-[10px] font-bold text-muted-foreground">{Math.round(balance * 7500).toLocaleString()} كوينز</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{Math.round(balance * COINS_PER_USD).toLocaleString()} كوينز</p>
               <p className="text-xs font-black text-muted-foreground">الرصيد المتاح</p>
               {balance > 0 && <p className="text-[10px] text-primary font-black">اضغط لطلب سحب ←</p>}
             </motion.div>
@@ -718,8 +734,8 @@ const WorksPage: React.FC = () => {
                 </div>
                 <InfoTip text="إجمالي جميع الأرباح التي حققتها منذ انضمامك لنظام البيدي" />
               </div>
-              <p className="text-2xl font-mono font-black text-foreground">${(totalEarnings > 0 ? totalEarnings : monthEarnings / 7500).toFixed(2)}</p>
-              <p className="text-[10px] font-bold text-muted-foreground">{Math.round((totalEarnings > 0 ? totalEarnings : monthEarnings / 7500) * 7500).toLocaleString()} كوينز</p>
+              <p className="text-2xl font-mono font-black text-foreground">${totalEarningsUsd.toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{totalEarningsCoins.toLocaleString()} كوينز</p>
               <p className="text-xs font-black text-muted-foreground">إجمالي الأرباح</p>
             </motion.div>
           </div>
@@ -806,7 +822,7 @@ const WorksPage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / 7500).toFixed(2)}</p>
+                    <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / COINS_PER_USD).toFixed(2)}</p>
                   </div>
                 </div>
                 {m.monthly_charges !== undefined && (
@@ -887,7 +903,7 @@ const WorksPage: React.FC = () => {
           {(() => {
             const dayOfMonth = new Date().getDate();
             const canWithdraw = dayOfMonth <= 5;
-            const coinsAmount = Math.floor(monthEarnings * 7500);
+            const coinsAmount = Math.floor(monthEarnings);
             return canWithdraw ? (
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
