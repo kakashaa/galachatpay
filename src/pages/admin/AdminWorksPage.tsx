@@ -1209,8 +1209,16 @@ const AdminWorksPage: React.FC = () => {
                           <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-center">
                             <p className="text-[10px] text-muted-foreground">إجمالي أرباح الشهر (داعمين + وكلاء)</p>
                             <p className="text-lg font-black text-foreground">
-                              {memberSalaryLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `$${dynamicAccountEarnings.toFixed(2)}`}
+                              {`$${dynamicAccountEarnings.toFixed(2)}`}
                             </p>
+                            <button
+                              onClick={refreshAllMembers}
+                              disabled={refreshingAll || !!refreshingMemberId}
+                              className="mt-2 text-[10px] px-3 py-1 rounded-lg font-bold flex items-center gap-1 mx-auto bg-accent/20 text-accent-foreground disabled:opacity-50"
+                            >
+                              <RefreshCw className={`w-3 h-3 ${refreshingAll ? "animate-spin" : ""}`} />
+                              {refreshingAll ? "جاري التحديث..." : "تحديث الكل"}
+                            </button>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-[10px]">
                             <div className="bg-muted/40 border border-border rounded-lg p-2 text-center">
@@ -1218,6 +1226,22 @@ const AdminWorksPage: React.FC = () => {
                               <p className="text-muted-foreground">عدد الداعمين • نسبة {supporterPct}%</p>
                             </div>
                             <div className="bg-muted/40 border border-border rounded-lg p-2 text-center">
+                              <p className="font-bold text-foreground">{agents.length}</p>
+                              <p className="text-muted-foreground">عدد الوكلاء • نسبة {agentPct}%</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[10px]">
+                            <div className="bg-muted/40 border border-border rounded-lg p-2 text-center">
+                              <p className="font-bold text-foreground">${supporterDynamicEarnings.toFixed(2)}</p>
+                              <p className="text-muted-foreground">أرباح الداعمين (شهري)</p>
+                            </div>
+                            <div className="bg-muted/40 border border-border rounded-lg p-2 text-center">
+                              <p className="font-bold text-foreground">${agentDynamicEarnings.toFixed(2)}</p>
+                              <p className="text-muted-foreground">أرباح الوكلاء (شهري)</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                               <p className="font-bold text-foreground">{agents.length}</p>
                               <p className="text-muted-foreground">عدد الوكلاء • نسبة {agentPct}%</p>
                             </div>
