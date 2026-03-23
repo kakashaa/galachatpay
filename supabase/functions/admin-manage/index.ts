@@ -1271,11 +1271,11 @@ Deno.serve(async (req) => {
         if (!w.data) throw new Error("Not found");
         await supabase.from("bd_withdrawals").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", awId);
         // Deduct from available_balance
-        const accW = await supabase.from("bd_commission_settings").select("available_balance").eq("bd_uuid", w.data.bd_uuid).single();
+        const accW = await supabase.from("works_accounts").select("balance_usd").eq("user_uuid", w.data.bd_uuid).single();
         if (accW.data) {
-          await supabase.from("bd_commission_settings").update({
-            available_balance: Math.max(0, (Number(accW.data.available_balance) || 0) - Number(w.data.amount))
-          }).eq("bd_uuid", w.data.bd_uuid);
+          await supabase.from("works_accounts").update({
+            balance_usd: Math.max(0, (Number(accW.data.balance_usd) || 0) - Number(w.data.amount))
+          }).eq("user_uuid", w.data.bd_uuid);
         }
         result = { success: true };
         break;
