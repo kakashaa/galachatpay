@@ -1268,7 +1268,14 @@ Deno.serve(async (req) => {
           }
         }
 
-        result = { members, dynamic_earnings: Math.round(totalDynamic * 100) / 100 };
+        const finalEarnings = Math.round(totalDynamic * 100) / 100;
+
+        // Save live earnings back to the account so list page shows accurate data
+        await supabase.from("works_accounts").update({
+          total_earnings_usd: finalEarnings,
+        }).eq("id", works_id);
+
+        result = { members, dynamic_earnings: finalEarnings };
         break;
       }
 
