@@ -140,11 +140,57 @@ const SupporterBenefits: React.FC = () => {
       const challengesRes = await supabase.from("supporter_challenges").select("*").eq("is_active", true).order("created_at", { ascending: false });
       setChallenges((challengesRes.data || []) as any);
 
-      // Load user's challenge progress
+      // Load user's challenge progress & auto-update milestones
       if (user?.uuid) {
         const progressRes = await supabase.from("supporter_challenge_progress").select("*").eq("user_uuid", user.uuid);
         const progressMap: Record<string, any> = {};
-        (progressRes.data || []).forEach((p: any) => { progressMap[p.challenge_id] = p; });
+        const allChallenges = challengesRes.data || [];
+        for (const p of (progressRes.data || []) as any[]) {
+          progressMap[p.challenge_id] = p;
+          // Auto-check milestones for active challenges
+          if (p.status === "active") {
+            const ch = allChallenges.find((c: any) => c.id === p.challenge_id);
+            if (ch) {
+              const base = p.base_charges || 0;
+              const currentChargeRes2 = await supabase.from("supporter_monthly_charges").select("total_coins").eq("uuid", user.uuid).eq("month", currentMonth).maybeSingle();
+              const liveCoins = (currentChargeRes2.data as any)?.total_coins || monthlyCoins;
+              const progress = Math.max(0, liveCoins - base);
+              const pct = (progress / ch.target_amount) * 100;
+
+              // Update current_amount in DB
+              if (progress !== p.current_amount) {
+                await supabase.from("supporter_challenge_progress").update({ current_amount: progress } as any).eq("id", p.id);
+                p.current_amount = progress;
+              }
+
+              // 50% notification (one-time)
+              if (pct >= 50 && (p.current_amount < ch.target_amount * 0.5 || !p._notified_50)) {
+                const already50 = await supabase.from("notifications").select("id").eq("user_uuid", user.uuid).eq("type", "supporter_club").ilike("title", `%50%%${ch.id.slice(0,6)}%`).limit(1);
+                if (!already50.data?.length) {
+                  await supabase.from("notifications").insert({
+                    user_uuid: user.uuid,
+                    title: `🔥 50% من التحدي! ${ch.id.slice(0,6)}`,
+                    body: `وصلت نص الطريق في "${ch.title}" — كمّل!`,
+                    type: "supporter_club",
+                  } as any);
+                }
+              }
+
+              // Goal met notification
+              if (progress >= ch.target_amount && p.status === "active") {
+                await supabase.from("supporter_challenge_progress").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", p.id);
+                p.status = "completed";
+                progressMap[p.challenge_id] = p;
+                await supabase.from("notifications").insert({
+                  user_uuid: user.uuid,
+                  title: "🎉 حققت الهدف!",
+                  body: `أكملت التحدي "${ch.title}" — استلم كوبونك الآن!`,
+                  type: "supporter_club",
+                } as any);
+              }
+            }
+          }
+        }
         setChallengeProgress(progressMap);
       }
 
