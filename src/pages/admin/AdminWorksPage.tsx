@@ -9,7 +9,7 @@ import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shiel
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
-import { galaApi } from "@/services/galaApi";
+
 
 const AdminWorksPage: React.FC = () => {
   const { handleLogout, adminCall, adminUsername } = useAdminSession();
