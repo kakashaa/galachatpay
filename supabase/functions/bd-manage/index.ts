@@ -237,7 +237,7 @@ serve(async (req) => {
 
       // Check if there's already a pending request
       const { data: existingReq } = await sb
-        .from("bd_registration_requests")
+        .from("works_requests")
         .select("id, status")
         .eq("user_uuid", user_uuid)
         .eq("status", "pending")
@@ -248,7 +248,7 @@ serve(async (req) => {
       }
 
       // Create pending registration request
-      await sb.from("bd_registration_requests").insert({
+      await sb.from("works_requests").insert({
         user_uuid,
         user_name: user_name || "",
         user_level: level,
@@ -295,7 +295,7 @@ serve(async (req) => {
 
       // Check registration request
       const { data: req2 } = await sb
-        .from("bd_registration_requests")
+        .from("works_requests")
         .select("*")
         .eq("user_uuid", user_uuid)
         .order("created_at", { ascending: false })
@@ -1084,7 +1084,7 @@ serve(async (req) => {
 
     if (action === "admin_list_registrations") {
       const { data } = await sb
-        .from("bd_registration_requests")
+        .from("works_requests")
         .select("*")
         .order("created_at", { ascending: false });
       return json({ data: data || [] });
@@ -1095,7 +1095,7 @@ serve(async (req) => {
       if (!request_id) return json({ error: "request_id مطلوب" }, 400);
 
       const { data: req2 } = await sb
-        .from("bd_registration_requests")
+        .from("works_requests")
         .select("*")
         .eq("id", request_id)
         .maybeSingle();
@@ -1117,7 +1117,7 @@ serve(async (req) => {
       }, { onConflict: "user_uuid" });
 
       await sb
-        .from("bd_registration_requests")
+        .from("works_requests")
         .update({ status: "approved" })
         .eq("id", request_id);
 
@@ -1137,13 +1137,13 @@ serve(async (req) => {
       if (!request_id) return json({ error: "request_id مطلوب" }, 400);
 
       const { data: req2 } = await sb
-        .from("bd_registration_requests")
+        .from("works_requests")
         .select("user_uuid")
         .eq("id", request_id)
         .maybeSingle();
 
       await sb
-        .from("bd_registration_requests")
+        .from("works_requests")
         .update({ status: "rejected", admin_note: admin_note || null })
         .eq("id", request_id);
 
