@@ -43,6 +43,52 @@ const InfoTip: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
+/* ── Sync countdown component ── */
+const SyncCountdown: React.FC<{ lastSync: string | null }> = ({ lastSync }) => {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  const getRelative = (): string => {
+    if (!lastSync) return "لم يتم التحديث بعد";
+    const diff = now - new Date(lastSync).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "الآن";
+    if (mins < 60) return `قبل ${mins} دقيقة`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `قبل ${hrs} ساعة`;
+    return `قبل ${Math.floor(hrs / 24)} يوم`;
+  };
+
+  const getNextSync = (): string => {
+    if (!lastSync) return "قريباً";
+    const nextTime = new Date(lastSync).getTime() + 60 * 60 * 1000; // +1 hour
+    const remaining = nextTime - now;
+    if (remaining <= 0) return "قريباً جداً";
+    const mins = Math.floor(remaining / 60000);
+    if (mins < 60) return `${mins} دقيقة`;
+    return `${Math.floor(mins / 60)} ساعة و ${mins % 60} دقيقة`;
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-bold text-muted-foreground">
+          آخر تحديث: {getRelative()}
+        </p>
+        <p className="text-[11px] font-bold text-primary">
+          التحديث القادم: {getNextSync()}
+        </p>
+      </div>
+      <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+        يتم تحديث البيانات تلقائياً كل ساعة — لا تقلق لو الأرقام ما تغيّرت فوراً
+      </p>
+    </div>
+  );
+};
+
 interface MemberWithSalary {
   id: string;
   member_uuid: string;
@@ -179,18 +225,6 @@ const WorksPage: React.FC = () => {
     return false;
   }, [user?.uuid]);
 
-  // Relative time helper
-  const getRelativeTime = (dateStr: string | null): string => {
-    if (!dateStr) return "لم يتم التحديث بعد";
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "الآن";
-    if (mins < 60) return `قبل ${mins} دقيقة`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `قبل ${hrs} ساعة`;
-    const days = Math.floor(hrs / 24);
-    return `قبل ${days} يوم`;
-  };
 
   const fetchData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -596,17 +630,7 @@ const WorksPage: React.FC = () => {
           <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-primary/5 blur-xl" />
         </motion.div>
 
-        {/* Last sync info + helper text */}
-        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold text-muted-foreground">
-              آخر تحديث: {getRelativeTime(myWorks?.last_earnings_sync_at)}
-            </p>
-          </div>
-          <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
-            يتم تحديث البيانات تلقائياً كل ساعة — لا تقلق لو الأرقام ما تغيّرت فوراً
-          </p>
-        </div>
+        <SyncCountdown lastSync={myWorks?.last_earnings_sync_at} />
 
         {/* Financial Stats Grid */}
         <div className="space-y-3">
