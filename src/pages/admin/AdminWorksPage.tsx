@@ -1118,9 +1118,7 @@ const AdminWorksPage: React.FC = () => {
                                 {memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}
                               </p>
                             </div>
-                              </p>
                             </div>
-                            <div className="bg-muted/30 rounded-lg p-2">
                               <p className="text-muted-foreground">النسبة</p>
                               <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
                             </div>
