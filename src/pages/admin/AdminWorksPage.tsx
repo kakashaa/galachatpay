@@ -656,7 +656,7 @@ const AdminWorksPage: React.FC = () => {
                             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold">{a.works_code}</span>
                           </div>
                           <p className="text-[10px] text-muted-foreground font-mono mt-0.5">UUID: {a.user_uuid}</p>
-                        </div>
+                          {a.updated_at && <WorksCountdown updatedAt={a.updated_at} compact />}
                         <div className="text-left shrink-0">
                           <p className="text-xl font-black text-emerald-400">${earnings.toFixed(2)}</p>
                           <p className="text-[9px] text-muted-foreground text-center">أرباح الشهر</p>
