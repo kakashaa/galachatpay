@@ -12,6 +12,7 @@ import BottomNav from "@/components/BottomNav";
 import StatusModal from "@/components/StatusModal";
 import { galaApi } from "@/services/galaApi";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
+import WorksCountdown from "@/components/WorksCountdown";
 
 /* ── Tooltip bubble component ── */
 const InfoTip: React.FC<{ text: string }> = ({ text }) => {
@@ -645,11 +646,9 @@ const WorksPage: React.FC = () => {
             </motion.div>
           </div>
 
-          {/* Last updated note */}
+          {/* Last updated + countdown */}
           {myWorks?.updated_at && (
-            <p className="text-[10px] text-muted-foreground text-center">
-              يتم تحديث الأرباح تلقائياً — آخر تحديث: {new Date(myWorks.updated_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
-            </p>
+            <WorksCountdown updatedAt={myWorks.updated_at} onExpire={fetchData} />
           )}
         </div>
 

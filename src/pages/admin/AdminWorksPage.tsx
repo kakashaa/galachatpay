@@ -9,6 +9,7 @@ import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shiel
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
+import WorksCountdown from "@/components/WorksCountdown";
 
 
 const AdminWorksPage: React.FC = () => {
@@ -655,6 +656,7 @@ const AdminWorksPage: React.FC = () => {
                             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold">{a.works_code}</span>
                           </div>
                           <p className="text-[10px] text-muted-foreground font-mono mt-0.5">UUID: {a.user_uuid}</p>
+                          {a.updated_at && <WorksCountdown updatedAt={a.updated_at} compact />}
                         </div>
                         <div className="text-left shrink-0">
                           <p className="text-xl font-black text-emerald-400">${earnings.toFixed(2)}</p>
