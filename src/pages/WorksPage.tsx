@@ -635,8 +635,9 @@ const WorksPage: React.FC = () => {
     </div>
   );
 
-  // State 1: Level < 10
-  if (userLevel < 10 && !myWorks) return (
+  // State 1: No works account and no pending request — show registration
+  // BD is available from level 0, so no level gate
+  if (false && userLevel < 10 && !myWorks) return (
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
