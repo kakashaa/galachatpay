@@ -386,21 +386,72 @@ serve(async (req) => {
       const { bd_uuid } = params;
       if (!bd_uuid) return json({ error: "bd_uuid مطلوب" }, 400);
 
-      const [bdRes, membersRes, withdrawalsRes, settingsRes] = await Promise.all([
-        sb.from("bd_commission_settings").select("*").eq("bd_uuid", bd_uuid).eq("is_active", true).maybeSingle(),
-        sb.from("bd_members").select("*").eq("bd_uuid", bd_uuid).eq("is_active", true).order("created_at", { ascending: false }),
+      // Try works_accounts first
+      const { data: worksAcc } = await sb
+        .from("works_accounts")
+        .select("*")
+        .eq("user_uuid", bd_uuid)
+        .eq("status", "active")
+        .maybeSingle();
+
+      let bdData: any;
+      let membersData: any[];
+
+      if (worksAcc) {
+        // Use works system
+        bdData = {
+          bd_uuid: worksAcc.user_uuid,
+          bd_name: worksAcc.user_name,
+          referral_code: worksAcc.works_code,
+          is_active: true,
+          is_approved: true,
+          available_balance: worksAcc.balance_usd || 0,
+          total_earned: worksAcc.total_earnings_usd || 0,
+          user_commission_pct: worksAcc.supporter_commission_pct || 2,
+          agency_commission_pct: worksAcc.agent_commission_pct || 5,
+          current_month_earnings: 0,
+        };
+
+        const { data: wMembers } = await sb
+          .from("works_members").select("*")
+          .eq("works_id", worksAcc.id).eq("status", "active")
+          .order("created_at", { ascending: false });
+
+        // Map works_members to bd_members compatible format
+        membersData = (wMembers || []).map((m: any) => ({
+          ...m,
+          bd_uuid: bd_uuid,
+          member_type: m.member_type === "agent" ? "agency" : m.member_type,
+          is_active: m.status === "active",
+          total_commission: m.total_commission_usd || 0,
+        }));
+      } else {
+        // Fallback: legacy bd tables
+        const { data: bdLegacy } = await sb
+          .from("bd_commission_settings").select("*")
+          .eq("bd_uuid", bd_uuid).eq("is_active", true).maybeSingle();
+        bdData = bdLegacy;
+
+        const { data: legacyMembers } = await sb
+          .from("bd_members").select("*")
+          .eq("bd_uuid", bd_uuid).eq("is_active", true)
+          .order("created_at", { ascending: false });
+        membersData = legacyMembers || [];
+      }
+
+      const [withdrawalsRes, settingsRes] = await Promise.all([
         sb.from("bd_withdrawals").select("*").eq("bd_uuid", bd_uuid).order("created_at", { ascending: false }).limit(50),
         sb.from("app_settings").select("*").in("key", ["bd_wallets_paused", "bd_auto_withdrawal"]),
       ]);
 
-      const supporters = (membersRes.data || []).filter((m: any) => m.member_type === "supporter");
-      const agents = (membersRes.data || []).filter((m: any) => m.member_type === "agency");
+      const supporters = (membersData).filter((m: any) => m.member_type === "supporter");
+      const agents = (membersData).filter((m: any) => m.member_type === "agency" || m.member_type === "agent");
 
       const settings: Record<string, string> = {};
       (settingsRes.data || []).forEach((s: any) => { settings[s.key] = s.value; });
 
       return json({
-        bd: bdRes.data,
+        bd: bdData,
         supporters,
         agents,
         withdrawals: withdrawalsRes.data || [],
