@@ -136,6 +136,10 @@ const TIMEOUT_TOLERANT_ACTIONS = new Set([
   "agency-salary",
   "salary_check_all",
   "activity-feed",
+  "withdraw-status",
+  "salary-check",
+  "salary-audit",
+  "daily-summary",
 ]);
 
 function json(data: unknown, status = 200) {
