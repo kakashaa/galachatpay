@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
@@ -95,7 +95,7 @@ const WorksPage: React.FC = () => {
   const [monthEarnings, setMonthEarnings] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
-  const salaryFetchIdRef = useRef(0);
+  
 
   // StatusModal
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
@@ -179,93 +179,7 @@ const WorksPage: React.FC = () => {
     return false;
   }, [user?.uuid]);
 
-  // Auto-fetch salary data for all members
-  // Returns commission values in COINS (not USD)
-  const fetchSalaryData = useCallback(async (_worksId: string, membersList: MemberWithSalary[]) => {
-    const month = new Date().toISOString().slice(0, 7);
-    const year = new Date().getFullYear();
-    const monthNum = new Date().getMonth() + 1;
-
-
-    // Process members ONE AT A TIME to avoid flooding gala-proxy
-    const updatedMembers: MemberWithSalary[] = [];
-    for (const member of membersList) {
-      try {
-        if (member.member_type === "supporter") {
-          let charges = 0;
-          let commission = 0;
-          const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-
-          try {
-            const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
-            charges = toFiniteNumber(
-              data?.data?.total_charges ?? data?.data?.charges ??
-              data?.total_charges ?? data?.charges ?? 0
-            );
-            commission = Math.floor(charges * (pct / 100));
-          } catch { /* silent */ }
-
-          if (charges === 0) {
-            try {
-              const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
-              charges = toFiniteNumber(
-                data2?.data?.total_charges ?? data2?.total_charges ?? data2?.charges ?? 0
-              );
-              commission = Math.floor(charges * (pct / 100));
-            } catch { /* silent */ }
-          }
-
-          if (charges === 0) {
-            try {
-              const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
-                body: { uuid: member.member_uuid },
-              });
-              const chargerNum = toFiniteNumber(
-                profileRes?.data?.level?.charger_num ?? profileRes?.level?.charger_num ?? 0
-              );
-              if (chargerNum > 0) {
-                const initialCharger = toFiniteNumber((member as any).initial_charger_num ?? 0);
-                const monthlyCharges = initialCharger > 0
-                  ? Math.max(0, chargerNum - initialCharger) : chargerNum;
-                if (monthlyCharges > 0) {
-                  charges = monthlyCharges;
-                  commission = Math.floor(monthlyCharges * (pct / 100));
-                }
-              }
-            } catch { /* silent */ }
-          }
-
-          updatedMembers.push({ ...member, monthly_charges: charges, commission: Math.floor(commission) });
-        } else if (member.member_type === "agent" && member.agency_id) {
-          const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum), member.member_uuid);
-          const inner = data?.data || data || {};
-          const salary = toFiniteNumber(
-            inner?.salary ?? inner?.net_salary ?? inner?.agency_salary ??
-            inner?.total_salary ?? inner?.amount ??
-            data?.salary ?? data?.net_salary ?? data?.agency_salary ?? 0
-          );
-          const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 5);
-          const computedCommissionUsd = salary * (fallbackPct / 100);
-          const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
-
-          updatedMembers.push({ ...member, agency_salary: salary, commission: commissionCoins });
-        } else {
-          updatedMembers.push(member);
-        }
-      } catch {
-        updatedMembers.push(member);
-      }
-      // Small delay between members to avoid overwhelming the proxy
-      await new Promise(r => setTimeout(r, 500));
-    }
-
-    const totalMonthCommissionCoins = updatedMembers.reduce(
-      (sum, member) => sum + toFiniteNumber(member.commission ?? 0),
-      0
-    );
-
-    return { totalMonthCommissionCoins, updatedMembers };
-  }, []);
+  // No more live API calls — earnings come from stored DB values only
 
   const fetchData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -307,29 +221,12 @@ const WorksPage: React.FC = () => {
         }, 0);
         setTodayEarnings(todayUsd);
 
-        // Auto-fetch salary data for live calculations (month only) in background
-        if (rawMembers.length > 0) {
-          setSalaryLoading(true);
-          const requestId = ++salaryFetchIdRef.current;
-          void fetchSalaryData(works.id, rawMembers)
-            .then(({ totalMonthCommissionCoins, updatedMembers }) => {
-              if (requestId !== salaryFetchIdRef.current) return;
-              setMembers(updatedMembers);
-              setMonthEarnings(totalMonthCommissionCoins);
-            })
-            .catch(() => {
-              if (requestId !== salaryFetchIdRef.current) return;
-              setMonthEarnings(0);
-            })
-            .finally(() => {
-              if (requestId !== salaryFetchIdRef.current) return;
-              setSalaryLoading(false);
-            });
-        } else {
-          salaryFetchIdRef.current += 1;
-          setSalaryLoading(false);
-          setMonthEarnings(0);
-        }
+        // Calculate month earnings from stored DB values (no API calls)
+        const totalCommissionUsd = rawMembers.reduce(
+          (sum, member) => sum + toFiniteNumber(member.total_commission_usd ?? 0), 0
+        );
+        setMonthEarnings(Math.floor(totalCommissionUsd * COINS_PER_USD));
+        setSalaryLoading(false);
       } else {
         const { data: req } = await supabase
           .from("works_requests").select("status").eq("user_uuid", user.uuid)
@@ -338,7 +235,7 @@ const WorksPage: React.FC = () => {
       }
     } catch { /* silent */ }
     setLoading(false);
-  }, [user?.uuid, fetchSalaryData, checkBanStatus]);
+  }, [user?.uuid, checkBanStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -747,6 +644,13 @@ const WorksPage: React.FC = () => {
               <p className="text-[8px] text-muted-foreground font-bold">{supporterCount} داعم · {agentCount} وكيل</p>
             </motion.div>
           </div>
+
+          {/* Last updated note */}
+          {myWorks?.updated_at && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              يتم تحديث الأرباح تلقائياً — آخر تحديث: {new Date(myWorks.updated_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
+            </p>
+          )}
         </div>
 
         {/* ── Supporters Section ── */}
