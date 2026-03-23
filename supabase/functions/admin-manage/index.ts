@@ -1191,7 +1191,12 @@ Deno.serve(async (req) => {
           .from("works_accounts").select("*").order("created_at", { ascending: false });
         if (error) throw error;
 
-        for (const acc of (accounts || [])) {
+        const WARES_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+        for (let idx = 0; idx < (accounts || []).length; idx++) {
+          const acc = accounts![idx];
           const [{ count: supporters }, { count: agents }] = await Promise.all([
             supabase
               .from("works_members").select("*", { count: "exact", head: true })
@@ -1202,8 +1207,42 @@ Deno.serve(async (req) => {
           ]);
           (acc as any).supporter_count = supporters || 0;
           (acc as any).agent_count = agents || 0;
-          // dynamic_earnings calculated on-demand via works_get_members
-          (acc as any).dynamic_earnings = 0;
+
+          // Compute live earnings for first 10 accounts only (performance)
+          if (idx < 10) {
+            try {
+              const { data: activeMembers } = await supabase
+                .from("works_members").select("member_uuid, member_type, commission_pct, agency_id")
+                .eq("works_id", acc.id).eq("status", "active");
+              const supporterPct = Number(acc.supporter_commission_pct || 2);
+              const agentPct = Number(acc.agent_commission_pct || 5);
+              let totalDynamic = 0;
+
+              const results = await Promise.all((activeMembers || []).map(async (m: any) => {
+                try {
+                  if (m.member_type === "supporter") {
+                    const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`, { signal: AbortSignal.timeout(8000) });
+                    const json = await res.json();
+                    const charges = Number(json?.total_charges || json?.charges || json?.data?.total_charges || 0);
+                    return charges * (m.commission_pct || supporterPct) / 100;
+                  } else if (m.member_type === "agent") {
+                    const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}`, { signal: AbortSignal.timeout(8000) });
+                    const json = await res.json();
+                    const salary = Number(json?.salary || json?.total_salary || json?.data?.salary || 0);
+                    return salary * (m.commission_pct || agentPct) / 100;
+                  }
+                } catch { /* timeout or error — skip */ }
+                return 0;
+              }));
+
+              totalDynamic = results.reduce((s, v) => s + v, 0);
+              (acc as any).dynamic_earnings = Math.round(totalDynamic * 100) / 100;
+            } catch {
+              (acc as any).dynamic_earnings = 0;
+            }
+          } else {
+            (acc as any).dynamic_earnings = 0;
+          }
         }
         result = accounts;
         break;
