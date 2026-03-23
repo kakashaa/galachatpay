@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Send, ArrowRight, Zap, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone, Upload, X,
-  Sparkles, RefreshCw, Ticket, CheckCircle2, XCircle, Loader2
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -57,7 +57,7 @@ const QuickSupport: React.FC = () => {
   // Connection states
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
-  const [adminName, setAdminName] = useState<string | null>(null);
+  const [_adminName, setAdminName] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
