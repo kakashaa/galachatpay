@@ -59,13 +59,16 @@ const colorMap: Record<string, string> = {
 const AdminMonitorPage: React.FC = () => {
   const { handleLogout } = useAdminSession();
 
-  /* ── All Data States ── */
-  const [alertsData, setAlertsData] = useState<any>(null);
-  const [feedData, setFeedData] = useState<any>(null);
-  const [dailyData, setDailyData] = useState<any>(null);
-  const [auditData, setAuditData] = useState<any>(null);
+  // Load cached data instantly
+  const MONITOR_CACHE_KEY = "admin_monitor_cache";
+  const cachedData = (() => { try { return JSON.parse(localStorage.getItem(MONITOR_CACHE_KEY) || "null"); } catch { return null; } })();
+
+  const [alertsData, setAlertsData] = useState<any>(cachedData?.alerts || null);
+  const [feedData, setFeedData] = useState<any>(cachedData?.feed || null);
+  const [dailyData, setDailyData] = useState<any>(cachedData?.daily || null);
+  const [auditData, setAuditData] = useState<any>(cachedData?.audit || null);
   const [loading, setLoading] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState("");
+  const [lastRefresh, setLastRefresh] = useState(cachedData?.lastRefresh || "");
   const [countdown, setCountdown] = useState(60);
   const prevDangerCount = useRef(0);
 
@@ -108,8 +111,17 @@ const AdminMonitorPage: React.FC = () => {
       if (feed) setFeedData(feed);
       if (daily) setDailyData(daily);
       if (audit) setAuditData(audit);
-      setLastRefresh(new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      const refreshTime = new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      setLastRefresh(refreshTime);
       setCountdown(60);
+
+      // Cache data for instant display next time
+      try {
+        localStorage.setItem(MONITOR_CACHE_KEY, JSON.stringify({
+          alerts: alerts || alertsData, feed: feed || feedData,
+          daily: daily || dailyData, audit: audit || auditData, lastRefresh: refreshTime,
+        }));
+      } catch {}
 
       // Check for new danger alerts
       const newDangerCount = feed?.summary?.danger_count || 0;

@@ -185,8 +185,17 @@ const RoomBackgroundPage: React.FC = () => {
         {/* Remaining counter */}
         <div className="glass-card p-3 flex items-center justify-between">
           <span className="text-sm font-bold text-foreground">المتبقي هذا الشهر</span>
-          <span className="text-lg font-black text-primary">{loading ? "..." : `${remaining}/${MAX_PER_MONTH}`}</span>
+          <span className={`text-lg font-black ${remaining <= 0 && !loading ? "text-destructive" : "text-primary"}`}>{loading ? "..." : `${remaining}/${MAX_PER_MONTH}`}</span>
         </div>
+
+        {/* Monthly limit warning */}
+        {!loading && remaining <= 0 && view === "menu" && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-center space-y-1">
+            <p className="text-sm font-bold text-destructive">⛔ وصلت الحد الشهري</p>
+            <p className="text-xs text-destructive/80">استخدمت {MAX_PER_MONTH} طلبات هذا الشهر — جرب الشهر الجاي!</p>
+          </motion.div>
+        )}
 
         <AnimatePresence mode="wait">
           {view === "menu" && (
