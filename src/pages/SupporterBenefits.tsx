@@ -84,6 +84,7 @@ const SupporterBenefits: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [, setApiMonthlyCharges] = useState<number | null>(null);
+  const [monthlyDiamonds, setMonthlyDiamonds] = useState(0);
   const [couponTab, setCouponTab] = useState<"available" | "used" | "expired">("available");
   const [specialOffers, setSpecialOffers] = useState<any[]>([]);
   const [challenges, setChallenges] = useState<any[]>([]);
