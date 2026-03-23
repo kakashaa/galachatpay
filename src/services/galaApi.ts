@@ -71,7 +71,33 @@ class GalaApiService {
   }
 
   async adminLogin(username: string, password: string) {
-    return this.call("project-z", "admin_login", { username, password });
+    // Try local admin-manage first (supports both hardcoded + DB accounts)
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-manage", {
+        body: { username, password, action: "auth_check" },
+      });
+      if (data?.data?.session_token || data?.session_token) {
+        const result = data?.data || data;
+        return {
+          success: true,
+          username: result.username || username,
+          name: result.display_name || result.username || username,
+          role: result.role,
+          token: result.session_token,
+          permissions: result.permissions,
+          must_change_password: result.must_change_password,
+        };
+      }
+    } catch {
+      // Fall through to project-z
+    }
+
+    // Fallback to external project-z
+    try {
+      return await this.call("project-z", "admin_login", { username, password });
+    } catch {
+      return { success: false, message: "بيانات الدخول غير صحيحة" };
+    }
   }
 
   async adminFirstSetup(username: string, oldPassword: string, newPassword: string, phone: string) {
