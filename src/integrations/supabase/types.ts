@@ -2450,31 +2450,37 @@ export type Database = {
       }
       supporter_challenge_progress: {
         Row: {
+          base_charges: number | null
           challenge_id: string
           completed_at: string | null
           created_at: string
           current_amount: number
           id: string
+          reward_claimed: boolean | null
           started_at: string
           status: string
           user_uuid: string
         }
         Insert: {
+          base_charges?: number | null
           challenge_id: string
           completed_at?: string | null
           created_at?: string
           current_amount?: number
           id?: string
+          reward_claimed?: boolean | null
           started_at?: string
           status?: string
           user_uuid: string
         }
         Update: {
+          base_charges?: number | null
           challenge_id?: string
           completed_at?: string | null
           created_at?: string
           current_amount?: number
           id?: string
+          reward_claimed?: boolean | null
           started_at?: string
           status?: string
           user_uuid?: string
