@@ -884,15 +884,9 @@ const SupportChat: React.FC = () => {
 
   /* ── clear chat / start new ── */
   const clearChat = () => {
-    setMessages([]);
-    setWaitingFor(null);
     setShowFeedbackForm(false);
     setFeedback({ rating: 0, comment: "" });
-    const isVip = user?.vip && Object.keys(user.vip).length > 0;
-    addBotMessage(
-      `🔄 تم بدء محادثة جديدة\n\n` + getTimeBasedGreeting(userName, isVip, isGuest),
-      MAIN_MENU
-    );
+    setSessionKey(Date.now()); // triggers useEffect to reset messages + show welcome
   };
 
   return (
