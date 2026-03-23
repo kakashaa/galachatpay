@@ -531,7 +531,28 @@ const AdminBanPage: React.FC = () => {
                 );
               })}
             </AnimatePresence>
-          )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-3">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >السابق</button>
+                <span className="text-xs text-muted-foreground font-bold tabular-nums">{currentPage} / {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >التالي</button>
+              </div>
+            )}
+            </>
+            );
+          })()}
         </div>
       </AdminPageLayout>
 
