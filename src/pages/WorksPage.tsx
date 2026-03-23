@@ -190,88 +190,84 @@ const WorksPage: React.FC = () => {
     const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
       Promise.race([promise, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))]);
 
-    const MEMBER_TIMEOUT = 20_000;
-    const BATCH_SIZE = 3;
+    const MEMBER_TIMEOUT = 20_000; // 20s per member max
 
-    const fetchOneMember = async (member: MemberWithSalary): Promise<MemberWithSalary> => {
-      try {
-        if (member.member_type === "supporter") {
-          let charges = 0;
-          let commission = 0;
-          const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-
+    const updatedMembers = await Promise.all(
+      membersList.map((member) => withTimeout(
+        (async () => {
           try {
-            const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
-            charges = toFiniteNumber(
-              data?.data?.total_charges ?? data?.data?.charges ??
-              data?.total_charges ?? data?.charges ?? 0
-            );
-            commission = Math.floor(charges * (pct / 100));
+            if (member.member_type === "supporter") {
+              let charges = 0;
+              let commission = 0;
+              const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
+
+              try {
+                const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
+                charges = toFiniteNumber(
+                  data?.data?.total_charges ?? data?.data?.charges ??
+                  data?.total_charges ?? data?.charges ?? 0
+                );
+                commission = Math.floor(charges * (pct / 100));
+              } catch { /* silent */ }
+
+              if (charges === 0) {
+                try {
+                  const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
+                  charges = toFiniteNumber(
+                    data2?.data?.total_charges ?? data2?.total_charges ?? data2?.charges ?? 0
+                  );
+                  commission = Math.floor(charges * (pct / 100));
+                } catch { /* silent */ }
+              }
+
+              if (charges === 0) {
+                try {
+                  const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
+                    body: { uuid: member.member_uuid },
+                  });
+                  const chargerNum = toFiniteNumber(
+                    profileRes?.data?.level?.charger_num ?? profileRes?.level?.charger_num ?? 0
+                  );
+                  if (chargerNum > 0) {
+                    const initialCharger = toFiniteNumber((member as any).initial_charger_num ?? 0);
+                    const monthlyCharges = initialCharger > 0
+                      ? Math.max(0, chargerNum - initialCharger) : chargerNum;
+                    if (monthlyCharges > 0) {
+                      charges = monthlyCharges;
+                      commission = Math.floor(monthlyCharges * (pct / 100));
+                    }
+                  }
+                } catch { /* silent */ }
+              }
+
+              return { ...member, monthly_charges: charges, commission: Math.floor(commission) };
+            }
+
+            if (member.member_type === "agent" && member.agency_id) {
+              const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum), member.member_uuid);
+              console.log("[Works] Agent salary RAW for agency", member.agency_id, ":", JSON.stringify(data));
+              const inner = data?.data || data || {};
+              const salary = toFiniteNumber(
+                inner?.salary ?? inner?.net_salary ?? inner?.agency_salary ??
+                inner?.total_salary ?? inner?.amount ??
+                data?.salary ?? data?.net_salary ?? data?.agency_salary ?? 0
+              );
+              console.log("[Works] Parsed agent salary:", salary, "from keys:", Object.keys(inner));
+              const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 5);
+              const computedCommissionUsd = salary * (fallbackPct / 100);
+              const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
+              console.log("[Works] Agent commission: pct=", fallbackPct, "usd=", computedCommissionUsd, "coins=", commissionCoins);
+
+              return { ...member, agency_salary: salary, commission: commissionCoins };
+            }
           } catch { /* silent */ }
 
-          if (charges === 0) {
-            try {
-              const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
-              charges = toFiniteNumber(
-                data2?.data?.total_charges ?? data2?.total_charges ?? data2?.charges ?? 0
-              );
-              commission = Math.floor(charges * (pct / 100));
-            } catch { /* silent */ }
-          }
-
-          if (charges === 0) {
-            try {
-              const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
-                body: { uuid: member.member_uuid },
-              });
-              const chargerNum = toFiniteNumber(
-                profileRes?.data?.level?.charger_num ?? profileRes?.level?.charger_num ?? 0
-              );
-              if (chargerNum > 0) {
-                const initialCharger = toFiniteNumber((member as any).initial_charger_num ?? 0);
-                const monthlyCharges = initialCharger > 0
-                  ? Math.max(0, chargerNum - initialCharger) : chargerNum;
-                if (monthlyCharges > 0) {
-                  charges = monthlyCharges;
-                  commission = Math.floor(monthlyCharges * (pct / 100));
-                }
-              }
-            } catch { /* silent */ }
-          }
-
-          return { ...member, monthly_charges: charges, commission: Math.floor(commission) };
-        }
-
-        if (member.member_type === "agent" && member.agency_id) {
-          const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum), member.member_uuid);
-          console.log("[Works] Agent salary RAW for agency", member.agency_id, ":", JSON.stringify(data));
-          const inner = data?.data || data || {};
-          const salary = toFiniteNumber(
-            inner?.salary ?? inner?.net_salary ?? inner?.agency_salary ??
-            inner?.total_salary ?? inner?.amount ??
-            data?.salary ?? data?.net_salary ?? data?.agency_salary ?? 0
-          );
-          console.log("[Works] Parsed agent salary:", salary, "from keys:", Object.keys(inner));
-          const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 5);
-          const computedCommissionUsd = salary * (fallbackPct / 100);
-          const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
-          return { ...member, agency_salary: salary, commission: commissionCoins };
-        }
-      } catch { /* silent */ }
-      return member;
-    };
-
-    // Process members in batches of 3 to avoid overwhelming the proxy
-    const updatedMembers: MemberWithSalary[] = [...membersList];
-    for (let i = 0; i < membersList.length; i += BATCH_SIZE) {
-      const batch = membersList.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(
-        batch.map((m) => withTimeout(fetchOneMember(m), MEMBER_TIMEOUT, m))
-      );
-      for (let j = 0; j < results.length; j++) {
-        updatedMembers[i + j] = results[j];
-      }
-    }
+          return member;
+        })(),
+        MEMBER_TIMEOUT,
+        member // fallback: return member unchanged on timeout
+      ))
+    );
 
     const totalMonthCommissionCoins = updatedMembers.reduce(
       (sum, member) => sum + toFiniteNumber(member.commission ?? 0),

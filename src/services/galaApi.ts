@@ -7,8 +7,6 @@ class GalaApiService {
   private readonly TIMEOUT_TOLERANT_ACTIONS = new Set([
     "agency-salary",
     "user-monthly-charges",
-    "activity-feed",
-    "get_avatar",
   ]);
 
   // === Generic proxy call ===
@@ -37,18 +35,7 @@ class GalaApiService {
       throw error;
     }
 
-    if (data?.timeout && this.TIMEOUT_TOLERANT_ACTIONS.has(action)) {
-      return data;
-    }
-
-    if (data?.error) {
-      const msg = String(data.error);
-      if ((msg.includes("Signal timed out") || msg.includes("timed out")) && this.TIMEOUT_TOLERANT_ACTIONS.has(action)) {
-        return { success: false, timeout: true, message: msg, data: null };
-      }
-      throw new Error(msg);
-    }
-
+    if (data?.error) throw new Error(data.error);
     return data;
   }
 
