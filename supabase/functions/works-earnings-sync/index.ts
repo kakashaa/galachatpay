@@ -110,11 +110,14 @@ async function syncOneAccount(supabase: any, account: any) {
 
   const finalEarnings = Math.round(totalEarningsUsd * 100) / 100;
 
-  // Update the account
-  await supabase.from("works_accounts").update({
-    total_earnings_usd: finalEarnings,
+  // Only update earnings if we actually got data; otherwise just update sync timestamp
+  const updatePayload: any = {
     last_earnings_sync_at: new Date().toISOString(),
-  }).eq("id", account.id);
+  };
+  if (finalEarnings > 0) {
+    updatePayload.total_earnings_usd = finalEarnings;
+  }
+  await supabase.from("works_accounts").update(updatePayload).eq("id", account.id);
 
   return finalEarnings;
 }
