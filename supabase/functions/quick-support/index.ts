@@ -75,7 +75,7 @@ serve(async (req) => {
       payload.message = sanitize(message, 1000);
     }
 
-    const res = await fetch("http://18.219.229.240/website/support.php", {
+    const res = await fetch("https://hola-chat.com/support.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

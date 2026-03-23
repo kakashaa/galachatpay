@@ -1,5 +1,5 @@
 export const API_URLS = {
-  PROJECT_Z: "https://galachat.site/project-z/api.php",
+  PROJECT_Z: "https://hola-chat.com/project-z/api.php",
   DB_PROXY: "https://hola-chat.com/db-proxy.php",
   DB_PROXY_KEY: "ghala2026proxy",
   HOLA_CHAT: "https://hola-chat.com/wares-api.php",

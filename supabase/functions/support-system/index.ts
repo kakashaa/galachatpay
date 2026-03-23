@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GALA_API = "https://galachat.site/project-z/api.php";
+const GALA_API = "https://hola-chat.com/project-z/api.php";
 const ADMIN_KEY = Deno.env.get("ADMIN_KEY") || "ghala2026owner";
 
 // Get current Saudi time (UTC+3)

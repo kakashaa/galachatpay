@@ -4,7 +4,6 @@ import { corsHeaders } from "../_shared/hmac.ts";
 
 const BD_API_URLS = [
   "https://hola-chat.com/bd-data-api.php",
-  "http://18.219.229.240/bd-data-api.php",
 ];
 const BD_API_KEY = "ghala2026actions";
 const CACHE_TTL_MS = 5 * 60 * 1000;

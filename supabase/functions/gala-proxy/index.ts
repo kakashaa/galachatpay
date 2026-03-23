@@ -19,10 +19,10 @@ const KEYS = {
 
 // URLs — server-side only
 const URLS: Record<string, string> = {
-  "project-z": "https://galachat.site/project-z/api.php",
+  "project-z": "https://hola-chat.com/project-z/api.php",
   "hola-chat": "https://hola-chat.com/wares-api.php",
   "bd-data": "https://hola-chat.com/bd-data-api.php",
-  "aws": "https://18.219.229.240/website/admin-actions.php",
+  "aws": "https://hola-chat.com/admin-actions.php",
   "gala-api": "https://galalivechat.com/api",
   "db-proxy": "https://hola-chat.com/db-proxy.php",
 };
