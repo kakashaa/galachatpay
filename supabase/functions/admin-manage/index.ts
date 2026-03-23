@@ -1191,6 +1191,17 @@ Deno.serve(async (req) => {
           .from("works_accounts").select("*").order("created_at", { ascending: false });
         if (error) throw error;
 
+        const normalizeStatus = (status: unknown) => String(status ?? "active").trim().toLowerCase();
+        const isMemberActive = (status: unknown) => {
+          const s = normalizeStatus(status);
+          return s !== "removed" && s !== "inactive" && s !== "deleted";
+        };
+        const normalizeMemberType = (memberType: unknown) => {
+          const t = String(memberType ?? "").trim().toLowerCase();
+          if (t === "agency") return "agent";
+          return t;
+        };
+
         // Fetch all members at once (one query) to get counts
         const allAccountIds = (accounts || []).map((a: any) => a.id);
         const { data: allMembers } = await supabase
@@ -1200,14 +1211,13 @@ Deno.serve(async (req) => {
         // Count members per account
         for (const acc of (accounts || [])) {
           const members = (allMembers || []).filter((m: any) => m.works_id === acc.id);
-          const active = members.filter((m: any) => {
-            const s = String(m.status ?? "active").toLowerCase();
-            return s !== "removed" && s !== "inactive";
-          });
-          acc.supporter_count = active.filter((m: any) => m.member_type === "supporter").length;
-          acc.agent_count = active.filter((m: any) => m.member_type === "agent").length;
+          const active = members.filter((m: any) => isMemberActive(m.status));
+          acc.supporter_count = active.filter((m: any) => normalizeMemberType(m.member_type) === "supporter").length;
+          acc.agent_count = active.filter((m: any) => normalizeMemberType(m.member_type) === "agent").length;
+          acc.supporter_pct = Number(acc.supporter_commission_pct || 0);
+          acc.agent_pct = Number(acc.agent_commission_pct || 0);
           // Use stored total_earnings_usd — live calculation happens in works_get_members
-          acc.dynamic_earnings = Number(acc.total_earnings_usd || 0);
+          acc.dynamic_earnings = Number(acc.dynamic_earnings ?? acc.total_earnings_usd ?? 0);
         }
 
         result = accounts;
@@ -1223,32 +1233,68 @@ Deno.serve(async (req) => {
         // Fetch account commission percentages
         const { data: accRow } = await supabase
           .from("works_accounts").select("supporter_commission_pct, agent_commission_pct").eq("id", works_id).single();
-        const supporterPct = Number(accRow?.supporter_commission_pct || 2);
-        const agentPct = Number(accRow?.agent_commission_pct || 5);
+        const toNumber = (value: unknown): number => {
+          if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+          if (typeof value === "string") {
+            const parsed = Number(value.replace(/,/g, "").trim());
+            return Number.isFinite(parsed) ? parsed : 0;
+          }
+          return 0;
+        };
+        const normalizeStatus = (status: unknown) => String(status ?? "active").trim().toLowerCase();
+        const isMemberActive = (status: unknown) => {
+          const s = normalizeStatus(status);
+          return s !== "removed" && s !== "inactive" && s !== "deleted";
+        };
+        const normalizeMemberType = (memberType: unknown) => {
+          const t = String(memberType ?? "").trim().toLowerCase();
+          if (t === "agency") return "agent";
+          return t;
+        };
+
+        const supporterPct = toNumber(accRow?.supporter_commission_pct || 2);
+        const agentPct = toNumber(accRow?.agent_commission_pct || 5);
 
         const WARES_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
         // Calculate live earnings for each active member
-        const activeMembers2 = (members || []).filter((m: any) => m.status === "active");
+        const activeMembers2 = (members || []).filter((m: any) => isMemberActive(m.status));
         const liveResults = await Promise.all(activeMembers2.map(async (m: any) => {
           try {
-            if (m.member_type === "supporter") {
+            const normalizedType = normalizeMemberType(m.member_type);
+            if (normalizedType === "supporter") {
               const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`);
               const json = await res.json();
-              const charges = Number(json?.data?.total_charges || json?.total_charges || 0);
-              const pct = Number(m.commission_pct || supporterPct);
-              const commissionCoins = Math.floor(charges * pct / 100);
-              const commissionUsd = commissionCoins / 7500;
+              const charges = toNumber(
+                json?.data?.total_charges ??
+                json?.data?.charges ??
+                json?.total_charges ??
+                json?.charges ??
+                0
+              );
+              const pct = toNumber(m.commission_pct ?? supporterPct);
+              const commissionUsd = (charges / 7500) * (pct / 100);
               return { id: m.id, monthly_charges: charges, live_commission: commissionUsd };
-            } else if (m.member_type === "agent" && m.agency_id) {
+            } else if (normalizedType === "agent" && m.agency_id) {
               const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`);
               const json = await res.json();
-              const salary = Number(json?.data?.salary || json?.salary || 0);
+              const salary = toNumber(
+                json?.data?.net_salary ??
+                json?.data?.salary ??
+                json?.net_salary ??
+                json?.salary ??
+                0
+              );
               const agencyName = json?.data?.agency_name || json?.agency_name || "";
-              const agencyMembersCount = Number(json?.data?.members_count || json?.data?.total_members || 0);
-              const pct = Number(m.commission_pct || agentPct);
+              const agencyMembersCount = toNumber(
+                json?.data?.members_count ??
+                json?.data?.total_members ??
+                json?.members_count ??
+                0
+              );
+              const pct = toNumber(m.commission_pct ?? agentPct);
               const commUsd = salary * pct / 100;
               return { id: m.id, agency_salary: salary, agency_name: agencyName, agency_members_count: agencyMembersCount, live_commission: commUsd };
             }
@@ -1260,22 +1306,35 @@ Deno.serve(async (req) => {
 
         const liveMap = new Map(liveResults.map((r: any) => [r.id, r]));
         let totalDynamic = 0;
+        let supporterDynamic = 0;
+        let agentDynamic = 0;
         for (const m of (members || [])) {
+          m.member_type = normalizeMemberType(m.member_type);
           const live = liveMap.get(m.id);
           if (live) {
             Object.assign(m, live);
-            totalDynamic += live.live_commission || 0;
+            const liveValue = toNumber(live.live_commission);
+            totalDynamic += liveValue;
+            if (m.member_type === "supporter") supporterDynamic += liveValue;
+            if (m.member_type === "agent") agentDynamic += liveValue;
           }
         }
 
         const finalEarnings = Math.round(totalDynamic * 100) / 100;
+        const supporterFinal = Math.round(supporterDynamic * 100) / 100;
+        const agentFinal = Math.round(agentDynamic * 100) / 100;
 
         // Save live earnings back to the account so list page shows accurate data
         await supabase.from("works_accounts").update({
           total_earnings_usd: finalEarnings,
         }).eq("id", works_id);
 
-        result = { members, dynamic_earnings: finalEarnings };
+        result = {
+          members,
+          dynamic_earnings: finalEarnings,
+          supporter_dynamic_earnings: supporterFinal,
+          agent_dynamic_earnings: agentFinal,
+        };
         break;
       }
 
