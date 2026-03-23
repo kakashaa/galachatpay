@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send } from "lucide-react";
+import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,36 @@ import BottomNav from "@/components/BottomNav";
 import StatusModal from "@/components/StatusModal";
 import { galaApi } from "@/services/galaApi";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
+
+/* ── Tooltip bubble component ── */
+const InfoTip: React.FC<{ text: string }> = ({ text }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="w-5 h-5 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
+      >
+        <HelpCircle className="w-3 h-3 text-muted-foreground" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            className="absolute top-7 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-xl px-3 py-2 shadow-lg min-w-[180px]"
+          >
+            <button onClick={(e) => { e.stopPropagation(); setOpen(false); }} className="absolute top-1 left-1">
+              <X className="w-3 h-3 text-muted-foreground" />
+            </button>
+            <p className="text-[11px] text-foreground leading-relaxed text-right">{text}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
 
 interface MemberWithSalary {
   id: string;
@@ -558,157 +588,264 @@ const WorksPage: React.FC = () => {
   // State 3: Active works
   return (
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
-      <div className="flex items-center gap-3 p-4 border-b border-border">
-        <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
-        <h1 className="text-lg font-bold">البيدي</h1>
-        {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400 mr-auto" />}
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/50 backdrop-blur-sm">
+        <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6 text-foreground" /></button>
+        <h1 className="text-lg font-black font-cairo text-foreground">لوحة البيدي</h1>
+        {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-secondary mr-auto" />}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
-        {/* Works Code */}
-        {/* Works Code */}
-        <div className="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl p-4">
-          <p className="text-[10px] text-muted-foreground">كود البيدي</p>
-          <p className="text-lg font-mono font-bold text-emerald-400">{myWorks.works_code}</p>
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28 space-y-5">
+
+        {/* Works Code Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl border border-secondary/20 bg-gradient-to-br from-secondary/10 via-card to-card p-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-muted-foreground mb-1">كود البيدي الخاص بك</p>
+              <p className="text-2xl font-mono font-black text-secondary tracking-wider">{myWorks.works_code}</p>
+            </div>
+            <InfoTip text="كود البيدي هو معرفك الفريد. شاركه مع الأعضاء الجدد للانضمام لفريقك" />
+          </div>
+          <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-secondary/5 blur-xl" />
+        </motion.div>
+
+        {/* Financial Stats Grid */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-black text-foreground">الإحصائيات المالية</h2>
+
+          {/* Top row: Balance + Total Earnings */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* الرصيد المتاح */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              onClick={() => { if (balance > 0) submitWithdraw(); }}
+              className="rounded-2xl border border-border bg-card p-4 space-y-2"
+              style={{ cursor: balance > 0 ? 'pointer' : 'default' }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-xl bg-secondary/10 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-secondary" />
+                </div>
+                <InfoTip text="الرصيد المتاح للسحب. يمكنك طلب سحبه في أول 5 أيام من كل شهر" />
+              </div>
+              <p className="text-2xl font-mono font-black text-foreground">${balance.toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{Math.round(balance * 7500).toLocaleString()} كوينز</p>
+              <p className="text-xs font-black text-muted-foreground">الرصيد المتاح</p>
+              {balance > 0 && <p className="text-[10px] text-primary font-black">اضغط لطلب سحب ←</p>}
+            </motion.div>
+
+            {/* إجمالي الأرباح */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="rounded-2xl border border-border bg-card p-4 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Briefcase className="w-4 h-4 text-primary" />
+                </div>
+                <InfoTip text="إجمالي جميع الأرباح التي حققتها منذ انضمامك لنظام البيدي" />
+              </div>
+              <p className="text-2xl font-mono font-black text-foreground">${totalEarnings.toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{Math.round(totalEarnings * 7500).toLocaleString()} كوينز</p>
+              <p className="text-xs font-black text-muted-foreground">إجمالي الأرباح</p>
+            </motion.div>
+          </div>
+
+          {/* Bottom row: Today + Month + Members */}
+          <div className="grid grid-cols-3 gap-2">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="rounded-xl border border-border bg-card p-3 space-y-1.5"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black text-muted-foreground">أرباح اليوم</p>
+                <InfoTip text="الأرباح المحققة اليوم فقط. تتصفر كل يوم جديد" />
+              </div>
+              <p className="text-lg font-mono font-black text-foreground">${todayEarnings.toFixed(2)}</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="rounded-xl border border-border bg-card p-3 space-y-1.5"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black text-muted-foreground">أرباح الشهر</p>
+                <InfoTip text="عمولاتك هذا الشهر من جميع الأعضاء (بالكوينز)" />
+              </div>
+              <p className="text-lg font-mono font-black text-secondary">{monthEarnings.toLocaleString()}</p>
+              <p className="text-[8px] text-muted-foreground font-bold">كوينز</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="rounded-xl border border-border bg-card p-3 space-y-1.5"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black text-muted-foreground">الأعضاء</p>
+                <InfoTip text="عدد الأعضاء النشطين في فريقك (داعمين + وكلاء)" />
+              </div>
+              <p className="text-lg font-mono font-black text-foreground">{supporterCount + agentCount}</p>
+              <p className="text-[8px] text-muted-foreground font-bold">{supporterCount} داعم · {agentCount} وكيل</p>
+            </motion.div>
+          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-card border border-border rounded-2xl p-3 text-center"
-            onClick={() => { if (balance > 0) submitWithdraw(); }}
-            style={{ cursor: balance > 0 ? 'pointer' : 'default' }}
+        {/* ── Supporters Section ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="rounded-2xl border border-border bg-card overflow-hidden"
+        >
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/20">
+            <Heart className="w-4 h-4 text-primary" />
+            <span className="text-sm font-black text-foreground">الداعمين</span>
+            <span className="text-xs font-bold text-muted-foreground">({supporterCount})</span>
+            <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full mr-auto">عمولة {supporterPct}%</span>
+          </div>
+          <div className="p-3 space-y-2">
+            {members.filter(m => m.member_type === "supporter").length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">لا يوجد داعمين بعد</p>
+            )}
+            {members.filter(m => m.member_type === "supporter").map((m, i) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.35 + i * 0.05 }}
+                className="bg-muted/30 rounded-xl px-3 py-3 space-y-2"
+              >
+                <div className="flex items-center gap-3">
+                  <img
+                    src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
+                    onError={handleAvatarError}
+                    className="w-10 h-10 rounded-full object-cover shrink-0 border-2 border-primary/20"
+                    alt={m.member_name || ""}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono truncate" dir="ltr">#{m.member_uuid}</p>
+                  </div>
+                  <div className="text-left shrink-0">
+                    <p className="text-sm font-black text-secondary">${((m.monthly_charges || 0) / 7500).toFixed(2)}</p>
+                  </div>
+                </div>
+                {m.monthly_charges !== undefined && (
+                  <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
+                    <span className="text-muted-foreground font-bold">شحن: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
+                    <span className="text-secondary font-black">{(m.commission || 0).toLocaleString()} عمولة</span>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── Agents Section ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="rounded-2xl border border-border bg-card overflow-hidden"
+        >
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/20">
+            <Building2 className="w-4 h-4 text-primary" />
+            <span className="text-sm font-black text-foreground">الوكلاء</span>
+            <span className="text-xs font-bold text-muted-foreground">({agentCount})</span>
+            <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full mr-auto">عمولة {agentPct}%</span>
+          </div>
+          <div className="p-3 space-y-2">
+            {members.filter(m => m.member_type === "agent").length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">لا يوجد وكلاء بعد</p>
+            )}
+            {members.filter(m => m.member_type === "agent").map((m, i) => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.45 + i * 0.05 }}
+                className="bg-muted/30 rounded-xl px-3 py-3 space-y-2"
+              >
+                <div className="flex items-center gap-3">
+                  <img
+                    src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
+                    onError={handleAvatarError}
+                    className="w-10 h-10 rounded-full object-cover shrink-0 border-2 border-primary/20"
+                    alt={m.member_name || ""}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono truncate" dir="ltr">#{m.member_uuid}</p>
+                  </div>
+                  <div className="text-left shrink-0">
+                    <p className="text-sm font-black text-secondary">${(m.agency_salary || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+                {m.agency_salary !== undefined && (
+                  <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
+                    <span className="text-muted-foreground font-bold">راتب: ${m.agency_salary?.toFixed(2)}</span>
+                    <span className="text-secondary font-black">{(m.commission || 0).toLocaleString()} عمولة</span>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowAddMember(true)}
+            className="w-full bg-secondary text-secondary-foreground py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg"
           >
-            <p className="text-2xl font-mono font-extrabold text-green-400">${balance.toFixed(2)}</p>
-            <p className="text-[9px] text-muted-foreground">الرصيد المتاح</p>
-            <p className="text-[8px] text-muted-foreground">{Math.round(balance * 7500).toLocaleString()} كوينز</p>
-            {balance > 0 && <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب</p>}
-          </div>
-          <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-2xl font-mono font-extrabold text-green-400">${totalEarnings.toFixed(2)}</p>
-            <p className="text-[9px] text-muted-foreground">إجمالي الأرباح</p>
-          </div>
-        </div>
+            <UserPlus className="w-5 h-5" /> إضافة عضو جديد
+          </motion.button>
 
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
-            <p className="text-lg font-mono font-extrabold text-green-400">${todayEarnings.toFixed(2)}</p>
-            <p className="text-[9px] text-muted-foreground font-medium">أرباح اليوم</p>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
-            <p className="text-lg font-mono font-extrabold text-cyan-400">{monthEarnings.toLocaleString()}</p>
-            <p className="text-[9px] text-muted-foreground font-medium">أرباح الشهر</p>
-            <p className="text-[7px] text-muted-foreground">كوينز</p>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-2.5 text-center">
-            <p className="text-lg font-mono font-extrabold text-foreground">{supporterCount + agentCount}</p>
-            <p className="text-[9px] text-muted-foreground font-medium">الأعضاء</p>
-          </div>
-        </div>
-
-        {/* Supporters */}
-        <div className="bg-card border border-border rounded-2xl p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Heart className="w-4 h-4 text-pink-400" />
-            <span className="text-xs font-bold">الداعمين ({supporterCount})</span>
-            <span className="text-[9px] text-muted-foreground mr-auto">عمولة {supporterPct}%</span>
-          </div>
-          {members.filter(m => m.member_type === "supporter").map(m => (
-            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <img
-                    src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
-                    onError={handleAvatarError}
-                    className="w-8 h-8 rounded-lg object-cover shrink-0"
-                    alt={m.member_name || m.member_uuid}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono tabular-nums truncate" dir="ltr">#{m.member_uuid}</p>
-                  </div>
+          {(() => {
+            const dayOfMonth = new Date().getDate();
+            const canWithdraw = dayOfMonth <= 5;
+            const coinsAmount = Math.floor(monthEarnings * 7500);
+            return canWithdraw ? (
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={submitWithdraw}
+                disabled={withdrawing || monthEarnings <= 0}
+                className="w-full bg-primary text-primary-foreground py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Wallet className="w-5 h-5" /> صرف نسبتي ({coinsAmount.toLocaleString()} كوينز)
+              </motion.button>
+            ) : (
+              <div className="w-full bg-card border border-border py-3.5 rounded-2xl text-center space-y-1">
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <Lock className="w-4 h-4" />
+                  <span className="font-black text-sm">صرف نسبتي</span>
                 </div>
-                <span className="text-[10px] font-extrabold text-green-400">${((m.monthly_charges || 0) / 7500).toFixed(2)}</span>
+                <p className="text-[10px] text-muted-foreground font-bold">يفتح بداية الشهر الجديد (أول 5 أيام)</p>
               </div>
-              {m.monthly_charges !== undefined && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-muted-foreground">شحن الشهر: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-emerald-400 font-extrabold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
-                    <span className="text-muted-foreground">(${((m.commission || 0) / 7500).toFixed(2)})</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })()}
         </div>
-
-        {/* Agents */}
-        <div className="bg-card border border-border rounded-2xl p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-orange-400" />
-            <span className="text-xs font-bold">الوكلاء ({agentCount})</span>
-            <span className="text-[9px] text-muted-foreground mr-auto">عمولة {agentPct}%</span>
-          </div>
-          {members.filter(m => m.member_type === "agent").map(m => (
-            <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <img
-                    src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
-                    onError={handleAvatarError}
-                    className="w-8 h-8 rounded-lg object-cover shrink-0"
-                    alt={m.member_name || m.member_uuid}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono tabular-nums truncate" dir="ltr">#{m.member_uuid}</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-extrabold text-green-400">${(m.agency_salary || 0).toFixed(2)}</span>
-              </div>
-              {m.agency_salary !== undefined && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-muted-foreground">راتب الوكالة: ${m.agency_salary?.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-emerald-400 font-extrabold">{(m.commission || 0).toLocaleString()} كوينز عمولة</span>
-                    <span className="text-muted-foreground">(${((m.commission || 0) / 7500).toFixed(2)})</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Add member */}
-        <button onClick={() => setShowAddMember(true)}
-          className="w-full bg-emerald-500 text-black py-3 rounded-2xl font-bold flex items-center justify-center gap-2">
-          <UserPlus className="w-5 h-5" /> إضافة عضو
-        </button>
-
-        {/* Withdraw commission */}
-        {(() => {
-          const dayOfMonth = new Date().getDate();
-          const canWithdraw = dayOfMonth <= 5;
-          const coinsAmount = Math.floor(monthEarnings * 7500);
-          return canWithdraw ? (
-            <button onClick={submitWithdraw} disabled={withdrawing || monthEarnings <= 0}
-              className="w-full bg-emerald-500 text-black py-3 rounded-2xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">
-              <Wallet className="w-5 h-5" /> صرف نسبتي ({coinsAmount.toLocaleString()} كوينز)
-            </button>
-          ) : (
-            <div className="w-full bg-card border border-border py-3 rounded-2xl text-center space-y-1">
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                <Lock className="w-4 h-4" />
-                <span className="font-bold text-sm">صرف نسبتي 🔒</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">يفتح بداية الشهر الجديد</p>
-            </div>
-          );
-        })()}
       </div>
 
       {/* Add Member Dialog */}
