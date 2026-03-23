@@ -821,7 +821,7 @@ const WorksPage: React.FC = () => {
                 {m.monthly_charges !== undefined && (
                   <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
                     <span className="text-muted-foreground font-bold">شحن: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
-                    <span className="text-primary font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
+                    <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
                   </div>
                 )}
               </motion.div>
@@ -872,7 +872,7 @@ const WorksPage: React.FC = () => {
                 {m.agency_salary !== undefined && (
                   <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
                     <span className="text-muted-foreground font-bold">راتب: ${m.agency_salary?.toFixed(2)}</span>
-                    <span className="text-primary font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
+                    <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
                   </div>
                 )}
               </motion.div>
