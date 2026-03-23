@@ -84,16 +84,16 @@ const BDDashboard: React.FC = () => {
   const loadData = useCallback(async () => {
     if (!user?.uuid) return;
     try {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      // Use UTC-based date boundaries for accurate "today" calculation
+      const now = new Date();
+      const todayStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
       
-      const weekAgo = new Date();
+      const weekAgo = new Date(todayStart);
       weekAgo.setDate(weekAgo.getDate() - 6);
-      weekAgo.setHours(0, 0, 0, 0);
 
       const [dashRes, todayLogsRes, weekLogsRes] = await Promise.all([
         supabase.functions.invoke("bd-manage", { body: { action: "get_dashboard", bd_uuid: user.uuid } }),
-        supabase.from("bd_commission_logs").select("amount").eq("bd_uuid", user.uuid).gte("created_at", todayStart.toISOString()),
+        supabase.from("bd_commission_logs").select("amount,created_at").eq("bd_uuid", user.uuid).gte("created_at", todayStart.toISOString()),
         supabase.from("bd_commission_logs").select("amount, created_at").eq("bd_uuid", user.uuid).gte("created_at", weekAgo.toISOString()).order("created_at", { ascending: true }),
       ]);
 
