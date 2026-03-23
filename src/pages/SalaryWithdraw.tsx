@@ -538,13 +538,49 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "no_salary") {
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center py-20 px-6 gap-4">
-          <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center">
-            <DollarSign className="w-8 h-8 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center py-16 px-6 gap-6">
+          {/* Icon with animated rings */}
+          <div className="relative">
+            <motion.div
+              animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.2, 0.1] }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="absolute inset-0 w-24 h-24 rounded-full bg-muted-foreground/10"
+              style={{ margin: "-12px" }}
+            />
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
+              style={{ background: "hsl(var(--muted)/0.12)", border: "1px solid hsl(var(--border)/0.15)" }}>
+              <DollarSign className="w-10 h-10 text-muted-foreground/40" />
+            </div>
           </div>
-          <h2 className="text-lg font-bold text-foreground">لا يوجد رصيد</h2>
-          <p className="text-sm text-muted-foreground text-center">لا يوجد دعم هالشهر — ما يقدر يسحب</p>
-          <Button onClick={() => navigate("/salary")} variant="outline">رجوع</Button>
+
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-black text-foreground">لا يوجد رصيد</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              لا يوجد دعم هالشهر — ما يقدر يسحب
+            </p>
+          </div>
+
+          {/* Info card */}
+          <div className="w-full rounded-2xl p-4 space-y-3"
+            style={{ background: "hsl(var(--muted)/0.06)", border: "1px solid hsl(var(--border)/0.1)" }}>
+            <div className="flex items-start gap-3 rtl:flex-row-reverse">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "hsl(var(--primary)/0.1)" }}>
+                <AlertCircle className="w-4 h-4 text-primary" />
+              </div>
+              <div className="space-y-1 text-right flex-1">
+                <p className="text-xs font-bold text-foreground">كيف أحصل على راتب؟</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  الراتب يتوفر بناءً على نشاطك الشهري. تأكد من استيفاء شروط الدعم للحصول على الراتب.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Button onClick={() => navigate("/salary")} variant="outline"
+            className="w-full h-12 rounded-xl border-border/20 font-bold">
+            <ArrowRight className="w-4 h-4 ml-1" /> العودة
+          </Button>
         </div>
       </MobileLayout>
     );
