@@ -93,8 +93,8 @@ const BDDashboard: React.FC = () => {
 
       const [dashRes, todayLogsRes, weekLogsRes] = await Promise.all([
         supabase.functions.invoke("bd-manage", { body: { action: "get_dashboard", bd_uuid: user.uuid } }),
-        supabase.from("bd_commission_logs").select("amount,created_at").eq("bd_uuid", user.uuid).gte("created_at", todayStart.toISOString()),
-        supabase.from("bd_commission_logs").select("amount, created_at").eq("bd_uuid", user.uuid).gte("created_at", weekAgo.toISOString()).order("created_at", { ascending: true }),
+        supabase.from("works_commission_logs" as any).select("amount,created_at").eq("bd_uuid", user.uuid).gte("created_at", todayStart.toISOString()),
+        supabase.from("works_commission_logs" as any).select("amount, created_at").eq("bd_uuid", user.uuid).gte("created_at", weekAgo.toISOString()).order("created_at", { ascending: true }),
       ]);
 
       const res = dashRes.data;
@@ -183,7 +183,7 @@ const BDDashboard: React.FC = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'bd_commission_logs',
+          table: 'works_commission_logs',
           filter: `bd_uuid=eq.${user?.uuid}`,
         },
         () => {
@@ -191,11 +191,11 @@ const BDDashboard: React.FC = () => {
           const todayStart = new Date();
           todayStart.setHours(0, 0, 0, 0);
           supabase
-            .from("bd_commission_logs")
+            .from("works_commission_logs" as any)
             .select("amount")
             .eq("bd_uuid", user?.uuid || "")
             .gte("created_at", todayStart.toISOString())
-            .then(({ data: logs }) => {
+            .then(({ data: logs }: any) => {
               const total = logs?.reduce((sum, log) => sum + (log.amount || 0), 0) || 0;
               setTodayProfit(total);
             });
@@ -214,7 +214,7 @@ const BDDashboard: React.FC = () => {
     if (!user?.uuid) return;
     try {
       const { data: notifs } = await supabase
-        .from("bd_notifications")
+        .from("works_notifications" as any)
         .select("*")
         .or(`target_uuid.eq.${user.uuid},target_uuid.eq.all`)
         .order("created_at", { ascending: false })
@@ -229,7 +229,7 @@ const BDDashboard: React.FC = () => {
   useEffect(() => { fetchBdNotifications(); }, [fetchBdNotifications]);
 
   const dismissBanner = async (id: string) => {
-    await supabase.from("bd_notifications").update({ is_dismissed: true }).eq("id", id);
+    await supabase.from("works_notifications" as any).update({ is_dismissed: true }).eq("id", id);
     setBdBanners(prev => prev.filter(b => b.id !== id));
   };
 
@@ -562,7 +562,7 @@ const BDDashboard: React.FC = () => {
                 const handleWithdrawRequest = async () => {
                   if (!user?.uuid || liveSalaryTotal <= 0) return;
                   try {
-                    const { error } = await supabase.from("bd_withdrawals").insert({
+                    const { error } = await supabase.from("works_withdrawals" as any).insert({
                       bd_uuid: user.uuid,
                       bd_name: bd.bd_name || "",
                       amount: liveSalaryTotalUsd,

@@ -487,7 +487,7 @@ const WorksPage: React.FC = () => {
     const usdAmount = monthEarnings / 7500;
 
     try {
-      await supabase.from("bd_withdrawals").insert({
+      await (supabase.from("works_withdrawals" as any)).insert({
         bd_uuid: user.uuid,
         bd_name: user.name || "",
         amount: usdAmount,
