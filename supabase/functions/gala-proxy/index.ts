@@ -130,6 +130,13 @@ const OWNER_ONLY = new Set([
   "reset-cash-used",
 ]);
 
+// Actions where upstream timeout should not crash UI
+const TIMEOUT_TOLERANT_ACTIONS = new Set([
+  "user-monthly-charges",
+  "agency-salary",
+  "salary_check_all",
+]);
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -142,9 +149,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let currentAction = "";
+
   try {
     const body = await req.json();
     const { target, action, ...params } = body;
+    currentAction = typeof action === "string" ? action : "";
 
     // 1. Validate target + action
     if (!target || !action) {
@@ -303,6 +313,23 @@ serve(async (req) => {
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
+
+    const isTimeout =
+      message.includes("Signal timed out") ||
+      message.toLowerCase().includes("timed out") ||
+      message.includes("aborted");
+
+    if (isTimeout && TIMEOUT_TOLERANT_ACTIONS.has(currentAction)) {
+      console.warn(`[gala-proxy] Timeout tolerated for action=${currentAction}`);
+      return json({
+        success: false,
+        timeout: true,
+        action: currentAction,
+        data: null,
+        message: "Upstream timeout",
+      }, 200);
+    }
+
     console.error("[gala-proxy] Error:", message);
     return json({ error: message }, 500);
   }
