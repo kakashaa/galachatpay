@@ -135,6 +135,18 @@ const SupporterBenefits: React.FC = () => {
         setSpecialOffers(Array.isArray(offers) ? offers : []);
       }
 
+      // Load challenges
+      const challengesRes = await supabase.from("supporter_challenges").select("*").eq("is_active", true).order("created_at", { ascending: false });
+      setChallenges((challengesRes.data || []) as any);
+
+      // Load user's challenge progress
+      if (user?.uuid) {
+        const progressRes = await supabase.from("supporter_challenge_progress").select("*").eq("user_uuid", user.uuid);
+        const progressMap: Record<string, any> = {};
+        (progressRes.data || []).forEach((p: any) => { progressMap[p.challenge_id] = p; });
+        setChallengeProgress(progressMap);
+      }
+
       // Background: API calls for fresh data
       if (user?.uuid) {
         // Fresh monthly charges from wares-api
