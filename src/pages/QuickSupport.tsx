@@ -171,6 +171,7 @@ const QuickSupport: React.FC = () => {
 
   const handleChatClose = () => {
     setSessionId(null);
+    setConnectionState("idle");
     navigate(-1);
   };
 
@@ -200,8 +201,8 @@ const QuickSupport: React.FC = () => {
     );
   }
 
-  // Active session chat view
-  if (sessionId) {
+  // Active session chat view (only when admin was found)
+  if (sessionId && connectionState === "found") {
     return (
       <div className="mobile-container bg-background flex flex-col overflow-hidden" dir="rtl">
         <SupportSessionChat
@@ -212,6 +213,75 @@ const QuickSupport: React.FC = () => {
           showTimer={true}
           onClose={handleChatClose}
         />
+      </div>
+    );
+  }
+
+  // Connection state overlay (searching / no_admin / error)
+  if (connectionState !== "idle") {
+    return (
+      <div className="mobile-container bg-background flex flex-col" dir="rtl">
+        <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
+          <motion.button onClick={() => { setConnectionState("idle"); if (timeoutRef.current) clearTimeout(timeoutRef.current); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30">
+            <ArrowRight className="w-5 h-5 text-primary" />
+            <span className="text-sm font-semibold text-primary">رجوع</span>
+          </motion.button>
+          <h1 className="text-sm font-bold text-foreground">جاري الاتصال</h1>
+          <div className="w-16" />
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <AnimatePresence mode="wait">
+            {connectionState === "searching" && (
+              <motion.div key="searching" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-primary/10 border border-primary/20">
+                  <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">⏳ جاري البحث عن دعم...</h2>
+                <p className="text-sm text-muted-foreground">نبحث عن أدمن متاح — انتظر لحظات</p>
+              </motion.div>
+            )}
+
+            {connectionState === "no_admin" && (
+              <motion.div key="no_admin" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-destructive/10 border border-destructive/20">
+                  <X className="w-10 h-10 text-destructive" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">❌ لا يوجد دعم حالياً</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">جميع المسؤولين مشغولين أو خارج الدوام — حاول لاحقاً أو أرسل تذكرة</p>
+                <div className="space-y-2 w-full max-w-[280px] mx-auto">
+                  <button onClick={retrySearch}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Zap className="w-4 h-4" /> إعادة المحاولة
+                  </button>
+                  <button onClick={() => navigate("/support-tickets")}
+                    className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Send className="w-4 h-4" /> أرسل تذكرة بدلاً
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {connectionState === "error" && (
+              <motion.div key="error" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-yellow-500/10 border border-yellow-500/20">
+                  <AlertTriangle className="w-10 h-10 text-yellow-500" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">⚠️ فشل الاتصال</h2>
+                <p className="text-sm text-muted-foreground">حصل خطأ أثناء البحث — حاول مرة ثانية</p>
+                <div className="space-y-2 w-full max-w-[280px] mx-auto">
+                  <button onClick={retrySearch}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Zap className="w-4 h-4" /> إعادة المحاولة
+                  </button>
+                  <button onClick={() => navigate("/support-tickets")}
+                    className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Send className="w-4 h-4" /> أرسل تذكرة بدلاً
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     );
   }
