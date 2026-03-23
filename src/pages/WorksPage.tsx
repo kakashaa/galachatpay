@@ -292,25 +292,16 @@ const WorksPage: React.FC = () => {
   }, []);
 
   const fetchData = useCallback(async () => {
-    if (!user?.uuid) { setLoading(false); return; }
+    if (!user?.uuid) return;
     setLoading(true);
-
-    // Safety timeout — never hang more than 15s
-    const timeout = setTimeout(() => {
-      console.warn("[Works] fetchData timed out after 15s");
-      setLoading(false);
-    }, 15000);
-
     try {
       // Check ban status first
       const banned = await checkBanStatus();
-      if (banned) { clearTimeout(timeout); setLoading(false); return; }
+      if (banned) { setLoading(false); return; }
 
-      const { data: works, error: worksErr } = await supabase
+      const { data: works } = await supabase
         .from("works_accounts").select("*")
         .eq("user_uuid", user.uuid).eq("status", "active").maybeSingle();
-
-      if (worksErr) console.error("[Works] works_accounts error:", worksErr.message);
 
       if (works) {
         setMyWorks(works);
@@ -318,36 +309,23 @@ const WorksPage: React.FC = () => {
         const now = new Date();
         const todayStartUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
         const todayDate = todayStartUtc.toISOString().slice(0, 10);
-
-        // Fetch members and commission logs separately to avoid one failing both
-        let rawMembers: MemberWithSalary[] = [];
-        let todayRows: any[] = [];
-
-        try {
-          const { data: m } = await supabase
+        const [{ data: m }, { data: todayRows }] = await Promise.all([
+          supabase
             .from("works_members")
             .select("*")
             .eq("works_id", works.id)
-            .eq("status", "active");
-          rawMembers = (m || []) as any as MemberWithSalary[];
-        } catch (e) {
-          console.error("[Works] works_members error:", e);
-        }
-
-        try {
-          const { data: tr } = await supabase
+            .eq("status", "active"),
+          supabase
             .from("works_commission_logs" as any)
             .select("amount,created_at")
             .eq("bd_uuid", user.uuid)
-            .gte("created_at", todayStartUtc.toISOString());
-          todayRows = tr || [];
-        } catch (e) {
-          console.error("[Works] commission_logs error:", e);
-        }
+            .gte("created_at", todayStartUtc.toISOString()),
+        ]);
 
+        const rawMembers = (m || []) as any as MemberWithSalary[];
         setMembers(rawMembers);
 
-        const todayUsd = todayRows.reduce((sum: number, row: any) => {
+        const todayUsd = (todayRows || []).reduce((sum: number, row: any) => {
           if (String(row?.created_at || "").slice(0, 10) !== todayDate) return sum;
           return sum + toFiniteNumber(row?.amount ?? 0);
         }, 0);
@@ -382,10 +360,7 @@ const WorksPage: React.FC = () => {
           .eq("status", "pending").maybeSingle();
         setPendingRequest(!!req);
       }
-    } catch (err) {
-      console.error("[Works] fetchData error:", err);
-    }
-    clearTimeout(timeout);
+    } catch { /* silent */ }
     setLoading(false);
   }, [user?.uuid, fetchSalaryData, checkBanStatus]);
 
@@ -635,9 +610,8 @@ const WorksPage: React.FC = () => {
     </div>
   );
 
-  // State 1: No works account and no pending request — show registration
-  // BD is available from level 0, so no level gate
-  if (false && userLevel < 10 && !myWorks) return (
+  // State 1: Level < 10
+  if (userLevel < 10 && !myWorks) return (
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       <div className="flex items-center gap-3 p-4 border-b border-border">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6" /></button>
