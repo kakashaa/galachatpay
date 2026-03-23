@@ -2993,7 +2993,6 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           id: string
-          last_earnings_sync_at: string | null
           status: string | null
           supporter_commission_pct: number | null
           total_earnings_usd: number | null
@@ -3010,7 +3009,6 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
-          last_earnings_sync_at?: string | null
           status?: string | null
           supporter_commission_pct?: number | null
           total_earnings_usd?: number | null
@@ -3027,7 +3025,6 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
-          last_earnings_sync_at?: string | null
           status?: string | null
           supporter_commission_pct?: number | null
           total_earnings_usd?: number | null

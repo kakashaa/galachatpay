@@ -1,1 +1,0 @@
-ALTER TABLE public.works_accounts ADD COLUMN IF NOT EXISTS last_earnings_sync_at timestamptz DEFAULT NULL;

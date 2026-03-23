@@ -1269,96 +1269,116 @@ Deno.serve(async (req) => {
       case "works_get_members": {
         const { works_id } = data;
         const { data: members, error } = await supabase
-          .from("works_members").select("*").eq("works_id", works_id)
-          .order("created_at", { ascending: false });
+          .from("works_members").select("*").eq("works_id", works_id).order("created_at", { ascending: false });
         if (error) throw error;
 
+        // Fetch account commission percentages
         const { data: accRow } = await supabase
-          .from("works_accounts")
-          .select("supporter_commission_pct, agent_commission_pct")
-          .eq("id", works_id).single();
-
-        // Return stored data only — NO live API calls
-        const enriched = (members || []).map((m: any) => ({
-          ...m,
-          member_type: m.member_type === "agency" ? "agent" : m.member_type,
-          live_commission: m.total_commission_usd || 0,
-          supporter_pct: accRow?.supporter_commission_pct || 2,
-          agent_pct: accRow?.agent_commission_pct || 5,
-          needs_refresh: true,
-        }));
-
-        result = enriched;
-        break;
-      }
-
-      case "works_refresh_member": {
-        const { member_id } = data;
-        const { data: member } = await supabase
-          .from("works_members").select("*").eq("id", member_id).single();
-        if (!member) { result = { error: "Member not found" }; break; }
-
-        const { data: acc } = await supabase
-          .from("works_accounts").select("supporter_commission_pct, agent_commission_pct")
-          .eq("id", member.works_id).single();
-
-        const WARES_API2 = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
-        const now2 = new Date();
-        const currentMonth2 = `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, "0")}`;
-
-        const toNum2 = (v: unknown): number => {
-          if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-          if (v && typeof v === "object" && "total" in (v as any)) return Number((v as any).total) || 0;
-          return Number(v) || 0;
+          .from("works_accounts").select("supporter_commission_pct, agent_commission_pct").eq("id", works_id).single();
+        const toNumber = (value: unknown): number => {
+          if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+          if (typeof value === "string") {
+            const parsed = Number(value.replace(/,/g, "").trim());
+            return Number.isFinite(parsed) ? parsed : 0;
+          }
+          return 0;
+        };
+        const normalizeStatus = (status: unknown) => String(status ?? "active").trim().toLowerCase();
+        const isMemberActive = (status: unknown) => {
+          const s = normalizeStatus(status);
+          return s !== "removed" && s !== "inactive" && s !== "deleted";
+        };
+        const normalizeMemberType = (memberType: unknown) => {
+          const t = String(memberType ?? "").trim().toLowerCase();
+          if (t === "agency") return "agent";
+          return t;
         };
 
-        let liveData: any = {};
-        const mType = (member.member_type === "agency" ? "agent" : member.member_type);
+        const supporterPct = toNumber(accRow?.supporter_commission_pct || 2);
+        const agentPct = toNumber(accRow?.agent_commission_pct || 5);
 
-        try {
-          if (mType === "supporter") {
-            const res = await fetch(`${WARES_API2}&action=user-monthly-charges&uuid=${member.member_uuid}&month=${currentMonth2}`, { signal: AbortSignal.timeout(15000) });
-            const json = await res.json();
-            const charges = toNum2(json?.data?.total_charges ?? json?.total_charges ?? 0);
-            const pct = toNum2(member.commission_pct ?? acc?.supporter_commission_pct ?? 2);
-            liveData = { monthly_charges: charges, live_commission: (charges / 7500) * (pct / 100) };
-          } else if (mType === "agent" && member.agency_id) {
-            const res = await fetch(`${WARES_API2}&action=agency-salary&uuid=${member.member_uuid}&agency_id=${member.agency_id}`, { signal: AbortSignal.timeout(15000) });
-            const json = await res.json();
-            const salary = toNum2(json?.data?.agency_salary ?? json?.salary ?? 0);
-            const pct = toNum2(member.commission_pct ?? acc?.agent_commission_pct ?? 5);
-            liveData = { agency_salary: salary, live_commission: salary * pct / 100, agency_name: json?.data?.agency_name || "" };
+        const WARES_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+        // Calculate live earnings for each active member
+        const activeMembers2 = (members || []).filter((m: any) => isMemberActive(m.status));
+        const liveResults = await Promise.all(activeMembers2.map(async (m: any) => {
+          try {
+            const normalizedType = normalizeMemberType(m.member_type);
+            if (normalizedType === "supporter") {
+              const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`);
+              const json = await res.json();
+              const charges = toNumber(
+                json?.data?.total_charges ??
+                json?.data?.charges ??
+                json?.total_charges ??
+                json?.charges ??
+                0
+              );
+              const pct = toNumber(m.commission_pct ?? supporterPct);
+              const commissionUsd = (charges / 7500) * (pct / 100);
+              return { id: m.id, monthly_charges: charges, live_commission: commissionUsd };
+            } else if (normalizedType === "agent" && m.agency_id) {
+              const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}&agency_id=${m.agency_id}`);
+              const json = await res.json();
+              const salary = toNumber(
+                json?.data?.agency_salary ??
+                json?.data?.net_salary ??
+                json?.data?.salary ??
+                json?.data?.total_user_salary ??
+                json?.net_salary ??
+                json?.salary ??
+                0
+              );
+              const agencyName = json?.data?.agency_name || json?.agency_name || "";
+              const agencyMembersCount = toNumber(
+                json?.data?.members_count ??
+                json?.data?.total_members ??
+                json?.members_count ??
+                0
+              );
+              const pct = toNumber(m.commission_pct ?? agentPct);
+              const commUsd = salary * pct / 100;
+              return { id: m.id, agency_salary: salary, agency_name: agencyName, agency_members_count: agencyMembersCount, live_commission: commUsd };
+            }
+          } catch (e) {
+            console.error(`Live data fetch failed for ${m.member_uuid}:`, e);
           }
-        } catch (e) {
-          liveData = { error: "timeout", live_commission: member.total_commission_usd || 0 };
+          return { id: m.id, live_commission: 0 };
+        }));
+
+        const liveMap = new Map(liveResults.map((r: any) => [r.id, r]));
+        let totalDynamic = 0;
+        let supporterDynamic = 0;
+        let agentDynamic = 0;
+        for (const m of (members || [])) {
+          m.member_type = normalizeMemberType(m.member_type);
+          const live = liveMap.get(m.id);
+          if (live) {
+            Object.assign(m, live);
+            const liveValue = toNumber(live.live_commission);
+            totalDynamic += liveValue;
+            if (m.member_type === "supporter") supporterDynamic += liveValue;
+            if (m.member_type === "agent") agentDynamic += liveValue;
+          }
         }
 
-        if (liveData.live_commission > 0) {
-          await supabase.from("works_members").update({ total_commission_usd: liveData.live_commission }).eq("id", member_id);
-        }
+        const finalEarnings = Math.round(totalDynamic * 100) / 100;
+        const supporterFinal = Math.round(supporterDynamic * 100) / 100;
+        const agentFinal = Math.round(agentDynamic * 100) / 100;
 
-        result = { ...member, ...liveData, member_type: mType, needs_refresh: false };
-        break;
-      }
+        // Save live earnings back to the account so list page shows accurate data
+        await supabase.from("works_accounts").update({
+          total_earnings_usd: finalEarnings,
+        }).eq("id", works_id);
 
-      case "works_refresh_single_account": {
-        const { account_id } = data;
-        if (!account_id) throw new Error("account_id required");
-
-        // Call the works-earnings-sync function for this single account
-        const syncUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/works-earnings-sync`;
-        const syncRes = await fetch(syncUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify({ account_id }),
-        });
-        const syncData = await syncRes.json();
-        if (!syncRes.ok) throw new Error(syncData?.error || "Sync failed");
-        result = syncData;
-        await logAudit({ account_id, earnings: syncData?.earnings });
+        result = {
+          members,
+          dynamic_earnings: finalEarnings,
+          supporter_dynamic_earnings: supporterFinal,
+          agent_dynamic_earnings: agentFinal,
+        };
         break;
       }
 

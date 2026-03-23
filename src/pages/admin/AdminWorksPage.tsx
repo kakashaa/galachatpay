@@ -5,11 +5,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2, RefreshCw } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
-import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 
 
 const AdminWorksPage: React.FC = () => {
@@ -85,8 +84,6 @@ const AdminWorksPage: React.FC = () => {
   const [portalBanReason, setPortalBanReason] = useState("");
   const [portalBanLoading, setPortalBanLoading] = useState(false);
   const [portalBans, setPortalBans] = useState<any[]>([]);
-  const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(null);
-  const [accountAvatars, setAccountAvatars] = useState<Record<string, string>>({});
 
   const fetchGlobalSettings = useCallback(async () => {
     const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled", "global_supporter_commission_pct", "global_agent_commission_pct"];
@@ -142,19 +139,7 @@ const AdminWorksPage: React.FC = () => {
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
-    try {
-      const d = await adminCall("works_list_accounts");
-      setAccounts(d || []);
-      // Fetch avatars for all accounts in background
-      const uuids = (d || []).map((a: any) => a.user_uuid).filter(Boolean);
-      if (uuids.length > 0) {
-        Promise.all(uuids.map((uuid: string) => getAvatar(uuid).then(url => ({ uuid, url })))).then(results => {
-          const map: Record<string, string> = {};
-          results.forEach(r => { map[r.uuid] = r.url; });
-          setAccountAvatars(map);
-        });
-      }
-    } catch { }
+    try { const d = await adminCall("works_list_accounts"); setAccounts(d || []); } catch { }
     setLoading(false);
   }, [adminCall]);
 
@@ -163,75 +148,30 @@ const AdminWorksPage: React.FC = () => {
   const [supporterDynamicEarnings, setSupporterDynamicEarnings] = useState<number>(0);
   const [agentDynamicEarnings, setAgentDynamicEarnings] = useState<number>(0);
 
-  const [refreshingMemberId, setRefreshingMemberId] = useState<string | null>(null);
-  const [refreshingAll, setRefreshingAll] = useState(false);
-
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
+    setMemberSalaryLoading(true);
     setDynamicAccountEarnings(0);
     setSupporterDynamicEarnings(0);
     setAgentDynamicEarnings(0);
     try {
       const d = await adminCall("works_get_members", { works_id: wid });
-      // New format: array of members (no wrapper)
-      const membersList = Array.isArray(d) ? d : (d?.members || d || []);
-      setMembers(membersList);
-      // Calculate totals from stored data
-      let totalE = 0, supE = 0, agE = 0;
-      for (const m of membersList) {
-        const c = Number(m.live_commission || m.total_commission_usd || 0);
-        totalE += c;
-        if (m.member_type === "supporter") supE += c;
-        if (m.member_type === "agent") agE += c;
+      if (d && d.members) {
+        setMembers(d.members);
+        setDynamicAccountEarnings(d.dynamic_earnings ?? 0);
+        setSupporterDynamicEarnings(d.supporter_dynamic_earnings ?? 0);
+        setAgentDynamicEarnings(d.agent_dynamic_earnings ?? 0);
+        // Update the account's earnings in the local list so it shows the live value
+        setAccounts(prev => prev.map(a => a.id === wid ? { ...a, dynamic_earnings: d.dynamic_earnings ?? 0, total_earnings_usd: d.dynamic_earnings ?? 0 } : a));
+      } else {
+        setMembers(d || []);
+        setSupporterDynamicEarnings(0);
+        setAgentDynamicEarnings(0);
       }
-      setDynamicAccountEarnings(Math.round(totalE * 100) / 100);
-      setSupporterDynamicEarnings(Math.round(supE * 100) / 100);
-      setAgentDynamicEarnings(Math.round(agE * 100) / 100);
     } catch { }
     setLoading(false);
     setMemberSalaryLoading(false);
   }, [adminCall]);
-
-  const refreshSingleMember = useCallback(async (memberId: string) => {
-    setRefreshingMemberId(memberId);
-    try {
-      const result = await adminCall("works_refresh_member", { member_id: memberId });
-      if (result && !result.error) {
-        setMembers(prev => prev.map((m: any) => m.id === memberId ? { ...m, ...result } : m));
-        // Recalculate totals
-        setMembers(prev => {
-          let totalE = 0, supE = 0, agE = 0;
-          for (const m of prev) {
-            const c = Number(m.live_commission || m.total_commission_usd || 0);
-            totalE += c;
-            if (m.member_type === "supporter") supE += c;
-            if (m.member_type === "agent") agE += c;
-          }
-          setDynamicAccountEarnings(Math.round(totalE * 100) / 100);
-          setSupporterDynamicEarnings(Math.round(supE * 100) / 100);
-          setAgentDynamicEarnings(Math.round(agE * 100) / 100);
-          return prev;
-        });
-        toast.success(`تم تحديث بيانات ${result.member_name || "العضو"}`);
-      } else {
-        toast.error("فشل التحديث: " + (result?.error || "خطأ"));
-      }
-    } catch (e: any) {
-      toast.error("فشل التحديث: " + (e?.message || "خطأ"));
-    }
-    setRefreshingMemberId(null);
-  }, [adminCall]);
-
-  const refreshAllMembers = useCallback(async () => {
-    setRefreshingAll(true);
-    for (const m of members) {
-      if (m.status === "removed") continue;
-      await refreshSingleMember(m.id);
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    setRefreshingAll(false);
-    toast.success("تم تحديث جميع الأعضاء ✅");
-  }, [members, refreshSingleMember]);
 
 
 
@@ -424,36 +364,6 @@ const AdminWorksPage: React.FC = () => {
       toast.success("تم فك الحظر");
       fetchPortalBans();
     } catch { toast.error("فشل"); }
-  };
-
-  // Refresh earnings for a single account
-  const refreshAccountEarnings = async (accountId: string) => {
-    if (refreshingAccountId) return;
-    setRefreshingAccountId(accountId);
-    try {
-      const result = await adminCall("works_refresh_single_account", { account_id: accountId });
-      if (result?.success) {
-        toast.success(`تم تحديث الأرباح: $${Number(result.earnings || 0).toFixed(2)}`);
-        // Update local state
-        setAccounts(prev => prev.map(a => a.id === accountId ? {
-          ...a,
-          total_earnings_usd: result.earnings,
-          dynamic_earnings: result.earnings,
-          last_earnings_sync_at: result.synced_at || new Date().toISOString(),
-        } : a));
-      } else {
-        toast.error("فشل التحديث");
-      }
-    } catch (e: any) {
-      toast.error(e?.message || "فشل تحديث الأرباح");
-    }
-    setRefreshingAccountId(null);
-  };
-
-  const formatSyncTime = (dateStr: string | null): string => {
-    if (!dateStr) return "لم يتم التحديث";
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", hour12: false }) + " — " + d.toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
   };
 
   // Edit member total commission
@@ -688,84 +598,84 @@ const AdminWorksPage: React.FC = () => {
               );
             })()}
             {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
-              <div className="grid grid-cols-2 gap-2.5">
-                {accounts.length === 0 && <p className="col-span-2 text-center text-muted-foreground text-sm py-10">لا توجد حسابات</p>}
+              <div className="space-y-3">
+                {accounts.length === 0 && <p className="text-center text-muted-foreground text-sm py-10">لا توجد حسابات</p>}
                 {accounts.map(a => {
                   const earnings = Number(a.dynamic_earnings ?? a.total_earnings_usd ?? 0);
                   const balance = Number(a.available_balance || a.balance_usd || 0);
                   const supCount = Number(a.supporter_count ?? 0);
                   const agCount = Number(a.agent_count ?? 0);
-                  const isActive = a.status === "active";
+                  const supPct = Number(a.supporter_pct ?? a.supporter_commission_pct ?? 0);
+                  const agPct = Number(a.agent_pct ?? a.agent_commission_pct ?? 0);
                   return (
-                    <div key={a.id} className="relative bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden flex flex-col">
-                      {/* Status dot */}
-                      <div className={`absolute top-2 left-2 w-2 h-2 rounded-full ${isActive ? "bg-emerald-400" : "bg-destructive"}`} />
-                      
-                      {/* Avatar + Name */}
-                      <div className="flex flex-col items-center pt-3 pb-2 px-2">
-                        <img
-                          src={accountAvatars[a.user_uuid] || "/placeholder.svg"}
-                          onError={handleAvatarError}
-                          className="w-14 h-14 rounded-full object-cover border-2 border-primary/30 shadow-lg"
-                          alt={a.user_name || ""}
-                        />
-                        <p className="text-xs font-black text-foreground mt-1.5 truncate w-full text-center">{a.user_name || "—"}</p>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold mt-0.5">{a.works_code}</span>
-                      </div>
-
-                      {/* Earnings */}
-                      <div className="text-center px-2 pb-1.5">
-                        <p className="text-lg font-black text-emerald-400">${earnings.toFixed(2)}</p>
-                        <p className="text-[8px] text-muted-foreground">أرباح الشهر</p>
-                      </div>
-
-                      {/* Stats row */}
-                      <div className="grid grid-cols-3 border-t border-white/[0.06] divide-x divide-white/[0.06] rtl:divide-x-reverse">
-                        <div className="py-1.5 text-center">
-                          <p className="text-xs font-black text-cyan-400">{supCount}</p>
-                          <p className="text-[7px] text-muted-foreground">داعمين</p>
+                    <div key={a.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between p-3 border-b border-border/50">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black truncate">{a.user_name || "—"}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold">{a.works_code}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">UUID: {a.user_uuid}</p>
                         </div>
-                        <div className="py-1.5 text-center">
-                          <p className="text-xs font-black text-amber-400">{agCount}</p>
-                          <p className="text-[7px] text-muted-foreground">وكلاء</p>
-                        </div>
-                        <div className="py-1.5 text-center">
-                          <p className="text-xs font-black text-purple-400">${balance.toFixed(0)}</p>
-                          <p className="text-[7px] text-muted-foreground">رصيد</p>
+                        <div className="text-left shrink-0">
+                          <p className="text-xl font-black text-emerald-400">${earnings.toFixed(2)}</p>
+                          <p className="text-[9px] text-muted-foreground text-center">أرباح الشهر</p>
                         </div>
                       </div>
 
-                      {/* Sync time */}
-                      <p className="text-[7px] text-muted-foreground/60 text-center py-0.5 border-t border-white/[0.04]">
-                        {formatSyncTime(a.last_earnings_sync_at)}
-                      </p>
+                      {/* Stats Row */}
+                      <div className="grid grid-cols-4 divide-x divide-border/30 rtl:divide-x-reverse">
+                        <div className="p-2.5 text-center">
+                          <p className="text-base font-black text-cyan-400">{supCount}</p>
+                          <p className="text-[9px] text-muted-foreground">داعمين</p>
+                          <p className="text-[8px] text-cyan-400/60">{supPct}%</p>
+                        </div>
+                        <div className="p-2.5 text-center">
+                          <p className="text-base font-black text-amber-400">{agCount}</p>
+                          <p className="text-[9px] text-muted-foreground">وكلاء</p>
+                          <p className="text-[8px] text-amber-400/60">{agPct}%</p>
+                        </div>
+                        <div className="p-2.5 text-center">
+                          <p className="text-base font-black text-purple-400">${balance.toFixed(2)}</p>
+                          <p className="text-[9px] text-muted-foreground">الرصيد</p>
+                        </div>
+                        <div className="p-2.5 text-center">
+                          <Badge variant={a.status === "active" ? "default" : "destructive"} className="text-[8px] px-1.5">
+                            {a.status === "active" ? "نشط" : "معلق"}
+                          </Badge>
+                        </div>
+                      </div>
 
                       {/* Actions */}
-                      <div className="flex gap-1 p-1.5 border-t border-white/[0.06]">
+                      <div className="flex gap-1.5 p-2 border-t border-border/30">
                         <button onClick={async () => {
                           setSelectedWorksId(a.id);
                           setTab("members");
                           await fetchMembers(a.id);
                         }}
-                          className="flex-1 bg-primary/10 text-primary py-1.5 rounded-lg text-[9px] font-bold flex items-center justify-center gap-0.5">
-                          <Users className="w-3 h-3" /> الأعضاء
+                          className="flex-1 bg-primary/10 text-primary py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1">
+                          <Users className="w-3.5 h-3.5" /> الأعضاء
                         </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); refreshAccountEarnings(a.id); }}
-                          disabled={refreshingAccountId === a.id}
-                          className="px-2 py-1.5 rounded-lg text-[9px] font-bold bg-emerald-500/10 text-emerald-400 disabled:opacity-50"
-                        >
-                          {refreshingAccountId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        <button onClick={() => updateAccount(a.id, { status: a.status === "active" ? "suspended" : "active" })}
+                          className={`px-3 py-2 rounded-xl text-[11px] font-bold ${a.status === "active" ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-400"}`}>
+                          {a.status === "active" ? "تعليق" : "تفعيل"}
                         </button>
                         {isOwner && (
-                          <button onClick={() => {
-                            setEditFinAccount(a);
-                            setEditBalanceUsd(String(Number(a.balance_usd || 0)));
-                            setEditTotalEarnings(String(Number(a.total_earnings_usd || 0)));
-                          }}
-                            className="px-2 py-1.5 rounded-lg text-[9px] font-bold bg-amber-500/10 text-amber-400">
-                            <Pencil className="w-3 h-3" />
-                          </button>
+                          <>
+                            <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
+                              className="px-2.5 py-2 rounded-xl text-[11px] font-bold bg-destructive/10 text-destructive">
+                              <Lock className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => {
+                              setEditFinAccount(a);
+                              setEditBalanceUsd(String(Number(a.balance_usd || 0)));
+                              setEditTotalEarnings(String(Number(a.total_earnings_usd || 0)));
+                            }}
+                              className="px-2.5 py-2 rounded-xl text-[11px] font-bold bg-amber-500/10 text-amber-400">
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -1251,7 +1161,7 @@ const AdminWorksPage: React.FC = () => {
                           <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-center">
                             <p className="text-[10px] text-muted-foreground">إجمالي أرباح الشهر (داعمين + وكلاء)</p>
                             <p className="text-lg font-black text-foreground">
-                              ${dynamicAccountEarnings.toFixed(2)}
+                              {memberSalaryLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `$${dynamicAccountEarnings.toFixed(2)}`}
                             </p>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1272,14 +1182,6 @@ const AdminWorksPage: React.FC = () => {
                               <p className="text-muted-foreground">أرباح الوكلاء (شهري)</p>
                             </div>
                           </div>
-                          <button
-                            onClick={refreshAllMembers}
-                            disabled={refreshingAll}
-                            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 disabled:opacity-50"
-                          >
-                            {refreshingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                            {refreshingAll ? "جاري تحديث الكل..." : "🔄 تحديث أرباح جميع الأعضاء"}
-                          </button>
                         </div>
                       )}
 
@@ -1297,25 +1199,16 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "مستخدم"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => refreshSingleMember(m.id)}
-                                      disabled={refreshingMemberId === m.id}
-                                      className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 disabled:opacity-50"
-                                    >
-                                      {refreshingMemberId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                                    </button>
-                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
-                                  </div>
+                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                                   <div className="bg-muted/30 rounded-lg p-2">
+                                  <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">شحنات الشهر</p>
-                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : Number(m.monthly_charges || 0).toLocaleString()}</p>
+                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : Number(m.monthly_charges || 0).toLocaleString()}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
-                                    <p className="text-muted-foreground">العمولة</p>
-                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
+                                    <p className="text-muted-foreground">العمولة (live)</p>
+                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">النسبة</p>
@@ -1339,16 +1232,7 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "وكيل"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      onClick={() => refreshSingleMember(m.id)}
-                                      disabled={refreshingMemberId === m.id}
-                                      className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 disabled:opacity-50"
-                                    >
-                                      {refreshingMemberId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                                    </button>
-                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
-                                  </div>
+                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
                                 </div>
                                 <div className="rounded-lg bg-muted/30 p-2 text-[10px]">
                                   <div className="flex items-center gap-2">
@@ -1362,11 +1246,11 @@ const AdminWorksPage: React.FC = () => {
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">راتب الوكالة</p>
-                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
+                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
-                                    <p className="text-muted-foreground">العمولة</p>
-                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
+                                    <p className="text-muted-foreground">العمولة (live)</p>
+                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">النسبة</p>
