@@ -738,7 +738,7 @@ const WorksPage: React.FC = () => {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono truncate" dir="ltr">#{m.member_uuid}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
                     <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / 7500).toFixed(2)}</p>
@@ -789,7 +789,7 @@ const WorksPage: React.FC = () => {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono truncate" dir="ltr">#{m.member_uuid}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
                     <p className="text-sm font-black text-primary">${(m.agency_salary || 0).toFixed(2)}</p>
