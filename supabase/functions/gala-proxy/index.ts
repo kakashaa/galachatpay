@@ -113,7 +113,7 @@ const ALLOWED: Record<string, string[]> = {
 
 // Actions that require admin auth
 const ADMIN_ONLY = new Set([
-  "admin_give_vip", "admin_change_uuid", "admin_ban_user", "admin_first_setup",
+  "admin_give_vip", "admin_change_uuid", "admin_ban_user",
   "salary_charge_manual", "salary_withdraw_approve", "salary_withdraw_reject",
   "ban-user", "ban-user-real", "unban-user", "unban-user-real", "add-diamonds", "set-vip",
   "promo-config", "wa_notify", "agency-accept",
