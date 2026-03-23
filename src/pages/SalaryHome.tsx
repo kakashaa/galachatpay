@@ -3,7 +3,7 @@ import FancyLoading from "@/components/FancyLoading";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, Coins, Gift, Zap, Loader2, DollarSign,
+  Wallet, Coins, Gift, Zap, DollarSign,
   Building2, CheckCircle, XCircle, AlertCircle,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
@@ -75,7 +75,7 @@ const SalaryHome: React.FC = () => {
 
   // Validation: if total_cut > current_month, data is suspect
   const hostCutInvalid = host ? (host.total_cut > host.current_month) : false;
-  const hostNoSalary = host ? (host.current_month === 0) : true;
+  const hostHasSalary = host ? (host.current_month > 0) : false;
   const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : host.total_cut)) : 0;
   const agencyAvailable = agency?.pool_available || 0;
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
