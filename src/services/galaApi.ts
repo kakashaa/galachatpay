@@ -74,10 +74,9 @@ class GalaApiService {
     return this.call("project-z", "admin_login", { username, password });
   }
 
-  async adminFirstSetup(username: string, newPassword: string, phone: string) {
-    const session_token = localStorage.getItem("admin_session_token") || "";
+  async adminFirstSetup(username: string, oldPassword: string, newPassword: string, phone: string) {
     const { data, error } = await supabase.functions.invoke("admin-manage", {
-      body: { username, session_token, action: "admin_first_setup", data: { new_password: newPassword, phone } },
+      body: { username, password: oldPassword, action: "admin_first_setup", data: { new_password: newPassword, phone } },
     });
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
