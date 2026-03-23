@@ -767,82 +767,242 @@ const BDDashboard: React.FC = () => {
             {localStorage.getItem("admin_username") === "naz" && (
               <OwnerControls system="bd" accountId={bd.bd_uuid} onRefresh={loadData} />
             )}
-            {/* Dashboard Tab */}
-            {renderStockChart()}
 
-            {/* Wallet Card */}
-            <div className="css-fade-up-d1 overflow-hidden rounded-2xl bg-card border border-border/40 p-3.5">
-              <div className="flex justify-between items-start mb-2">
-                <div
-                  className={`${(bd.available_balance || 0) > 0 ? 'cursor-pointer active:scale-[0.97] transition-transform' : ''}`}
-                  onClick={() => { if ((bd.available_balance || 0) > 0) setTab('wallet'); }}
-                >
-                  <p className="text-[10px] text-muted-foreground mb-0.5 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[12px] text-primary">account_balance_wallet</span>
-                    الرصيد المتاح
-                  </p>
-                  <h2 className="text-xl font-bold text-foreground tracking-tight">${(bd.available_balance || 0).toFixed(2)}</h2>
-                  <p className="text-[9px] text-muted-foreground">{Math.round((bd.available_balance || 0) * 7500).toLocaleString()} كوينز</p>
-                  {(bd.available_balance || 0) > 0 && (
-                    <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب ←</p>
-                  )}
-                </div>
-              <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${todayProfit > 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                  <span className="material-symbols-outlined text-[11px]">{todayProfit > 0 ? 'trending_up' : 'trending_flat'}</span>
-                  {todayProfit > 0 ? `+$${(todayProfit / 7500).toFixed(2)}` : '$0.00'}
-                </div>
+            {/* Referral Code Banner */}
+            <div className="rounded-2xl p-4 flex items-center justify-between"
+              style={{ background: "linear-gradient(135deg, hsl(var(--primary)/0.15), hsl(152 69% 40% / 0.08))", border: "1px solid hsl(var(--primary)/0.2)" }}>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">كود البيدي</p>
+                <p className="text-xl font-black tracking-widest text-foreground font-mono">{bd.referral_code}</p>
               </div>
+              <button onClick={copyReferralCode} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl active:scale-95 transition-transform"
+                style={{ background: "hsl(var(--primary)/0.15)", border: "1px solid hsl(var(--primary)/0.25)" }}>
+                <span className="material-symbols-outlined text-primary text-sm">content_copy</span>
+                <span className="text-xs font-bold text-primary">نسخ</span>
+              </button>
+            </div>
 
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                <div className="bg-amber-500/5 rounded-xl p-2 text-center border border-amber-500/15">
-                  <p className="text-[9px] text-amber-300/80 font-medium mb-0.5">أرباح اليوم</p>
-                  <p className="text-base font-extrabold text-amber-400">${(todayProfit / 7500).toFixed(2)}</p>
+            {/* Main Balance Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Available Balance */}
+              <button
+                onClick={() => { if ((bd.available_balance || 0) > 0) setTab('wallet'); }}
+                className="rounded-2xl p-4 text-center space-y-1 active:scale-[0.97] transition-transform"
+                style={{ background: "linear-gradient(145deg, hsl(152 69% 40% / 0.12), hsl(var(--card)))", border: "1px solid hsl(152 69% 40% / 0.2)" }}>
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-xs font-bold text-muted-foreground">الرصيد المتاح</p>
+                  <button onClick={(e) => { e.stopPropagation(); toast.info("هذا المبلغ المتاح لطلب السحب. يتم تحديثه تلقائياً بناءً على عمولاتك."); }}
+                    className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "hsl(var(--muted)/0.15)" }}>
+                    <span className="text-[9px] text-muted-foreground font-bold">?</span>
+                  </button>
                 </div>
-                <div className="bg-cyan-500/5 rounded-xl p-2 text-center border border-cyan-500/15">
-                  <p className="text-[9px] text-cyan-300/80 font-medium mb-0.5">أرباح الشهر</p>
-                  <p className="text-sm font-extrabold text-cyan-400">{monthlyProfit.toLocaleString()}</p>
-                  <p className="text-[8px] text-muted-foreground">كوينز</p>
-                </div>
-                <div className="bg-white/[0.04] rounded-xl p-2 text-center border border-border/20">
-                  <p className="text-[9px] text-muted-foreground font-medium mb-0.5">الأعضاء</p>
-                  <p className="text-base font-extrabold text-foreground">{supporters.length + agents.length}</p>
-                </div>
-              </div>
+                <p className="text-2xl font-black text-emerald-400" dir="ltr">${(bd.available_balance || 0).toFixed(2)}</p>
+                <p className="text-[10px] text-muted-foreground">{Math.round((bd.available_balance || 0) * 7500).toLocaleString()} كوينز</p>
+              </button>
 
-              <div className="grid grid-cols-2 gap-1.5 mb-2">
-                <button onClick={() => setTab('supporters')} className="flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 rounded-lg p-2 transition-all active:scale-[0.97]">
-                  <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-blue-400 text-xs">diversity_3</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[8px] text-muted-foreground">الداعمين</p>
-                    <p className="text-xs font-bold text-foreground">{supporters.length}</p>
-                  </div>
-                </button>
-                <button onClick={() => setTab('agents')} className="flex items-center gap-1.5 bg-purple-500/10 hover:bg-purple-500/15 border border-purple-500/20 rounded-lg p-2 transition-all active:scale-[0.97]">
-                  <div className="w-6 h-6 rounded-md bg-purple-500/20 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-purple-400 text-xs">domain</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[8px] text-muted-foreground">الوكالات</p>
-                    <p className="text-xs font-bold text-foreground">{agents.length}</p>
-                  </div>
-                </button>
-              </div>
-
-              <div className="pt-2 border-t border-border/20 flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-primary text-xs">tag</span>
-                  <span className="text-[11px] font-mono font-semibold text-foreground/80 tracking-wider">{bd.referral_code}</span>
+              {/* Total Earnings */}
+              <div className="rounded-2xl p-4 text-center space-y-1"
+                style={{ background: "linear-gradient(145deg, hsl(var(--primary)/0.08), hsl(var(--card)))", border: "1px solid hsl(var(--primary)/0.15)" }}>
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-xs font-bold text-muted-foreground">إجمالي الأرباح</p>
+                  <button onClick={() => toast.info("إجمالي كل العمولات التي حصلت عليها منذ انضمامك للنظام.")}
+                    className="w-4 h-4 rounded-full flex items-center justify-center" style={{ background: "hsl(var(--muted)/0.15)" }}>
+                    <span className="text-[9px] text-muted-foreground font-bold">?</span>
+                  </button>
                 </div>
-                <button onClick={copyReferralCode} className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-all active:scale-95">
-                  <span className="text-[9px] font-medium text-primary">نسخ</span>
-                  <span className="material-symbols-outlined text-[11px] text-primary">content_copy</span>
-                </button>
+                <p className="text-2xl font-black text-primary" dir="ltr">${((bd.total_earned || 0) / 7500).toFixed(2)}</p>
+                <p className="text-[10px] text-muted-foreground">{(bd.total_earned || 0).toLocaleString()} كوينز</p>
               </div>
             </div>
 
-            {renderMembersList()}
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                {
+                  label: "أرباح اليوم",
+                  value: `$${(todayProfit / 7500).toFixed(2)}`,
+                  sub: `${todayProfit.toLocaleString()} ك`,
+                  color: "hsl(45 93% 47%)",
+                  bg: "hsl(45 93% 47% / 0.08)",
+                  border: "hsl(45 93% 47% / 0.15)",
+                  help: "المبلغ الذي كسبته اليوم من عمولات الأعضاء.",
+                },
+                {
+                  label: "أرباح الشهر",
+                  value: `${monthlyProfit.toLocaleString()}`,
+                  sub: `$${(monthlyProfit / 7500).toFixed(2)}`,
+                  color: "hsl(187 72% 56%)",
+                  bg: "hsl(187 72% 56% / 0.08)",
+                  border: "hsl(187 72% 56% / 0.15)",
+                  help: "إجمالي العمولات لهذا الشهر. يتم تصفيرها بداية كل شهر جديد.",
+                },
+                {
+                  label: "الأعضاء",
+                  value: `${supporters.length + agents.length}`,
+                  sub: `${supporters.length} داعم · ${agents.length} وكالة`,
+                  color: "hsl(var(--foreground))",
+                  bg: "hsl(var(--muted)/0.06)",
+                  border: "hsl(var(--border)/0.12)",
+                  help: "عدد الداعمين والوكالات المسجلين تحت حسابك.",
+                },
+              ].map((stat, i) => (
+                <div key={i} className="rounded-xl p-3 text-center space-y-1"
+                  style={{ background: stat.bg, border: `1px solid ${stat.border}` }}>
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-[10px] font-bold" style={{ color: stat.color, opacity: 0.7 }}>{stat.label}</p>
+                    <button onClick={() => toast.info(stat.help)}
+                      className="w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ background: "hsl(var(--muted)/0.15)" }}>
+                      <span className="text-[8px] text-muted-foreground font-bold">?</span>
+                    </button>
+                  </div>
+                  <p className="text-lg font-black" style={{ color: stat.color }}>{stat.value}</p>
+                  <p className="text-[9px] text-muted-foreground">{stat.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Supporters Section */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border)/0.15)" }}>
+              <button onClick={() => setTab('supporters')} className="w-full flex items-center justify-between p-4 active:bg-muted/5 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "hsl(217 91% 60% / 0.12)" }}>
+                    <span className="material-symbols-outlined text-blue-400">favorite</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-foreground">الداعمين ({supporters.length})</p>
+                    <p className="text-[10px] text-muted-foreground">عمولة {bd.user_commission_pct || 2}%</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-left">
+                    <p className="text-sm font-black text-emerald-400" dir="ltr">
+                      ${(Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0) / 7500).toFixed(2)}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">
+                      {Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0).toLocaleString()} كوينز
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-muted-foreground text-lg">chevron_left</span>
+                </div>
+              </button>
+
+              {/* Show first 2 supporters inline */}
+              {supporters.slice(0, 2).map((s: any) => {
+                const live = supporterSalaries[s.member_uuid];
+                const charges = live?.charges || 0;
+                const commission = live?.commission || 0;
+                return (
+                  <div key={s.member_uuid} className="px-4 py-3 flex items-center justify-between"
+                    style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
+                        style={{ background: "hsl(217 91% 60% / 0.1)", color: "hsl(217 91% 60%)" }}>
+                        {(s.member_name || "?")[0]}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{s.member_name || "داعم"}</p>
+                        <p className="text-[10px] text-muted-foreground">شحن {charges.toLocaleString()} كوينز</p>
+                      </div>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-black text-emerald-400">{commission.toLocaleString()} ك</p>
+                      <p className="text-[9px] text-muted-foreground">(${(commission / 7500).toFixed(2)})</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Agents Section */}
+            <div className="rounded-2xl overflow-hidden"
+              style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border)/0.15)" }}>
+              <button onClick={() => setTab('agents')} className="w-full flex items-center justify-between p-4 active:bg-muted/5 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "hsl(271 91% 65% / 0.12)" }}>
+                    <span className="material-symbols-outlined text-purple-400">domain</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-foreground">الوكلاء ({agents.length})</p>
+                    <p className="text-[10px] text-muted-foreground">عمولة {bd.agency_commission_pct || 5}%</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-left">
+                    <p className="text-sm font-black text-emerald-400" dir="ltr">
+                      ${(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) / 7500).toFixed(2)}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">
+                      {Math.floor(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) * 7500).toLocaleString()} كوينز
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-muted-foreground text-lg">chevron_left</span>
+                </div>
+              </button>
+
+              {agents.slice(0, 2).map((a: any) => {
+                const live = agentSalaries[a.member_uuid];
+                const salary = live?.salary || 0;
+                const commission = live?.commission || 0;
+                return (
+                  <div key={a.member_uuid} className="px-4 py-3 flex items-center justify-between"
+                    style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
+                        style={{ background: "hsl(271 91% 65% / 0.1)", color: "hsl(271 91% 65%)" }}>
+                        {(a.member_name || "?")[0]}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{a.member_name || "وكالة"}</p>
+                        <p className="text-[10px] text-muted-foreground">راتب الوكالة ${salary.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs font-black text-emerald-400">${commission.toFixed(2)}</p>
+                      <p className="text-[9px] text-muted-foreground">({Math.floor(commission * 7500).toLocaleString()} ك)</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add Member Button */}
+            <button
+              onClick={() => navigate("/bd/add-member")}
+              className="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              style={{ background: "linear-gradient(135deg, hsl(152 69% 40%), hsl(152 69% 50%))", color: "white" }}>
+              <span className="material-symbols-outlined text-lg">person_add</span>
+              إضافة عضو
+            </button>
+
+            {/* Withdraw Button */}
+            {(() => {
+              const dayOfMonth = new Date().getDate();
+              const canWithdraw = dayOfMonth <= 5;
+              return canWithdraw ? (
+                <button
+                  onClick={() => setTab('wallet')}
+                  disabled={liveSalaryTotal <= 0}
+                  className="w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(271 91% 65%))", color: "white" }}>
+                  <span className="material-symbols-outlined text-lg">payments</span>
+                  صرف نسبتي
+                </button>
+              ) : (
+                <div className="w-full py-4 rounded-2xl text-sm flex items-center justify-center gap-2"
+                  style={{ background: "hsl(var(--muted)/0.08)", border: "1px solid hsl(var(--border)/0.12)" }}>
+                  <span className="material-symbols-outlined text-muted-foreground text-lg">lock</span>
+                  <div className="text-center">
+                    <span className="font-bold text-muted-foreground block">صرف نسبتي</span>
+                    <span className="text-[10px] text-muted-foreground">يفتح بداية الشهر الجديد</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Performance Chart */}
+            {renderStockChart()}
+
             <div className="h-2"></div>
           </>
         )}
