@@ -129,11 +129,11 @@ serve(async (req) => {
       { onConflict: "key" }
     );
 
-    // Get all active BD members
+    // Get all active works members
     const { data: members } = await sb
-      .from("bd_members")
-      .select("id, member_uuid, member_name, member_type, bd_uuid, type_user")
-      .eq("is_active", true);
+      .from("works_members")
+      .select("id, member_uuid, member_name, member_type, works_id")
+      .eq("status", "active");
 
     if (!members || members.length === 0) {
       await sb.from("edge_function_cache").delete().eq("key", "bd_sync_lock");
@@ -154,12 +154,10 @@ serve(async (req) => {
           if (!userInfo) return;
 
           const extractedName = userInfo?.name || userInfo?.user?.["اسم"] || userInfo?.user?.name || "";
-          const extractedType = Number(userInfo?.type_user ?? 0) || member.type_user || 0;
 
           if (extractedName && extractedName !== member.member_name) {
-            await sb.from("bd_members").update({
+            await sb.from("works_members").update({
               member_name: extractedName,
-              type_user: extractedType,
             }).eq("id", member.id);
             infoUpdates++;
             console.log(`[INFO] updated name: "${member.member_name}" -> "${extractedName}"`);
@@ -169,32 +167,34 @@ serve(async (req) => {
     }
 
     // === SYNC BD PROFIT ===
-    const bdUuids = [...new Set(members.map((m: any) => m.bd_uuid))];
+    // Get unique works_ids and their user_uuids
+    const worksIds = [...new Set(members.map((m: any) => m.works_id))];
     let profitSynced = 0;
 
-    for (const bdUuid of bdUuids) {
+    for (const worksId of worksIds) {
       try {
-        const profitData = await fetchBDProfit(sb, bdUuid);
+        // Get the user_uuid for this works account
+        const { data: acc } = await sb.from("works_accounts")
+          .select("user_uuid")
+          .eq("id", worksId)
+          .maybeSingle();
+        if (!acc) continue;
+
+        const profitData = await fetchBDProfit(sb, acc.user_uuid);
         if (profitData?.status === "success" && profitData?.profit) {
+          // Store profit data in app_settings as a simple cache
           const totalProfit = Number(profitData.profit.total_profit) || 0;
           const availableProfit = Number(profitData.profit.available_profit) || 0;
-          const pendingProfit = Number(profitData.profit.pending_profit) || 0;
 
-          const { data: current } = await sb.from("bd_commission_settings")
-            .select("external_total_profit")
-            .eq("bd_uuid", bdUuid).maybeSingle();
-
-          const prevTotal = Number(current?.external_total_profit) || 0;
-          const diff = totalProfit - prevTotal;
-
-          await sb.from("bd_commission_settings").update({
-            external_total_profit: totalProfit,
-            external_available_profit: availableProfit,
-            external_pending_profit: pendingProfit,
-            external_profit_difference: diff,
-            external_profit_status: diff > 0 ? "increase" : diff < 0 ? "decrease" : "no_change",
-            external_last_update: new Date().toISOString(),
-          }).eq("bd_uuid", bdUuid);
+          await sb.from("app_settings").upsert({
+            key: `works_profit_${acc.user_uuid}`,
+            value: JSON.stringify({
+              total_profit: totalProfit,
+              available_profit: availableProfit,
+              pending_profit: Number(profitData.profit.pending_profit) || 0,
+              updated_at: new Date().toISOString(),
+            }),
+          }, { onConflict: "key" });
 
           profitSynced++;
         }

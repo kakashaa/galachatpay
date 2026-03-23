@@ -18,16 +18,16 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch all active BD accounts
-    const { data: bds, error: fetchErr } = await sb
-      .from("bd_commission_settings")
-      .select("id, bd_uuid, bd_name, current_month_earnings, available_balance, total_earned")
-      .eq("is_active", true);
+    // Fetch all active works accounts
+    const { data: accounts, error: fetchErr } = await sb
+      .from("works_accounts")
+      .select("id, user_uuid, user_name, balance_usd, total_earnings_usd")
+      .eq("status", "active");
 
     if (fetchErr) throw fetchErr;
-    if (!bds || bds.length === 0) {
+    if (!accounts || accounts.length === 0) {
       return new Response(
-        JSON.stringify({ ok: true, message: "No active BDs found", updated: 0 }),
+        JSON.stringify({ ok: true, message: "No active accounts found", updated: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -35,43 +35,47 @@ serve(async (req) => {
     const now = new Date();
     const closedMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     let updated = 0;
-    const results: { bd_uuid: string; bd_name: string; added: number }[] = [];
+    const results: { user_uuid: string; user_name: string; added: number }[] = [];
 
-    for (const bd of bds) {
-      const monthEarnings = Number(bd.current_month_earnings || 0);
+    // For works system, monthly earnings are tracked in works_earnings table
+    // Reset is handled differently - we just log the month closure
+    for (const acc of accounts) {
+      // Calculate this month's earnings from works_earnings
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const { data: earnings } = await sb
+        .from("works_earnings")
+        .select("commission_usd")
+        .eq("works_id", acc.id)
+        .gte("period_date", monthStart);
+
+      const monthEarnings = (earnings || []).reduce(
+        (sum: number, r: any) => sum + Number(r.commission_usd || 0), 0
+      );
+
       if (monthEarnings <= 0) continue;
 
-      const newBalance = Number(bd.available_balance || 0) + monthEarnings;
+      // Add month earnings to available balance
+      const newBalance = Number(acc.balance_usd || 0) + monthEarnings;
 
       const { error: updateErr } = await sb
-        .from("bd_commission_settings")
-        .update({
-          available_balance: newBalance,
-          current_month_earnings: 0,
-        })
-        .eq("id", bd.id);
+        .from("works_accounts")
+        .update({ balance_usd: newBalance })
+        .eq("id", acc.id);
 
       if (updateErr) {
-        console.error(`Failed to update BD ${bd.bd_uuid}:`, updateErr);
+        console.error(`Failed to update account ${acc.user_uuid}:`, updateErr);
         continue;
       }
 
-      // Also reset all members' current_month_commission for this BD
-      await sb
-        .from("bd_members")
-        .update({ current_month_commission: 0 })
-        .eq("bd_uuid", bd.bd_uuid)
-        .eq("is_active", true);
-
       results.push({
-        bd_uuid: bd.bd_uuid,
-        bd_name: bd.bd_name,
+        user_uuid: acc.user_uuid,
+        user_name: acc.user_name,
         added: monthEarnings,
       });
       updated++;
     }
 
-    console.log(`Monthly reset completed for ${closedMonth}: ${updated} BDs updated`, results);
+    console.log(`Monthly reset completed for ${closedMonth}: ${updated} accounts updated`, results);
 
     return new Response(
       JSON.stringify({
