@@ -260,9 +260,9 @@ const WorksPage: React.FC = () => {
           if (member.member_type === "agent" && member.agency_id) {
             const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
             const salary = toFiniteNumber(
-              data?.data?.agency_salary ??
-              data?.data?.net_salary ??
               data?.data?.salary ??
+              data?.data?.net_salary ??
+              data?.data?.agency_salary ??
               data?.net_salary ??
               data?.salary ??
               0
