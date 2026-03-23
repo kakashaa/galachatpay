@@ -871,7 +871,7 @@ serve(async (req) => {
 
       const alreadyMember = existingWorksMember || existingMember;
 
-      if (existingMember) {
+      if (alreadyMember) {
         const reason = `العضو ${userName} مسجل لدى بيدي آخر بالفعل`;
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         await sb.from("notifications").insert({
