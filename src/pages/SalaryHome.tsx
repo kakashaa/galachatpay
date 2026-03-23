@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import FancyLoading from "@/components/FancyLoading";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
