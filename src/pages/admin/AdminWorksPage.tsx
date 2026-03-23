@@ -1124,8 +1124,6 @@ const AdminWorksPage: React.FC = () => {
                             </div>
                           </div>
                         )}
-                          </div>
-                        )}
 
                         {/* Agent details */}
                         {m.member_type === "agent" && (
