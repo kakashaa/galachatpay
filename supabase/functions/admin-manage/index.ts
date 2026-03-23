@@ -1187,15 +1187,33 @@ Deno.serve(async (req) => {
         const { data: accounts, error } = await supabase
           .from("works_accounts").select("*").order("created_at", { ascending: false });
         if (error) throw error;
+
+        // Current month range for dynamic earnings
+        const now = new Date();
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        const nextMonth = now.getMonth() === 11
+          ? `${now.getFullYear() + 1}-01-01`
+          : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, "0")}-01`;
+
         for (const acc of (accounts || [])) {
-          const { count: supporters } = await supabase
-            .from("works_members").select("*", { count: "exact", head: true })
-            .eq("works_id", acc.id).eq("member_type", "supporter").eq("status", "active");
-          const { count: agents } = await supabase
-            .from("works_members").select("*", { count: "exact", head: true })
-            .eq("works_id", acc.id).eq("member_type", "agent").eq("status", "active");
+          const [{ count: supporters }, { count: agents }, { data: earningsRows }] = await Promise.all([
+            supabase
+              .from("works_members").select("*", { count: "exact", head: true })
+              .eq("works_id", acc.id).eq("member_type", "supporter").eq("status", "active"),
+            supabase
+              .from("works_members").select("*", { count: "exact", head: true })
+              .eq("works_id", acc.id).eq("member_type", "agent").eq("status", "active"),
+            supabase
+              .from("works_earnings").select("commission_usd")
+              .eq("works_id", acc.id)
+              .gte("period_date", monthStart)
+              .lt("period_date", nextMonth),
+          ]);
           (acc as any).supporter_count = supporters || 0;
           (acc as any).agent_count = agents || 0;
+          (acc as any).dynamic_earnings = (earningsRows || []).reduce(
+            (sum: number, r: any) => sum + Number(r.commission_usd || 0), 0
+          );
         }
         result = accounts;
         break;
