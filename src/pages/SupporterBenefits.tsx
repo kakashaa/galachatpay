@@ -84,6 +84,7 @@ const SupporterBenefits: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [, setApiMonthlyCharges] = useState<number | null>(null);
+  const [monthlyDiamonds, setMonthlyDiamonds] = useState(0);
   const [couponTab, setCouponTab] = useState<"available" | "used" | "expired">("available");
   const [specialOffers, setSpecialOffers] = useState<any[]>([]);
   const [challenges, setChallenges] = useState<any[]>([]);
@@ -161,7 +162,7 @@ const SupporterBenefits: React.FC = () => {
         // User diamonds (monthly_diamond_received)
         galaApi.userDiamonds(user.uuid).then(res => {
           const diamonds = res?.monthly_diamond_received || res?.data?.monthly_diamond_received || 0;
-          if (diamonds > 0) setMonthlyCoins(prev => Math.max(prev, diamonds));
+          if (diamonds > 0) setMonthlyDiamonds(diamonds);
         }).catch(() => {});
 
         // Ranking among top chargers
@@ -425,6 +426,12 @@ const SupporterBenefits: React.FC = () => {
                 <p className="text-[9px] text-muted-foreground mb-1">شحن الشهر السابق</p>
                 <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(prevMonthCoins)}</p>
                 <p className="text-[8px] text-muted-foreground">${(prevMonthCoins / 7500).toFixed(0)}</p>
+              </div>
+
+              {/* Diamonds received */}
+              <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted) / 0.3)" }}>
+                <p className="text-[9px] text-muted-foreground mb-1">💎 ألماسات مستلمة</p>
+                <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(monthlyDiamonds)}</p>
               </div>
 
               {/* Rank */}
