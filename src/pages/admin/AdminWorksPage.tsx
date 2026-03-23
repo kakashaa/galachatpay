@@ -156,7 +156,7 @@ const AdminWorksPage: React.FC = () => {
       // Edge function now returns { members, dynamic_earnings }
       if (d && d.members) {
         setMembers(d.members);
-        setDynamicAccountEarnings(d.dynamic_earnings || 0);
+        setDynamicAccountEarnings(d.dynamic_earnings ?? 0);
       } else {
         setMembers(d || []);
       }
@@ -555,7 +555,7 @@ const AdminWorksPage: React.FC = () => {
           <TabsContent value="accounts">
             {/* Stats Cards */}
             {!loading && accounts.length > 0 && (() => {
-              const totalEarnings = accounts.reduce((s: number, a: any) => s + Number(a.dynamic_earnings || a.total_earnings_usd || 0), 0);
+              const totalEarnings = accounts.reduce((s: number, a: any) => s + Number(a.dynamic_earnings ?? a.total_earnings_usd ?? 0), 0);
               const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance_usd || 0), 0);
               const activeCount = accounts.filter((a: any) => a.status === "active").length;
               return (
@@ -593,7 +593,7 @@ const AdminWorksPage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
                       <div><p className="font-bold text-green-400">${Number(a.available_balance || a.balance_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">الرصيد</p></div>
-                      <div><p className="font-bold text-emerald-400">${Number(a.dynamic_earnings || a.total_earnings_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">أرباح الشهر</p></div>
+                      <div><p className="font-bold text-emerald-400">${Number(a.dynamic_earnings ?? a.total_earnings_usd ?? 0).toFixed(2)}</p><p className="text-muted-foreground">أرباح الشهر</p></div>
                       <div><p className="font-bold text-primary">{Number(a.supporter_count ?? 0)}</p><p className="text-muted-foreground">داعمين</p></div>
                       <div><p className="font-bold text-foreground">{Number(a.agent_count ?? 0)}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
