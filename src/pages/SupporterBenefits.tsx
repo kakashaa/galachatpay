@@ -98,7 +98,7 @@ const SupporterBenefits: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Parallel: tiers + rewards + charges
+      // Parallel: tiers + rewards + charges + settings
       const tiersPromise = supabase.from("supporter_tiers").select("*").eq("is_active", true).order("sort_order", { ascending: true });
 
       const rewardsPromise = user?.uuid
@@ -113,14 +113,22 @@ const SupporterBenefits: React.FC = () => {
         ? supabase.from("supporter_monthly_charges").select("*").eq("uuid", user.uuid).eq("month", prevMonth).maybeSingle()
         : Promise.resolve({ data: null });
 
-      const [tiersRes, rewardsRes, currentChargeRes, prevChargeRes] = await Promise.all([
-        tiersPromise, rewardsPromise, currentChargePromise, prevChargePromise,
+      const settingsPromise = supabase.from("supporter_settings").select("*").limit(1).single();
+
+      const [tiersRes, rewardsRes, currentChargeRes, prevChargeRes, settingsRes] = await Promise.all([
+        tiersPromise, rewardsPromise, currentChargePromise, prevChargePromise, settingsPromise,
       ]);
 
       setTiers((tiersRes.data || []) as any);
       setRewards((rewardsRes.data || []) as any);
       if (currentChargeRes.data) setMonthlyCoins((currentChargeRes.data as any).total_coins || 0);
       if (prevChargeRes.data) setPrevMonthCoins((prevChargeRes.data as any).total_coins || 0);
+
+      // Load special offers from settings
+      if (settingsRes.data) {
+        const offers = (settingsRes.data as any).special_offers || [];
+        setSpecialOffers(Array.isArray(offers) ? offers : []);
+      }
 
       // Background: API calls for fresh data
       if (user?.uuid) {
