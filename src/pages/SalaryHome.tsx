@@ -71,6 +71,12 @@ const SalaryHome: React.FC = () => {
     setError(false);
     try {
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
+      // Handle transient timeout response from proxy
+      if ((data as any)?.transient_error) {
+        // Use cached data if available, otherwise show partial data
+        if (!status) setError(true);
+        return;
+      }
       setStatus(data);
       try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
     } catch {
