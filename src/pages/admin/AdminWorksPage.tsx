@@ -594,8 +594,8 @@ const AdminWorksPage: React.FC = () => {
                     <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
                       <div><p className="font-bold text-green-400">${Number(a.available_balance || a.balance_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">الرصيد</p></div>
                       <div><p className="font-bold text-emerald-400">${Number(a.dynamic_earnings || a.total_earnings_usd || 0).toFixed(2)}</p><p className="text-muted-foreground">أرباح الشهر</p></div>
-                      <div><p className="font-bold text-primary">{a.supporter_count}</p><p className="text-muted-foreground">داعمين</p></div>
-                      <div><p className="font-bold text-accent-foreground">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
+                      <div><p className="font-bold text-primary">{Number(a.supporter_count ?? 0)}</p><p className="text-muted-foreground">داعمين</p></div>
+                      <div><p className="font-bold text-foreground">{Number(a.agent_count ?? 0)}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={async () => {
