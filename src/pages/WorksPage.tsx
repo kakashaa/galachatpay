@@ -259,24 +259,20 @@ const WorksPage: React.FC = () => {
 
           if (member.member_type === "agent" && member.agency_id) {
             const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
+            console.log("[Works] Agent salary API response for agency", member.agency_id, ":", JSON.stringify(data));
             const salary = toFiniteNumber(
               data?.data?.salary ??
               data?.data?.net_salary ??
               data?.data?.agency_salary ??
-              data?.net_salary ??
               data?.salary ??
+              data?.net_salary ??
               0
             );
-            const apiCommissionUsd = toFiniteNumber(
-              data?.data?.commission_2pct ??
-              data?.commission_2pct ??
-              0
-            );
-            const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-            const computedCommissionUsd = apiCommissionUsd > 0
-              ? apiCommissionUsd
-              : salary * (fallbackPct / 100);
+            console.log("[Works] Parsed salary:", salary);
+            const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? myWorks?.agent_commission_pct ?? 5);
+            const computedCommissionUsd = salary * (fallbackPct / 100);
             const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
+            console.log("[Works] Agent commission: pct=", fallbackPct, "usd=", computedCommissionUsd, "coins=", commissionCoins);
 
             return { ...member, agency_salary: salary, commission: commissionCoins };
           }
