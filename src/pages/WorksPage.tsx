@@ -644,6 +644,13 @@ const WorksPage: React.FC = () => {
               <p className="text-[8px] text-muted-foreground font-bold">{supporterCount} داعم · {agentCount} وكيل</p>
             </motion.div>
           </div>
+
+          {/* Last updated note */}
+          {myWorks?.updated_at && (
+            <p className="text-[10px] text-muted-foreground text-center">
+              يتم تحديث الأرباح تلقائياً — آخر تحديث: {new Date(myWorks.updated_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
+            </p>
+          )}
         </div>
 
         {/* ── Supporters Section ── */}
