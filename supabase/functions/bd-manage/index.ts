@@ -294,7 +294,36 @@ serve(async (req) => {
       const { user_uuid } = params;
       if (!user_uuid) return json({ error: "user_uuid مطلوب" }, 400);
 
-      // Check if BD exists (active or banned)
+      // Check works_accounts first (new system)
+      const { data: worksAcc } = await sb
+        .from("works_accounts")
+        .select("*")
+        .eq("user_uuid", user_uuid)
+        .maybeSingle();
+
+      if (worksAcc && worksAcc.status === "active") {
+        // Map to BD-compatible format for frontend
+        const bdCompat = {
+          bd_uuid: worksAcc.user_uuid,
+          bd_name: worksAcc.user_name,
+          referral_code: worksAcc.works_code,
+          is_active: true,
+          is_approved: true,
+          available_balance: worksAcc.balance_usd || 0,
+          total_earned: worksAcc.total_earnings_usd || 0,
+          user_commission_pct: worksAcc.supporter_commission_pct || 2,
+          agency_commission_pct: worksAcc.agent_commission_pct || 5,
+          current_month_earnings: 0,
+        };
+        const { data: viol } = await sb.from("bd_violations").select("id").eq("bd_uuid", user_uuid);
+        return json({ status: "approved", bd: bdCompat, violation_count: viol?.length || 0 });
+      }
+
+      if (worksAcc && worksAcc.status === "frozen") {
+        return json({ status: "banned", banned_at: worksAcc.updated_at, unban_date: null, days_remaining: 0 });
+      }
+
+      // Fallback: Check bd_commission_settings (legacy)
       const { data: bd } = await sb
         .from("bd_commission_settings")
         .select("*")
@@ -308,13 +337,10 @@ serve(async (req) => {
         const now = new Date();
         
         if (now >= unbanDate) {
-          // 30 days passed - auto-unban
           await sb.from("bd_commission_settings")
             .update({ is_active: true, is_approved: true, banned_at: null })
             .eq("bd_uuid", user_uuid);
-          // Clear violations
           await sb.from("bd_violations").delete().eq("bd_uuid", user_uuid);
-          // Re-activate members
           await sb.from("bd_members")
             .update({ is_active: true })
             .eq("bd_uuid", user_uuid);
@@ -327,7 +353,6 @@ serve(async (req) => {
           return json({ status: "approved", bd: updatedBd, violation_count: 0 });
         }
         
-        // Still banned
         return json({ 
           status: "banned", 
           banned_at: bd.banned_at,
