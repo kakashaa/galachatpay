@@ -152,7 +152,7 @@ const AdminWorksPage: React.FC = () => {
 
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
-    setMemberSalaryLoading(false);
+    
     setDynamicAccountEarnings(0);
     setSupporterDynamicEarnings(0);
     setAgentDynamicEarnings(0);
