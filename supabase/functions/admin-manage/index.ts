@@ -1339,6 +1339,71 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "works_merge_bd_data": {
+        // Merge bd_commission_settings → works_accounts and bd_members → works_members
+        let merged = 0;
+        let membersMerged = 0;
+
+        const { data: bdAccounts } = await supabase
+          .from("bd_commission_settings").select("*");
+
+        for (const bd of (bdAccounts || [])) {
+          // Check if already exists in works_accounts
+          const { data: existing } = await supabase
+            .from("works_accounts").select("id")
+            .eq("user_uuid", bd.bd_uuid).maybeSingle();
+
+          if (existing) continue; // Skip if already migrated
+
+          const worksCode = "WK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+          const status = (bd.is_active && bd.is_approved) ? "active" : "frozen";
+
+          const { data: newAcc, error: accErr } = await supabase
+            .from("works_accounts").insert({
+              user_uuid: bd.bd_uuid,
+              user_name: bd.bd_name || "",
+              works_code: worksCode,
+              status,
+              total_earnings_usd: bd.total_earned || 0,
+              balance_usd: bd.available_balance || 0,
+              supporter_commission_pct: (bd.user_commission_pct || 2),
+              agent_commission_pct: (bd.agency_commission_pct || 5),
+            }).select("id").single();
+
+          if (accErr) { console.error("Merge acc error:", accErr); continue; }
+          merged++;
+
+          // Migrate bd_members for this BD
+          const { data: bdMembers } = await supabase
+            .from("bd_members").select("*").eq("bd_uuid", bd.bd_uuid);
+
+          for (const m of (bdMembers || [])) {
+            const memberType = m.member_type === "agency" ? "agent" : m.member_type;
+            const memberStatus = m.is_active ? "active" : "removed";
+
+            const { data: existingMember } = await supabase
+              .from("works_members").select("id")
+              .eq("works_id", newAcc.id)
+              .eq("member_uuid", m.member_uuid).maybeSingle();
+
+            if (existingMember) continue;
+
+            await supabase.from("works_members").insert({
+              works_id: newAcc.id,
+              member_uuid: m.member_uuid,
+              member_name: m.member_name || "",
+              member_type: memberType,
+              status: memberStatus,
+              total_commission_usd: m.total_commission || 0,
+            });
+            membersMerged++;
+          }
+        }
+
+        result = { success: true, accounts_merged: merged, members_merged: membersMerged };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "إجراء غير معروف" }),

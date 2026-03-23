@@ -60,13 +60,34 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
   const checkStatus = async () => {
     if (!user?.uuid) return;
     try {
-      // Check if user is a member under another BD
-      const { data: memberData } = await supabase
-        .from("bd_members")
-        .select("bd_uuid, bd_uuid")
+      // Check if user is a member under another BD (check works_members first, fallback bd_members)
+      let memberData: any = null;
+      const { data: worksMember } = await supabase
+        .from("works_members")
+        .select("works_id")
         .eq("member_uuid", user.uuid)
-        .eq("is_active", true)
+        .eq("status", "active")
         .maybeSingle();
+      
+      if (worksMember) {
+        // Get the BD's user_uuid from works_accounts
+        const { data: worksAcc } = await supabase
+          .from("works_accounts")
+          .select("user_uuid")
+          .eq("id", worksMember.works_id)
+          .maybeSingle();
+        if (worksAcc) memberData = { bd_uuid: worksAcc.user_uuid };
+      }
+      
+      if (!memberData) {
+        const { data: bdMember } = await supabase
+          .from("bd_members")
+          .select("bd_uuid")
+          .eq("member_uuid", user.uuid)
+          .eq("is_active", true)
+          .maybeSingle();
+        if (bdMember) memberData = bdMember;
+      }
 
       if (memberData) {
         // Get BD name via edge function (bd_commission_settings is restricted)

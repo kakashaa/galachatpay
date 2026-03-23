@@ -60,6 +60,14 @@ const BDAddMember: React.FC = () => {
   }, [user?.uuid]);
 
   const fetchViolations = async (bdUuid: string) => {
+    // Try works_abuse_log first, fallback to bd_violations
+    const { data: abuseData } = await supabase
+      .from("works_abuse_log" as any)
+      .select("*")
+      .eq("user_uuid", bdUuid)
+      .order("created_at", { ascending: true });
+    if (abuseData && abuseData.length > 0) return abuseData;
+    
     const { data } = await supabase
       .from("bd_violations")
       .select("*")
