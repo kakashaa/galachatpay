@@ -214,26 +214,58 @@ const WorksPage: React.FC = () => {
         const now = new Date();
         const todayStartUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
         const todayDate = todayStartUtc.toISOString().slice(0, 10);
-        const [{ data: m }, { data: todayRows }] = await Promise.all([
+        const [{ data: m }, { data: earningsRows }] = await Promise.all([
           supabase
             .from("works_members")
             .select("*")
             .eq("works_id", works.id)
             .eq("status", "active"),
           supabase
-            .from("works_commission_logs" as any)
-            .select("amount,created_at")
-            .eq("bd_uuid", user.uuid)
-            .gte("created_at", todayStartUtc.toISOString()),
+            .from("works_earnings")
+            .select("member_uuid,member_activity_usd,commission_usd,source,period_date")
+            .eq("works_id", works.id),
         ]);
 
-        const rawMembers = (m || []) as any as MemberWithSalary[];
+        // Build per-member earnings from works_earnings (latest period_date per member)
+        const memberEarningsMap: Record<string, { activity: number; commission: number; source: string }> = {};
+        for (const row of (earningsRows || []) as any[]) {
+          const uuid = row.member_uuid;
+          const existing = memberEarningsMap[uuid];
+          if (!existing || row.period_date > existing.source) {
+            memberEarningsMap[uuid] = {
+              activity: toFiniteNumber(row.member_activity_usd),
+              commission: toFiniteNumber(row.commission_usd),
+              source: row.source || "",
+            };
+          }
+        }
+
+        const rawMembers = ((m || []) as any as MemberWithSalary[]).map(member => {
+          const earnings = memberEarningsMap[member.member_uuid];
+          if (earnings) {
+            const memberType = String(member.member_type || "").toLowerCase();
+            if (memberType === "supporter") {
+              return {
+                ...member,
+                monthly_charges: Math.round(earnings.activity * COINS_PER_USD),
+                commission: Math.round(earnings.commission * COINS_PER_USD),
+              };
+            } else {
+              return {
+                ...member,
+                agency_salary: earnings.activity,
+                commission: Math.round(earnings.commission * COINS_PER_USD),
+              };
+            }
+          }
+          return member;
+        });
         setMembers(rawMembers);
 
-        const todayUsd = (todayRows || []).reduce((sum: number, row: any) => {
-          if (String(row?.created_at || "").slice(0, 10) !== todayDate) return sum;
-          return sum + toFiniteNumber(row?.amount ?? 0);
-        }, 0);
+        // Today's earnings from works_earnings
+        const todayUsd = ((earningsRows || []) as any[])
+          .filter((row: any) => String(row?.period_date || "").slice(0, 10) === todayDate)
+          .reduce((sum: number, row: any) => sum + toFiniteNumber(row?.commission_usd ?? 0), 0);
         setTodayEarnings(todayUsd);
         setSalaryLoading(false);
       } else {
