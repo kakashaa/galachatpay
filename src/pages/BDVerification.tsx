@@ -60,7 +60,7 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
   const checkStatus = async () => {
     if (!user?.uuid) return;
     try {
-      // Check if user is a member under another BD (check works_members first, fallback bd_members)
+      // Check if user is a member under another BD (works_members only)
       let memberData: any = null;
       const { data: worksMember } = await supabase
         .from("works_members")
@@ -77,16 +77,6 @@ const [status, setStatus] = useState<"loading" | "none" | "pending" | "approved"
           .eq("id", worksMember.works_id)
           .maybeSingle();
         if (worksAcc) memberData = { bd_uuid: worksAcc.user_uuid };
-      }
-      
-      if (!memberData) {
-        const { data: bdMember } = await supabase
-          .from("bd_members")
-          .select("bd_uuid")
-          .eq("member_uuid", user.uuid)
-          .eq("is_active", true)
-          .maybeSingle();
-        if (bdMember) memberData = bdMember;
       }
 
       if (memberData) {

@@ -1131,28 +1131,31 @@ Deno.serve(async (req) => {
         const { id } = data;
         const req2 = await supabase.from("bd_registration_requests").select("*").eq("id", id).single();
         if (!req2.data) throw new Error("Request not found");
-        const referralCode = "BD-" + Math.random().toString(36).substr(2, 6).toUpperCase();
+        const referralCode = "WK-" + Math.random().toString(36).substr(2, 6).toUpperCase();
 
-        // Check if bd_commission_settings already exists for this user
-        const { data: existingBd } = await supabase
-          .from("bd_commission_settings")
+        // Check if works_accounts already exists for this user
+        const { data: existingWorks } = await supabase
+          .from("works_accounts")
           .select("id")
-          .eq("bd_uuid", req2.data.user_uuid)
+          .eq("user_uuid", req2.data.user_uuid)
           .maybeSingle();
 
-        if (existingBd) {
-          // Re-activate existing BD account
-          await supabase.from("bd_commission_settings")
-            .update({ is_approved: true, is_active: true, banned_at: null })
-            .eq("bd_uuid", req2.data.user_uuid);
+        if (existingWorks) {
+          // Re-activate existing works account
+          await supabase.from("works_accounts")
+            .update({ status: "active" })
+            .eq("user_uuid", req2.data.user_uuid);
         } else {
-          // Create new BD account in bd_commission_settings
-          await supabase.from("bd_commission_settings").insert({
-            bd_uuid: req2.data.user_uuid,
-            bd_name: req2.data.user_name,
-            is_approved: true,
-            is_active: true,
-            referral_code: referralCode,
+          // Create new works account
+          await supabase.from("works_accounts").insert({
+            user_uuid: req2.data.user_uuid,
+            user_name: req2.data.user_name,
+            works_code: referralCode,
+            status: "active",
+            supporter_commission_pct: 2,
+            agent_commission_pct: 5,
+            balance_usd: 0,
+            total_earnings_usd: 0,
           });
         }
 

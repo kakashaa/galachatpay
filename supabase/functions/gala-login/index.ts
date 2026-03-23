@@ -269,13 +269,24 @@ serve(async (req) => {
         const BD_API_URL = "https://hola-chat.com/bd-data-api.php";
         const BD_API_KEY = "ghala2026actions";
 
-        // Find if this user is a BD member
-        const { data: bdMember } = await supabase
-          .from("bd_members")
-          .select("id, member_name, last_daily_charges, bd_uuid, member_type, monthly_charges, current_month_commission, total_commission")
+        // Find if this user is a works member
+        const { data: worksMember } = await supabase
+          .from("works_members")
+          .select("id, member_name, member_type, works_id, total_commission_usd")
           .eq("member_uuid", trimmedUuid)
-          .eq("is_active", true)
+          .eq("status", "active")
           .maybeSingle();
+
+        const bdMember = worksMember ? {
+          id: worksMember.id,
+          member_name: worksMember.member_name,
+          member_type: worksMember.member_type === "agent" ? "agency" : worksMember.member_type,
+          bd_uuid: worksMember.works_id,
+          last_daily_charges: 0,
+          monthly_charges: 0,
+          current_month_commission: 0,
+          total_commission: worksMember.total_commission_usd || 0,
+        } : null;
 
         if (bdMember) {
           const updateObj: Record<string, unknown> = {
@@ -415,7 +426,7 @@ serve(async (req) => {
           updateObj.last_daily_charges = liveDailyAmount || (d.level?.charger_num || 0);
           if (liveMonthlyAmount > 0) updateObj.monthly_charges = liveMonthlyAmount;
 
-          await supabase.from("bd_members").update(updateObj).eq("id", bdMember.id);
+          await supabase.from("works_members").update(updateObj).eq("id", bdMember.id);
         }
       } catch (e) {
         console.error("BD member sync on login:", e);
