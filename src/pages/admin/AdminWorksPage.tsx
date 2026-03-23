@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2 } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
