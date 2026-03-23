@@ -5,7 +5,8 @@ import {
   ArrowRight, Crown, Gift, Star, Trophy, ArrowUp, Clock, Users,
   Check, Gem, Sparkles, Frame, UserCheck, Coins, Image, BadgeCheck,
   X, Search, Loader2, AlertTriangle, ChevronDown, ChevronUp, Send,
-  TrendingUp, Target, Award, BarChart3, Medal, Copy, Ticket, Zap, Timer, Lock
+  TrendingUp, Target, Award, BarChart3, Medal, Copy, Ticket, Zap, Timer, Lock,
+  Flag, Bell, History, Filter, RotateCcw, CalendarDays
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -85,8 +86,12 @@ const SupporterBenefits: React.FC = () => {
   const [, setApiMonthlyCharges] = useState<number | null>(null);
   const [couponTab, setCouponTab] = useState<"available" | "used" | "expired">("available");
   const [specialOffers, setSpecialOffers] = useState<any[]>([]);
+  const [challenges, setChallenges] = useState<any[]>([]);
+  const [challengeProgress, setChallengeProgress] = useState<Record<string, any>>({});
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const [historyFilter, setHistoryFilter] = useState<string>("all");
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    available: true, used: false, expired: false, tiers: false, howto: false, leaderboard: false, coupons: true, offers: true,
+    available: true, used: false, expired: false, tiers: false, howto: false, leaderboard: false, coupons: true, offers: true, challenges: true, history: false,
   });
 
   const now = new Date();
