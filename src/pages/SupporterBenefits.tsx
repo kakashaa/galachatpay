@@ -5,7 +5,7 @@ import {
   ArrowRight, Crown, Gift, Star, Trophy, ArrowUp, Clock, Users,
   Check, Gem, Sparkles, Frame, UserCheck, Coins, Image, BadgeCheck,
   X, Search, Loader2, AlertTriangle, ChevronDown, ChevronUp, Send,
-  TrendingUp, Target, Award, Zap, BarChart3, Medal
+  TrendingUp, Target, Award, BarChart3, Medal
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -82,7 +82,7 @@ const SupporterBenefits: React.FC = () => {
   const [lookingUp, setLookingUp] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [userRank, setUserRank] = useState<number | null>(null);
-  const [apiMonthlyCharges, setApiMonthlyCharges] = useState<number | null>(null);
+  const [, setApiMonthlyCharges] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     available: true, used: false, expired: false, tiers: false, howto: false, leaderboard: false,
   });
@@ -313,7 +313,7 @@ const SupporterBenefits: React.FC = () => {
                 <div className="flex items-start gap-3">
                   {/* Avatar */}
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-full overflow-hidden ring-2" style={{ ringColor: currentTier?.color || "hsl(var(--border))" }}>
+                    <div className="w-16 h-16 rounded-full overflow-hidden" style={{ boxShadow: `0 0 0 2px ${currentTier?.color || "hsl(var(--border))"}` }}>
                       {user.profile?.image ? (
                         <img src={user.profile.image} alt="" className="w-full h-full object-cover" />
                       ) : (
