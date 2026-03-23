@@ -1223,13 +1223,17 @@ Deno.serve(async (req) => {
                   if (m.member_type === "supporter") {
                     const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`, { signal: AbortSignal.timeout(8000) });
                     const json = await res.json();
-                    const charges = Number(json?.total_charges || json?.charges || json?.data?.total_charges || 0);
-                    return charges * (m.commission_pct || supporterPct) / 100;
-                  } else if (m.member_type === "agent") {
-                    const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}`, { signal: AbortSignal.timeout(8000) });
+                    const charges = Number(json?.data?.total_charges || json?.total_charges || 0);
+                    const pct = Number(m.commission_pct || supporterPct);
+                    const commissionCoins = Math.floor(charges * pct / 100);
+                    // Convert coins to USD (~7500 coins per $1)
+                    return commissionCoins / 7500;
+                  } else if (m.member_type === "agent" && m.agency_id) {
+                    const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`, { signal: AbortSignal.timeout(8000) });
                     const json = await res.json();
-                    const salary = Number(json?.salary || json?.total_salary || json?.data?.salary || 0);
-                    return salary * (m.commission_pct || agentPct) / 100;
+                    const salary = Number(json?.data?.salary || json?.salary || 0);
+                    const pct = Number(m.commission_pct || agentPct);
+                    return salary * pct / 100;
                   }
                 } catch { /* timeout or error — skip */ }
                 return 0;
@@ -1265,19 +1269,26 @@ Deno.serve(async (req) => {
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
         // Calculate live earnings for each active member
-        const activeMembers = (members || []).filter((m: any) => m.status === "active");
-        const liveResults = await Promise.all(activeMembers.map(async (m: any) => {
+        const activeMembers2 = (members || []).filter((m: any) => m.status === "active");
+        const liveResults = await Promise.all(activeMembers2.map(async (m: any) => {
           try {
             if (m.member_type === "supporter") {
               const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`);
               const json = await res.json();
-              const charges = Number(json?.total_charges || json?.charges || 0);
-              return { id: m.id, monthly_charges: charges, live_commission: charges * supporterPct / 100 };
-            } else if (m.member_type === "agent") {
-              const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}`);
+              const charges = Number(json?.data?.total_charges || json?.total_charges || 0);
+              const pct = Number(m.commission_pct || supporterPct);
+              const commissionCoins = Math.floor(charges * pct / 100);
+              const commissionUsd = commissionCoins / 7500;
+              return { id: m.id, monthly_charges: charges, live_commission: commissionUsd };
+            } else if (m.member_type === "agent" && m.agency_id) {
+              const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`);
               const json = await res.json();
-              const salary = Number(json?.salary || json?.total_salary || 0);
-              return { id: m.id, agency_salary: salary, agency_name: json?.agency_name || "", agency_members_count: Number(json?.members_count || 0), live_commission: salary * agentPct / 100 };
+              const salary = Number(json?.data?.salary || json?.salary || 0);
+              const agencyName = json?.data?.agency_name || json?.agency_name || "";
+              const agencyMembersCount = Number(json?.data?.members_count || json?.data?.total_members || 0);
+              const pct = Number(m.commission_pct || agentPct);
+              const commUsd = salary * pct / 100;
+              return { id: m.id, agency_salary: salary, agency_name: agencyName, agency_members_count: agencyMembersCount, live_commission: commUsd };
             }
           } catch (e) {
             console.error(`Live data fetch failed for ${m.member_uuid}:`, e);
