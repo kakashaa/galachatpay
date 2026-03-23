@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
         const { user_uuid, user_name, support_level, request_type, notes, file_url, file_type } = params;
         if (!user_uuid) throw new Error("user_uuid required");
 
-        // Find the right admin based on support level
+        // Find ALL on-duty admins based on support level
         const roleType = (support_level || 1) === 2 ? "super_admin" : "admin";
         const { data: shifts } = await supabase
           .from("admin_shifts")
@@ -81,9 +81,48 @@ Deno.serve(async (req) => {
           .eq("role_type", roleType)
           .eq("is_active", true);
 
-        const onDuty = (shifts || []).find((s: any) =>
+        // Filter to currently on-duty
+        const onDutyAdmins = (shifts || []).filter((s: any) =>
           isInShift(hours, minutes, s.shift_start, s.shift_end)
         );
+
+        // If no admins for the specific role, try all roles
+        if (onDutyAdmins.length === 0 && roleType === "admin") {
+          const { data: allShifts } = await supabase
+            .from("admin_shifts")
+            .select("*")
+            .eq("is_active", true);
+          const fallback = (allShifts || []).filter((s: any) =>
+            isInShift(hours, minutes, s.shift_start, s.shift_end)
+          );
+          onDutyAdmins.push(...fallback);
+        }
+
+        let assignedAdmin: any = null;
+
+        if (onDutyAdmins.length > 0) {
+          // Round-robin: pick admin with least active sessions
+          const adminUsernames = onDutyAdmins.map((a: any) => a.admin_username);
+          const { data: activeSessions } = await supabase
+            .from("support_sessions")
+            .select("assigned_admin")
+            .in("status", ["waiting", "active"])
+            .in("assigned_admin", adminUsernames);
+
+          const sessionCounts: Record<string, number> = {};
+          for (const u of adminUsernames) sessionCounts[u] = 0;
+          for (const s of (activeSessions || [])) {
+            if (s.assigned_admin) sessionCounts[s.assigned_admin] = (sessionCounts[s.assigned_admin] || 0) + 1;
+          }
+
+          // Pick admin with fewest active sessions
+          const sorted = onDutyAdmins.sort((a: any, b: any) =>
+            (sessionCounts[a.admin_username] || 0) - (sessionCounts[b.admin_username] || 0)
+          );
+          assignedAdmin = sorted[0];
+        }
+
+        const adminAvailable = !!assignedAdmin;
 
         const { data: session, error } = await supabase
           .from("support_sessions")
@@ -92,9 +131,9 @@ Deno.serve(async (req) => {
             user_name: user_name || "",
             support_level: support_level || 1,
             request_type: request_type || null,
-            assigned_admin: onDuty?.admin_username || null,
-            assigned_admin_name: onDuty?.admin_display_name || null,
-            status: "waiting",
+            assigned_admin: assignedAdmin?.admin_username || null,
+            assigned_admin_name: assignedAdmin?.admin_display_name || null,
+            status: adminAvailable ? "waiting" : "no_admin",
             notes: notes || null,
             file_url: file_url || null,
             file_type: file_type || null,
@@ -105,21 +144,26 @@ Deno.serve(async (req) => {
         if (error) throw error;
 
         // Add assigned admin as participant
-        if (onDuty) {
+        if (assignedAdmin) {
           await supabase.from("support_session_participants").insert({
             session_id: session.id,
-            admin_username: onDuty.admin_username,
-            admin_display_name: onDuty.admin_display_name,
-            role_type: onDuty.role_type,
+            admin_username: assignedAdmin.admin_username,
+            admin_display_name: assignedAdmin.admin_display_name,
+            role_type: assignedAdmin.role_type,
           });
         }
 
         // System welcome message
-        const welcomeMsg = support_level === 2
-          ? `🆘 دعم سريع — تم توجيهك لـ ${onDuty?.admin_display_name || "المسؤول المناوب"}`
-          : support_level === 3
-          ? `📋 طلب جديد — ${request_type || "طلب"}`
-          : `مرحباً ${user_name || ""}! تم توجيهك لـ ${onDuty?.admin_display_name || "فريق الدعم"}. انتظر قليلاً...`;
+        let welcomeMsg: string;
+        if (!adminAvailable) {
+          welcomeMsg = `⚠️ لا يوجد دعم متاح حالياً — يمكنك إرسال تذكرة وسنرد عليك في أقرب وقت`;
+        } else if (support_level === 2) {
+          welcomeMsg = `🆘 دعم سريع — تم توجيهك لـ ${assignedAdmin.admin_display_name}`;
+        } else if (support_level === 3) {
+          welcomeMsg = `📋 طلب جديد — ${request_type || "طلب"}`;
+        } else {
+          welcomeMsg = `مرحباً ${user_name || ""}! تم توجيهك لـ ${assignedAdmin.admin_display_name}. انتظر قليلاً...`;
+        }
 
         await supabase.from("support_session_messages").insert({
           session_id: session.id,
@@ -129,8 +173,8 @@ Deno.serve(async (req) => {
           message: welcomeMsg,
         });
 
-        // Send WhatsApp alert to on-duty admin
-        if (onDuty?.phone_number) {
+        // Send WhatsApp alert to assigned admin
+        if (assignedAdmin?.phone_number) {
           const levelLabel = support_level === 2 ? "🆘 دعم سريع" : support_level === 3 ? "📋 طلب مضيفة" : "💬 محادثة دعم";
           try {
             await fetch(GALA_API, {
@@ -139,14 +183,15 @@ Deno.serve(async (req) => {
               body: new URLSearchParams({
                 action: "send_whatsapp",
                 admin_key: ADMIN_KEY,
-                phone: onDuty.phone_number,
+                phone: assignedAdmin.phone_number,
                 message: `${levelLabel}\nالمستخدم: ${user_name || user_uuid}\nالرجاء الرد فوراً!`,
               }),
             });
           } catch { /* silent */ }
         }
 
-        result = session;
+        // Return session + availability flag
+        result = { ...session, admin_available: adminAvailable, admin_name: assignedAdmin?.admin_display_name || null };
         break;
       }
 
