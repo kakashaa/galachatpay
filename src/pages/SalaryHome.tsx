@@ -264,6 +264,11 @@ const SalaryHome: React.FC = () => {
                         <p className="text-sm font-black text-emerald-400" dir="ltr">${hostAvailable.toFixed(2)}</p>
                       </div>
                     </div>
+                    {hostAvailable > 0 && (
+                      <p className="text-[11px] text-emerald-400 font-bold text-center">
+                        💰 عمولة المضيف: <span dir="ltr">${hostAvailable.toFixed(2)}</span> — {(hostAvailable * USD_TO_COINS).toLocaleString()} كوينز
+                      </p>
+                    )}
                     {hostCutInvalid && (
                       <p className="text-[10px] text-amber-400 text-center">
                         {host?.note_ar || (host?.deficit ? `⚠️ عجز بمقدار $${host.deficit.toFixed(2)}` : "⚠️ بيانات الخصم تحت المراجعة")}
@@ -319,6 +324,11 @@ const SalaryHome: React.FC = () => {
                         <p className="text-sm font-black text-violet-400" dir="ltr">${agencyAvailable.toFixed(2)}</p>
                       </div>
                     </div>
+                    {agencyAvailable > 0 && (
+                      <p className="text-[11px] text-emerald-400 font-bold text-center">
+                        💰 عمولة الوكالة: <span dir="ltr">${agencyAvailable.toFixed(2)}</span> — {(agencyAvailable * USD_TO_COINS).toLocaleString()} كوينز
+                      </p>
+                    )}
                     {(agency?.user_share_this_month || 0) > 0 && (
                       <div className="text-center">
                         <p className="text-[10px] text-muted-foreground">
