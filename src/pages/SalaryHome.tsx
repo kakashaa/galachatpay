@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import FancyLoading from "@/components/FancyLoading";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -143,18 +142,36 @@ const SalaryHome: React.FC = () => {
     <MobileLayout showHeader headerTitle="راتبي" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-6 space-y-5">
 
-        {/* Loading — only show full loader if no cached data */}
+        {/* Loading skeleton cards */}
         {loading && !status && (
-          <FancyLoading
-            title="جاري فحص الراتب"
-            subtitle="نجلب لك بيانات راتبك الشهري"
-            tips={[
-              "جاري الاتصال بالسيرفر...",
-              "نفحص بيانات الراتب...",
-              "نحسب المتبقي لك...",
-              "ثواني وتظهر لك التفاصيل...",
-            ]}
-          />
+          <div className="space-y-4">
+            <div className="glass-card p-5 text-center space-y-3">
+              <div className="h-3 w-32 mx-auto rounded bg-muted animate-pulse" />
+              <div className="h-10 w-40 mx-auto rounded bg-muted animate-pulse" />
+              <div className="h-3 w-24 mx-auto rounded bg-muted animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              {[1,2].map(n => (
+                <div key={n} className="rounded-2xl border border-border/20 bg-card/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+                    <div className="h-5 w-14 rounded-full bg-muted animate-pulse" />
+                  </div>
+                  <div className="h-3 w-full rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-3/4 rounded bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="rounded-2xl border border-border/20 bg-card/30 p-4 space-y-2">
+                  <div className="h-8 w-8 rounded-xl bg-muted animate-pulse" />
+                  <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+                  <div className="h-2 w-12 rounded bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Error */}

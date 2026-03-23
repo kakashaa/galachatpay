@@ -56,6 +56,7 @@ const AdminBanPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   /* ── All reports ── */
   const [allReports, setAllReports] = useState<any[]>([]);
@@ -254,7 +255,12 @@ const AdminBanPage: React.FC = () => {
     if (!uuid) { toast.error("أدخل UUID"); return; }
     const reason = banReason === "other" ? banCustom : banReason === "insult" ? "سب/إساءة" : "ترويج";
     if (!reason.trim()) { toast.error("أدخل السبب"); return; }
-    const ok = await confirm({ title: "تأكيد الحظر", message: `حظر UUID ${uuid}؟`, danger: true, confirmText: "تنفيذ" });
+    const ok = await confirm({
+      title: "تأكيد الحظر",
+      message: `هل أنت متأكد من حظر UUID ${uuid}؟\n\nهذا الإجراء لا يمكن التراجع عنه بسهولة.`,
+      danger: true,
+      confirmText: "تنفيذ الحظر",
+    });
     if (!ok) return;
     setBanLoading(true);
     const t = toast.loading("جاري الحظر...");
@@ -331,7 +337,7 @@ const AdminBanPage: React.FC = () => {
               <motion.button
                 key={s.key}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setFilter(s.key)}
+                onClick={() => { setFilter(s.key); setCurrentPage(1); }}
                 className="p-3 rounded-xl text-center transition-all"
                 style={{
                   background: filter === s.key ? s.bg : "rgba(255,255,255,0.03)",
@@ -377,7 +383,7 @@ const AdminBanPage: React.FC = () => {
             </motion.button>
           </div>
 
-          {/* ═══ Reports List ═══ */}
+          {/* ═══ Reports List with Pagination ═══ */}
           {loading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-admin-rose" />
@@ -387,9 +393,14 @@ const AdminBanPage: React.FC = () => {
               <ShieldBan className="w-12 h-12 mx-auto mb-3 opacity-40" />
               <p className="text-sm font-bold">لا توجد بلاغات</p>
             </div>
-          ) : (
-            <AnimatePresence mode="popLayout">
-              {filteredReports.map((report, i) => {
+          ) : (() => {
+            const PAGE_SIZE = 10;
+            const totalPages = Math.ceil(filteredReports.length / PAGE_SIZE);
+            const paginatedReports = filteredReports.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+            return (
+              <>
+              <AnimatePresence mode="popLayout">
+              {paginatedReports.map((report, i) => {
                 const typeInfo = getTypeInfo(report.ban_type);
                 const pending = isPending(report);
                 const verified = isVerified(report);
@@ -525,7 +536,28 @@ const AdminBanPage: React.FC = () => {
                 );
               })}
             </AnimatePresence>
-          )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-3">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >السابق</button>
+                <span className="text-xs text-muted-foreground font-bold tabular-nums">{currentPage} / {totalPages}</span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-30"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >التالي</button>
+              </div>
+            )}
+            </>
+            );
+          })()}
         </div>
       </AdminPageLayout>
 
