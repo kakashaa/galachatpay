@@ -6,7 +6,7 @@ import {
   Check, Gem, Sparkles, Frame, UserCheck, Coins, Image, BadgeCheck,
   X, Search, Loader2, AlertTriangle, ChevronDown, ChevronUp, Send,
   TrendingUp, Target, Award, BarChart3, Medal, Copy, Ticket, Zap, Timer, Lock,
-  Flag, Bell, History, Filter, RotateCcw, CalendarDays
+  Flag, Bell, History
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
