@@ -39,7 +39,7 @@ const AvatarCircle = ({ src, name, size = "w-10 h-10" }: { src?: string; name: s
 };
 
 import { galaApi } from "@/services/galaApi";
-const RECEIPT_BASE = "https://galachat.site/project-z/data/salary-receipts/";
+const RECEIPT_BASE = "https://hola-chat.com/project-z/data/salary-receipts/";
 
 /** How old (in hours) is the transfer relative to the request? */
 const getTransferAgeHours = (req: { created_at: string; transaction_date?: string }) => {

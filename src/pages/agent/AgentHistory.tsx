@@ -6,7 +6,7 @@ import AgentBottomNav from "@/components/AgentBottomNav";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { galaApi } from "@/services/galaApi";
-const RECEIPT_BASE = "https://galachat.site/admin-panel-data/agent-receipts/";
+const RECEIPT_BASE = "https://hola-chat.com/admin-panel-data/agent-receipts/";
 
 const bankOptions = [
   { value: "all", label: "الكل" },
