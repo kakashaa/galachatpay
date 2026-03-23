@@ -1168,24 +1168,24 @@ const AdminHomeView: React.FC<Props> = ({
         setSearchResult(data);
         setSearching(false);
 
-        // Background: fetch salary (if from diamonds) + VIP level
+        // Background: fetch salary via withdraw-status + avatar/VIP via profile API
         (async () => {
           try {
-            if (fromDiamonds) {
-              const salaryRes = await galaApi.userFull(target).catch(() => null) as any;
-              const sd = salaryRes?.data ?? salaryRes;
-              if (sd?.salary || sd?.net_salary) {
+            // 1) Salary from withdraw-status
+            try {
+              const salaryRes = await galaApi.withdrawStatus(target) as any;
+              const host = salaryRes?.host_salary;
+              if (host) {
                 setSearchResult((prev: any) => prev ? {
                   ...prev,
-                  salary: sd.salary || 0,
-                  deduction: sd.deduction || 0,
-                  net_salary: sd.net_salary || 0,
-                  is_banned: sd.is_banned || prev.is_banned,
+                  salary: host.current_month || host.expected || 0,
+                  deduction: host.total_cut || 0,
+                  net_salary: host.available || 0,
                 } : prev);
               }
-            }
+            } catch { /* salary API failed */ }
 
-            // VIP via profile API
+            // 2) Avatar + VIP via profile API
             const tokenRes = await supabase.functions.invoke("gala-token");
             const token = tokenRes.data?.token;
             if (token) {
@@ -1197,10 +1197,24 @@ const AdminHomeView: React.FC<Props> = ({
                 const profileRes = await fetch(`${API_URLS.GALA_API}/profile/get/${internalId}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 }).then(r => r.json()).catch(() => null);
-                const vip = profileRes?.data?.vip;
+                const profileData = profileRes?.data;
+                const updates: any = {};
+
+                // Avatar from profile
+                const avatarPath = profileData?.profile?.image;
+                if (avatarPath) {
+                  updates.avatar = avatarPath.startsWith('http') ? avatarPath : `${API_URLS.MEDIA}${avatarPath}`;
+                }
+
+                // VIP from profile
+                const vip = profileData?.vip;
                 if (vip?.level > 0) {
-                  const vipImage = vip.image ? `https://media.galalivechat.com/${vip.image}` : '';
-                  setSearchResult((prev: any) => prev ? { ...prev, vip_level: vip.level, vip_image: vipImage } : prev);
+                  updates.vip_level = vip.level;
+                  updates.vip_image = vip.image ? `${API_URLS.MEDIA}${vip.image}` : '';
+                }
+
+                if (Object.keys(updates).length > 0) {
+                  setSearchResult((prev: any) => prev ? { ...prev, ...updates } : prev);
                 }
               }
             }
