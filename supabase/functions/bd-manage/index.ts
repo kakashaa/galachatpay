@@ -440,7 +440,7 @@ serve(async (req) => {
       }
 
       const [withdrawalsRes, settingsRes] = await Promise.all([
-        sb.from("bd_withdrawals").select("*").eq("bd_uuid", bd_uuid).order("created_at", { ascending: false }).limit(50),
+        sb.from("works_withdrawals").select("*").eq("bd_uuid", bd_uuid).order("created_at", { ascending: false }).limit(50),
         sb.from("app_settings").select("*").in("key", ["bd_wallets_paused", "bd_auto_withdrawal"]),
       ]);
 
@@ -472,9 +472,9 @@ serve(async (req) => {
 
       // Check if BD is banned (3+ violations)
       const { data: violations } = await sb
-        .from("bd_violations")
+        .from("works_abuse_log")
         .select("id")
-        .eq("bd_uuid", bd_uuid);
+        .eq("user_uuid", bd_uuid);
 
       const violationCount = violations?.length || 0;
       if (violationCount >= 3) {
@@ -495,10 +495,10 @@ serve(async (req) => {
 
       // Check if already invited
       const { data: existingInvite } = await sb
-        .from("bd_member_invitations")
+        .from("works_invitations")
         .select("id")
-        .eq("bd_uuid", bd_uuid)
-        .eq("member_uuid", member_uuid)
+        .eq("inviter_uuid", bd_uuid)
+        .eq("target_uuid", member_uuid)
         .eq("status", "pending")
         .maybeSingle();
 
@@ -608,29 +608,31 @@ serve(async (req) => {
         const details = detailParts.length > 0 ? detailParts.join("، ") : "حساب غير مؤهل";
         
         // Log violation
-        await sb.from("bd_violations").insert({
-          bd_uuid,
-          bd_name: bd_name || "",
-          violation_type: "ineligible_invite",
-          member_uuid,
-          member_name: userProfileData?.user?.["اسم"] || preCheckData?.name || preCheckData?.user?.name || member_uuid,
+        await sb.from("works_abuse_log").insert({
+          user_uuid: bd_uuid,
+          user_name: bd_name || "",
+          abuse_type: "ineligible_invite",
+          target_uuid: member_uuid,
+          target_name: userProfileData?.user?.["اسم"] || preCheckData?.name || preCheckData?.user?.name || member_uuid,
           details: `محاولة دعوة حساب قديم (${details})`,
         });
 
         // Re-count violations after insert
         const { data: updatedViolations } = await sb
-          .from("bd_violations")
+          .from("works_abuse_log")
           .select("id")
-          .eq("bd_uuid", bd_uuid);
+          .eq("user_uuid", bd_uuid);
         const newCount = updatedViolations?.length || 0;
 
         // Auto-ban on 3rd violation
         if (newCount >= 3) {
+          // Ban in works_accounts
+          await sb.from("works_accounts")
+            .update({ status: "frozen" })
+            .eq("user_uuid", bd_uuid);
+          // Also update legacy tables
           await sb.from("bd_commission_settings")
             .update({ is_active: false, is_approved: false, banned_at: new Date().toISOString() })
-            .eq("bd_uuid", bd_uuid);
-          await sb.from("bd_members")
-            .update({ is_active: false })
             .eq("bd_uuid", bd_uuid);
           await sb.from("notifications").insert({
             user_uuid: bd_uuid,
@@ -652,12 +654,17 @@ serve(async (req) => {
         });
       }
 
-      const { error } = await sb.from("bd_member_invitations").insert({
-        bd_uuid,
-        bd_name: bd_name || "",
-        bd_referral_code: referral_code || "",
-        member_uuid,
-        member_name: "",
+      // Get works_id for this BD
+      const { data: worksAccInv } = await sb.from("works_accounts").select("id").eq("user_uuid", bd_uuid).maybeSingle();
+      const worksIdForInv = worksAccInv?.id || null;
+
+      const { error } = await sb.from("works_invitations").insert({
+        works_id: worksIdForInv,
+        inviter_uuid: bd_uuid,
+        inviter_name: bd_name || "",
+        inviter_code: referral_code || "",
+        target_uuid: member_uuid,
+        target_name: "",
         member_type,
         status: "pending",
       });
@@ -680,13 +687,24 @@ serve(async (req) => {
       if (!user_uuid) return json({ error: "user_uuid مطلوب" }, 400);
 
       const { data } = await sb
-        .from("bd_member_invitations")
+        .from("works_invitations")
         .select("*")
-        .eq("member_uuid", user_uuid)
+        .eq("target_uuid", user_uuid)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
-      return json({ invitations: data || [] });
+      // Map to legacy format for frontend compatibility
+      const mapped = (data || []).map((inv: any) => ({
+        ...inv,
+        bd_uuid: inv.inviter_uuid,
+        bd_name: inv.inviter_name,
+        bd_referral_code: inv.inviter_code,
+        member_uuid: inv.target_uuid,
+        member_name: inv.target_name,
+        member_type: inv.member_type,
+      }));
+
+      return json({ invitations: mapped });
     }
 
     if (action === "respond_invite") {
@@ -694,7 +712,7 @@ serve(async (req) => {
       if (!invitation_id || !invResponse) return json({ error: "بيانات ناقصة" }, 400);
 
       const { data: invite } = await sb
-        .from("bd_member_invitations")
+        .from("works_invitations")
         .select("*")
         .eq("id", invitation_id)
         .eq("status", "pending")
@@ -702,8 +720,15 @@ serve(async (req) => {
 
       if (!invite) return json({ error: "الدعوة غير موجودة أو تم الرد عليها" });
 
+      // Map fields for backward compatibility
+      invite.bd_uuid = invite.inviter_uuid;
+      invite.bd_name = invite.inviter_name;
+      invite.bd_referral_code = invite.inviter_code;
+      invite.member_uuid = invite.target_uuid;
+      invite.member_name = invite.target_name;
+
       if (invResponse === "reject") {
-        await sb.from("bd_member_invitations").update({ status: "rejected" }).eq("id", invitation_id);
+        await sb.from("works_invitations").update({ status: "rejected" }).eq("id", invitation_id);
         return json({ success: true, message: "تم رفض الدعوة" });
       }
 
@@ -714,7 +739,7 @@ serve(async (req) => {
 
       // Validate referral code matches the BD's referral code
       const enteredCode = password.trim().toUpperCase();
-      const expectedCode = (invite.bd_referral_code || "").trim().toUpperCase();
+      const expectedCode = (invite.inviter_code || invite.bd_referral_code || "").trim().toUpperCase();
       
       console.log("[BD-INVITE] Referral code check:", { entered: enteredCode, expected: expectedCode });
       
@@ -725,7 +750,7 @@ serve(async (req) => {
       // Check device exclusivity: member's device cannot have a BD on it
       const acceptDeviceBdCheck = await checkDeviceIsBd(sb, invite.member_uuid);
       if (acceptDeviceBdCheck === "bd_exists") {
-        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        await sb.from("works_invitations").delete().eq("id", invitation_id);
         return json({ error: "لا يمكن قبول الدعوة لأن جهازك مسجل عليه حساب بيدي. لا يمكن أن يكون الجهاز بيدي وعضو ضمن بيدي آخر.", dismissed: true });
       }
 
@@ -739,7 +764,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (acceptMemberIsBd) {
-        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        await sb.from("works_invitations").delete().eq("id", invitation_id);
         return json({ error: "لا يمكن قبول الدعوة لأنك مسجل كبيدي بالفعل. لا يمكن أن تكون بيدي وعضو ضمن بيدي آخر.", dismissed: true });
       }
 
@@ -825,10 +850,10 @@ serve(async (req) => {
           ? `لا يمكنك الانضمام كوكيل لأن جميع المستويات يجب أن تكون 0 (${details})`
           : `لا يمكنك الانضمام: حسابك نشط بالفعل (${details})`;
 
-        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        await sb.from("works_invitations").delete().eq("id", invitation_id);
         await sb.from("notifications").insert([
-          { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.bd_uuid },
-          { title: "❌ تعذر قبول الدعوة", body: memberRejectBody, target: "user", user_uuid: invite.member_uuid },
+          { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.inviter_uuid || invite.bd_uuid },
+          { title: "❌ تعذر قبول الدعوة", body: memberRejectBody, target: "user", user_uuid: invite.target_uuid || invite.member_uuid },
         ]);
 
         const responseError = invite.member_type === "agency"
@@ -845,10 +870,10 @@ serve(async (req) => {
         const launchDate = new Date(LAUNCH_DATE);
         if (accountDate < launchDate) {
           const reason = `الحساب ${userName} قديم (تاريخ الإنشاء: ${createdAt}) - يجب أن يكون بعد ${LAUNCH_DATE.split("T")[0]}`;
-          await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+          await sb.from("works_invitations").delete().eq("id", invitation_id);
           await sb.from("notifications").insert([
-            { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.bd_uuid },
-            { title: "❌ تعذر قبول الدعوة", body: "لا يمكنك الانضمام لأن حسابك مُنشأ قبل تاريخ إطلاق النظام", target: "user", user_uuid: invite.member_uuid },
+            { title: "❌ فشل انضمام عضو", body: reason, target: "user", user_uuid: invite.inviter_uuid || invite.bd_uuid },
+            { title: "❌ تعذر قبول الدعوة", body: "لا يمكنك الانضمام لأن حسابك مُنشأ قبل تاريخ إطلاق النظام", target: "user", user_uuid: invite.target_uuid || invite.member_uuid },
           ]);
           return json({ error: "لا يمكن الانضمام. الحساب مُنشأ قبل تاريخ إطلاق نظام البيدي.", dismissed: true });
         }
@@ -873,12 +898,12 @@ serve(async (req) => {
 
       if (alreadyMember) {
         const reason = `العضو ${userName} مسجل لدى بيدي آخر بالفعل`;
-        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
+        await sb.from("works_invitations").delete().eq("id", invitation_id);
         await sb.from("notifications").insert({
           title: "❌ فشل انضمام عضو",
           body: reason,
           target: "user",
-          user_uuid: invite.bd_uuid,
+          user_uuid: invite.inviter_uuid || invite.bd_uuid,
         });
         return json({ error: "هذا الحساب مسجل لدى بيدي آخر بالفعل", dismissed: true });
       }
@@ -896,11 +921,10 @@ serve(async (req) => {
 
       if (invite.member_type === "agency" && !hasAgencyFromApi) {
         const reason = `العضو ${userName} لا يملك وكالة (معرف الوكالة غير صالح)، لا يمكن إضافته كوكيل`;
-        await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
-        // Notify both BD and member
+        await sb.from("works_invitations").delete().eq("id", invitation_id);
         await sb.from("notifications").insert([
-          { title: "❌ فشل انضمام وكيل", body: reason, target: "user", user_uuid: invite.bd_uuid },
-          { title: "❌ تعذر قبول الدعوة", body: "لا يمكنك الانضمام كوكيل لأن حسابك لا يملك وكالة حالياً", target: "user", user_uuid: invite.member_uuid },
+          { title: "❌ فشل انضمام وكيل", body: reason, target: "user", user_uuid: invite.inviter_uuid || invite.bd_uuid },
+          { title: "❌ تعذر قبول الدعوة", body: "لا يمكنك الانضمام كوكيل لأن حسابك لا يملك وكالة حالياً", target: "user", user_uuid: invite.target_uuid || invite.member_uuid },
         ]);
         return json({ error: "لا يمكن الانضمام كوكيل بدون وكالة في الحساب", dismissed: true });
       }
@@ -928,9 +952,25 @@ serve(async (req) => {
         }
       }
 
-      const { error: memberError } = await sb.from("bd_members").upsert({
-        bd_uuid: invite.bd_uuid,
-        member_uuid: invite.member_uuid,
+      // Add member to works_members (new system)
+      const bdUuidForMember = invite.inviter_uuid || invite.bd_uuid;
+      const { data: worksAccForMember } = await sb.from("works_accounts").select("id").eq("user_uuid", bdUuidForMember).maybeSingle();
+      
+      if (worksAccForMember) {
+        const memberType = invite.member_type === "agency" ? "agent" : invite.member_type;
+        await sb.from("works_members").upsert({
+          works_id: worksAccForMember.id,
+          member_uuid: invite.target_uuid || invite.member_uuid,
+          member_name: userName,
+          member_type: memberType,
+          status: "active",
+        }, { onConflict: "works_id,member_uuid", ignoreDuplicates: false });
+      }
+
+      // Also insert into legacy bd_members for backward compat
+      await sb.from("bd_members").upsert({
+        bd_uuid: bdUuidForMember,
+        member_uuid: invite.target_uuid || invite.member_uuid,
         member_name: userName,
         member_type: invite.member_type,
         initial_charger_num: initialMonthly,
@@ -940,12 +980,10 @@ serve(async (req) => {
         is_active: true,
       }, { onConflict: "bd_uuid,member_uuid", ignoreDuplicates: false });
 
-      if (memberError) return json({ error: memberError.message }, 500);
-
       // Update invitation status
-      await sb.from("bd_member_invitations").update({
+      await sb.from("works_invitations").update({
         status: "accepted",
-        member_name: userName,
+        target_name: userName,
         terms_accepted: true,
       }).eq("id", invitation_id);
 
@@ -954,7 +992,7 @@ serve(async (req) => {
         title: "👤 عضو جديد انضم",
         body: `انضم ${userData.name || "عضو"} (${invite.member_type === "agency" ? "وكالة" : "داعم"}) إلى فريقك عبر كود الإحالة الخاص بك`,
         target: "user",
-        user_uuid: invite.bd_uuid,
+        user_uuid: bdUuidForMember,
       });
 
       return json({
@@ -981,15 +1019,24 @@ serve(async (req) => {
         return json({ error: "ليس وقت السحب الآن. المحافظ متوقفة مؤقتاً." });
       }
 
-      // Check available balance
-      const { data: bd } = await sb
-        .from("bd_commission_settings")
-        .select("available_balance")
-        .eq("bd_uuid", bd_uuid)
-        .eq("is_active", true)
+      // Check available balance (works_accounts first, then legacy)
+      const { data: worksAccW } = await sb
+        .from("works_accounts")
+        .select("balance_usd")
+        .eq("user_uuid", bd_uuid)
+        .eq("status", "active")
         .maybeSingle();
+      
+      const availableBalance = worksAccW ? Number(worksAccW.balance_usd || 0) : 0;
 
-      if (!bd || bd.available_balance < amount) {
+      if (!worksAccW) {
+        // Fallback to legacy
+        const { data: bdLegacy } = await sb.from("bd_commission_settings")
+          .select("available_balance").eq("bd_uuid", bd_uuid).eq("is_active", true).maybeSingle();
+        if (!bdLegacy || bdLegacy.available_balance < amount) {
+          return json({ error: "الرصيد المتاح غير كافٍ" });
+        }
+      } else if (availableBalance < amount) {
         return json({ error: "الرصيد المتاح غير كافٍ" });
       }
 
@@ -1004,8 +1051,8 @@ serve(async (req) => {
 
       const isAuto = autoSetting?.value === "true";
 
-      // Create withdrawal record
-      const { error: wError } = await sb.from("bd_withdrawals").insert({
+      // Create withdrawal record in works_withdrawals
+      const { error: wError } = await sb.from("works_withdrawals").insert({
         bd_uuid,
         bd_name: bd_name || "",
         amount,
@@ -1017,10 +1064,15 @@ serve(async (req) => {
 
       if (wError) return json({ error: wError.message }, 500);
 
-      // Deduct from available balance
-      await sb
-        .from("bd_commission_settings")
-        .update({ available_balance: bd.available_balance - amount })
+      // Deduct from available balance in works_accounts
+      if (worksAccW) {
+        await sb.from("works_accounts")
+          .update({ balance_usd: Math.max(0, availableBalance - amount) })
+          .eq("user_uuid", bd_uuid);
+      }
+      // Also update legacy
+      await sb.from("bd_commission_settings")
+        .update({ available_balance: Math.max(0, availableBalance - amount) })
         .eq("bd_uuid", bd_uuid);
 
       if (isAuto) {
@@ -1112,7 +1164,7 @@ serve(async (req) => {
             `⏰ ${time}`;
 
           // Get the withdrawal ID from the most recent insertion
-          const { data: latestW } = await sb.from("bd_withdrawals")
+          const { data: latestW } = await sb.from("works_withdrawals")
             .select("id")
             .eq("bd_uuid", bd_uuid)
             .eq("status", "pending")
@@ -1169,8 +1221,23 @@ serve(async (req) => {
 
       if (!req2) return json({ error: "الطلب غير موجود" });
 
-      // Create BD commission settings
+      // Create BD in both works_accounts and legacy bd_commission_settings
       const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const worksCode = "WK-" + referralCode;
+
+      // New system
+      await sb.from("works_accounts").upsert({
+        user_uuid: req2.user_uuid,
+        user_name: req2.user_name,
+        works_code: worksCode,
+        status: "active",
+        supporter_commission_pct: 2,
+        agent_commission_pct: 5,
+        balance_usd: 0,
+        total_earnings_usd: 0,
+      }, { onConflict: "user_uuid" });
+
+      // Legacy system
       await sb.from("bd_commission_settings").upsert({
         bd_uuid: req2.user_uuid,
         bd_name: req2.user_name,
@@ -1284,6 +1351,8 @@ serve(async (req) => {
     if (action === "admin_remove_member") {
       const { member_id } = params;
       if (!member_id) return json({ error: "member_id مطلوب" }, 400);
+      // Update in both systems
+      await sb.from("works_members").update({ status: "removed" }).eq("id", member_id);
       await sb.from("bd_members").update({ is_active: false }).eq("id", member_id);
       return json({ success: true });
     }
@@ -1337,6 +1406,19 @@ serve(async (req) => {
         console.log("BD API fetch skipped on admin_add_member (timeout ok):", e);
       }
 
+      // Add to works_members (new system)
+      const { data: worksAccAdmin } = await sb.from("works_accounts").select("id").eq("user_uuid", bd_uuid).maybeSingle();
+      if (worksAccAdmin) {
+        const wMemberType = member_type === "agency" ? "agent" : member_type;
+        await sb.from("works_members").upsert({
+          works_id: worksAccAdmin.id,
+          member_uuid,
+          member_name: member_name || "",
+          member_type: wMemberType,
+          status: "active",
+        }, { onConflict: "works_id,member_uuid", ignoreDuplicates: false });
+      }
+      // Also add to legacy bd_members
       const { error } = await sb.from("bd_members").upsert({
         bd_uuid,
         member_uuid,
@@ -1359,6 +1441,16 @@ serve(async (req) => {
       for (const k of allowed) {
         if (updates[k] !== undefined) filtered[k] = updates[k];
       }
+      // Update works_accounts too with mapped fields
+      const worksUpdates: any = {};
+      if (filtered.user_commission_pct !== undefined) worksUpdates.supporter_commission_pct = filtered.user_commission_pct;
+      if (filtered.agency_commission_pct !== undefined) worksUpdates.agent_commission_pct = filtered.agency_commission_pct;
+      if (filtered.available_balance !== undefined) worksUpdates.balance_usd = filtered.available_balance;
+      if (filtered.total_earned !== undefined) worksUpdates.total_earnings_usd = filtered.total_earned;
+      if (filtered.is_active !== undefined) worksUpdates.status = filtered.is_active ? "active" : "frozen";
+      if (Object.keys(worksUpdates).length > 0) {
+        await sb.from("works_accounts").update(worksUpdates).eq("user_uuid", bd_uuid);
+      }
       await sb.from("bd_commission_settings").update(filtered).eq("bd_uuid", bd_uuid);
       return json({ success: true });
     }
@@ -1366,6 +1458,7 @@ serve(async (req) => {
     if (action === "admin_delete_bd") {
       const { bd_uuid } = params;
       if (!bd_uuid) return json({ error: "bd_uuid مطلوب" }, 400);
+      await sb.from("works_accounts").update({ status: "frozen" }).eq("user_uuid", bd_uuid);
       await sb.from("bd_commission_settings").update({ is_active: false, is_approved: false }).eq("bd_uuid", bd_uuid);
       await sb.from("bd_members").update({ is_active: false }).eq("bd_uuid", bd_uuid);
       return json({ success: true });
@@ -1374,8 +1467,8 @@ serve(async (req) => {
     if (action === "admin_restore_bd") {
       const { bd_uuid } = params;
       if (!bd_uuid) return json({ error: "bd_uuid مطلوب" }, 400);
+      await sb.from("works_accounts").update({ status: "active" }).eq("user_uuid", bd_uuid);
       await sb.from("bd_commission_settings").update({ is_active: true, is_approved: true }).eq("bd_uuid", bd_uuid);
-      // Restore all members too
       await sb.from("bd_members").update({ is_active: true }).eq("bd_uuid", bd_uuid);
       return json({ success: true });
     }
