@@ -71,6 +71,12 @@ const SalaryHome: React.FC = () => {
     setError(false);
     try {
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
+      // Handle transient timeout response from proxy
+      if ((data as any)?.transient_error) {
+        // Use cached data if available, otherwise show partial data
+        if (!status) setError(true);
+        return;
+      }
       setStatus(data);
       try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
     } catch {
@@ -178,8 +184,11 @@ const SalaryHome: React.FC = () => {
         {!loading && error && (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <AlertCircle className="w-10 h-10 text-destructive" />
-            <p className="text-sm text-destructive">فشل جلب الراتب</p>
-            <button onClick={fetchStatus} className="text-xs text-primary underline">إعادة المحاولة</button>
+            <p className="text-sm text-destructive font-bold">فشل جلب الراتب</p>
+            <p className="text-xs text-muted-foreground text-center px-4">السيرفر قد يكون مشغول — حاول مرة ثانية</p>
+            <button onClick={fetchStatus} className="mt-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform">
+              إعادة المحاولة
+            </button>
           </div>
         )}
 
