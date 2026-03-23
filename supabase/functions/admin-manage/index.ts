@@ -1191,32 +1191,19 @@ Deno.serve(async (req) => {
           .from("works_accounts").select("*").order("created_at", { ascending: false });
         if (error) throw error;
 
-        // Current month range for dynamic earnings
-        const now = new Date();
-        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-        const nextMonth = now.getMonth() === 11
-          ? `${now.getFullYear() + 1}-01-01`
-          : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, "0")}-01`;
-
         for (const acc of (accounts || [])) {
-          const [{ count: supporters }, { count: agents }, { data: earningsRows }] = await Promise.all([
+          const [{ count: supporters }, { count: agents }] = await Promise.all([
             supabase
               .from("works_members").select("*", { count: "exact", head: true })
               .eq("works_id", acc.id).eq("member_type", "supporter").eq("status", "active"),
             supabase
               .from("works_members").select("*", { count: "exact", head: true })
               .eq("works_id", acc.id).eq("member_type", "agent").eq("status", "active"),
-            supabase
-              .from("works_earnings").select("commission_usd")
-              .eq("works_id", acc.id)
-              .gte("period_date", monthStart)
-              .lt("period_date", nextMonth),
           ]);
           (acc as any).supporter_count = supporters || 0;
           (acc as any).agent_count = agents || 0;
-          (acc as any).dynamic_earnings = (earningsRows || []).reduce(
-            (sum: number, r: any) => sum + Number(r.commission_usd || 0), 0
-          );
+          // dynamic_earnings calculated on-demand via works_get_members
+          (acc as any).dynamic_earnings = 0;
         }
         result = accounts;
         break;
@@ -1227,7 +1214,49 @@ Deno.serve(async (req) => {
         const { data: members, error } = await supabase
           .from("works_members").select("*").eq("works_id", works_id).order("created_at", { ascending: false });
         if (error) throw error;
-        result = members;
+
+        // Fetch account commission percentages
+        const { data: accRow } = await supabase
+          .from("works_accounts").select("supporter_commission_pct, agent_commission_pct").eq("id", works_id).single();
+        const supporterPct = Number(accRow?.supporter_commission_pct || 2);
+        const agentPct = Number(accRow?.agent_commission_pct || 5);
+
+        const WARES_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+        // Calculate live earnings for each active member
+        const activeMembers = (members || []).filter((m: any) => m.status === "active");
+        const liveResults = await Promise.all(activeMembers.map(async (m: any) => {
+          try {
+            if (m.member_type === "supporter") {
+              const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`);
+              const json = await res.json();
+              const charges = Number(json?.total_charges || json?.charges || 0);
+              return { id: m.id, monthly_charges: charges, live_commission: charges * supporterPct / 100 };
+            } else if (m.member_type === "agent") {
+              const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}`);
+              const json = await res.json();
+              const salary = Number(json?.salary || json?.total_salary || 0);
+              return { id: m.id, agency_salary: salary, agency_name: json?.agency_name || "", agency_members_count: Number(json?.members_count || 0), live_commission: salary * agentPct / 100 };
+            }
+          } catch (e) {
+            console.error(`Live data fetch failed for ${m.member_uuid}:`, e);
+          }
+          return { id: m.id, live_commission: 0 };
+        }));
+
+        const liveMap = new Map(liveResults.map((r: any) => [r.id, r]));
+        let totalDynamic = 0;
+        for (const m of (members || [])) {
+          const live = liveMap.get(m.id);
+          if (live) {
+            Object.assign(m, live);
+            totalDynamic += live.live_commission || 0;
+          }
+        }
+
+        result = { members, dynamic_earnings: Math.round(totalDynamic * 100) / 100 };
         break;
       }
 
