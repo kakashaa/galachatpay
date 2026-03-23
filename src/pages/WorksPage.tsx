@@ -203,12 +203,19 @@ const WorksPage: React.FC = () => {
                 data?.charges ??
                 0
               );
-              const apiCommission = toFiniteNumber(
+              // commission_2pct from API is in USD — convert to coins
+              const apiCommissionUsd = toFiniteNumber(
                 data?.data?.commission_2pct ??
                 data?.commission_2pct ??
                 0
               );
-              commission = apiCommission > 0 ? apiCommission : Math.floor(charges * 0.02);
+              if (apiCommissionUsd > 0) {
+                commission = Math.floor(apiCommissionUsd * COINS_PER_USD);
+              } else {
+                // Fallback: use configured percentage on charges (coins)
+                const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
+                commission = Math.floor(charges * (pct / 100));
+              }
             } catch {
               /* silent */
             }
@@ -223,12 +230,17 @@ const WorksPage: React.FC = () => {
                   data2?.charges ??
                   0
                 );
-                const apiCommission = toFiniteNumber(
+                const apiCommissionUsd = toFiniteNumber(
                   data2?.data?.commission_2pct ??
                   data2?.commission_2pct ??
                   0
                 );
-                commission = apiCommission > 0 ? apiCommission : Math.floor(charges * 0.02);
+                if (apiCommissionUsd > 0) {
+                  commission = Math.floor(apiCommissionUsd * COINS_PER_USD);
+                } else {
+                  const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
+                  commission = Math.floor(charges * (pct / 100));
+                }
               } catch {
                 /* silent */
               }
