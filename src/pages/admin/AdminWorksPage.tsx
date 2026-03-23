@@ -163,30 +163,75 @@ const AdminWorksPage: React.FC = () => {
   const [supporterDynamicEarnings, setSupporterDynamicEarnings] = useState<number>(0);
   const [agentDynamicEarnings, setAgentDynamicEarnings] = useState<number>(0);
 
+  const [refreshingMemberId, setRefreshingMemberId] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
-    setMemberSalaryLoading(true);
     setDynamicAccountEarnings(0);
     setSupporterDynamicEarnings(0);
     setAgentDynamicEarnings(0);
     try {
       const d = await adminCall("works_get_members", { works_id: wid });
-      if (d && d.members) {
-        setMembers(d.members);
-        setDynamicAccountEarnings(d.dynamic_earnings ?? 0);
-        setSupporterDynamicEarnings(d.supporter_dynamic_earnings ?? 0);
-        setAgentDynamicEarnings(d.agent_dynamic_earnings ?? 0);
-        // Update the account's earnings in the local list so it shows the live value
-        setAccounts(prev => prev.map(a => a.id === wid ? { ...a, dynamic_earnings: d.dynamic_earnings ?? 0, total_earnings_usd: d.dynamic_earnings ?? 0 } : a));
-      } else {
-        setMembers(d || []);
-        setSupporterDynamicEarnings(0);
-        setAgentDynamicEarnings(0);
+      // New format: array of members (no wrapper)
+      const membersList = Array.isArray(d) ? d : (d?.members || d || []);
+      setMembers(membersList);
+      // Calculate totals from stored data
+      let totalE = 0, supE = 0, agE = 0;
+      for (const m of membersList) {
+        const c = Number(m.live_commission || m.total_commission_usd || 0);
+        totalE += c;
+        if (m.member_type === "supporter") supE += c;
+        if (m.member_type === "agent") agE += c;
       }
+      setDynamicAccountEarnings(Math.round(totalE * 100) / 100);
+      setSupporterDynamicEarnings(Math.round(supE * 100) / 100);
+      setAgentDynamicEarnings(Math.round(agE * 100) / 100);
     } catch { }
     setLoading(false);
     setMemberSalaryLoading(false);
   }, [adminCall]);
+
+  const refreshSingleMember = useCallback(async (memberId: string) => {
+    setRefreshingMemberId(memberId);
+    try {
+      const result = await adminCall("works_refresh_member", { member_id: memberId });
+      if (result && !result.error) {
+        setMembers(prev => prev.map((m: any) => m.id === memberId ? { ...m, ...result } : m));
+        // Recalculate totals
+        setMembers(prev => {
+          let totalE = 0, supE = 0, agE = 0;
+          for (const m of prev) {
+            const c = Number(m.live_commission || m.total_commission_usd || 0);
+            totalE += c;
+            if (m.member_type === "supporter") supE += c;
+            if (m.member_type === "agent") agE += c;
+          }
+          setDynamicAccountEarnings(Math.round(totalE * 100) / 100);
+          setSupporterDynamicEarnings(Math.round(supE * 100) / 100);
+          setAgentDynamicEarnings(Math.round(agE * 100) / 100);
+          return prev;
+        });
+        toast.success(`تم تحديث بيانات ${result.member_name || "العضو"}`);
+      } else {
+        toast.error("فشل التحديث: " + (result?.error || "خطأ"));
+      }
+    } catch (e: any) {
+      toast.error("فشل التحديث: " + (e?.message || "خطأ"));
+    }
+    setRefreshingMemberId(null);
+  }, [adminCall]);
+
+  const refreshAllMembers = useCallback(async () => {
+    setRefreshingAll(true);
+    for (const m of members) {
+      if (m.status === "removed") continue;
+      await refreshSingleMember(m.id);
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    setRefreshingAll(false);
+    toast.success("تم تحديث جميع الأعضاء ✅");
+  }, [members, refreshSingleMember]);
 
 
 
