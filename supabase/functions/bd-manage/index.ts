@@ -854,13 +854,22 @@ serve(async (req) => {
         }
       }
 
-      // Check if already member of another BD
+      // Check if already member of another BD (works_members + bd_members)
+      const { data: existingWorksMember } = await sb
+        .from("works_members")
+        .select("id")
+        .eq("member_uuid", invite.member_uuid)
+        .eq("status", "active")
+        .maybeSingle();
+
       const { data: existingMember } = await sb
         .from("bd_members")
         .select("id")
         .eq("member_uuid", invite.member_uuid)
         .eq("is_active", true)
         .maybeSingle();
+
+      const alreadyMember = existingWorksMember || existingMember;
 
       if (existingMember) {
         const reason = `العضو ${userName} مسجل لدى بيدي آخر بالفعل`;
