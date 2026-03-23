@@ -670,7 +670,7 @@ const BDDashboard: React.FC = () => {
               </div>
               <div className="divide-y divide-border/20">
                 {supporters.map((s: any) => {
-                  const charges = Number(supporterSalaries[s.member_uuid]?.charges || s.monthly_charges || s.total_charges || 0);
+                  const charges = getSupporterChargesCoins(s);
                   const commissionCoins = getSupporterCommissionCoins(s);
                   return (
                     <div key={s.member_uuid} className="px-3 py-3">
