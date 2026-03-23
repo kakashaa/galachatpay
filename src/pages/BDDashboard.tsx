@@ -854,8 +854,8 @@ const BDDashboard: React.FC = () => {
                 },
                 {
                   label: "أرباح الشهر",
-                  value: `${monthlyProfit.toLocaleString()}`,
-                  sub: `$${(monthlyProfit / 7500).toFixed(2)}`,
+                  value: `$${liveSalaryTotalUsd.toFixed(2)}`,
+                  sub: `${liveSalaryTotal.toLocaleString()} كوينز`,
                   color: "hsl(187 72% 56%)",
                   bg: "hsl(187 72% 56% / 0.08)",
                   border: "hsl(187 72% 56% / 0.15)",
