@@ -17,7 +17,7 @@ import {
 } from "@/lib/constants";
 
 import { galaApi } from "@/services/galaApi";
-const RECEIPT_BASE = "https://galachat.site/project-z/data/receipts/";
+const RECEIPT_BASE = "https://hola-chat.com/project-z/data/receipts/";
 
 interface Agency {
   username: string;

@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/hmac.ts";
 
-const SALARY_API_URL = "http://18.219.229.240/website/salary-api.php";
-const SALARY_API_KEY = "ghala2026actions";
+const SALARY_API_URL = "https://hola-chat.com/db-proxy.php";
+const SALARY_API_KEY = "ghala2026proxy";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,7 +21,7 @@ serve(async (req) => {
     const trimmedUuid = String(uuid).trim();
     console.log(`[SALARY] Fetching salary for uuid=${trimmedUuid}`);
 
-    const url = `${SALARY_API_URL}?key=${SALARY_API_KEY}&uuid=${trimmedUuid}`;
+    const url = `${SALARY_API_URL}?key=${SALARY_API_KEY}&action=withdraw-status&uuid=${trimmedUuid}`;
     
     // Try up to 3 times with increasing timeout
     let lastError = "";
