@@ -684,7 +684,7 @@ const WorksPage: React.FC = () => {
                 <p className="text-[10px] font-black text-muted-foreground">أرباح الشهر</p>
                 <InfoTip text="عمولاتك هذا الشهر من جميع الأعضاء (بالكوينز)" />
               </div>
-              <p className="text-lg font-mono font-black text-secondary">{monthEarnings.toLocaleString()}</p>
+              <p className="text-lg font-mono font-black text-primary">{monthEarnings.toLocaleString()}</p>
               <p className="text-[8px] text-muted-foreground font-bold">كوينز</p>
             </motion.div>
 
@@ -741,13 +741,13 @@ const WorksPage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-mono truncate" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-secondary">${((m.monthly_charges || 0) / 7500).toFixed(2)}</p>
+                    <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / 7500).toFixed(2)}</p>
                   </div>
                 </div>
                 {m.monthly_charges !== undefined && (
                   <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
                     <span className="text-muted-foreground font-bold">شحن: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
-                    <span className="text-secondary font-black">{(m.commission || 0).toLocaleString()} عمولة</span>
+                    <span className="text-primary font-black">{(m.commission || 0).toLocaleString()} عمولة</span>
                   </div>
                 )}
               </motion.div>
@@ -792,13 +792,13 @@ const WorksPage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-mono truncate" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-secondary">${(m.agency_salary || 0).toFixed(2)}</p>
+                    <p className="text-sm font-black text-primary">${(m.agency_salary || 0).toFixed(2)}</p>
                   </div>
                 </div>
                 {m.agency_salary !== undefined && (
                   <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
                     <span className="text-muted-foreground font-bold">راتب: ${m.agency_salary?.toFixed(2)}</span>
-                    <span className="text-secondary font-black">{(m.commission || 0).toLocaleString()} عمولة</span>
+                    <span className="text-primary font-black">{(m.commission || 0).toLocaleString()} عمولة</span>
                   </div>
                 )}
               </motion.div>
@@ -814,7 +814,7 @@ const WorksPage: React.FC = () => {
             transition={{ delay: 0.5 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setShowAddMember(true)}
-            className="w-full bg-secondary text-secondary-foreground py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg"
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg"
           >
             <UserPlus className="w-5 h-5" /> إضافة عضو جديد
           </motion.button>
