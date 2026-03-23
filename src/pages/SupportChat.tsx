@@ -302,6 +302,7 @@ const SupportChat: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessionKey, setSessionKey] = useState(() => Date.now()); // force fresh session
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
@@ -383,13 +384,15 @@ const SupportChat: React.FC = () => {
     [scrollToBottom]
   );
 
-  /* welcome message — always start fresh */
+  /* welcome message — always start fresh on mount or session reset */
   useEffect(() => {
+    setMessages([]);
+    setWaitingFor(null);
     const isVip = user?.vip && Object.keys(user.vip).length > 0;
     const welcomeMessage = getTimeBasedGreeting(userName, isVip, isGuest);
     addBotMessage(welcomeMessage, MAIN_MENU);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sessionKey]);
 
   /* ── topic handler ── */
   const handleTopic = useCallback(
@@ -879,14 +882,11 @@ const SupportChat: React.FC = () => {
     }
   };
 
-  /* ── clear chat ── */
+  /* ── clear chat / start new ── */
   const clearChat = () => {
-    setMessages([]);
-    setWaitingFor(null);
-    addBotMessage(
-      `أهلاً ${userName}! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`,
-      MAIN_MENU
-    );
+    setShowFeedbackForm(false);
+    setFeedback({ rating: 0, comment: "" });
+    setSessionKey(Date.now()); // triggers useEffect to reset messages + show welcome
   };
 
   return (
@@ -909,8 +909,8 @@ const SupportChat: React.FC = () => {
             <span className="text-[10px] text-muted-foreground">متصل الآن</span>
           </div>
         </div>
-        <button onClick={clearChat} className="text-[11px] text-destructive font-bold">
-          مسح المحادثة
+        <button onClick={clearChat} className="flex items-center gap-1 text-[11px] text-primary font-bold px-2 py-1 rounded-lg bg-primary/10 active:scale-95 transition-transform">
+          🔄 محادثة جديدة
         </button>
       </header>
 
