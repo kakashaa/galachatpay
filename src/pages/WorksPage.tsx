@@ -12,6 +12,7 @@ import BottomNav from "@/components/BottomNav";
 import StatusModal from "@/components/StatusModal";
 import { galaApi } from "@/services/galaApi";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
+import WorksCountdown from "@/components/WorksCountdown";
 
 /* ── Tooltip bubble component ── */
 const InfoTip: React.FC<{ text: string }> = ({ text }) => {
