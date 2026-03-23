@@ -120,17 +120,6 @@ async function checkDeviceIsBdMember(sb: any, userUuid: string): Promise<string 
   if (worksMembers && worksMembers.length > 0) {
     return "member_exists";
   }
-
-  // Fallback: check bd_members (legacy)
-  const { data: existingMembers } = await sb
-    .from("bd_members")
-    .select("member_uuid, bd_uuid")
-    .in("member_uuid", allUuids)
-    .eq("is_active", true);
-
-  if (existingMembers && existingMembers.length > 0) {
-    return "member_exists";
-  }
   return null;
 }
 
@@ -159,18 +148,6 @@ async function checkDeviceIsBd(sb: any, userUuid: string): Promise<string | null
     .eq("status", "active");
 
   if (worksAccs && worksAccs.length > 0) {
-    return "bd_exists";
-  }
-
-  // Fallback: check bd_commission_settings (legacy)
-  const { data: existingBDs } = await sb
-    .from("bd_commission_settings")
-    .select("bd_uuid")
-    .in("bd_uuid", allUuids)
-    .eq("is_active", true)
-    .eq("is_approved", true);
-
-  if (existingBDs && existingBDs.length > 0) {
     return "bd_exists";
   }
   return null;
