@@ -10,7 +10,6 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import BottomNav from "@/components/BottomNav";
 import StatusModal from "@/components/StatusModal";
-import { galaApi } from "@/services/galaApi";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 
 /* ── Tooltip bubble component ── */
@@ -563,6 +562,18 @@ const WorksPage: React.FC = () => {
           </div>
           <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-primary/5 blur-xl" />
         </motion.div>
+
+        {/* Last sync info + helper text */}
+        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold text-muted-foreground">
+              آخر تحديث: {getRelativeTime(myWorks?.last_earnings_sync_at)}
+            </p>
+          </div>
+          <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+            يتم تحديث البيانات تلقائياً كل ساعة — لا تقلق لو الأرقام ما تغيّرت فوراً
+          </p>
+        </div>
 
         {/* Financial Stats Grid */}
         <div className="space-y-3">
