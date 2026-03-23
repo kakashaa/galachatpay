@@ -39,26 +39,19 @@ export async function syncBdMemberIdChange(oldUuid: string, newUuid: string, use
       return;
     }
 
-    // Fallback: check bd_members (legacy system)
-    const { data: members, error } = await supabase
+    // Also update legacy bd_members
+    const { data: members } = await supabase
       .from("bd_members")
       .select("id, bd_uuid, member_name")
       .eq("member_uuid", oldUuid);
 
-    if (error || !members || members.length === 0) return;
-
-    for (const member of members) {
-      await supabase
-        .from("bd_members")
-        .update({ member_uuid: newUuid, member_name: userName || member.member_name })
-        .eq("id", member.id);
-
-      await supabase.from("notifications").insert({
-        user_uuid: member.bd_uuid,
-        title: "🔄 تغيير آيدي عضو",
-        body: `قام عضوك ${userName || member.member_name} بتغيير آيديه من ${oldUuid} إلى ${newUuid}. تم تحديث السجلات تلقائياً.`,
-        target: "user",
-      });
+    if (members && members.length > 0) {
+      for (const member of members) {
+        await supabase
+          .from("bd_members")
+          .update({ member_uuid: newUuid, member_name: userName || member.member_name })
+          .eq("id", member.id);
+      }
     }
   } catch (err) {
     console.error("Failed to sync BD member ID change:", err);

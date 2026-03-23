@@ -53,7 +53,7 @@ const BDWithdraw: React.FC = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("bd_withdrawals").insert({
+      const { error } = await (supabase.from("works_withdrawals" as any)).insert({
         bd_uuid: user.uuid,
         bd_name: bdName,
         amount: totalUsd,

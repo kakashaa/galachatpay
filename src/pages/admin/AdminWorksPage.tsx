@@ -170,7 +170,7 @@ const AdminWorksPage: React.FC = () => {
     setLoading(true);
     try {
       const { data } = await supabase
-        .from("bd_commission_logs")
+        .from("works_commission_logs" as any)
         .select("*")
         .eq("bd_uuid", bdUuid)
         .order("created_at", { ascending: false })
@@ -183,7 +183,7 @@ const AdminWorksPage: React.FC = () => {
   const fetchNotifHistory = useCallback(async () => {
     try {
       const { data } = await supabase
-        .from("bd_notifications")
+        .from("works_notifications" as any)
         .select("*")
         .eq("type", "admin_message")
         .order("created_at", { ascending: false })
@@ -287,7 +287,7 @@ const AdminWorksPage: React.FC = () => {
     }
     setNotifSending(true);
     try {
-      await supabase.from("bd_notifications").insert({
+      await supabase.from("works_notifications" as any).insert({
         target_uuid: notifTarget,
         title: notifTitle.trim(),
         body: notifBody.trim(),

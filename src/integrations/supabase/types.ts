@@ -2979,6 +2979,48 @@ export type Database = {
         }
         Relationships: []
       }
+      works_commission_logs: {
+        Row: {
+          amount: number | null
+          bd_uuid: string
+          commission_pct: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          member_type: string | null
+          member_uuid: string | null
+          month: string | null
+          source_amount: number | null
+          works_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          bd_uuid: string
+          commission_pct?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          member_type?: string | null
+          member_uuid?: string | null
+          month?: string | null
+          source_amount?: number | null
+          works_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          bd_uuid?: string
+          commission_pct?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          member_type?: string | null
+          member_uuid?: string | null
+          month?: string | null
+          source_amount?: number | null
+          works_id?: string | null
+        }
+        Relationships: []
+      }
       works_earnings: {
         Row: {
           commission_pct: number
@@ -3033,6 +3075,51 @@ export type Database = {
           },
         ]
       }
+      works_invitations: {
+        Row: {
+          created_at: string | null
+          id: string
+          inviter_code: string | null
+          inviter_name: string | null
+          inviter_uuid: string | null
+          member_type: string | null
+          status: string | null
+          target_name: string | null
+          target_uuid: string | null
+          terms_accepted: boolean | null
+          updated_at: string | null
+          works_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          inviter_code?: string | null
+          inviter_name?: string | null
+          inviter_uuid?: string | null
+          member_type?: string | null
+          status?: string | null
+          target_name?: string | null
+          target_uuid?: string | null
+          terms_accepted?: boolean | null
+          updated_at?: string | null
+          works_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          inviter_code?: string | null
+          inviter_name?: string | null
+          inviter_uuid?: string | null
+          member_type?: string | null
+          status?: string | null
+          target_name?: string | null
+          target_uuid?: string | null
+          terms_accepted?: boolean | null
+          updated_at?: string | null
+          works_id?: string | null
+        }
+        Relationships: []
+      }
       works_members: {
         Row: {
           agency_id: string | null
@@ -3082,6 +3169,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      works_notifications: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          id: string
+          is_dismissed: boolean | null
+          is_read: boolean | null
+          sent_by: string | null
+          target_uuid: string | null
+          title: string | null
+          type: string | null
+          works_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          sent_by?: string | null
+          target_uuid?: string | null
+          title?: string | null
+          type?: string | null
+          works_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          sent_by?: string | null
+          target_uuid?: string | null
+          title?: string | null
+          type?: string | null
+          works_id?: string | null
+        }
+        Relationships: []
       }
       works_requests: {
         Row: {

@@ -1272,23 +1272,17 @@ Deno.serve(async (req) => {
 
       case "works_list_withdrawals": {
         const { data: withdrawals, error } = await supabase
-          .from("bd_withdrawals").select("*").order("created_at", { ascending: false });
+          .from("works_withdrawals").select("*").order("created_at", { ascending: false });
         if (error) throw error;
-        // Map fields for frontend compatibility
-        for (const w of (withdrawals || [])) {
-          (w as any).works_id = w.bd_uuid;
-          (w as any).amount_usd = w.amount;
-        }
         result = withdrawals;
         break;
       }
 
       case "works_approve_withdrawal": {
         const { id: awId } = data;
-        const w = await supabase.from("bd_withdrawals").select("*").eq("id", awId).single();
+        const w = await supabase.from("works_withdrawals").select("*").eq("id", awId).single();
         if (!w.data) throw new Error("Not found");
-        await supabase.from("bd_withdrawals").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", awId);
-        // Deduct from available_balance
+        await supabase.from("works_withdrawals").update({ status: "approved", approved_at: new Date().toISOString() }).eq("id", awId);
         const accW = await supabase.from("works_accounts").select("balance_usd").eq("user_uuid", w.data.bd_uuid).single();
         if (accW.data) {
           await supabase.from("works_accounts").update({
@@ -1301,7 +1295,7 @@ Deno.serve(async (req) => {
 
       case "works_reject_withdrawal": {
         const { id: rwId, reason: rwReason } = data;
-        await supabase.from("bd_withdrawals").update({ status: "rejected", admin_note: rwReason, rejected_at: new Date().toISOString() }).eq("id", rwId);
+        await supabase.from("works_withdrawals").update({ status: "rejected", admin_note: rwReason, rejected_at: new Date().toISOString() }).eq("id", rwId);
         result = { success: true };
         break;
       }
@@ -1339,68 +1333,143 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case "works_merge_bd_data": {
-        // Merge bd_commission_settings → works_accounts and bd_members → works_members
-        let merged = 0;
-        let membersMerged = 0;
+      case "works_full_merge": {
+        let merged = 0, membersMerged = 0, logsMerged = 0, invitesMerged = 0, notifsMerged = 0, withdrawalsMerged = 0;
 
-        const { data: bdAccounts } = await supabase
-          .from("bd_commission_settings").select("*");
+        const { data: bdAccounts } = await supabase.from("bd_commission_settings").select("*");
 
         for (const bd of (bdAccounts || [])) {
-          // Check if already exists in works_accounts
           const { data: existing } = await supabase
-            .from("works_accounts").select("id")
-            .eq("user_uuid", bd.bd_uuid).maybeSingle();
+            .from("works_accounts").select("id").eq("user_uuid", bd.bd_uuid).maybeSingle();
 
-          if (existing) continue; // Skip if already migrated
+          let worksAccId: string;
 
-          const worksCode = "WK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-          const status = (bd.is_active && bd.is_approved) ? "active" : "frozen";
+          if (existing) {
+            worksAccId = existing.id;
+          } else {
+            const worksCode = "WK-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const status = (bd.is_active && bd.is_approved) ? "active" : "frozen";
+            const { data: newAcc, error: accErr } = await supabase
+              .from("works_accounts").insert({
+                user_uuid: bd.bd_uuid,
+                user_name: bd.bd_name || "",
+                works_code: worksCode,
+                status,
+                total_earnings_usd: bd.total_earned || 0,
+                balance_usd: bd.available_balance || 0,
+                supporter_commission_pct: (bd.user_commission_pct || 2),
+                agent_commission_pct: (bd.agency_commission_pct || 5),
+              }).select("id").single();
+            if (accErr) { console.error("Merge acc error:", accErr); continue; }
+            worksAccId = newAcc.id;
+            merged++;
+          }
 
-          const { data: newAcc, error: accErr } = await supabase
-            .from("works_accounts").insert({
-              user_uuid: bd.bd_uuid,
-              user_name: bd.bd_name || "",
-              works_code: worksCode,
-              status,
-              total_earnings_usd: bd.total_earned || 0,
-              balance_usd: bd.available_balance || 0,
-              supporter_commission_pct: (bd.user_commission_pct || 2),
-              agent_commission_pct: (bd.agency_commission_pct || 5),
-            }).select("id").single();
-
-          if (accErr) { console.error("Merge acc error:", accErr); continue; }
-          merged++;
-
-          // Migrate bd_members for this BD
-          const { data: bdMembers } = await supabase
-            .from("bd_members").select("*").eq("bd_uuid", bd.bd_uuid);
-
+          // Migrate bd_members
+          const { data: bdMembers } = await supabase.from("bd_members").select("*").eq("bd_uuid", bd.bd_uuid);
           for (const m of (bdMembers || [])) {
-            const memberType = m.member_type === "agency" ? "agent" : m.member_type;
-            const memberStatus = m.is_active ? "active" : "removed";
-
-            const { data: existingMember } = await supabase
-              .from("works_members").select("id")
-              .eq("works_id", newAcc.id)
-              .eq("member_uuid", m.member_uuid).maybeSingle();
-
-            if (existingMember) continue;
-
+            const { data: em } = await supabase.from("works_members").select("id")
+              .eq("works_id", worksAccId).eq("member_uuid", m.member_uuid).maybeSingle();
+            if (em) continue;
             await supabase.from("works_members").insert({
-              works_id: newAcc.id,
+              works_id: worksAccId,
               member_uuid: m.member_uuid,
               member_name: m.member_name || "",
-              member_type: memberType,
-              status: memberStatus,
+              member_type: m.member_type === "agency" ? "agent" : m.member_type,
+              status: m.is_active ? "active" : "removed",
               total_commission_usd: m.total_commission || 0,
             });
             membersMerged++;
           }
+
+          // Migrate bd_commission_logs
+          const { data: bdLogs } = await supabase.from("bd_commission_logs").select("*").eq("bd_uuid", bd.bd_uuid);
+          for (const log of (bdLogs || [])) {
+            const { data: el } = await supabase.from("works_commission_logs").select("id")
+              .eq("bd_uuid", bd.bd_uuid).eq("member_uuid", log.member_uuid).eq("month", log.month).maybeSingle();
+            if (el) continue;
+            await supabase.from("works_commission_logs").insert({
+              works_id: worksAccId,
+              bd_uuid: bd.bd_uuid,
+              member_uuid: log.member_uuid,
+              member_type: log.member_type,
+              month: log.month,
+              source_amount: log.source_amount || 0,
+              commission_pct: log.commission_pct || 0,
+              amount: log.amount || 0,
+            });
+            logsMerged++;
+          }
+
+          // Migrate bd_member_invitations
+          const { data: bdInvites } = await supabase.from("bd_member_invitations").select("*").eq("bd_uuid", bd.bd_uuid);
+          for (const inv of (bdInvites || [])) {
+            const { data: ei } = await supabase.from("works_invitations").select("id")
+              .eq("inviter_uuid", bd.bd_uuid).eq("target_uuid", inv.member_uuid).maybeSingle();
+            if (ei) continue;
+            await supabase.from("works_invitations").insert({
+              works_id: worksAccId,
+              inviter_uuid: bd.bd_uuid,
+              inviter_name: inv.bd_name || "",
+              inviter_code: inv.bd_referral_code || "",
+              target_uuid: inv.member_uuid,
+              target_name: inv.member_name || "",
+              member_type: inv.member_type,
+              status: inv.status,
+              terms_accepted: inv.terms_accepted,
+              created_at: inv.created_at,
+            });
+            invitesMerged++;
+          }
+
+          // Migrate bd_withdrawals
+          const { data: bdWithdrawals } = await supabase.from("bd_withdrawals").select("*").eq("bd_uuid", bd.bd_uuid);
+          for (const w of (bdWithdrawals || [])) {
+            const { data: ew } = await supabase.from("works_withdrawals").select("id")
+              .eq("bd_uuid", bd.bd_uuid).eq("created_at", w.created_at).maybeSingle();
+            if (ew) continue;
+            await supabase.from("works_withdrawals").insert({
+              works_id: worksAccId,
+              bd_uuid: bd.bd_uuid,
+              bd_name: w.bd_name || "",
+              amount: w.amount || 0,
+              status: w.status,
+              transfer_type: w.transfer_type,
+              country: w.country,
+              admin_note: w.admin_note,
+              recipient_name: w.recipient_name,
+              recipient_phone: w.recipient_phone,
+              transfer_number: w.transfer_number,
+              receipt_url: w.receipt_url,
+              approved_at: w.approved_at,
+              completed_at: w.completed_at,
+              rejected_at: w.rejected_at,
+              created_at: w.created_at,
+            });
+            withdrawalsMerged++;
+          }
         }
 
-        result = { success: true, accounts_merged: merged, members_merged: membersMerged };
+        // Migrate bd_notifications
+        const { data: bdNotifs } = await supabase.from("bd_notifications").select("*");
+        for (const n of (bdNotifs || [])) {
+          const { data: en } = await supabase.from("works_notifications").select("id")
+            .eq("target_uuid", n.target_uuid).eq("created_at", n.created_at).maybeSingle();
+          if (en) continue;
+          await supabase.from("works_notifications").insert({
+            target_uuid: n.target_uuid,
+            title: n.title,
+            body: n.body,
+            type: n.type,
+            is_read: n.is_read,
+            is_dismissed: n.is_dismissed,
+            sent_by: n.sent_by,
+            created_at: n.created_at,
+          });
+          notifsMerged++;
+        }
+
+        result = { success: true, accounts_merged: merged, members_merged: membersMerged, logs_merged: logsMerged, invites_merged: invitesMerged, notifs_merged: notifsMerged, withdrawals_merged: withdrawalsMerged };
         break;
       }
 

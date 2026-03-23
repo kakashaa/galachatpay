@@ -64,12 +64,13 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ system, accountId, onRefr
         if (addType === "agent" && addAgencyId) payload.agency_id = addAgencyId.trim();
         await (supabase.from("works_members") as any).insert(payload);
       } else {
-        await supabase.from("bd_members").insert({
-          bd_uuid: accountId,
+        // BD system also uses works_members now
+        await (supabase.from("works_members") as any).insert({
+          works_id: accountId,
           member_uuid: addUuid.trim(),
           member_name: addName.trim() || "عضو يدوي",
           member_type: addType,
-          is_active: true,
+          status: "active",
         });
       }
       toast.success("تمت الإضافة بنجاح");
@@ -96,11 +97,11 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ system, accountId, onRefr
 
     setLoading(true);
     try {
-      const table = system === "works" ? "works_members" : "bd_members";
+      const table = system === "works" ? "works_members" : "works_members";
       const { error } = await (supabase.from(table) as any)
         .update({ custom_commission_pct: pct })
         .eq("member_uuid", editUuid.trim())
-        .eq(system === "works" ? "works_id" : "bd_uuid", accountId);
+        .eq("works_id", accountId);
       if (error) throw error;
       toast.success(`تم تعديل النسبة إلى ${pct}%`);
       setAction(null);
@@ -130,11 +131,10 @@ const OwnerControls: React.FC<OwnerControlsProps> = ({ system, accountId, onRefr
           .eq("member_uuid", freezeUuid.trim())
           .eq("works_id", accountId);
       } else {
-        await supabase
-          .from("bd_members")
-          .update({ is_active: false } as any)
+        await (supabase.from("works_members") as any)
+          .update({ status: "frozen" })
           .eq("member_uuid", freezeUuid.trim())
-          .eq("bd_uuid", accountId);
+          .eq("works_id", accountId);
       }
       toast.success("تم تجميد العضو");
       setAction(null);
