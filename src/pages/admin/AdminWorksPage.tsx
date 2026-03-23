@@ -648,10 +648,25 @@ const AdminWorksPage: React.FC = () => {
                             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold">{a.works_code}</span>
                           </div>
                           <p className="text-[10px] text-muted-foreground font-mono mt-0.5">UUID: {a.user_uuid}</p>
+                          <p className="text-[9px] text-muted-foreground/60 mt-0.5">
+                            آخر تحديث: {formatSyncTime(a.last_earnings_sync_at)}
+                          </p>
                         </div>
-                        <div className="text-left shrink-0">
+                        <div className="text-left shrink-0 space-y-1">
                           <p className="text-xl font-black text-emerald-400">${earnings.toFixed(2)}</p>
                           <p className="text-[9px] text-muted-foreground text-center">أرباح الشهر</p>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); refreshAccountEarnings(a.id); }}
+                            disabled={refreshingAccountId === a.id}
+                            className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg disabled:opacity-50 mx-auto"
+                          >
+                            {refreshingAccountId === a.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                            تحديث الأرباح
+                          </button>
                         </div>
                       </div>
 
