@@ -367,6 +367,36 @@ const AdminWorksPage: React.FC = () => {
     } catch { toast.error("فشل"); }
   };
 
+  // Refresh earnings for a single account
+  const refreshAccountEarnings = async (accountId: string) => {
+    if (refreshingAccountId) return;
+    setRefreshingAccountId(accountId);
+    try {
+      const result = await adminCall("works_refresh_single_account", { account_id: accountId });
+      if (result?.success) {
+        toast.success(`تم تحديث الأرباح: $${Number(result.earnings || 0).toFixed(2)}`);
+        // Update local state
+        setAccounts(prev => prev.map(a => a.id === accountId ? {
+          ...a,
+          total_earnings_usd: result.earnings,
+          dynamic_earnings: result.earnings,
+          last_earnings_sync_at: result.synced_at || new Date().toISOString(),
+        } : a));
+      } else {
+        toast.error("فشل التحديث");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "فشل تحديث الأرباح");
+    }
+    setRefreshingAccountId(null);
+  };
+
+  const formatSyncTime = (dateStr: string | null): string => {
+    if (!dateStr) return "لم يتم التحديث";
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", hour12: false }) + " — " + d.toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
+  };
+
   // Edit member total commission
   const handleEditMemberCommission = async () => {
     if (!editMemberCommAmt) return;
