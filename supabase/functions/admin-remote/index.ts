@@ -106,6 +106,24 @@ serve(async (req) => {
         break;
       }
 
+      case "api_call": {
+        // Call external API (e.g., project-z for UUID changes)
+        const url = params.url as string;
+        const apiBody = params.body || {};
+        if (!url) { result = { error: "Missing url" }; break; }
+        try {
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(apiBody),
+          });
+          result = await resp.json();
+        } catch (e: any) {
+          result = { error: e.message };
+        }
+        break;
+      }
+
       default:
         result = { error: "Unknown command" };
     }
