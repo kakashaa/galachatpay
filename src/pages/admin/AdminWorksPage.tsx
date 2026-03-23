@@ -1300,7 +1300,17 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "وكيل"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => refreshOneMember(m.id)}
+                                      disabled={refreshingMemberId === m.id || refreshingAll}
+                                      className="p-1 rounded-md bg-muted/50 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                                      title="تحديث"
+                                    >
+                                      <RefreshCw className={`w-3 h-3 ${refreshingMemberId === m.id ? "animate-spin" : ""}`} />
+                                    </button>
+                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  </div>
                                 </div>
                                 <div className="rounded-lg bg-muted/30 p-2 text-[10px]">
                                   <div className="flex items-center gap-2">
