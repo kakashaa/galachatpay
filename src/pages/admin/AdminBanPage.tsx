@@ -255,7 +255,12 @@ const AdminBanPage: React.FC = () => {
     if (!uuid) { toast.error("أدخل UUID"); return; }
     const reason = banReason === "other" ? banCustom : banReason === "insult" ? "سب/إساءة" : "ترويج";
     if (!reason.trim()) { toast.error("أدخل السبب"); return; }
-    const ok = await confirm({ title: "تأكيد الحظر", message: `حظر UUID ${uuid}؟`, danger: true, confirmText: "تنفيذ" });
+    const ok = await confirm({
+      title: "تأكيد الحظر",
+      message: `هل أنت متأكد من حظر UUID ${uuid}؟\n\nهذا الإجراء لا يمكن التراجع عنه بسهولة.`,
+      danger: true,
+      confirmText: "تنفيذ الحظر",
+    });
     if (!ok) return;
     setBanLoading(true);
     const t = toast.loading("جاري الحظر...");
