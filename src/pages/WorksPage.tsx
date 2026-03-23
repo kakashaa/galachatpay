@@ -266,7 +266,8 @@ const WorksPage: React.FC = () => {
 
                   if (monthlyCharges > 0) {
                     charges = monthlyCharges;
-                    commission = Math.floor(monthlyCharges * 0.02);
+                    const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
+                    commission = Math.floor(monthlyCharges * (pct / 100));
                   }
                 }
               } catch {
