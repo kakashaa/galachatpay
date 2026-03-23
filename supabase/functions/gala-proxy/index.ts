@@ -130,6 +130,12 @@ const OWNER_ONLY = new Set([
   "reset-cash-used",
 ]);
 
+// Actions where timeout should not fail the whole app flow
+const TIMEOUT_TOLERANT_ACTIONS = new Set([
+  "user-monthly-charges",
+  "agency-salary",
+]);
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -138,6 +144,8 @@ function json(data: unknown, status = 200) {
 }
 
 serve(async (req) => {
+  let requestedAction = "";
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -145,20 +153,22 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const { target, action, ...params } = body;
+    const actionName = String(action ?? "");
+    requestedAction = actionName;
 
     // 1. Validate target + action
-    if (!target || !action) {
+    if (!target || !actionName) {
       return json({ error: "target و action مطلوبين" }, 400);
     }
 
     const allowed = ALLOWED[target as string];
-    if (!allowed || !allowed.includes(action)) {
-      console.error(`[gala-proxy] Blocked: target=${target} action=${action}`);
+    if (!allowed || !allowed.includes(actionName)) {
+      console.error(`[gala-proxy] Blocked: target=${target} action=${actionName}`);
       return json({ error: "غير مسموح" }, 403);
     }
 
     // 2. Admin auth check for sensitive operations
-    if (ADMIN_ONLY.has(action)) {
+    if (ADMIN_ONLY.has(actionName)) {
       const adminToken = params._admin_token;
       if (!adminToken) {
         return json({ error: "مطلوب تسجيل دخول أدمن" }, 401);
@@ -166,7 +176,7 @@ serve(async (req) => {
 
       // Verify HMAC-signed token, with legacy fallback
       let tokenData = await verifyAdminToken(adminToken);
-      
+
       // Backward compatibility: accept old plain btoa tokens
       if (!tokenData) {
         try {
@@ -175,7 +185,9 @@ serve(async (req) => {
             tokenData = { username: legacy.username, role: legacy.role || "admin" };
             console.log("[gala-proxy] accepted legacy token for:", legacy.username);
           }
-        } catch { /* not valid */ }
+        } catch {
+          /* not valid */
+        }
       }
 
       if (!tokenData) {
@@ -202,7 +214,7 @@ serve(async (req) => {
       if (!admin) return json({ error: "جلسة غير صالحة" }, 401);
 
       // Owner-only check
-      if (OWNER_ONLY.has(action) && admin.role !== "owner") {
+      if (OWNER_ONLY.has(actionName) && admin.role !== "owner") {
         return json({ error: "صلاحية المالك فقط" }, 403);
       }
 
@@ -230,9 +242,9 @@ serve(async (req) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...params, key }),
         };
-        url = `${baseUrl}?key=${key}&action=${action}`;
+        url = `${baseUrl}?key=${key}&action=${actionName}`;
       } else {
-        const queryParams = new URLSearchParams({ key, action, ...params });
+        const queryParams = new URLSearchParams({ key, action: actionName, ...params });
         url = `${baseUrl}?${queryParams}`;
         fetchOptions = { method: "GET" };
       }
@@ -240,7 +252,7 @@ serve(async (req) => {
     } else if (target === "hola-chat" || target === "bd-data" || target === "db-proxy") {
       // db-proxy uses the proxy key; hola-chat/bd-data use actions key
       const targetKey = target === "db-proxy" ? KEYS.proxy : key;
-      url = `${baseUrl}?key=${targetKey}&action=${action}`;
+      url = `${baseUrl}?key=${targetKey}&action=${actionName}`;
       // Append simple params as query string
       const simpleParams: Record<string, string> = {};
       const complexParams: Record<string, unknown> = {};
@@ -285,14 +297,22 @@ serve(async (req) => {
       fetchOptions = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, admin_key: key, ...params }),
+        body: JSON.stringify({ action: actionName, admin_key: key, ...params }),
       };
     } else {
       return json({ error: "target غير مدعوم" }, 400);
     }
 
     // 4. Execute the request
-    const timeout = ADMIN_ONLY.has(action) ? 55000 : (target === "db-proxy" || target === "hola-chat" || target === "project-z") ? 55000 : 30000;
+    const isTimeoutTolerantAction = TIMEOUT_TOLERANT_ACTIONS.has(actionName);
+    const timeout = isTimeoutTolerantAction
+      ? 20_000
+      : ADMIN_ONLY.has(actionName)
+        ? 55_000
+        : (target === "db-proxy" || target === "hola-chat" || target === "project-z")
+          ? 55_000
+          : 30_000;
+
     const res = await fetch(url, { ...fetchOptions, signal: AbortSignal.timeout(timeout) });
     const text = await res.text();
 
@@ -303,6 +323,15 @@ serve(async (req) => {
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
+
+    if (
+      (message.includes("Signal timed out") || message.toLowerCase().includes("timed out"))
+      && TIMEOUT_TOLERANT_ACTIONS.has(requestedAction)
+    ) {
+      console.warn(`[gala-proxy] Timeout tolerated for action=${requestedAction}`);
+      return json({ success: false, timeout: true, error: "Signal timed out.", data: null }, 200);
+    }
+
     console.error("[gala-proxy] Error:", message);
     return json({ error: message }, 500);
   }
