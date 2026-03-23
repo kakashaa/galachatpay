@@ -1215,8 +1215,8 @@ Deno.serve(async (req) => {
           acc.supporter_count = activeMembers.filter((m: any) => m.member_type === "supporter").length;
           acc.agent_count = activeMembers.filter((m: any) => m.member_type === "agent").length;
 
-          // Compute live earnings for first 20 accounts
-          if (idx < 20 && activeMembers.length > 0) {
+          // Compute live earnings for all accounts with active members
+          if (activeMembers.length > 0) {
             try {
               const supporterPct = Number(acc.supporter_commission_pct || 2);
               const agentPct = Number(acc.agent_commission_pct || 5);
