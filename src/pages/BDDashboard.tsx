@@ -958,13 +958,13 @@ const BDDashboard: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground">عمولة {bd.user_commission_pct || 2}%</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                   <div className="text-left">
                     <p className="text-sm font-black text-emerald-400" dir="ltr">
-                      ${(Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0) / 7500).toFixed(2)}
+                      ${supporterCommissionUsd.toFixed(2)}
                     </p>
                     <p className="text-[9px] text-muted-foreground">
-                      {Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0).toLocaleString()} كوينز
+                      {supporterCommissionCoins.toLocaleString()} كوينز
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-muted-foreground text-lg">chevron_left</span>
@@ -973,9 +973,8 @@ const BDDashboard: React.FC = () => {
 
               {/* Show first 2 supporters inline */}
               {supporters.slice(0, 2).map((s: any) => {
-                const live = supporterSalaries[s.member_uuid];
-                const charges = live?.charges || 0;
-                const commission = live?.commission || 0;
+                const charges = Number(supporterSalaries[s.member_uuid]?.charges || s.monthly_charges || s.total_charges || 0);
+                const commissionCoins = getSupporterCommissionCoins(s);
                 return (
                   <div key={s.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
@@ -993,8 +992,8 @@ const BDDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-black text-emerald-400">{commission.toLocaleString()} ك</p>
-                      <p className="text-[9px] text-muted-foreground">(${(commission / 7500).toFixed(2)})</p>
+                      <p className="text-xs font-black text-emerald-400">{commissionCoins.toLocaleString()} ك</p>
+                      <p className="text-[9px] text-muted-foreground">(${(commissionCoins / 7500).toFixed(2)})</p>
                     </div>
                   </div>
                 );
