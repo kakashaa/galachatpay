@@ -143,7 +143,7 @@ const AdminWorksPage: React.FC = () => {
     setLoading(false);
   }, [adminCall]);
 
-  const [memberSalaryLoading, setMemberSalaryLoading] = useState(false);
+  
   const [dynamicAccountEarnings, setDynamicAccountEarnings] = useState<number>(0);
   const [supporterDynamicEarnings, setSupporterDynamicEarnings] = useState<number>(0);
   const [agentDynamicEarnings, setAgentDynamicEarnings] = useState<number>(0);
