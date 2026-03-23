@@ -566,23 +566,33 @@ const AdminWorksPage: React.FC = () => {
               const totalEarnings = accounts.reduce((s: number, a: any) => s + Number(a.dynamic_earnings ?? a.total_earnings_usd ?? 0), 0);
               const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance_usd || 0), 0);
               const activeCount = accounts.filter((a: any) => a.status === "active").length;
+              const totalSupporters = accounts.reduce((s: number, a: any) => s + Number(a.supporter_count ?? 0), 0);
+              const totalAgents = accounts.reduce((s: number, a: any) => s + Number(a.agent_count ?? 0), 0);
               return (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
-                    <p className="text-lg font-black text-emerald-400">${totalEarnings.toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground">إجمالي الأرباح</p>
+                <div className="space-y-2 mb-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-emerald-400">${totalEarnings.toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground">إجمالي الأرباح</p>
+                    </div>
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-blue-400">{activeCount}</p>
+                      <p className="text-[10px] text-muted-foreground">حسابات نشطة</p>
+                    </div>
                   </div>
-                  <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-center">
-                    <p className="text-lg font-black text-destructive">${(totalEarnings - totalBalance).toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground">المسحوبات</p>
-                  </div>
-                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
-                    <p className="text-lg font-black text-purple-400">${totalBalance.toFixed(2)}</p>
-                    <p className="text-[10px] text-muted-foreground">الصافي</p>
-                  </div>
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
-                    <p className="text-lg font-black text-blue-400">{activeCount}</p>
-                    <p className="text-[10px] text-muted-foreground">حسابات نشطة</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
+                      <p className="text-lg font-black text-purple-400">${totalBalance.toFixed(2)}</p>
+                      <p className="text-[10px] text-muted-foreground">الأرصدة</p>
+                    </div>
+                    <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-3 text-center">
+                      <p className="text-lg font-black text-cyan-400">{totalSupporters}</p>
+                      <p className="text-[10px] text-muted-foreground">داعمين</p>
+                    </div>
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-center">
+                      <p className="text-lg font-black text-amber-400">{totalAgents}</p>
+                      <p className="text-[10px] text-muted-foreground">وكلاء</p>
+                    </div>
                   </div>
                 </div>
               );
@@ -590,69 +600,87 @@ const AdminWorksPage: React.FC = () => {
             {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
               <div className="space-y-3">
                 {accounts.length === 0 && <p className="text-center text-muted-foreground text-sm py-10">لا توجد حسابات</p>}
-                {accounts.map(a => (
-                  <div key={a.id} className="bg-card border border-border rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-sm font-bold">{a.user_name || "—"}</span>
-                        <p className="text-[10px] text-muted-foreground font-mono">UUID: {a.user_uuid}</p>
+                {accounts.map(a => {
+                  const earnings = Number(a.dynamic_earnings ?? a.total_earnings_usd ?? 0);
+                  const balance = Number(a.available_balance || a.balance_usd || 0);
+                  const supCount = Number(a.supporter_count ?? 0);
+                  const agCount = Number(a.agent_count ?? 0);
+                  const supPct = Number(a.supporter_pct ?? a.supporter_commission_pct ?? 0);
+                  const agPct = Number(a.agent_pct ?? a.agent_commission_pct ?? 0);
+                  return (
+                    <div key={a.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between p-3 border-b border-border/50">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-black truncate">{a.user_name || "—"}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold">{a.works_code}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground font-mono mt-0.5">UUID: {a.user_uuid}</p>
+                        </div>
+                        <div className="text-left shrink-0">
+                          <p className="text-xl font-black text-emerald-400">${earnings.toFixed(2)}</p>
+                          <p className="text-[9px] text-muted-foreground text-center">أرباح الشهر</p>
+                        </div>
                       </div>
-                      <span className="text-xs font-mono text-emerald-400">{a.works_code}</span>
+
+                      {/* Stats Row */}
+                      <div className="grid grid-cols-4 divide-x divide-border/30 rtl:divide-x-reverse">
+                        <div className="p-2.5 text-center">
+                          <p className="text-base font-black text-cyan-400">{supCount}</p>
+                          <p className="text-[9px] text-muted-foreground">داعمين</p>
+                          <p className="text-[8px] text-cyan-400/60">{supPct}%</p>
+                        </div>
+                        <div className="p-2.5 text-center">
+                          <p className="text-base font-black text-amber-400">{agCount}</p>
+                          <p className="text-[9px] text-muted-foreground">وكلاء</p>
+                          <p className="text-[8px] text-amber-400/60">{agPct}%</p>
+                        </div>
+                        <div className="p-2.5 text-center">
+                          <p className="text-base font-black text-purple-400">${balance.toFixed(2)}</p>
+                          <p className="text-[9px] text-muted-foreground">الرصيد</p>
+                        </div>
+                        <div className="p-2.5 text-center">
+                          <Badge variant={a.status === "active" ? "default" : "destructive"} className="text-[8px] px-1.5">
+                            {a.status === "active" ? "نشط" : "معلق"}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-1.5 p-2 border-t border-border/30">
+                        <button onClick={async () => {
+                          setSelectedWorksId(a.id);
+                          setTab("members");
+                          await fetchMembers(a.id);
+                        }}
+                          className="flex-1 bg-primary/10 text-primary py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1">
+                          <Users className="w-3.5 h-3.5" /> الأعضاء
+                        </button>
+                        <button onClick={() => updateAccount(a.id, { status: a.status === "active" ? "suspended" : "active" })}
+                          className={`px-3 py-2 rounded-xl text-[11px] font-bold ${a.status === "active" ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-400"}`}>
+                          {a.status === "active" ? "تعليق" : "تفعيل"}
+                        </button>
+                        {isOwner && (
+                          <>
+                            <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
+                              className="px-2.5 py-2 rounded-xl text-[11px] font-bold bg-destructive/10 text-destructive">
+                              <Lock className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => {
+                              setEditFinAccount(a);
+                              setEditBalanceUsd(String(Number(a.balance_usd || 0)));
+                              setEditTotalEarnings(String(Number(a.total_earnings_usd || 0)));
+                            }}
+                              className="px-2.5 py-2 rounded-xl text-[11px] font-bold bg-amber-500/10 text-amber-400">
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="rounded-xl bg-primary/10 border border-primary/20 p-2 text-center">
-                      <p className="text-[10px] text-muted-foreground">إجمالي الربح الشهري (داعمين + وكلاء)</p>
-                      <p className="text-lg font-black text-foreground">${Number(a.dynamic_earnings ?? a.total_earnings_usd ?? 0).toFixed(2)}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-center text-[10px]">
-                      <div className="rounded-lg bg-muted/40 border border-border p-2">
-                        <p className="font-bold text-foreground">{a.user_uuid || "—"}</p>
-                        <p className="text-muted-foreground">ID البيدي</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/40 border border-border p-2">
-                        <p className="font-bold text-foreground">${Number(a.available_balance || a.balance_usd || 0).toFixed(2)}</p>
-                        <p className="text-muted-foreground">الرصيد المتاح للسحب</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/40 border border-border p-2">
-                        <p className="font-bold text-foreground">{Number(a.supporter_count ?? 0)}</p>
-                        <p className="text-muted-foreground">الداعمين • نسبة {Number(a.supporter_pct ?? a.supporter_commission_pct ?? 0)}%</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/40 border border-border p-2">
-                        <p className="font-bold text-foreground">{Number(a.agent_count ?? 0)}</p>
-                        <p className="text-muted-foreground">الوكلاء • نسبة {Number(a.agent_pct ?? a.agent_commission_pct ?? 0)}%</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={async () => {
-                        setSelectedWorksId(a.id);
-                        setTab("members");
-                        await fetchMembers(a.id);
-                      }}
-                        className="flex-1 bg-muted py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
-                        <Users className="w-3 h-3" /> الأعضاء
-                      </button>
-                      <button onClick={() => updateAccount(a.id, { status: a.status === "active" ? "suspended" : "active" })}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold ${a.status === "active" ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-400"}`}>
-                        {a.status === "active" ? "تعليق" : "تفعيل"}
-                      </button>
-                      {isOwner && (
-                        <>
-                          <button onClick={() => { setFreezeTarget({ type: "bd", id: a.id, name: a.user_name || a.works_code }); setShowFreezeDialog(true); }}
-                            className="px-3 py-2 rounded-xl text-xs font-bold bg-destructive/10 text-destructive flex items-center gap-1">
-                            <Lock className="w-3 h-3" />
-                          </button>
-                          <button onClick={() => {
-                            setEditFinAccount(a);
-                            setEditBalanceUsd(String(Number(a.balance_usd || 0)));
-                            setEditTotalEarnings(String(Number(a.total_earnings_usd || 0)));
-                          }}
-                            className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-400 flex items-center gap-1">
-                            <Pencil className="w-3 h-3" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>
