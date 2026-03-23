@@ -1121,7 +1121,7 @@ Deno.serve(async (req) => {
       // ===== WORKS SYSTEM (BD) =====
       case "works_list_requests": {
         const { data: reqs, error } = await supabase
-          .from("bd_registration_requests").select("*").order("created_at", { ascending: false });
+          .from("works_requests").select("*").order("created_at", { ascending: false });
         if (error) throw error;
         result = reqs;
         break;
@@ -1129,7 +1129,7 @@ Deno.serve(async (req) => {
 
       case "works_approve_request": {
         const { id } = data;
-        const req2 = await supabase.from("bd_registration_requests").select("*").eq("id", id).single();
+        const req2 = await supabase.from("works_requests").select("*").eq("id", id).single();
         if (!req2.data) throw new Error("Request not found");
         const referralCode = "WK-" + Math.random().toString(36).substr(2, 6).toUpperCase();
 
@@ -1159,7 +1159,7 @@ Deno.serve(async (req) => {
           });
         }
 
-        await supabase.from("bd_registration_requests").update({ status: "approved" }).eq("id", id);
+        await supabase.from("works_requests").update({ status: "approved" }).eq("id", id);
         await supabase.from("notifications").insert({
           user_uuid: req2.data.user_uuid,
           title: "تم قبول طلب Works ✅",
@@ -1172,8 +1172,8 @@ Deno.serve(async (req) => {
 
       case "works_reject_request": {
         const { id, reason } = data;
-        await supabase.from("bd_registration_requests").update({ status: "rejected", admin_note: reason }).eq("id", id);
-        const reqR = await supabase.from("bd_registration_requests").select("user_uuid").eq("id", id).single();
+        await supabase.from("works_requests").update({ status: "rejected", admin_note: reason }).eq("id", id);
+        const reqR = await supabase.from("works_requests").select("user_uuid").eq("id", id).single();
         if (reqR.data) {
           await supabase.from("notifications").insert({
             user_uuid: reqR.data.user_uuid,

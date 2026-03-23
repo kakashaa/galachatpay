@@ -24,6 +24,9 @@ interface WithdrawStatus {
     total_unpaid: number;
     total_cut: number;
     monthly_cut?: number;
+    over_withdrawn?: boolean;
+    deficit?: number;
+    note_ar?: string;
     available: number;
     cash_used_this_month: boolean;
   };
@@ -78,7 +81,8 @@ const SalaryHome: React.FC = () => {
 
   // Use monthly_cut (new) with fallback to total_cut (old)
   const hostCut = host ? (host.monthly_cut ?? host.total_cut) : 0;
-  const hostCutInvalid = host ? (hostCut > host.current_month) : false;
+  const hostOverWithdrawn = host?.over_withdrawn === true;
+  const hostCutInvalid = host ? (hostOverWithdrawn || hostCut > host.current_month) : false;
   
   const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : hostCut)) : 0;
   
@@ -227,7 +231,9 @@ const SalaryHome: React.FC = () => {
                       </div>
                     </div>
                     {hostCutInvalid && (
-                      <p className="text-[10px] text-amber-400 text-center">⚠️ بيانات الخصم تحت المراجعة</p>
+                      <p className="text-[10px] text-amber-400 text-center">
+                        {host?.note_ar || (host?.deficit ? `⚠️ عجز بمقدار $${host.deficit.toFixed(2)}` : "⚠️ بيانات الخصم تحت المراجعة")}
+                      </p>
                     )}
                   </>
                 )}
