@@ -445,9 +445,7 @@ const WorksPage: React.FC = () => {
 
   const supporterCount = members.filter(m => m.member_type === "supporter").length;
   const agentCount = members.filter(m => m.member_type === "agent").length;
-  const storedBalance = Number(myWorks?.balance_usd || 0);
-  // Show the higher of stored balance or current month earnings (since balance_usd may not be synced yet)
-  const balance = Math.max(storedBalance, monthEarnings / COINS_PER_USD);
+  const balance = Number(myWorks?.balance_usd || 0);
   const storedTotalEarningsUsd = Number(myWorks?.total_earnings_usd || 0);
   const monthEarningsUsd = monthEarnings / COINS_PER_USD;
   const totalEarningsUsd = Math.max(storedTotalEarningsUsd, monthEarningsUsd);
