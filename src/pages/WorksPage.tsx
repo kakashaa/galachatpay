@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
