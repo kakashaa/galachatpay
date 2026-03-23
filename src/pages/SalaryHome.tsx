@@ -97,12 +97,13 @@ const SalaryHome: React.FC = () => {
   const hostOverWithdrawn = host?.over_withdrawn === true;
   const hostCutInvalid = host ? (hostOverWithdrawn || hostCut > host.current_month) : false;
   
-  const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : hostCut)) : 0;
+  // Use API available if provided, otherwise calculate
+  const hostAvailable = host ? (host.available ?? Math.max(0, host.current_month - (hostCutInvalid ? 0 : hostCut))) : 0;
   
   // Use monthly fields (new) with fallback to old fields
   const agencyPoolTotal = agency ? (agency.monthly_pool_total ?? agency.pool_total) : 0;
   const agencyPoolCut = agency ? (agency.monthly_pool_cut ?? agency.pool_cut) : 0;
-  const agencyAvailable = Math.max(0, agencyPoolTotal - agencyPoolCut);
+  const agencyAvailable = agency ? (agency.pool_available ?? Math.max(0, agencyPoolTotal - agencyPoolCut)) : 0;
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
 
   const options = [
@@ -194,158 +195,165 @@ const SalaryHome: React.FC = () => {
 
         {!error && status && (
           <>
-            {/* Total available */}
+            {/* ══════ Total Available - Hero Card ══════ */}
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="glass-card p-5 text-center space-y-2"
+              className="rounded-3xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/10 to-transparent p-6 text-center space-y-1"
             >
-              <p className="text-xs text-muted-foreground">إجمالي المتاح للسحب</p>
+              <p className="text-xs text-muted-foreground">المبلغ المتاح للسحب</p>
               {totalAvailable > 0 ? (
                 <>
                   <div className="flex items-center justify-center gap-2">
-                    <DollarSign className="w-7 h-7 text-emerald-400" />
-                    <p className="text-4xl font-black text-foreground tabular-nums" dir="ltr">
+                    <DollarSign className="w-8 h-8 text-emerald-400" />
+                    <p className="text-5xl font-black text-emerald-400 tabular-nums" dir="ltr">
                       {totalAvailable.toFixed(2)}
                     </p>
                   </div>
-                  <p className="text-sm text-muted-foreground tabular-nums">
+                  <p className="text-sm text-emerald-400/70 tabular-nums font-semibold">
                     {(totalAvailable * USD_TO_COINS).toLocaleString()} كوينز
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground py-2">لا يوجد رصيد متاح</p>
+                <p className="text-sm text-muted-foreground py-3">لا يوجد رصيد متاح</p>
               )}
             </motion.div>
 
-            {/* Two salary cards */}
-            <div className="grid grid-cols-1 gap-3">
-              {/* Host Salary Card */}
+            {/* ══════ Two Side-by-Side Summary Cards ══════ */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Host Summary */}
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.05 }}
-                className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-3"
+                className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-center space-y-2"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-bold text-foreground">راتب المضيف</span>
-                  </div>
-                  {host?.is_valid ? (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      <CheckCircle className="w-3 h-3" /> صحيح
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
-                      <XCircle className="w-3 h-3" /> غير متطابق
-                    </span>
-                  )}
-                </div>
-                {host?.current_month === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">لا يوجد راتب هذا الشهر</p>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">الراتب</p>
-                        <p className="text-sm font-black text-foreground" dir="ltr">${host?.current_month?.toFixed(2) || "0.00"}</p>
-                      </div>
-                      <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">الخصم</p>
-                        {hostCutInvalid ? (
-                          <p className="text-[10px] font-bold text-amber-400">⚠️ تحت المراجعة</p>
-                        ) : (
-                          <p className="text-sm font-black text-red-400" dir="ltr">${hostCut.toFixed(2)}</p>
-                        )}
-                      </div>
-                      <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">المتبقي</p>
-                        <p className="text-sm font-black text-emerald-400" dir="ltr">${hostAvailable.toFixed(2)}</p>
-                      </div>
-                    </div>
-                    {hostAvailable > 0 && (
-                      <p className="text-[11px] text-emerald-400 font-bold text-center">
-                        💰 عمولة المضيف: <span dir="ltr">${hostAvailable.toFixed(2)}</span> — {(hostAvailable * USD_TO_COINS).toLocaleString()} كوينز
-                      </p>
-                    )}
-                    {hostCutInvalid && (
-                      <p className="text-[10px] text-amber-400 text-center">
-                        {host?.note_ar || (host?.deficit ? `⚠️ عجز بمقدار $${host.deficit.toFixed(2)}` : "⚠️ بيانات الخصم تحت المراجعة")}
-                      </p>
-                    )}
-                  </>
-                )}
-                {host?.cash_used_this_month && (
-                  <p className="text-[10px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
-                )}
+                <Wallet className="w-6 h-6 text-emerald-400 mx-auto" />
+                <p className="text-[11px] text-muted-foreground font-medium">عمولة المضيف</p>
+                <p className="text-xl font-black text-emerald-400 tabular-nums" dir="ltr">
+                  ${hostAvailable.toFixed(2)}
+                </p>
+                <p className="text-[10px] text-emerald-400/60 tabular-nums font-semibold">
+                  {(hostAvailable * USD_TO_COINS).toLocaleString()} كوينز
+                </p>
+                {host?.is_valid ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    <CheckCircle className="w-2.5 h-2.5" /> صحيح
+                  </span>
+                ) : host ? (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">
+                    <XCircle className="w-2.5 h-2.5" /> غير متطابق
+                  </span>
+                ) : null}
               </motion.div>
 
-              {/* Agency Salary Card */}
+              {/* Agency Summary */}
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className={`rounded-2xl border p-4 space-y-3 ${
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 }}
+                className={`rounded-2xl border p-4 text-center space-y-2 ${
                   isAgencyOwner
                     ? "border-violet-500/20 bg-violet-500/5"
-                    : "border-border/20 bg-muted/5"
+                    : "border-border/10 bg-muted/5"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Building2 className={`w-4 h-4 ${isAgencyOwner ? "text-violet-400" : "text-muted-foreground"}`} />
-                    <span className="text-sm font-bold text-foreground">راتب الوكالة</span>
-                  </div>
-                  {!isAgencyOwner && (
-                    <span className="text-[10px] text-muted-foreground bg-muted/20 px-2 py-0.5 rounded-full">
-                      ليس مالك وكالة
-                    </span>
-                  )}
-                  {isAgencyOwner && agency?.can_withdraw && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      <CheckCircle className="w-3 h-3" /> متاح
-                    </span>
-                  )}
-                </div>
+                <Building2 className={`w-6 h-6 mx-auto ${isAgencyOwner ? "text-violet-400" : "text-muted-foreground/40"}`} />
+                <p className="text-[11px] text-muted-foreground font-medium">عمولة الوكالة</p>
                 {isAgencyOwner ? (
                   <>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">إجمالي رواتب الوكالة</p>
-                        <p className="text-sm font-black text-foreground" dir="ltr">${agencyPoolTotal.toFixed(2)}</p>
-                      </div>
-                      <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">المسحوبات</p>
-                        <p className="text-sm font-black text-red-400" dir="ltr">${agencyPoolCut.toFixed(2)}</p>
-                      </div>
-                      <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">المتبقي</p>
-                        <p className="text-sm font-black text-violet-400" dir="ltr">${agencyAvailable.toFixed(2)}</p>
-                      </div>
-                    </div>
-                    {agencyAvailable > 0 && (
-                      <p className="text-[11px] text-emerald-400 font-bold text-center">
-                        💰 عمولة الوكالة: <span dir="ltr">${agencyAvailable.toFixed(2)}</span> — {(agencyAvailable * USD_TO_COINS).toLocaleString()} كوينز
-                      </p>
-                    )}
-                    {(agency?.user_share_this_month || 0) > 0 && (
-                      <div className="text-center">
-                        <p className="text-[10px] text-muted-foreground">
-                          حصتك هذا الشهر: <span className="font-bold text-foreground" dir="ltr">${agency?.user_share_this_month?.toFixed(2)}</span>
-                        </p>
-                      </div>
-                    )}
-                    {agency?.cash_used_this_month && (
-                      <p className="text-[10px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
+                    <p className="text-xl font-black text-emerald-400 tabular-nums" dir="ltr">
+                      ${agencyAvailable.toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-emerald-400/60 tabular-nums font-semibold">
+                      {(agencyAvailable * USD_TO_COINS).toLocaleString()} كوينز
+                    </p>
+                    {agency?.can_withdraw && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                        <CheckCircle className="w-2.5 h-2.5" /> متاح
+                      </span>
                     )}
                   </>
                 ) : (
-                  <p className="text-xs text-muted-foreground text-center py-3">هذا القسم متاح فقط لمالكي الوكالات</p>
+                  <p className="text-[10px] text-muted-foreground/50 py-2">ليس مالك وكالة</p>
                 )}
               </motion.div>
             </div>
 
+            {/* ══════ Detailed Breakdown (collapsible-style) ══════ */}
+            <div className="space-y-2">
+              {/* Host Details */}
+              {host && host.current_month > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="rounded-2xl border border-border/10 bg-card/30 p-3 space-y-2"
+                >
+                  <p className="text-[10px] text-muted-foreground font-semibold">تفاصيل راتب المضيف</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-xl bg-background/40 p-2">
+                      <p className="text-[8px] text-muted-foreground">الراتب</p>
+                      <p className="text-xs font-black text-foreground tabular-nums" dir="ltr">${host.current_month.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-xl bg-background/40 p-2">
+                      <p className="text-[8px] text-muted-foreground">الخصم</p>
+                      {hostCutInvalid ? (
+                        <p className="text-[9px] font-bold text-amber-400">⚠️ مراجعة</p>
+                      ) : (
+                        <p className="text-xs font-black text-red-400 tabular-nums" dir="ltr">${hostCut.toFixed(2)}</p>
+                      )}
+                    </div>
+                    <div className="rounded-xl bg-background/40 p-2">
+                      <p className="text-[8px] text-muted-foreground">المتبقي</p>
+                      <p className="text-xs font-black text-emerald-400 tabular-nums" dir="ltr">${hostAvailable.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  {hostCutInvalid && (
+                    <p className="text-[9px] text-amber-400 text-center">
+                      {host.note_ar || (host.deficit ? `⚠️ عجز $${host.deficit.toFixed(2)}` : "⚠️ تحت المراجعة")}
+                    </p>
+                  )}
+                  {host.cash_used_this_month && (
+                    <p className="text-[9px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Agency Details */}
+              {isAgencyOwner && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12 }}
+                  className="rounded-2xl border border-border/10 bg-card/30 p-3 space-y-2"
+                >
+                  <p className="text-[10px] text-muted-foreground font-semibold">تفاصيل راتب الوكالة</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-xl bg-background/40 p-2">
+                      <p className="text-[8px] text-muted-foreground">الإجمالي</p>
+                      <p className="text-xs font-black text-foreground tabular-nums" dir="ltr">${agencyPoolTotal.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-xl bg-background/40 p-2">
+                      <p className="text-[8px] text-muted-foreground">المسحوبات</p>
+                      <p className="text-xs font-black text-red-400 tabular-nums" dir="ltr">${agencyPoolCut.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-xl bg-background/40 p-2">
+                      <p className="text-[8px] text-muted-foreground">المتبقي</p>
+                      <p className="text-xs font-black text-emerald-400 tabular-nums" dir="ltr">${agencyAvailable.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  {(agency?.user_share_this_month || 0) > 0 && (
+                    <p className="text-[9px] text-muted-foreground text-center">
+                      حصتك: <span className="font-bold text-foreground" dir="ltr">${agency?.user_share_this_month?.toFixed(2)}</span>
+                    </p>
+                  )}
+                  {agency?.cash_used_this_month && (
+                    <p className="text-[9px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
+                  )}
+                </motion.div>
+              )}
+            </div>
             {/* 4 options grid */}
             <div className="grid grid-cols-2 gap-3">
               {options.map((opt, i) => {
