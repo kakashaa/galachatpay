@@ -535,6 +535,32 @@ const AdminWorksPage: React.FC = () => {
 
           {/* Accounts Tab */}
           <TabsContent value="accounts">
+            {/* Stats Cards */}
+            {!loading && accounts.length > 0 && (() => {
+              const totalEarnings = accounts.reduce((s: number, a: any) => s + Number(a.total_earnings_usd || 0), 0);
+              const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance_usd || 0), 0);
+              const activeCount = accounts.filter((a: any) => a.status === "active").length;
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-emerald-400">${totalEarnings.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted-foreground">إجمالي الأرباح</p>
+                  </div>
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-destructive">${(totalEarnings - totalBalance).toFixed(2)}</p>
+                    <p className="text-[10px] text-muted-foreground">المسحوبات</p>
+                  </div>
+                  <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-purple-400">${totalBalance.toFixed(2)}</p>
+                    <p className="text-[10px] text-muted-foreground">الصافي</p>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
+                    <p className="text-lg font-black text-blue-400">{activeCount}</p>
+                    <p className="text-[10px] text-muted-foreground">حسابات نشطة</p>
+                  </div>
+                </div>
+              );
+            })()}
             {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
               <div className="space-y-3">
                 {accounts.length === 0 && <p className="text-center text-muted-foreground text-sm py-10">لا توجد حسابات</p>}
@@ -554,7 +580,7 @@ const AdminWorksPage: React.FC = () => {
                       <div><p className="font-bold text-accent-foreground">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setSelectedWorksId(a.user_uuid || a.bd_uuid); fetchMembers(a.user_uuid || a.bd_uuid); setTab("members"); }}
+                      <button onClick={() => { setSelectedWorksId(a.id); fetchMembers(a.id); setTab("members"); }}
                         className="flex-1 bg-muted py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                         <Users className="w-3 h-3" /> الأعضاء
                       </button>
