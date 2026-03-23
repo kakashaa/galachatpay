@@ -263,10 +263,55 @@ const BDDashboard: React.FC = () => {
   if (!data?.bd) return null;
   const { bd, supporters, agents } = data;
 
-  // Compute live salary commission total — supporters are in coins, agents are in USD
-  const supporterCommissionCoins = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0);
+  const normalizeUsd = (value: unknown) => {
+    const num = Number(value || 0);
+    if (!Number.isFinite(num) || num <= 0) return 0;
+    return num > 1000 ? num / 7500 : num;
+  };
+
+  const getSupporterChargesCoins = (supporter: any) => {
+    const liveCharges = Number(supporterSalaries[supporter.member_uuid]?.charges || 0);
+    if (liveCharges > 0) return liveCharges;
+    return Number(supporter.monthly_charges || supporter.total_charges || 0);
+  };
+
+  const getSupporterCommissionCoins = (supporter: any) => {
+    const liveCommissionCoins = Number(supporterSalaries[supporter.member_uuid]?.commission || 0);
+    if (liveCommissionCoins > 0) return liveCommissionCoins;
+
+    const monthlyCoins = Number(supporter.current_month_commission || 0);
+    if (monthlyCoins > 0) return monthlyCoins;
+
+    const fallbackUsd = normalizeUsd(
+      supporter.current_month_commission_usd
+      ?? supporter.total_commission_usd
+      ?? supporter.total_commission
+    );
+    return Math.round(fallbackUsd * 7500);
+  };
+
+  const getAgentSalaryUsd = (agent: any) => {
+    const liveSalary = Number(agentSalaries[agent.member_uuid]?.salary || 0);
+    if (liveSalary > 0) return liveSalary;
+    return normalizeUsd(agent.current_month_salary_usd ?? agent.total_salary_usd ?? agent.monthly_charges);
+  };
+
+  const getAgentCommissionUsd = (agent: any) => {
+    const liveCommissionUsd = Number(agentSalaries[agent.member_uuid]?.commission || 0);
+    if (liveCommissionUsd > 0) return liveCommissionUsd;
+
+    return normalizeUsd(
+      agent.current_month_commission_usd
+      ?? agent.total_commission_usd
+      ?? agent.current_month_commission
+      ?? agent.total_commission
+    );
+  };
+
+  // Compute commissions with reliable fallback from members table when external salary API is empty/slow
+  const supporterCommissionCoins = supporters.reduce((sum: number, s: any) => sum + getSupporterCommissionCoins(s), 0);
   const supporterCommissionUsd = supporterCommissionCoins / 7500;
-  const agentCommissionUsd = Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
+  const agentCommissionUsd = agents.reduce((sum: number, a: any) => sum + getAgentCommissionUsd(a), 0);
   const liveSalaryTotalUsd = supporterCommissionUsd + agentCommissionUsd;
   const liveSalaryTotal = Math.floor(liveSalaryTotalUsd * 7500);
 
