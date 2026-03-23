@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowRight, Crown, Gift, Star, Trophy, ArrowUp, Clock, Users,
   Check, Gem, Sparkles, Frame, UserCheck, Coins, Image, BadgeCheck,
-  X, Search, Loader2, AlertTriangle, ChevronDown, ChevronUp, Send
+  X, Search, Loader2, AlertTriangle, ChevronDown, ChevronUp, Send,
+  TrendingUp, Target, Award, Zap, BarChart3, Medal
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -80,6 +81,8 @@ const SupporterBenefits: React.FC = () => {
   const [giftUserName, setGiftUserName] = useState("");
   const [lookingUp, setLookingUp] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [apiMonthlyCharges, setApiMonthlyCharges] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     available: true, used: false, expired: false, tiers: false, howto: false, leaderboard: false,
   });
@@ -93,72 +96,70 @@ const SupporterBenefits: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: tiersData } = await supabase
-        .from("supporter_tiers")
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-      setTiers((tiersData || []) as any);
+      // Parallel: tiers + rewards + charges
+      const tiersPromise = supabase.from("supporter_tiers").select("*").eq("is_active", true).order("sort_order", { ascending: true });
 
+      const rewardsPromise = user?.uuid
+        ? supabase.from("supporter_rewards").select("*").eq("uuid", user.uuid).order("created_at", { ascending: false }).limit(200)
+        : Promise.resolve({ data: [] });
+
+      const currentChargePromise = user?.uuid
+        ? supabase.from("supporter_monthly_charges").select("*").eq("uuid", user.uuid).eq("month", currentMonth).maybeSingle()
+        : Promise.resolve({ data: null });
+
+      const prevChargePromise = user?.uuid
+        ? supabase.from("supporter_monthly_charges").select("*").eq("uuid", user.uuid).eq("month", prevMonth).maybeSingle()
+        : Promise.resolve({ data: null });
+
+      const [tiersRes, rewardsRes, currentChargeRes, prevChargeRes] = await Promise.all([
+        tiersPromise, rewardsPromise, currentChargePromise, prevChargePromise,
+      ]);
+
+      setTiers((tiersRes.data || []) as any);
+      setRewards((rewardsRes.data || []) as any);
+      if (currentChargeRes.data) setMonthlyCoins((currentChargeRes.data as any).total_coins || 0);
+      if (prevChargeRes.data) setPrevMonthCoins((prevChargeRes.data as any).total_coins || 0);
+
+      // Background: API calls for fresh data
       if (user?.uuid) {
-        // All rewards for this user
-        const { data: rewardsData } = await supabase
-          .from("supporter_rewards")
-          .select("*")
-          .eq("uuid", user.uuid)
-          .order("created_at", { ascending: false })
-          .limit(100);
-        setRewards((rewardsData || []) as any);
+        // Fresh monthly charges from wares-api
+        galaApi.userMonthlyCharges(user.uuid, currentMonth).then(res => {
+          const charges = res?.data?.total_charges || res?.total_charges || 0;
+          if (charges > 0) {
+            setMonthlyCoins(prev => Math.max(prev, charges));
+            setApiMonthlyCharges(charges);
+          }
+        }).catch(() => {});
 
-        // Current month charges
-        const { data: chargeData } = await supabase
-          .from("supporter_monthly_charges")
-          .select("*")
-          .eq("uuid", user.uuid)
-          .eq("month", currentMonth)
-          .maybeSingle();
-        if (chargeData) setMonthlyCoins((chargeData as any).total_coins || 0);
+        // User diamonds (monthly_diamond_received)
+        galaApi.userDiamonds(user.uuid).then(res => {
+          const diamonds = res?.monthly_diamond_received || res?.data?.monthly_diamond_received || 0;
+          if (diamonds > 0) setMonthlyCoins(prev => Math.max(prev, diamonds));
+        }).catch(() => {});
 
-        // Previous month charges
-        const { data: prevData } = await supabase
-          .from("supporter_monthly_charges")
-          .select("*")
-          .eq("uuid", user.uuid)
-          .eq("month", prevMonth)
-          .maybeSingle();
-        if (prevData) setPrevMonthCoins((prevData as any).total_coins || 0);
+        // Ranking among top chargers
+        galaApi.getRanking(3, 2).then(res => {
+          const topList = res?.data?.top || [];
+          const otherList = res?.data?.other || [];
+          const allRanked = [...topList, ...otherList];
+          const myRank = allRanked.findIndex((u: any) => String(u.id) === String(user.uuid) || String(u.uuid) === String(user.uuid));
+          if (myRank >= 0) setUserRank(myRank + 1);
 
-        // Fetch fresh from API
-        try {
-          const apiData = await galaApi.askBot(`كم شحن UUID ${user.uuid} هالشهر`);
-          const coins = apiData?.total_coins || apiData?.coins || 0;
-          if (coins > 0) setMonthlyCoins(coins);
-        } catch { /* cached */ }
+          // Also use as leaderboard
+          if (topList.length > 0) {
+            setLeaderboard(topList.slice(0, 10).map((u: any) => ({
+              name: u.name || u.nickname || `UUID ${u.id}`,
+              uuid: u.id || u.uuid,
+              total_coins: u.value || u.num || u.coins || 0,
+            })));
+          }
+        }).catch(() => {});
       }
-
-      // Leaderboard
-      try {
-        const lbData = await galaApi.askBot("أعلى الداعمين هالشهر");
-        if (Array.isArray(lbData)) setLeaderboard(lbData.slice(0, 10));
-        else if (lbData?.users) setLeaderboard(lbData.users.slice(0, 10));
-      } catch { /* silent */ }
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [user?.uuid, currentMonth, prevMonth]);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  // Refresh leaderboard every 5 min
-  useEffect(() => {
-    const iv = setInterval(async () => {
-      try {
-        const d = await galaApi.askBot("أعلى الداعمين هالشهر");
-        if (Array.isArray(d)) setLeaderboard(d.slice(0, 10));
-        else if (d?.users) setLeaderboard(d.users.slice(0, 10));
-      } catch {}
-    }, 5 * 60 * 1000);
-    return () => clearInterval(iv);
-  }, []);
 
   // Tier calculations
   const currentTier = tiers.filter(t => monthlyCoins >= t.min_coins).pop();
@@ -175,11 +176,20 @@ const SupporterBenefits: React.FC = () => {
   const availableRewards = rewards.filter(r => r.status === "available");
   const usedRewards = rewards.filter(r => r.status === "used" || r.status === "gifted");
   const expiredRewards = rewards.filter(r => r.status === "expired");
+  const prevMonthRewards = rewards.filter(r => r.month === prevMonth);
 
   // Use validity warning
   const useExpiryDays = availableRewards.length > 0 && availableRewards[0]?.use_expires_at
     ? daysUntil(availableRewards[0].use_expires_at)
     : null;
+
+  // User status badge
+  const getUserStatus = () => {
+    if (monthlyCoins > 1000000) return { label: "داعم قوي 🔥", color: "#ffd700", bg: "rgba(255,215,0,0.12)" };
+    if (monthlyCoins >= 100000) return { label: "داعم", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" };
+    return { label: "جديد", color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
+  };
+  const userStatus = getUserStatus();
 
   const useReward = async (reward: Reward, targetUuid?: string) => {
     if (processing) return;
@@ -291,95 +301,319 @@ const SupporterBenefits: React.FC = () => {
         </div>
 
         <div className="px-4 py-4 space-y-4">
-          {/* User Card */}
+
+          {/* ═══════════ القسم 1 — معلومات المستخدم ═══════════ */}
           {user && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl p-4 text-center bg-card" style={{ border: "1px solid hsl(var(--border))" }}>
-              <div className="w-16 h-16 mx-auto rounded-full overflow-hidden mb-2" style={{ border: `2px solid ${currentTier?.color || "hsl(var(--border))"}` }}>
-                {user.profile?.image ? (
-                  <img src={user.profile.image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground bg-muted">
-                    {(user.name || "?").charAt(0)}
+              className="rounded-2xl overflow-hidden" style={{ border: "1px solid hsl(var(--border))" }}>
+              {/* User Header with gradient */}
+              <div className="relative p-4 pb-3" style={{
+                background: `linear-gradient(135deg, ${currentTier?.color || "hsl(var(--primary))"}15, ${currentTier?.color || "hsl(var(--primary))"}05)`,
+              }}>
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full overflow-hidden ring-2" style={{ ringColor: currentTier?.color || "hsl(var(--border))" }}>
+                      {user.profile?.image ? (
+                        <img src={user.profile.image} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-lg font-bold text-muted-foreground bg-muted">
+                          {(user.name || "?").charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    {/* VIP badge */}
+                    {user.level?.charger_level > 0 && (
+                      <div className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                        style={{ background: "linear-gradient(135deg, #ffd700, #ff8c00)" }}>
+                        {user.level.charger_level}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Name + UUID + Status */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm font-bold text-foreground truncate">{user.name}</p>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold shrink-0"
+                        style={{ color: userStatus.color, background: userStatus.bg }}>
+                        {userStatus.label}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-mono tabular-nums">UUID: {user.uuid}</p>
+                    {user.vip && Object.keys(user.vip).length > 0 && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Crown className="w-3 h-3 text-yellow-400" />
+                        <span className="text-[9px] text-yellow-400 font-bold">VIP</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rank badge */}
+                {userRank && (
+                  <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-lg"
+                    style={{ background: "hsl(var(--muted) / 0.8)" }}>
+                    <Medal className="w-3 h-3 text-yellow-400" />
+                    <span className="text-[9px] font-bold text-foreground">#{userRank}</span>
                   </div>
                 )}
               </div>
-              <p className="text-sm font-bold text-foreground">{user.name}</p>
-              <p className="text-[10px] text-muted-foreground mb-3">UUID: {user.uuid}</p>
-              <div className="grid grid-cols-3 gap-3">
+
+              {/* Stats row */}
+              <div className="grid grid-cols-3 gap-0 divide-x divide-border" style={{ direction: "ltr" }}>
                 {[
-                  { v: formatCoins(user.my_store?.coins || 0), l: "كوينز" },
-                  { v: formatCoins(user.my_store?.diamonds || 0), l: "ماسات" },
-                  { v: `$${user.my_store?.usd || 0}`, l: "الراتب" },
+                  { v: formatCoins(monthlyCoins), l: "شحن الشهر", icon: TrendingUp, color: currentTier?.color || "hsl(var(--primary))" },
+                  { v: userRank ? `#${userRank}` : "—", l: "ترتيبك", icon: Trophy, color: "#ffd700" },
+                  { v: currentTier?.name || "—", l: "مستواك", icon: Star, color: currentTier?.color || "hsl(var(--muted-foreground))" },
                 ].map((s, i) => (
-                  <div key={i} className="text-center">
-                    <p className="text-base font-bold text-foreground tabular-nums">{s.v}</p>
-                    <p className="text-[9px] text-muted-foreground">{s.l}</p>
+                  <div key={i} className="text-center py-3 px-2" style={{ direction: "rtl" }}>
+                    <s.icon className="w-3.5 h-3.5 mx-auto mb-1" style={{ color: s.color }} />
+                    <p className="text-sm font-bold text-foreground tabular-nums">{s.v}</p>
+                    <p className="text-[8px] text-muted-foreground">{s.l}</p>
                   </div>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {/* Previous Month */}
-          {prevMonthCoins > 0 && prevTier && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-              className="rounded-2xl p-3 bg-card" style={{ border: "1px solid hsl(var(--border))" }}>
-              <p className="text-[10px] text-muted-foreground mb-1">شحنك الشهر السابق ({prevMonth})</p>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-foreground tabular-nums">{formatCoins(prevMonthCoins)} كوينز</p>
-                  <p className="text-[10px] text-muted-foreground">${(prevMonthCoins / 7500).toFixed(0)}</p>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: `${prevTier.color}15` }}>
-                  <Trophy className="w-3.5 h-3.5" style={{ color: prevTier.color }} />
-                  <span className="text-[11px] font-bold" style={{ color: prevTier.color }}>{prevTier.name}</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
+          {/* ═══════════ القسم 2 — إحصائياتي ═══════════ */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+            className="rounded-2xl p-4 bg-card" style={{ border: "1px solid hsl(var(--border))" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-primary" />
+              <h2 className="text-xs font-bold text-foreground">إحصائياتي</h2>
+            </div>
 
-          {/* Current Month Progress */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Current month charges */}
+              <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted) / 0.3)" }}>
+                <p className="text-[9px] text-muted-foreground mb-1">شحن هذا الشهر</p>
+                <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(monthlyCoins)}</p>
+                <p className="text-[8px] text-muted-foreground">${(monthlyCoins / 7500).toFixed(0)}</p>
+              </div>
+
+              {/* Previous month */}
+              <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted) / 0.3)" }}>
+                <p className="text-[9px] text-muted-foreground mb-1">شحن الشهر السابق</p>
+                <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(prevMonthCoins)}</p>
+                <p className="text-[8px] text-muted-foreground">${(prevMonthCoins / 7500).toFixed(0)}</p>
+              </div>
+
+              {/* Rank */}
+              <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted) / 0.3)" }}>
+                <p className="text-[9px] text-muted-foreground mb-1">ترتيبك</p>
+                <p className="text-base font-bold text-foreground tabular-nums">{userRank ? `#${userRank}` : "غير مصنف"}</p>
+              </div>
+
+              {/* Rewards count */}
+              <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted) / 0.3)" }}>
+                <p className="text-[9px] text-muted-foreground mb-1">الكوبونات</p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base font-bold text-emerald-400 tabular-nums">{availableRewards.length}</span>
+                  <span className="text-[8px] text-muted-foreground">متاح</span>
+                  <span className="text-[8px] text-muted-foreground">/ {usedRewards.length} مستخدم</span>
+                </div>
+                {expiredRewards.length > 0 && (
+                  <p className="text-[8px] text-destructive mt-0.5">{expiredRewards.length} منتهي</p>
+                )}
+              </div>
+            </div>
+
+            {/* Total rewards summary */}
+            <div className="mt-2 flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: "hsl(var(--primary) / 0.06)" }}>
+              <span className="text-[10px] text-muted-foreground">إجمالي المكافآت</span>
+              <span className="text-xs font-bold text-foreground tabular-nums">{rewards.length} مكافأة</span>
+            </div>
+          </motion.div>
+
+          {/* ═══════════ القسم 3 — التقدم نحو الهدف 🔥 ═══════════ */}
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="rounded-2xl p-4" style={{
               background: currentTier ? `linear-gradient(135deg, ${currentTier.color}12, ${currentTier.color}06)` : "hsl(var(--card))",
               border: `1px solid ${currentTier?.color || "hsl(var(--border))"}25`,
             }}>
-            <p className="text-[10px] text-muted-foreground mb-2">شحنك الشهر الحالي ({currentMonth})</p>
-            <p className="text-lg font-bold text-foreground tabular-nums mb-1">{formatCoins(monthlyCoins)} كوينز</p>
-            <p className="text-[10px] text-muted-foreground mb-3">${(monthlyCoins / 7500).toFixed(0)}</p>
-
             <div className="flex items-center gap-2 mb-3">
-              <Trophy className="w-4 h-4" style={{ color: currentTier?.color || "hsl(var(--muted-foreground))" }} />
-              <span className="text-xs font-bold" style={{ color: currentTier?.color || "hsl(var(--muted-foreground))" }}>
-                {currentTier ? `المستوى المتوقع: ${currentTier.name}` : "لم تصل لأي مستوى بعد"}
-              </span>
+              <Target className="w-4 h-4" style={{ color: currentTier?.color || "hsl(var(--primary))" }} />
+              <h2 className="text-xs font-bold text-foreground">التقدم نحو الهدف 🔥</h2>
+              <div className="mr-auto flex items-center gap-1">
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                <span className="text-[9px] text-muted-foreground">{daysRemaining} يوم متبقي</span>
+              </div>
             </div>
 
+            {/* Current level badge */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: `${currentTier?.color || "hsl(var(--muted))"}20` }}>
+                <Trophy className="w-4 h-4" style={{ color: currentTier?.color || "hsl(var(--muted-foreground))" }} />
+              </div>
+              <div>
+                <p className="text-xs font-bold" style={{ color: currentTier?.color || "hsl(var(--muted-foreground))" }}>
+                  {currentTier ? currentTier.name : "لم تصل لأي مستوى بعد"}
+                </p>
+                <p className="text-[9px] text-muted-foreground tabular-nums">{formatCoins(monthlyCoins)} كوينز</p>
+              </div>
+            </div>
+
+            {/* Progress bar to next tier */}
             {nextTier && (
               <div className="space-y-2">
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground">التالي: {nextTier.name}</span>
+                  <span className="text-muted-foreground">التالي: <span className="font-bold" style={{ color: nextTier.color }}>{nextTier.name}</span></span>
                   <span className="font-bold tabular-nums" style={{ color: nextTier.color }}>{Math.round(progressToNext)}%</span>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden bg-muted">
+                <div className="h-3 rounded-full overflow-hidden bg-muted relative">
                   <motion.div initial={{ width: 0 }} animate={{ width: `${progressToNext}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full rounded-full"
-                    style={{ background: `linear-gradient(90deg, ${currentTier?.color || "#666"}, ${nextTier.color})` }} />
+                    transition={{ duration: 1.2, ease: "easeOut" }}
+                    className="h-full rounded-full relative"
+                    style={{ background: `linear-gradient(90deg, ${currentTier?.color || "#666"}, ${nextTier.color})` }}>
+                    {/* Shimmer on progress */}
+                    <div className="absolute inset-0 opacity-30" style={{
+                      background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)",
+                      animation: "shimmer 2s infinite",
+                    }} />
+                  </motion.div>
                 </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground">
-                  <span>باقي {formatCoins(coinsToNext)} كوينز</span>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{daysRemaining} يوم متبقي</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">تبقى لك <span className="font-bold text-foreground tabular-nums">{formatCoins(coinsToNext)}</span> كوينز</span>
+                </div>
+
+                {/* Next tier reward preview */}
+                {nextTier.rewards && nextTier.rewards.length > 0 && (
+                  <div className="mt-2 px-3 py-2 rounded-xl" style={{ background: `${nextTier.color}08`, border: `1px solid ${nextTier.color}15` }}>
+                    <p className="text-[9px] text-muted-foreground mb-1">مكافأة المستوى التالي:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {nextTier.rewards.map((r: any, i: number) => {
+                        const info = REWARD_TYPE_MAP[r.type];
+                        const Icon = info?.icon || Gift;
+                        return (
+                          <div key={i} className="flex items-center gap-1 px-2 py-1 rounded-lg" style={{ background: `${nextTier.color}12` }}>
+                            <Icon className="w-3 h-3" style={{ color: nextTier.color }} />
+                            <span className="text-[8px] font-bold" style={{ color: nextTier.color }}>
+                              {info?.label || r.type}
+                              {r.type === "vip" ? ` ${r.value}` : ""}
+                              {r.item_duration_days ? ` ${r.item_duration_days}d` : ""}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
+
+            {!nextTier && currentTier && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10">
+                <Award className="w-4 h-4 text-emerald-400" />
+                <span className="text-[10px] font-bold text-emerald-400">وصلت لأعلى مستوى! 🎉</span>
+              </div>
+            )}
+
+            {/* All tiers milestones */}
+            <div className="mt-3 space-y-1.5">
+              {tiers.map((t, idx) => {
+                const reached = monthlyCoins >= t.min_coins;
+                return (
+                  <div key={t.id} className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                      style={{
+                        background: reached ? t.color : "hsl(var(--muted))",
+                        opacity: reached ? 1 : 0.4,
+                      }}>
+                      {reached ? <Check className="w-3 h-3 text-white" /> : <span className="text-[8px] text-muted-foreground">{idx + 1}</span>}
+                    </div>
+                    <div className="flex-1 flex items-center justify-between">
+                      <span className={`text-[10px] font-bold ${reached ? "" : "opacity-50"}`} style={{ color: reached ? t.color : "hsl(var(--muted-foreground))" }}>
+                        {t.name}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground tabular-nums">{formatCoins(t.min_coins)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </motion.div>
 
-          {/* Available Rewards */}
+          {/* ═══════════ القسم 4 — مكافآت الشهر السابق ═══════════ */}
+          {prevMonthCoins > 0 && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="rounded-2xl p-4 bg-card" style={{ border: "1px solid hsl(var(--border))" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <Gift className="w-4 h-4 text-yellow-400" />
+                <h2 className="text-xs font-bold text-foreground">مكافآت الشهر السابق ({prevMonth})</h2>
+              </div>
+
+              {/* Previous tier info */}
+              <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl" style={{ background: `${prevTier?.color || "#666"}08` }}>
+                <Trophy className="w-4 h-4" style={{ color: prevTier?.color || "hsl(var(--muted-foreground))" }} />
+                <div>
+                  <p className="text-[10px] font-bold" style={{ color: prevTier?.color }}>المستوى: {prevTier?.name || "لم تصل"}</p>
+                  <p className="text-[9px] text-muted-foreground tabular-nums">{formatCoins(prevMonthCoins)} كوينز — ${(prevMonthCoins / 7500).toFixed(0)}</p>
+                </div>
+              </div>
+
+              {/* Rewards from prev month */}
+              {prevMonthRewards.length > 0 ? (
+                <div className="space-y-2">
+                  {prevMonthRewards.map(r => {
+                    const info = REWARD_TYPE_MAP[r.type] || { label: r.type, icon: Star };
+                    const Icon = info.icon;
+                    const isExpiring = r.status === "available" && r.use_expires_at && daysUntil(r.use_expires_at) <= 5;
+                    const expiryDays = r.use_expires_at ? daysUntil(r.use_expires_at) : null;
+
+                    return (
+                      <div key={r.id} className="rounded-xl p-3 flex items-start gap-3 relative overflow-hidden"
+                        style={{
+                          background: r.status === "available" ? "hsl(142 76% 36% / 0.04)" : "hsl(var(--muted) / 0.2)",
+                          border: `1px solid ${r.status === "available" ? "hsl(142 76% 36% / 0.15)" : "hsl(var(--border))"}`,
+                        }}>
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{
+                          background: r.status === "available" ? "hsl(142 76% 36% / 0.1)" : "hsl(var(--muted) / 0.5)",
+                        }}>
+                          <Icon className="w-4 h-4" style={{
+                            color: r.status === "available" ? "hsl(142 76% 36%)" : "hsl(var(--muted-foreground))",
+                          }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-[11px] font-bold text-foreground">
+                              {info.label}{r.type === "vip" ? ` ${r.value}` : ""}
+                            </p>
+                            <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold ${
+                              r.status === "available" ? "bg-emerald-500/15 text-emerald-400" :
+                              r.status === "used" || r.status === "gifted" ? "bg-blue-500/15 text-blue-400" :
+                              "bg-destructive/15 text-destructive"
+                            }`}>
+                              {r.status === "available" ? "متاح" : r.status === "used" ? "مستخدم" : r.status === "gifted" ? "مُهدى" : "منتهي"}
+                            </span>
+                          </div>
+
+                          {r.item_duration_days > 0 && (
+                            <p className="text-[9px] text-muted-foreground mt-0.5">المدة بعد التفعيل: {r.item_duration_days} يوم</p>
+                          )}
+
+                          {r.status === "available" && expiryDays !== null && (
+                            <p className={`text-[9px] mt-0.5 font-bold ${isExpiring ? "text-destructive" : "text-muted-foreground"}`}>
+                              {isExpiring ? `⚠️ ستنتهي خلال ${expiryDays} أيام!` : `صلاحية الاستخدام: ${expiryDays} يوم`}
+                            </p>
+                          )}
+
+                          {r.status === "used" && r.item_expires_at && daysUntil(r.item_expires_at) > 0 && (
+                            <p className="text-[9px] text-emerald-400 mt-0.5">ينتهي العنصر خلال {daysUntil(r.item_expires_at)} يوم</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-center py-4 text-[10px] text-muted-foreground">لا توجد مكافآت للشهر السابق</p>
+              )}
+            </motion.div>
+          )}
+
+          {/* ═══════════ Available Rewards ═══════════ */}
           <div>
             <SectionHeader title="مكافآتك المتاحة" icon={Gift} sectionKey="available" count={availableRewards.length} color="hsl(142 76% 36%)" />
             <AnimatePresence>
@@ -413,7 +647,6 @@ const SupporterBenefits: React.FC = () => {
                         <motion.div key={r.id} layout
                           className="rounded-xl p-3 relative overflow-hidden"
                           style={{ background: "hsl(var(--card))", border: "1px solid hsl(142 76% 36% / 0.15)" }}>
-                          {/* Shimmer effect */}
                           <div className="absolute inset-0 opacity-[0.03]" style={{
                             background: "linear-gradient(90deg, transparent, hsl(142 76% 36% / 0.3), transparent)",
                             animation: "shimmer 3s infinite",
