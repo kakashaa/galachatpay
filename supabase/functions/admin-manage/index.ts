@@ -1195,6 +1195,17 @@ Deno.serve(async (req) => {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
+        const fetchJsonWithTimeout = async (url: string, timeoutMs = 12000) => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort("timeout"), timeoutMs);
+          try {
+            const res = await fetch(url, { signal: controller.signal });
+            return await res.json();
+          } finally {
+            clearTimeout(timeout);
+          }
+        };
+
         // Fetch all members at once (one query instead of N)
         const allAccountIds = (accounts || []).map((a: any) => a.id);
         const { data: allMembers } = await supabase
@@ -1208,48 +1219,100 @@ Deno.serve(async (req) => {
           membersByAccount[m.works_id].push(m);
         }
 
-        // Process all accounts in parallel
-        await Promise.all((accounts || []).map(async (acc: any, idx: number) => {
+        const supporterChargesCache = new Map<string, number>();
+        const agencySalaryCache = new Map<string, number>();
+
+        const getMemberCommissionUsd = async (m: any, supporterPct: number, agentPct: number) => {
+          try {
+            if (m.member_type === "supporter") {
+              const cacheKey = `${m.member_uuid}:${currentMonth}`;
+              let charges = supporterChargesCache.get(cacheKey);
+              if (charges === undefined) {
+                const json = await fetchJsonWithTimeout(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`);
+                charges = Number(json?.data?.total_charges ?? json?.total_charges ?? json?.charges ?? 0);
+                supporterChargesCache.set(cacheKey, charges);
+              }
+              const pct = Number(m.commission_pct ?? supporterPct);
+              const commissionCoins = Math.floor(charges * pct / 100);
+              return commissionCoins / 7500;
+            }
+
+            if (m.member_type === "agent" && m.agency_id) {
+              const agencyId = String(m.agency_id);
+              let salary = agencySalaryCache.get(agencyId);
+              if (salary === undefined) {
+                const json = await fetchJsonWithTimeout(`${WARES_API}&action=agency-salary&agency_id=${agencyId}`);
+                salary = Number(
+                  json?.data?.salary ??
+                  json?.data?.net_salary ??
+                  json?.data?.net ??
+                  json?.salary ??
+                  json?.net_salary ??
+                  json?.net ??
+                  0,
+                );
+                agencySalaryCache.set(agencyId, salary);
+              }
+              const pct = Number(m.commission_pct ?? agentPct);
+              return salary * pct / 100;
+            }
+          } catch (err: any) {
+            console.log(`[WORKS-EARN] member ${m.member_uuid} failed:`, err?.message || err);
+          }
+          return 0;
+        };
+
+        const processAccount = async (acc: any) => {
           const members = membersByAccount[acc.id] || [];
-          const activeMembers = members.filter((m: any) => m.status === "active");
+          const activeMembers = members.filter((m: any) => {
+            const status = String(m.status ?? "active").toLowerCase();
+            return status !== "removed" && status !== "inactive";
+          });
+
           acc.supporter_count = activeMembers.filter((m: any) => m.member_type === "supporter").length;
           acc.agent_count = activeMembers.filter((m: any) => m.member_type === "agent").length;
 
-          // Compute live earnings for all accounts with active members
-          if (activeMembers.length > 0) {
-            try {
-              const supporterPct = Number(acc.supporter_commission_pct || 2);
-              const agentPct = Number(acc.agent_commission_pct || 5);
-
-              const results = await Promise.all(activeMembers.map(async (m: any) => {
-                try {
-                  if (m.member_type === "supporter") {
-                    const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`, { signal: AbortSignal.timeout(8000) });
-                    const json = await res.json();
-                    console.log(`[WORKS-EARN] supporter ${m.member_uuid}:`, JSON.stringify(json).slice(0, 200));
-                    const charges = Number(json?.data?.total_charges || json?.total_charges || 0);
-                    const pct = Number(m.commission_pct || supporterPct);
-                    return Math.floor(charges * pct / 100) / 7500;
-                  } else if (m.member_type === "agent" && m.agency_id) {
-                    const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`, { signal: AbortSignal.timeout(8000) });
-                    const json = await res.json();
-                    console.log(`[WORKS-EARN] agent ${m.member_uuid} agency ${m.agency_id}:`, JSON.stringify(json).slice(0, 200));
-                    const salary = Number(json?.data?.salary || json?.salary || 0);
-                    const pct = Number(m.commission_pct || agentPct);
-                    return salary * pct / 100;
-                  }
-                } catch (err: any) { console.log(`[WORKS-EARN] err ${m.member_uuid}:`, err?.message); }
-                return 0;
-              }));
-
-              acc.dynamic_earnings = Math.round(results.reduce((s: number, v: number) => s + v, 0) * 100) / 100;
-            } catch {
-              acc.dynamic_earnings = 0;
-            }
-          } else {
+          if (activeMembers.length === 0) {
             acc.dynamic_earnings = 0;
+            return;
           }
-        }));
+
+          const supporterPct = Number(acc.supporter_commission_pct || 2);
+          const agentPct = Number(acc.agent_commission_pct || 5);
+
+          let totalUsd = 0;
+          const MEMBER_CONCURRENCY = 8;
+          for (let i = 0; i < activeMembers.length; i += MEMBER_CONCURRENCY) {
+            const memberChunk = activeMembers.slice(i, i + MEMBER_CONCURRENCY);
+            const chunkCommissions = await Promise.all(
+              memberChunk.map((m: any) => getMemberCommissionUsd(m, supporterPct, agentPct)),
+            );
+            totalUsd += chunkCommissions.reduce((sum, value) => sum + value, 0);
+          }
+
+          acc.dynamic_earnings = Math.round(totalUsd * 100) / 100;
+        };
+
+        // Prioritize accounts that have active members to avoid showing stale $0 for active teams
+        const accountsForCompute = [...(accounts || [])].sort((a: any, b: any) => {
+          const aActive = (membersByAccount[a.id] || []).filter((m: any) => {
+            const status = String(m.status ?? "active").toLowerCase();
+            return status !== "removed" && status !== "inactive";
+          }).length;
+          const bActive = (membersByAccount[b.id] || []).filter((m: any) => {
+            const status = String(m.status ?? "active").toLowerCase();
+            return status !== "removed" && status !== "inactive";
+          }).length;
+          if (bActive !== aActive) return bActive - aActive;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        // Process all accounts with controlled concurrency (prevents global timeout storms)
+        const ACCOUNT_CONCURRENCY = 6;
+        for (let i = 0; i < accountsForCompute.length; i += ACCOUNT_CONCURRENCY) {
+          const chunk = accountsForCompute.slice(i, i + ACCOUNT_CONCURRENCY);
+          await Promise.all(chunk.map(processAccount));
+        }
 
         result = accounts;
         break;
