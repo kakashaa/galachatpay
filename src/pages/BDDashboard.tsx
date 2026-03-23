@@ -262,10 +262,12 @@ const BDDashboard: React.FC = () => {
   if (!data?.bd) return null;
   const { bd, supporters, agents } = data;
 
-  // Compute live salary commission total
-  const liveSalaryTotal = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0)
-    + Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
-  const liveSalaryTotalUsd = liveSalaryTotal / 7500;
+  // Compute live salary commission total — supporters are in coins, agents are in USD
+  const supporterCommissionCoins = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0);
+  const supporterCommissionUsd = supporterCommissionCoins / 7500;
+  const agentCommissionUsd = Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
+  const liveSalaryTotalUsd = supporterCommissionUsd + agentCommissionUsd;
+  const liveSalaryTotal = Math.floor(liveSalaryTotalUsd * 7500);
 
   const renderStockChart = () => {
     if (dailyLogs.length === 0) return null;
@@ -852,8 +854,8 @@ const BDDashboard: React.FC = () => {
                 },
                 {
                   label: "أرباح الشهر",
-                  value: `${monthlyProfit.toLocaleString()}`,
-                  sub: `$${(monthlyProfit / 7500).toFixed(2)}`,
+                  value: `$${liveSalaryTotalUsd.toFixed(2)}`,
+                  sub: `${liveSalaryTotal.toLocaleString()} كوينز`,
                   color: "hsl(187 72% 56%)",
                   bg: "hsl(187 72% 56% / 0.08)",
                   border: "hsl(187 72% 56% / 0.15)",
@@ -956,7 +958,7 @@ const BDDashboard: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="text-left">
                     <p className="text-sm font-black text-emerald-400" dir="ltr">
-                      ${(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) / 7500).toFixed(2)}
+                      ${Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0).toFixed(2)}
                     </p>
                     <p className="text-[9px] text-muted-foreground">
                       {Math.floor(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) * 7500).toLocaleString()} كوينز

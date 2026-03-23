@@ -1201,14 +1201,62 @@ Deno.serve(async (req) => {
           if (t === "agency") return "agent";
           return t;
         };
+        const toNumber = (value: unknown): number => {
+          if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+          if (typeof value === "string") {
+            const parsed = Number(value.replace(/,/g, "").trim());
+            return Number.isFinite(parsed) ? parsed : 0;
+          }
+          return 0;
+        };
 
-        // Fetch all members at once (one query) to get counts
+        // Fetch all members at once (one query)
         const allAccountIds = (accounts || []).map((a: any) => a.id);
         const { data: allMembers } = await supabase
-          .from("works_members").select("works_id, member_type, status")
+          .from("works_members").select("works_id, member_type, member_uuid, agency_id, status, commission_pct")
           .in("works_id", allAccountIds);
 
-        // Count members per account
+        const WARES_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+        // Cache API results to avoid duplicate calls for same member/agency
+        const supporterCache = new Map<string, number>();
+        const agencyCache = new Map<string, number>();
+
+        // Collect all unique supporters and agencies to fetch
+        const activeMembers = (allMembers || []).filter((m: any) => isMemberActive(m.status));
+        const uniqueSupporters = [...new Set(activeMembers.filter((m: any) => normalizeMemberType(m.member_type) === "supporter").map((m: any) => m.member_uuid))];
+        const uniqueAgencies = [...new Set(activeMembers.filter((m: any) => normalizeMemberType(m.member_type) === "agent" && m.agency_id).map((m: any) => m.agency_id))];
+
+        // Fetch all supporters in parallel (chunked)
+        const CHUNK = 10;
+        for (let i = 0; i < uniqueSupporters.length; i += CHUNK) {
+          const chunk = uniqueSupporters.slice(i, i + CHUNK);
+          await Promise.all(chunk.map(async (uuid: string) => {
+            try {
+              const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${uuid}&month=${currentMonth}`);
+              const json = await res.json();
+              const charges = toNumber(json?.data?.total_charges ?? json?.data?.charges ?? json?.total_charges ?? json?.charges ?? 0);
+              supporterCache.set(uuid, charges);
+            } catch { supporterCache.set(uuid, 0); }
+          }));
+        }
+
+        // Fetch all agencies in parallel (chunked)
+        for (let i = 0; i < uniqueAgencies.length; i += CHUNK) {
+          const chunk = uniqueAgencies.slice(i, i + CHUNK);
+          await Promise.all(chunk.map(async (agencyId: string) => {
+            try {
+              const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${agencyId}`);
+              const json = await res.json();
+              const salary = toNumber(json?.data?.net_salary ?? json?.data?.salary ?? json?.net_salary ?? json?.salary ?? 0);
+              agencyCache.set(agencyId, salary);
+            } catch { agencyCache.set(agencyId, 0); }
+          }));
+        }
+
+        // Calculate earnings per account
         for (const acc of (accounts || [])) {
           const members = (allMembers || []).filter((m: any) => m.works_id === acc.id);
           const active = members.filter((m: any) => isMemberActive(m.status));
@@ -1216,8 +1264,22 @@ Deno.serve(async (req) => {
           acc.agent_count = active.filter((m: any) => normalizeMemberType(m.member_type) === "agent").length;
           acc.supporter_pct = Number(acc.supporter_commission_pct || 0);
           acc.agent_pct = Number(acc.agent_commission_pct || 0);
-          // Use stored total_earnings_usd — live calculation happens in works_get_members
-          acc.dynamic_earnings = Number(acc.dynamic_earnings ?? acc.total_earnings_usd ?? 0);
+
+          let totalEarnings = 0;
+          for (const m of active) {
+            const mType = normalizeMemberType(m.member_type);
+            if (mType === "supporter") {
+              const charges = supporterCache.get(m.member_uuid) || 0;
+              const pct = toNumber(m.commission_pct ?? acc.supporter_pct);
+              totalEarnings += (charges / 7500) * (pct / 100);
+            } else if (mType === "agent" && m.agency_id) {
+              const salary = agencyCache.get(m.agency_id) || 0;
+              const pct = toNumber(m.commission_pct ?? acc.agent_pct);
+              totalEarnings += salary * pct / 100;
+            }
+          }
+
+          acc.dynamic_earnings = Math.round(totalEarnings * 100) / 100;
         }
 
         result = accounts;
