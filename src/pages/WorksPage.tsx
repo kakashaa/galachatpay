@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
@@ -58,6 +58,16 @@ interface MemberWithSalary {
 }
 
 const BAN_THRESHOLD = 4; // per-target attempts before ban
+const COINS_PER_USD = 7500;
+
+const toFiniteNumber = (value: unknown): number => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, "").trim());
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
 
 const WorksPage: React.FC = () => {
   const navigate = useNavigate();
@@ -85,6 +95,7 @@ const WorksPage: React.FC = () => {
   const [monthEarnings, setMonthEarnings] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
+  const salaryFetchIdRef = useRef(0);
 
   // StatusModal
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
@@ -170,70 +181,124 @@ const WorksPage: React.FC = () => {
 
   // Auto-fetch salary data for all members
   // Returns commission values in COINS (not USD)
-  const fetchSalaryData = useCallback(async (worksId: string, membersList: MemberWithSalary[]) => {
+  const fetchSalaryData = useCallback(async (_worksId: string, membersList: MemberWithSalary[]) => {
     const month = new Date().toISOString().slice(0, 7);
     const year = new Date().getFullYear();
     const monthNum = new Date().getMonth() + 1;
 
-    let totalMonthCommissionCoins = 0;
-    const updatedMembers = [...membersList];
+    const updatedMembers = await Promise.all(
+      membersList.map(async (member) => {
+        try {
+          if (member.member_type === "supporter") {
+            let charges = 0;
+            let commission = 0;
 
-    for (let i = 0; i < updatedMembers.length; i++) {
-      const member = updatedMembers[i];
-      try {
-        if (member.member_type === "supporter") {
-          let charges = 0;
-          let commission = 0;
-
-          // Primary: wares-api
-          try {
-            const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
-            charges = data.data?.total_charges || 0;
-            commission = data.data?.commission_2pct || 0;
-          } catch { /* silent */ }
-
-          // Fallback: bd-data-api if primary returned 0
-          if (charges === 0) {
+            // Primary: wares-api
             try {
-              const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
-              charges = data2.data?.total_charges || data2.total_charges || 0;
-              commission = data2.data?.commission_2pct || Math.floor(charges * 0.02) || 0;
-            } catch { /* silent */ }
-          }
+              const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
+              charges = toFiniteNumber(
+                data?.data?.total_charges ??
+                data?.data?.charges ??
+                data?.total_charges ??
+                data?.charges ??
+                0
+              );
+              const apiCommission = toFiniteNumber(
+                data?.data?.commission_2pct ??
+                data?.commission_2pct ??
+                0
+              );
+              commission = apiCommission > 0 ? apiCommission : Math.floor(charges * 0.02);
+            } catch {
+              /* silent */
+            }
 
-          // Fallback 2: fetch profile charger_num via edge function
-          if (charges === 0) {
-            try {
-              const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
-                body: { uuid: member.member_uuid },
-              });
-              const chargerNum = profileRes?.data?.level?.charger_num || profileRes?.level?.charger_num || 0;
-              if (chargerNum > 0) {
-                // Use stored initial_charger_num if available, otherwise use charger_num as-is
-                const initialCharger = (member as any).initial_charger_num || 0;
-                const monthlyCharges = initialCharger > 0 ? Math.max(0, chargerNum - initialCharger) : chargerNum;
-                if (monthlyCharges > 0) {
-                  charges = monthlyCharges;
-                  commission = Math.floor(monthlyCharges * 0.02);
-                }
+            // Fallback: bd-data-api if primary returned 0
+            if (charges === 0) {
+              try {
+                const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
+                charges = toFiniteNumber(
+                  data2?.data?.total_charges ??
+                  data2?.total_charges ??
+                  data2?.charges ??
+                  0
+                );
+                const apiCommission = toFiniteNumber(
+                  data2?.data?.commission_2pct ??
+                  data2?.commission_2pct ??
+                  0
+                );
+                commission = apiCommission > 0 ? apiCommission : Math.floor(charges * 0.02);
+              } catch {
+                /* silent */
               }
-            } catch { /* silent */ }
+            }
+
+            // Fallback 2: fetch profile charger_num via edge function
+            if (charges === 0) {
+              try {
+                const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
+                  body: { uuid: member.member_uuid },
+                });
+                const chargerNum = toFiniteNumber(
+                  profileRes?.data?.level?.charger_num ??
+                  profileRes?.level?.charger_num ??
+                  0
+                );
+
+                if (chargerNum > 0) {
+                  const initialCharger = toFiniteNumber((member as any).initial_charger_num ?? 0);
+                  const monthlyCharges = initialCharger > 0
+                    ? Math.max(0, chargerNum - initialCharger)
+                    : chargerNum;
+
+                  if (monthlyCharges > 0) {
+                    charges = monthlyCharges;
+                    commission = Math.floor(monthlyCharges * 0.02);
+                  }
+                }
+              } catch {
+                /* silent */
+              }
+            }
+
+            return { ...member, monthly_charges: charges, commission: Math.floor(commission) };
           }
 
-          updatedMembers[i] = { ...member, monthly_charges: charges, commission };
-          totalMonthCommissionCoins += commission;
+          if (member.member_type === "agent" && member.agency_id) {
+            const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
+            const salary = toFiniteNumber(
+              data?.data?.net_salary ??
+              data?.data?.salary ??
+              data?.net_salary ??
+              data?.salary ??
+              0
+            );
+            const apiCommissionUsd = toFiniteNumber(
+              data?.data?.commission_2pct ??
+              data?.commission_2pct ??
+              0
+            );
+            const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 2);
+            const computedCommissionUsd = apiCommissionUsd > 0
+              ? apiCommissionUsd
+              : salary * (fallbackPct / 100);
+            const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
+
+            return { ...member, agency_salary: salary, commission: commissionCoins };
+          }
+        } catch {
+          /* silent */
         }
 
-        if (member.member_type === "agent" && member.agency_id) {
-          const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
-          const salary = data.data?.salary || 0;
-          const commissionUsd = data.data?.commission_2pct || 0;
-          const commissionCoins = Math.floor(commissionUsd * 7500);
-          updatedMembers[i] = { ...member, agency_salary: salary, commission: commissionCoins };
-          totalMonthCommissionCoins += commissionCoins;
-        }
-      } catch { /* silent */ }
-    }
+        return member;
+      })
+    );
+
+    const totalMonthCommissionCoins = updatedMembers.reduce(
+      (sum, member) => sum + toFiniteNumber(member.commission ?? 0),
+      0
+    );
 
     return { totalMonthCommissionCoins, updatedMembers };
   }, []);
@@ -253,7 +318,9 @@ const WorksPage: React.FC = () => {
       if (works) {
         setMyWorks(works);
 
-        const todayDate = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const todayStartUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
+        const todayDate = todayStartUtc.toISOString().slice(0, 10);
         const [{ data: m }, { data: todayRows }] = await Promise.all([
           supabase
             .from("works_members")
@@ -261,31 +328,42 @@ const WorksPage: React.FC = () => {
             .eq("works_id", works.id)
             .eq("status", "active"),
           supabase
-            .from("works_earnings")
-            .select("commission_usd")
-            .eq("works_id", works.id)
-            .eq("period_date", todayDate),
+            .from("works_commission_logs" as any)
+            .select("amount,created_at")
+            .eq("bd_uuid", user.uuid)
+            .gte("created_at", todayStartUtc.toISOString()),
         ]);
 
         const rawMembers = (m || []) as any as MemberWithSalary[];
         setMembers(rawMembers);
 
-        const todayUsd = (todayRows || []).reduce(
-          (sum: number, row: any) => sum + Number(row.commission_usd || 0),
-          0
-        );
+        const todayUsd = (todayRows || []).reduce((sum: number, row: any) => {
+          if (String(row?.created_at || "").slice(0, 10) !== todayDate) return sum;
+          return sum + toFiniteNumber(row?.amount ?? 0);
+        }, 0);
         setTodayEarnings(todayUsd);
 
-        // Auto-fetch salary data for live calculations (month only)
+        // Auto-fetch salary data for live calculations (month only) in background
         if (rawMembers.length > 0) {
           setSalaryLoading(true);
-          try {
-            const { totalMonthCommissionCoins, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
-            setMembers(updatedMembers);
-            setMonthEarnings(totalMonthCommissionCoins);
-          } catch { /* silent */ }
-          setSalaryLoading(false);
+          const requestId = ++salaryFetchIdRef.current;
+          void fetchSalaryData(works.id, rawMembers)
+            .then(({ totalMonthCommissionCoins, updatedMembers }) => {
+              if (requestId !== salaryFetchIdRef.current) return;
+              setMembers(updatedMembers);
+              setMonthEarnings(totalMonthCommissionCoins);
+            })
+            .catch(() => {
+              if (requestId !== salaryFetchIdRef.current) return;
+              setMonthEarnings(0);
+            })
+            .finally(() => {
+              if (requestId !== salaryFetchIdRef.current) return;
+              setSalaryLoading(false);
+            });
         } else {
+          salaryFetchIdRef.current += 1;
+          setSalaryLoading(false);
           setMonthEarnings(0);
         }
       } else {
@@ -484,7 +562,7 @@ const WorksPage: React.FC = () => {
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const withdrawMonth = lastMonth.toISOString().slice(0, 7);
-    const usdAmount = monthEarnings / 7500;
+    const usdAmount = monthEarnings / COINS_PER_USD;
 
     try {
       await (supabase.from("works_withdrawals" as any)).insert({
@@ -506,7 +584,10 @@ const WorksPage: React.FC = () => {
   const supporterCount = members.filter(m => m.member_type === "supporter").length;
   const agentCount = members.filter(m => m.member_type === "agent").length;
   const balance = Number(myWorks?.balance_usd || 0);
-  const totalEarnings = Number(myWorks?.total_earnings_usd || 0);
+  const storedTotalEarningsUsd = Number(myWorks?.total_earnings_usd || 0);
+  const monthEarningsUsd = monthEarnings / COINS_PER_USD;
+  const totalEarningsUsd = Math.max(storedTotalEarningsUsd, monthEarningsUsd);
+  const totalEarningsCoins = Math.floor(totalEarningsUsd * COINS_PER_USD);
   const supporterPct = Number(myWorks?.supporter_commission_pct || 2);
   const agentPct = Number(myWorks?.agent_commission_pct || 3);
 
@@ -635,7 +716,7 @@ const WorksPage: React.FC = () => {
                 <InfoTip text="الرصيد المتاح للسحب. يمكنك طلب سحبه في أول 5 أيام من كل شهر" />
               </div>
               <p className="text-2xl font-mono font-black text-foreground">${balance.toFixed(2)}</p>
-              <p className="text-[10px] font-bold text-muted-foreground">{Math.round(balance * 7500).toLocaleString()} كوينز</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{Math.round(balance * COINS_PER_USD).toLocaleString()} كوينز</p>
               <p className="text-xs font-black text-muted-foreground">الرصيد المتاح</p>
               {balance > 0 && <p className="text-[10px] text-primary font-black">اضغط لطلب سحب ←</p>}
             </motion.div>
@@ -653,8 +734,8 @@ const WorksPage: React.FC = () => {
                 </div>
                 <InfoTip text="إجمالي جميع الأرباح التي حققتها منذ انضمامك لنظام البيدي" />
               </div>
-              <p className="text-2xl font-mono font-black text-foreground">${(totalEarnings > 0 ? totalEarnings : monthEarnings / 7500).toFixed(2)}</p>
-              <p className="text-[10px] font-bold text-muted-foreground">{Math.round((totalEarnings > 0 ? totalEarnings : monthEarnings / 7500) * 7500).toLocaleString()} كوينز</p>
+              <p className="text-2xl font-mono font-black text-foreground">${totalEarningsUsd.toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{totalEarningsCoins.toLocaleString()} كوينز</p>
               <p className="text-xs font-black text-muted-foreground">إجمالي الأرباح</p>
             </motion.div>
           </div>
@@ -741,7 +822,7 @@ const WorksPage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / 7500).toFixed(2)}</p>
+                    <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / COINS_PER_USD).toFixed(2)}</p>
                   </div>
                 </div>
                 {m.monthly_charges !== undefined && (
@@ -822,7 +903,7 @@ const WorksPage: React.FC = () => {
           {(() => {
             const dayOfMonth = new Date().getDate();
             const canWithdraw = dayOfMonth <= 5;
-            const coinsAmount = Math.floor(monthEarnings * 7500);
+            const coinsAmount = Math.floor(monthEarnings);
             return canWithdraw ? (
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
