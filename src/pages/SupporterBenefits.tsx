@@ -5,7 +5,7 @@ import {
   ArrowRight, Crown, Gift, Star, Trophy, ArrowUp, Clock, Users,
   Check, Gem, Sparkles, Frame, UserCheck, Coins, Image, BadgeCheck,
   X, Search, Loader2, AlertTriangle, ChevronDown, ChevronUp, Send,
-  TrendingUp, Target, Award, BarChart3, Medal
+  TrendingUp, Target, Award, BarChart3, Medal, Copy, Ticket, Zap, Timer, Lock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,8 +83,10 @@ const SupporterBenefits: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [, setApiMonthlyCharges] = useState<number | null>(null);
+  const [couponTab, setCouponTab] = useState<"available" | "used" | "expired">("available");
+  const [specialOffers, setSpecialOffers] = useState<any[]>([]);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    available: true, used: false, expired: false, tiers: false, howto: false, leaderboard: false,
+    available: true, used: false, expired: false, tiers: false, howto: false, leaderboard: false, coupons: true, offers: true,
   });
 
   const now = new Date();
@@ -96,7 +98,7 @@ const SupporterBenefits: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Parallel: tiers + rewards + charges
+      // Parallel: tiers + rewards + charges + settings
       const tiersPromise = supabase.from("supporter_tiers").select("*").eq("is_active", true).order("sort_order", { ascending: true });
 
       const rewardsPromise = user?.uuid
@@ -111,14 +113,22 @@ const SupporterBenefits: React.FC = () => {
         ? supabase.from("supporter_monthly_charges").select("*").eq("uuid", user.uuid).eq("month", prevMonth).maybeSingle()
         : Promise.resolve({ data: null });
 
-      const [tiersRes, rewardsRes, currentChargeRes, prevChargeRes] = await Promise.all([
-        tiersPromise, rewardsPromise, currentChargePromise, prevChargePromise,
+      const settingsPromise = supabase.from("supporter_settings").select("*").limit(1).single();
+
+      const [tiersRes, rewardsRes, currentChargeRes, prevChargeRes, settingsRes] = await Promise.all([
+        tiersPromise, rewardsPromise, currentChargePromise, prevChargePromise, settingsPromise,
       ]);
 
       setTiers((tiersRes.data || []) as any);
       setRewards((rewardsRes.data || []) as any);
       if (currentChargeRes.data) setMonthlyCoins((currentChargeRes.data as any).total_coins || 0);
       if (prevChargeRes.data) setPrevMonthCoins((prevChargeRes.data as any).total_coins || 0);
+
+      // Load special offers from settings
+      if (settingsRes.data) {
+        const offers = (settingsRes.data as any).special_offers || [];
+        setSpecialOffers(Array.isArray(offers) ? offers : []);
+      }
 
       // Background: API calls for fresh data
       if (user?.uuid) {
@@ -816,6 +826,335 @@ const SupporterBenefits: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
+
+          {/* ═══════════ القسم 5 — الكوبونات ═══════════ */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+            className="rounded-2xl overflow-hidden bg-card" style={{ border: "1px solid hsl(var(--border))" }}>
+            <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+              <Ticket className="w-4 h-4 text-yellow-400" />
+              <h2 className="text-xs font-bold text-foreground">الكوبونات</h2>
+              <span className="mr-auto px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-emerald-500/15 text-emerald-400 tabular-nums">
+                {availableRewards.length} متاح
+              </span>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-0.5 mx-4 mb-3 p-0.5 rounded-lg bg-muted/30">
+              {([
+                { key: "available" as const, label: "متاحة", count: availableRewards.length },
+                { key: "used" as const, label: "مستخدمة", count: usedRewards.length },
+                { key: "expired" as const, label: "منتهية", count: expiredRewards.length },
+              ]).map(t => (
+                <button key={t.key} onClick={() => setCouponTab(t.key)}
+                  className={`flex-1 py-1.5 rounded-md text-[9px] font-bold transition-all ${
+                    couponTab === t.key
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground"
+                  }`}>
+                  {t.label} ({t.count})
+                </button>
+              ))}
+            </div>
+
+            {/* Coupon cards */}
+            <div className="px-4 pb-4 space-y-2 max-h-[400px] overflow-y-auto">
+              {(couponTab === "available" ? availableRewards : couponTab === "used" ? usedRewards : expiredRewards).length === 0 ? (
+                <p className="text-center py-6 text-[10px] text-muted-foreground">
+                  {couponTab === "available" ? "لا توجد كوبونات متاحة" : couponTab === "used" ? "لا توجد كوبونات مستخدمة" : "لا توجد كوبونات منتهية"}
+                </p>
+              ) : (
+                (couponTab === "available" ? availableRewards : couponTab === "used" ? usedRewards : expiredRewards).map(r => {
+                  const info = REWARD_TYPE_MAP[r.type] || { label: r.type, icon: Star };
+                  const Icon = info.icon;
+                  const isCoinsAuto = r.type === "coins";
+                  const expiryDays = r.use_expires_at ? daysUntil(r.use_expires_at) : null;
+                  const isExpiring = expiryDays !== null && expiryDays <= 5;
+                  const couponCode = `${r.type.toUpperCase()}-${r.id.slice(0, 6).toUpperCase()}`;
+
+                  // Determine coupon category
+                  const couponCategory = isCoinsAuto ? "تلقائي"
+                    : r.type === "vip" ? "VIP"
+                    : r.value > 0 ? "خصم"
+                    : "عادي";
+
+                  return (
+                    <div key={r.id} className="rounded-xl p-3 relative overflow-hidden"
+                      style={{
+                        background: r.status === "available"
+                          ? "linear-gradient(135deg, hsl(142 76% 36% / 0.04), hsl(142 76% 36% / 0.01))"
+                          : r.status === "expired"
+                          ? "hsl(var(--destructive) / 0.03)"
+                          : "hsl(var(--muted) / 0.15)",
+                        border: `1px solid ${r.status === "available" ? "hsl(142 76% 36% / 0.15)" : "hsl(var(--border))"}`,
+                      }}>
+                      {/* Shimmer for available */}
+                      {r.status === "available" && (
+                        <div className="absolute inset-0 opacity-[0.02]" style={{
+                          background: "linear-gradient(90deg, transparent, hsl(142 76% 36% / 0.4), transparent)",
+                          animation: "shimmer 3s infinite",
+                        }} />
+                      )}
+
+                      <div className="relative flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{
+                          background: r.status === "available" ? "hsl(142 76% 36% / 0.1)" : "hsl(var(--muted) / 0.4)",
+                        }}>
+                          <Icon className="w-5 h-5" style={{
+                            color: r.status === "available" ? "hsl(142 76% 36%)" : "hsl(var(--muted-foreground))",
+                          }} />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-[11px] font-bold text-foreground">
+                              {info.label}{r.type === "vip" ? ` ${r.value}` : ""}{r.count > 1 ? ` ×${r.count}` : ""}
+                            </p>
+                            <span className="px-1.5 py-0.5 rounded text-[7px] font-bold bg-primary/10 text-primary">
+                              {couponCategory}
+                            </span>
+                          </div>
+
+                          {/* Coupon code with copy */}
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <code className="text-[9px] font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{couponCode}</code>
+                            <button onClick={() => { navigator.clipboard.writeText(couponCode); toast.success("تم نسخ الكود!"); }}
+                              className="p-0.5 rounded hover:bg-muted/50 transition-colors">
+                              <Copy className="w-3 h-3 text-muted-foreground" />
+                            </button>
+                          </div>
+
+                          {/* Expiry countdown */}
+                          {r.status === "available" && expiryDays !== null && (
+                            <div className={`flex items-center gap-1 ${isExpiring ? "text-destructive" : "text-muted-foreground"}`}>
+                              <Timer className="w-3 h-3" />
+                              <span className={`text-[9px] font-bold`}>
+                                {isExpiring ? `⚠️ ينتهي خلال ${expiryDays} أيام!` : `${expiryDays} يوم متبقي`}
+                              </span>
+                            </div>
+                          )}
+
+                          {r.item_duration_days > 0 && !isCoinsAuto && (
+                            <p className="text-[8px] text-muted-foreground mt-0.5">المدة بعد التفعيل: {r.item_duration_days} يوم</p>
+                          )}
+
+                          {/* Action buttons for available */}
+                          {r.status === "available" && (
+                            isCoinsAuto ? (
+                              <div className="mt-2 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10">
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-[9px] font-bold text-emerald-400">نزلت تلقائياً!</span>
+                              </div>
+                            ) : (
+                              <div className="mt-2 flex gap-2">
+                                <button onClick={() => useReward(r)} disabled={processing}
+                                  className="flex-1 py-1.5 rounded-lg text-[10px] font-bold text-emerald-400 active:scale-95 transition-all"
+                                  style={{ background: "hsl(142 76% 36% / 0.1)", border: "1px solid hsl(142 76% 36% / 0.15)" }}>
+                                  استخدام
+                                </button>
+                                {r.type !== "uuid_change" && (
+                                  <button onClick={() => { setGiftDialog({ open: true, reward: r }); setGiftUuid(""); setGiftUserName(""); }}
+                                    disabled={processing}
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-bold text-blue-400 active:scale-95 transition-all"
+                                    style={{ background: "hsl(217 91% 60% / 0.1)", border: "1px solid hsl(217 91% 60% / 0.15)" }}>
+                                    إهداء
+                                  </button>
+                                )}
+                              </div>
+                            )
+                          )}
+
+                          {/* Used/gifted info */}
+                          {(r.status === "used" || r.status === "gifted") && (
+                            <p className="text-[8px] text-muted-foreground mt-1">
+                              {r.status === "gifted" ? `أهديت لـ ${r.used_for_uuid}` : "استخدمت لنفسي"} — {r.used_at ? new Date(r.used_at).toLocaleDateString("ar") : ""}
+                            </p>
+                          )}
+
+                          {r.status === "expired" && (
+                            <p className="text-[8px] text-destructive/60 mt-1">انتهت الصلاحية — {r.month}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+
+          {/* ═══════════ القسم 6 — العروض الذكية 🔥 ═══════════ */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+            className="rounded-2xl p-4 bg-card" style={{ border: "1px solid hsl(var(--border))" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-4 h-4 text-yellow-400" />
+              <h2 className="text-xs font-bold text-foreground">العروض الذكية 🔥</h2>
+            </div>
+
+            {(() => {
+              // Generate smart offers based on user status
+              const smartOffers: Array<{
+                id: string;
+                title: string;
+                desc: string;
+                reward: string;
+                condition: string;
+                color: string;
+                icon: React.ElementType;
+                met: boolean;
+                urgent?: boolean;
+              }> = [];
+
+              // Dynamic offers based on user charging behavior
+              if (monthlyCoins < 100000) {
+                // New user offers
+                smartOffers.push({
+                  id: "new-1",
+                  title: "عرض الترحيب",
+                  desc: "اشحن 100K كوينز واحصل على مكافأة الداعمين",
+                  reward: "مستوى داعم + مكافآت",
+                  condition: `${formatCoins(100000 - monthlyCoins)} كوينز متبقي`,
+                  color: "#22c55e",
+                  icon: Star,
+                  met: false,
+                });
+              }
+
+              // Next tier offer
+              if (nextTier) {
+                smartOffers.push({
+                  id: "next-tier",
+                  title: `الوصول لـ ${nextTier.name}`,
+                  desc: `اشحن ${formatCoins(coinsToNext)} كوينز إضافية هذا الشهر`,
+                  reward: (nextTier.rewards || []).map((r: any) => REWARD_TYPE_MAP[r.type]?.label || r.type).join(" + ") || "مكافآت حصرية",
+                  condition: `${formatCoins(coinsToNext)} كوينز متبقي`,
+                  color: nextTier.color,
+                  icon: Trophy,
+                  met: false,
+                  urgent: daysRemaining <= 7,
+                });
+              }
+
+              // If prev month was higher → encouragement
+              if (prevMonthCoins > monthlyCoins && prevMonthCoins > 0) {
+                smartOffers.push({
+                  id: "maintain",
+                  title: "حافظ على مستواك!",
+                  desc: `الشهر السابق شحنت ${formatCoins(prevMonthCoins)} — لا تخسر مستواك`,
+                  reward: prevTier?.name ? `استمر بمستوى ${prevTier.name}` : "حافظ على مكافآتك",
+                  condition: `${formatCoins(Math.max(0, prevMonthCoins - monthlyCoins))} كوينز متبقي`,
+                  color: "#f59e0b",
+                  icon: AlertTriangle,
+                  met: false,
+                  urgent: true,
+                });
+              }
+
+              // End of month urgency
+              if (daysRemaining <= 5 && nextTier && coinsToNext < monthlyCoins * 0.3) {
+                smartOffers.push({
+                  id: "last-chance",
+                  title: "فرصة أخيرة!",
+                  desc: `باقي ${daysRemaining} أيام فقط — قريب من ${nextTier.name}`,
+                  reward: "ترقية مستواك قبل نهاية الشهر",
+                  condition: `${formatCoins(coinsToNext)} كوينز فقط`,
+                  color: "#ef4444",
+                  icon: Clock,
+                  met: false,
+                  urgent: true,
+                });
+              }
+
+              // Available rewards reminder
+              if (availableRewards.length > 0 && useExpiryDays !== null && useExpiryDays <= 10) {
+                smartOffers.push({
+                  id: "use-rewards",
+                  title: "استخدم مكافآتك!",
+                  desc: `لديك ${availableRewards.length} مكافأة ستنتهي قريباً`,
+                  reward: "لا تضيّع مكافآتك",
+                  condition: `${useExpiryDays} يوم متبقي`,
+                  color: "#f97316",
+                  icon: Gift,
+                  met: false,
+                  urgent: useExpiryDays <= 3,
+                });
+              }
+
+              // Add custom offers from settings
+              specialOffers.forEach((offer: any, idx: number) => {
+                if (offer && offer.title) {
+                  const conditionMet = offer.min_coins ? monthlyCoins >= offer.min_coins : false;
+                  smartOffers.push({
+                    id: `custom-${idx}`,
+                    title: offer.title,
+                    desc: offer.description || "",
+                    reward: offer.reward || "",
+                    condition: offer.condition || "",
+                    color: offer.color || "#8b5cf6",
+                    icon: Sparkles,
+                    met: conditionMet,
+                  });
+                }
+              });
+
+              if (smartOffers.length === 0) {
+                return (
+                  <div className="text-center py-6">
+                    <Award className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                    <p className="text-[10px] text-muted-foreground">لا توجد عروض حالياً — استمر بالشحن!</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2">
+                  {smartOffers.map(offer => {
+                    const OfferIcon = offer.icon;
+                    return (
+                      <div key={offer.id} className="rounded-xl p-3 relative overflow-hidden"
+                        style={{
+                          background: `linear-gradient(135deg, ${offer.color}08, ${offer.color}03)`,
+                          border: `1px solid ${offer.color}20`,
+                        }}>
+                        {/* Urgent pulse */}
+                        {offer.urgent && (
+                          <div className="absolute top-2 left-2 w-2 h-2 rounded-full animate-pulse" style={{ background: offer.color }} />
+                        )}
+
+                        <div className="flex items-start gap-3">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: `${offer.color}15` }}>
+                            <OfferIcon className="w-4 h-4" style={{ color: offer.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] font-bold text-foreground">{offer.title}</p>
+                            <p className="text-[9px] text-muted-foreground mt-0.5">{offer.desc}</p>
+
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-lg text-[8px] font-bold"
+                                style={{ background: `${offer.color}12`, color: offer.color }}>
+                                🎁 {offer.reward}
+                              </span>
+                              <span className="flex items-center gap-1 text-[8px] text-muted-foreground">
+                                <Lock className="w-2.5 h-2.5" />
+                                {offer.condition}
+                              </span>
+                            </div>
+
+                            {offer.met && (
+                              <div className="mt-2 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/10">
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-[9px] font-bold text-emerald-400">تم تحقيق الشرط!</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </motion.div>
 
           {/* Leaderboard */}
           <div>
