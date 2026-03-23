@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send } from "lucide-react";
+import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, TrendingUp, DollarSign, Users, Calendar, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,36 @@ import BottomNav from "@/components/BottomNav";
 import StatusModal from "@/components/StatusModal";
 import { galaApi } from "@/services/galaApi";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
+
+/* ── Tooltip bubble component ── */
+const InfoTip: React.FC<{ text: string }> = ({ text }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="w-5 h-5 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
+      >
+        <HelpCircle className="w-3 h-3 text-muted-foreground" />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            className="absolute top-7 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-xl px-3 py-2 shadow-lg min-w-[180px]"
+          >
+            <button onClick={(e) => { e.stopPropagation(); setOpen(false); }} className="absolute top-1 left-1">
+              <X className="w-3 h-3 text-muted-foreground" />
+            </button>
+            <p className="text-[11px] text-foreground leading-relaxed text-right">{text}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
 
 interface MemberWithSalary {
   id: string;
