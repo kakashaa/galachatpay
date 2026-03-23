@@ -43,7 +43,12 @@ const Login: React.FC = () => {
     setMounted(true);
     // Check if user was force-logged out
     const reason = localStorage.getItem("gala_force_logout_reason");
-    if (reason === "password_changed") {
+    if (reason === "id_changed") {
+      localStorage.removeItem("gala_force_logout_reason");
+      toast.error("تم تغيير الآيدي — سجّل دخول بالآيدي الجديد", {
+        duration: 8000,
+      });
+    } else if (reason === "password_changed") {
       localStorage.removeItem("gala_force_logout_reason");
       toast.error("تم تسجيل خروجك تلقائياً لأن الرمز السري تم تغييره من جهاز آخر. يرجى تسجيل الدخول بالرمز الجديد.", {
         duration: 8000,

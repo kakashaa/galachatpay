@@ -111,12 +111,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = result.data;
 
-      // Session expired on server side
+      // Session expired on server side (password change or ID change)
       if (data?.session_expired) {
         console.log("Session expired server-side, forcing logout");
         localStorage.removeItem("gala_session_token");
         localStorage.removeItem("gala_login_time");
-        localStorage.setItem("gala_force_logout_reason", "password_changed");
+        // Check if UUID changed (user data uuid differs from stored)
+        const storedUser = localStorage.getItem("gala_user");
+        const storedUuid = storedUser ? JSON.parse(storedUser)?.uuid : null;
+        const serverUuid = data?.data?.uuid;
+        if (serverUuid && storedUuid && serverUuid !== storedUuid) {
+          localStorage.setItem("gala_force_logout_reason", "id_changed");
+        } else {
+          localStorage.setItem("gala_force_logout_reason", "password_changed");
+        }
         logout();
         return;
       }
