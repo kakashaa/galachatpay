@@ -18,17 +18,30 @@ export function useAdminSession() {
     try { return JSON.parse(localStorage.getItem("admin_permissions") || "[]"); } catch { return []; }
   })();
 
+  const adminStorageKeys = [
+    "admin_session_token", "admin_username", "admin_display_name", "admin_role",
+    "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone",
+  ];
+
+  const decodeSessionPayload = (token: string) => {
+    try {
+      const payloadBase64 = token.includes(".") ? token.split(".")[0] : token;
+      const decoded = JSON.parse(atob(payloadBase64));
+      return decoded?.username ? decoded : null;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     if (!adminSessionToken) {
       navigate("/admin", { replace: true });
       return;
     }
-    try {
-      JSON.parse(atob(adminSessionToken));
-    } catch {
-      ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
-       "admin_permissions", "admin_api_token", "admin_shift_start", "admin_shift_end", "admin_phone"
-      ].forEach(k => localStorage.removeItem(k));
+
+    const decoded = decodeSessionPayload(adminSessionToken);
+    if (!decoded) {
+      adminStorageKeys.forEach((k) => localStorage.removeItem(k));
       navigate("/admin", { replace: true });
     }
   }, [adminSessionToken, navigate]);
@@ -38,24 +51,25 @@ export function useAdminSession() {
     const token = localStorage.getItem("admin_session_token");
     if (!token) return;
 
-    try {
-      const decoded = JSON.parse(atob(token));
-      const age = Date.now() - (decoded.iat || 0);
+    const decoded = decodeSessionPayload(token);
+    if (!decoded) return;
 
-      // Refresh if older than 1 hour
-      if (age > 60 * 60 * 1000) {
-        const uname = localStorage.getItem("admin_username");
-        if (uname) {
-          supabase.functions.invoke("admin-manage", {
-            body: { username: uname, session_token: token, action: "auth_check" }
-          }).then(({ data }) => {
-            if (data?.session_token) {
-              localStorage.setItem("admin_session_token", data.session_token);
-            }
-          });
-        }
+    const age = Date.now() - (decoded.iat || 0);
+
+    // Refresh if older than 1 hour
+    if (age > 60 * 60 * 1000) {
+      const uname = localStorage.getItem("admin_username");
+      if (uname) {
+        supabase.functions.invoke("admin-manage", {
+          body: { username: uname, session_token: token, action: "auth_check" }
+        }).then(({ data }) => {
+          const result = data?.data || data;
+          if (result?.session_token) {
+            localStorage.setItem("admin_session_token", result.session_token);
+          }
+        });
       }
-    } catch { }
+    }
   }, []);
 
   const adminCall = useCallback(async (action: string, data: any = {}) => {
