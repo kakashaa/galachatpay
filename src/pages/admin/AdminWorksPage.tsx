@@ -701,6 +701,29 @@ const AdminWorksPage: React.FC = () => {
                     {settingsLoading ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "تطبيق على الكل"}
                   </button>
                 </div>
+
+                {/* Merge BD Data Button */}
+                {isOwner && (
+                  <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-2">
+                    <p className="text-xs font-bold text-amber-400">دمج البيانات القديمة</p>
+                    <p className="text-[10px] text-muted-foreground">نقل حسابات وأعضاء bd_ إلى works_ (لمرة واحدة)</p>
+                    <button
+                      onClick={async () => {
+                        setSettingsLoading(true);
+                        try {
+                          const res = await adminCall("works_merge_bd_data");
+                          toast.success(`تم الدمج: ${res.accounts_merged} حساب + ${res.members_merged} عضو`);
+                          fetchAccounts();
+                        } catch { toast.error("فشل الدمج"); }
+                        setSettingsLoading(false);
+                      }}
+                      disabled={settingsLoading}
+                      className="w-full px-4 h-8 rounded-xl text-xs font-bold disabled:opacity-50 bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                    >
+                      {settingsLoading ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "🔄 دمج الآن"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Per-account settings */}

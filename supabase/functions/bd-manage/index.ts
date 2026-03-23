@@ -110,7 +110,18 @@ async function checkDeviceIsBdMember(sb: any, userUuid: string): Promise<string 
 
   const allUuids = sameDeviceUsers.map((d: any) => d.user_uuid);
 
-  // Check if any user on this device is an active BD member
+  // Check works_members first (new system)
+  const { data: worksMembers } = await sb
+    .from("works_members")
+    .select("member_uuid")
+    .in("member_uuid", allUuids)
+    .eq("status", "active");
+
+  if (worksMembers && worksMembers.length > 0) {
+    return "member_exists";
+  }
+
+  // Fallback: check bd_members (legacy)
   const { data: existingMembers } = await sb
     .from("bd_members")
     .select("member_uuid, bd_uuid")
@@ -118,7 +129,7 @@ async function checkDeviceIsBdMember(sb: any, userUuid: string): Promise<string 
     .eq("is_active", true);
 
   if (existingMembers && existingMembers.length > 0) {
-    return "member_exists"; // Device has a BD member
+    return "member_exists";
   }
   return null;
 }
@@ -140,7 +151,18 @@ async function checkDeviceIsBd(sb: any, userUuid: string): Promise<string | null
 
   const allUuids = sameDeviceUsers.map((d: any) => d.user_uuid);
 
-  // Check if any user on this device is an active BD
+  // Check works_accounts first (new system)
+  const { data: worksAccs } = await sb
+    .from("works_accounts")
+    .select("user_uuid")
+    .in("user_uuid", allUuids)
+    .eq("status", "active");
+
+  if (worksAccs && worksAccs.length > 0) {
+    return "bd_exists";
+  }
+
+  // Fallback: check bd_commission_settings (legacy)
   const { data: existingBDs } = await sb
     .from("bd_commission_settings")
     .select("bd_uuid")
@@ -149,7 +171,7 @@ async function checkDeviceIsBd(sb: any, userUuid: string): Promise<string | null
     .eq("is_approved", true);
 
   if (existingBDs && existingBDs.length > 0) {
-    return "bd_exists"; // Device has a BD
+    return "bd_exists";
   }
   return null;
 }
@@ -176,7 +198,16 @@ serve(async (req) => {
       const { user_uuid, user_name, user_level } = params;
       if (!user_uuid) return json({ error: "user_uuid مطلوب" }, 400);
 
-      // Check if already a BD
+      // Check if already a BD (works_accounts first, then bd_commission_settings)
+      const { data: worksExists } = await sb
+        .from("works_accounts")
+        .select("id")
+        .eq("user_uuid", user_uuid)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (worksExists) return json({ status: "approved", already: true });
+
       const { data: bdExists } = await sb
         .from("bd_commission_settings")
         .select("id")
@@ -263,7 +294,36 @@ serve(async (req) => {
       const { user_uuid } = params;
       if (!user_uuid) return json({ error: "user_uuid مطلوب" }, 400);
 
-      // Check if BD exists (active or banned)
+      // Check works_accounts first (new system)
+      const { data: worksAcc } = await sb
+        .from("works_accounts")
+        .select("*")
+        .eq("user_uuid", user_uuid)
+        .maybeSingle();
+
+      if (worksAcc && worksAcc.status === "active") {
+        // Map to BD-compatible format for frontend
+        const bdCompat = {
+          bd_uuid: worksAcc.user_uuid,
+          bd_name: worksAcc.user_name,
+          referral_code: worksAcc.works_code,
+          is_active: true,
+          is_approved: true,
+          available_balance: worksAcc.balance_usd || 0,
+          total_earned: worksAcc.total_earnings_usd || 0,
+          user_commission_pct: worksAcc.supporter_commission_pct || 2,
+          agency_commission_pct: worksAcc.agent_commission_pct || 5,
+          current_month_earnings: 0,
+        };
+        const { data: viol } = await sb.from("bd_violations").select("id").eq("bd_uuid", user_uuid);
+        return json({ status: "approved", bd: bdCompat, violation_count: viol?.length || 0 });
+      }
+
+      if (worksAcc && worksAcc.status === "frozen") {
+        return json({ status: "banned", banned_at: worksAcc.updated_at, unban_date: null, days_remaining: 0 });
+      }
+
+      // Fallback: Check bd_commission_settings (legacy)
       const { data: bd } = await sb
         .from("bd_commission_settings")
         .select("*")
@@ -277,13 +337,10 @@ serve(async (req) => {
         const now = new Date();
         
         if (now >= unbanDate) {
-          // 30 days passed - auto-unban
           await sb.from("bd_commission_settings")
             .update({ is_active: true, is_approved: true, banned_at: null })
             .eq("bd_uuid", user_uuid);
-          // Clear violations
           await sb.from("bd_violations").delete().eq("bd_uuid", user_uuid);
-          // Re-activate members
           await sb.from("bd_members")
             .update({ is_active: true })
             .eq("bd_uuid", user_uuid);
@@ -296,7 +353,6 @@ serve(async (req) => {
           return json({ status: "approved", bd: updatedBd, violation_count: 0 });
         }
         
-        // Still banned
         return json({ 
           status: "banned", 
           banned_at: bd.banned_at,
@@ -330,21 +386,72 @@ serve(async (req) => {
       const { bd_uuid } = params;
       if (!bd_uuid) return json({ error: "bd_uuid مطلوب" }, 400);
 
-      const [bdRes, membersRes, withdrawalsRes, settingsRes] = await Promise.all([
-        sb.from("bd_commission_settings").select("*").eq("bd_uuid", bd_uuid).eq("is_active", true).maybeSingle(),
-        sb.from("bd_members").select("*").eq("bd_uuid", bd_uuid).eq("is_active", true).order("created_at", { ascending: false }),
+      // Try works_accounts first
+      const { data: worksAcc } = await sb
+        .from("works_accounts")
+        .select("*")
+        .eq("user_uuid", bd_uuid)
+        .eq("status", "active")
+        .maybeSingle();
+
+      let bdData: any;
+      let membersData: any[];
+
+      if (worksAcc) {
+        // Use works system
+        bdData = {
+          bd_uuid: worksAcc.user_uuid,
+          bd_name: worksAcc.user_name,
+          referral_code: worksAcc.works_code,
+          is_active: true,
+          is_approved: true,
+          available_balance: worksAcc.balance_usd || 0,
+          total_earned: worksAcc.total_earnings_usd || 0,
+          user_commission_pct: worksAcc.supporter_commission_pct || 2,
+          agency_commission_pct: worksAcc.agent_commission_pct || 5,
+          current_month_earnings: 0,
+        };
+
+        const { data: wMembers } = await sb
+          .from("works_members").select("*")
+          .eq("works_id", worksAcc.id).eq("status", "active")
+          .order("created_at", { ascending: false });
+
+        // Map works_members to bd_members compatible format
+        membersData = (wMembers || []).map((m: any) => ({
+          ...m,
+          bd_uuid: bd_uuid,
+          member_type: m.member_type === "agent" ? "agency" : m.member_type,
+          is_active: m.status === "active",
+          total_commission: m.total_commission_usd || 0,
+        }));
+      } else {
+        // Fallback: legacy bd tables
+        const { data: bdLegacy } = await sb
+          .from("bd_commission_settings").select("*")
+          .eq("bd_uuid", bd_uuid).eq("is_active", true).maybeSingle();
+        bdData = bdLegacy;
+
+        const { data: legacyMembers } = await sb
+          .from("bd_members").select("*")
+          .eq("bd_uuid", bd_uuid).eq("is_active", true)
+          .order("created_at", { ascending: false });
+        membersData = legacyMembers || [];
+      }
+
+      const [withdrawalsRes, settingsRes] = await Promise.all([
         sb.from("bd_withdrawals").select("*").eq("bd_uuid", bd_uuid).order("created_at", { ascending: false }).limit(50),
         sb.from("app_settings").select("*").in("key", ["bd_wallets_paused", "bd_auto_withdrawal"]),
       ]);
 
-      const supporters = (membersRes.data || []).filter((m: any) => m.member_type === "supporter");
-      const agents = (membersRes.data || []).filter((m: any) => m.member_type === "agency");
+      const supporters = (membersData).filter((m: any) => m.member_type === "supporter");
+      const agents = (membersData).filter((m: any) => m.member_type === "agency" || m.member_type === "agent");
 
       const settings: Record<string, string> = {};
       (settingsRes.data || []).forEach((s: any) => { settings[s.key] = s.value; });
 
       return json({
-        bd: bdRes.data,
+        bd: bdData,
         supporters,
         agents,
         withdrawals: withdrawalsRes.data || [],
@@ -374,15 +481,15 @@ serve(async (req) => {
         return json({ error: "تم إيقاف صلاحية البيدي الخاصة بك بسبب تكرار المخالفات (3 إنذارات). لا يمكنك دعوة أعضاء جدد." });
       }
 
-      // Check if member already in any BD
-      const { data: existingMember } = await sb
-        .from("bd_members")
-        .select("id, bd_uuid")
-        .eq("member_uuid", member_uuid)
-        .eq("is_active", true)
-        .maybeSingle();
+      // Check if member already in any BD (works_members + bd_members)
+      const { data: existingWorksMem } = await sb
+        .from("works_members").select("id")
+        .eq("member_uuid", member_uuid).eq("status", "active").maybeSingle();
+      const { data: existingBdMem } = await sb
+        .from("bd_members").select("id, bd_uuid")
+        .eq("member_uuid", member_uuid).eq("is_active", true).maybeSingle();
 
-      if (existingMember) {
+      if (existingWorksMem || existingBdMem) {
         return json({ error: "هذا العضو مسجل لدى بيدي آخر بالفعل" });
       }
 
@@ -747,7 +854,14 @@ serve(async (req) => {
         }
       }
 
-      // Check if already member of another BD
+      // Check if already member of another BD (works_members + bd_members)
+      const { data: existingWorksMember } = await sb
+        .from("works_members")
+        .select("id")
+        .eq("member_uuid", invite.member_uuid)
+        .eq("status", "active")
+        .maybeSingle();
+
       const { data: existingMember } = await sb
         .from("bd_members")
         .select("id")
@@ -755,7 +869,9 @@ serve(async (req) => {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (existingMember) {
+      const alreadyMember = existingWorksMember || existingMember;
+
+      if (alreadyMember) {
         const reason = `العضو ${userName} مسجل لدى بيدي آخر بالفعل`;
         await sb.from("bd_member_invitations").delete().eq("id", invitation_id);
         await sb.from("notifications").insert({
