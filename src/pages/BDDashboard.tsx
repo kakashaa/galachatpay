@@ -958,7 +958,7 @@ const BDDashboard: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="text-left">
                     <p className="text-sm font-black text-emerald-400" dir="ltr">
-                      ${(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) / 7500).toFixed(2)}
+                      ${Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0).toFixed(2)}
                     </p>
                     <p className="text-[9px] text-muted-foreground">
                       {Math.floor(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) * 7500).toLocaleString()} كوينز
