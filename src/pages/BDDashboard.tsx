@@ -39,6 +39,23 @@ const BDDashboard: React.FC = () => {
   const [supporterSalaries, setSupporterSalaries] = useState<Record<string, { charges: number; commission: number }>>({});
   const [agentSalaries, setAgentSalaries] = useState<Record<string, { salary: number; commission: number }>>({});
 
+  const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
+
+  // Fetch avatars for all members
+  useEffect(() => {
+    if (!data) return;
+    const allUuids = [
+      ...data.supporters.map((s: any) => s.member_uuid),
+      ...data.agents.map((a: any) => a.member_uuid),
+    ].filter(Boolean);
+    allUuids.forEach(uuid => {
+      if (!memberAvatars[uuid]) {
+        getAvatar(uuid).then(url => {
+          setMemberAvatars(prev => ({ ...prev, [uuid]: url }));
+        });
+      }
+    });
+  }, [data]);
   const handleManualSync = async () => {
     if (syncing || !user?.uuid) return;
     setSyncing(true);
