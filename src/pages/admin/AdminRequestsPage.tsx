@@ -437,7 +437,7 @@ const AdminRequestsPage: React.FC = () => {
 
           {/* Bottom gradient overlay with title */}
           <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2 pt-8 z-10">
-            <p className="text-white font-bold text-[10px] truncate">{item.title || item.user_name || "—"}</p>
+            <p className="text-white font-bold text-[10px] truncate">{displayName(item.title || item.user_name)}</p>
           </div>
 
           {/* File link */}
@@ -466,7 +466,7 @@ const AdminRequestsPage: React.FC = () => {
             {item.user_name && (
               <div className="flex items-center gap-1 text-[8px]">
                 <User className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
-                <span className="truncate flex-1">{item.user_name}</span>
+                <span className="truncate flex-1">{displayName(item.user_name)}</span>
               </div>
             )}
             {item.friend_uuid && (
