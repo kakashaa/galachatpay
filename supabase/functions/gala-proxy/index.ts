@@ -134,7 +134,33 @@ const OWNER_ONLY = new Set([
 const TIMEOUT_TOLERANT_ACTIONS = new Set([
   "user-monthly-charges",
   "agency-salary",
+  "activity-feed",
 ]);
+
+function timeoutPayload(action: string) {
+  if (action === "activity-feed") {
+    return {
+      success: false,
+      timeout: true,
+      message: "Signal timed out.",
+      data: {
+        activities: [],
+        summary: {
+          danger_count: 0,
+          warning_count: 0,
+          total_count: 0,
+        },
+      },
+    };
+  }
+
+  return {
+    success: false,
+    timeout: true,
+    message: "Signal timed out.",
+    data: null,
+  };
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -329,7 +355,7 @@ serve(async (req) => {
       && TIMEOUT_TOLERANT_ACTIONS.has(requestedAction)
     ) {
       console.warn(`[gala-proxy] Timeout tolerated for action=${requestedAction}`);
-      return json({ success: false, timeout: true, error: "Signal timed out.", data: null }, 200);
+      return json(timeoutPayload(requestedAction), 200);
     }
 
     console.error("[gala-proxy] Error:", message);
