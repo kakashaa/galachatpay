@@ -153,10 +153,11 @@ const AdminWorksPage: React.FC = () => {
     setDynamicAccountEarnings(0);
     try {
       const d = await adminCall("works_get_members", { works_id: wid });
-      // Edge function now returns { members, dynamic_earnings }
       if (d && d.members) {
         setMembers(d.members);
         setDynamicAccountEarnings(d.dynamic_earnings ?? 0);
+        // Update the account's earnings in the local list so it shows the live value
+        setAccounts(prev => prev.map(a => a.id === wid ? { ...a, dynamic_earnings: d.dynamic_earnings ?? 0, total_earnings_usd: d.dynamic_earnings ?? 0 } : a));
       } else {
         setMembers(d || []);
       }
