@@ -1173,6 +1173,247 @@ const SupporterBenefits: React.FC = () => {
             })()}
           </motion.div>
 
+          {/* ═══════════ القسم 7 — التحديات 🏁 ═══════════ */}
+          <div>
+            <SectionHeader title="التحديات 🏁" icon={Flag} sectionKey="challenges" color="#8b5cf6" />
+            <AnimatePresence>
+              {expandedSections.challenges && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden">
+                  {challenges.length === 0 ? (
+                    <div className="rounded-xl p-6 text-center" style={{ border: "1px solid hsl(var(--border))" }}>
+                      <Flag className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                      <p className="text-[10px] text-muted-foreground">لا توجد تحديات نشطة حالياً</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {challenges.map((ch: any) => {
+                        const prog = challengeProgress[ch.id];
+                        const currentAmt = prog?.current_amount || 0;
+                        const progressPct = Math.min(100, (currentAmt / ch.target_amount) * 100);
+                        const status = prog?.status || "active";
+                        const daysLeft = ch.duration_days - Math.floor((Date.now() - new Date(prog?.started_at || ch.created_at).getTime()) / 86400000);
+                        const isCompleted = status === "completed";
+                        const isExpired = daysLeft <= 0 && !isCompleted;
+                        const chColor = ch.color || "#8b5cf6";
+
+                        return (
+                          <div key={ch.id} className="rounded-xl p-3 relative overflow-hidden"
+                            style={{
+                              background: isCompleted ? "hsl(142 76% 36% / 0.04)" : isExpired ? "hsl(var(--destructive) / 0.04)" : `${chColor}08`,
+                              border: `1px solid ${isCompleted ? "hsl(142 76% 36% / 0.15)" : isExpired ? "hsl(var(--destructive) / 0.15)" : `${chColor}20`}`,
+                            }}>
+                            <div className="flex items-start gap-3">
+                              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: isCompleted ? "hsl(142 76% 36% / 0.1)" : `${chColor}15` }}>
+                                {isCompleted ? <Check className="w-4 h-4 text-emerald-400" /> : <Target className="w-4 h-4" style={{ color: chColor }} />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="text-[11px] font-bold text-foreground">{ch.title}</p>
+                                  <span className={`px-1.5 py-0.5 rounded text-[7px] font-bold ${
+                                    isCompleted ? "bg-emerald-500/15 text-emerald-400"
+                                    : isExpired ? "bg-destructive/15 text-destructive"
+                                    : "bg-primary/10 text-primary"
+                                  }`}>
+                                    {isCompleted ? "مكتمل ✓" : isExpired ? "منتهي" : "نشط"}
+                                  </span>
+                                </div>
+                                {ch.description && <p className="text-[9px] text-muted-foreground mb-2">{ch.description}</p>}
+
+                                {/* Progress bar */}
+                                <div className="relative h-2 rounded-full overflow-hidden mb-1.5" style={{ background: "hsl(var(--muted) / 0.3)" }}>
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${progressPct}%` }}
+                                    transition={{ duration: 1, ease: "easeOut" }}
+                                    className="absolute inset-y-0 left-0 rounded-full"
+                                    style={{
+                                      background: isCompleted ? "hsl(142 76% 36%)" : `linear-gradient(90deg, ${chColor}, ${chColor}cc)`,
+                                    }}
+                                  />
+                                  {!isCompleted && !isExpired && (
+                                    <div className="absolute inset-0 opacity-20" style={{
+                                      background: "linear-gradient(90deg, transparent, white, transparent)",
+                                      animation: "shimmer 2s infinite",
+                                    }} />
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-between text-[8px]">
+                                  <span className="text-muted-foreground">{formatCoins(currentAmt)} / {formatCoins(ch.target_amount)}</span>
+                                  <span className="font-bold tabular-nums" style={{ color: isExpired ? "hsl(var(--destructive))" : chColor }}>
+                                    {progressPct.toFixed(0)}%
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-lg text-[8px] font-bold"
+                                    style={{ background: `${chColor}12`, color: chColor }}>
+                                    🎁 {ch.reward_description || `${ch.reward_value} ${ch.reward_type}`}
+                                  </span>
+                                  {!isCompleted && !isExpired && (
+                                    <span className="flex items-center gap-1 text-[8px] text-muted-foreground">
+                                      <Timer className="w-2.5 h-2.5" />
+                                      {daysLeft} يوم متبقي
+                                    </span>
+                                  )}
+                                </div>
+
+                                {!prog && !isExpired && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!user?.uuid) return;
+                                      await supabase.from("supporter_challenge_progress").insert({
+                                        user_uuid: user.uuid,
+                                        challenge_id: ch.id,
+                                        current_amount: monthlyCoins,
+                                        status: monthlyCoins >= ch.target_amount ? "completed" : "active",
+                                        completed_at: monthlyCoins >= ch.target_amount ? new Date().toISOString() : null,
+                                      } as any);
+                                      toast.success("تم الانضمام للتحدي! 🎯");
+                                      loadData();
+                                    }}
+                                    className="mt-2 w-full py-1.5 rounded-lg text-[10px] font-bold active:scale-95 transition-all"
+                                    style={{ background: `${chColor}15`, color: chColor, border: `1px solid ${chColor}25` }}>
+                                    انضم للتحدي
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* ═══════════ القسم 8 — التنبيهات ═══════════ */}
+          {(() => {
+            const alerts: Array<{ id: string; text: string; color: string; icon: React.ElementType }> = [];
+
+            if (availableRewards.length > 0 && useExpiryDays !== null && useExpiryDays <= 7) {
+              alerts.push({ id: "expiring-rewards", text: `لديك ${availableRewards.length} مكافأة ستنتهي خلال ${useExpiryDays} أيام!`, color: "#f97316", icon: Bell });
+            }
+
+            const recentRewards = rewards.filter(r => r.status === "available" && (Date.now() - new Date(r.created_at).getTime()) < 86400000 * 2);
+            if (recentRewards.length > 0) {
+              alerts.push({ id: "new-rewards", text: `🎉 لديك ${recentRewards.length} مكافأة جديدة!`, color: "#22c55e", icon: Gift });
+            }
+
+            if (currentTier && prevTier && currentTier.min_coins > prevTier.min_coins) {
+              alerts.push({ id: "tier-up", text: `🎊 مبروك! وصلت مستوى ${currentTier.name}`, color: currentTier.color, icon: Trophy });
+            }
+
+            if (nextTier && coinsToNext > 0 && coinsToNext < monthlyCoins * 0.2) {
+              alerts.push({ id: "close-tier", text: `قريب من ${nextTier.name}! تبقى ${formatCoins(coinsToNext)} كوينز فقط`, color: "#8b5cf6", icon: TrendingUp });
+            }
+
+            const visibleAlerts = alerts.filter(a => !dismissedAlerts.has(a.id));
+            if (visibleAlerts.length === 0) return null;
+
+            return (
+              <div className="space-y-2">
+                {visibleAlerts.map(alert => {
+                  const AlertIcon = alert.icon;
+                  return (
+                    <motion.div key={alert.id} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl p-3 flex items-center gap-3"
+                      style={{ background: `${alert.color}08`, border: `1px solid ${alert.color}20` }}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${alert.color}15` }}>
+                        <AlertIcon className="w-4 h-4" style={{ color: alert.color }} />
+                      </div>
+                      <p className="text-[10px] font-bold text-foreground flex-1">{alert.text}</p>
+                      <button onClick={() => setDismissedAlerts(prev => new Set([...prev, alert.id]))}
+                        className="p-1 rounded-lg hover:bg-muted/50 transition-colors shrink-0">
+                        <X className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* ═══════════ القسم 9 — سجل المكافآت ═══════════ */}
+          <div>
+            <SectionHeader title="سجل المكافآت" icon={History} sectionKey="history" />
+            <AnimatePresence>
+              {expandedSections.history && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden">
+                  <div className="rounded-xl overflow-hidden" style={{ border: "1px solid hsl(var(--border))" }}>
+                    <div className="flex gap-0.5 p-1 bg-muted/20">
+                      {[
+                        { key: "all", label: "الكل" },
+                        { key: "vip", label: "VIP" },
+                        { key: "coins", label: "كوينز" },
+                        { key: "frame", label: "إطارات" },
+                        { key: "entry", label: "دخوليات" },
+                      ].map(f => (
+                        <button key={f.key} onClick={() => setHistoryFilter(f.key)}
+                          className={`flex-1 py-1 rounded text-[8px] font-bold transition-all ${
+                            historyFilter === f.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                          }`}>
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="max-h-[350px] overflow-y-auto">
+                      {rewards
+                        .filter(r => historyFilter === "all" || r.type === historyFilter)
+                        .slice(0, 50)
+                        .map((r, i) => {
+                          const info = REWARD_TYPE_MAP[r.type] || { label: r.type, icon: Star };
+                          const HistIcon = info.icon;
+                          return (
+                            <div key={r.id} className="flex items-center gap-3 px-3 py-2.5"
+                              style={{ borderTop: i > 0 ? "1px solid hsl(var(--border) / 0.5)" : "none" }}>
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                                style={{
+                                  background: r.status === "available" ? "hsl(142 76% 36% / 0.1)"
+                                    : r.status === "expired" ? "hsl(var(--destructive) / 0.1)"
+                                    : "hsl(var(--muted) / 0.4)",
+                                }}>
+                                <HistIcon className="w-3.5 h-3.5" style={{
+                                  color: r.status === "available" ? "hsl(142 76% 36%)"
+                                    : r.status === "expired" ? "hsl(var(--destructive))"
+                                    : "hsl(var(--muted-foreground))",
+                                }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[10px] font-bold text-foreground truncate">
+                                  {info.label}{r.type === "vip" ? ` ${r.value}` : ""}{r.value && r.type === "coins" ? ` ${r.value.toLocaleString()}` : ""}
+                                </p>
+                                <p className="text-[8px] text-muted-foreground">
+                                  {r.tier_name} — {r.month} — {r.status === "available" ? "متاح" : r.status === "used" ? "مستخدم" : r.status === "gifted" ? "أُهدي" : "منتهي"}
+                                </p>
+                              </div>
+                              <div className="text-left shrink-0">
+                                <p className="text-[8px] text-muted-foreground">
+                                  {new Date(r.created_at).toLocaleDateString("ar", { month: "short", day: "numeric" })}
+                                </p>
+                                {r.status === "gifted" && r.used_for_uuid && (
+                                  <p className="text-[7px] text-blue-400">→ {r.used_for_uuid}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {rewards.filter(r => historyFilter === "all" || r.type === historyFilter).length === 0 && (
+                        <p className="text-center py-6 text-[10px] text-muted-foreground">لا توجد سجلات</p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Leaderboard */}
           <div>
             <SectionHeader title="أعلى 10 داعمين هالشهر" icon={Users} sectionKey="leaderboard" />
