@@ -5,10 +5,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
+import { galaApi } from "@/services/galaApi";
 
 const AdminWorksPage: React.FC = () => {
   const { handleLogout, adminCall, adminUsername } = useAdminSession();
@@ -143,11 +144,69 @@ const AdminWorksPage: React.FC = () => {
     setLoading(false);
   }, [adminCall]);
 
+  const [memberSalaryLoading, setMemberSalaryLoading] = useState(false);
+  const [dynamicAccountEarnings, setDynamicAccountEarnings] = useState<number>(0);
+
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
+    setDynamicAccountEarnings(0);
     try { const d = await adminCall("works_get_members", { works_id: wid }); setMembers(d || []); } catch { }
     setLoading(false);
   }, [adminCall]);
+
+  // Fetch live salary data for members (like WorksPage does)
+  const fetchMemberLiveData = useCallback(async (membersList: any[], account: any) => {
+    if (!membersList.length) return;
+    setMemberSalaryLoading(true);
+    const now = new Date();
+    const year = now.getFullYear();
+    const monthNum = now.getMonth() + 1;
+    const month = `${year}-${String(monthNum).padStart(2, "0")}`;
+    const updated = [...membersList];
+    let totalDynamic = 0;
+
+    for (let i = 0; i < updated.length; i++) {
+      const m = updated[i];
+      try {
+        if (m.member_type === "supporter") {
+          let charges = 0;
+          let commission = 0;
+          try {
+            const data = await galaApi.userMonthlyCharges(m.member_uuid, month);
+            charges = data.data?.total_charges || 0;
+            commission = data.data?.commission_2pct || 0;
+          } catch { /* silent */ }
+          if (charges === 0) {
+            try {
+              const data2 = await galaApi.bdUserMonthlyCharges(m.member_uuid, month);
+              charges = data2.data?.total_charges || data2.total_charges || 0;
+              commission = data2.data?.commission_2pct || Math.floor(charges * 0.02) || 0;
+            } catch { /* silent */ }
+          }
+          const pct = m.commission_pct || account?.supporter_commission_pct || 2;
+          const dynamicComm = charges > 0 ? charges * pct / 100 : commission;
+          updated[i] = { ...m, monthly_charges: charges, live_commission: dynamicComm };
+          totalDynamic += dynamicComm;
+        }
+        if (m.member_type === "agent" && m.agency_id) {
+          try {
+            const data = await galaApi.agencySalary(m.agency_id, String(year), String(monthNum));
+            const salary = data.data?.salary || 0;
+            const agencyMembers = data.data?.members_count || data.data?.total_members || 0;
+            const agencyName = data.data?.agency_name || "";
+            const pct = m.commission_pct || account?.agent_commission_pct || 5;
+            const commUsd = salary * pct / 100;
+            updated[i] = { ...m, agency_salary: salary, agency_members_count: agencyMembers, agency_name: agencyName, live_commission: commUsd };
+            totalDynamic += commUsd;
+          } catch { /* silent */ }
+        }
+      } catch { /* silent */ }
+    }
+
+    setMembers(updated);
+    setDynamicAccountEarnings(totalDynamic);
+    setMemberSalaryLoading(false);
+  }, []);
 
   const fetchWithdrawals = useCallback(async () => {
     setLoading(true);
@@ -580,7 +639,14 @@ const AdminWorksPage: React.FC = () => {
                       <div><p className="font-bold text-accent-foreground">{a.agent_count}</p><p className="text-muted-foreground">وكلاء</p></div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setSelectedWorksId(a.id); fetchMembers(a.id); setTab("members"); }}
+                      <button onClick={async () => {
+                        setSelectedWorksId(a.id);
+                        setTab("members");
+                        const d = await adminCall("works_get_members", { works_id: a.id });
+                        const membersList = d || [];
+                        setMembers(membersList);
+                        fetchMemberLiveData(membersList, a);
+                      }}
                         className="flex-1 bg-muted py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                         <Users className="w-3 h-3" /> الأعضاء
                       </button>
@@ -1056,6 +1122,16 @@ const AdminWorksPage: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Dynamic earnings summary */}
+                {!loading && members.length > 0 && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">أرباح الشهر الحالي (ديناميكي)</p>
+                    <p className="text-lg font-black text-emerald-400">
+                      {memberSalaryLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `$${dynamicAccountEarnings.toFixed(2)}`}
+                    </p>
+                  </div>
+                )}
+
                 {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
                   <>
                     {members.filter(m => m.member_type === (membersTab === "supporters" ? "supporter" : "agent")).length === 0 && (
@@ -1070,20 +1146,61 @@ const AdminWorksPage: React.FC = () => {
                           </div>
                           <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                          <div className="bg-muted/30 rounded-lg p-2">
-                            <p className="text-muted-foreground">الشحن</p>
-                            <p className="font-bold text-foreground">{(m.monthly_charges || 0).toLocaleString()}</p>
+
+                        {/* Supporter details */}
+                        {m.member_type === "supporter" && (
+                          <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                            <div className="bg-muted/30 rounded-lg p-2">
+                              <p className="text-muted-foreground">شحنات الشهر</p>
+                              <p className="font-bold text-foreground">
+                                {memberSalaryLoading ? "..." : (m.monthly_charges || 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="bg-emerald-500/5 rounded-lg p-2">
+                              <p className="text-emerald-400/80">العمولة (live)</p>
+                              <p className="font-bold text-emerald-400">
+                                {memberSalaryLoading ? "..." : `${Number(m.live_commission || 0).toLocaleString()} ك`}
+                              </p>
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-2">
+                              <p className="text-muted-foreground">النسبة</p>
+                              <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
+                            </div>
                           </div>
-                          <div className="bg-emerald-500/5 rounded-lg p-2">
-                            <p className="text-emerald-400/80">العمولة</p>
-                            <p className="font-bold text-emerald-400">${Number(m.total_commission_usd || 0).toFixed(2)}</p>
+                        )}
+
+                        {/* Agent details */}
+                        {m.member_type === "agent" && (
+                          <div className="space-y-2">
+                            {(m.agency_name || m.agency_id) && (
+                              <div className="flex items-center gap-2 text-[10px] bg-blue-500/5 rounded-lg p-2">
+                                <Building2 className="w-3 h-3 text-blue-400" />
+                                <span className="text-blue-400 font-bold">{m.agency_name || `وكالة #${m.agency_id}`}</span>
+                                {m.agency_members_count > 0 && (
+                                  <span className="text-muted-foreground">• {m.agency_members_count} عضو</span>
+                                )}
+                              </div>
+                            )}
+                            <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">راتب الوكالة</p>
+                                <p className="font-bold text-foreground">
+                                  {memberSalaryLoading ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}
+                                </p>
+                              </div>
+                              <div className="bg-emerald-500/5 rounded-lg p-2">
+                                <p className="text-emerald-400/80">العمولة (live)</p>
+                                <p className="font-bold text-emerald-400">
+                                  {memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}
+                                </p>
+                              </div>
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">النسبة</p>
+                                <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="bg-muted/30 rounded-lg p-2">
-                            <p className="text-muted-foreground">النسبة</p>
-                            <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
-                          </div>
-                        </div>
+                        )}
                         <div className="flex gap-2 mt-1">
                           {m.status !== "removed" && (
                             <button onClick={() => removeMember(m.id)}
