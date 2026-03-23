@@ -1309,13 +1309,13 @@ const AdminWorksPage: React.FC = () => {
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                                  <div className="bg-muted/30 rounded-lg p-2">
+                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">شحنات الشهر</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : Number(m.monthly_charges || 0).toLocaleString()}</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : Number(m.monthly_charges || 0).toLocaleString()}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
-                                    <p className="text-muted-foreground">العمولة (live)</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
+                                    <p className="text-muted-foreground">العمولة</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">النسبة</p>
@@ -1339,7 +1339,16 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "وكيل"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => refreshSingleMember(m.id)}
+                                      disabled={refreshingMemberId === m.id}
+                                      className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 disabled:opacity-50"
+                                    >
+                                      {refreshingMemberId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  </div>
                                 </div>
                                 <div className="rounded-lg bg-muted/30 p-2 text-[10px]">
                                   <div className="flex items-center gap-2">
@@ -1353,11 +1362,11 @@ const AdminWorksPage: React.FC = () => {
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">راتب الوكالة</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
-                                    <p className="text-muted-foreground">العمولة (live)</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
+                                    <p className="text-muted-foreground">العمولة</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">النسبة</p>
