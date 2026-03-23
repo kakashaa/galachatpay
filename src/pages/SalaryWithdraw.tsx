@@ -845,83 +845,156 @@ const SalaryWithdraw: React.FC = () => {
   // ── SUCCESS ──
   if (step === "receipt" && selectedTransfer) {
     const receiptCode = `GC-${selectedTransfer.reference_id || "MAN"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-    const receiptDate = selectedTransfer.time || new Date().toLocaleDateString("ar-EG", {
-      year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
+    const receiptDate = selectedTransfer.time
+      ? new Date(selectedTransfer.time).toLocaleDateString("ar-EG", {
+          year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
+        })
+      : new Date().toLocaleDateString("ar-EG", {
+          year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
+        });
+
+    const receiptItems = [
+      { label: "التاريخ", value: receiptDate, color: "text-foreground" },
+      {
+        label: "المبلغ",
+        value: `$${transferAmount.toFixed(2)} (${(transferAmount * coinsRate).toLocaleString()} كوينز)`,
+        color: "text-emerald-400",
+      },
+      {
+        label: "النوع",
+        value: salaryType === "agency" ? "وكالة" : "مضيف",
+        color: salaryType === "agency" ? "text-violet-400" : "text-emerald-400",
+      },
+      { label: "رقم الحوالة", value: `#${selectedTransfer.reference_id}`, color: "text-foreground font-mono" },
+    ];
+
+    if (pathMode === "cash" && remaining >= 0) {
+      receiptItems.push({
+        label: "الراتب المتبقي",
+        value: `$${(remaining - transferAmount > 0 ? remaining - transferAmount : 0).toFixed(2)}`,
+        color: "text-foreground",
+      });
+    }
+
+    if (pathMode === "cash" && effectiveBankLabel) {
+      receiptItems.push({
+        label: "البنك",
+        value: `${effectiveBankLabel} — ${country?.name}`,
+        color: "text-foreground",
+      });
+    }
+
+    if (pathMode === "charge_other" && targetInfo) {
+      receiptItems.push({
+        label: "المستلم",
+        value: `${targetInfo.name} (${targetInfo.uuid})`,
+        color: "text-foreground",
+      });
+    }
+
+    receiptItems.push({
+      label: "الحالة",
+      value: pathMode === "cash" ? "قيد المراجعة" : "تم بنجاح",
+      color: pathMode === "cash" ? "text-amber-400" : "text-emerald-400",
     });
 
     return (
       <MobileLayout showHeader headerTitle="إيصال السحب" onBack={() => navigate("/dashboard", { replace: true })}>
         <div className="px-5 py-6 space-y-5">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 space-y-5">
-
-            <div className="text-center space-y-2">
-              <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
-                <CheckCircle className="w-8 h-8 text-emerald-400" />
-              </div>
-              <h2 className="text-lg font-black text-foreground">✅ تم تقديم الطلب!</h2>
-              <p className="text-xs text-muted-foreground">
-                {salaryType === "agency" ? "سحب من راتب الوكالة" : "سحب من راتب المضيف"}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-background/50 border border-border/20 p-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">التاريخ</span>
-                <span className="text-xs text-foreground">{receiptDate}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">المبلغ</span>
-                <span className="font-bold text-emerald-400" dir="ltr">
-                  ${transferAmount.toFixed(2)} ({(transferAmount * coinsRate).toLocaleString()} كوينز)
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">النوع</span>
-                <span className={`font-bold ${salaryType === "agency" ? "text-violet-400" : "text-emerald-400"}`}>
-                  {salaryType === "agency" ? "وكالة" : "مضيف"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">رقم الحوالة</span>
-                <span className="font-mono font-bold text-foreground">#{selectedTransfer.reference_id}</span>
-              </div>
-              {pathMode === "cash" && effectiveBankLabel && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">البنك</span>
-                  <span className="font-bold text-foreground">{effectiveBankLabel} — {country?.name}</span>
-                </div>
-              )}
-              {pathMode === "charge_other" && targetInfo && (
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">المستلم</span>
-                  <span className="font-bold text-foreground">{targetInfo.name} ({targetInfo.uuid})</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">الحالة</span>
-                <span className={`font-bold ${pathMode === "cash" ? "text-amber-400" : "text-emerald-400"}`}>
-                  {pathMode === "cash" ? "قيد المراجعة" : "تم ✓"}
-                </span>
+          {/* Main receipt card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="rounded-2xl overflow-hidden"
+            style={{
+              background: "linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)/0.8) 100%)",
+              border: "1px solid hsl(152 69% 40% / 0.2)",
+              boxShadow: "0 8px 32px -8px hsl(152 69% 40% / 0.1)",
+            }}
+          >
+            {/* Header with success icon */}
+            <div className="pt-8 pb-5 text-center space-y-3"
+              style={{ background: "linear-gradient(180deg, hsl(152 69% 40% / 0.08) 0%, transparent 100%)" }}>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.2, duration: 0.6 }}
+                className="w-16 h-16 rounded-full mx-auto flex items-center justify-center"
+                style={{ background: "hsl(152 69% 40% / 0.15)", border: "2px solid hsl(152 69% 40% / 0.3)" }}
+              >
+                <CheckCircle className="w-9 h-9 text-emerald-400" />
+              </motion.div>
+              <div>
+                <h2 className="text-lg font-black text-foreground">تم السحب بنجاح!</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {salaryType === "agency" ? "سحب من راتب الوكالة" : "سحب من راتب المضيف"}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 text-center space-y-2">
-              <p className="text-[10px] text-muted-foreground">كود العملية</p>
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-lg font-black font-mono text-primary tracking-wider">{receiptCode}</span>
-                <button onClick={() => { navigator.clipboard.writeText(receiptCode); toast.success("تم نسخ الكود"); }}
-                  className="p-1.5 rounded-lg bg-primary/15 active:scale-90 transition-transform">
-                  <Copy className="w-3.5 h-3.5 text-primary" />
-                </button>
-              </div>
+            {/* Receipt details */}
+            <div className="px-5 pb-5 space-y-0">
+              {receiptItems.map((item, i) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, x: 15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + i * 0.06 }}
+                  className="flex items-center justify-between py-3"
+                  style={{
+                    borderBottom: i < receiptItems.length - 1 ? "1px solid hsl(var(--border)/0.08)" : "none",
+                  }}
+                >
+                  <span className="text-xs text-muted-foreground font-medium">{item.label}</span>
+                  <span className={`text-xs font-bold ${item.color}`}>{item.value}</span>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
 
-          <Button onClick={() => navigate("/dashboard", { replace: true })}
-            className="w-full h-12 gold-gradient text-primary-foreground font-bold">
-            العودة للرئيسية
-          </Button>
+          {/* Operation code card */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="rounded-2xl p-5 text-center space-y-3"
+            style={{
+              background: "hsl(var(--primary)/0.06)",
+              border: "1px solid hsl(var(--primary)/0.15)",
+            }}
+          >
+            <p className="text-[10px] text-muted-foreground font-medium tracking-wider uppercase">كود العملية</p>
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-base font-black font-mono tracking-widest text-primary">{receiptCode}</span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(receiptCode); toast.success("تم نسخ الكود"); }}
+                className="p-2 rounded-xl active:scale-90 transition-transform"
+                style={{ background: "hsl(var(--primary)/0.12)" }}
+              >
+                <Copy className="w-4 h-4 text-primary" />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">احفظ هذا الكود للمتابعة مع الإدارة</p>
+          </motion.div>
+
+          {/* Back button */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <Button
+              onClick={() => navigate("/dashboard", { replace: true })}
+              className="w-full h-13 rounded-xl font-bold text-base"
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--primary)), hsl(152 69% 40%))",
+                color: "hsl(var(--primary-foreground))",
+              }}
+            >
+              العودة للرئيسية
+            </Button>
+          </motion.div>
         </div>
       </MobileLayout>
     );
