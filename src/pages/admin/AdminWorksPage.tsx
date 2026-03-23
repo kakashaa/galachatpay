@@ -143,14 +143,15 @@ const AdminWorksPage: React.FC = () => {
     setLoading(false);
   }, [adminCall]);
 
-  const [memberSalaryLoading, setMemberSalaryLoading] = useState(false);
+  const [memberSalaryLoading] = useState(false); // kept for backward compat
   const [dynamicAccountEarnings, setDynamicAccountEarnings] = useState<number>(0);
   const [supporterDynamicEarnings, setSupporterDynamicEarnings] = useState<number>(0);
   const [agentDynamicEarnings, setAgentDynamicEarnings] = useState<number>(0);
+  const [refreshingMemberId, setRefreshingMemberId] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
 
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
-    setMemberSalaryLoading(true);
     setDynamicAccountEarnings(0);
     setSupporterDynamicEarnings(0);
     setAgentDynamicEarnings(0);
@@ -161,17 +162,54 @@ const AdminWorksPage: React.FC = () => {
         setDynamicAccountEarnings(d.dynamic_earnings ?? 0);
         setSupporterDynamicEarnings(d.supporter_dynamic_earnings ?? 0);
         setAgentDynamicEarnings(d.agent_dynamic_earnings ?? 0);
-        // Update the account's earnings in the local list so it shows the live value
         setAccounts(prev => prev.map(a => a.id === wid ? { ...a, dynamic_earnings: d.dynamic_earnings ?? 0, total_earnings_usd: d.dynamic_earnings ?? 0 } : a));
       } else {
         setMembers(d || []);
-        setSupporterDynamicEarnings(0);
-        setAgentDynamicEarnings(0);
       }
     } catch { }
     setLoading(false);
-    setMemberSalaryLoading(false);
   }, [adminCall]);
+
+  const refreshSingleMember = useCallback(async (memberId: string) => {
+    setRefreshingMemberId(memberId);
+    try {
+      const d = await adminCall("works_refresh_member", { member_id: memberId });
+      if (d && !d.error) {
+        setMembers(prev => {
+          const updated = prev.map(m => m.id === memberId ? { ...d, needs_refresh: false } : m);
+          // Recalculate totals
+          let total = 0, sup = 0, agt = 0;
+          for (const m of updated) {
+            const v = Number(m.live_commission || 0);
+            total += v;
+            if (m.member_type === "supporter") sup += v;
+            if (m.member_type === "agent") agt += v;
+          }
+          setDynamicAccountEarnings(Math.round(total * 100) / 100);
+          setSupporterDynamicEarnings(Math.round(sup * 100) / 100);
+          setAgentDynamicEarnings(Math.round(agt * 100) / 100);
+          return updated;
+        });
+      } else {
+        toast.error("فشل تحديث البيانات");
+      }
+    } catch { toast.error("خطأ في الاتصال"); }
+    setRefreshingMemberId(null);
+  }, [adminCall]);
+
+  const refreshAllMembers = useCallback(async () => {
+    const activeMembers = members.filter(m => m.status === "active");
+    if (activeMembers.length === 0) return;
+    setRefreshingAll(true);
+    for (const m of activeMembers) {
+      await refreshSingleMember(m.id);
+      if (activeMembers.indexOf(m) < activeMembers.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    setRefreshingAll(false);
+    toast.success("تم تحديث جميع الأعضاء");
+  }, [members, refreshSingleMember]);
 
 
 
@@ -1146,6 +1184,14 @@ const AdminWorksPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold">أعضاء الفريق</h3>
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={refreshAllMembers}
+                            disabled={refreshingAll}
+                            className="text-[10px] px-2 py-1 rounded-lg font-bold flex items-center gap-1 bg-primary/10 text-primary disabled:opacity-50"
+                          >
+                            {refreshingAll ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
+                            {refreshingAll ? "جاري التحديث..." : "تحديث الكل"}
+                          </button>
                           {isOwner && (
                             <button onClick={() => { setManualTargetWorksId(selectedWorksId); setShowManualAdd(true); }}
                               className="text-[10px] px-2 py-1 rounded-lg font-bold flex items-center gap-1 bg-emerald-500/10 text-emerald-400">
@@ -1199,22 +1245,35 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "مستخدم"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => refreshSingleMember(m.id)}
+                                      disabled={refreshingMemberId === m.id}
+                                      className="p-1 rounded-lg bg-primary/10 text-primary disabled:opacity-50"
+                                      title="تحديث البيانات"
+                                    >
+                                      {refreshingMemberId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart3 className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">شحنات الشهر</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : Number(m.monthly_charges || 0).toLocaleString()}</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : Number(m.monthly_charges || 0).toLocaleString()}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
-                                    <p className="text-muted-foreground">العمولة (live)</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
+                                    <p className="text-muted-foreground">العمولة</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">النسبة</p>
                                     <p className="font-bold text-foreground">{Number(m.commission_pct ?? supporterPct)}%</p>
                                   </div>
                                 </div>
+                                {m.needs_refresh && !refreshingMemberId && (
+                                  <p className="text-[9px] text-muted-foreground text-center">⚡ اضغط 🔄 لتحديث البيانات الحية</p>
+                                )}
                                 {renderMemberActions(m)}
                               </div>
                             ))}
@@ -1232,7 +1291,17 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "وكيل"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => refreshSingleMember(m.id)}
+                                      disabled={refreshingMemberId === m.id}
+                                      className="p-1 rounded-lg bg-primary/10 text-primary disabled:opacity-50"
+                                      title="تحديث البيانات"
+                                    >
+                                      {refreshingMemberId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart3 className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  </div>
                                 </div>
                                 <div className="rounded-lg bg-muted/30 p-2 text-[10px]">
                                   <div className="flex items-center gap-2">
@@ -1246,17 +1315,20 @@ const AdminWorksPage: React.FC = () => {
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">راتب الوكالة</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
-                                    <p className="text-muted-foreground">العمولة (live)</p>
-                                    <p className="font-bold text-foreground">{memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
+                                    <p className="text-muted-foreground">العمولة</p>
+                                    <p className="font-bold text-foreground">{refreshingMemberId === m.id ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}</p>
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-2">
                                     <p className="text-muted-foreground">النسبة</p>
                                     <p className="font-bold text-foreground">{Number(m.commission_pct ?? agentPct)}%</p>
                                   </div>
                                 </div>
+                                {m.needs_refresh && !refreshingMemberId && (
+                                  <p className="text-[9px] text-muted-foreground text-center">⚡ اضغط 🔄 لتحديث البيانات الحية</p>
+                                )}
                                 {renderMemberActions(m)}
                               </div>
                             ))}
