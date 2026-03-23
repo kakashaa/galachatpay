@@ -15,6 +15,13 @@ import SvgaPlayer from "@/components/SvgaPlayer";
 import { captureMediaThumbnail } from "@/utils/captureMediaThumbnail";
 import { supabase } from "@/integrations/supabase/client";
 
+/** Check if a string looks like a UUID/hex hash (not a human name) */
+const isUuidLike = (s: string) => /^[0-9a-f]{24,}$/i.test(s?.trim?.() || "");
+const displayName = (name: string | undefined | null, fallback = "—") => {
+  if (!name) return fallback;
+  return isUuidLike(name) ? "شارة خاصة" : name;
+};
+
 type ReqTab = "entries" | "frames" | "hairs" | "animated" | "custom" | "rooms";
 
 const tabs: { key: ReqTab; label: string; icon: React.ElementType; color: string; bg: string }[] = [
