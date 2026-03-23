@@ -1251,7 +1251,7 @@ const AdminWorksPage: React.FC = () => {
                           <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 text-center">
                             <p className="text-[10px] text-muted-foreground">إجمالي أرباح الشهر (داعمين + وكلاء)</p>
                             <p className="text-lg font-black text-foreground">
-                              {memberSalaryLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `$${dynamicAccountEarnings.toFixed(2)}`}
+                              ${dynamicAccountEarnings.toFixed(2)}
                             </p>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1272,6 +1272,14 @@ const AdminWorksPage: React.FC = () => {
                               <p className="text-muted-foreground">أرباح الوكلاء (شهري)</p>
                             </div>
                           </div>
+                          <button
+                            onClick={refreshAllMembers}
+                            disabled={refreshingAll}
+                            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 disabled:opacity-50"
+                          >
+                            {refreshingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                            {refreshingAll ? "جاري تحديث الكل..." : "🔄 تحديث أرباح جميع الأعضاء"}
+                          </button>
                         </div>
                       )}
 
@@ -1289,7 +1297,16 @@ const AdminWorksPage: React.FC = () => {
                                     <p className="text-sm font-bold text-foreground">{m.member_name || "مستخدم"}</p>
                                     <p className="text-[10px] text-muted-foreground font-mono">UUID: {m.member_uuid}</p>
                                   </div>
-                                  <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => refreshSingleMember(m.id)}
+                                      disabled={refreshingMemberId === m.id}
+                                      className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 disabled:opacity-50"
+                                    >
+                                      {refreshingMemberId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
+                                  </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
                                   <div className="bg-muted/30 rounded-lg p-2">
