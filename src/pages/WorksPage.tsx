@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import BottomNav from "@/components/BottomNav";
 import StatusModal from "@/components/StatusModal";
 import { galaApi } from "@/services/galaApi";
+import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 
 interface MemberWithSalary {
   id: string;
@@ -53,6 +54,7 @@ const WorksPage: React.FC = () => {
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [monthEarnings, setMonthEarnings] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
+  const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
 
   // StatusModal
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
@@ -220,23 +222,41 @@ const WorksPage: React.FC = () => {
 
       if (works) {
         setMyWorks(works);
-        const { data: m } = await supabase
-          .from("works_members").select("*").eq("works_id", works.id).eq("status", "active");
+
+        const todayDate = new Date().toISOString().slice(0, 10);
+        const [{ data: m }, { data: todayRows }] = await Promise.all([
+          supabase
+            .from("works_members")
+            .select("*")
+            .eq("works_id", works.id)
+            .eq("status", "active"),
+          supabase
+            .from("works_earnings")
+            .select("commission_usd")
+            .eq("works_id", works.id)
+            .eq("period_date", todayDate),
+        ]);
+
         const rawMembers = (m || []) as any as MemberWithSalary[];
         setMembers(rawMembers);
 
-        // Auto-fetch salary data for live calculations
+        const todayUsd = (todayRows || []).reduce(
+          (sum: number, row: any) => sum + Number(row.commission_usd || 0),
+          0
+        );
+        setTodayEarnings(todayUsd);
+
+        // Auto-fetch salary data for live calculations (month only)
         if (rawMembers.length > 0) {
           setSalaryLoading(true);
           try {
             const { totalMonthCommissionCoins, updatedMembers } = await fetchSalaryData(works.id, rawMembers);
             setMembers(updatedMembers);
-            // monthEarnings = total commission in COINS
             setMonthEarnings(totalMonthCommissionCoins);
-            // todayEarnings = total commission in USD (commission_coins / 7500)
-            setTodayEarnings(totalMonthCommissionCoins / 7500);
           } catch { /* silent */ }
           setSalaryLoading(false);
+        } else {
+          setMonthEarnings(0);
         }
       } else {
         const { data: req } = await supabase
@@ -249,6 +269,25 @@ const WorksPage: React.FC = () => {
   }, [user?.uuid, fetchSalaryData, checkBanStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    const uuids = [...new Set(members.map((m) => m.member_uuid).filter(Boolean))];
+    if (uuids.length === 0) return;
+
+    let cancelled = false;
+    const loadAvatars = async () => {
+      const entries = await Promise.all(
+        uuids.map(async (uuid) => [uuid, await getAvatar(uuid)] as const)
+      );
+      if (cancelled) return;
+      setMemberAvatars((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+    };
+
+    loadAvatars();
+    return () => {
+      cancelled = true;
+    };
+  }, [members]);
 
   const submitRequest = async () => {
     if (!user?.uuid || submitting) return;
@@ -437,6 +476,7 @@ const WorksPage: React.FC = () => {
   const supporterCount = members.filter(m => m.member_type === "supporter").length;
   const agentCount = members.filter(m => m.member_type === "agent").length;
   const balance = Number(myWorks?.balance_usd || 0);
+  const totalEarnings = Number(myWorks?.total_earnings_usd || 0);
   const supporterPct = Number(myWorks?.supporter_commission_pct || 2);
   const agentPct = Number(myWorks?.agent_commission_pct || 3);
 
@@ -544,7 +584,7 @@ const WorksPage: React.FC = () => {
             {balance > 0 && <p className="text-[8px] text-primary font-bold mt-0.5">اضغط لطلب سحب</p>}
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-2xl font-mono font-extrabold text-green-400">${todayEarnings.toFixed(2)}</p>
+            <p className="text-2xl font-mono font-extrabold text-green-400">${totalEarnings.toFixed(2)}</p>
             <p className="text-[9px] text-muted-foreground">إجمالي الأرباح</p>
           </div>
         </div>
@@ -574,8 +614,19 @@ const WorksPage: React.FC = () => {
           </div>
           {members.filter(m => m.member_type === "supporter").map(m => (
             <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">{m.member_name || m.member_uuid.slice(0, 8)}</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <img
+                    src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
+                    onError={handleAvatarError}
+                    className="w-8 h-8 rounded-lg object-cover shrink-0"
+                    alt={m.member_name || m.member_uuid}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono tabular-nums truncate" dir="ltr">#{m.member_uuid}</p>
+                  </div>
+                </div>
                 <span className="text-[10px] font-extrabold text-green-400">${((m.monthly_charges || 0) / 7500).toFixed(2)}</span>
               </div>
               {m.monthly_charges !== undefined && (
@@ -602,8 +653,19 @@ const WorksPage: React.FC = () => {
           </div>
           {members.filter(m => m.member_type === "agent").map(m => (
             <div key={m.id} className="bg-background/50 rounded-xl px-3 py-2.5 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-foreground">{m.member_name || m.member_uuid.slice(0, 8)}</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <img
+                    src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
+                    onError={handleAvatarError}
+                    className="w-8 h-8 rounded-lg object-cover shrink-0"
+                    alt={m.member_name || m.member_uuid}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono tabular-nums truncate" dir="ltr">#{m.member_uuid}</p>
+                  </div>
+                </div>
                 <span className="text-[10px] font-extrabold text-green-400">${(m.agency_salary || 0).toFixed(2)}</span>
               </div>
               {m.agency_salary !== undefined && (
