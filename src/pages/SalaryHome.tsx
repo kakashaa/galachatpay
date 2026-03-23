@@ -23,6 +23,7 @@ interface WithdrawStatus {
     is_valid: boolean;
     total_unpaid: number;
     total_cut: number;
+    monthly_cut?: number;
     available: number;
     cash_used_this_month: boolean;
   };
@@ -31,6 +32,8 @@ interface WithdrawStatus {
     pool_total: number;
     pool_cut: number;
     pool_available: number;
+    monthly_pool_total?: number;
+    monthly_pool_cut?: number;
     cash_used_this_month: boolean;
     can_withdraw: boolean;
   };
@@ -73,11 +76,16 @@ const SalaryHome: React.FC = () => {
   const agency = status?.agency_salary;
   const isAgencyOwner = status?.is_agency_owner || false;
 
-  // Validation: if total_cut > current_month, data is suspect
-  const hostCutInvalid = host ? (host.total_cut > host.current_month) : false;
+  // Use monthly_cut (new) with fallback to total_cut (old)
+  const hostCut = host ? (host.monthly_cut ?? host.total_cut) : 0;
+  const hostCutInvalid = host ? (hostCut > host.current_month) : false;
   
-  const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : host.total_cut)) : 0;
-  const agencyAvailable = agency?.pool_available || 0;
+  const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : hostCut)) : 0;
+  
+  // Use monthly fields (new) with fallback to old fields
+  const agencyPoolTotal = agency ? (agency.monthly_pool_total ?? agency.pool_total) : 0;
+  const agencyPoolCut = agency ? (agency.monthly_pool_cut ?? agency.pool_cut) : 0;
+  const agencyAvailable = Math.max(0, agencyPoolTotal - agencyPoolCut);
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
 
   const options = [
@@ -210,7 +218,7 @@ const SalaryHome: React.FC = () => {
                         {hostCutInvalid ? (
                           <p className="text-[10px] font-bold text-amber-400">⚠️ تحت المراجعة</p>
                         ) : (
-                          <p className="text-sm font-black text-red-400" dir="ltr">${host?.total_cut?.toFixed(2) || "0.00"}</p>
+                          <p className="text-sm font-black text-red-400" dir="ltr">${hostCut.toFixed(2)}</p>
                         )}
                       </div>
                       <div className="rounded-xl bg-background/40 p-2">
@@ -260,11 +268,11 @@ const SalaryHome: React.FC = () => {
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="rounded-xl bg-background/40 p-2">
                         <p className="text-[9px] text-muted-foreground">إجمالي رواتب الوكالة</p>
-                        <p className="text-sm font-black text-foreground" dir="ltr">${agency?.pool_total?.toFixed(2) || "0.00"}</p>
+                        <p className="text-sm font-black text-foreground" dir="ltr">${agencyPoolTotal.toFixed(2)}</p>
                       </div>
                       <div className="rounded-xl bg-background/40 p-2">
                         <p className="text-[9px] text-muted-foreground">المسحوبات</p>
-                        <p className="text-sm font-black text-red-400" dir="ltr">${agency?.pool_cut?.toFixed(2) || "0.00"}</p>
+                        <p className="text-sm font-black text-red-400" dir="ltr">${agencyPoolCut.toFixed(2)}</p>
                       </div>
                       <div className="rounded-xl bg-background/40 p-2">
                         <p className="text-[9px] text-muted-foreground">المتبقي</p>
