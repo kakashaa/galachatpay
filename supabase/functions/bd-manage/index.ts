@@ -185,15 +185,7 @@ serve(async (req) => {
 
       if (worksExists) return json({ status: "approved", already: true });
 
-      const { data: bdExists } = await sb
-        .from("bd_commission_settings")
-        .select("id")
-        .eq("bd_uuid", user_uuid)
-        .eq("is_approved", true)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (bdExists) return json({ status: "approved", already: true });
+      // (works_accounts check above is sufficient)
 
       // Device check: prevent same device from having multiple BD accounts
       const { data: userDevice } = await sb
