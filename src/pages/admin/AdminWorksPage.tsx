@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2 } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
@@ -84,6 +84,7 @@ const AdminWorksPage: React.FC = () => {
   const [portalBanReason, setPortalBanReason] = useState("");
   const [portalBanLoading, setPortalBanLoading] = useState(false);
   const [portalBans, setPortalBans] = useState<any[]>([]);
+  const [refreshingAccountId, setRefreshingAccountId] = useState<string | null>(null);
 
   const fetchGlobalSettings = useCallback(async () => {
     const keys = ["works_wallets_enabled", "works_instant_commission", "works_page_enabled", "global_supporter_commission_pct", "global_agent_commission_pct"];
@@ -366,6 +367,36 @@ const AdminWorksPage: React.FC = () => {
     } catch { toast.error("فشل"); }
   };
 
+  // Refresh earnings for a single account
+  const refreshAccountEarnings = async (accountId: string) => {
+    if (refreshingAccountId) return;
+    setRefreshingAccountId(accountId);
+    try {
+      const result = await adminCall("works_refresh_single_account", { account_id: accountId });
+      if (result?.success) {
+        toast.success(`تم تحديث الأرباح: $${Number(result.earnings || 0).toFixed(2)}`);
+        // Update local state
+        setAccounts(prev => prev.map(a => a.id === accountId ? {
+          ...a,
+          total_earnings_usd: result.earnings,
+          dynamic_earnings: result.earnings,
+          last_earnings_sync_at: result.synced_at || new Date().toISOString(),
+        } : a));
+      } else {
+        toast.error("فشل التحديث");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "فشل تحديث الأرباح");
+    }
+    setRefreshingAccountId(null);
+  };
+
+  const formatSyncTime = (dateStr: string | null): string => {
+    if (!dateStr) return "لم يتم التحديث";
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", hour12: false }) + " — " + d.toLocaleDateString("ar-EG", { month: "short", day: "numeric" });
+  };
+
   // Edit member total commission
   const handleEditMemberCommission = async () => {
     if (!editMemberCommAmt) return;
@@ -617,10 +648,25 @@ const AdminWorksPage: React.FC = () => {
                             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-bold">{a.works_code}</span>
                           </div>
                           <p className="text-[10px] text-muted-foreground font-mono mt-0.5">UUID: {a.user_uuid}</p>
+                          <p className="text-[9px] text-muted-foreground/60 mt-0.5">
+                            آخر تحديث: {formatSyncTime(a.last_earnings_sync_at)}
+                          </p>
                         </div>
-                        <div className="text-left shrink-0">
+                        <div className="text-left shrink-0 space-y-1">
                           <p className="text-xl font-black text-emerald-400">${earnings.toFixed(2)}</p>
                           <p className="text-[9px] text-muted-foreground text-center">أرباح الشهر</p>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); refreshAccountEarnings(a.id); }}
+                            disabled={refreshingAccountId === a.id}
+                            className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg disabled:opacity-50 mx-auto"
+                          >
+                            {refreshingAccountId === a.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                            تحديث الأرباح
+                          </button>
                         </div>
                       </div>
 

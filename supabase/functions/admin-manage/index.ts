@@ -1382,6 +1382,27 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "works_refresh_single_account": {
+        const { account_id } = data;
+        if (!account_id) throw new Error("account_id required");
+
+        // Call the works-earnings-sync function for this single account
+        const syncUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/works-earnings-sync`;
+        const syncRes = await fetch(syncUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({ account_id }),
+        });
+        const syncData = await syncRes.json();
+        if (!syncRes.ok) throw new Error(syncData?.error || "Sync failed");
+        result = syncData;
+        await logAudit({ account_id, earnings: syncData?.earnings });
+        break;
+      }
+
       case "works_update_account": {
         const { id: uaId, ...uaUpdates } = data;
         if (Object.keys(uaUpdates).length > 0) {

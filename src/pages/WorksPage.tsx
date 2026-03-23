@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
@@ -95,7 +95,7 @@ const WorksPage: React.FC = () => {
   const [monthEarnings, setMonthEarnings] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
-  const salaryFetchIdRef = useRef(0);
+  
 
   // StatusModal
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
@@ -179,107 +179,18 @@ const WorksPage: React.FC = () => {
     return false;
   }, [user?.uuid]);
 
-  // Auto-fetch salary data for all members
-  // Returns commission values in COINS (not USD)
-  const fetchSalaryData = useCallback(async (_worksId: string, membersList: MemberWithSalary[]) => {
-    const month = new Date().toISOString().slice(0, 7);
-    const year = new Date().getFullYear();
-    const monthNum = new Date().getMonth() + 1;
-
-    // Helper: wrap a promise with a timeout (returns fallback on timeout)
-    const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
-      Promise.race([promise, new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms))]);
-
-    const MEMBER_TIMEOUT = 20_000;
-    const BATCH_SIZE = 3;
-
-    const fetchOneMember = async (member: MemberWithSalary): Promise<MemberWithSalary> => {
-      try {
-        if (member.member_type === "supporter") {
-          let charges = 0;
-          let commission = 0;
-          const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-
-          try {
-            const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
-            charges = toFiniteNumber(
-              data?.data?.total_charges ?? data?.data?.charges ??
-              data?.total_charges ?? data?.charges ?? 0
-            );
-            commission = Math.floor(charges * (pct / 100));
-          } catch { /* silent */ }
-
-          if (charges === 0) {
-            try {
-              const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
-              charges = toFiniteNumber(
-                data2?.data?.total_charges ?? data2?.total_charges ?? data2?.charges ?? 0
-              );
-              commission = Math.floor(charges * (pct / 100));
-            } catch { /* silent */ }
-          }
-
-          if (charges === 0) {
-            try {
-              const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
-                body: { uuid: member.member_uuid },
-              });
-              const chargerNum = toFiniteNumber(
-                profileRes?.data?.level?.charger_num ?? profileRes?.level?.charger_num ?? 0
-              );
-              if (chargerNum > 0) {
-                const initialCharger = toFiniteNumber((member as any).initial_charger_num ?? 0);
-                const monthlyCharges = initialCharger > 0
-                  ? Math.max(0, chargerNum - initialCharger) : chargerNum;
-                if (monthlyCharges > 0) {
-                  charges = monthlyCharges;
-                  commission = Math.floor(monthlyCharges * (pct / 100));
-                }
-              }
-            } catch { /* silent */ }
-          }
-
-          return { ...member, monthly_charges: charges, commission: Math.floor(commission) };
-        }
-
-        if (member.member_type === "agent" && member.agency_id) {
-          const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum), member.member_uuid);
-          console.log("[Works] Agent salary RAW for agency", member.agency_id, ":", JSON.stringify(data));
-          const inner = data?.data || data || {};
-          const salary = toFiniteNumber(
-            inner?.salary ?? inner?.net_salary ?? inner?.agency_salary ??
-            inner?.total_salary ?? inner?.amount ??
-            data?.salary ?? data?.net_salary ?? data?.agency_salary ?? 0
-          );
-          console.log("[Works] Parsed agent salary:", salary, "from keys:", Object.keys(inner));
-          const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 5);
-          const computedCommissionUsd = salary * (fallbackPct / 100);
-          const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
-          return { ...member, agency_salary: salary, commission: commissionCoins };
-        }
-      } catch { /* silent */ }
-      return member;
-    };
-
-    // Process members in batches of 3 to avoid overwhelming the proxy
-    const updatedMembers: MemberWithSalary[] = [...membersList];
-    for (let i = 0; i < membersList.length; i += BATCH_SIZE) {
-      const batch = membersList.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(
-        batch.map((m) => withTimeout(fetchOneMember(m), MEMBER_TIMEOUT, m))
-      );
-      for (let j = 0; j < results.length; j++) {
-        updatedMembers[i + j] = results[j];
-      }
-    }
-
-    const totalMonthCommissionCoins = updatedMembers.reduce(
-      (sum, member) => sum + toFiniteNumber(member.commission ?? 0),
-      0
-    );
-
-    return { totalMonthCommissionCoins, updatedMembers };
-  }, []);
+  // Relative time helper
+  const getRelativeTime = (dateStr: string | null): string => {
+    if (!dateStr) return "لم يتم التحديث بعد";
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "الآن";
+    if (mins < 60) return `قبل ${mins} دقيقة`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `قبل ${hrs} ساعة`;
+    const days = Math.floor(hrs / 24);
+    return `قبل ${days} يوم`;
+  };
 
   const fetchData = useCallback(async () => {
     if (!user?.uuid) return;
@@ -295,6 +206,10 @@ const WorksPage: React.FC = () => {
 
       if (works) {
         setMyWorks(works);
+
+        // Read cached earnings from DB — no live API calls
+        const storedEarnings = toFiniteNumber(works.total_earnings_usd);
+        setMonthEarnings(Math.floor(storedEarnings * COINS_PER_USD));
 
         const now = new Date();
         const todayStartUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
@@ -320,30 +235,7 @@ const WorksPage: React.FC = () => {
           return sum + toFiniteNumber(row?.amount ?? 0);
         }, 0);
         setTodayEarnings(todayUsd);
-
-        // Auto-fetch salary data for live calculations (month only) in background
-        if (rawMembers.length > 0) {
-          setSalaryLoading(true);
-          const requestId = ++salaryFetchIdRef.current;
-          void fetchSalaryData(works.id, rawMembers)
-            .then(({ totalMonthCommissionCoins, updatedMembers }) => {
-              if (requestId !== salaryFetchIdRef.current) return;
-              setMembers(updatedMembers);
-              setMonthEarnings(totalMonthCommissionCoins);
-            })
-            .catch(() => {
-              if (requestId !== salaryFetchIdRef.current) return;
-              setMonthEarnings(0);
-            })
-            .finally(() => {
-              if (requestId !== salaryFetchIdRef.current) return;
-              setSalaryLoading(false);
-            });
-        } else {
-          salaryFetchIdRef.current += 1;
-          setSalaryLoading(false);
-          setMonthEarnings(0);
-        }
+        setSalaryLoading(false);
       } else {
         const { data: req } = await supabase
           .from("works_requests").select("status").eq("user_uuid", user.uuid)
@@ -352,7 +244,7 @@ const WorksPage: React.FC = () => {
       }
     } catch { /* silent */ }
     setLoading(false);
-  }, [user?.uuid, fetchSalaryData, checkBanStatus]);
+  }, [user?.uuid, checkBanStatus]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -671,6 +563,18 @@ const WorksPage: React.FC = () => {
           </div>
           <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-primary/5 blur-xl" />
         </motion.div>
+
+        {/* Last sync info + helper text */}
+        <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold text-muted-foreground">
+              آخر تحديث: {getRelativeTime(myWorks?.last_earnings_sync_at)}
+            </p>
+          </div>
+          <p className="text-[10px] text-muted-foreground/70 leading-relaxed">
+            يتم تحديث البيانات تلقائياً كل ساعة — لا تقلق لو الأرقام ما تغيّرت فوراً
+          </p>
+        </div>
 
         {/* Financial Stats Grid */}
         <div className="space-y-3">
