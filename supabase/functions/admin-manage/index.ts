@@ -1264,7 +1264,7 @@ Deno.serve(async (req) => {
                 const pct = toFiniteNumber(m.commission_pct ?? sPct);
                 return { worksId, commission: (charges / 7500) * (pct / 100) };
               } else if (m.member_type === "agent" && m.agency_id) {
-                const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`);
+                const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}&agency_id=${m.agency_id}`);
                 const json = await res.json();
                 const salary = toFiniteNumber(json?.data?.net_salary ?? json?.data?.salary ?? json?.net_salary ?? json?.salary ?? 0);
                 const pct = toFiniteNumber(m.commission_pct ?? aPct);
@@ -1383,7 +1383,7 @@ Deno.serve(async (req) => {
               const commissionUsd = (charges / 7500) * (pct / 100);
               return { id: m.id, monthly_charges: charges, live_commission: commissionUsd };
             } else if (normalizedType === "agent" && m.agency_id) {
-              const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`);
+              const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}&agency_id=${m.agency_id}`);
               const json = await res.json();
               const salary = toNumber(
                 json?.data?.net_salary ??
