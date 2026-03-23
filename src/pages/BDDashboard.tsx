@@ -115,7 +115,7 @@ const BDDashboard: React.FC = () => {
         d.setDate(d.getDate() + i);
         dayMap[d.toISOString().slice(0, 10)] = 0;
       }
-      weekLogsRes.data?.forEach(log => {
+      (weekLogsRes.data as any[] || []).forEach((log: any) => {
         const day = log.created_at.slice(0, 10);
         if (dayMap[day] !== undefined) dayMap[day] += log.amount || 0;
       });
