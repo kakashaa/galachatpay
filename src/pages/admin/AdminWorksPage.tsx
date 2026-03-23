@@ -142,7 +142,19 @@ const AdminWorksPage: React.FC = () => {
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
-    try { const d = await adminCall("works_list_accounts"); setAccounts(d || []); } catch { }
+    try {
+      const d = await adminCall("works_list_accounts");
+      setAccounts(d || []);
+      // Fetch avatars for all accounts in background
+      const uuids = (d || []).map((a: any) => a.user_uuid).filter(Boolean);
+      if (uuids.length > 0) {
+        Promise.all(uuids.map((uuid: string) => getAvatar(uuid).then(url => ({ uuid, url })))).then(results => {
+          const map: Record<string, string> = {};
+          results.forEach(r => { map[r.uuid] = r.url; });
+          setAccountAvatars(map);
+        });
+      }
+    } catch { }
     setLoading(false);
   }, [adminCall]);
 
