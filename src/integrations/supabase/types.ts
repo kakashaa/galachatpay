@@ -2448,6 +2448,92 @@ export type Database = {
         }
         Relationships: []
       }
+      supporter_challenge_progress: {
+        Row: {
+          challenge_id: string
+          completed_at: string | null
+          created_at: string
+          current_amount: number
+          id: string
+          started_at: string
+          status: string
+          user_uuid: string
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_amount?: number
+          id?: string
+          started_at?: string
+          status?: string
+          user_uuid: string
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_amount?: number
+          id?: string
+          started_at?: string
+          status?: string
+          user_uuid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supporter_challenge_progress_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "supporter_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supporter_challenges: {
+        Row: {
+          challenge_type: string
+          color: string | null
+          created_at: string
+          description: string | null
+          duration_days: number
+          id: string
+          is_active: boolean
+          reward_description: string | null
+          reward_type: string
+          reward_value: number
+          target_amount: number
+          title: string
+        }
+        Insert: {
+          challenge_type?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          reward_description?: string | null
+          reward_type?: string
+          reward_value?: number
+          target_amount?: number
+          title: string
+        }
+        Update: {
+          challenge_type?: string
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          reward_description?: string | null
+          reward_type?: string
+          reward_value?: number
+          target_amount?: number
+          title?: string
+        }
+        Relationships: []
+      }
       supporter_monthly_charges: {
         Row: {
           id: string
