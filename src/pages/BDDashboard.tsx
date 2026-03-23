@@ -1016,10 +1016,10 @@ const BDDashboard: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="text-left">
                     <p className="text-sm font-black text-emerald-400" dir="ltr">
-                      ${Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0).toFixed(2)}
+                      ${agentCommissionUsd.toFixed(2)}
                     </p>
                     <p className="text-[9px] text-muted-foreground">
-                      {Math.floor(Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0) * 7500).toLocaleString()} كوينز
+                      {Math.floor(agentCommissionUsd * 7500).toLocaleString()} كوينز
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-muted-foreground text-lg">chevron_left</span>
@@ -1027,9 +1027,8 @@ const BDDashboard: React.FC = () => {
               </button>
 
               {agents.slice(0, 2).map((a: any) => {
-                const live = agentSalaries[a.member_uuid];
-                const salary = live?.salary || 0;
-                const commission = live?.commission || 0;
+                const salary = getAgentSalaryUsd(a);
+                const commissionUsd = getAgentCommissionUsd(a);
                 return (
                   <div key={a.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
@@ -1047,8 +1046,8 @@ const BDDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-left">
-                      <p className="text-xs font-black text-emerald-400">${commission.toFixed(2)}</p>
-                      <p className="text-[9px] text-muted-foreground">({Math.floor(commission * 7500).toLocaleString()} ك)</p>
+                      <p className="text-xs font-black text-emerald-400">${commissionUsd.toFixed(2)}</p>
+                      <p className="text-[9px] text-muted-foreground">({Math.floor(commissionUsd * 7500).toLocaleString()} ك)</p>
                     </div>
                   </div>
                 );
