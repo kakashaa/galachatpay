@@ -198,7 +198,16 @@ serve(async (req) => {
       const { user_uuid, user_name, user_level } = params;
       if (!user_uuid) return json({ error: "user_uuid مطلوب" }, 400);
 
-      // Check if already a BD
+      // Check if already a BD (works_accounts first, then bd_commission_settings)
+      const { data: worksExists } = await sb
+        .from("works_accounts")
+        .select("id")
+        .eq("user_uuid", user_uuid)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (worksExists) return json({ status: "approved", already: true });
+
       const { data: bdExists } = await sb
         .from("bd_commission_settings")
         .select("id")
