@@ -592,7 +592,7 @@ const WorksPage: React.FC = () => {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/50 backdrop-blur-sm">
         <button onClick={() => navigate(-1)}><ArrowRight className="w-6 h-6 text-foreground" /></button>
         <h1 className="text-lg font-black font-cairo text-foreground">لوحة البيدي</h1>
-        {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-secondary mr-auto" />}
+        {salaryLoading && <Loader2 className="w-4 h-4 animate-spin text-primary mr-auto" />}
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-28 space-y-5">
@@ -601,16 +601,16 @@ const WorksPage: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl border border-secondary/20 bg-gradient-to-br from-secondary/10 via-card to-card p-4"
+          className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card p-4"
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-muted-foreground mb-1">كود البيدي الخاص بك</p>
-              <p className="text-2xl font-mono font-black text-secondary tracking-wider">{myWorks.works_code}</p>
+              <p className="text-2xl font-mono font-black text-primary tracking-wider">{myWorks.works_code}</p>
             </div>
             <InfoTip text="كود البيدي هو معرفك الفريد. شاركه مع الأعضاء الجدد للانضمام لفريقك" />
           </div>
-          <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-secondary/5 blur-xl" />
+          <div className="absolute -left-4 -bottom-4 w-20 h-20 rounded-full bg-primary/5 blur-xl" />
         </motion.div>
 
         {/* Financial Stats Grid */}
@@ -629,8 +629,8 @@ const WorksPage: React.FC = () => {
               style={{ cursor: balance > 0 ? 'pointer' : 'default' }}
             >
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-xl bg-secondary/10 flex items-center justify-center">
-                  <Wallet className="w-4 h-4 text-secondary" />
+                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-primary" />
                 </div>
                 <InfoTip text="الرصيد المتاح للسحب. يمكنك طلب سحبه في أول 5 أيام من كل شهر" />
               </div>
@@ -653,8 +653,8 @@ const WorksPage: React.FC = () => {
                 </div>
                 <InfoTip text="إجمالي جميع الأرباح التي حققتها منذ انضمامك لنظام البيدي" />
               </div>
-              <p className="text-2xl font-mono font-black text-foreground">${totalEarnings.toFixed(2)}</p>
-              <p className="text-[10px] font-bold text-muted-foreground">{Math.round(totalEarnings * 7500).toLocaleString()} كوينز</p>
+              <p className="text-2xl font-mono font-black text-foreground">${(totalEarnings > 0 ? totalEarnings : monthEarnings / 7500).toFixed(2)}</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{Math.round((totalEarnings > 0 ? totalEarnings : monthEarnings / 7500) * 7500).toLocaleString()} كوينز</p>
               <p className="text-xs font-black text-muted-foreground">إجمالي الأرباح</p>
             </motion.div>
           </div>
