@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2 } from "lucide-react";
+import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shield, Pencil, Calculator, Settings, Ban, Bell, Send, ShieldOff, Trash2, BarChart3, History, Building2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
@@ -147,31 +147,79 @@ const AdminWorksPage: React.FC = () => {
   const [dynamicAccountEarnings, setDynamicAccountEarnings] = useState<number>(0);
   const [supporterDynamicEarnings, setSupporterDynamicEarnings] = useState<number>(0);
   const [agentDynamicEarnings, setAgentDynamicEarnings] = useState<number>(0);
+  const [refreshingMemberId, setRefreshingMemberId] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
 
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
-    setMemberSalaryLoading(true);
+    setMemberSalaryLoading(false);
     setDynamicAccountEarnings(0);
     setSupporterDynamicEarnings(0);
     setAgentDynamicEarnings(0);
     try {
       const d = await adminCall("works_get_members", { works_id: wid });
-      if (d && d.members) {
-        setMembers(d.members);
-        setDynamicAccountEarnings(d.dynamic_earnings ?? 0);
-        setSupporterDynamicEarnings(d.supporter_dynamic_earnings ?? 0);
-        setAgentDynamicEarnings(d.agent_dynamic_earnings ?? 0);
-        // Update the account's earnings in the local list so it shows the live value
-        setAccounts(prev => prev.map(a => a.id === wid ? { ...a, dynamic_earnings: d.dynamic_earnings ?? 0, total_earnings_usd: d.dynamic_earnings ?? 0 } : a));
-      } else {
-        setMembers(d || []);
-        setSupporterDynamicEarnings(0);
-        setAgentDynamicEarnings(0);
+      // New response is a flat array (no .members wrapper)
+      const membersList = Array.isArray(d) ? d : (d?.members || d || []);
+      setMembers(membersList);
+      // Calculate totals from stored data
+      let total = 0, supTotal = 0, agTotal = 0;
+      for (const m of membersList) {
+        const comm = Number(m.live_commission || 0);
+        total += comm;
+        if (m.member_type === "supporter") supTotal += comm;
+        if (m.member_type === "agent") agTotal += comm;
       }
+      setDynamicAccountEarnings(Math.round(total * 100) / 100);
+      setSupporterDynamicEarnings(Math.round(supTotal * 100) / 100);
+      setAgentDynamicEarnings(Math.round(agTotal * 100) / 100);
     } catch { }
     setLoading(false);
-    setMemberSalaryLoading(false);
   }, [adminCall]);
+
+  const refreshOneMember = useCallback(async (memberId: string) => {
+    setRefreshingMemberId(memberId);
+    try {
+      const d = await adminCall("works_refresh_member", { member_id: memberId });
+      if (d && !d.error) {
+        setMembers(prev => {
+          const updated = prev.map(m => m.id === memberId ? { ...d, needs_refresh: false } : m);
+          // Recalculate totals
+          let total = 0, supTotal = 0, agTotal = 0;
+          for (const m of updated) {
+            const comm = Number(m.live_commission || 0);
+            total += comm;
+            if (m.member_type === "supporter") supTotal += comm;
+            if (m.member_type === "agent") agTotal += comm;
+          }
+          setDynamicAccountEarnings(Math.round(total * 100) / 100);
+          setSupporterDynamicEarnings(Math.round(supTotal * 100) / 100);
+          setAgentDynamicEarnings(Math.round(agTotal * 100) / 100);
+          return updated;
+        });
+        toast.success("تم تحديث البيانات");
+      } else {
+        toast.error("فشل التحديث");
+      }
+    } catch {
+      toast.error("فشل التحديث");
+    }
+    setRefreshingMemberId(null);
+  }, [adminCall]);
+
+  const refreshAllMembers = useCallback(async () => {
+    if (refreshingAll) return;
+    setRefreshingAll(true);
+    const activeMembers = members.filter(m => m.status === "active");
+    for (const m of activeMembers) {
+      await refreshOneMember(m.id);
+      // 2 second delay between each
+      if (activeMembers.indexOf(m) < activeMembers.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    setRefreshingAll(false);
+    toast.success("تم تحديث جميع الأعضاء");
+  }, [members, refreshingAll, refreshOneMember]);
 
 
 
