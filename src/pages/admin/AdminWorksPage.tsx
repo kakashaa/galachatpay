@@ -149,9 +149,20 @@ const AdminWorksPage: React.FC = () => {
 
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
+    setMemberSalaryLoading(true);
     setDynamicAccountEarnings(0);
-    try { const d = await adminCall("works_get_members", { works_id: wid }); setMembers(d || []); } catch { }
+    try {
+      const d = await adminCall("works_get_members", { works_id: wid });
+      // Edge function now returns { members, dynamic_earnings }
+      if (d && d.members) {
+        setMembers(d.members);
+        setDynamicAccountEarnings(d.dynamic_earnings || 0);
+      } else {
+        setMembers(d || []);
+      }
+    } catch { }
     setLoading(false);
+    setMemberSalaryLoading(false);
   }, [adminCall]);
 
   // Fetch live salary data for members (like WorksPage does)
@@ -642,10 +653,7 @@ const AdminWorksPage: React.FC = () => {
                       <button onClick={async () => {
                         setSelectedWorksId(a.id);
                         setTab("members");
-                        const d = await adminCall("works_get_members", { works_id: a.id });
-                        const membersList = d || [];
-                        setMembers(membersList);
-                        fetchMemberLiveData(membersList, a);
+                        await fetchMembers(a.id);
                       }}
                         className="flex-1 bg-muted py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                         <Users className="w-3 h-3" /> الأعضاء
