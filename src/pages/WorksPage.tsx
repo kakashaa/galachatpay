@@ -214,7 +214,7 @@ const WorksPage: React.FC = () => {
               } else {
                 // Fallback: use configured percentage on charges (coins)
                 const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-                commission = Math.floor(charges * (pct / 100));
+                commission = Math.floor(charges * (pct / 100) / COINS_PER_USD);
               }
             } catch {
               /* silent */
@@ -239,7 +239,7 @@ const WorksPage: React.FC = () => {
                   commission = Math.floor(apiCommissionUsd * COINS_PER_USD);
                 } else {
                   const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-                  commission = Math.floor(charges * (pct / 100));
+                  commission = Math.floor(charges * (pct / 100) / COINS_PER_USD);
                 }
               } catch {
                 /* silent */
@@ -267,7 +267,7 @@ const WorksPage: React.FC = () => {
                   if (monthlyCharges > 0) {
                     charges = monthlyCharges;
                     const pct = toFiniteNumber((member as any)?.commission_pct ?? 2);
-                    commission = Math.floor(monthlyCharges * (pct / 100));
+                    commission = Math.floor(monthlyCharges * (pct / 100) / COINS_PER_USD);
                   }
                 }
               } catch {
@@ -281,6 +281,7 @@ const WorksPage: React.FC = () => {
           if (member.member_type === "agent" && member.agency_id) {
             const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
             const salary = toFiniteNumber(
+              data?.data?.agency_salary ??
               data?.data?.net_salary ??
               data?.data?.salary ??
               data?.net_salary ??
