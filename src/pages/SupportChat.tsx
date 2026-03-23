@@ -879,12 +879,15 @@ const SupportChat: React.FC = () => {
     }
   };
 
-  /* ── clear chat ── */
+  /* ── clear chat / start new ── */
   const clearChat = () => {
     setMessages([]);
     setWaitingFor(null);
+    setShowFeedbackForm(false);
+    setFeedback({ rating: 0, comment: "" });
+    const isVip = user?.vip && Object.keys(user.vip).length > 0;
     addBotMessage(
-      `أهلاً ${userName}! 👋\nأنا مساعدك في غلا شات. كيف أقدر أساعدك؟`,
+      `🔄 تم بدء محادثة جديدة\n\n` + getTimeBasedGreeting(userName, isVip, isGuest),
       MAIN_MENU
     );
   };
@@ -909,8 +912,8 @@ const SupportChat: React.FC = () => {
             <span className="text-[10px] text-muted-foreground">متصل الآن</span>
           </div>
         </div>
-        <button onClick={clearChat} className="text-[11px] text-destructive font-bold">
-          مسح المحادثة
+        <button onClick={clearChat} className="flex items-center gap-1 text-[11px] text-primary font-bold px-2 py-1 rounded-lg bg-primary/10 active:scale-95 transition-transform">
+          🔄 محادثة جديدة
         </button>
       </header>
 
