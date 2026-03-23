@@ -259,17 +259,16 @@ const WorksPage: React.FC = () => {
 
           if (member.member_type === "agent" && member.agency_id) {
             const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
-            console.log("[Works] Agent salary API response for agency", member.agency_id, ":", JSON.stringify(data));
+            console.log("[Works] Agent salary RAW for agency", member.agency_id, ":", JSON.stringify(data));
+            // Try every possible field path
+            const inner = data?.data || data || {};
             const salary = toFiniteNumber(
-              data?.data?.salary ??
-              data?.data?.net_salary ??
-              data?.data?.agency_salary ??
-              data?.salary ??
-              data?.net_salary ??
-              0
+              inner?.salary ?? inner?.net_salary ?? inner?.agency_salary ??
+              inner?.total_salary ?? inner?.amount ??
+              data?.salary ?? data?.net_salary ?? data?.agency_salary ?? 0
             );
-            console.log("[Works] Parsed salary:", salary);
-            const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? myWorks?.agent_commission_pct ?? 5);
+            console.log("[Works] Parsed agent salary:", salary, "from keys:", Object.keys(inner));
+            const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 5);
             const computedCommissionUsd = salary * (fallbackPct / 100);
             const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
             console.log("[Works] Agent commission: pct=", fallbackPct, "usd=", computedCommissionUsd, "coins=", commissionCoins);
