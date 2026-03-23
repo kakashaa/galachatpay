@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, TrendingUp, DollarSign, Users, Calendar, X } from "lucide-react";
+import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/integrations/supabase/client";
