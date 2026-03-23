@@ -76,14 +76,19 @@ const AdminDashboardPage: React.FC = () => {
   const isOwner = adminRole === "owner";
   const isSuperAdmin = adminRole === "super_admin" || isOwner;
 
-  // Validate token
+  // Validate token (supports legacy + HMAC-signed format)
   useEffect(() => {
     if (!adminSessionToken) {
       navigate("/admin", { replace: true });
       return;
     }
+
     try {
-      JSON.parse(atob(adminSessionToken));
+      const payloadBase64 = adminSessionToken.includes(".")
+        ? adminSessionToken.split(".")[0]
+        : adminSessionToken;
+      const decoded = JSON.parse(atob(payloadBase64));
+      if (!decoded?.username) throw new Error("invalid payload");
     } catch {
       console.warn("Invalid admin session token format, forcing re-login");
       ["admin_session_token", "admin_username", "admin_display_name", "admin_role",
