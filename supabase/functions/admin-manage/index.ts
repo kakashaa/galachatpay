@@ -1195,69 +1195,62 @@ Deno.serve(async (req) => {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-        for (let idx = 0; idx < (accounts || []).length; idx++) {
-          const acc = accounts![idx];
-          const [{ count: supporters }, { count: agents }] = await Promise.all([
-            supabase
-              .from("works_members").select("*", { count: "exact", head: true })
-              .eq("works_id", acc.id).eq("member_type", "supporter").eq("status", "active"),
-            supabase
-              .from("works_members").select("*", { count: "exact", head: true })
-              .eq("works_id", acc.id).eq("member_type", "agent").eq("status", "active"),
-          ]);
-          (acc as any).supporter_count = supporters || 0;
-          (acc as any).agent_count = agents || 0;
+        // Fetch all members at once (one query instead of N)
+        const allAccountIds = (accounts || []).map((a: any) => a.id);
+        const { data: allMembers } = await supabase
+          .from("works_members").select("works_id, member_uuid, member_type, commission_pct, agency_id, status")
+          .in("works_id", allAccountIds);
 
-          // Compute live earnings for first 10 accounts only (performance)
-          if (idx < 10) {
+        // Group members by works_id
+        const membersByAccount: Record<string, any[]> = {};
+        for (const m of (allMembers || [])) {
+          if (!membersByAccount[m.works_id]) membersByAccount[m.works_id] = [];
+          membersByAccount[m.works_id].push(m);
+        }
+
+        // Process all accounts in parallel
+        await Promise.all((accounts || []).map(async (acc: any, idx: number) => {
+          const members = membersByAccount[acc.id] || [];
+          const activeMembers = members.filter((m: any) => m.status === "active");
+          acc.supporter_count = activeMembers.filter((m: any) => m.member_type === "supporter").length;
+          acc.agent_count = activeMembers.filter((m: any) => m.member_type === "agent").length;
+
+          // Compute live earnings for first 20 accounts
+          if (idx < 20 && activeMembers.length > 0) {
             try {
-              const { data: activeMembers } = await supabase
-                .from("works_members").select("member_uuid, member_type, commission_pct, agency_id")
-                .eq("works_id", acc.id).eq("status", "active");
               const supporterPct = Number(acc.supporter_commission_pct || 2);
               const agentPct = Number(acc.agent_commission_pct || 5);
-              let totalDynamic = 0;
 
-              console.log(`[WORKS-EARN] account ${acc.id} (${acc.bd_name}) has ${(activeMembers||[]).length} active members`);
-              const results = await Promise.all((activeMembers || []).map(async (m: any) => {
+              const results = await Promise.all(activeMembers.map(async (m: any) => {
                 try {
                   if (m.member_type === "supporter") {
-                    const url = `${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`;
-                    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                    const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`, { signal: AbortSignal.timeout(8000) });
                     const json = await res.json();
-                    console.log(`[WORKS-EARN] supporter ${m.member_uuid} raw response:`, JSON.stringify(json).slice(0, 300));
+                    console.log(`[WORKS-EARN] supporter ${m.member_uuid}:`, JSON.stringify(json).slice(0, 200));
                     const charges = Number(json?.data?.total_charges || json?.total_charges || 0);
                     const pct = Number(m.commission_pct || supporterPct);
-                    const commissionCoins = Math.floor(charges * pct / 100);
-                    const usd = commissionCoins / 7500;
-                    console.log(`[WORKS-EARN] supporter ${m.member_uuid}: charges=${charges} pct=${pct} coins=${commissionCoins} usd=${usd}`);
-                    return usd;
-                  } else if (m.member_type === "agent") {
-                    const agencyId = m.agency_id || "";
-                    if (!agencyId) { console.log(`[WORKS-EARN] agent ${m.member_uuid} has no agency_id`); return 0; }
-                    const url = `${WARES_API}&action=agency-salary&agency_id=${agencyId}`;
-                    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                    return Math.floor(charges * pct / 100) / 7500;
+                  } else if (m.member_type === "agent" && m.agency_id) {
+                    const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`, { signal: AbortSignal.timeout(8000) });
                     const json = await res.json();
-                    console.log(`[WORKS-EARN] agent ${m.member_uuid} agency ${agencyId} raw response:`, JSON.stringify(json).slice(0, 300));
+                    console.log(`[WORKS-EARN] agent ${m.member_uuid} agency ${m.agency_id}:`, JSON.stringify(json).slice(0, 200));
                     const salary = Number(json?.data?.salary || json?.salary || 0);
                     const pct = Number(m.commission_pct || agentPct);
-                    const usd = salary * pct / 100;
-                    console.log(`[WORKS-EARN] agent ${m.member_uuid}: salary=${salary} pct=${pct} usd=${usd}`);
-                    return usd;
+                    return salary * pct / 100;
                   }
-                } catch (err) { console.log(`[WORKS-EARN] error for ${m.member_uuid}:`, err?.message); }
+                } catch (err: any) { console.log(`[WORKS-EARN] err ${m.member_uuid}:`, err?.message); }
                 return 0;
               }));
 
-              totalDynamic = results.reduce((s, v) => s + v, 0);
-              (acc as any).dynamic_earnings = Math.round(totalDynamic * 100) / 100;
+              acc.dynamic_earnings = Math.round(results.reduce((s: number, v: number) => s + v, 0) * 100) / 100;
             } catch {
-              (acc as any).dynamic_earnings = 0;
+              acc.dynamic_earnings = 0;
             }
           } else {
-            (acc as any).dynamic_earnings = 0;
+            acc.dynamic_earnings = 0;
           }
-        }
+        }));
+
         result = accounts;
         break;
       }
