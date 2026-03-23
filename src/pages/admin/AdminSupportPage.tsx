@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSupportManager from "@/components/AdminSupportManager";
+import AdminTicketManager from "@/components/AdminTicketManager";
 import { supabase } from "@/integrations/supabase/client";
-import { Headset, Loader2, MessageSquare, Archive, Search } from "lucide-react";
+import { Headset, Loader2, MessageSquare, Archive, Search, Ticket } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const AdminSupportPage: React.FC = () => {
   const { handleLogout, adminUsername, adminDisplayName } = useAdminSession();
-  const [subTab, setSubTab] = useState<"active" | "archive" | "search">("active");
+  const [subTab, setSubTab] = useState<"active" | "tickets" | "archive" | "search">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -31,8 +32,9 @@ const AdminSupportPage: React.FC = () => {
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(6,182,212,0.1)' }}>
           {[
-            { key: "active" as const, label: "محادثات نشطة", icon: MessageSquare },
-            { key: "archive" as const, label: "الأرشيف", icon: Archive },
+            { key: "active" as const, label: "محادثات", icon: MessageSquare },
+            { key: "tickets" as const, label: "تذاكر", icon: Ticket },
+            { key: "archive" as const, label: "أرشيف", icon: Archive },
             { key: "search" as const, label: "بحث", icon: Search },
           ].map(t => {
             const Icon = t.icon;
@@ -50,6 +52,12 @@ const AdminSupportPage: React.FC = () => {
           {subTab === "active" && (
             <motion.div key="active" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <AdminSupportManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={true} />
+            </motion.div>
+          )}
+
+          {subTab === "tickets" && (
+            <motion.div key="tickets" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <AdminTicketManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={true} />
             </motion.div>
           )}
 
