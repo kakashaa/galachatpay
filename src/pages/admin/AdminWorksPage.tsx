@@ -1122,6 +1122,16 @@ const AdminWorksPage: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Dynamic earnings summary */}
+                {!loading && members.length > 0 && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">أرباح الشهر الحالي (ديناميكي)</p>
+                    <p className="text-lg font-black text-emerald-400">
+                      {memberSalaryLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `$${dynamicAccountEarnings.toFixed(2)}`}
+                    </p>
+                  </div>
+                )}
+
                 {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
                   <>
                     {members.filter(m => m.member_type === (membersTab === "supporters" ? "supporter" : "agent")).length === 0 && (
@@ -1136,20 +1146,61 @@ const AdminWorksPage: React.FC = () => {
                           </div>
                           <Badge variant={m.status === "active" ? "default" : "outline"} className="text-[9px]">{m.status}</Badge>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                          <div className="bg-muted/30 rounded-lg p-2">
-                            <p className="text-muted-foreground">الشحن</p>
-                            <p className="font-bold text-foreground">{(m.monthly_charges || 0).toLocaleString()}</p>
+
+                        {/* Supporter details */}
+                        {m.member_type === "supporter" && (
+                          <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                            <div className="bg-muted/30 rounded-lg p-2">
+                              <p className="text-muted-foreground">شحنات الشهر</p>
+                              <p className="font-bold text-foreground">
+                                {memberSalaryLoading ? "..." : (m.monthly_charges || 0).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="bg-emerald-500/5 rounded-lg p-2">
+                              <p className="text-emerald-400/80">العمولة (live)</p>
+                              <p className="font-bold text-emerald-400">
+                                {memberSalaryLoading ? "..." : `${Number(m.live_commission || 0).toLocaleString()} ك`}
+                              </p>
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-2">
+                              <p className="text-muted-foreground">النسبة</p>
+                              <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
+                            </div>
                           </div>
-                          <div className="bg-emerald-500/5 rounded-lg p-2">
-                            <p className="text-emerald-400/80">العمولة</p>
-                            <p className="font-bold text-emerald-400">${Number(m.total_commission_usd || 0).toFixed(2)}</p>
+                        )}
+
+                        {/* Agent details */}
+                        {m.member_type === "agent" && (
+                          <div className="space-y-2">
+                            {(m.agency_name || m.agency_id) && (
+                              <div className="flex items-center gap-2 text-[10px] bg-blue-500/5 rounded-lg p-2">
+                                <Building2 className="w-3 h-3 text-blue-400" />
+                                <span className="text-blue-400 font-bold">{m.agency_name || `وكالة #${m.agency_id}`}</span>
+                                {m.agency_members_count > 0 && (
+                                  <span className="text-muted-foreground">• {m.agency_members_count} عضو</span>
+                                )}
+                              </div>
+                            )}
+                            <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">راتب الوكالة</p>
+                                <p className="font-bold text-foreground">
+                                  {memberSalaryLoading ? "..." : `$${Number(m.agency_salary || 0).toFixed(2)}`}
+                                </p>
+                              </div>
+                              <div className="bg-emerald-500/5 rounded-lg p-2">
+                                <p className="text-emerald-400/80">العمولة (live)</p>
+                                <p className="font-bold text-emerald-400">
+                                  {memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}
+                                </p>
+                              </div>
+                              <div className="bg-muted/30 rounded-lg p-2">
+                                <p className="text-muted-foreground">النسبة</p>
+                                <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
+                              </div>
+                            </div>
                           </div>
-                          <div className="bg-muted/30 rounded-lg p-2">
-                            <p className="text-muted-foreground">النسبة</p>
-                            <p className="font-bold text-primary">{m.commission_pct || "—"}%</p>
-                          </div>
-                        </div>
+                        )}
                         <div className="flex gap-2 mt-1">
                           {m.status !== "removed" && (
                             <button onClick={() => removeMember(m.id)}
