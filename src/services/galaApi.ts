@@ -4,6 +4,11 @@ import { API_URLS } from "@/config/api";
 const GALA_MEDIA_BASE = API_URLS.MEDIA;
 
 class GalaApiService {
+  private readonly TIMEOUT_TOLERANT_ACTIONS = new Set([
+    "agency-salary",
+    "user-monthly-charges",
+  ]);
+
   // === Generic proxy call ===
   private async call(target: string, action: string, params: Record<string, unknown> = {}, requireAdmin = false) {
     const body: Record<string, unknown> = { target, action, ...params };
@@ -15,17 +20,25 @@ class GalaApiService {
 
     const { data, error } = await supabase.functions.invoke("gala-proxy", { body });
     if (error) {
-      // Handle 401 gracefully — session expired
-      const msg = typeof error === 'object' && error?.message ? error.message : String(error);
-      if (msg.includes('401') || msg.includes('غير صالحة')) {
-        console.warn('[galaApi] Session expired or invalid for action:', action);
-        throw new Error('جلسة الأدمن منتهية — أعد تسجيل الدخول');
+      const msg = typeof error === "object" && error?.message ? error.message : String(error);
+
+      if (msg.includes("401") || msg.includes("غير صالحة")) {
+        console.warn("[galaApi] Session expired or invalid for action:", action);
+        throw new Error("جلسة الأدمن منتهية — أعد تسجيل الدخول");
       }
+
+      if ((msg.includes("Signal timed out") || msg.includes("timed out")) && this.TIMEOUT_TOLERANT_ACTIONS.has(action)) {
+        console.warn("[galaApi] Timeout tolerated for action:", action);
+        return { success: false, timeout: true, error: "Signal timed out.", data: null };
+      }
+
       throw error;
     }
+
     if (data?.error) throw new Error(data.error);
     return data;
   }
+
 
   // === Token (for ranking/search — hides Facebook bypass) ===
   async getToken(): Promise<string> {
@@ -286,8 +299,8 @@ class GalaApiService {
     return this.call("hola-chat", "user-monthly-charges", { uuid, month });
   }
 
-  async agencySalary(agencyId: string, year: string, monthNum: string) {
-    return this.call("hola-chat", "agency-salary", { agency_id: agencyId, year, month_num: monthNum });
+  async agencySalary(agencyId: string, year: string, monthNum: string, uuid?: string) {
+    return this.call("hola-chat", "agency-salary", { agency_id: agencyId, year, month_num: monthNum, ...(uuid ? { uuid } : {}) });
   }
 
   async listRoomBgRequests() {
