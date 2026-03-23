@@ -336,6 +336,8 @@ serve(async (req) => {
 
       const safeData = currentAction === "activity-feed"
         ? { activities: [], summary: { danger_count: 0 } }
+        : currentAction === "withdraw-status"
+        ? { ok: true, host_salary: { current_month: 0, expected: 0, is_valid: true, total_unpaid: 0, total_cut: 0, available: 0, cash_used_this_month: false }, withdrawal_options: {} }
         : null;
 
       return json({
