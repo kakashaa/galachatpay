@@ -302,6 +302,7 @@ const SupportChat: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sessionKey, setSessionKey] = useState(() => Date.now()); // force fresh session
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [waitingFor, setWaitingFor] = useState<string | null>(null);
@@ -383,13 +384,15 @@ const SupportChat: React.FC = () => {
     [scrollToBottom]
   );
 
-  /* welcome message — always start fresh */
+  /* welcome message — always start fresh on mount or session reset */
   useEffect(() => {
+    setMessages([]);
+    setWaitingFor(null);
     const isVip = user?.vip && Object.keys(user.vip).length > 0;
     const welcomeMessage = getTimeBasedGreeting(userName, isVip, isGuest);
     addBotMessage(welcomeMessage, MAIN_MENU);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sessionKey]);
 
   /* ── topic handler ── */
   const handleTopic = useCallback(
