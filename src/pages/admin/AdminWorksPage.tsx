@@ -537,7 +537,7 @@ const AdminWorksPage: React.FC = () => {
           <TabsContent value="accounts">
             {/* Stats Cards */}
             {!loading && accounts.length > 0 && (() => {
-              const totalEarnings = accounts.reduce((s: number, a: any) => s + Number(a.total_earnings_usd || 0), 0);
+              const totalEarnings = accounts.reduce((s: number, a: any) => s + Number(a.dynamic_earnings || a.total_earnings_usd || 0), 0);
               const totalBalance = accounts.reduce((s: number, a: any) => s + Number(a.balance_usd || 0), 0);
               const activeCount = accounts.filter((a: any) => a.status === "active").length;
               return (
