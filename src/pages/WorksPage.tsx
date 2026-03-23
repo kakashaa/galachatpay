@@ -244,7 +244,7 @@ const WorksPage: React.FC = () => {
             }
 
             if (member.member_type === "agent" && member.agency_id) {
-              const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
+              const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum), member.member_uuid);
               console.log("[Works] Agent salary RAW for agency", member.agency_id, ":", JSON.stringify(data));
               const inner = data?.data || data || {};
               const salary = toFiniteNumber(
