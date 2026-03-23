@@ -3,7 +3,7 @@ import FancyLoading from "@/components/FancyLoading";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, Coins, Gift, Zap, Loader2, DollarSign,
+  Wallet, Coins, Gift, Zap, DollarSign,
   Building2, CheckCircle, XCircle, AlertCircle,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
@@ -73,7 +73,10 @@ const SalaryHome: React.FC = () => {
   const agency = status?.agency_salary;
   const isAgencyOwner = status?.is_agency_owner || false;
 
-  const hostAvailable = host?.available || 0;
+  // Validation: if total_cut > current_month, data is suspect
+  const hostCutInvalid = host ? (host.total_cut > host.current_month) : false;
+  
+  const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : host.total_cut)) : 0;
   const agencyAvailable = agency?.pool_available || 0;
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
 
@@ -152,15 +155,21 @@ const SalaryHome: React.FC = () => {
               className="glass-card p-5 text-center space-y-2"
             >
               <p className="text-xs text-muted-foreground">إجمالي المتاح للسحب</p>
-              <div className="flex items-center justify-center gap-2">
-                <DollarSign className="w-7 h-7 text-emerald-400" />
-                <p className="text-4xl font-black text-foreground tabular-nums" dir="ltr">
-                  {totalAvailable.toFixed(2)}
-                </p>
-              </div>
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {(totalAvailable * USD_TO_COINS).toLocaleString()} كوينز
-              </p>
+              {totalAvailable > 0 ? (
+                <>
+                  <div className="flex items-center justify-center gap-2">
+                    <DollarSign className="w-7 h-7 text-emerald-400" />
+                    <p className="text-4xl font-black text-foreground tabular-nums" dir="ltr">
+                      {totalAvailable.toFixed(2)}
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {(totalAvailable * USD_TO_COINS).toLocaleString()} كوينز
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">لا يوجد رصيد متاح</p>
+              )}
             </motion.div>
 
             {/* Two salary cards */}
@@ -187,20 +196,33 @@ const SalaryHome: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-xl bg-background/40 p-2">
-                    <p className="text-[9px] text-muted-foreground">الراتب</p>
-                    <p className="text-sm font-black text-foreground" dir="ltr">${host?.current_month?.toFixed(2) || "0.00"}</p>
-                  </div>
-                  <div className="rounded-xl bg-background/40 p-2">
-                    <p className="text-[9px] text-muted-foreground">الخصم</p>
-                    <p className="text-sm font-black text-red-400" dir="ltr">${host?.total_cut?.toFixed(2) || "0.00"}</p>
-                  </div>
-                  <div className="rounded-xl bg-background/40 p-2">
-                    <p className="text-[9px] text-muted-foreground">المتبقي</p>
-                    <p className="text-sm font-black text-emerald-400" dir="ltr">${hostAvailable.toFixed(2)}</p>
-                  </div>
-                </div>
+                {host?.current_month === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-3">لا يوجد راتب هذا الشهر</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-xl bg-background/40 p-2">
+                        <p className="text-[9px] text-muted-foreground">الراتب</p>
+                        <p className="text-sm font-black text-foreground" dir="ltr">${host?.current_month?.toFixed(2) || "0.00"}</p>
+                      </div>
+                      <div className="rounded-xl bg-background/40 p-2">
+                        <p className="text-[9px] text-muted-foreground">الخصم</p>
+                        {hostCutInvalid ? (
+                          <p className="text-[10px] font-bold text-amber-400">⚠️ تحت المراجعة</p>
+                        ) : (
+                          <p className="text-sm font-black text-red-400" dir="ltr">${host?.total_cut?.toFixed(2) || "0.00"}</p>
+                        )}
+                      </div>
+                      <div className="rounded-xl bg-background/40 p-2">
+                        <p className="text-[9px] text-muted-foreground">المتبقي</p>
+                        <p className="text-sm font-black text-emerald-400" dir="ltr">${hostAvailable.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    {hostCutInvalid && (
+                      <p className="text-[10px] text-amber-400 text-center">⚠️ بيانات الخصم تحت المراجعة</p>
+                    )}
+                  </>
+                )}
                 {host?.cash_used_this_month && (
                   <p className="text-[10px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
                 )}
@@ -237,11 +259,11 @@ const SalaryHome: React.FC = () => {
                   <>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">إجمالي الحوض</p>
+                        <p className="text-[9px] text-muted-foreground">إجمالي رواتب الوكالة</p>
                         <p className="text-sm font-black text-foreground" dir="ltr">${agency?.pool_total?.toFixed(2) || "0.00"}</p>
                       </div>
                       <div className="rounded-xl bg-background/40 p-2">
-                        <p className="text-[9px] text-muted-foreground">الخصم</p>
+                        <p className="text-[9px] text-muted-foreground">المسحوبات</p>
                         <p className="text-sm font-black text-red-400" dir="ltr">${agency?.pool_cut?.toFixed(2) || "0.00"}</p>
                       </div>
                       <div className="rounded-xl bg-background/40 p-2">
@@ -249,11 +271,13 @@ const SalaryHome: React.FC = () => {
                         <p className="text-sm font-black text-violet-400" dir="ltr">${agencyAvailable.toFixed(2)}</p>
                       </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-[10px] text-muted-foreground">
-                        حصتك هذا الشهر: <span className="font-bold text-foreground" dir="ltr">${agency?.user_share_this_month?.toFixed(2) || "0.00"}</span>
-                      </p>
-                    </div>
+                    {(agency?.user_share_this_month || 0) > 0 && (
+                      <div className="text-center">
+                        <p className="text-[10px] text-muted-foreground">
+                          حصتك هذا الشهر: <span className="font-bold text-foreground" dir="ltr">${agency?.user_share_this_month?.toFixed(2)}</span>
+                        </p>
+                      </div>
+                    )}
                     {agency?.cash_used_this_month && (
                       <p className="text-[10px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
                     )}
