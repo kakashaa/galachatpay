@@ -645,11 +645,9 @@ const WorksPage: React.FC = () => {
             </motion.div>
           </div>
 
-          {/* Last updated note */}
+          {/* Last updated + countdown */}
           {myWorks?.updated_at && (
-            <p className="text-[10px] text-muted-foreground text-center">
-              يتم تحديث الأرباح تلقائياً — آخر تحديث: {new Date(myWorks.updated_at).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}
-            </p>
+            <WorksCountdown updatedAt={myWorks.updated_at} onExpire={fetchData} />
           )}
         </div>
 
