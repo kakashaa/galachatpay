@@ -1201,37 +1201,109 @@ Deno.serve(async (req) => {
           if (t === "agency") return "agent";
           return t;
         };
-        const allAccountIds = (accounts || []).map((a: any) => a.id).filter(Boolean);
-        const { data: allMembers, error: membersError } = allAccountIds.length > 0
-          ? await supabase
-              .from("works_members")
-              .select("works_id, member_type, status")
-              .in("works_id", allAccountIds)
-          : { data: [], error: null };
-        if (membersError) throw membersError;
-
-        const byWorksId = new Map<string, { supporterCount: number; agentCount: number }>();
-        for (const member of (allMembers || [])) {
-          if (!isMemberActive(member.status)) continue;
-          const worksId = String(member.works_id || "");
-          if (!worksId) continue;
-          const current = byWorksId.get(worksId) || { supporterCount: 0, agentCount: 0 };
-          const normalizedType = normalizeMemberType(member.member_type);
-          if (normalizedType === "supporter") current.supporterCount += 1;
-          else if (normalizedType === "agent") current.agentCount += 1;
-          byWorksId.set(worksId, current);
-        }
-
         const toFiniteNumber = (value: unknown) => {
           const n = Number(value ?? 0);
           return Number.isFinite(n) ? n : 0;
         };
 
+        const allAccountIds = (accounts || []).map((a: any) => a.id).filter(Boolean);
+        // Fetch ALL members with full data for live calculation
+        const { data: allMembers, error: membersError } = allAccountIds.length > 0
+          ? await supabase
+              .from("works_members")
+              .select("*")
+              .in("works_id", allAccountIds)
+          : { data: [], error: null };
+        if (membersError) throw membersError;
+
+        // Group active members by works_id
+        const membersByWorksId = new Map<string, any[]>();
+        const countsByWorksId = new Map<string, { supporterCount: number; agentCount: number }>();
+        for (const member of (allMembers || [])) {
+          if (!isMemberActive(member.status)) continue;
+          const worksId = String(member.works_id || "");
+          if (!worksId) continue;
+          const current = countsByWorksId.get(worksId) || { supporterCount: 0, agentCount: 0 };
+          const normalizedType = normalizeMemberType(member.member_type);
+          if (normalizedType === "supporter") current.supporterCount += 1;
+          else if (normalizedType === "agent") current.agentCount += 1;
+          countsByWorksId.set(worksId, current);
+
+          const list = membersByWorksId.get(worksId) || [];
+          list.push({ ...member, member_type: normalizedType });
+          membersByWorksId.set(worksId, list);
+        }
+
+        // Fetch live earnings for ALL active members in parallel
+        const WARES_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+        // Build flat array of all active members with their account info
+        const allActiveMembers: { worksId: string; member: any; supporterPct: number; agentPct: number }[] = [];
+        for (const acc of (accounts || [])) {
+          const members2 = membersByWorksId.get(String(acc.id)) || [];
+          const sPct = toFiniteNumber(acc.supporter_commission_pct || 2);
+          const aPct = toFiniteNumber(acc.agent_commission_pct || 5);
+          for (const m of members2) {
+            allActiveMembers.push({ worksId: acc.id, member: m, supporterPct: sPct, agentPct: aPct });
+          }
+        }
+
+        // Fetch live data for all members in parallel (batch of 30 at a time to avoid overwhelming)
+        const BATCH_SIZE = 30;
+        const liveResults: { worksId: string; commission: number }[] = [];
+        for (let i = 0; i < allActiveMembers.length; i += BATCH_SIZE) {
+          const batch = allActiveMembers.slice(i, i + BATCH_SIZE);
+          const batchResults = await Promise.all(batch.map(async ({ worksId, member: m, supporterPct: sPct, agentPct: aPct }) => {
+            try {
+              if (m.member_type === "supporter") {
+                const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`);
+                const json = await res.json();
+                const charges = toFiniteNumber(json?.data?.total_charges ?? json?.data?.charges ?? json?.total_charges ?? json?.charges ?? 0);
+                const pct = toFiniteNumber(m.commission_pct ?? sPct);
+                return { worksId, commission: (charges / 7500) * (pct / 100) };
+              } else if (m.member_type === "agent" && m.agency_id) {
+                const res = await fetch(`${WARES_API}&action=agency-salary&agency_id=${m.agency_id}`);
+                const json = await res.json();
+                const salary = toFiniteNumber(json?.data?.net_salary ?? json?.data?.salary ?? json?.net_salary ?? json?.salary ?? 0);
+                const pct = toFiniteNumber(m.commission_pct ?? aPct);
+                return { worksId, commission: salary * pct / 100 };
+              }
+            } catch (e) {
+              console.error(`Live fetch failed for ${m.member_uuid}:`, e);
+            }
+            return { worksId, commission: 0 };
+          }));
+          liveResults.push(...batchResults);
+        }
+
+        // Sum commissions per works_id
+        const earningsByWorksId = new Map<string, number>();
+        for (const r of liveResults) {
+          earningsByWorksId.set(r.worksId, (earningsByWorksId.get(r.worksId) || 0) + r.commission);
+        }
+
+        // Update stored total_earnings_usd for accounts that have active members
+        const updatePromises: Promise<any>[] = [];
+        for (const [wid, earnings] of earningsByWorksId) {
+          const rounded = Math.round(earnings * 100) / 100;
+          if (rounded > 0) {
+            updatePromises.push(
+              supabase.from("works_accounts").update({ total_earnings_usd: rounded }).eq("id", wid)
+            );
+          }
+        }
+        await Promise.all(updatePromises);
+
         const enriched = (accounts || []).map((acc: any) => {
-          const counters = byWorksId.get(String(acc.id)) || { supporterCount: 0, agentCount: 0 };
+          const counters = countsByWorksId.get(String(acc.id)) || { supporterCount: 0, agentCount: 0 };
           const supporterPct = toFiniteNumber(acc.supporter_commission_pct);
           const agentPct = toFiniteNumber(acc.agent_commission_pct);
-          const storedTotalEarnings = Math.round(toFiniteNumber(acc.total_earnings_usd) * 100) / 100;
+          const liveEarnings = earningsByWorksId.get(String(acc.id));
+          const dynamicEarnings = liveEarnings !== undefined
+            ? Math.round(liveEarnings * 100) / 100
+            : Math.round(toFiniteNumber(acc.total_earnings_usd) * 100) / 100;
           const activeMembersCount = counters.supporterCount + counters.agentCount;
 
           return {
@@ -1240,7 +1312,7 @@ Deno.serve(async (req) => {
             agent_count: counters.agentCount,
             supporter_pct: supporterPct,
             agent_pct: agentPct,
-            dynamic_earnings: storedTotalEarnings,
+            dynamic_earnings: dynamicEarnings,
             has_active_members: activeMembersCount > 0,
           };
         });
