@@ -670,9 +670,8 @@ const BDDashboard: React.FC = () => {
               </div>
               <div className="divide-y divide-border/20">
                 {supporters.map((s: any) => {
-                  const live = supporterSalaries[s.member_uuid];
-                  const charges = live?.charges || 0;
-                  const commission = live?.commission || 0;
+                  const charges = Number(supporterSalaries[s.member_uuid]?.charges || s.monthly_charges || s.total_charges || 0);
+                  const commissionCoins = getSupporterCommissionCoins(s);
                   return (
                     <div key={s.member_uuid} className="px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
@@ -689,16 +688,15 @@ const BDDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-muted-foreground">نسبتك ({bd.user_commission_pct || 2}%):</span>
-                        <span className="font-bold text-emerald-400">{commission.toLocaleString()} كوينز</span>
+                        <span className="font-bold text-emerald-400">{commissionCoins.toLocaleString()} كوينز</span>
                       </div>
                     </div>
                   );
                 })}
                 {agents.map((a: any) => {
-                  const live = agentSalaries[a.member_uuid];
-                  const salary = live?.salary || 0;
-                  const commission = live?.commission || 0;
-                  const commCoins = Math.floor(commission * 7500);
+                  const salary = getAgentSalaryUsd(a);
+                  const commissionUsd = getAgentCommissionUsd(a);
+                  const commCoins = Math.floor(commissionUsd * 7500);
                   return (
                     <div key={a.member_uuid} className="px-3 py-3">
                       <div className="flex items-center justify-between mb-1">
@@ -715,7 +713,7 @@ const BDDashboard: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-muted-foreground">نسبتك ({bd.agency_commission_pct || 5}%):</span>
-                        <span className="font-bold text-emerald-400">${commission.toFixed(2)} = {commCoins.toLocaleString()} كوينز</span>
+                        <span className="font-bold text-emerald-400">${commissionUsd.toFixed(2)} = {commCoins.toLocaleString()} كوينز</span>
                       </div>
                     </div>
                   );
