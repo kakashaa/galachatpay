@@ -181,70 +181,124 @@ const WorksPage: React.FC = () => {
 
   // Auto-fetch salary data for all members
   // Returns commission values in COINS (not USD)
-  const fetchSalaryData = useCallback(async (worksId: string, membersList: MemberWithSalary[]) => {
+  const fetchSalaryData = useCallback(async (_worksId: string, membersList: MemberWithSalary[]) => {
     const month = new Date().toISOString().slice(0, 7);
     const year = new Date().getFullYear();
     const monthNum = new Date().getMonth() + 1;
 
-    let totalMonthCommissionCoins = 0;
-    const updatedMembers = [...membersList];
+    const updatedMembers = await Promise.all(
+      membersList.map(async (member) => {
+        try {
+          if (member.member_type === "supporter") {
+            let charges = 0;
+            let commission = 0;
 
-    for (let i = 0; i < updatedMembers.length; i++) {
-      const member = updatedMembers[i];
-      try {
-        if (member.member_type === "supporter") {
-          let charges = 0;
-          let commission = 0;
-
-          // Primary: wares-api
-          try {
-            const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
-            charges = data.data?.total_charges || 0;
-            commission = data.data?.commission_2pct || 0;
-          } catch { /* silent */ }
-
-          // Fallback: bd-data-api if primary returned 0
-          if (charges === 0) {
+            // Primary: wares-api
             try {
-              const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
-              charges = data2.data?.total_charges || data2.total_charges || 0;
-              commission = data2.data?.commission_2pct || Math.floor(charges * 0.02) || 0;
-            } catch { /* silent */ }
-          }
+              const data = await galaApi.userMonthlyCharges(member.member_uuid, month);
+              charges = toFiniteNumber(
+                data?.data?.total_charges ??
+                data?.data?.charges ??
+                data?.total_charges ??
+                data?.charges ??
+                0
+              );
+              const apiCommission = toFiniteNumber(
+                data?.data?.commission_2pct ??
+                data?.commission_2pct ??
+                0
+              );
+              commission = apiCommission > 0 ? apiCommission : Math.floor(charges * 0.02);
+            } catch {
+              /* silent */
+            }
 
-          // Fallback 2: fetch profile charger_num via edge function
-          if (charges === 0) {
-            try {
-              const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
-                body: { uuid: member.member_uuid },
-              });
-              const chargerNum = profileRes?.data?.level?.charger_num || profileRes?.level?.charger_num || 0;
-              if (chargerNum > 0) {
-                // Use stored initial_charger_num if available, otherwise use charger_num as-is
-                const initialCharger = (member as any).initial_charger_num || 0;
-                const monthlyCharges = initialCharger > 0 ? Math.max(0, chargerNum - initialCharger) : chargerNum;
-                if (monthlyCharges > 0) {
-                  charges = monthlyCharges;
-                  commission = Math.floor(monthlyCharges * 0.02);
-                }
+            // Fallback: bd-data-api if primary returned 0
+            if (charges === 0) {
+              try {
+                const data2 = await galaApi.bdUserMonthlyCharges(member.member_uuid, month);
+                charges = toFiniteNumber(
+                  data2?.data?.total_charges ??
+                  data2?.total_charges ??
+                  data2?.charges ??
+                  0
+                );
+                const apiCommission = toFiniteNumber(
+                  data2?.data?.commission_2pct ??
+                  data2?.commission_2pct ??
+                  0
+                );
+                commission = apiCommission > 0 ? apiCommission : Math.floor(charges * 0.02);
+              } catch {
+                /* silent */
               }
-            } catch { /* silent */ }
+            }
+
+            // Fallback 2: fetch profile charger_num via edge function
+            if (charges === 0) {
+              try {
+                const { data: profileRes } = await supabase.functions.invoke("test-user-info", {
+                  body: { uuid: member.member_uuid },
+                });
+                const chargerNum = toFiniteNumber(
+                  profileRes?.data?.level?.charger_num ??
+                  profileRes?.level?.charger_num ??
+                  0
+                );
+
+                if (chargerNum > 0) {
+                  const initialCharger = toFiniteNumber((member as any).initial_charger_num ?? 0);
+                  const monthlyCharges = initialCharger > 0
+                    ? Math.max(0, chargerNum - initialCharger)
+                    : chargerNum;
+
+                  if (monthlyCharges > 0) {
+                    charges = monthlyCharges;
+                    commission = Math.floor(monthlyCharges * 0.02);
+                  }
+                }
+              } catch {
+                /* silent */
+              }
+            }
+
+            return { ...member, monthly_charges: charges, commission: Math.floor(commission) };
           }
 
-          updatedMembers[i] = { ...member, monthly_charges: charges, commission };
-          totalMonthCommissionCoins += commission;
+          if (member.member_type === "agent" && member.agency_id) {
+            const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
+            const salary = toFiniteNumber(
+              data?.data?.net_salary ??
+              data?.data?.salary ??
+              data?.net_salary ??
+              data?.salary ??
+              0
+            );
+            const apiCommissionUsd = toFiniteNumber(
+              data?.data?.commission_2pct ??
+              data?.commission_2pct ??
+              0
+            );
+            const fallbackPct = toFiniteNumber((member as any)?.commission_pct ?? 2);
+            const computedCommissionUsd = apiCommissionUsd > 0
+              ? apiCommissionUsd
+              : salary * (fallbackPct / 100);
+            const commissionCoins = Math.floor(computedCommissionUsd * COINS_PER_USD);
+
+            return { ...member, agency_salary: salary, commission: commissionCoins };
+          }
+        } catch {
+          /* silent */
         }
 
-        if (member.member_type === "agent" && member.agency_id) {
-          const data = await galaApi.agencySalary(member.agency_id, String(year), String(monthNum));
-          const salary = data.data?.salary || 0;
-          const commissionUsd = data.data?.commission_2pct || 0;
-          const commissionCoins = Math.floor(commissionUsd * 7500);
-          updatedMembers[i] = { ...member, agency_salary: salary, commission: commissionCoins };
-          totalMonthCommissionCoins += commissionCoins;
-        }
-      } catch { /* silent */ }
-    }
+        return member;
+      })
+    );
+
+    const totalMonthCommissionCoins = updatedMembers.reduce(
+      (sum, member) => sum + toFiniteNumber(member.commission ?? 0),
+      0
+    );
 
     return { totalMonthCommissionCoins, updatedMembers };
   }, []);
