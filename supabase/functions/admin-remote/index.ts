@@ -14,7 +14,8 @@ serve(async (req) => {
   }
 
   try {
-    const { key, command, params } = await req.json();
+    const body = await req.json();
+    const { key, command, params = {} } = body || {};
 
     if (key !== REMOTE_KEY) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {

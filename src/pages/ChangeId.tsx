@@ -276,6 +276,21 @@ const ChangeId: React.FC = () => {
 
          setAlreadyChanged({ changed: true, lastLevel: milestone, newId: trimmedId, date: new Date().toISOString() });
          setUser({ ...user, uuid: trimmedId });
+
+         // Update saved accounts in localStorage
+         try {
+           const savedRaw = localStorage.getItem("saved_accounts");
+           if (savedRaw) {
+             const saved = JSON.parse(savedRaw);
+             if (Array.isArray(saved)) {
+               const updated = saved.map((acc: any) =>
+                 acc.uuid === user.uuid ? { ...acc, uuid: trimmedId } : acc
+               );
+               localStorage.setItem("saved_accounts", JSON.stringify(updated));
+             }
+           }
+         } catch {}
+
         setStatus("success");
      } catch { 
        setStatus("error"); 

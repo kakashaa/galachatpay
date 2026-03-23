@@ -51,8 +51,15 @@ interface WithdrawStatus {
 const SalaryHome: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [status, setStatus] = useState<WithdrawStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Load cached salary data instantly, then refresh in background
+  const SALARY_CACHE_KEY = `salary_cache_${user?.uuid}`;
+  const [status, setStatus] = useState<WithdrawStatus | null>(() => {
+    try {
+      const cached = localStorage.getItem(SALARY_CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  });
+  const [loading, setLoading] = useState(!status);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -61,13 +68,14 @@ const SalaryHome: React.FC = () => {
   }, [user?.uuid]);
 
   const fetchStatus = async () => {
-    setLoading(true);
+    if (!status) setLoading(true);
     setError(false);
     try {
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
       setStatus(data);
+      try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
     } catch {
-      setError(true);
+      if (!status) setError(true);
     } finally {
       setLoading(false);
     }
@@ -135,8 +143,8 @@ const SalaryHome: React.FC = () => {
     <MobileLayout showHeader headerTitle="راتبي" onBack={() => navigate("/dashboard")}>
       <div className="px-5 py-6 space-y-5">
 
-        {/* Loading */}
-        {loading && (
+        {/* Loading — only show full loader if no cached data */}
+        {loading && !status && (
           <FancyLoading
             title="جاري فحص الراتب"
             subtitle="نجلب لك بيانات راتبك الشهري"
@@ -158,7 +166,7 @@ const SalaryHome: React.FC = () => {
           </div>
         )}
 
-        {!loading && !error && status && (
+        {!error && status && (
           <>
             {/* Total available */}
             <motion.div
