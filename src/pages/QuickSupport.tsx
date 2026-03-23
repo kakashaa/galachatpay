@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Send, ArrowRight, Zap, ShieldX,
@@ -11,7 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
 import SupportSessionChat from "@/components/SupportSessionChat";
-import { startSupportSession } from "@/hooks/use-support-session";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -23,6 +22,7 @@ const isEligibleForQuickSupport = (user: any): boolean => {
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
+type ConnectionState = "idle" | "searching" | "found" | "no_admin" | "error";
 
 interface ServiceOption {
   type: RequestType;
@@ -40,6 +40,7 @@ const serviceOptions: ServiceOption[] = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const SEARCH_TIMEOUT_MS = 15000;
 
 const QuickSupport: React.FC = () => {
   const navigate = useNavigate();
@@ -53,12 +54,20 @@ const QuickSupport: React.FC = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitting] = useState(false);
 
-  // New support session state
+  // Connection states
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
+  const [_adminName, setAdminName] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Check if this was opened as SOS (from URL param)
   const isSOS = new URLSearchParams(window.location.search).get("sos") === "1";
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,6 +88,16 @@ const QuickSupport: React.FC = () => {
   const startChat = async (requestType?: string, notes?: string) => {
     if (!authUser) return;
     setStartingChat(true);
+    setConnectionState("searching");
+
+    // Set 15s timeout
+    timeoutRef.current = setTimeout(() => {
+      if (connectionState === "searching") {
+        setConnectionState("error");
+        setStartingChat(false);
+      }
+    }, SEARCH_TIMEOUT_MS);
+
     try {
       let fileUrl: string | null = null;
       if (attachment) {
@@ -87,27 +106,52 @@ const QuickSupport: React.FC = () => {
 
       const supportLevel = isSOS ? 2 : 1;
 
-      const session = await startSupportSession({
-        user_uuid: authUser.uuid,
-        user_name: authUser.name,
-        support_level: supportLevel,
-        request_type: requestType || (isSOS ? "sos" : "quick_support"),
-        notes: notes || undefined,
-        file_url: fileUrl || undefined,
-        file_type: attachment ? (attachment.type.startsWith("image") ? "image" : "video") : undefined,
+      const { data, error } = await supabase.functions.invoke("support-system", {
+        body: {
+          action: "start_session",
+          user_uuid: authUser.uuid,
+          user_name: authUser.name,
+          support_level: supportLevel,
+          request_type: requestType || (isSOS ? "sos" : "quick_support"),
+          notes: notes || undefined,
+          file_url: fileUrl || undefined,
+          file_type: attachment ? (attachment.type.startsWith("image") ? "image" : "video") : undefined,
+        },
       });
 
-      if (session?.id) {
-        setSessionId(session.id);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+      if (error) throw error;
+
+      const sessionData = data?.data || data;
+      const isAdminAvailable = sessionData?.admin_available !== false;
+
+      if (sessionData?.id && isAdminAvailable) {
+        setSessionId(sessionData.id);
+        setAdminName(sessionData.admin_name || sessionData.assigned_admin_name || null);
+        setConnectionState("found");
         playSuccessChime();
-        toast.success("تم بدء المحادثة!");
+        toast.success(`✅ تم العثور على دعم — ${sessionData.admin_name || "فريق الدعم"}`);
+      } else if (sessionData?.id && !isAdminAvailable) {
+        setConnectionState("no_admin");
+        toast.error("لا يوجد دعم متاح حالياً");
       } else {
+        setConnectionState("error");
         toast.error("فشل بدء المحادثة");
       }
     } catch {
-      toast.error("فشل الاتصال بالخادم");
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setConnectionState("error");
+      toast.error("⚠️ فشل الاتصال بالخادم");
     }
     setStartingChat(false);
+  };
+
+  const retrySearch = () => {
+    setConnectionState("idle");
+    setSessionId(null);
+    setAdminName(null);
+    startChat();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,6 +171,7 @@ const QuickSupport: React.FC = () => {
 
   const handleChatClose = () => {
     setSessionId(null);
+    setConnectionState("idle");
     navigate(-1);
   };
 
@@ -156,8 +201,8 @@ const QuickSupport: React.FC = () => {
     );
   }
 
-  // Active session chat view
-  if (sessionId) {
+  // Active session chat view (only when admin was found)
+  if (sessionId && connectionState === "found") {
     return (
       <div className="mobile-container bg-background flex flex-col overflow-hidden" dir="rtl">
         <SupportSessionChat
@@ -168,6 +213,75 @@ const QuickSupport: React.FC = () => {
           showTimer={true}
           onClose={handleChatClose}
         />
+      </div>
+    );
+  }
+
+  // Connection state overlay (searching / no_admin / error)
+  if (connectionState !== "idle") {
+    return (
+      <div className="mobile-container bg-background flex flex-col" dir="rtl">
+        <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
+          <motion.button onClick={() => { setConnectionState("idle"); if (timeoutRef.current) clearTimeout(timeoutRef.current); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30">
+            <ArrowRight className="w-5 h-5 text-primary" />
+            <span className="text-sm font-semibold text-primary">رجوع</span>
+          </motion.button>
+          <h1 className="text-sm font-bold text-foreground">جاري الاتصال</h1>
+          <div className="w-16" />
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <AnimatePresence mode="wait">
+            {connectionState === "searching" && (
+              <motion.div key="searching" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-primary/10 border border-primary/20">
+                  <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">⏳ جاري البحث عن دعم...</h2>
+                <p className="text-sm text-muted-foreground">نبحث عن أدمن متاح — انتظر لحظات</p>
+              </motion.div>
+            )}
+
+            {connectionState === "no_admin" && (
+              <motion.div key="no_admin" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-destructive/10 border border-destructive/20">
+                  <X className="w-10 h-10 text-destructive" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">❌ لا يوجد دعم حالياً</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">جميع المسؤولين مشغولين أو خارج الدوام — حاول لاحقاً أو أرسل تذكرة</p>
+                <div className="space-y-2 w-full max-w-[280px] mx-auto">
+                  <button onClick={retrySearch}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Zap className="w-4 h-4" /> إعادة المحاولة
+                  </button>
+                  <button onClick={() => navigate("/support-tickets")}
+                    className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Send className="w-4 h-4" /> أرسل تذكرة بدلاً
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {connectionState === "error" && (
+              <motion.div key="error" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-yellow-500/10 border border-yellow-500/20">
+                  <AlertTriangle className="w-10 h-10 text-yellow-500" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">⚠️ فشل الاتصال</h2>
+                <p className="text-sm text-muted-foreground">حصل خطأ أثناء البحث — حاول مرة ثانية</p>
+                <div className="space-y-2 w-full max-w-[280px] mx-auto">
+                  <button onClick={retrySearch}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Zap className="w-4 h-4" /> إعادة المحاولة
+                  </button>
+                  <button onClick={() => navigate("/support-tickets")}
+                    className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                    <Send className="w-4 h-4" /> أرسل تذكرة بدلاً
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     );
   }
