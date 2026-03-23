@@ -1115,7 +1115,9 @@ const AdminWorksPage: React.FC = () => {
                             <div className="bg-emerald-500/5 rounded-lg p-2">
                               <p className="text-emerald-400/80">العمولة (live)</p>
                               <p className="font-bold text-emerald-400">
-                                {memberSalaryLoading ? "..." : `${Number(m.live_commission || 0).toLocaleString()} ك`}
+                                {memberSalaryLoading ? "..." : `$${Number(m.live_commission || 0).toFixed(2)}`}
+                              </p>
+                            </div>
                               </p>
                             </div>
                             <div className="bg-muted/30 rounded-lg p-2">
