@@ -95,7 +95,7 @@ const WorksPage: React.FC = () => {
   const [monthEarnings, setMonthEarnings] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
-  const salaryFetchIdRef = useRef(0);
+  
 
   // StatusModal
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
