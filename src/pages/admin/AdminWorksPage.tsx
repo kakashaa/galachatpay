@@ -1184,6 +1184,14 @@ const AdminWorksPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold">أعضاء الفريق</h3>
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={refreshAllMembers}
+                            disabled={refreshingAll}
+                            className="text-[10px] px-2 py-1 rounded-lg font-bold flex items-center gap-1 bg-primary/10 text-primary disabled:opacity-50"
+                          >
+                            {refreshingAll ? <Loader2 className="w-3 h-3 animate-spin" /> : <BarChart3 className="w-3 h-3" />}
+                            {refreshingAll ? "جاري التحديث..." : "تحديث الكل"}
+                          </button>
                           {isOwner && (
                             <button onClick={() => { setManualTargetWorksId(selectedWorksId); setShowManualAdd(true); }}
                               className="text-[10px] px-2 py-1 rounded-lg font-bold flex items-center gap-1 bg-emerald-500/10 text-emerald-400">
