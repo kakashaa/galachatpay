@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import FancyLoading from "@/components/FancyLoading";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -121,10 +122,16 @@ const SalaryHome: React.FC = () => {
 
         {/* Loading */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">جاري جلب البيانات...</p>
-          </div>
+          <FancyLoading
+            title="جاري فحص الراتب"
+            subtitle="نجلب لك بيانات راتبك الشهري"
+            tips={[
+              "جاري الاتصال بالسيرفر...",
+              "نفحص بيانات الراتب...",
+              "نحسب المتبقي لك...",
+              "ثواني وتظهر لك التفاصيل...",
+            ]}
+          />
         )}
 
         {/* Error */}

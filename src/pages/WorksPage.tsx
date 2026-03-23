@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -440,8 +441,16 @@ const WorksPage: React.FC = () => {
   const agentPct = Number(myWorks?.agent_commission_pct || 3);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+    <div className="min-h-screen bg-background">
+      <FancyLoading
+        title="جاري التحميل"
+        subtitle="نجلب لك بيانات حسابك"
+        tips={[
+          "جاري جلب البيانات...",
+          "نتحقق من حالة حسابك...",
+          "ثواني ويظهر لك كل شي...",
+        ]}
+      />
     </div>
   );
 
