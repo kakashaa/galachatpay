@@ -9,6 +9,7 @@ import OwnerControls from "@/components/bd/OwnerControls";
 import BDSupportersTab from "@/components/bd/BDSupportersTab";
 import BDAgentsTab from "@/components/bd/BDAgentsTab";
 import { galaApi } from "@/services/galaApi";
+import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 
 interface BDData {
   bd: any;
@@ -38,6 +39,23 @@ const BDDashboard: React.FC = () => {
   const [supporterSalaries, setSupporterSalaries] = useState<Record<string, { charges: number; commission: number }>>({});
   const [agentSalaries, setAgentSalaries] = useState<Record<string, { salary: number; commission: number }>>({});
 
+  const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
+
+  // Fetch avatars for all members
+  useEffect(() => {
+    if (!data) return;
+    const allUuids = [
+      ...data.supporters.map((s: any) => s.member_uuid),
+      ...data.agents.map((a: any) => a.member_uuid),
+    ].filter(Boolean);
+    allUuids.forEach(uuid => {
+      if (!memberAvatars[uuid]) {
+        getAvatar(uuid).then(url => {
+          setMemberAvatars(prev => ({ ...prev, [uuid]: url }));
+        });
+      }
+    });
+  }, [data]);
   const handleManualSync = async () => {
     if (syncing || !user?.uuid) return;
     setSyncing(true);
@@ -896,12 +914,15 @@ const BDDashboard: React.FC = () => {
                   <div key={s.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
-                        style={{ background: "hsl(217 91% 60% / 0.1)", color: "hsl(217 91% 60%)" }}>
-                        {(s.member_name || "?")[0]}
-                      </div>
+                      <img
+                        src={memberAvatars[s.member_uuid] || "/placeholder.svg"}
+                        onError={handleAvatarError}
+                        className="w-9 h-9 rounded-xl object-cover"
+                        alt={s.member_name}
+                      />
                       <div>
                         <p className="text-xs font-bold text-foreground">{s.member_name || "داعم"}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono tabular-nums" dir="ltr">#{s.member_uuid}</p>
                         <p className="text-[10px] text-muted-foreground">شحن {charges.toLocaleString()} كوينز</p>
                       </div>
                     </div>
@@ -948,12 +969,15 @@ const BDDashboard: React.FC = () => {
                   <div key={a.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
-                        style={{ background: "hsl(271 91% 65% / 0.1)", color: "hsl(271 91% 65%)" }}>
-                        {(a.member_name || "?")[0]}
-                      </div>
+                      <img
+                        src={memberAvatars[a.member_uuid] || "/placeholder.svg"}
+                        onError={handleAvatarError}
+                        className="w-9 h-9 rounded-xl object-cover"
+                        alt={a.member_name}
+                      />
                       <div>
                         <p className="text-xs font-bold text-foreground">{a.member_name || "وكالة"}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono tabular-nums" dir="ltr">#{a.member_uuid}</p>
                         <p className="text-[10px] text-muted-foreground">راتب الوكالة ${salary.toFixed(2)}</p>
                       </div>
                     </div>
