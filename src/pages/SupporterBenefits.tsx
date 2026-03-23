@@ -1196,11 +1196,15 @@ const SupporterBenefits: React.FC = () => {
                     <div className="space-y-2">
                       {challenges.map((ch: any) => {
                         const prog = challengeProgress[ch.id];
-                        const currentAmt = prog?.current_amount || 0;
+                        // Progress starts from 0 at join time — previous charges don't count
+                        const baseCharges = prog?.base_charges || 0;
+                        const currentAmt = prog ? Math.max(0, monthlyCoins - baseCharges) : 0;
                         const progressPct = Math.min(100, (currentAmt / ch.target_amount) * 100);
+                        const isGoalMet = currentAmt >= ch.target_amount;
                         const status = prog?.status || "active";
+                        const rewardClaimed = prog?.reward_claimed === true;
                         const daysLeft = ch.duration_days - Math.floor((Date.now() - new Date(prog?.started_at || ch.created_at).getTime()) / 86400000);
-                        const isCompleted = status === "completed";
+                        const isCompleted = status === "completed" || (isGoalMet && prog);
                         const isExpired = daysLeft <= 0 && !isCompleted;
                         const chColor = ch.color || "#8b5cf6";
 
@@ -1223,7 +1227,7 @@ const SupporterBenefits: React.FC = () => {
                                     : isExpired ? "bg-destructive/15 text-destructive"
                                     : "bg-primary/10 text-primary"
                                   }`}>
-                                    {isCompleted ? "مكتمل ✓" : isExpired ? "منتهي" : "نشط"}
+                                    {isCompleted && rewardClaimed ? "تم الاستلام ✓" : isCompleted ? "مكتمل ✓" : isExpired ? "منتهي" : "نشط"}
                                   </span>
                                 </div>
                                 {ch.description && <p className="text-[9px] text-muted-foreground mb-2">{ch.description}</p>}
@@ -1259,7 +1263,7 @@ const SupporterBenefits: React.FC = () => {
                                     style={{ background: `${chColor}12`, color: chColor }}>
                                     🎁 {ch.reward_description || `${ch.reward_value} ${ch.reward_type}`}
                                   </span>
-                                  {!isCompleted && !isExpired && (
+                                  {!isCompleted && !isExpired && prog && (
                                     <span className="flex items-center gap-1 text-[8px] text-muted-foreground">
                                       <Timer className="w-2.5 h-2.5" />
                                       {daysLeft} يوم متبقي
@@ -1267,6 +1271,7 @@ const SupporterBenefits: React.FC = () => {
                                   )}
                                 </div>
 
+                                {/* Join button — not yet joined */}
                                 {!prog && !isExpired && (
                                   <button
                                     onClick={async () => {
@@ -1274,9 +1279,16 @@ const SupporterBenefits: React.FC = () => {
                                       await supabase.from("supporter_challenge_progress").insert({
                                         user_uuid: user.uuid,
                                         challenge_id: ch.id,
-                                        current_amount: monthlyCoins,
-                                        status: monthlyCoins >= ch.target_amount ? "completed" : "active",
-                                        completed_at: monthlyCoins >= ch.target_amount ? new Date().toISOString() : null,
+                                        current_amount: 0,
+                                        base_charges: monthlyCoins,
+                                        status: "active",
+                                      } as any);
+                                      // Notification: joined challenge
+                                      await supabase.from("notifications").insert({
+                                        user_uuid: user.uuid,
+                                        title: "انضممت لتحدي جديد! 🏁",
+                                        body: `بدأت التحدي: ${ch.title} — الهدف: ${formatCoins(ch.target_amount)} كوينز`,
+                                        type: "supporter_club",
                                       } as any);
                                       toast.success("تم الانضمام للتحدي! 🎯");
                                       loadData();
@@ -1285,6 +1297,59 @@ const SupporterBenefits: React.FC = () => {
                                     style={{ background: `${chColor}15`, color: chColor, border: `1px solid ${chColor}25` }}>
                                     انضم للتحدي
                                   </button>
+                                )}
+
+                                {/* Claim coupon button — goal met but not claimed */}
+                                {isCompleted && !rewardClaimed && prog && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!user?.uuid || processing) return;
+                                      setProcessing(true);
+                                      try {
+                                        // Create coupon reward
+                                        const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
+                                        await supabase.from("supporter_rewards").insert({
+                                          uuid: user.uuid,
+                                          tier_name: "تحدي",
+                                          month: currentMonth,
+                                          type: ch.reward_type || "coins",
+                                          value: ch.reward_value || 0,
+                                          count: 1,
+                                          status: "available",
+                                          use_expires_at: expiresAt,
+                                          item_duration_days: 30,
+                                          reward_description: ch.reward_description || "",
+                                        } as any);
+                                        // Mark as claimed
+                                        await supabase.from("supporter_challenge_progress").update({
+                                          status: "completed",
+                                          reward_claimed: true,
+                                          completed_at: new Date().toISOString(),
+                                        } as any).eq("id", prog.id);
+                                        // Notification
+                                        await supabase.from("notifications").insert({
+                                          user_uuid: user.uuid,
+                                          title: "🎉 حصلت على كوبون!",
+                                          body: `أكملت التحدي: ${ch.title} — تم إضافة المكافأة لكوبوناتك`,
+                                          type: "supporter_club",
+                                        } as any);
+                                        toast.success("🎁 تم استلام الكوبون! تجده في قسم الكوبونات");
+                                        loadData();
+                                      } catch { toast.error("فشل استلام الكوبون"); }
+                                      setProcessing(false);
+                                    }}
+                                    disabled={processing}
+                                    className="mt-2 w-full py-2 rounded-lg text-[11px] font-bold active:scale-95 transition-all bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 disabled:opacity-50">
+                                    {processing ? "جاري الاستلام..." : "🎁 استلام الكوبون"}
+                                  </button>
+                                )}
+
+                                {/* Already claimed */}
+                                {isCompleted && rewardClaimed && (
+                                  <div className="mt-2 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-emerald-500/10">
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <span className="text-[9px] font-bold text-emerald-400">تم استلام المكافأة ✓</span>
+                                  </div>
                                 )}
                               </div>
                             </div>
