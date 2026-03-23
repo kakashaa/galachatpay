@@ -9,6 +9,7 @@ import OwnerControls from "@/components/bd/OwnerControls";
 import BDSupportersTab from "@/components/bd/BDSupportersTab";
 import BDAgentsTab from "@/components/bd/BDAgentsTab";
 import { galaApi } from "@/services/galaApi";
+import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 
 interface BDData {
   bd: any;
