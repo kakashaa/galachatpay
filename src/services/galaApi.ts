@@ -8,6 +8,7 @@ class GalaApiService {
     "agency-salary",
     "user-monthly-charges",
     "activity-feed",
+    "get_avatar",
   ]);
 
   // === Generic proxy call ===

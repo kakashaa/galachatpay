@@ -135,6 +135,7 @@ const TIMEOUT_TOLERANT_ACTIONS = new Set([
   "user-monthly-charges",
   "agency-salary",
   "activity-feed",
+  "get_avatar",
 ]);
 
 function timeoutPayload(action: string) {
@@ -151,6 +152,16 @@ function timeoutPayload(action: string) {
           total_count: 0,
         },
       },
+    };
+  }
+
+  if (action === "get_avatar") {
+    return {
+      success: false,
+      timeout: true,
+      message: "Signal timed out.",
+      avatar: null,
+      data: null,
     };
   }
 
