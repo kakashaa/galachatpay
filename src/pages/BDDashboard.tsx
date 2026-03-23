@@ -158,8 +158,11 @@ const BDDashboard: React.FC = () => {
         const agencyId = a.agency_id;
         if (!agencyId) return;
         const data = await galaApi.agencySalary(agencyId, String(year), String(monthNum));
-        const salary = data.data?.salary || 0;
-        const commission = data.data?.commission_2pct || (salary * 0.02);
+        console.log("[BD] Agent salary API response for", agencyId, ":", JSON.stringify(data));
+        const salary = Number(data?.data?.salary ?? data?.data?.net_salary ?? data?.data?.agency_salary ?? data?.salary ?? data?.net_salary ?? data?.agency_salary ?? 0) || 0;
+        const pct = Number(a.custom_commission_pct ?? 5);
+        const commission = salary * (pct / 100);
+        console.log("[BD] Agent parsed: salary=", salary, "pct=", pct, "commission=", commission);
         agMap[a.member_uuid] = { salary, commission };
       } catch { /* silent */ }
     });
