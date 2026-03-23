@@ -75,12 +75,13 @@ class GalaApiService {
   }
 
   async adminFirstSetup(username: string, oldPassword: string, newPassword: string, phone: string) {
-    const { data, error } = await supabase.functions.invoke("admin-manage", {
-      body: { username, password: oldPassword, action: "admin_first_setup", data: { new_password: newPassword, phone } },
+    // First-login setup must go through project-z auth flow (same source as admin_login)
+    return this.call("project-z", "admin_first_setup", {
+      username,
+      password: oldPassword,
+      new_password: newPassword,
+      phone,
     });
-    if (error) throw error;
-    if (data?.error) throw new Error(data.error);
-    return { success: true, ...data };
   }
 
   // Salary
