@@ -142,32 +142,30 @@ const BDDashboard: React.FC = () => {
     const supMap: Record<string, { charges: number; commission: number }> = {};
     const agMap: Record<string, { salary: number; commission: number }> = {};
 
-    // Fetch supporters in parallel
-    const supPromises = sups.map(async (s: any) => {
+    // Process supporters ONE AT A TIME to avoid flooding gala-proxy
+    for (const s of sups) {
       try {
         const data = await galaApi.userMonthlyCharges(s.member_uuid, month);
         const charges = data.data?.total_charges || 0;
         const commission = data.data?.commission_2pct || (charges * 0.02);
         supMap[s.member_uuid] = { charges, commission };
       } catch { /* silent */ }
-    });
+      await new Promise(r => setTimeout(r, 500));
+    }
 
-    // Fetch agents in parallel
-    const agPromises = ags.map(async (a: any) => {
+    // Process agents ONE AT A TIME
+    for (const a of ags) {
       try {
         const agencyId = a.agency_id;
-        if (!agencyId) return;
+        if (!agencyId) continue;
         const data = await galaApi.agencySalary(agencyId, String(year), String(monthNum));
-        console.log("[BD] Agent salary API response for", agencyId, ":", JSON.stringify(data));
         const salary = Number(data?.data?.salary ?? data?.data?.net_salary ?? data?.data?.agency_salary ?? data?.salary ?? data?.net_salary ?? data?.agency_salary ?? 0) || 0;
         const pct = Number(a.custom_commission_pct ?? 5);
         const commission = salary * (pct / 100);
-        console.log("[BD] Agent parsed: salary=", salary, "pct=", pct, "commission=", commission);
         agMap[a.member_uuid] = { salary, commission };
       } catch { /* silent */ }
-    });
-
-    await Promise.all([...supPromises, ...agPromises]);
+      await new Promise(r => setTimeout(r, 500));
+    }
     setSupporterSalaries(supMap);
     setAgentSalaries(agMap);
     setSalaryLoading(false);
