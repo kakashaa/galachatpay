@@ -96,19 +96,20 @@ const AdminLogin: React.FC = () => {
     if (data.shift_start) localStorage.setItem("admin_shift_start", data.shift_start);
     if (data.shift_end) localStorage.setItem("admin_shift_end", data.shift_end);
     if (data.phone) localStorage.setItem("admin_phone", data.phone);
+    if (data.permissions) localStorage.setItem("admin_permissions", JSON.stringify(data.permissions));
 
     // Store external API token for agencies/salaries
     if (data.token) {
       localStorage.setItem("admin_api_token", data.token);
     }
 
-    // Generate edge-function compatible session token
-    const edgeToken = btoa(JSON.stringify({ 
+    // Use HMAC-signed session token from admin-manage if available, otherwise generate legacy
+    const sessionToken = data.token || btoa(JSON.stringify({ 
       username: data.username || username.trim(), 
       role: data.role, 
       iat: Date.now() 
     }));
-    localStorage.setItem("admin_session_token", edgeToken);
+    localStorage.setItem("admin_session_token", sessionToken);
 
     navigate("/admin/dashboard", { replace: true });
   };
