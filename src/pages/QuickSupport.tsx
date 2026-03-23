@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Send, ArrowRight, Zap, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone, Upload, X,
-  Sparkles
+  Sparkles, RefreshCw, Ticket, CheckCircle2, XCircle, Loader2
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -11,7 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
 import SupportSessionChat from "@/components/SupportSessionChat";
-import { startSupportSession } from "@/hooks/use-support-session";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -23,6 +22,7 @@ const isEligibleForQuickSupport = (user: any): boolean => {
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
+type ConnectionState = "idle" | "searching" | "found" | "no_admin" | "error";
 
 interface ServiceOption {
   type: RequestType;
@@ -40,6 +40,7 @@ const serviceOptions: ServiceOption[] = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const SEARCH_TIMEOUT_MS = 15000;
 
 const QuickSupport: React.FC = () => {
   const navigate = useNavigate();
@@ -53,12 +54,20 @@ const QuickSupport: React.FC = () => {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [submitting] = useState(false);
 
-  // New support session state
+  // Connection states
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
+  const [adminName, setAdminName] = useState<string | null>(null);
   const [startingChat, setStartingChat] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Check if this was opened as SOS (from URL param)
   const isSOS = new URLSearchParams(window.location.search).get("sos") === "1";
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,6 +88,16 @@ const QuickSupport: React.FC = () => {
   const startChat = async (requestType?: string, notes?: string) => {
     if (!authUser) return;
     setStartingChat(true);
+    setConnectionState("searching");
+
+    // Set 15s timeout
+    timeoutRef.current = setTimeout(() => {
+      if (connectionState === "searching") {
+        setConnectionState("error");
+        setStartingChat(false);
+      }
+    }, SEARCH_TIMEOUT_MS);
+
     try {
       let fileUrl: string | null = null;
       if (attachment) {
@@ -87,27 +106,52 @@ const QuickSupport: React.FC = () => {
 
       const supportLevel = isSOS ? 2 : 1;
 
-      const session = await startSupportSession({
-        user_uuid: authUser.uuid,
-        user_name: authUser.name,
-        support_level: supportLevel,
-        request_type: requestType || (isSOS ? "sos" : "quick_support"),
-        notes: notes || undefined,
-        file_url: fileUrl || undefined,
-        file_type: attachment ? (attachment.type.startsWith("image") ? "image" : "video") : undefined,
+      const { data, error } = await supabase.functions.invoke("support-system", {
+        body: {
+          action: "start_session",
+          user_uuid: authUser.uuid,
+          user_name: authUser.name,
+          support_level: supportLevel,
+          request_type: requestType || (isSOS ? "sos" : "quick_support"),
+          notes: notes || undefined,
+          file_url: fileUrl || undefined,
+          file_type: attachment ? (attachment.type.startsWith("image") ? "image" : "video") : undefined,
+        },
       });
 
-      if (session?.id) {
-        setSessionId(session.id);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+      if (error) throw error;
+
+      const sessionData = data?.data || data;
+      const isAdminAvailable = sessionData?.admin_available !== false;
+
+      if (sessionData?.id && isAdminAvailable) {
+        setSessionId(sessionData.id);
+        setAdminName(sessionData.admin_name || sessionData.assigned_admin_name || null);
+        setConnectionState("found");
         playSuccessChime();
-        toast.success("تم بدء المحادثة!");
+        toast.success(`✅ تم العثور على دعم — ${sessionData.admin_name || "فريق الدعم"}`);
+      } else if (sessionData?.id && !isAdminAvailable) {
+        setConnectionState("no_admin");
+        toast.error("لا يوجد دعم متاح حالياً");
       } else {
+        setConnectionState("error");
         toast.error("فشل بدء المحادثة");
       }
     } catch {
-      toast.error("فشل الاتصال بالخادم");
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setConnectionState("error");
+      toast.error("⚠️ فشل الاتصال بالخادم");
     }
     setStartingChat(false);
+  };
+
+  const retrySearch = () => {
+    setConnectionState("idle");
+    setSessionId(null);
+    setAdminName(null);
+    startChat();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
