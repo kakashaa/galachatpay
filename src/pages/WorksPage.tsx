@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
@@ -58,6 +58,16 @@ interface MemberWithSalary {
 }
 
 const BAN_THRESHOLD = 4; // per-target attempts before ban
+const COINS_PER_USD = 7500;
+
+const toFiniteNumber = (value: unknown): number => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/,/g, "").trim());
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+};
 
 const WorksPage: React.FC = () => {
   const navigate = useNavigate();
@@ -85,6 +95,7 @@ const WorksPage: React.FC = () => {
   const [monthEarnings, setMonthEarnings] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
+  const salaryFetchIdRef = useRef(0);
 
   // StatusModal
   const [modal, setModal] = useState<{ type: "success" | "error" | "loading"; message: string; vibrate?: boolean } | null>(null);
