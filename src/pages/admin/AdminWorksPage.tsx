@@ -1242,20 +1242,6 @@ const AdminWorksPage: React.FC = () => {
                           </div>
                         </div>
                       )}
-                              <p className="font-bold text-foreground">{agents.length}</p>
-                              <p className="text-muted-foreground">عدد الوكلاء • نسبة {agentPct}%</p>
-                            </div>
-                            <div className="bg-muted/40 border border-border rounded-lg p-2 text-center">
-                              <p className="font-bold text-foreground">${supporterDynamicEarnings.toFixed(2)}</p>
-                              <p className="text-muted-foreground">أرباح الداعمين (شهري)</p>
-                            </div>
-                            <div className="bg-muted/40 border border-border rounded-lg p-2 text-center">
-                              <p className="font-bold text-foreground">${agentDynamicEarnings.toFixed(2)}</p>
-                              <p className="text-muted-foreground">أرباح الوكلاء (شهري)</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
 
                       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin" /></div> : (
                         <>
