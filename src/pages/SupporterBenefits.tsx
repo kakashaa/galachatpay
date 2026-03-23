@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import FancyLoading from "@/components/FancyLoading";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight, Crown, Gift, Star, Trophy, ArrowUp, Clock, Users,
@@ -261,9 +262,15 @@ const SupporterBenefits: React.FC = () => {
   if (loading) {
     return (
       <MobileLayout>
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+        <FancyLoading
+          title="جاري التحميل"
+          subtitle="نجلب لك مميزات الداعمين"
+          tips={[
+            "جاري فحص مستوى الدعم...",
+            "نحضّر لك قائمة المميزات...",
+            "ثواني وتظهر لك التفاصيل...",
+          ]}
+        />
       </MobileLayout>
     );
   }

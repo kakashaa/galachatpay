@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Bell, CheckCircle2 } from "lucide-react";
+import FancyLoading from "@/components/FancyLoading";
 import OwnerControls from "@/components/bd/OwnerControls";
 import BDSupportersTab from "@/components/bd/BDSupportersTab";
 import BDAgentsTab from "@/components/bd/BDAgentsTab";
@@ -219,8 +220,18 @@ const BDDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="mobile-container bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="mobile-container bg-background">
+        <FancyLoading
+          title="جاري تحميل لوحة BD"
+          subtitle="نجلب لك بيانات الأعضاء والأرباح"
+          tips={[
+            "جاري جلب بيانات الأعضاء...",
+            "نحسب لك أرباح اليوم...",
+            "نحدّث بيانات الداعمين...",
+            "جاري ربط البيانات من السيرفر...",
+            "ثواني ويظهر لك كل شي...",
+          ]}
+        />
       </div>
     );
   }
