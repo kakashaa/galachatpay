@@ -736,41 +736,34 @@ const WorksPage: React.FC = () => {
             <span className="text-xs font-bold text-muted-foreground">({supporterCount})</span>
             <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full mr-auto">عمولة {supporterPct}%</span>
           </div>
-          <div className="p-3 space-y-2">
+          <div className="p-2.5">
             {members.filter(m => m.member_type === "supporter").length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">لا يوجد داعمين بعد</p>
             )}
-            {members.filter(m => m.member_type === "supporter").map((m, i) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.35 + i * 0.05 }}
-                className="bg-muted/30 rounded-xl px-3 py-3 space-y-2"
-              >
-                <div className="flex items-center gap-3">
+            <div className="grid grid-cols-2 gap-2">
+              {members.filter(m => m.member_type === "supporter").map((m, i) => (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.35 + i * 0.05 }}
+                  className="bg-muted/30 rounded-xl p-2.5 flex flex-col items-center text-center space-y-1.5"
+                >
                   <img
                     src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
                     onError={handleAvatarError}
-                    className="w-10 h-10 rounded-full object-cover shrink-0 border-2 border-primary/20"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
                     alt={m.member_name || ""}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
-                  </div>
-                  <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / COINS_PER_USD).toFixed(2)}</p>
-                  </div>
-                </div>
-                {m.monthly_charges !== undefined && (
-                  <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
-                    <span className="text-muted-foreground font-bold">شحن: {(m.monthly_charges || 0).toLocaleString()} كوينز</span>
-                    <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+                  <p className="text-[11px] font-black text-foreground truncate w-full">{m.member_name || m.member_uuid.slice(0, 8)}</p>
+                  <p className="text-[8px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
+                  <p className="text-sm font-black text-primary">${((m.monthly_charges || 0) / COINS_PER_USD).toFixed(2)}</p>
+                  {m.monthly_charges !== undefined && (
+                    <p className="text-[9px] text-emerald-400 font-bold">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</p>
+                  )}
+                </motion.div>
+              ))}
+            </div>
           </div>
         </motion.div>
 
@@ -787,41 +780,34 @@ const WorksPage: React.FC = () => {
             <span className="text-xs font-bold text-muted-foreground">({agentCount})</span>
             <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full mr-auto">عمولة {agentPct}%</span>
           </div>
-          <div className="p-3 space-y-2">
+          <div className="p-2.5">
             {members.filter(m => m.member_type === "agent").length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">لا يوجد وكلاء بعد</p>
             )}
-            {members.filter(m => m.member_type === "agent").map((m, i) => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.45 + i * 0.05 }}
-                className="bg-muted/30 rounded-xl px-3 py-3 space-y-2"
-              >
-                <div className="flex items-center gap-3">
+            <div className="grid grid-cols-2 gap-2">
+              {members.filter(m => m.member_type === "agent").map((m, i) => (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.45 + i * 0.05 }}
+                  className="bg-muted/30 rounded-xl p-2.5 flex flex-col items-center text-center space-y-1.5"
+                >
                   <img
                     src={memberAvatars[m.member_uuid] || "/placeholder.svg"}
                     onError={handleAvatarError}
-                    className="w-10 h-10 rounded-full object-cover shrink-0 border-2 border-primary/20"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
                     alt={m.member_name || ""}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-foreground truncate">{m.member_name || m.member_uuid.slice(0, 8)}</p>
-                    <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
-                  </div>
-                  <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-primary">${(m.agency_salary || 0).toFixed(2)}</p>
-                  </div>
-                </div>
-                {m.agency_salary !== undefined && (
-                  <div className="flex items-center justify-between text-[11px] px-1 pt-1 border-t border-border/50">
-                    <span className="text-muted-foreground font-bold">راتب: ${m.agency_salary?.toFixed(2)}</span>
-                    <span className="text-emerald-400 font-black">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</span>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+                  <p className="text-[11px] font-black text-foreground truncate w-full">{m.member_name || m.member_uuid.slice(0, 8)}</p>
+                  <p className="text-[8px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
+                  <p className="text-sm font-black text-primary">${(m.agency_salary || 0).toFixed(2)}</p>
+                  {m.agency_salary !== undefined && (
+                    <p className="text-[9px] text-emerald-400 font-bold">${((m.commission || 0) / COINS_PER_USD).toFixed(2)} عمولة</p>
+                  )}
+                </motion.div>
+              ))}
+            </div>
           </div>
         </motion.div>
 
