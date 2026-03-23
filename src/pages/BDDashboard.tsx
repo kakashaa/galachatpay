@@ -262,10 +262,12 @@ const BDDashboard: React.FC = () => {
   if (!data?.bd) return null;
   const { bd, supporters, agents } = data;
 
-  // Compute live salary commission total
-  const liveSalaryTotal = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0)
-    + Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
-  const liveSalaryTotalUsd = liveSalaryTotal / 7500;
+  // Compute live salary commission total — supporters are in coins, agents are in USD
+  const supporterCommissionCoins = Object.values(supporterSalaries).reduce((s, d) => s + d.commission, 0);
+  const supporterCommissionUsd = supporterCommissionCoins / 7500;
+  const agentCommissionUsd = Object.values(agentSalaries).reduce((s, d) => s + d.commission, 0);
+  const liveSalaryTotalUsd = supporterCommissionUsd + agentCommissionUsd;
+  const liveSalaryTotal = Math.floor(liveSalaryTotalUsd * 7500);
 
   const renderStockChart = () => {
     if (dailyLogs.length === 0) return null;
