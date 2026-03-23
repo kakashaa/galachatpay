@@ -914,12 +914,15 @@ const BDDashboard: React.FC = () => {
                   <div key={s.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
-                        style={{ background: "hsl(217 91% 60% / 0.1)", color: "hsl(217 91% 60%)" }}>
-                        {(s.member_name || "?")[0]}
-                      </div>
+                      <img
+                        src={memberAvatars[s.member_uuid] || "/placeholder.svg"}
+                        onError={handleAvatarError}
+                        className="w-9 h-9 rounded-xl object-cover"
+                        alt={s.member_name}
+                      />
                       <div>
                         <p className="text-xs font-bold text-foreground">{s.member_name || "داعم"}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono tabular-nums" dir="ltr">#{s.member_uuid}</p>
                         <p className="text-[10px] text-muted-foreground">شحن {charges.toLocaleString()} كوينز</p>
                       </div>
                     </div>
@@ -966,12 +969,15 @@ const BDDashboard: React.FC = () => {
                   <div key={a.member_uuid} className="px-4 py-3 flex items-center justify-between"
                     style={{ borderTop: "1px solid hsl(var(--border)/0.08)" }}>
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
-                        style={{ background: "hsl(271 91% 65% / 0.1)", color: "hsl(271 91% 65%)" }}>
-                        {(a.member_name || "?")[0]}
-                      </div>
+                      <img
+                        src={memberAvatars[a.member_uuid] || "/placeholder.svg"}
+                        onError={handleAvatarError}
+                        className="w-9 h-9 rounded-xl object-cover"
+                        alt={a.member_name}
+                      />
                       <div>
                         <p className="text-xs font-bold text-foreground">{a.member_name || "وكالة"}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono tabular-nums" dir="ltr">#{a.member_uuid}</p>
                         <p className="text-[10px] text-muted-foreground">راتب الوكالة ${salary.toFixed(2)}</p>
                       </div>
                     </div>
