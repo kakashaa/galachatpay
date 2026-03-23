@@ -337,7 +337,7 @@ const AdminBanPage: React.FC = () => {
               <motion.button
                 key={s.key}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setFilter(s.key)}
+                onClick={() => { setFilter(s.key); setCurrentPage(1); }}
                 className="p-3 rounded-xl text-center transition-all"
                 style={{
                   background: filter === s.key ? s.bg : "rgba(255,255,255,0.03)",
