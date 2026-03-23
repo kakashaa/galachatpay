@@ -1191,127 +1191,23 @@ Deno.serve(async (req) => {
           .from("works_accounts").select("*").order("created_at", { ascending: false });
         if (error) throw error;
 
-        const WARES_API = "https://hola-chat.com/wares-api.php?key=ghala2026actions";
-        const now = new Date();
-        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-        const fetchJsonWithTimeout = async (url: string, timeoutMs = 12000) => {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort("timeout"), timeoutMs);
-          try {
-            const res = await fetch(url, { signal: controller.signal });
-            return await res.json();
-          } finally {
-            clearTimeout(timeout);
-          }
-        };
-
-        // Fetch all members at once (one query instead of N)
+        // Fetch all members at once (one query) to get counts
         const allAccountIds = (accounts || []).map((a: any) => a.id);
         const { data: allMembers } = await supabase
-          .from("works_members").select("works_id, member_uuid, member_type, commission_pct, agency_id, status")
+          .from("works_members").select("works_id, member_type, status")
           .in("works_id", allAccountIds);
 
-        // Group members by works_id
-        const membersByAccount: Record<string, any[]> = {};
-        for (const m of (allMembers || [])) {
-          if (!membersByAccount[m.works_id]) membersByAccount[m.works_id] = [];
-          membersByAccount[m.works_id].push(m);
-        }
-
-        const supporterChargesCache = new Map<string, number>();
-        const agencySalaryCache = new Map<string, number>();
-
-        const getMemberCommissionUsd = async (m: any, supporterPct: number, agentPct: number) => {
-          try {
-            if (m.member_type === "supporter") {
-              const cacheKey = `${m.member_uuid}:${currentMonth}`;
-              let charges = supporterChargesCache.get(cacheKey);
-              if (charges === undefined) {
-                const json = await fetchJsonWithTimeout(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`);
-                charges = Number(json?.data?.total_charges ?? json?.total_charges ?? json?.charges ?? 0);
-                supporterChargesCache.set(cacheKey, charges);
-              }
-              const pct = Number(m.commission_pct ?? supporterPct);
-              const commissionCoins = Math.floor(charges * pct / 100);
-              return commissionCoins / 7500;
-            }
-
-            if (m.member_type === "agent" && m.agency_id) {
-              const agencyId = String(m.agency_id);
-              let salary = agencySalaryCache.get(agencyId);
-              if (salary === undefined) {
-                const json = await fetchJsonWithTimeout(`${WARES_API}&action=agency-salary&agency_id=${agencyId}`);
-                salary = Number(
-                  json?.data?.salary ??
-                  json?.data?.net_salary ??
-                  json?.data?.net ??
-                  json?.salary ??
-                  json?.net_salary ??
-                  json?.net ??
-                  0,
-                );
-                agencySalaryCache.set(agencyId, salary);
-              }
-              const pct = Number(m.commission_pct ?? agentPct);
-              return salary * pct / 100;
-            }
-          } catch (err: any) {
-            console.log(`[WORKS-EARN] member ${m.member_uuid} failed:`, err?.message || err);
-          }
-          return 0;
-        };
-
-        const processAccount = async (acc: any) => {
-          const members = membersByAccount[acc.id] || [];
-          const activeMembers = members.filter((m: any) => {
-            const status = String(m.status ?? "active").toLowerCase();
-            return status !== "removed" && status !== "inactive";
+        // Count members per account
+        for (const acc of (accounts || [])) {
+          const members = (allMembers || []).filter((m: any) => m.works_id === acc.id);
+          const active = members.filter((m: any) => {
+            const s = String(m.status ?? "active").toLowerCase();
+            return s !== "removed" && s !== "inactive";
           });
-
-          acc.supporter_count = activeMembers.filter((m: any) => m.member_type === "supporter").length;
-          acc.agent_count = activeMembers.filter((m: any) => m.member_type === "agent").length;
-
-          if (activeMembers.length === 0) {
-            acc.dynamic_earnings = 0;
-            return;
-          }
-
-          const supporterPct = Number(acc.supporter_commission_pct || 2);
-          const agentPct = Number(acc.agent_commission_pct || 5);
-
-          let totalUsd = 0;
-          const MEMBER_CONCURRENCY = 8;
-          for (let i = 0; i < activeMembers.length; i += MEMBER_CONCURRENCY) {
-            const memberChunk = activeMembers.slice(i, i + MEMBER_CONCURRENCY);
-            const chunkCommissions = await Promise.all(
-              memberChunk.map((m: any) => getMemberCommissionUsd(m, supporterPct, agentPct)),
-            );
-            totalUsd += chunkCommissions.reduce((sum, value) => sum + value, 0);
-          }
-
-          acc.dynamic_earnings = Math.round(totalUsd * 100) / 100;
-        };
-
-        // Prioritize accounts that have active members to avoid showing stale $0 for active teams
-        const accountsForCompute = [...(accounts || [])].sort((a: any, b: any) => {
-          const aActive = (membersByAccount[a.id] || []).filter((m: any) => {
-            const status = String(m.status ?? "active").toLowerCase();
-            return status !== "removed" && status !== "inactive";
-          }).length;
-          const bActive = (membersByAccount[b.id] || []).filter((m: any) => {
-            const status = String(m.status ?? "active").toLowerCase();
-            return status !== "removed" && status !== "inactive";
-          }).length;
-          if (bActive !== aActive) return bActive - aActive;
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-
-        // Process all accounts with controlled concurrency (prevents global timeout storms)
-        const ACCOUNT_CONCURRENCY = 6;
-        for (let i = 0; i < accountsForCompute.length; i += ACCOUNT_CONCURRENCY) {
-          const chunk = accountsForCompute.slice(i, i + ACCOUNT_CONCURRENCY);
-          await Promise.all(chunk.map(processAccount));
+          acc.supporter_count = active.filter((m: any) => m.member_type === "supporter").length;
+          acc.agent_count = active.filter((m: any) => m.member_type === "agent").length;
+          // Use stored total_earnings_usd — live calculation happens in works_get_members
+          acc.dynamic_earnings = Number(acc.total_earnings_usd || 0);
         }
 
         result = accounts;
