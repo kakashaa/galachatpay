@@ -209,14 +209,13 @@ serve(async (req) => {
           if (otherUuids.length > 0) {
             // Check if any of these other users are active BDs
             const { data: existingBDs } = await sb
-              .from("bd_commission_settings")
-              .select("bd_uuid, bd_name")
-              .in("bd_uuid", otherUuids)
-              .eq("is_active", true)
-              .eq("is_approved", true);
+              .from("works_accounts")
+              .select("user_uuid, user_name")
+              .in("user_uuid", otherUuids)
+              .eq("status", "active");
 
             if (existingBDs && existingBDs.length > 0) {
-              console.log("[BD-REGISTER] Device conflict:", { device_id: userDevice.device_id, user_uuid, existing_bds: existingBDs.map((b: any) => b.bd_uuid) });
+              console.log("[BD-REGISTER] Device conflict:", { device_id: userDevice.device_id, user_uuid, existing_bds: existingBDs.map((b: any) => b.user_uuid) });
               return json({ error: "⚠️ لا يمكن تسجيل أكثر من حساب بيدي على نفس الجهاز. يوجد بيدي آخر مسجل من هذا الجهاز." });
             }
           }
