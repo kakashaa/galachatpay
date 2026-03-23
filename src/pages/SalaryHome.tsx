@@ -73,7 +73,10 @@ const SalaryHome: React.FC = () => {
   const agency = status?.agency_salary;
   const isAgencyOwner = status?.is_agency_owner || false;
 
-  const hostAvailable = host?.available || 0;
+  // Validation: if total_cut > current_month, data is suspect
+  const hostCutInvalid = host ? (host.total_cut > host.current_month) : false;
+  const hostNoSalary = host ? (host.current_month === 0) : true;
+  const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : host.total_cut)) : 0;
   const agencyAvailable = agency?.pool_available || 0;
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
 
