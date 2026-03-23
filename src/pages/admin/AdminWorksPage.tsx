@@ -9,7 +9,7 @@ import { Loader2, Check, X, Users, Plus, Lock, UserX, DollarSign, Percent, Shiel
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
-import { galaApi } from "@/services/galaApi";
+
 
 const AdminWorksPage: React.FC = () => {
   const { handleLogout, adminCall, adminUsername } = useAdminSession();
@@ -149,64 +149,23 @@ const AdminWorksPage: React.FC = () => {
 
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
+    setMemberSalaryLoading(true);
     setDynamicAccountEarnings(0);
-    try { const d = await adminCall("works_get_members", { works_id: wid }); setMembers(d || []); } catch { }
+    try {
+      const d = await adminCall("works_get_members", { works_id: wid });
+      // Edge function now returns { members, dynamic_earnings }
+      if (d && d.members) {
+        setMembers(d.members);
+        setDynamicAccountEarnings(d.dynamic_earnings || 0);
+      } else {
+        setMembers(d || []);
+      }
+    } catch { }
     setLoading(false);
+    setMemberSalaryLoading(false);
   }, [adminCall]);
 
-  // Fetch live salary data for members (like WorksPage does)
-  const fetchMemberLiveData = useCallback(async (membersList: any[], account: any) => {
-    if (!membersList.length) return;
-    setMemberSalaryLoading(true);
-    const now = new Date();
-    const year = now.getFullYear();
-    const monthNum = now.getMonth() + 1;
-    const month = `${year}-${String(monthNum).padStart(2, "0")}`;
-    const updated = [...membersList];
-    let totalDynamic = 0;
 
-    for (let i = 0; i < updated.length; i++) {
-      const m = updated[i];
-      try {
-        if (m.member_type === "supporter") {
-          let charges = 0;
-          let commission = 0;
-          try {
-            const data = await galaApi.userMonthlyCharges(m.member_uuid, month);
-            charges = data.data?.total_charges || 0;
-            commission = data.data?.commission_2pct || 0;
-          } catch { /* silent */ }
-          if (charges === 0) {
-            try {
-              const data2 = await galaApi.bdUserMonthlyCharges(m.member_uuid, month);
-              charges = data2.data?.total_charges || data2.total_charges || 0;
-              commission = data2.data?.commission_2pct || Math.floor(charges * 0.02) || 0;
-            } catch { /* silent */ }
-          }
-          const pct = m.commission_pct || account?.supporter_commission_pct || 2;
-          const dynamicComm = charges > 0 ? charges * pct / 100 : commission;
-          updated[i] = { ...m, monthly_charges: charges, live_commission: dynamicComm };
-          totalDynamic += dynamicComm;
-        }
-        if (m.member_type === "agent" && m.agency_id) {
-          try {
-            const data = await galaApi.agencySalary(m.agency_id, String(year), String(monthNum));
-            const salary = data.data?.salary || 0;
-            const agencyMembers = data.data?.members_count || data.data?.total_members || 0;
-            const agencyName = data.data?.agency_name || "";
-            const pct = m.commission_pct || account?.agent_commission_pct || 5;
-            const commUsd = salary * pct / 100;
-            updated[i] = { ...m, agency_salary: salary, agency_members_count: agencyMembers, agency_name: agencyName, live_commission: commUsd };
-            totalDynamic += commUsd;
-          } catch { /* silent */ }
-        }
-      } catch { /* silent */ }
-    }
-
-    setMembers(updated);
-    setDynamicAccountEarnings(totalDynamic);
-    setMemberSalaryLoading(false);
-  }, []);
 
   const fetchWithdrawals = useCallback(async () => {
     setLoading(true);
@@ -642,10 +601,7 @@ const AdminWorksPage: React.FC = () => {
                       <button onClick={async () => {
                         setSelectedWorksId(a.id);
                         setTab("members");
-                        const d = await adminCall("works_get_members", { works_id: a.id });
-                        const membersList = d || [];
-                        setMembers(membersList);
-                        fetchMemberLiveData(membersList, a);
+                        await fetchMembers(a.id);
                       }}
                         className="flex-1 bg-muted py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                         <Users className="w-3 h-3" /> الأعضاء
