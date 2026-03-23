@@ -299,8 +299,8 @@ class GalaApiService {
     return this.call("hola-chat", "user-monthly-charges", { uuid, month });
   }
 
-  async agencySalary(agencyId: string, year: string, monthNum: string) {
-    return this.call("hola-chat", "agency-salary", { agency_id: agencyId, year, month_num: monthNum });
+  async agencySalary(agencyId: string, year: string, monthNum: string, uuid?: string) {
+    return this.call("hola-chat", "agency-salary", { agency_id: agencyId, year, month_num: monthNum, ...(uuid ? { uuid } : {}) });
   }
 
   async listRoomBgRequests() {
