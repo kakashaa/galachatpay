@@ -155,15 +155,21 @@ const SalaryHome: React.FC = () => {
               className="glass-card p-5 text-center space-y-2"
             >
               <p className="text-xs text-muted-foreground">إجمالي المتاح للسحب</p>
-              <div className="flex items-center justify-center gap-2">
-                <DollarSign className="w-7 h-7 text-emerald-400" />
-                <p className="text-4xl font-black text-foreground tabular-nums" dir="ltr">
-                  {totalAvailable.toFixed(2)}
-                </p>
-              </div>
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {(totalAvailable * USD_TO_COINS).toLocaleString()} كوينز
-              </p>
+              {totalAvailable > 0 ? (
+                <>
+                  <div className="flex items-center justify-center gap-2">
+                    <DollarSign className="w-7 h-7 text-emerald-400" />
+                    <p className="text-4xl font-black text-foreground tabular-nums" dir="ltr">
+                      {totalAvailable.toFixed(2)}
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {(totalAvailable * USD_TO_COINS).toLocaleString()} كوينز
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground py-2">لا يوجد رصيد متاح</p>
+              )}
             </motion.div>
 
             {/* Two salary cards */}
