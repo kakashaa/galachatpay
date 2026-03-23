@@ -45,7 +45,7 @@ async function syncOneAccount(supabase: any, account: any) {
     try {
       if (memberType === "supporter") {
         const res = await fetch(`${WARES_API}&action=user-monthly-charges&uuid=${m.member_uuid}&month=${currentMonth}`, {
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(45000),
         });
         const json = await res.json();
         const charges = toNumber(json?.data?.total_charges ?? json?.data?.charges ?? json?.total_charges ?? json?.charges ?? 0);
@@ -54,7 +54,7 @@ async function syncOneAccount(supabase: any, account: any) {
         commissionUsd = memberActivityUsd * (pct / 100);
       } else if (memberType === "agent" && m.agency_id) {
         const res = await fetch(`${WARES_API}&action=agency-salary&uuid=${m.member_uuid}&agency_id=${m.agency_id}`, {
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.timeout(45000),
         });
         const json = await res.json();
         const salary = toNumber(
