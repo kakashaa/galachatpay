@@ -269,6 +269,19 @@ const BDDashboard: React.FC = () => {
   const liveSalaryTotalUsd = supporterCommissionUsd + agentCommissionUsd;
   const liveSalaryTotal = Math.floor(liveSalaryTotalUsd * 7500);
 
+  const rawTotalEarned = Number(bd.total_earned || 0);
+  const hasMonthlyReference = liveSalaryTotalUsd > 0;
+  const looksLikeLegacyCoins = Number.isFinite(rawTotalEarned)
+    && rawTotalEarned > 1000
+    && Number.isInteger(rawTotalEarned)
+    && (!hasMonthlyReference || (rawTotalEarned / Math.max(liveSalaryTotalUsd, 1)) > 100);
+
+  let normalizedTotalEarnedUsd = looksLikeLegacyCoins ? (rawTotalEarned / 7500) : rawTotalEarned;
+  if (!Number.isFinite(normalizedTotalEarnedUsd) || normalizedTotalEarnedUsd < 0) normalizedTotalEarnedUsd = 0;
+  if (normalizedTotalEarnedUsd < liveSalaryTotalUsd) normalizedTotalEarnedUsd = liveSalaryTotalUsd;
+  normalizedTotalEarnedUsd = Math.round(normalizedTotalEarnedUsd * 100) / 100;
+  const normalizedTotalEarnedCoins = Math.round(normalizedTotalEarnedUsd * 7500);
+
   const renderStockChart = () => {
     if (dailyLogs.length === 0) return null;
     const max = Math.max(...dailyLogs.map(d => d.amount), 0.01);
@@ -835,8 +848,8 @@ const BDDashboard: React.FC = () => {
                     <span className="text-[9px] text-muted-foreground font-bold">?</span>
                   </button>
                 </div>
-                <p className="text-2xl font-black text-primary" dir="ltr">${((bd.total_earned || 0) / 7500).toFixed(2)}</p>
-                <p className="text-[10px] text-muted-foreground">{(bd.total_earned || 0).toLocaleString()} كوينز</p>
+                <p className="text-2xl font-black text-primary" dir="ltr">${normalizedTotalEarnedUsd.toFixed(2)}</p>
+                <p className="text-[10px] text-muted-foreground">{normalizedTotalEarnedCoins.toLocaleString()} كوينز</p>
               </div>
             </div>
 
