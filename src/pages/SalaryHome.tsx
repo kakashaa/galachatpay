@@ -75,7 +75,7 @@ const SalaryHome: React.FC = () => {
 
   // Validation: if total_cut > current_month, data is suspect
   const hostCutInvalid = host ? (host.total_cut > host.current_month) : false;
-  const hostHasSalary = host ? (host.current_month > 0) : false;
+  
   const hostAvailable = host ? Math.max(0, host.current_month - (hostCutInvalid ? 0 : host.total_cut)) : 0;
   const agencyAvailable = agency?.pool_available || 0;
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
