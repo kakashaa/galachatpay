@@ -10,6 +10,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import BottomNav from "@/components/BottomNav";
 import StatusModal from "@/components/StatusModal";
+import { galaApi } from "@/services/galaApi";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 
 /* ── Tooltip bubble component ── */
