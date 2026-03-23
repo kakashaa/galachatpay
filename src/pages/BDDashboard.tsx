@@ -971,7 +971,7 @@ const BDDashboard: React.FC = () => {
 
               {/* Show first 2 supporters inline */}
               {supporters.slice(0, 2).map((s: any) => {
-                const charges = Number(supporterSalaries[s.member_uuid]?.charges || s.monthly_charges || s.total_charges || 0);
+                const charges = getSupporterChargesCoins(s);
                 const commissionCoins = getSupporterCommissionCoins(s);
                 return (
                   <div key={s.member_uuid} className="px-4 py-3 flex items-center justify-between"
