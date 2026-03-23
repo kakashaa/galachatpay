@@ -147,10 +147,11 @@ const AdminWorksPage: React.FC = () => {
   const [dynamicAccountEarnings, setDynamicAccountEarnings] = useState<number>(0);
   const [supporterDynamicEarnings, setSupporterDynamicEarnings] = useState<number>(0);
   const [agentDynamicEarnings, setAgentDynamicEarnings] = useState<number>(0);
+  const [refreshingMemberId, setRefreshingMemberId] = useState<string | null>(null);
+  const [refreshingAll, setRefreshingAll] = useState(false);
 
   const fetchMembers = useCallback(async (wid: string) => {
     setLoading(true);
-    setMemberSalaryLoading(true);
     setDynamicAccountEarnings(0);
     setSupporterDynamicEarnings(0);
     setAgentDynamicEarnings(0);
@@ -161,17 +162,54 @@ const AdminWorksPage: React.FC = () => {
         setDynamicAccountEarnings(d.dynamic_earnings ?? 0);
         setSupporterDynamicEarnings(d.supporter_dynamic_earnings ?? 0);
         setAgentDynamicEarnings(d.agent_dynamic_earnings ?? 0);
-        // Update the account's earnings in the local list so it shows the live value
         setAccounts(prev => prev.map(a => a.id === wid ? { ...a, dynamic_earnings: d.dynamic_earnings ?? 0, total_earnings_usd: d.dynamic_earnings ?? 0 } : a));
       } else {
         setMembers(d || []);
-        setSupporterDynamicEarnings(0);
-        setAgentDynamicEarnings(0);
       }
     } catch { }
     setLoading(false);
-    setMemberSalaryLoading(false);
   }, [adminCall]);
+
+  const refreshSingleMember = useCallback(async (memberId: string) => {
+    setRefreshingMemberId(memberId);
+    try {
+      const d = await adminCall("works_refresh_member", { member_id: memberId });
+      if (d && !d.error) {
+        setMembers(prev => {
+          const updated = prev.map(m => m.id === memberId ? { ...d, needs_refresh: false } : m);
+          // Recalculate totals
+          let total = 0, sup = 0, agt = 0;
+          for (const m of updated) {
+            const v = Number(m.live_commission || 0);
+            total += v;
+            if (m.member_type === "supporter") sup += v;
+            if (m.member_type === "agent") agt += v;
+          }
+          setDynamicAccountEarnings(Math.round(total * 100) / 100);
+          setSupporterDynamicEarnings(Math.round(sup * 100) / 100);
+          setAgentDynamicEarnings(Math.round(agt * 100) / 100);
+          return updated;
+        });
+      } else {
+        toast.error("فشل تحديث البيانات");
+      }
+    } catch { toast.error("خطأ في الاتصال"); }
+    setRefreshingMemberId(null);
+  }, [adminCall]);
+
+  const refreshAllMembers = useCallback(async () => {
+    const activeMembers = members.filter(m => m.status === "active");
+    if (activeMembers.length === 0) return;
+    setRefreshingAll(true);
+    for (const m of activeMembers) {
+      await refreshSingleMember(m.id);
+      if (activeMembers.indexOf(m) < activeMembers.length - 1) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    setRefreshingAll(false);
+    toast.success("تم تحديث جميع الأعضاء");
+  }, [members, refreshSingleMember]);
 
 
 
