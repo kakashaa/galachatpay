@@ -481,15 +481,15 @@ serve(async (req) => {
         return json({ error: "تم إيقاف صلاحية البيدي الخاصة بك بسبب تكرار المخالفات (3 إنذارات). لا يمكنك دعوة أعضاء جدد." });
       }
 
-      // Check if member already in any BD
-      const { data: existingMember } = await sb
-        .from("bd_members")
-        .select("id, bd_uuid")
-        .eq("member_uuid", member_uuid)
-        .eq("is_active", true)
-        .maybeSingle();
+      // Check if member already in any BD (works_members + bd_members)
+      const { data: existingWorksMem } = await sb
+        .from("works_members").select("id")
+        .eq("member_uuid", member_uuid).eq("status", "active").maybeSingle();
+      const { data: existingBdMem } = await sb
+        .from("bd_members").select("id, bd_uuid")
+        .eq("member_uuid", member_uuid).eq("is_active", true).maybeSingle();
 
-      if (existingMember) {
+      if (existingWorksMem || existingBdMem) {
         return json({ error: "هذا العضو مسجل لدى بيدي آخر بالفعل" });
       }
 
