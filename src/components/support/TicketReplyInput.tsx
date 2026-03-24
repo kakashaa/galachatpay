@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Send, Loader2, Paperclip, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import VoiceRecorder from './VoiceRecorder';
 
 interface Props {
   ticketId: string;
@@ -41,9 +42,9 @@ const TicketReplyInput: React.FC<Props> = ({
     try {
       const ext = f.name.split('.').pop() || 'bin';
       const path = `ticket-attachments/${ticketId}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('support-files').upload(path, f);
+      const { error } = await supabase.storage.from('attachments').upload(path, f);
       if (error) throw error;
-      const { data } = supabase.storage.from('support-files').getPublicUrl(path);
+      const { data } = supabase.storage.from('attachments').getPublicUrl(path);
       return data.publicUrl;
     } catch {
       toast.error('فشل رفع المرفق');
@@ -80,6 +81,21 @@ const TicketReplyInput: React.FC<Props> = ({
     setSending(false);
   };
 
+  const handleVoiceSent = async (voiceUrl: string) => {
+    try {
+      await supabase.from('ticket_messages' as any).insert({
+        ticket_id: ticketId,
+        sender_type: senderType,
+        sender_name: senderName,
+        message: 'رسالة صوتية',
+        attachment_url: voiceUrl,
+      });
+      onMessageSent?.();
+    } catch {
+      toast.error('فشل إرسال الرسالة الصوتية');
+    }
+  };
+
   return (
     <div className="border-t px-3 py-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
       {file && (
@@ -100,6 +116,11 @@ const TicketReplyInput: React.FC<Props> = ({
           disabled={disabled}
           className="flex-1 bg-transparent border rounded-2xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition-all"
           style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}
+        />
+        <VoiceRecorder
+          userUuid={senderUuid || 'admin'}
+          onVoiceSent={handleVoiceSent}
+          disabled={disabled}
         />
         <input ref={fileRef} type="file" className="hidden" accept="image/*,audio/*,.pdf" onChange={handleFileChange} />
         <button
