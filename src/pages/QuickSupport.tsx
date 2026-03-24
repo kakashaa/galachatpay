@@ -397,48 +397,6 @@ const QuickSupport: React.FC = () => {
   );
 };
 
-/* ─── Ticket Status Card ─── */
-function TicketStatusCard({ ticket, onGoToTickets, onNewTicket }: { ticket: any; onGoToTickets: () => void; onNewTicket: () => void }) {
-  return (
-    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} className="text-center space-y-5 w-full max-w-[320px]">
-      <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
-        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-lg font-bold text-foreground">✅ تم إنشاء التذكرة!</h2>
-        <p className="text-sm text-muted-foreground">تم حفظ طلبك وسيتم الرد عليك بأقرب وقت</p>
-      </div>
-
-      <div className="glass-card p-4 space-y-3 text-right">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">الموضوع</span>
-          <span className="text-xs font-bold text-foreground">{ticket?.subject || "طلب دعم"}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">الحالة</span>
-          <span className="text-xs font-bold text-primary flex items-center gap-1">
-            <Clock className="w-3 h-3" /> بانتظار الرد
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">الأولوية</span>
-          <span className={`text-xs font-bold ${ticket?.priority === 'high' ? 'text-destructive' : 'text-foreground'}`}>
-            {ticket?.priority === 'high' ? 'عالية' : 'عادية'}
-          </span>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <button onClick={onGoToTickets} className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-          <Ticket className="w-4 h-4" /> متابعة التذاكر
-        </button>
-        <button onClick={onNewTicket} className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-          <Send className="w-4 h-4" /> إنشاء تذكرة جديدة
-        </button>
-      </div>
-    </motion.div>
-  );
-}
 
 /* ─── Sub-components ─── */
 
