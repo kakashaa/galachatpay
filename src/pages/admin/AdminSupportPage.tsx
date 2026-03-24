@@ -863,6 +863,68 @@ const AdminSupportPage: React.FC = () => {
             </motion.div>
           )}
 
+          {/* ADMIN REQUESTS TAB (super only) */}
+          {subTab === "admin_requests" && !isRegularAdmin && (
+            <AdminRequestsTab
+              tickets={tickets}
+              adminUsername={adminUsername || ""}
+              adminDisplayName={adminDisplayName || ""}
+              onOpenTicket={(t) => setSelectedTicket(t)}
+            />
+          )}
+
+          {/* TRANSFERRED TAB (super only) */}
+          {subTab === "transferred" && !isRegularAdmin && (
+            <motion.div key="transferred" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+              {(() => {
+                const transferredTickets = categoryTickets.filter(t => t.status === "transferred");
+                if (transferredTickets.length === 0) return (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <ArrowUpCircle className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">لا توجد تذاكر محوّلة</p>
+                  </div>
+                );
+                return transferredTickets.map((ticket, i) => {
+                  const tst = STATUS_MAP[ticket.status] || STATUS_MAP.pending;
+                  const tType2 = (ticket as any).request_type || ticket.ticket_type || "general";
+                  const ttp = TYPE_MAP[tType2] || TYPE_MAP.general;
+                  const TIcon = ttp.icon;
+                  return (
+                    <motion.div key={ticket.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.02 }}
+                      onClick={() => setSelectedTicket(ticket)}
+                      className="rounded-2xl p-3.5 cursor-pointer active:scale-[0.98] transition-all"
+                      style={{ ...glassCard, borderRight: "3px solid hsl(270 60% 55%)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: tst.bg }}>
+                            <ArrowUpCircle className="w-4 h-4" style={{ color: "hsl(270 60% 55%)" }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-foreground truncate">{ticket.user_name}</p>
+                            <p className="text-[9px] text-muted-foreground font-mono truncate" dir="ltr">{ticket.id}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold" style={{ color: "hsl(270 60% 55%)", background: "rgba(168,85,247,0.12)" }}>
+                          محوّلة
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-foreground mb-1 truncate">{ticket.subject}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <TIcon className="w-3 h-3" /><span>{ttp.label}</span>
+                        </div>
+                        <span className="text-[9px] text-muted-foreground tabular-nums flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{formatDate(ticket.created_at)}
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                });
+              })()}
+            </motion.div>
+          )}
+
           {/* CHATS TAB */}
           {subTab === "chats" && (
             <motion.div key="chats" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
