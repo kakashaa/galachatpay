@@ -138,32 +138,6 @@ const QuickSupport: React.FC = () => {
     }
   };
 
-  const handleQuickSubmit = async () => {
-    if (!authUser) { toast.error("يجب تسجيل الدخول أولاً"); return; }
-    setSubmitState("submitting");
-
-    try {
-      const messageText = isSOS
-        ? "🆘 طلب مساعدة فورية — دعم سريع"
-        : "طلب دعم سريع — تكلّم مع أدمن";
-
-      const ticket = await createTicket({
-        userUuid: authUser.uuid,
-        userName: authUser.name,
-        requestType: "admin_visit",
-        messageText,
-      });
-
-      setCreatedTicket(ticket);
-      setSubmitState("success");
-      playSuccessChime();
-      toast.success("✅ تم إنشاء التذكرة!");
-    } catch (err) {
-      console.error("createTicket error:", err);
-      setSubmitState("error");
-      toast.error("⚠️ فشل إنشاء التذكرة");
-    }
-  };
 
   const handleChatClose = () => {
     setSessionId(null);
