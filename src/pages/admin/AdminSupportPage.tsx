@@ -620,8 +620,8 @@ const AdminSupportPage: React.FC = () => {
             )}
           </div>
 
-          {/* ─── Reply input ─── */}
-          {!isResolved && (
+          {/* ─── Reply input (hidden for regular admin on transferred tickets) ─── */}
+          {!isResolved && !(isRegularAdmin && selectedTicket.status === "transferred") && (
             <div className="sticky bottom-0 border-t border-border/20 px-4 py-3 shrink-0 mb-24 z-30"
               style={{ background: "rgba(10,10,20,0.95)", backdropFilter: "blur(20px)" }}>
               <div className="flex items-end gap-2">
@@ -643,7 +643,7 @@ const AdminSupportPage: React.FC = () => {
               </div>
             </div>
           )}
-          {isResolved && <div className="pb-24" />}
+          {(isResolved || (isRegularAdmin && selectedTicket.status === "transferred")) && <div className="pb-24" />}
         </div>
       </AdminPageLayout>
     );
