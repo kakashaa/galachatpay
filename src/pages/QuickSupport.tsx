@@ -13,6 +13,8 @@ import { useSuccessChime } from "@/hooks/use-success-chime";
 import { createTicket } from "@/hooks/use-create-ticket";
 import SupportSessionChat from "@/components/SupportSessionChat";
 import TicketStatusCardFull from "@/components/support/TicketStatusCard";
+import VoiceRecorder from "@/components/support/VoiceRecorder";
+import TicketStatusCardFull from "@/components/support/TicketStatusCard";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
