@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSupportManager from "@/components/AdminSupportManager";
@@ -18,9 +18,9 @@ const AdminSupportPage: React.FC = () => {
   useEffect(() => {
     const checkEscalation = async () => {
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data } = await supabase
+      const { data } = await (supabase
         .from('support_tickets')
-        .select('id')
+        .select('id') as any)
         .in('status', ['open', 'pending'])
         .eq('escalation_level', 0)
         .is('first_response_at', null)
