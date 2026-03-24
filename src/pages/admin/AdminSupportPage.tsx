@@ -104,8 +104,8 @@ const isQuickTicket = (t: TicketRow) => {
 };
 
 const AdminSupportPage: React.FC = () => {
-  const { handleLogout, adminUsername, adminDisplayName } = useAdminSession();
-  const [mainTab, setMainTab] = useState<"regular" | "quick">("regular");
+  const { handleLogout, adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
+  const [mainTab, setMainTab] = useState<"regular" | "quick">(isRegularAdmin ? "regular" : "regular");
   const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search">("tickets");
 
   /* ─── Ticket list state ─── */
