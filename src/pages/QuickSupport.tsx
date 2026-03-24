@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
 import { createTicket } from "@/hooks/use-create-ticket";
 import SupportSessionChat from "@/components/SupportSessionChat";
+import TicketStatusCardFull from "@/components/support/TicketStatusCard";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -222,16 +223,16 @@ const QuickSupport: React.FC = () => {
           <h1 className="text-sm font-bold text-foreground">تم إنشاء التذكرة</h1>
           <div className="w-16" />
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <TicketStatusCard ticket={createdTicket} onGoToTickets={() => navigate("/support")} onNewTicket={() => {
-            setSubmitState("idle");
-            setCreatedTicket(null);
-            setSelectedType(null);
-            setRoomCode("");
-            setDescription("");
-            setPhoneNumber("");
-            setAttachment(null);
-          }} />
+        <div className="flex-1 flex flex-col overflow-hidden px-3 py-3">
+          <TicketStatusCardFull ticket={createdTicket} />
+          <div className="flex gap-2 px-1 pt-2 pb-1">
+            <button onClick={() => navigate("/support")} className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-xs flex items-center justify-center gap-1.5">
+              <Ticket className="w-3.5 h-3.5" /> متابعة التذاكر
+            </button>
+            <button onClick={() => { setSubmitState("idle"); setCreatedTicket(null); setSelectedType(null); setRoomCode(""); setDescription(""); setPhoneNumber(""); setAttachment(null); }} className="flex-1 h-10 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-xs flex items-center justify-center gap-1.5">
+              <Send className="w-3.5 h-3.5" /> تذكرة جديدة
+            </button>
+          </div>
         </div>
       </div>
     );
