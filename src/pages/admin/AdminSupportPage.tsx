@@ -107,7 +107,7 @@ const isQuickTicket = (t: TicketRow) => {
 const AdminSupportPage: React.FC = () => {
   const { handleLogout, adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
   const [mainTab, setMainTab] = useState<"regular" | "quick">(isRegularAdmin ? "regular" : "regular");
-  const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search">("tickets");
+  const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search" | "admin_requests" | "transferred">("tickets");
 
   /* ─── Ticket list state ─── */
   const [tickets, setTickets] = useState<TicketRow[]>([]);
@@ -705,19 +705,23 @@ const AdminSupportPage: React.FC = () => {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 rounded-2xl p-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>
+        <div className="flex gap-1 rounded-2xl p-1 overflow-x-auto" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>
           {([
-            { key: "tickets" as const, label: "تذاكر", icon: Ticket },
-            { key: "chats" as const, label: "محادثات", icon: MessageSquare },
-            { key: "archive" as const, label: "أرشيف", icon: Archive },
-            { key: "search" as const, label: "بحث", icon: Search },
+            { key: "tickets" as const, label: "تذاكر", icon: Ticket, superOnly: false },
+            ...(isRegularAdmin ? [] : [
+              { key: "admin_requests" as const, label: "طلبات الأدمن", icon: AlertTriangle, superOnly: true },
+              { key: "transferred" as const, label: "محوّلة", icon: ArrowUpCircle, superOnly: true },
+            ]),
+            { key: "chats" as const, label: "محادثات", icon: MessageSquare, superOnly: false },
+            { key: "archive" as const, label: "أرشيف", icon: Archive, superOnly: false },
+            { key: "search" as const, label: "بحث", icon: Search, superOnly: false },
           ]).map(t => {
             const Icon = t.icon;
             return (
-              <motion.button key={t.key} onClick={() => setSubTab(t.key)} whileTap={{ scale: 0.96 }}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${subTab === t.key ? "text-admin-cyan" : "text-muted-foreground"}`}
+              <motion.button key={t.key} onClick={() => setSubTab(t.key as any)} whileTap={{ scale: 0.96 }}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap ${subTab === t.key ? "text-admin-cyan" : "text-muted-foreground"}`}
                 style={subTab === t.key ? { background: "rgba(6,182,212,0.12)", boxShadow: "0 2px 8px rgba(6,182,212,0.15)" } : {}}>
-                <Icon className="w-4 h-4" />{t.label}
+                <Icon className="w-3.5 h-3.5" />{t.label}
                 {t.key === "tickets" && stats.pending + stats.escalated > 0 && (
                   <span className="w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center bg-destructive text-white">
                     {stats.pending + stats.escalated}
