@@ -96,7 +96,6 @@ const WorksPage: React.FC = () => {
   const [monthEarnings, setMonthEarnings] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [memberAvatars, setMemberAvatars] = useState<Record<string, string>>({});
-  const [memberMonthlyData, setMemberMonthlyData] = useState<Record<string, { charges: number; salary: number }>>({});
   
 
   // StatusModal
