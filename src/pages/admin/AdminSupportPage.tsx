@@ -524,7 +524,8 @@ const AdminSupportPage: React.FC = () => {
 
           {/* ─── Reply input ─── */}
           {!isResolved && (
-            <div className="border-t border-border/20 px-4 py-3 shrink-0">
+            <div className="sticky bottom-0 border-t border-border/20 px-4 py-3 shrink-0 mb-24 z-30"
+              style={{ background: "rgba(10,10,20,0.95)", backdropFilter: "blur(20px)" }}>
               <div className="flex items-end gap-2">
                 <textarea
                   value={replyText}
@@ -544,6 +545,7 @@ const AdminSupportPage: React.FC = () => {
               </div>
             </div>
           )}
+          {isResolved && <div className="pb-24" />}
         </div>
       </AdminPageLayout>
     );
