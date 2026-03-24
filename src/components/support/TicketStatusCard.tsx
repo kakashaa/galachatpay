@@ -39,6 +39,7 @@ const TicketStatusCard: React.FC<Props> = ({ ticket, onClose }) => {
   const escalationLevel = ticket.escalation_level || 0;
   const hasResponse = !!ticket.first_response_at;
   const isResolved = localStatus === 'resolved' || localStatus === 'closed';
+  const isTransferred = localStatus === 'transferred';
 
   const steps: StepItem[] = [
     {
@@ -53,9 +54,9 @@ const TicketStatusCard: React.FC<Props> = ({ ticket, onClose }) => {
       active: !hasResponse && !isResolved,
       completed: hasResponse || isResolved,
     },
-    ...(escalationLevel > 0
+    ...(escalationLevel > 0 || isTransferred
       ? [{
-          label: 'تم التصعيد للسوبر أدمن',
+          label: isTransferred ? 'تم تحويل طلبك لإداري أعلى' : 'تم التصعيد للسوبر أدمن',
           icon: <ArrowUp className="w-4 h-4" />,
           active: !hasResponse && !isResolved,
           completed: hasResponse || isResolved,
