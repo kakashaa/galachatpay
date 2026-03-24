@@ -104,6 +104,100 @@ const isQuickTicket = (t: TicketRow) => {
   return QUICK_TYPES.includes(rt);
 };
 
+/* ═══ Admin Requests Tab (super admin only) ═══ */
+const AdminRequestsTab: React.FC<{
+  tickets: TicketRow[];
+  adminUsername: string;
+  adminDisplayName: string;
+  onOpenTicket: (t: TicketRow) => void;
+}> = ({ tickets, adminUsername, adminDisplayName, onOpenTicket }) => {
+  const [auditItems, setAuditItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("ticket_audit_log")
+        .select("*")
+        .in("action", ["help_requested", "transferred_to_super"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setAuditItems(data || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  const handleAccept = async (item: any) => {
+    const ticket = tickets.find(t => t.id === item.ticket_id);
+    if (ticket) onOpenTicket(ticket);
+    toast.success("تم فتح التذكرة");
+  };
+
+  const handleReject = async (item: any) => {
+    await supabase.from("ticket_audit_log").insert({
+      ticket_id: item.ticket_id,
+      action: "help_rejected",
+      performed_by: adminUsername,
+      performed_by_name: adminDisplayName || adminUsername,
+      details: { original_action: item.action },
+    });
+    setAuditItems(prev => prev.filter(a => a.id !== item.id));
+    toast.info("تم رفض الطلب");
+  };
+
+  if (loading) return (
+    <motion.div key="admin_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="flex items-center justify-center py-20">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </motion.div>
+  );
+
+  if (auditItems.length === 0) return (
+    <motion.div key="admin_requests" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className="text-center py-16 text-muted-foreground">
+      <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-40" />
+      <p className="text-sm">لا توجد طلبات من الأدمن</p>
+    </motion.div>
+  );
+
+  return (
+    <motion.div key="admin_requests" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+      {auditItems.map((item, i) => (
+        <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.02 }}
+          className="rounded-2xl p-3.5" style={{ ...glassCard, borderRight: `3px solid ${item.action === "help_requested" ? "hsl(38 92% 50%)" : "hsl(270 60% 55%)"}` }}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-foreground">{item.performed_by_name || item.performed_by}</p>
+              <p className="text-[9px] text-muted-foreground font-mono truncate" dir="ltr">{item.ticket_id}</p>
+            </div>
+            <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold" style={{
+              color: item.action === "help_requested" ? "hsl(38 92% 50%)" : "hsl(270 60% 55%)",
+              background: item.action === "help_requested" ? "rgba(245,158,11,0.12)" : "rgba(168,85,247,0.12)",
+            }}>
+              {item.action === "help_requested" ? "🆘 طلب مساعدة" : "📤 تحويل"}
+            </span>
+          </div>
+          <p className="text-[9px] text-muted-foreground tabular-nums mb-2">{formatDate(item.created_at)}</p>
+          <div className="flex gap-2">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleAccept(item)}
+              className="flex-1 h-7 rounded-lg text-[10px] font-bold text-white"
+              style={{ background: "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))" }}>
+              قبول
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleReject(item)}
+              className="flex-1 h-7 rounded-lg text-[10px] font-bold"
+              style={{ background: "rgba(239,68,68,0.12)", color: "hsl(0 72% 51%)" }}>
+              رفض
+            </motion.button>
+          </div>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+};
+
 const AdminSupportPage: React.FC = () => {
   const { handleLogout, adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
   const [mainTab, setMainTab] = useState<"regular" | "quick">(isRegularAdmin ? "regular" : "regular");
