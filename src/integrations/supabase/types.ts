@@ -2404,47 +2404,86 @@ export type Database = {
         Row: {
           admin_reply: string | null
           admin_username: string | null
+          assigned_role: string | null
+          assigned_user_id: string | null
+          attachment_url: string | null
           created_at: string
           description: string
+          escalated_at: string | null
+          escalation_level: number | null
+          escalation_timer_started_at: string | null
+          first_response_at: string | null
           id: string
+          message_text: string | null
+          phone_number: string | null
           priority: string
           replied_at: string | null
+          request_type: string | null
+          resolved_at: string | null
+          room_code: string | null
           status: string
           subject: string
           ticket_type: string
           updated_at: string
           user_name: string
           user_uuid: string
+          voice_message_url: string | null
         }
         Insert: {
           admin_reply?: string | null
           admin_username?: string | null
+          assigned_role?: string | null
+          assigned_user_id?: string | null
+          attachment_url?: string | null
           created_at?: string
           description: string
+          escalated_at?: string | null
+          escalation_level?: number | null
+          escalation_timer_started_at?: string | null
+          first_response_at?: string | null
           id?: string
+          message_text?: string | null
+          phone_number?: string | null
           priority?: string
           replied_at?: string | null
+          request_type?: string | null
+          resolved_at?: string | null
+          room_code?: string | null
           status?: string
           subject: string
           ticket_type?: string
           updated_at?: string
           user_name: string
           user_uuid: string
+          voice_message_url?: string | null
         }
         Update: {
           admin_reply?: string | null
           admin_username?: string | null
+          assigned_role?: string | null
+          assigned_user_id?: string | null
+          attachment_url?: string | null
           created_at?: string
           description?: string
+          escalated_at?: string | null
+          escalation_level?: number | null
+          escalation_timer_started_at?: string | null
+          first_response_at?: string | null
           id?: string
+          message_text?: string | null
+          phone_number?: string | null
           priority?: string
           replied_at?: string | null
+          request_type?: string | null
+          resolved_at?: string | null
+          room_code?: string | null
           status?: string
           subject?: string
           ticket_type?: string
           updated_at?: string
           user_name?: string
           user_uuid?: string
+          voice_message_url?: string | null
         }
         Relationships: []
       }

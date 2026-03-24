@@ -1,0 +1,13 @@
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS room_code text;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS request_type text DEFAULT 'general';
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS message_text text;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS voice_message_url text;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS assigned_role text DEFAULT 'admin';
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS assigned_user_id text;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS escalation_level integer DEFAULT 0;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS first_response_at timestamptz;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS escalated_at timestamptz;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS resolved_at timestamptz;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS escalation_timer_started_at timestamptz;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS phone_number text;
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS attachment_url text;
