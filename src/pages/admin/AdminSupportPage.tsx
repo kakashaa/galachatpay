@@ -8,7 +8,6 @@ import {
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,
   ShieldAlert, FileText, Phone, Flag, RefreshCw,
   ArrowRight, Send, ArrowUpCircle, User, Hash, MapPin,
-  HelpCircle, Forward, Inbox,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
