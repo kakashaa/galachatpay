@@ -3298,6 +3298,7 @@ export type Database = {
       works_members: {
         Row: {
           agency_id: string | null
+          commission: number | null
           commission_pct: number | null
           created_at: string | null
           id: string
@@ -3305,12 +3306,14 @@ export type Database = {
           member_name: string | null
           member_type: string
           member_uuid: string
+          monthly_charges: number | null
           status: string | null
           total_commission_usd: number | null
           works_id: string | null
         }
         Insert: {
           agency_id?: string | null
+          commission?: number | null
           commission_pct?: number | null
           created_at?: string | null
           id?: string
@@ -3318,12 +3321,14 @@ export type Database = {
           member_name?: string | null
           member_type: string
           member_uuid: string
+          monthly_charges?: number | null
           status?: string | null
           total_commission_usd?: number | null
           works_id?: string | null
         }
         Update: {
           agency_id?: string | null
+          commission?: number | null
           commission_pct?: number | null
           created_at?: string | null
           id?: string
@@ -3331,6 +3336,7 @@ export type Database = {
           member_name?: string | null
           member_type?: string
           member_uuid?: string
+          monthly_charges?: number | null
           status?: string | null
           total_commission_usd?: number | null
           works_id?: string | null
