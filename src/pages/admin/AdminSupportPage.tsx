@@ -8,6 +8,7 @@ import {
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,
   ShieldAlert, FileText, Phone, Flag, RefreshCw,
   ArrowRight, Send, ArrowUpCircle, User, Hash, MapPin,
+  HelpCircle, Forward, Inbox,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -47,12 +48,13 @@ interface TicketMessage {
 
 /* ─── Config maps ─── */
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  pending:   { label: "معلقة",     color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
-  open:      { label: "مفتوحة",    color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
-  escalated: { label: "مصعّدة",    color: "hsl(0 72% 51%)",   bg: "rgba(239,68,68,0.12)",  icon: AlertTriangle },
-  replied:   { label: "تم الرد",   color: "hsl(217 91% 60%)", bg: "rgba(96,165,250,0.12)", icon: Reply },
-  resolved:  { label: "محلولة",    color: "hsl(160 84% 39%)", bg: "rgba(16,185,129,0.12)", icon: CheckCircle2 },
-  closed:    { label: "مغلقة",     color: "hsl(215 14% 60%)", bg: "rgba(148,163,184,0.08)", icon: Archive },
+  pending:      { label: "معلقة",       color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
+  open:         { label: "مفتوحة",      color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
+  escalated:    { label: "مصعّدة",      color: "hsl(0 72% 51%)",   bg: "rgba(239,68,68,0.12)",  icon: AlertTriangle },
+  transferred:  { label: "محوّلة",      color: "hsl(270 60% 55%)", bg: "rgba(168,85,247,0.12)", icon: ArrowUpCircle },
+  replied:      { label: "تم الرد",     color: "hsl(217 91% 60%)", bg: "rgba(96,165,250,0.12)", icon: Reply },
+  resolved:     { label: "محلولة",      color: "hsl(160 84% 39%)", bg: "rgba(16,185,129,0.12)", icon: CheckCircle2 },
+  closed:       { label: "مغلقة",       color: "hsl(215 14% 60%)", bg: "rgba(148,163,184,0.08)", icon: Archive },
 };
 
 const TYPE_MAP: Record<string, { label: string; icon: React.ElementType }> = {
