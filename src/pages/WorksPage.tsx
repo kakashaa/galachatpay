@@ -773,7 +773,7 @@ const WorksPage: React.FC = () => {
                 </div>
                 <div className="space-y-1 px-1 pt-1 border-t border-border/50">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground font-bold">شحنات الشهر: {toFiniteNumber(m.monthly_charges).toLocaleString()} كوينز</span>
+                    <span className="text-muted-foreground font-bold">الراتب: ${toFiniteNumber(m.agency_salary).toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-muted-foreground font-bold">عمولتك:</span>
