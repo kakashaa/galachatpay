@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Send, ArrowRight, Zap, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone, Upload, X,
-  Sparkles, CheckCircle2, Clock, Ticket
+  Sparkles, Ticket
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
 import { createTicket } from "@/hooks/use-create-ticket";
 import SupportSessionChat from "@/components/SupportSessionChat";
+import TicketStatusCardFull from "@/components/support/TicketStatusCard";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -222,16 +223,16 @@ const QuickSupport: React.FC = () => {
           <h1 className="text-sm font-bold text-foreground">تم إنشاء التذكرة</h1>
           <div className="w-16" />
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <TicketStatusCard ticket={createdTicket} onGoToTickets={() => navigate("/support")} onNewTicket={() => {
-            setSubmitState("idle");
-            setCreatedTicket(null);
-            setSelectedType(null);
-            setRoomCode("");
-            setDescription("");
-            setPhoneNumber("");
-            setAttachment(null);
-          }} />
+        <div className="flex-1 flex flex-col overflow-hidden px-3 py-3">
+          <TicketStatusCardFull ticket={createdTicket} />
+          <div className="flex gap-2 px-1 pt-2 pb-1">
+            <button onClick={() => navigate("/support")} className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-xs flex items-center justify-center gap-1.5">
+              <Ticket className="w-3.5 h-3.5" /> متابعة التذاكر
+            </button>
+            <button onClick={() => { setSubmitState("idle"); setCreatedTicket(null); setSelectedType(null); setRoomCode(""); setDescription(""); setPhoneNumber(""); setAttachment(null); }} className="flex-1 h-10 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-xs flex items-center justify-center gap-1.5">
+              <Send className="w-3.5 h-3.5" /> تذكرة جديدة
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -396,48 +397,6 @@ const QuickSupport: React.FC = () => {
   );
 };
 
-/* ─── Ticket Status Card ─── */
-function TicketStatusCard({ ticket, onGoToTickets, onNewTicket }: { ticket: any; onGoToTickets: () => void; onNewTicket: () => void }) {
-  return (
-    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} className="text-center space-y-5 w-full max-w-[320px]">
-      <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
-        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-lg font-bold text-foreground">✅ تم إنشاء التذكرة!</h2>
-        <p className="text-sm text-muted-foreground">تم حفظ طلبك وسيتم الرد عليك بأقرب وقت</p>
-      </div>
-
-      <div className="glass-card p-4 space-y-3 text-right">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">الموضوع</span>
-          <span className="text-xs font-bold text-foreground">{ticket?.subject || "طلب دعم"}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">الحالة</span>
-          <span className="text-xs font-bold text-primary flex items-center gap-1">
-            <Clock className="w-3 h-3" /> بانتظار الرد
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground">الأولوية</span>
-          <span className={`text-xs font-bold ${ticket?.priority === 'high' ? 'text-destructive' : 'text-foreground'}`}>
-            {ticket?.priority === 'high' ? 'عالية' : 'عادية'}
-          </span>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <button onClick={onGoToTickets} className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-          <Ticket className="w-4 h-4" /> متابعة التذاكر
-        </button>
-        <button onClick={onNewTicket} className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-          <Send className="w-4 h-4" /> إنشاء تذكرة جديدة
-        </button>
-      </div>
-    </motion.div>
-  );
-}
 
 /* ─── Sub-components ─── */
 
