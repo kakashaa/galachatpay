@@ -684,10 +684,22 @@ const AdminSupportPage: React.FC = () => {
                       className="w-full h-8 rounded-lg px-2 text-[10px] font-bold appearance-none cursor-pointer"
                       style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "inherit" }}>
                       <option value="all">كل الأنواع</option>
-                      <option value="admin_visit">طلب إداري</option>
-                      <option value="report">بلاغ</option>
-                      <option value="complaint">شكوى</option>
-                      <option value="direct_contact">تواصل مباشر</option>
+                      {mainTab === "quick" ? (
+                        <>
+                          <option value="admin_visit">طلب إداري</option>
+                          <option value="report">بلاغ</option>
+                          <option value="complaint">شكوى</option>
+                          <option value="direct_contact">تواصل مباشر</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="general">عام</option>
+                          <option value="technical">تقني</option>
+                          <option value="account">حساب</option>
+                          <option value="billing">رصيد/شحن</option>
+                          <option value="other">أخرى</option>
+                        </>
+                      )}
                     </select>
                     <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
                   </div>
