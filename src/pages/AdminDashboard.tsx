@@ -274,7 +274,7 @@ const AdminDashboardPage: React.FC = () => {
             {[
               { label: 'طلبات الرواتب', route: '/admin/salary', count: badgeData.salaryPending },
               { label: 'الطلبات', route: '/admin/requests', count: badgeData.animatedPending + badgeData.customGiftsPending },
-              { label: 'الدعم الفني', route: '/admin/support', count: badgeData.supportOpen + badgeData.chatWaiting },
+              { label: 'الدعم الفني', route: '/admin/support', count: badgeData.supportOpen + badgeData.chatWaiting + badgeData.quickSupportPending },
               { label: 'الحماية', route: '/admin/ban', count: badgeData.banReportsUnverified },
               { label: 'تغيير آيدي', route: '/admin/id-change', count: 0 },
             ].map(item => (

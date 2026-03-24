@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Headset, Loader2, MessageSquare, Archive, Search, Ticket,
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,
-  ShieldAlert, FileText, Phone, Flag, RefreshCw, Zap,
+  ShieldAlert, FileText, Phone, Flag, RefreshCw,
   ArrowRight, Send, ArrowUpCircle, User, Hash, MapPin,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -95,7 +95,7 @@ const isAudio = (url: string) => /\.(webm|ogg|mp3|m4a|wav)(\?|$)/i.test(url);
 /* ═══════════════════════════════════════════════════════════ */
 
 /* ─── Support category filters ─── */
-const REGULAR_TYPES = ['general', 'technical', 'account', 'billing', 'مشكلة تقنية', 'حساب', 'رصيد/شحن', 'هدايا', 'صوت/غرف', 'استفسار', 'بلاغ', 'other'];
+const _REGULAR_TYPES = ['general', 'technical', 'account', 'billing', 'مشكلة تقنية', 'حساب', 'رصيد/شحن', 'هدايا', 'صوت/غرف', 'استفسار', 'بلاغ', 'other'];
 const QUICK_TYPES = ['admin_visit', 'report', 'complaint', 'direct_contact'];
 
 const isQuickTicket = (t: TicketRow) => {
