@@ -450,6 +450,10 @@ function RequestForm({ type, roomCode, setRoomCode, description, setDescription,
           <div className="glass-card p-4 space-y-3">
             <label className="text-sm font-bold text-foreground flex items-center gap-2">{type === "report" ? "تفاصيل البلاغ" : "تفاصيل الشكوى"}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={type === "report" ? "اكتب تفاصيل البلاغ..." : "اكتب تفاصيل الشكوى..."} required autoFocus maxLength={1000} rows={4} className="w-full px-4 py-3 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none text-sm resize-none" />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">أو أرسل رسالة صوتية:</span>
+              <VoiceRecorder userUuid={userUuid} onVoiceSent={onVoiceSent} />
+            </div>
           </div>
           <div className="glass-card p-4 space-y-3">
             <label className="text-sm font-bold text-foreground flex items-center gap-2">مرفق (اختياري)</label>
