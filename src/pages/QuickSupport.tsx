@@ -333,7 +333,7 @@ const QuickSupport: React.FC = () => {
               {/* Quick ticket button */}
               <motion.button
                 onClick={handleQuickSubmit}
-                disabled={submitState === "submitting"}
+                disabled={(submitState as string) === "submitting"}
                 animate={{
                   boxShadow: isSOS ? [
                     "0 0 0 0 rgba(239,68,68,0.4)",
