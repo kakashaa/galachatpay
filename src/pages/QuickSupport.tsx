@@ -54,6 +54,7 @@ const QuickSupport: React.FC = () => {
   const [description, setDescription] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
 
   // Ticket submission state
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
