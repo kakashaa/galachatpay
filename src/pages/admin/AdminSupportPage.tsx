@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSupportManager from "@/components/AdminSupportManager";
-import AdminTicketDashboard from "@/components/admin/AdminTicketDashboard";
-import AdminTicketDetail from "@/components/admin/AdminTicketDetail";
+import AdminTicketManager from "@/components/AdminTicketManager";
 import { supabase } from "@/integrations/supabase/client";
 import { Headset, Loader2, MessageSquare, Archive, Search, Ticket } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +13,6 @@ const AdminSupportPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
 
   // ─── Auto-escalation polling ───
   useEffect(() => {
@@ -65,30 +63,14 @@ const AdminSupportPage: React.FC = () => {
     if (!searchQuery.trim()) return;
     setSearchLoading(true);
     try {
-      const { data: tickets } = await supabase.from("support_tickets").select("*").or(`user_uuid.eq.${searchQuery.trim()},user_name.ilike.%${searchQuery.trim()}%`).order("created_at", { ascending: false }).limit(20);
-      const { data: chats } = await supabase.from("support_chat_sessions").select("*").or(`user_uuid.eq.${searchQuery.trim()}`).order("created_at", { ascending: false }).limit(20);
+      const { data: tickets } = await supabase.from("support_tickets").select("*").or(`user_uuid.eq.${searchQuery.trim()},id.eq.${searchQuery.trim()}`).order("created_at", { ascending: false }).limit(20);
+      const { data: chats } = await supabase.from("support_chat_sessions").select("*").or(`user_uuid.eq.${searchQuery.trim()},id.eq.${searchQuery.trim()}`).order("created_at", { ascending: false }).limit(20);
       setSearchResults([...(tickets || []).map(t => ({ ...t, _type: "ticket" })), ...(chats || []).map(c => ({ ...c, _type: "chat" }))]);
     } catch { }
     finally { setSearchLoading(false); }
   };
 
   const glassCard = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.3)' };
-
-  // If a ticket is selected, show detail view
-  if (selectedTicket) {
-    return (
-      <AdminPageLayout title="تفاصيل التذكرة" accentColor="hsl(188 86% 53%)" onLogout={handleLogout}>
-        <div className="max-w-[448px] mx-auto">
-          <AdminTicketDetail
-            ticket={selectedTicket}
-            adminUsername={adminUsername || ''}
-            adminDisplayName={adminDisplayName || ''}
-            onBack={() => setSelectedTicket(null)}
-          />
-        </div>
-      </AdminPageLayout>
-    );
-  }
 
   return (
     <AdminPageLayout title="الدعم الفني" accentColor="hsl(188 86% 53%)" onLogout={handleLogout}>
@@ -120,10 +102,7 @@ const AdminSupportPage: React.FC = () => {
 
           {subTab === "tickets" && (
             <motion.div key="tickets" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <AdminTicketDashboard
-                adminUsername={adminUsername || ''}
-                onSelectTicket={(t) => setSelectedTicket(t)}
-              />
+              <AdminTicketManager adminUsername={adminUsername || ''} adminDisplayName={adminDisplayName || ''} canAct={true} />
             </motion.div>
           )}
 
@@ -144,7 +123,7 @@ const AdminSupportPage: React.FC = () => {
                   <span className="text-sm font-bold text-admin-cyan">بحث في الدعم</span>
                 </div>
                 <div className="flex gap-2">
-                  <input placeholder="UUID أو اسم المستخدم" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
+                  <input placeholder="UUID أو رقم التذكرة" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && doSearch()}
                     className="flex-1 h-11 rounded-xl px-4 text-sm tabular-nums focus:outline-none" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} dir="ltr" />
                   <motion.button whileTap={{ scale: 0.95 }} onClick={doSearch} disabled={searchLoading}
                     className="px-4 h-11 rounded-xl text-xs font-bold text-white"
@@ -157,9 +136,8 @@ const AdminSupportPage: React.FC = () => {
               {searchResults.length > 0 && (
                 <div className="space-y-2">
                   {searchResults.map((item: any, i: number) => (
-                    <motion.button key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                      onClick={() => { if (item._type === 'ticket') setSelectedTicket(item); }}
-                      className="w-full text-right rounded-2xl p-3.5 active:scale-[0.98] transition-transform" style={glassCard}>
+                    <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                      className="rounded-2xl p-3.5" style={glassCard}>
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-bold">{item.user_name || item.subject || "—"}</p>
@@ -177,7 +155,7 @@ const AdminSupportPage: React.FC = () => {
                       </div>
                       {item.subject && <p className="text-[11px] text-muted-foreground mt-1">{item.subject}</p>}
                       <p className="text-[9px] text-muted-foreground mt-1 tabular-nums">{new Date(item.created_at).toLocaleString("ar-EG")}</p>
-                    </motion.button>
+                    </motion.div>
                   ))}
                 </div>
               )}
