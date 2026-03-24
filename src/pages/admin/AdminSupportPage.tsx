@@ -104,8 +104,8 @@ const isQuickTicket = (t: TicketRow) => {
 };
 
 const AdminSupportPage: React.FC = () => {
-  const { handleLogout, adminUsername, adminDisplayName } = useAdminSession();
-  const [mainTab, setMainTab] = useState<"regular" | "quick">("regular");
+  const { handleLogout, adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
+  const [mainTab, setMainTab] = useState<"regular" | "quick">(isRegularAdmin ? "regular" : "regular");
   const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search">("tickets");
 
   /* ─── Ticket list state ─── */
@@ -587,35 +587,37 @@ const AdminSupportPage: React.FC = () => {
     <AdminPageLayout title="الدعم الفني" accentColor="hsl(188 86% 53%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
 
-        {/* ─── Main Category Tabs ─── */}
-        <div className="flex gap-2 rounded-2xl p-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          {([
-            { key: "regular" as const, label: "الدعم العادي", icon: Headset, badge: regularCount },
-            { key: "quick" as const, label: "الدعم السريع", icon: ShieldAlert, badge: quickCount },
-          ]).map(t => {
-            const Icon = t.icon;
-            const active = mainTab === t.key;
-            return (
-              <motion.button key={t.key} onClick={() => { setMainTab(t.key); setSubTab("tickets"); setStatusFilter("all"); setTypeFilter("all"); }}
-                whileTap={{ scale: 0.96 }}
-                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${active ? "text-white" : "text-muted-foreground"}`}
-                style={active ? {
-                  background: t.key === "quick"
-                    ? "linear-gradient(135deg, hsl(0 72% 51%), hsl(350 89% 50%))"
-                    : "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))",
-                  boxShadow: t.key === "quick" ? "0 2px 12px rgba(239,68,68,0.3)" : "0 2px 12px rgba(6,182,212,0.3)",
-                } : {}}>
-                <Icon className="w-4 h-4" />{t.label}
-                {t.badge > 0 && (
-                  <span className="min-w-5 h-5 px-1 rounded-full text-[9px] font-black flex items-center justify-center"
-                    style={{ background: active ? "rgba(255,255,255,0.25)" : "rgba(239,68,68,0.8)", color: "white" }}>
-                    {t.badge}
-                  </span>
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
+        {/* ─── Main Category Tabs (hide quick for regular admin) ─── */}
+        {!isRegularAdmin && (
+          <div className="flex gap-2 rounded-2xl p-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {([
+              { key: "regular" as const, label: "الدعم العادي", icon: Headset, badge: regularCount },
+              { key: "quick" as const, label: "الدعم السريع", icon: ShieldAlert, badge: quickCount },
+            ]).map(t => {
+              const Icon = t.icon;
+              const active = mainTab === t.key;
+              return (
+                <motion.button key={t.key} onClick={() => { setMainTab(t.key); setSubTab("tickets"); setStatusFilter("all"); setTypeFilter("all"); }}
+                  whileTap={{ scale: 0.96 }}
+                  className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${active ? "text-white" : "text-muted-foreground"}`}
+                  style={active ? {
+                    background: t.key === "quick"
+                      ? "linear-gradient(135deg, hsl(0 72% 51%), hsl(350 89% 50%))"
+                      : "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))",
+                    boxShadow: t.key === "quick" ? "0 2px 12px rgba(239,68,68,0.3)" : "0 2px 12px rgba(6,182,212,0.3)",
+                  } : {}}>
+                  <Icon className="w-4 h-4" />{t.label}
+                  {t.badge > 0 && (
+                    <span className="min-w-5 h-5 px-1 rounded-full text-[9px] font-black flex items-center justify-center"
+                      style={{ background: active ? "rgba(255,255,255,0.25)" : "rgba(239,68,68,0.8)", color: "white" }}>
+                      {t.badge}
+                    </span>
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>

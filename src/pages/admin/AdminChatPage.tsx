@@ -32,7 +32,7 @@ interface ChatMessage {
 }
 
 export default function AdminChatPage() {
-  const { adminUsername } = useAdminSession();
+  const { adminUsername, isRegularAdmin } = useAdminSession();
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
@@ -151,7 +151,7 @@ export default function AdminChatPage() {
               <ArrowRight className="w-4 h-4 text-cyan-400" />
             </motion.button>
 
-            {rooms.map((room, i) => (
+            {rooms.filter(room => !(isRegularAdmin && room.type === 'super_group')).map((room, i) => (
               <motion.button
                 key={room.id}
                 initial={{ opacity: 0, y: 10 }}
