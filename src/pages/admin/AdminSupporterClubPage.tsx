@@ -565,8 +565,9 @@ const AdminSupporterClubPage: React.FC = () => {
                           <p className="text-[9px] text-muted-foreground">{offer.description || "—"}</p>
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span className="px-1.5 py-0.5 rounded text-[7px] font-bold bg-primary/10 text-primary">🎁 {offer.reward || "—"}</span>
+                            {offer.offer_type === "receive" && <span className="px-1.5 py-0.5 rounded text-[7px] font-bold bg-blue-500/10 text-blue-400">💎 استقبال</span>}
                             {offer.condition && <span className="text-[7px] text-muted-foreground">📋 {offer.condition}</span>}
-                            {offer.min_coins > 0 && <span className="text-[7px] text-muted-foreground">شرط: {formatCoins(offer.min_coins)}+</span>}
+                            {offer.min_coins > 0 && <span className="text-[7px] text-muted-foreground">{offer.offer_type === "receive" ? "استقبال" : "شحن"}: {formatCoins(offer.min_coins)}+</span>}
                           </div>
                         </div>
                         <div className="flex gap-1">
