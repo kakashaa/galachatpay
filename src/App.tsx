@@ -173,6 +173,7 @@ const App = () => {
                   <Route path="/policy" element={<PolicyPage />} />
                   <Route path="/quick-support" element={<QuickSupport />} />
                   <Route path="/support-main" element={<SupportMain />} />
+                  <Route path="/support-tickets" element={<SupportTickets />} />
                   <Route path="/install" element={<InstallApp />} />
                   <Route path="/bd" element={<BDVerification />} />
                   <Route path="/bd/dashboard" element={<BDDashboard />} />
