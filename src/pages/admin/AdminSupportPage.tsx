@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSupportManager from "@/components/AdminSupportManager";
@@ -13,6 +13,51 @@ const AdminSupportPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // ─── Auto-escalation polling ───
+  useEffect(() => {
+    const checkEscalation = async () => {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { data } = await (supabase
+        .from('support_tickets')
+        .select('id') as any)
+        .in('status', ['open', 'pending'])
+        .eq('escalation_level', 0)
+        .is('first_response_at', null)
+        .lt('escalation_timer_started_at', fiveMinAgo)
+        .limit(50);
+
+      if (data?.length) {
+        for (const ticket of data) {
+          await supabase.from('support_tickets').update({
+            escalation_level: 1,
+            assigned_role: 'super_admin',
+            status: 'escalated',
+            escalated_at: new Date().toISOString(),
+          } as any).eq('id', ticket.id);
+
+          await supabase.from('ticket_audit_log').insert({
+            ticket_id: ticket.id,
+            action: 'escalated_to_super',
+            performed_by: 'system',
+            performed_by_name: 'نظام التصعيد التلقائي',
+            details: { reason: 'no_admin_response_5min' },
+          });
+
+          await supabase.from('ticket_messages' as any).insert({
+            ticket_id: ticket.id,
+            message: 'تم التصعيد تلقائياً للسوبر أدمن بسبب عدم الرد خلال 5 دقائق',
+            sender_name: 'النظام',
+            sender_type: 'system',
+          });
+        }
+      }
+    };
+
+    checkEscalation();
+    const interval = setInterval(checkEscalation, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const doSearch = async () => {
     if (!searchQuery.trim()) return;

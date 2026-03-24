@@ -21,8 +21,29 @@ function getSubjectFromType(type: string): string {
   return map[type] || 'طلب دعم';
 }
 
+async function checkAdminOnline(): Promise<boolean> {
+  try {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Asia/Riyadh' });
+    const { data } = await supabase
+      .from('admin_shifts')
+      .select('admin_username')
+      .eq('is_active', true)
+      .lte('shift_start', timeStr)
+      .gte('shift_end', timeStr)
+      .limit(1);
+    return (data?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function createTicket(params: CreateTicketParams) {
   const now = new Date().toISOString();
+
+  // Check if any admin is online
+  const adminOnline = await checkAdminOnline();
+  const directToSuper = !adminOnline;
 
   // 1. Create the ticket
   const { data: ticket, error } = await supabase
@@ -39,11 +60,12 @@ export async function createTicket(params: CreateTicketParams) {
       attachment_url: params.attachmentUrl || null,
       room_code: params.roomCode || null,
       phone_number: params.phoneNumber || null,
-      status: 'open',
+      status: directToSuper ? 'escalated' : 'open',
       priority: params.requestType === 'complaint' ? 'high' : 'normal',
-      assigned_role: 'admin',
-      escalation_level: 0,
-      escalation_timer_started_at: now,
+      assigned_role: directToSuper ? 'super_admin' : 'admin',
+      escalation_level: directToSuper ? 1 : 0,
+      escalation_timer_started_at: directToSuper ? null : now,
+      escalated_at: directToSuper ? now : null,
     } as any)
     .select()
     .single();
@@ -53,7 +75,7 @@ export async function createTicket(params: CreateTicketParams) {
   const ticketId = (ticket as any)?.id;
   if (!ticketId) throw new Error('No ticket ID returned');
 
-  // 2. Create audit log entry
+  // 2. Create audit log
   await supabase.from('ticket_audit_log').insert({
     ticket_id: ticketId,
     action: 'created',
@@ -65,10 +87,20 @@ export async function createTicket(params: CreateTicketParams) {
     },
   });
 
+  // 2b. If direct to super, log that too
+  if (directToSuper) {
+    await supabase.from('ticket_audit_log').insert({
+      ticket_id: ticketId,
+      action: 'direct_to_super',
+      performed_by: 'system',
+      performed_by_name: 'النظام',
+      details: { reason: 'no_admin_online' },
+    });
+  }
+
   // 3. Create first message
   await supabase.from('ticket_messages' as any).insert({
     ticket_id: ticketId,
-    sender_uuid: params.userUuid,
     sender_name: params.userName,
     sender_type: 'user',
     message: params.messageText,
