@@ -390,6 +390,8 @@ const QuickSupport: React.FC = () => {
                 onRemoveFile={() => setAttachment(null)}
                 submitting={(submitState as string) === "submitting"}
                 onSubmit={handleSubmit}
+                userUuid={authUser?.uuid || ""}
+                onVoiceSent={setVoiceUrl}
               />
             </div>
           )}
