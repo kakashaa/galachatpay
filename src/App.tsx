@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "re
 import { AuthProvider } from "@/contexts/AuthContext";
 import { lazy, Suspense, useEffect } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import AdminRouteGuard from "@/components/AdminRouteGuard";
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -154,20 +155,20 @@ const App = () => {
                   <Route path="/instant/request" element={<InstantRequest />} />
                   <Route path="/admin" element={<AdminLogin />} />
                   <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-                  <Route path="/admin/gifts" element={<AdminGiftsPage />} />
-                  <Route path="/admin/income" element={<AdminIncomePage />} />
-                  <Route path="/admin/bd" element={<AdminBDPage />} />
-                  <Route path="/admin/vip" element={<AdminVipPage />} />
-                  <Route path="/admin/ban" element={<AdminBanPage />} />
-                  <Route path="/admin/id-change" element={<AdminIdChangePage />} />
-                  <Route path="/admin/salary" element={<AdminSalaryPage />} />
-                  <Route path="/admin/agencies" element={<AdminAgenciesPage />} />
-                  <Route path="/admin/settings" element={<AdminSettingsPage />} />
-                  <Route path="/admin/support" element={<AdminSupportPage />} />
-                  <Route path="/admin/chat" element={<AdminChatPage />} />
-                  <Route path="/admin/log" element={<AdminLogPage />} />
-                  <Route path="/admin/accounts" element={<AdminAccountsPage />} />
-                  <Route path="/admin/requests" element={<AdminRequestsPage />} />
+                  <Route path="/admin/gifts" element={<AdminRouteGuard><AdminGiftsPage /></AdminRouteGuard>} />
+                  <Route path="/admin/income" element={<AdminRouteGuard><AdminIncomePage /></AdminRouteGuard>} />
+                  <Route path="/admin/bd" element={<AdminRouteGuard><AdminBDPage /></AdminRouteGuard>} />
+                  <Route path="/admin/vip" element={<AdminRouteGuard><AdminVipPage /></AdminRouteGuard>} />
+                  <Route path="/admin/ban" element={<AdminRouteGuard><AdminBanPage /></AdminRouteGuard>} />
+                  <Route path="/admin/id-change" element={<AdminRouteGuard><AdminIdChangePage /></AdminRouteGuard>} />
+                  <Route path="/admin/salary" element={<AdminRouteGuard><AdminSalaryPage /></AdminRouteGuard>} />
+                  <Route path="/admin/agencies" element={<AdminRouteGuard><AdminAgenciesPage /></AdminRouteGuard>} />
+                  <Route path="/admin/settings" element={<AdminRouteGuard><AdminSettingsPage /></AdminRouteGuard>} />
+                  <Route path="/admin/support" element={<AdminRouteGuard><AdminSupportPage /></AdminRouteGuard>} />
+                  <Route path="/admin/chat" element={<AdminRouteGuard><AdminChatPage /></AdminRouteGuard>} />
+                  <Route path="/admin/log" element={<AdminRouteGuard><AdminLogPage /></AdminRouteGuard>} />
+                  <Route path="/admin/accounts" element={<AdminRouteGuard><AdminAccountsPage /></AdminRouteGuard>} />
+                  <Route path="/admin/requests" element={<AdminRouteGuard><AdminRequestsPage /></AdminRouteGuard>} />
                   <Route path="/notifications" element={<Notifications />} />
                   <Route path="/policy" element={<PolicyPage />} />
                   <Route path="/quick-support" element={<QuickSupport />} />
@@ -181,14 +182,14 @@ const App = () => {
                   <Route path="/custom-wares" element={<CustomWaresRequest />} />
                   <Route path="/my-wares-requests" element={<MyWaresRequests />} />
                   <Route path="/admin-complaint" element={<AdminComplaint />} />
-                  <Route path="/admin/works" element={<AdminWorksPage />} />
+                  <Route path="/admin/works" element={<AdminRouteGuard><AdminWorksPage /></AdminRouteGuard>} />
                   <Route path="/works" element={<WorksPage />} />
                   <Route path="/room-background" element={<RoomBackgroundPage />} />
-                  <Route path="/admin/host-requests" element={<AdminHostRequestsPage />} />
-                  <Route path="/admin/monitor" element={<AdminMonitorPage />} />
-                  <Route path="/admin/supporter-club" element={<AdminSupporterClubPage />} />
-                  <Route path="/admin/live-dashboard" element={<AdminLiveDashboardPage />} />
-                  <Route path="/admin/deductions" element={<AdminDeductionsPage />} />
+                  <Route path="/admin/host-requests" element={<AdminRouteGuard><AdminHostRequestsPage /></AdminRouteGuard>} />
+                  <Route path="/admin/monitor" element={<AdminRouteGuard><AdminMonitorPage /></AdminRouteGuard>} />
+                  <Route path="/admin/supporter-club" element={<AdminRouteGuard><AdminSupporterClubPage /></AdminRouteGuard>} />
+                  <Route path="/admin/live-dashboard" element={<AdminRouteGuard><AdminLiveDashboardPage /></AdminRouteGuard>} />
+                  <Route path="/admin/deductions" element={<AdminRouteGuard><AdminDeductionsPage /></AdminRouteGuard>} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/supporter-benefits" element={<SupporterBenefits />} />
