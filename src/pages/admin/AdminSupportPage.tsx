@@ -364,6 +364,57 @@ const AdminSupportPage: React.FC = () => {
     setActionLoading(null);
   };
 
+  /* ─── Transfer to super (regular admin) ─── */
+  const handleTransferToSuper = async () => {
+    if (!selectedTicket) return;
+    setActionLoading("transfer");
+    const now = new Date().toISOString();
+    try {
+      await supabase.from("support_tickets").update({
+        assigned_role: "super_admin", status: "transferred", escalated_at: now, escalation_level: 1,
+      } as any).eq("id", selectedTicket.id);
+
+      await supabase.from("ticket_messages" as any).insert({
+        ticket_id: selectedTicket.id,
+        message: "📤 تم تحويل التذكرة للسوبر أدمن",
+        sender_name: adminDisplayName || adminUsername || "أدمن",
+        sender_type: "system",
+      });
+
+      await supabase.from("ticket_audit_log").insert({
+        ticket_id: selectedTicket.id, action: "transferred_to_super",
+        performed_by: adminUsername, performed_by_name: adminDisplayName || adminUsername,
+        details: { reason: "admin_transfer" },
+      });
+
+      toast.success("تم تحويل التذكرة للسوبر أدمن");
+    } catch { toast.error("فشل التحويل"); }
+    setActionLoading(null);
+  };
+
+  /* ─── Request help from super (regular admin) ─── */
+  const handleRequestHelp = async () => {
+    if (!selectedTicket) return;
+    setActionLoading("help");
+    try {
+      await supabase.from("ticket_audit_log").insert({
+        ticket_id: selectedTicket.id, action: "help_requested",
+        performed_by: adminUsername, performed_by_name: adminDisplayName || adminUsername,
+        details: { admin_username: adminUsername },
+      });
+
+      await supabase.from("ticket_messages" as any).insert({
+        ticket_id: selectedTicket.id,
+        message: "🆘 طلب مساعدة من السوبر أدمن",
+        sender_name: adminDisplayName || adminUsername || "أدمن",
+        sender_type: "system",
+      });
+
+      toast.success("تم إرسال طلب المساعدة");
+    } catch { toast.error("فشل إرسال طلب المساعدة"); }
+    setActionLoading(null);
+  };
+
   /* ─── Search tab ─── */
   const doSearch = async () => {
     if (!searchTabQuery.trim()) return;
