@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowRight, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone,
-  Sparkles, Headphones, Loader2
+  Sparkles, Loader2
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import SupportSessionChat from "@/components/SupportSessionChat";
 import { startSupportSession } from "@/hooks/use-support-session";
 
@@ -48,7 +48,7 @@ const QuickSupport: React.FC = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
 
-  const [selectedType, setSelectedType] = useState<RequestType | null>(null);
+  const [_selectedType, setSelectedType] = useState<RequestType | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
