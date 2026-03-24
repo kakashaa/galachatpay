@@ -47,12 +47,13 @@ interface TicketMessage {
 
 /* ─── Config maps ─── */
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  pending:   { label: "معلقة",     color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
-  open:      { label: "مفتوحة",    color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
-  escalated: { label: "مصعّدة",    color: "hsl(0 72% 51%)",   bg: "rgba(239,68,68,0.12)",  icon: AlertTriangle },
-  replied:   { label: "تم الرد",   color: "hsl(217 91% 60%)", bg: "rgba(96,165,250,0.12)", icon: Reply },
-  resolved:  { label: "محلولة",    color: "hsl(160 84% 39%)", bg: "rgba(16,185,129,0.12)", icon: CheckCircle2 },
-  closed:    { label: "مغلقة",     color: "hsl(215 14% 60%)", bg: "rgba(148,163,184,0.08)", icon: Archive },
+  pending:      { label: "معلقة",       color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
+  open:         { label: "مفتوحة",      color: "hsl(38 92% 50%)",  bg: "rgba(245,158,11,0.12)", icon: Clock },
+  escalated:    { label: "مصعّدة",      color: "hsl(0 72% 51%)",   bg: "rgba(239,68,68,0.12)",  icon: AlertTriangle },
+  transferred:  { label: "محوّلة",      color: "hsl(270 60% 55%)", bg: "rgba(168,85,247,0.12)", icon: ArrowUpCircle },
+  replied:      { label: "تم الرد",     color: "hsl(217 91% 60%)", bg: "rgba(96,165,250,0.12)", icon: Reply },
+  resolved:     { label: "محلولة",      color: "hsl(160 84% 39%)", bg: "rgba(16,185,129,0.12)", icon: CheckCircle2 },
+  closed:       { label: "مغلقة",       color: "hsl(215 14% 60%)", bg: "rgba(148,163,184,0.08)", icon: Archive },
 };
 
 const TYPE_MAP: Record<string, { label: string; icon: React.ElementType }> = {
@@ -103,10 +104,104 @@ const isQuickTicket = (t: TicketRow) => {
   return QUICK_TYPES.includes(rt);
 };
 
+/* ═══ Admin Requests Tab (super admin only) ═══ */
+const AdminRequestsTab: React.FC<{
+  tickets: TicketRow[];
+  adminUsername: string;
+  adminDisplayName: string;
+  onOpenTicket: (t: TicketRow) => void;
+}> = ({ tickets, adminUsername, adminDisplayName, onOpenTicket }) => {
+  const [auditItems, setAuditItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("ticket_audit_log")
+        .select("*")
+        .in("action", ["help_requested", "transferred_to_super"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setAuditItems(data || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  const handleAccept = async (item: any) => {
+    const ticket = tickets.find(t => t.id === item.ticket_id);
+    if (ticket) onOpenTicket(ticket);
+    toast.success("تم فتح التذكرة");
+  };
+
+  const handleReject = async (item: any) => {
+    await supabase.from("ticket_audit_log").insert({
+      ticket_id: item.ticket_id,
+      action: "help_rejected",
+      performed_by: adminUsername,
+      performed_by_name: adminDisplayName || adminUsername,
+      details: { original_action: item.action },
+    });
+    setAuditItems(prev => prev.filter(a => a.id !== item.id));
+    toast.info("تم رفض الطلب");
+  };
+
+  if (loading) return (
+    <motion.div key="admin_requests" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="flex items-center justify-center py-20">
+      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+    </motion.div>
+  );
+
+  if (auditItems.length === 0) return (
+    <motion.div key="admin_requests" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className="text-center py-16 text-muted-foreground">
+      <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-40" />
+      <p className="text-sm">لا توجد طلبات من الأدمن</p>
+    </motion.div>
+  );
+
+  return (
+    <motion.div key="admin_requests" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+      {auditItems.map((item, i) => (
+        <motion.div key={item.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.02 }}
+          className="rounded-2xl p-3.5" style={{ ...glassCard, borderRight: `3px solid ${item.action === "help_requested" ? "hsl(38 92% 50%)" : "hsl(270 60% 55%)"}` }}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-foreground">{item.performed_by_name || item.performed_by}</p>
+              <p className="text-[9px] text-muted-foreground font-mono truncate" dir="ltr">{item.ticket_id}</p>
+            </div>
+            <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold" style={{
+              color: item.action === "help_requested" ? "hsl(38 92% 50%)" : "hsl(270 60% 55%)",
+              background: item.action === "help_requested" ? "rgba(245,158,11,0.12)" : "rgba(168,85,247,0.12)",
+            }}>
+              {item.action === "help_requested" ? "🆘 طلب مساعدة" : "📤 تحويل"}
+            </span>
+          </div>
+          <p className="text-[9px] text-muted-foreground tabular-nums mb-2">{formatDate(item.created_at)}</p>
+          <div className="flex gap-2">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleAccept(item)}
+              className="flex-1 h-7 rounded-lg text-[10px] font-bold text-white"
+              style={{ background: "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))" }}>
+              قبول
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleReject(item)}
+              className="flex-1 h-7 rounded-lg text-[10px] font-bold"
+              style={{ background: "rgba(239,68,68,0.12)", color: "hsl(0 72% 51%)" }}>
+              رفض
+            </motion.button>
+          </div>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+};
+
 const AdminSupportPage: React.FC = () => {
   const { handleLogout, adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
   const [mainTab, setMainTab] = useState<"regular" | "quick">(isRegularAdmin ? "regular" : "regular");
-  const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search">("tickets");
+  const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search" | "admin_requests" | "transferred">("tickets");
 
   /* ─── Ticket list state ─── */
   const [tickets, setTickets] = useState<TicketRow[]>([]);
@@ -362,6 +457,57 @@ const AdminSupportPage: React.FC = () => {
     setActionLoading(null);
   };
 
+  /* ─── Transfer to super (regular admin) ─── */
+  const handleTransferToSuper = async () => {
+    if (!selectedTicket) return;
+    setActionLoading("transfer");
+    const now = new Date().toISOString();
+    try {
+      await supabase.from("support_tickets").update({
+        assigned_role: "super_admin", status: "transferred", escalated_at: now, escalation_level: 1,
+      } as any).eq("id", selectedTicket.id);
+
+      await supabase.from("ticket_messages" as any).insert({
+        ticket_id: selectedTicket.id,
+        message: "📤 تم تحويل التذكرة للسوبر أدمن",
+        sender_name: adminDisplayName || adminUsername || "أدمن",
+        sender_type: "system",
+      });
+
+      await supabase.from("ticket_audit_log").insert({
+        ticket_id: selectedTicket.id, action: "transferred_to_super",
+        performed_by: adminUsername, performed_by_name: adminDisplayName || adminUsername,
+        details: { reason: "admin_transfer" },
+      });
+
+      toast.success("تم تحويل التذكرة للسوبر أدمن");
+    } catch { toast.error("فشل التحويل"); }
+    setActionLoading(null);
+  };
+
+  /* ─── Request help from super (regular admin) ─── */
+  const handleRequestHelp = async () => {
+    if (!selectedTicket) return;
+    setActionLoading("help");
+    try {
+      await supabase.from("ticket_audit_log").insert({
+        ticket_id: selectedTicket.id, action: "help_requested",
+        performed_by: adminUsername, performed_by_name: adminDisplayName || adminUsername,
+        details: { admin_username: adminUsername },
+      });
+
+      await supabase.from("ticket_messages" as any).insert({
+        ticket_id: selectedTicket.id,
+        message: "🆘 طلب مساعدة من السوبر أدمن",
+        sender_name: adminDisplayName || adminUsername || "أدمن",
+        sender_type: "system",
+      });
+
+      toast.success("تم إرسال طلب المساعدة");
+    } catch { toast.error("فشل إرسال طلب المساعدة"); }
+    setActionLoading(null);
+  };
+
   /* ─── Search tab ─── */
   const doSearch = async () => {
     if (!searchTabQuery.trim()) return;
@@ -451,21 +597,54 @@ const AdminSupportPage: React.FC = () => {
 
             {/* Action buttons */}
             {!isResolved && (
-              <div className="flex gap-2 mt-3">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={handleResolve}
-                  disabled={actionLoading === "resolve"}
-                  className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 text-white"
-                  style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
-                  {actionLoading === "resolve" ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                  تم الحل
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={handleEscalate}
-                  disabled={actionLoading === "escalate" || (selectedTicket.escalation_level || 0) > 0}
-                  className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 disabled:opacity-40"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "hsl(0 72% 51%)" }}>
-                  {actionLoading === "escalate" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />}
-                  تصعيد
-                </motion.button>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {/* Resolve & Escalate — hide for regular admin on transferred tickets */}
+                {!(isRegularAdmin && selectedTicket.status === "transferred") && (
+                  <>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleResolve}
+                      disabled={actionLoading === "resolve"}
+                      className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 text-white"
+                      style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
+                      {actionLoading === "resolve" ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                      تم الحل
+                    </motion.button>
+                    {!isRegularAdmin && (
+                      <motion.button whileTap={{ scale: 0.95 }} onClick={handleEscalate}
+                        disabled={actionLoading === "escalate" || (selectedTicket.escalation_level || 0) > 0}
+                        className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 disabled:opacity-40"
+                        style={{ background: "rgba(239,68,68,0.12)", color: "hsl(0 72% 51%)" }}>
+                        {actionLoading === "escalate" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />}
+                        تصعيد
+                      </motion.button>
+                    )}
+                  </>
+                )}
+                {/* Regular admin: transfer & help buttons */}
+                {isRegularAdmin && selectedTicket.status !== "transferred" && (
+                  <>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleTransferToSuper}
+                      disabled={!!actionLoading}
+                      className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(168,85,247,0.12)", color: "hsl(270 60% 55%)" }}>
+                      {actionLoading === "transfer" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />}
+                      تحويل للسوبر
+                    </motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleRequestHelp}
+                      disabled={!!actionLoading}
+                      className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(245,158,11,0.12)", color: "hsl(38 92% 50%)" }}>
+                      {actionLoading === "help" ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />}
+                      طلب مساعدة
+                    </motion.button>
+                  </>
+                )}
+                {/* Regular admin: read-only notice on transferred tickets */}
+                {isRegularAdmin && selectedTicket.status === "transferred" && (
+                  <div className="w-full text-center text-[10px] font-bold py-2 rounded-xl"
+                    style={{ background: "rgba(168,85,247,0.08)", color: "hsl(270 60% 55%)" }}>
+                    📤 تم تحويل التذكرة — للقراءة فقط
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -535,8 +714,8 @@ const AdminSupportPage: React.FC = () => {
             )}
           </div>
 
-          {/* ─── Reply input ─── */}
-          {!isResolved && (
+          {/* ─── Reply input (hidden for regular admin on transferred tickets) ─── */}
+          {!isResolved && !(isRegularAdmin && selectedTicket.status === "transferred") && (
             <div className="sticky bottom-0 border-t border-border/20 px-4 py-3 shrink-0 mb-24 z-30"
               style={{ background: "rgba(10,10,20,0.95)", backdropFilter: "blur(20px)" }}>
               <div className="flex items-end gap-2">
@@ -558,7 +737,7 @@ const AdminSupportPage: React.FC = () => {
               </div>
             </div>
           )}
-          {isResolved && <div className="pb-24" />}
+          {(isResolved || (isRegularAdmin && selectedTicket.status === "transferred")) && <div className="pb-24" />}
         </div>
       </AdminPageLayout>
     );
@@ -620,19 +799,23 @@ const AdminSupportPage: React.FC = () => {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 rounded-2xl p-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>
+        <div className="flex gap-1 rounded-2xl p-1 overflow-x-auto" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>
           {([
-            { key: "tickets" as const, label: "تذاكر", icon: Ticket },
-            { key: "chats" as const, label: "محادثات", icon: MessageSquare },
-            { key: "archive" as const, label: "أرشيف", icon: Archive },
-            { key: "search" as const, label: "بحث", icon: Search },
+            { key: "tickets" as const, label: "تذاكر", icon: Ticket, superOnly: false },
+            ...(isRegularAdmin ? [] : [
+              { key: "admin_requests" as const, label: "طلبات الأدمن", icon: AlertTriangle, superOnly: true },
+              { key: "transferred" as const, label: "محوّلة", icon: ArrowUpCircle, superOnly: true },
+            ]),
+            { key: "chats" as const, label: "محادثات", icon: MessageSquare, superOnly: false },
+            { key: "archive" as const, label: "أرشيف", icon: Archive, superOnly: false },
+            { key: "search" as const, label: "بحث", icon: Search, superOnly: false },
           ]).map(t => {
             const Icon = t.icon;
             return (
-              <motion.button key={t.key} onClick={() => setSubTab(t.key)} whileTap={{ scale: 0.96 }}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${subTab === t.key ? "text-admin-cyan" : "text-muted-foreground"}`}
+              <motion.button key={t.key} onClick={() => setSubTab(t.key as any)} whileTap={{ scale: 0.96 }}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 whitespace-nowrap ${subTab === t.key ? "text-admin-cyan" : "text-muted-foreground"}`}
                 style={subTab === t.key ? { background: "rgba(6,182,212,0.12)", boxShadow: "0 2px 8px rgba(6,182,212,0.15)" } : {}}>
-                <Icon className="w-4 h-4" />{t.label}
+                <Icon className="w-3.5 h-3.5" />{t.label}
                 {t.key === "tickets" && stats.pending + stats.escalated > 0 && (
                   <span className="w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center bg-destructive text-white">
                     {stats.pending + stats.escalated}
@@ -675,6 +858,7 @@ const AdminSupportPage: React.FC = () => {
                       <option value="pending">معلقة</option>
                       <option value="open">مفتوحة</option>
                       <option value="escalated">مصعّدة</option>
+                      <option value="transferred">محوّلة</option>
                       <option value="replied">تم الرد</option>
                       <option value="resolved">محلولة</option>
                       <option value="closed">مغلقة</option>
@@ -771,6 +955,68 @@ const AdminSupportPage: React.FC = () => {
                   })}
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {/* ADMIN REQUESTS TAB (super only) */}
+          {subTab === "admin_requests" && !isRegularAdmin && (
+            <AdminRequestsTab
+              tickets={tickets}
+              adminUsername={adminUsername || ""}
+              adminDisplayName={adminDisplayName || ""}
+              onOpenTicket={(t) => setSelectedTicket(t)}
+            />
+          )}
+
+          {/* TRANSFERRED TAB (super only) */}
+          {subTab === "transferred" && !isRegularAdmin && (
+            <motion.div key="transferred" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+              {(() => {
+                const transferredTickets = categoryTickets.filter(t => t.status === "transferred");
+                if (transferredTickets.length === 0) return (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <ArrowUpCircle className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">لا توجد تذاكر محوّلة</p>
+                  </div>
+                );
+                return transferredTickets.map((ticket, i) => {
+                  const tst = STATUS_MAP[ticket.status] || STATUS_MAP.pending;
+                  const tType2 = (ticket as any).request_type || ticket.ticket_type || "general";
+                  const ttp = TYPE_MAP[tType2] || TYPE_MAP.general;
+                  const TIcon = ttp.icon;
+                  return (
+                    <motion.div key={ticket.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.02 }}
+                      onClick={() => setSelectedTicket(ticket)}
+                      className="rounded-2xl p-3.5 cursor-pointer active:scale-[0.98] transition-all"
+                      style={{ ...glassCard, borderRight: "3px solid hsl(270 60% 55%)" }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: tst.bg }}>
+                            <ArrowUpCircle className="w-4 h-4" style={{ color: "hsl(270 60% 55%)" }} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-foreground truncate">{ticket.user_name}</p>
+                            <p className="text-[9px] text-muted-foreground font-mono truncate" dir="ltr">{ticket.id}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold" style={{ color: "hsl(270 60% 55%)", background: "rgba(168,85,247,0.12)" }}>
+                          محوّلة
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-foreground mb-1 truncate">{ticket.subject}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <TIcon className="w-3 h-3" /><span>{ttp.label}</span>
+                        </div>
+                        <span className="text-[9px] text-muted-foreground tabular-nums flex items-center gap-1">
+                          <Clock className="w-3 h-3" />{formatDate(ticket.created_at)}
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                });
+              })()}
             </motion.div>
           )}
 
