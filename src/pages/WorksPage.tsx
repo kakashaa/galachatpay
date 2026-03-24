@@ -692,7 +692,13 @@ const WorksPage: React.FC = () => {
             {members.filter(m => m.member_type === "supporter").length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">لا يوجد داعمين بعد</p>
             )}
-            {members.filter(m => m.member_type === "supporter").map((m, i) => (
+            {members.filter(m => m.member_type === "supporter").map((m, i) => {
+              const commissionUsd = toFiniteNumber(m.commission) > 0 ? toFiniteNumber(m.commission) : toFiniteNumber(m.total_commission_usd);
+              const computedChargesUsd = supporterPct > 0 ? commissionUsd / (supporterPct / 100) : 0;
+              const chargesCoins = toFiniteNumber(m.monthly_charges) > 0
+                ? toFiniteNumber(m.monthly_charges)
+                : Math.floor(computedChargesUsd * COINS_PER_USD);
+              return (
               <motion.div
                 key={m.id}
                 initial={{ opacity: 0, x: 10 }}
@@ -712,21 +718,22 @@ const WorksPage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-primary">{toFiniteNumber(m.monthly_charges).toLocaleString()}</p>
+                    <p className={`text-sm font-black ${chargesCoins > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>{chargesCoins.toLocaleString()}</p>
                     <p className="text-[9px] text-muted-foreground">كوينز</p>
                   </div>
                 </div>
                 <div className="space-y-1 px-1 pt-1 border-t border-border/50">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground font-bold">شحنات الشهر: {toFiniteNumber(m.monthly_charges).toLocaleString()} كوينز</span>
+                    <span className="text-muted-foreground font-bold">شحنات الشهر: {chargesCoins.toLocaleString()} كوينز</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-muted-foreground font-bold">عمولتك:</span>
-                    <span className="text-emerald-400 font-black">${(toFiniteNumber(m.commission) > 0 ? toFiniteNumber(m.commission) : toFiniteNumber(m.total_commission_usd)).toFixed(2)}</span>
+                    <span className={`font-black ${commissionUsd > 0 ? 'text-emerald-400' : 'text-muted-foreground'}`}>${commissionUsd.toFixed(2)}</span>
                   </div>
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </motion.div>
 
@@ -747,7 +754,11 @@ const WorksPage: React.FC = () => {
             {members.filter(m => m.member_type === "agent").length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">لا يوجد وكلاء بعد</p>
             )}
-            {members.filter(m => m.member_type === "agent").map((m, i) => (
+            {members.filter(m => m.member_type === "agent").map((m, i) => {
+              const commissionUsd = toFiniteNumber(m.commission) > 0 ? toFiniteNumber(m.commission) : toFiniteNumber(m.total_commission_usd);
+              const computedSalary = agentPct > 0 ? commissionUsd / (agentPct / 100) : 0;
+              const salaryUsd = toFiniteNumber(m.agency_salary) > 0 ? toFiniteNumber(m.agency_salary) : computedSalary;
+              return (
               <motion.div
                 key={m.id}
                 initial={{ opacity: 0, x: 10 }}
@@ -767,20 +778,21 @@ const WorksPage: React.FC = () => {
                     <p className="text-[10px] text-muted-foreground font-mono" dir="ltr">#{m.member_uuid}</p>
                   </div>
                   <div className="text-left shrink-0">
-                    <p className="text-sm font-black text-primary">${toFiniteNumber(m.agency_salary).toFixed(2)}</p>
+                    <p className={`text-sm font-black ${salaryUsd > 0 ? 'text-foreground' : 'text-muted-foreground'}`}>${salaryUsd.toFixed(2)}</p>
                   </div>
                 </div>
                 <div className="space-y-1 px-1 pt-1 border-t border-border/50">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground font-bold">الراتب: ${toFiniteNumber(m.agency_salary).toFixed(2)}</span>
+                    <span className="text-muted-foreground font-bold">الراتب: <span className={salaryUsd > 0 ? 'text-foreground' : 'text-muted-foreground'}>${salaryUsd.toFixed(2)}</span></span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-muted-foreground font-bold">عمولتك:</span>
-                    <span className="text-emerald-400 font-black">${(toFiniteNumber(m.commission) > 0 ? toFiniteNumber(m.commission) : toFiniteNumber(m.total_commission_usd)).toFixed(2)}</span>
+                    <span className={`font-black ${commissionUsd > 0 ? 'text-emerald-400' : 'text-muted-foreground'}`}>${commissionUsd.toFixed(2)}</span>
                   </div>
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </motion.div>
 
