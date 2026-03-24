@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Send, ArrowRight, Zap, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone, Upload, X,
-  Sparkles, CheckCircle2, Clock, Ticket
+  Sparkles, Ticket
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
