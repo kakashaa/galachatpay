@@ -176,17 +176,37 @@ const SupporterBenefits: React.FC = () => {
                 }
               }
 
-              // Goal met notification
+              // Goal met → auto-claim reward
               if (progress >= ch.target_amount && p.status === "active") {
-                await supabase.from("supporter_challenge_progress").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", p.id);
+                const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
+                // Auto-create coupon reward
+                await supabase.from("supporter_rewards").insert({
+                  uuid: user.uuid,
+                  tier_name: "تحدي",
+                  month: currentMonth,
+                  type: ch.reward_type || "coins",
+                  value: ch.reward_value || 0,
+                  count: 1,
+                  status: "available",
+                  use_expires_at: expiresAt,
+                  item_duration_days: 30,
+                } as any);
+                // Mark completed + claimed
+                await supabase.from("supporter_challenge_progress").update({
+                  status: "completed",
+                  completed_at: new Date().toISOString(),
+                  reward_claimed: true,
+                } as any).eq("id", p.id);
                 p.status = "completed";
+                p.reward_claimed = true;
                 progressMap[p.challenge_id] = p;
                 await supabase.from("notifications").insert({
                   user_uuid: user.uuid,
-                  title: "🎉 حققت الهدف!",
-                  body: `أكملت التحدي "${ch.title}" — استلم كوبونك الآن!`,
+                  title: "🎉 مبروك! حصلت على المكافأة",
+                  body: `أكملت التحدي "${ch.title}" — تم إضافة الكوبون تلقائياً!`,
                   type: "supporter_club",
                 } as any);
+                toast.success(`🎉 مبروك! حصلت على مكافأة "${ch.title}"`);
               }
             }
           }
@@ -211,23 +231,29 @@ const SupporterBenefits: React.FC = () => {
           if (diamonds > 0) setMonthlyDiamonds(diamonds);
         }).catch(() => {});
 
-        // Ranking among top chargers
-        galaApi.getRanking(3, 2).then(res => {
-          const topList = res?.data?.top || [];
-          const otherList = res?.data?.other || [];
-          const allRanked = [...topList, ...otherList];
-          const myRank = allRanked.findIndex((u: any) => String(u.id) === String(user.uuid) || String(u.uuid) === String(user.uuid));
-          if (myRank >= 0) setUserRank(myRank + 1);
-
-          // Also use as leaderboard
-          if (topList.length > 0) {
-            setLeaderboard(topList.slice(0, 10).map((u: any) => ({
-              name: u.name || u.nickname || `UUID ${u.id}`,
-              uuid: u.id || u.uuid,
-              total_coins: u.value || u.num || u.coins || 0,
-            })));
-          }
-        }).catch(() => {});
+        // Leaderboard & rank from DB (supporter_monthly_charges this month only)
+        supabase.from("supporter_monthly_charges")
+          .select("uuid, total_coins")
+          .eq("month", currentMonth)
+          .order("total_coins", { ascending: false })
+          .limit(200)
+          .then(async ({ data: allChargers }) => {
+            if (!allChargers?.length) return;
+            // Find user rank
+            const myIdx = allChargers.findIndex(c => c.uuid === user!.uuid);
+            if (myIdx >= 0) setUserRank(myIdx + 1);
+            // Build leaderboard top 10 with names
+            const top10 = allChargers.slice(0, 10);
+            const enriched = await Promise.all(top10.map(async (c) => {
+              try {
+                const info = await galaApi.awsUserInfo(c.uuid);
+                return { name: info?.name || info?.data?.name || c.uuid, uuid: c.uuid, total_coins: c.total_coins || 0, avatar: info?.avatar || info?.data?.avatar };
+              } catch {
+                return { name: c.uuid, uuid: c.uuid, total_coins: c.total_coins || 0, avatar: null };
+              }
+            }));
+            setLeaderboard(enriched);
+          }).catch(() => {});
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -424,12 +450,12 @@ const SupporterBenefits: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Rank badge */}
+                {/* Rank badge — prominent gold */}
                 {userRank && (
-                  <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-lg"
-                    style={{ background: "hsl(var(--muted) / 0.8)" }}>
-                    <Medal className="w-3 h-3 text-yellow-400" />
-                    <span className="text-[9px] font-bold text-foreground">#{userRank}</span>
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
+                    style={{ background: "linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,140,0,0.1))", border: "1px solid rgba(255,215,0,0.25)" }}>
+                    <Medal className="w-4 h-4 text-yellow-400" />
+                    <span className="text-sm font-black tabular-nums" style={{ color: "#ffd700" }}>#{userRank}</span>
                   </div>
                 )}
               </div>
@@ -480,10 +506,15 @@ const SupporterBenefits: React.FC = () => {
                 <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(monthlyDiamonds)}</p>
               </div>
 
-              {/* Rank */}
-              <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted) / 0.3)" }}>
+              {/* Rank — prominent */}
+              <div className="rounded-xl p-3" style={{ background: userRank ? "linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,140,0,0.04))" : "hsl(var(--muted) / 0.3)", border: userRank ? "1px solid rgba(255,215,0,0.15)" : "none" }}>
                 <p className="text-[9px] text-muted-foreground mb-1">ترتيبك</p>
-                <p className="text-base font-bold text-foreground tabular-nums">{userRank ? `#${userRank}` : "غير مصنف"}</p>
+                <p className="text-base font-black tabular-nums" style={{ color: userRank ? "#ffd700" : "hsl(var(--foreground))" }}>
+                  {userRank ? `#${userRank}` : "غير مصنف"}
+                </p>
+                {userRank && leaderboard.length > 0 && (
+                  <p className="text-[8px] text-muted-foreground">من {leaderboard.length < 200 ? leaderboard.length : "200+"} داعم</p>
+                )}
               </div>
 
               {/* Rewards count */}
@@ -1149,18 +1180,20 @@ const SupporterBenefits: React.FC = () => {
                 });
               }
 
-              // Add custom offers from settings
+              // Add custom offers from settings (support offer_type: 'charge' or 'receive')
               specialOffers.forEach((offer: any, idx: number) => {
                 if (offer && offer.title) {
-                  const conditionMet = offer.min_coins ? monthlyCoins >= offer.min_coins : false;
+                  const isReceiveOffer = offer.offer_type === "receive";
+                  const relevantAmount = isReceiveOffer ? monthlyDiamonds : monthlyCoins;
+                  const conditionMet = offer.min_coins ? relevantAmount >= offer.min_coins : false;
                   smartOffers.push({
                     id: `custom-${idx}`,
                     title: offer.title,
                     desc: offer.description || "",
                     reward: offer.reward || "",
-                    condition: offer.condition || "",
+                    condition: offer.condition || (isReceiveOffer ? `استقبل ${formatCoins(offer.min_coins || 0)} كوينز` : ""),
                     color: offer.color || "#8b5cf6",
-                    icon: Sparkles,
+                    icon: isReceiveOffer ? Gem : Sparkles,
                     met: conditionMet,
                   });
                 }
@@ -1345,56 +1378,11 @@ const SupporterBenefits: React.FC = () => {
                                   </button>
                                 )}
 
-                                {/* Claim coupon button — goal met but not claimed */}
-                                {isCompleted && !rewardClaimed && prog && (
-                                  <button
-                                    onClick={async () => {
-                                      if (!user?.uuid || processing) return;
-                                      setProcessing(true);
-                                      try {
-                                        // Create coupon reward
-                                        const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
-                                        await supabase.from("supporter_rewards").insert({
-                                          uuid: user.uuid,
-                                          tier_name: "تحدي",
-                                          month: currentMonth,
-                                          type: ch.reward_type || "coins",
-                                          value: ch.reward_value || 0,
-                                          count: 1,
-                                          status: "available",
-                                          use_expires_at: expiresAt,
-                                          item_duration_days: 30,
-                                          reward_description: ch.reward_description || "",
-                                        } as any);
-                                        // Mark as claimed
-                                        await supabase.from("supporter_challenge_progress").update({
-                                          status: "completed",
-                                          reward_claimed: true,
-                                          completed_at: new Date().toISOString(),
-                                        } as any).eq("id", prog.id);
-                                        // Notification
-                                        await supabase.from("notifications").insert({
-                                          user_uuid: user.uuid,
-                                          title: "🎉 حصلت على كوبون!",
-                                          body: `أكملت التحدي: ${ch.title} — تم إضافة المكافأة لكوبوناتك`,
-                                          type: "supporter_club",
-                                        } as any);
-                                        toast.success("🎁 تم استلام الكوبون! تجده في قسم الكوبونات");
-                                        loadData();
-                                      } catch { toast.error("فشل استلام الكوبون"); }
-                                      setProcessing(false);
-                                    }}
-                                    disabled={processing}
-                                    className="mt-2 w-full py-2 rounded-lg text-[11px] font-bold active:scale-95 transition-all bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 disabled:opacity-50">
-                                    {processing ? "جاري الاستلام..." : "🎁 استلام الكوبون"}
-                                  </button>
-                                )}
-
-                                {/* Already claimed */}
-                                {isCompleted && rewardClaimed && (
+                                {/* Auto-claimed — always show confirmed */}
+                                {isCompleted && (
                                   <div className="mt-2 flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-emerald-500/10">
                                     <Check className="w-3 h-3 text-emerald-400" />
-                                    <span className="text-[9px] font-bold text-emerald-400">تم استلام المكافأة ✓</span>
+                                    <span className="text-[9px] font-bold text-emerald-400">✅ تم الاستلام تلقائياً</span>
                                   </div>
                                 )}
                               </div>
@@ -1543,14 +1531,32 @@ const SupporterBenefits: React.FC = () => {
                     {leaderboard.length === 0 ? (
                       <p className="text-center py-6 text-[10px] text-muted-foreground">لا توجد بيانات</p>
                     ) : (
-                      leaderboard.map((u: any, i: number) => (
-                        <div key={i} className="flex items-center gap-3 px-3 py-2" style={{ borderTop: i > 0 ? "1px solid hsl(var(--border))" : "none" }}>
-                          <span className="text-[10px] font-bold text-muted-foreground w-5 tabular-nums">{i + 1}.</span>
-                          <span className="text-[10px] text-foreground flex-1 truncate">{u.name || u.uuid}</span>
-                          <span className="text-[10px] font-bold text-foreground tabular-nums">{formatCoins(u.total_coins || u.coins || 0)}</span>
-                          {i === 0 && <Crown className="w-3.5 h-3.5 text-yellow-400" />}
-                        </div>
-                      ))
+                      leaderboard.map((u: any, i: number) => {
+                        const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+                        const isMe = u.uuid === user?.uuid;
+                        return (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2.5"
+                            style={{
+                              borderTop: i > 0 ? "1px solid hsl(var(--border))" : "none",
+                              background: isMe ? "rgba(255,215,0,0.06)" : i < 3 ? `rgba(255,215,0,${0.03 - i * 0.01})` : "transparent",
+                            }}>
+                            <span className="text-sm font-bold w-6 text-center tabular-nums" style={{ color: i < 3 ? "#ffd700" : "hsl(var(--muted-foreground))" }}>
+                              {medal || `${i + 1}`}
+                            </span>
+                            {u.avatar ? (
+                              <img src={u.avatar} className="w-6 h-6 rounded-full object-cover shrink-0" alt="" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold text-muted-foreground shrink-0">
+                                {(u.name || "?").charAt(0)}
+                              </div>
+                            )}
+                            <span className={`text-[10px] flex-1 truncate ${isMe ? "font-bold text-yellow-400" : "text-foreground"}`}>
+                              {u.name || u.uuid}{isMe ? " (أنت)" : ""}
+                            </span>
+                            <span className="text-[10px] font-bold text-foreground tabular-nums">{formatCoins(u.total_coins || 0)}</span>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </motion.div>

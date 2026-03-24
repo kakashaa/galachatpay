@@ -1083,6 +1083,22 @@ const AdminSupporterClubPage: React.FC = () => {
             </h3>
             {editOffer && (
               <div className="space-y-3">
+                {/* Offer type selector */}
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">نوع العرض</label>
+                  <div className="flex gap-2">
+                    {[
+                      { v: "charge", l: "💰 شحن كوينز", desc: "يحسب من شحنات المستخدم" },
+                      { v: "receive", l: "💎 استقبال كوينز", desc: "يحسب من الكوينز المستقبلة" },
+                    ].map(o => (
+                      <button key={o.v} onClick={() => setEditOffer({ ...editOffer, offer_type: o.v })}
+                        className={`flex-1 py-2 px-2 rounded-xl text-center transition-all ${(editOffer.offer_type || "charge") === o.v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                        <p className="text-[10px] font-bold">{o.l}</p>
+                        <p className="text-[7px] mt-0.5 opacity-70">{o.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground mb-1 block">العنوان</label>
                   <input value={editOffer.title || ""} onChange={e => setEditOffer({ ...editOffer, title: e.target.value })}
@@ -1102,11 +1118,13 @@ const AdminSupporterClubPage: React.FC = () => {
                 <div>
                   <label className="text-[10px] text-muted-foreground mb-1 block">الشرط</label>
                   <input value={editOffer.condition || ""} onChange={e => setEditOffer({ ...editOffer, condition: e.target.value })}
-                    placeholder="مثال: اشحن 500K كوينز"
+                    placeholder={(editOffer.offer_type || "charge") === "receive" ? "مثال: استلم 500K كوينز" : "مثال: اشحن 500K كوينز"}
                     className="w-full py-2 px-3 rounded-xl text-xs bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none" />
                 </div>
                 <div>
-                  <label className="text-[10px] text-muted-foreground mb-1 block">الحد الأدنى للشحن (كوينز)</label>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">
+                    {(editOffer.offer_type || "charge") === "receive" ? "الحد الأدنى للاستقبال (كوينز)" : "الحد الأدنى للشحن (كوينز)"}
+                  </label>
                   <input type="number" value={editOffer.min_coins || 0}
                     onChange={e => setEditOffer({ ...editOffer, min_coins: Number(e.target.value) })}
                     className="w-full py-2 px-3 rounded-xl text-xs bg-muted border border-border text-foreground focus:outline-none" dir="ltr" />
