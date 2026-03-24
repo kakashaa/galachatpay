@@ -64,6 +64,10 @@ const AdminLogin: React.FC = () => {
       toast.error("كلمات المرور غير متطابقة");
       return;
     }
+    if (!whatsapp.trim() || whatsapp.trim().length < 10) {
+      toast.error("يرجى إدخال رقم الواتساب");
+      return;
+    }
     setLoading(true);
     try {
       const data = await galaApi.adminFirstSetup(username.trim(), password, newPassword, whatsapp.trim() || "") as any;
@@ -152,7 +156,7 @@ const AdminLogin: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">رقم الواتساب (اختياري)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">رقم الواتساب (إجباري)</label>
               <div className="relative">
                 <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
