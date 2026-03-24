@@ -385,7 +385,7 @@ const QuickSupport: React.FC = () => {
                 attachment={attachment}
                 onFileChange={handleFileChange}
                 onRemoveFile={() => setAttachment(null)}
-                submitting={submitState === "submitting"}
+                submitting={(submitState as string) === "submitting"}
                 onSubmit={handleSubmit}
               />
             </div>
