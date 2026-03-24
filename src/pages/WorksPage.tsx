@@ -228,7 +228,7 @@ const WorksPage: React.FC = () => {
           perMember[uuid].charges += toFiniteNumber(log.source_amount);
           perMember[uuid].commission += toFiniteNumber(log.amount);
         }
-        setMemberMonthlyData(perMember as any);
+        
 
         const rawMembers = (m || []) as any as MemberWithSalary[];
         // Enrich members with computed monthly data
