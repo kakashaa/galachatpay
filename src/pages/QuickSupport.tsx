@@ -123,7 +123,7 @@ const QuickSupport: React.FC = () => {
         requestType: reqType,
         roomCode: roomCode || undefined,
         messageText: messageText || "طلب دعم سريع",
-        attachmentUrl: fileUrl || undefined,
+        attachmentUrl: fileUrl || voiceUrl || undefined,
         phoneNumber: phoneNumber || undefined,
       });
 
