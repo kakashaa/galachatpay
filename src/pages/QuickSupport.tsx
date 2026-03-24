@@ -420,8 +420,9 @@ function ServiceSelector({ options, onSelect }: { options: ServiceOption[]; onSe
   );
 }
 
-function RequestForm({ type, roomCode, setRoomCode, description, setDescription, phoneNumber, setPhoneNumber, attachment, onFileChange, onRemoveFile, submitting, onSubmit }: {
-  type: RequestType; roomCode: string; setRoomCode: (v: string) => void; description: string; setDescription: (v: string) => void; phoneNumber: string; setPhoneNumber: (v: string) => void; attachment: File | null; onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onRemoveFile: () => void; submitting: boolean; onSubmit: (e: React.FormEvent) => void;
+function RequestForm({ type, roomCode, setRoomCode, description, setDescription, phoneNumber, setPhoneNumber, attachment, onFileChange, onRemoveFile, submitting, onSubmit, userUuid, onVoiceSent }: {
+  type: RequestType; roomCode: string; setRoomCode: (v: string) => void; description: string; setDescription: (v: string) => void; phoneNumber: string; setPhoneNumber: (v: string) => void; attachment: File | null; onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onRemoveFile: () => void; submitting: boolean; onSubmit: (e: React.FormEvent) => void; userUuid: string; onVoiceSent: (url: string) => void;
+}) {
 }) {
   const option = serviceOptions.find((o) => o.type === type)!;
   const isValid = () => {
