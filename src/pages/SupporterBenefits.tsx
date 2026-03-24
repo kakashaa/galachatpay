@@ -232,17 +232,16 @@ const SupporterBenefits: React.FC = () => {
         }).catch(() => {});
 
         // Leaderboard & rank from DB (supporter_monthly_charges this month only)
-        supabase.from("supporter_monthly_charges")
-          .select("uuid, total_coins")
-          .eq("month", currentMonth)
-          .order("total_coins", { ascending: false })
-          .limit(200)
-          .then(async ({ data: allChargers }) => {
+        (async () => {
+          try {
+            const { data: allChargers } = await supabase.from("supporter_monthly_charges")
+              .select("uuid, total_coins")
+              .eq("month", currentMonth)
+              .order("total_coins", { ascending: false })
+              .limit(200);
             if (!allChargers?.length) return;
-            // Find user rank
             const myIdx = allChargers.findIndex(c => c.uuid === user!.uuid);
             if (myIdx >= 0) setUserRank(myIdx + 1);
-            // Build leaderboard top 10 with names
             const top10 = allChargers.slice(0, 10);
             const enriched = await Promise.all(top10.map(async (c) => {
               try {
@@ -253,7 +252,8 @@ const SupporterBenefits: React.FC = () => {
               }
             }));
             setLeaderboard(enriched);
-          }).catch(() => {});
+          } catch { /* ignore */ }
+        })();
       }
     } catch (e) { console.error(e); }
     setLoading(false);
