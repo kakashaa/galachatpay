@@ -333,50 +333,7 @@ const QuickSupport: React.FC = () => {
                 </div>
               )}
 
-              {/* Quick ticket button */}
-              <motion.button
-                onClick={handleQuickSubmit}
-                disabled={(submitState as string) === "submitting"}
-                animate={{
-                  boxShadow: isSOS ? [
-                    "0 0 0 0 rgba(239,68,68,0.4)",
-                    "0 0 20px 4px rgba(239,68,68,0.15)",
-                    "0 0 0 0 rgba(239,68,68,0.4)",
-                  ] : [
-                    "0 0 0 0 rgba(59,130,246,0.4)",
-                    "0 0 20px 4px rgba(59,130,246,0.15)",
-                    "0 0 0 0 rgba(59,130,246,0.4)",
-                  ],
-                }}
-                transition={{ duration: 2.5, repeat: Infinity }}
-                className="w-full rounded-2xl p-5 flex flex-col items-center gap-2 active:scale-[0.97] transition-transform border"
-                style={{
-                  background: isSOS
-                    ? "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(249,115,22,0.15))"
-                    : "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.15))",
-                  borderColor: isSOS ? "rgba(239,68,68,0.4)" : "rgba(59,130,246,0.4)",
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-primary" />
-                  <span className="text-base font-black text-primary">
-                    {isSOS ? "طلب مساعدة فورية" : "إنشاء تذكرة سريعة"}
-                  </span>
-                  <Zap className="w-5 h-5 text-primary" />
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  {isSOS ? "سيتم إرسال إشعار فوري للسوبر أدمن والمشرفين" : "تذكرة فورية — أدمن يرد عليك بأسرع وقت"}
-                </span>
-              </motion.button>
-
-              {!isSOS && (
-                <>
-                  <div className="text-center">
-                    <p className="text-[10px] text-muted-foreground">— أو اختر نوع الطلب —</p>
-                  </div>
-                  <ServiceSelector options={serviceOptions} onSelect={setSelectedType} />
-                </>
-              )}
+              <ServiceSelector options={serviceOptions} onSelect={setSelectedType} />
             </motion.div>
           ) : (
             <div className="px-5 py-4 overflow-y-auto">
