@@ -7,7 +7,7 @@ import {
   Headset, Loader2, MessageSquare, Archive, Search, Ticket,
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,
   ShieldAlert, FileText, Phone, Flag, RefreshCw,
-  ArrowRight, Send, XCircle, ArrowUpCircle, User, Hash, MapPin,
+  ArrowRight, Send, ArrowUpCircle, User, Hash, MapPin,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -196,7 +196,7 @@ const AdminSupportPage: React.FC = () => {
         .from("ticket_messages" as any).select("*")
         .eq("ticket_id", ticketId)
         .order("created_at", { ascending: true });
-      setMessages((data as TicketMessage[]) || []);
+      setMessages((data as unknown as TicketMessage[]) || []);
     } catch {}
     setMsgsLoading(false);
   }, []);
