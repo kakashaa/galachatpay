@@ -50,6 +50,7 @@ export type Database = {
           is_active: boolean
           password_hash: string
           permissions: Json
+          phone: string | null
           role: string
           updated_at: string
           username: string
@@ -62,6 +63,7 @@ export type Database = {
           is_active?: boolean
           password_hash: string
           permissions?: Json
+          phone?: string | null
           role?: string
           updated_at?: string
           username: string
@@ -74,6 +76,7 @@ export type Database = {
           is_active?: boolean
           password_hash?: string
           permissions?: Json
+          phone?: string | null
           role?: string
           updated_at?: string
           username?: string
