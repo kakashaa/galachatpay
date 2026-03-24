@@ -94,8 +94,18 @@ const isAudio = (url: string) => /\.(webm|ogg|mp3|m4a|wav)(\?|$)/i.test(url);
 
 /* ═══════════════════════════════════════════════════════════ */
 
+/* ─── Support category filters ─── */
+const _REGULAR_TYPES = ['general', 'technical', 'account', 'billing', 'مشكلة تقنية', 'حساب', 'رصيد/شحن', 'هدايا', 'صوت/غرف', 'استفسار', 'بلاغ', 'other'];
+const QUICK_TYPES = ['admin_visit', 'report', 'complaint', 'direct_contact'];
+
+const isQuickTicket = (t: TicketRow) => {
+  const rt = t.request_type || t.ticket_type || 'general';
+  return QUICK_TYPES.includes(rt);
+};
+
 const AdminSupportPage: React.FC = () => {
   const { handleLogout, adminUsername, adminDisplayName } = useAdminSession();
+  const [mainTab, setMainTab] = useState<"regular" | "quick">("regular");
   const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search">("tickets");
 
   /* ─── Ticket list state ─── */
@@ -229,16 +239,19 @@ const AdminSupportPage: React.FC = () => {
     setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current?.scrollHeight || 0, behavior: "smooth" }), 100);
   }, [messages.length]);
 
-  /* ─── Stats ─── */
+  /* ─── Category-filtered tickets ─── */
+  const categoryTickets = tickets.filter(t => mainTab === "quick" ? isQuickTicket(t) : !isQuickTicket(t));
+
+  /* ─── Stats (based on current mainTab) ─── */
   const stats = {
-    pending:   tickets.filter(t => t.status === "pending" || t.status === "open").length,
-    escalated: tickets.filter(t => t.status === "escalated").length,
-    replied:   tickets.filter(t => t.status === "replied").length,
-    resolved:  tickets.filter(t => t.status === "resolved" || t.status === "closed").length,
+    pending:   categoryTickets.filter(t => t.status === "pending" || t.status === "open").length,
+    escalated: categoryTickets.filter(t => t.status === "escalated").length,
+    replied:   categoryTickets.filter(t => t.status === "replied").length,
+    resolved:  categoryTickets.filter(t => t.status === "resolved" || t.status === "closed").length,
   };
 
   /* ─── Filtered tickets ─── */
-  const filtered = tickets.filter(t => {
+  const filtered = categoryTickets.filter(t => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     const tType = (t as any).request_type || t.ticket_type || "general";
     if (typeFilter !== "all" && tType !== typeFilter) return false;
@@ -565,9 +578,44 @@ const AdminSupportPage: React.FC = () => {
   );
 
   /* ═══════════════════ MAIN LIST VIEW ═══════════════════ */
+
+  /* Badge counts for main tabs */
+  const regularCount = tickets.filter(t => !isQuickTicket(t) && (t.status === "pending" || t.status === "open" || t.status === "escalated")).length;
+  const quickCount = tickets.filter(t => isQuickTicket(t) && (t.status === "pending" || t.status === "open" || t.status === "escalated")).length;
+
   return (
     <AdminPageLayout title="الدعم الفني" accentColor="hsl(188 86% 53%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
+
+        {/* ─── Main Category Tabs ─── */}
+        <div className="flex gap-2 rounded-2xl p-1.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          {([
+            { key: "regular" as const, label: "الدعم العادي", icon: Headset, badge: regularCount },
+            { key: "quick" as const, label: "الدعم السريع", icon: ShieldAlert, badge: quickCount },
+          ]).map(t => {
+            const Icon = t.icon;
+            const active = mainTab === t.key;
+            return (
+              <motion.button key={t.key} onClick={() => { setMainTab(t.key); setSubTab("tickets"); setStatusFilter("all"); setTypeFilter("all"); }}
+                whileTap={{ scale: 0.96 }}
+                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${active ? "text-white" : "text-muted-foreground"}`}
+                style={active ? {
+                  background: t.key === "quick"
+                    ? "linear-gradient(135deg, hsl(0 72% 51%), hsl(350 89% 50%))"
+                    : "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))",
+                  boxShadow: t.key === "quick" ? "0 2px 12px rgba(239,68,68,0.3)" : "0 2px 12px rgba(6,182,212,0.3)",
+                } : {}}>
+                <Icon className="w-4 h-4" />{t.label}
+                {t.badge > 0 && (
+                  <span className="min-w-5 h-5 px-1 rounded-full text-[9px] font-black flex items-center justify-center"
+                    style={{ background: active ? "rgba(255,255,255,0.25)" : "rgba(239,68,68,0.8)", color: "white" }}>
+                    {t.badge}
+                  </span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(6,182,212,0.1)" }}>
@@ -636,10 +684,22 @@ const AdminSupportPage: React.FC = () => {
                       className="w-full h-8 rounded-lg px-2 text-[10px] font-bold appearance-none cursor-pointer"
                       style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "inherit" }}>
                       <option value="all">كل الأنواع</option>
-                      <option value="admin_visit">طلب إداري</option>
-                      <option value="report">بلاغ</option>
-                      <option value="complaint">شكوى</option>
-                      <option value="direct_contact">تواصل مباشر</option>
+                      {mainTab === "quick" ? (
+                        <>
+                          <option value="admin_visit">طلب إداري</option>
+                          <option value="report">بلاغ</option>
+                          <option value="complaint">شكوى</option>
+                          <option value="direct_contact">تواصل مباشر</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="general">عام</option>
+                          <option value="technical">تقني</option>
+                          <option value="account">حساب</option>
+                          <option value="billing">رصيد/شحن</option>
+                          <option value="other">أخرى</option>
+                        </>
+                      )}
                     </select>
                     <ChevronDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
                   </div>
