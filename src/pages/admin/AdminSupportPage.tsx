@@ -504,21 +504,54 @@ const AdminSupportPage: React.FC = () => {
 
             {/* Action buttons */}
             {!isResolved && (
-              <div className="flex gap-2 mt-3">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={handleResolve}
-                  disabled={actionLoading === "resolve"}
-                  className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 text-white"
-                  style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
-                  {actionLoading === "resolve" ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                  تم الحل
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={handleEscalate}
-                  disabled={actionLoading === "escalate" || (selectedTicket.escalation_level || 0) > 0}
-                  className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 disabled:opacity-40"
-                  style={{ background: "rgba(239,68,68,0.12)", color: "hsl(0 72% 51%)" }}>
-                  {actionLoading === "escalate" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />}
-                  تصعيد
-                </motion.button>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {/* Resolve & Escalate — hide for regular admin on transferred tickets */}
+                {!(isRegularAdmin && selectedTicket.status === "transferred") && (
+                  <>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleResolve}
+                      disabled={actionLoading === "resolve"}
+                      className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 text-white"
+                      style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
+                      {actionLoading === "resolve" ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                      تم الحل
+                    </motion.button>
+                    {!isRegularAdmin && (
+                      <motion.button whileTap={{ scale: 0.95 }} onClick={handleEscalate}
+                        disabled={actionLoading === "escalate" || (selectedTicket.escalation_level || 0) > 0}
+                        className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 disabled:opacity-40"
+                        style={{ background: "rgba(239,68,68,0.12)", color: "hsl(0 72% 51%)" }}>
+                        {actionLoading === "escalate" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />}
+                        تصعيد
+                      </motion.button>
+                    )}
+                  </>
+                )}
+                {/* Regular admin: transfer & help buttons */}
+                {isRegularAdmin && selectedTicket.status !== "transferred" && (
+                  <>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleTransferToSuper}
+                      disabled={!!actionLoading}
+                      className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(168,85,247,0.12)", color: "hsl(270 60% 55%)" }}>
+                      {actionLoading === "transfer" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />}
+                      تحويل للسوبر
+                    </motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={handleRequestHelp}
+                      disabled={!!actionLoading}
+                      className="flex-1 h-8 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                      style={{ background: "rgba(245,158,11,0.12)", color: "hsl(38 92% 50%)" }}>
+                      {actionLoading === "help" ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />}
+                      طلب مساعدة
+                    </motion.button>
+                  </>
+                )}
+                {/* Regular admin: read-only notice on transferred tickets */}
+                {isRegularAdmin && selectedTicket.status === "transferred" && (
+                  <div className="w-full text-center text-[10px] font-bold py-2 rounded-xl"
+                    style={{ background: "rgba(168,85,247,0.08)", color: "hsl(270 60% 55%)" }}>
+                    📤 تم تحويل التذكرة — للقراءة فقط
+                  </div>
+                )}
               </div>
             )}
           </div>
