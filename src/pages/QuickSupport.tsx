@@ -13,6 +13,7 @@ import { useSuccessChime } from "@/hooks/use-success-chime";
 import { createTicket } from "@/hooks/use-create-ticket";
 import SupportSessionChat from "@/components/SupportSessionChat";
 import TicketStatusCardFull from "@/components/support/TicketStatusCard";
+import VoiceRecorder from "@/components/support/VoiceRecorder";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
   if (!user) return false;
@@ -53,6 +54,7 @@ const QuickSupport: React.FC = () => {
   const [description, setDescription] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
 
   // Ticket submission state
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
@@ -121,7 +123,7 @@ const QuickSupport: React.FC = () => {
         requestType: reqType,
         roomCode: roomCode || undefined,
         messageText: messageText || "طلب دعم سريع",
-        attachmentUrl: fileUrl || undefined,
+        attachmentUrl: fileUrl || voiceUrl || undefined,
         phoneNumber: phoneNumber || undefined,
       });
 
@@ -388,6 +390,8 @@ const QuickSupport: React.FC = () => {
                 onRemoveFile={() => setAttachment(null)}
                 submitting={(submitState as string) === "submitting"}
                 onSubmit={handleSubmit}
+                userUuid={authUser?.uuid || ""}
+                onVoiceSent={setVoiceUrl}
               />
             </div>
           )}
@@ -416,8 +420,8 @@ function ServiceSelector({ options, onSelect }: { options: ServiceOption[]; onSe
   );
 }
 
-function RequestForm({ type, roomCode, setRoomCode, description, setDescription, phoneNumber, setPhoneNumber, attachment, onFileChange, onRemoveFile, submitting, onSubmit }: {
-  type: RequestType; roomCode: string; setRoomCode: (v: string) => void; description: string; setDescription: (v: string) => void; phoneNumber: string; setPhoneNumber: (v: string) => void; attachment: File | null; onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onRemoveFile: () => void; submitting: boolean; onSubmit: (e: React.FormEvent) => void;
+function RequestForm({ type, roomCode, setRoomCode, description, setDescription, phoneNumber, setPhoneNumber, attachment, onFileChange, onRemoveFile, submitting, onSubmit, userUuid, onVoiceSent }: {
+  type: RequestType; roomCode: string; setRoomCode: (v: string) => void; description: string; setDescription: (v: string) => void; phoneNumber: string; setPhoneNumber: (v: string) => void; attachment: File | null; onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void; onRemoveFile: () => void; submitting: boolean; onSubmit: (e: React.FormEvent) => void; userUuid: string; onVoiceSent: (url: string) => void;
 }) {
   const option = serviceOptions.find((o) => o.type === type)!;
   const isValid = () => {
@@ -446,6 +450,10 @@ function RequestForm({ type, roomCode, setRoomCode, description, setDescription,
           <div className="glass-card p-4 space-y-3">
             <label className="text-sm font-bold text-foreground flex items-center gap-2">{type === "report" ? "تفاصيل البلاغ" : "تفاصيل الشكوى"}</label>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={type === "report" ? "اكتب تفاصيل البلاغ..." : "اكتب تفاصيل الشكوى..."} required autoFocus maxLength={1000} rows={4} className="w-full px-4 py-3 bg-input rounded-xl text-foreground placeholder:text-muted-foreground border border-border/50 focus:border-primary outline-none text-sm resize-none" />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground">أو أرسل رسالة صوتية:</span>
+              <VoiceRecorder userUuid={userUuid} onVoiceSent={onVoiceSent} />
+            </div>
           </div>
           <div className="glass-card p-4 space-y-3">
             <label className="text-sm font-bold text-foreground flex items-center gap-2">مرفق (اختياري)</label>
