@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import {
   Send, ArrowRight, Zap, ShieldX,
   UserCheck, AlertTriangle, FileWarning, Phone, Upload, X,
-  Sparkles
+  Sparkles, CheckCircle2, Clock, Ticket
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useSuccessChime } from "@/hooks/use-success-chime";
+import { createTicket } from "@/hooks/use-create-ticket";
 import SupportSessionChat from "@/components/SupportSessionChat";
 
 const isEligibleForQuickSupport = (user: any): boolean => {
@@ -22,7 +23,7 @@ const isEligibleForQuickSupport = (user: any): boolean => {
 };
 
 type RequestType = "admin_visit" | "report" | "complaint" | "direct_contact";
-type ConnectionState = "idle" | "searching" | "found" | "no_admin" | "error";
+type SubmitState = "idle" | "submitting" | "success" | "error";
 
 interface ServiceOption {
   type: RequestType;
@@ -40,7 +41,6 @@ const serviceOptions: ServiceOption[] = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const SEARCH_TIMEOUT_MS = 15000;
 
 const QuickSupport: React.FC = () => {
   const navigate = useNavigate();
@@ -52,22 +52,16 @@ const QuickSupport: React.FC = () => {
   const [description, setDescription] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [submitting] = useState(false);
 
-  // Connection states
+  // Ticket submission state
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [createdTicket, setCreatedTicket] = useState<any>(null);
+
+  // Legacy session state (kept for backward compatibility but not primary flow)
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [connectionState, setConnectionState] = useState<ConnectionState>("idle");
-  const [_adminName, setAdminName] = useState<string | null>(null);
-  const [startingChat, setStartingChat] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const [connectionState, setConnectionState] = useState<"idle" | "found">("idle");
 
-  // Check if this was opened as SOS (from URL param)
   const isSOS = new URLSearchParams(window.location.search).get("sos") === "1";
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,88 +79,87 @@ const QuickSupport: React.FC = () => {
     return urlData.publicUrl;
   };
 
-  const startChat = async (requestType?: string, notes?: string) => {
-    if (!authUser) return;
-    setStartingChat(true);
-    setConnectionState("searching");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authUser) { toast.error("يجب تسجيل الدخول أولاً"); return; }
+    if (!selectedType && !isSOS) return;
 
-    // Set 15s timeout
-    timeoutRef.current = setTimeout(() => {
-      if (connectionState === "searching") {
-        setConnectionState("error");
-        setStartingChat(false);
-      }
-    }, SEARCH_TIMEOUT_MS);
+    const reqType = selectedType || "admin_visit";
+
+    // Validate
+    if (reqType === "admin_visit" && !roomCode.trim()) return;
+    if ((reqType === "report" || reqType === "complaint") && !description.trim()) return;
+    if (reqType === "direct_contact" && !phoneNumber.trim()) return;
+
+    setSubmitState("submitting");
 
     try {
+      // Upload attachment if exists
       let fileUrl: string | null = null;
       if (attachment) {
         fileUrl = await uploadAttachment(attachment);
       }
 
-      const supportLevel = isSOS ? 2 : 1;
+      // Build message text
+      let messageText = "";
+      if (reqType === "admin_visit") {
+        messageText = `طلب إداري - رقم الغرفة: ${roomCode}${description ? `\n${description}` : ""}`;
+      } else if (reqType === "direct_contact") {
+        messageText = `طلب تواصل مباشر - رقم الهاتف: ${phoneNumber}${description ? `\n${description}` : ""}`;
+      } else {
+        messageText = description;
+      }
 
-      const { data, error } = await supabase.functions.invoke("support-system", {
-        body: {
-          action: "start_session",
-          user_uuid: authUser.uuid,
-          user_name: authUser.name,
-          support_level: supportLevel,
-          request_type: requestType || (isSOS ? "sos" : "quick_support"),
-          notes: notes || undefined,
-          file_url: fileUrl || undefined,
-          file_type: attachment ? (attachment.type.startsWith("image") ? "image" : "video") : undefined,
-        },
+      if (isSOS) {
+        messageText = `🆘 طلب طوارئ\n${messageText || "طلب مساعدة فورية"}`;
+      }
+
+      const ticket = await createTicket({
+        userUuid: authUser.uuid,
+        userName: authUser.name,
+        requestType: reqType,
+        roomCode: roomCode || undefined,
+        messageText: messageText || "طلب دعم سريع",
+        attachmentUrl: fileUrl || undefined,
+        phoneNumber: phoneNumber || undefined,
       });
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-      if (error) throw error;
-
-      const sessionData = data?.data || data;
-      const isAdminAvailable = sessionData?.admin_available !== false;
-
-      if (sessionData?.id && isAdminAvailable) {
-        setSessionId(sessionData.id);
-        setAdminName(sessionData.admin_name || sessionData.assigned_admin_name || null);
-        setConnectionState("found");
-        playSuccessChime();
-        toast.success(`✅ تم العثور على دعم — ${sessionData.admin_name || "فريق الدعم"}`);
-      } else if (sessionData?.id && !isAdminAvailable) {
-        setConnectionState("no_admin");
-        toast.error("لا يوجد دعم متاح حالياً");
-      } else {
-        setConnectionState("error");
-        toast.error("فشل بدء المحادثة");
-      }
-    } catch {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      setConnectionState("error");
-      toast.error("⚠️ فشل الاتصال بالخادم");
+      setCreatedTicket(ticket);
+      setSubmitState("success");
+      playSuccessChime();
+      toast.success("✅ تم إنشاء التذكرة بنجاح!");
+    } catch (err) {
+      console.error("createTicket error:", err);
+      setSubmitState("error");
+      toast.error("⚠️ فشل إنشاء التذكرة — حاول مرة ثانية");
     }
-    setStartingChat(false);
   };
 
-  const retrySearch = () => {
-    setConnectionState("idle");
-    setSessionId(null);
-    setAdminName(null);
-    startChat();
-  };
+  const handleQuickSubmit = async () => {
+    if (!authUser) { toast.error("يجب تسجيل الدخول أولاً"); return; }
+    setSubmitState("submitting");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedType) return;
-    if (selectedType === "admin_visit" && !roomCode.trim()) return;
-    if ((selectedType === "report" || selectedType === "complaint") && !description.trim()) return;
-    if (selectedType === "direct_contact" && !phoneNumber.trim()) return;
+    try {
+      const messageText = isSOS
+        ? "🆘 طلب مساعدة فورية — دعم سريع"
+        : "طلب دعم سريع — تكلّم مع أدمن";
 
-    let notes = "";
-    if (selectedType === "admin_visit") notes = `طلب إداري - رقم الغرفة: ${roomCode}${description ? `\n${description}` : ""}`;
-    else if (selectedType === "direct_contact") notes = `طلب تواصل مباشر - رقم الهاتف: ${phoneNumber}${description ? `\n${description}` : ""}`;
-    else notes = description;
+      const ticket = await createTicket({
+        userUuid: authUser.uuid,
+        userName: authUser.name,
+        requestType: "admin_visit",
+        messageText,
+      });
 
-    await startChat(selectedType, notes);
+      setCreatedTicket(ticket);
+      setSubmitState("success");
+      playSuccessChime();
+      toast.success("✅ تم إنشاء التذكرة!");
+    } catch (err) {
+      console.error("createTicket error:", err);
+      setSubmitState("error");
+      toast.error("⚠️ فشل إنشاء التذكرة");
+    }
   };
 
   const handleChatClose = () => {
@@ -201,7 +194,7 @@ const QuickSupport: React.FC = () => {
     );
   }
 
-  // Active session chat view (only when admin was found)
+  // Active session chat view (legacy - kept for backward compatibility)
   if (sessionId && connectionState === "found") {
     return (
       <div className="mobile-container bg-background flex flex-col overflow-hidden" dir="rtl">
@@ -217,70 +210,83 @@ const QuickSupport: React.FC = () => {
     );
   }
 
-  // Connection state overlay (searching / no_admin / error)
-  if (connectionState !== "idle") {
+  // Ticket created successfully — show status card
+  if (submitState === "success" && createdTicket) {
     return (
       <div className="mobile-container bg-background flex flex-col" dir="rtl">
         <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
-          <motion.button onClick={() => { setConnectionState("idle"); if (timeoutRef.current) clearTimeout(timeoutRef.current); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30">
+          <motion.button onClick={() => navigate(-1)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30">
             <ArrowRight className="w-5 h-5 text-primary" />
             <span className="text-sm font-semibold text-primary">رجوع</span>
           </motion.button>
-          <h1 className="text-sm font-bold text-foreground">جاري الاتصال</h1>
+          <h1 className="text-sm font-bold text-foreground">تم إنشاء التذكرة</h1>
           <div className="w-16" />
         </header>
         <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <AnimatePresence mode="wait">
-            {connectionState === "searching" && (
-              <motion.div key="searching" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
-                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-primary/10 border border-primary/20">
-                  <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
-                </div>
-                <h2 className="text-lg font-bold text-foreground">⏳ جاري البحث عن دعم...</h2>
-                <p className="text-sm text-muted-foreground">نبحث عن أدمن متاح — انتظر لحظات</p>
-              </motion.div>
-            )}
+          <TicketStatusCard ticket={createdTicket} onGoToTickets={() => navigate("/support")} onNewTicket={() => {
+            setSubmitState("idle");
+            setCreatedTicket(null);
+            setSelectedType(null);
+            setRoomCode("");
+            setDescription("");
+            setPhoneNumber("");
+            setAttachment(null);
+          }} />
+        </div>
+      </div>
+    );
+  }
 
-            {connectionState === "no_admin" && (
-              <motion.div key="no_admin" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
-                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-destructive/10 border border-destructive/20">
-                  <X className="w-10 h-10 text-destructive" />
-                </div>
-                <h2 className="text-lg font-bold text-foreground">❌ لا يوجد دعم حالياً</h2>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px] mx-auto">جميع المسؤولين مشغولين أو خارج الدوام — حاول لاحقاً أو أرسل تذكرة</p>
-                <div className="space-y-2 w-full max-w-[280px] mx-auto">
-                  <button onClick={retrySearch}
-                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-                    <Zap className="w-4 h-4" /> إعادة المحاولة
-                  </button>
-                  <button onClick={() => navigate("/support-tickets")}
-                    className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-                    <Send className="w-4 h-4" /> أرسل تذكرة بدلاً
-                  </button>
-                </div>
-              </motion.div>
-            )}
+  // Submitting state
+  if (submitState === "submitting") {
+    return (
+      <div className="mobile-container bg-background flex flex-col" dir="rtl">
+        <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
+          <div className="w-16" />
+          <h1 className="text-sm font-bold text-foreground">جاري الإرسال</h1>
+          <div className="w-16" />
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-4">
+            <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-primary/10 border border-primary/20">
+              <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">⏳ جاري إنشاء التذكرة...</h2>
+            <p className="text-sm text-muted-foreground">يتم حفظ طلبك وإشعار فريق الدعم</p>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
-            {connectionState === "error" && (
-              <motion.div key="error" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center space-y-4">
-                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-yellow-500/10 border border-yellow-500/20">
-                  <AlertTriangle className="w-10 h-10 text-yellow-500" />
-                </div>
-                <h2 className="text-lg font-bold text-foreground">⚠️ فشل الاتصال</h2>
-                <p className="text-sm text-muted-foreground">حصل خطأ أثناء البحث — حاول مرة ثانية</p>
-                <div className="space-y-2 w-full max-w-[280px] mx-auto">
-                  <button onClick={retrySearch}
-                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-                    <Zap className="w-4 h-4" /> إعادة المحاولة
-                  </button>
-                  <button onClick={() => navigate("/support-tickets")}
-                    className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
-                    <Send className="w-4 h-4" /> أرسل تذكرة بدلاً
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+  // Error state
+  if (submitState === "error") {
+    return (
+      <div className="mobile-container bg-background flex flex-col" dir="rtl">
+        <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-border/30">
+          <motion.button onClick={() => setSubmitState("idle")} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/15 border border-primary/30">
+            <ArrowRight className="w-5 h-5 text-primary" />
+            <span className="text-sm font-semibold text-primary">رجوع</span>
+          </motion.button>
+          <h1 className="text-sm font-bold text-foreground">خطأ</h1>
+          <div className="w-16" />
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-4">
+            <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-destructive/10 border border-destructive/20">
+              <AlertTriangle className="w-10 h-10 text-destructive" />
+            </div>
+            <h2 className="text-lg font-bold text-foreground">⚠️ فشل إنشاء التذكرة</h2>
+            <p className="text-sm text-muted-foreground">حصل خطأ — حاول مرة ثانية</p>
+            <div className="space-y-2 w-full max-w-[280px] mx-auto">
+              <button onClick={() => setSubmitState("idle")} className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                <Zap className="w-4 h-4" /> إعادة المحاولة
+              </button>
+              <button onClick={() => navigate("/support")} className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+                <Ticket className="w-4 h-4" /> الذهاب للتذاكر
+              </button>
+            </div>
+          </motion.div>
         </div>
       </div>
     );
@@ -306,7 +312,7 @@ const QuickSupport: React.FC = () => {
             <motion.div key="selector-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-5 py-4 overflow-y-auto space-y-4">
               {isSOS && (
                 <div className="glass-card p-3 flex items-center gap-3 bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20">
-                  <span className="text-xl"></span>
+                  <span className="text-xl">🆘</span>
                   <div>
                     <p className="text-xs font-bold text-red-400">وضع الطوارئ</p>
                     <p className="text-[10px] text-muted-foreground">سيتم تصعيد طلبك للسوبر أدمن والمشرفين فوراً</p>
@@ -319,15 +325,15 @@ const QuickSupport: React.FC = () => {
                   <Sparkles className="w-5 h-5 text-primary" />
                   <div>
                     <p className="text-xs font-bold text-primary">دعم فوري</p>
-                    <p className="text-[10px] text-muted-foreground">أدمن يتواصل معك خلال دقائق</p>
+                    <p className="text-[10px] text-muted-foreground">أنشئ تذكرة وسيتواصل معك أدمن بأسرع وقت</p>
                   </div>
                 </div>
               )}
 
-              {/* Quick start chat button */}
+              {/* Quick ticket button */}
               <motion.button
-                onClick={() => startChat()}
-                disabled={startingChat}
+                onClick={handleQuickSubmit}
+                disabled={submitState === "submitting"}
                 animate={{
                   boxShadow: isSOS ? [
                     "0 0 0 0 rgba(239,68,68,0.4)",
@@ -348,22 +354,16 @@ const QuickSupport: React.FC = () => {
                   borderColor: isSOS ? "rgba(239,68,68,0.4)" : "rgba(59,130,246,0.4)",
                 }}
               >
-                {startingChat ? (
-                  <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-primary" />
-                      <span className="text-base font-black text-primary">
-                        {isSOS ? "طلب مساعدة فورية" : "تكلّم مع أدمن الحين"}
-                      </span>
-                      <Zap className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-[11px] text-muted-foreground">
-                      {isSOS ? "سيتم إرسال إشعار فوري للسوبر أدمن والمشرفين" : "رد فوري خلال دقائق — بدون انتظار"}
-                    </span>
-                  </>
-                )}
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-primary" />
+                  <span className="text-base font-black text-primary">
+                    {isSOS ? "طلب مساعدة فورية" : "إنشاء تذكرة سريعة"}
+                  </span>
+                  <Zap className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-[11px] text-muted-foreground">
+                  {isSOS ? "سيتم إرسال إشعار فوري للسوبر أدمن والمشرفين" : "تذكرة فورية — أدمن يرد عليك بأسرع وقت"}
+                </span>
               </motion.button>
 
               {!isSOS && (
@@ -385,7 +385,7 @@ const QuickSupport: React.FC = () => {
                 attachment={attachment}
                 onFileChange={handleFileChange}
                 onRemoveFile={() => setAttachment(null)}
-                submitting={submitting || startingChat}
+                submitting={submitState === "submitting"}
                 onSubmit={handleSubmit}
               />
             </div>
@@ -395,6 +395,49 @@ const QuickSupport: React.FC = () => {
     </div>
   );
 };
+
+/* ─── Ticket Status Card ─── */
+function TicketStatusCard({ ticket, onGoToTickets, onNewTicket }: { ticket: any; onGoToTickets: () => void; onNewTicket: () => void }) {
+  return (
+    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} className="text-center space-y-5 w-full max-w-[320px]">
+      <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
+        <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+      </div>
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold text-foreground">✅ تم إنشاء التذكرة!</h2>
+        <p className="text-sm text-muted-foreground">تم حفظ طلبك وسيتم الرد عليك بأقرب وقت</p>
+      </div>
+
+      <div className="glass-card p-4 space-y-3 text-right">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">الموضوع</span>
+          <span className="text-xs font-bold text-foreground">{ticket?.subject || "طلب دعم"}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">الحالة</span>
+          <span className="text-xs font-bold text-primary flex items-center gap-1">
+            <Clock className="w-3 h-3" /> بانتظار الرد
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground">الأولوية</span>
+          <span className={`text-xs font-bold ${ticket?.priority === 'high' ? 'text-destructive' : 'text-foreground'}`}>
+            {ticket?.priority === 'high' ? 'عالية' : 'عادية'}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <button onClick={onGoToTickets} className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-bold active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+          <Ticket className="w-4 h-4" /> متابعة التذاكر
+        </button>
+        <button onClick={onNewTicket} className="w-full h-11 rounded-xl border border-border/50 text-foreground font-bold bg-card/50 active:scale-95 transition-transform text-sm flex items-center justify-center gap-2">
+          <Send className="w-4 h-4" /> إنشاء تذكرة جديدة
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
 /* ─── Sub-components ─── */
 
@@ -477,7 +520,7 @@ function RequestForm({ type, roomCode, setRoomCode, description, setDescription,
       )}
 
       <motion.button type="submit" disabled={!isValid() || submitting} whileTap={{ scale: 0.96 }} className="w-full h-13 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-40 transition-opacity text-base py-3.5">
-        {submitting ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <><Send className="w-5 h-5" /> بدء المحادثة</>}
+        {submitting ? <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> : <><Send className="w-5 h-5" /> إرسال التذكرة</>}
       </motion.button>
     </motion.form>
   );
