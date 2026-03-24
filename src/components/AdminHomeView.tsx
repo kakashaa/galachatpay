@@ -1258,14 +1258,15 @@ const AdminHomeView: React.FC<Props> = ({
 
   const visible = allServices.filter(s => adminRole && s.roles.includes(adminRole));
 
-  // Smart alerts
-  const smartAlerts = [
-    salaryBadge > 0 && { label: `${salaryBadge} طلب راتب بحاجة مراجعة`, count: salaryBadge, icon: Wallet, priority: 'high' as const, onClick: () => navigate('/admin/salary') },
-    supportBadge > 0 && { label: `${supportBadge} محادثة دعم بدون رد`, count: supportBadge, icon: Headphones, priority: 'high' as const, onClick: () => navigate('/admin/support') },
-    banBadge > 0 && { label: `${banBadge} بلاغ أمني جديد`, count: banBadge, icon: ShieldAlert, priority: 'medium' as const, onClick: () => navigate('/admin/ban') },
-    requestsBadge > 0 && { label: `${requestsBadge} طلب معلق`, count: requestsBadge, icon: Inbox, priority: 'medium' as const, onClick: () => navigate('/admin/requests') },
-    vipBadge > 0 && { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low' as const, onClick: () => navigate('/admin/vip') },
-  ].filter(Boolean) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
+  // Smart alerts — filtered by role
+  const allAlerts = [
+    { label: `${salaryBadge} طلب راتب بحاجة مراجعة`, count: salaryBadge, icon: Wallet, priority: 'high' as const, onClick: () => navigate('/admin/salary'), roles: ['owner'] },
+    { label: `${supportBadge} محادثة دعم بدون رد`, count: supportBadge, icon: Headphones, priority: 'high' as const, onClick: () => navigate('/admin/support'), roles: ['owner', 'super_admin', 'admin'] },
+    { label: `${banBadge} بلاغ أمني جديد`, count: banBadge, icon: ShieldAlert, priority: 'medium' as const, onClick: () => navigate('/admin/ban'), roles: ['owner', 'super_admin'] },
+    { label: `${requestsBadge} طلب معلق`, count: requestsBadge, icon: Inbox, priority: 'medium' as const, onClick: () => navigate('/admin/requests'), roles: ['owner', 'super_admin', 'admin'] },
+    { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low' as const, onClick: () => navigate('/admin/vip'), roles: ['owner', 'super_admin'] },
+  ];
+  const smartAlerts = allAlerts.filter(a => a.count > 0 && adminRole && a.roles.includes(adminRole)) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
   /* Floating star particles (reference design) */
   const particles = useMemo(() =>
@@ -1407,13 +1408,13 @@ const AdminHomeView: React.FC<Props> = ({
                 </div>
                 <div className="max-h-64 overflow-y-auto">
                   {[
-                    { label: 'طلبات VIP', count: vipBadge, route: '/admin/vip', Icon: Crown },
-                    { label: 'إدارة الحظر', count: banBadge, route: '/admin/ban', Icon: ShieldAlert },
-                    { label: 'طلبات الرواتب', count: salaryBadge, route: '/admin/salary', Icon: Wallet },
-                    { label: 'الطلبات العامة', count: requestsBadge, route: '/admin/requests', Icon: Inbox },
-                    { label: 'الدعم الفني', count: supportBadge, route: '/admin/support', Icon: Headphones },
+                    { label: 'طلبات VIP', count: vipBadge, route: '/admin/vip', Icon: Crown, roles: ['owner', 'super_admin'] },
+                    { label: 'إدارة الحظر', count: banBadge, route: '/admin/ban', Icon: ShieldAlert, roles: ['owner', 'super_admin'] },
+                    { label: 'طلبات الرواتب', count: salaryBadge, route: '/admin/salary', Icon: Wallet, roles: ['owner'] },
+                    { label: 'الطلبات العامة', count: requestsBadge, route: '/admin/requests', Icon: Inbox, roles: ['owner', 'super_admin', 'admin'] },
+                    { label: 'الدعم الفني', count: supportBadge, route: '/admin/support', Icon: Headphones, roles: ['owner', 'super_admin', 'admin'] },
                   ]
-                    .filter((item) => item.count > 0)
+                    .filter((item) => item.count > 0 && adminRole && item.roles.includes(adminRole))
                     .map((item) => (
                       <button
                         key={item.route}

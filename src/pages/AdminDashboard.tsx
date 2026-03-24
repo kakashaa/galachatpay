@@ -272,12 +272,12 @@ const AdminDashboardPage: React.FC = () => {
           <div className="max-w-2xl mx-auto p-4 space-y-3" dir="rtl">
             <p className="text-sm font-bold text-muted-foreground">الوصول السريع</p>
             {[
-              { label: 'طلبات الرواتب', route: '/admin/salary', count: badgeData.salaryPending },
-              { label: 'الطلبات', route: '/admin/requests', count: badgeData.animatedPending + badgeData.customGiftsPending },
-              { label: 'الدعم الفني', route: '/admin/support', count: badgeData.supportOpen + badgeData.chatWaiting + badgeData.quickSupportPending },
-              { label: 'الحماية', route: '/admin/ban', count: badgeData.banReportsUnverified },
-              { label: 'تغيير آيدي', route: '/admin/id-change', count: 0 },
-            ].map(item => (
+              { label: 'طلبات الرواتب', route: '/admin/salary', count: badgeData.salaryPending, roles: ['owner'] },
+              { label: 'الطلبات', route: '/admin/requests', count: badgeData.animatedPending + badgeData.customGiftsPending, roles: ['owner', 'super_admin', 'admin'] },
+              { label: 'الدعم الفني', route: '/admin/support', count: badgeData.supportOpen + badgeData.chatWaiting + badgeData.quickSupportPending, roles: ['owner', 'super_admin', 'admin'] },
+              { label: 'الحماية', route: '/admin/ban', count: badgeData.banReportsUnverified, roles: ['owner', 'super_admin'] },
+              { label: 'تغيير آيدي', route: '/admin/id-change', count: 0, roles: ['owner', 'super_admin'] },
+            ].filter(item => adminRole && (item as any).roles.includes(adminRole)).map(item => (
               <button
                 key={item.label}
                 onClick={() => navigate(item.route)}
