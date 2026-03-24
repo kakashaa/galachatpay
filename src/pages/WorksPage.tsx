@@ -199,8 +199,9 @@ const WorksPage: React.FC = () => {
 
         const now = new Date();
         const todayStartUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0));
+        const monthStartUtc = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0));
         const todayDate = todayStartUtc.toISOString().slice(0, 10);
-        const [{ data: m }, { data: todayRows }] = await Promise.all([
+        const [{ data: m }, { data: todayRows }, { data: monthLogs }] = await Promise.all([
           supabase
             .from("works_members")
             .select("*")
@@ -211,10 +212,32 @@ const WorksPage: React.FC = () => {
             .select("amount,created_at")
             .eq("bd_uuid", user.uuid)
             .gte("created_at", todayStartUtc.toISOString()),
+          supabase
+            .from("works_commission_logs" as any)
+            .select("amount,member_uuid,source_amount,created_at")
+            .eq("bd_uuid", user.uuid)
+            .gte("created_at", monthStartUtc.toISOString()),
         ]);
 
+        // Build per-member monthly data from commission logs
+        const perMember: Record<string, { charges: number; salary: number; commission: number }> = {};
+        for (const log of (monthLogs || []) as any[]) {
+          const uuid = log.member_uuid;
+          if (!uuid) continue;
+          if (!perMember[uuid]) perMember[uuid] = { charges: 0, salary: 0, commission: 0 };
+          perMember[uuid].charges += toFiniteNumber(log.source_amount);
+          perMember[uuid].commission += toFiniteNumber(log.amount);
+        }
+        
+
         const rawMembers = (m || []) as any as MemberWithSalary[];
-        setMembers(rawMembers);
+        // Enrich members with computed monthly data
+        const enrichedMembers = rawMembers.map(member => ({
+          ...member,
+          monthly_charges: perMember[member.member_uuid]?.charges || toFiniteNumber(member.monthly_charges),
+          commission: perMember[member.member_uuid]?.commission || toFiniteNumber(member.commission),
+        }));
+        setMembers(enrichedMembers);
 
         const todayUsd = (todayRows || []).reduce((sum: number, row: any) => {
           if (String(row?.created_at || "").slice(0, 10) !== todayDate) return sum;
@@ -222,9 +245,9 @@ const WorksPage: React.FC = () => {
         }, 0);
         setTodayEarnings(todayUsd);
 
-        // Calculate month earnings from stored DB values (no API calls)
-        const totalCommissionUsd = rawMembers.reduce(
-          (sum, member) => sum + toFiniteNumber(member.total_commission_usd ?? 0), 0
+        // Calculate month earnings from enriched data
+        const totalCommissionUsd = enrichedMembers.reduce(
+          (sum, member) => sum + toFiniteNumber(member.commission || member.total_commission_usd || 0), 0
         );
         setMonthEarnings(Math.floor(totalCommissionUsd * COINS_PER_USD));
         setSalaryLoading(false);
@@ -749,7 +772,7 @@ const WorksPage: React.FC = () => {
                 </div>
                 <div className="space-y-1 px-1 pt-1 border-t border-border/50">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground font-bold">شحنات الشهر: {toFiniteNumber(m.monthly_charges).toLocaleString()} كوينز</span>
+                    <span className="text-muted-foreground font-bold">الراتب: ${toFiniteNumber(m.agency_salary).toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-muted-foreground font-bold">عمولتك:</span>
