@@ -858,6 +858,7 @@ const AdminSupportPage: React.FC = () => {
                       <option value="pending">معلقة</option>
                       <option value="open">مفتوحة</option>
                       <option value="escalated">مصعّدة</option>
+                      <option value="transferred">محوّلة</option>
                       <option value="replied">تم الرد</option>
                       <option value="resolved">محلولة</option>
                       <option value="closed">مغلقة</option>
