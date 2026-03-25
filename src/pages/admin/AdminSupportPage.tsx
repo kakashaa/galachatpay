@@ -265,43 +265,112 @@ const AdminSupportPage: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  /* ─── Auto-escalation polling ─── */
+  /* ─── Smart 4-stage auto-escalation polling ─── */
   useEffect(() => {
     const checkEscalation = async () => {
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data } = await (supabase
-        .from("support_tickets").select("id") as any)
+      const now = new Date();
+
+      // Stage 1: > 3 min no response → escalate to super_admin
+      const threeMinAgo = new Date(now.getTime() - 3 * 60 * 1000).toISOString();
+      const { data: level0 } = await (supabase
+        .from("support_tickets").select("id, user_name, request_type") as any)
         .in("status", ["open", "pending"])
         .eq("escalation_level", 0)
         .is("first_response_at", null)
-        .lt("escalation_timer_started_at", fiveMinAgo)
+        .lt("escalation_timer_started_at", threeMinAgo)
         .limit(50);
 
-      if (data?.length) {
-        for (const ticket of data) {
-          await supabase.from("support_tickets").update({
-            escalation_level: 1, assigned_role: "super_admin",
-            status: "escalated", escalated_at: new Date().toISOString(),
-          } as any).eq("id", ticket.id);
+      for (const t of level0 || []) {
+        await supabase.from("support_tickets").update({
+          escalation_level: 1, assigned_role: "super_admin",
+          status: "escalated", escalated_at: now.toISOString(),
+        } as any).eq("id", t.id);
+        await supabase.from("ticket_audit_log").insert({
+          ticket_id: t.id, action: "escalated_to_super",
+          performed_by: "system", performed_by_name: "نظام التصعيد التلقائي",
+          details: { reason: "no_response_3min", level: 1 },
+        });
+        await supabase.from("ticket_messages" as any).insert({
+          ticket_id: t.id,
+          message: "⏱ تم التصعيد تلقائياً للمشرف — بدون رد من 3 دقائق",
+          sender_name: "النظام", sender_type: "system",
+        });
+        notifyOnDutyAdmin(
+          `غلا شات 💬\n\n🔺 تصعيد — المدير لم يرد!\n${t.user_name}\n⏱ معلّق من 3 دقائق`,
+          "super_admin"
+        ).catch(() => {});
+      }
 
-          await supabase.from("ticket_audit_log").insert({
-            ticket_id: ticket.id, action: "escalated_to_super",
-            performed_by: "system", performed_by_name: "نظام التصعيد التلقائي",
-            details: { reason: "no_admin_response_5min" },
-          });
-          await supabase.from("ticket_messages" as any).insert({
-            ticket_id: ticket.id,
-            message: "تم التصعيد تلقائياً للسوبر أدمن بسبب عدم الرد خلال 5 دقائق",
-            sender_name: "النظام", sender_type: "system",
-          });
-          // Notify on-duty super admin
-          notifyOnDutyAdmin(
-            `غلا شات 💬\n\n🔺 تصعيد تلقائي!\nتذكرة بدون رد من 5 دقائق\nرقم التذكرة: ${ticket.id}`,
-            'super_admin'
-          ).catch(() => {});
+      // Stage 2: > 6 min still no response → notify ALL super_admins
+      const sixMinAgo = new Date(now.getTime() - 6 * 60 * 1000).toISOString();
+      const { data: level1 } = await (supabase
+        .from("support_tickets").select("id, user_name") as any)
+        .eq("status", "escalated")
+        .eq("escalation_level", 1)
+        .is("first_response_at", null)
+        .lt("escalation_timer_started_at", sixMinAgo)
+        .limit(50);
+
+      for (const t of level1 || []) {
+        await supabase.from("support_tickets").update({
+          escalation_level: 2,
+        } as any).eq("id", t.id);
+        await supabase.from("ticket_audit_log").insert({
+          ticket_id: t.id, action: "escalated_group",
+          performed_by: "system", performed_by_name: "نظام التصعيد التلقائي",
+          details: { reason: "no_response_6min", level: 2 },
+        });
+        await supabase.from("ticket_messages" as any).insert({
+          ticket_id: t.id,
+          message: "⏱⏱ تصعيد جماعي — بدون رد من 6 دقائق",
+          sender_name: "النظام", sender_type: "system",
+        });
+        // Notify all super_admins
+        const { data: allSuper } = await supabase
+          .from("admin_shifts")
+          .select("phone_number")
+          .in("role_type", ["super_admin", "owner"])
+          .eq("is_active", true);
+        for (const s of allSuper || []) {
+          if (s.phone_number) {
+            sendWhatsAppNotification(
+              s.phone_number,
+              `غلا شات 💬\n\n🔺🔺 تصعيد جماعي!\n${t.user_name}\n⏱ بدون رد من 6 دقائق`
+            ).catch(() => {});
+          }
         }
       }
+
+      // Stage 3: > 15 min → emergency to owner
+      const fifteenMinAgo = new Date(now.getTime() - 15 * 60 * 1000).toISOString();
+      const { data: level2 } = await (supabase
+        .from("support_tickets").select("id, user_name") as any)
+        .in("escalation_level", [1, 2])
+        .is("first_response_at", null)
+        .lt("escalation_timer_started_at", fifteenMinAgo)
+        .limit(50);
+
+      for (const t of level2 || []) {
+        await supabase.from("support_tickets").update({
+          escalation_level: 3,
+        } as any).eq("id", t.id);
+        await supabase.from("ticket_audit_log").insert({
+          ticket_id: t.id, action: "escalated_emergency",
+          performed_by: "system", performed_by_name: "نظام التصعيد التلقائي",
+          details: { reason: "no_response_15min", level: 3 },
+        });
+        await supabase.from("ticket_messages" as any).insert({
+          ticket_id: t.id,
+          message: "🚨 طوارئ — بدون رد من 15 دقيقة! تم إبلاغ المالك",
+          sender_name: "النظام", sender_type: "system",
+        });
+        sendWhatsAppNotification(
+          "+17146844346",
+          `غلا شات 💬\n\n🚨 طوارئ!\n${t.user_name}\n⏱ بدون رد من 15 دقيقة!\n\n⚠️ لا يوجد أدمن متاح`
+        ).catch(() => {});
+      }
     };
+
     checkEscalation();
     const interval = setInterval(checkEscalation, 60000);
     return () => clearInterval(interval);
