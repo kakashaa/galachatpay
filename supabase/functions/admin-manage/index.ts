@@ -85,7 +85,7 @@ async function authenticateAdmin(
     .single();
 
   if (!mod) return null;
-  return { role: "moderator", permissions: mod.permissions || [] };
+  return { role: mod.role || "admin", permissions: mod.permissions || [] };
 }
 
 Deno.serve(async (req) => {
@@ -142,8 +142,8 @@ Deno.serve(async (req) => {
             .eq("is_active", true)
             .single();
           if (mod) {
-            auth = { role: "moderator", permissions: mod.permissions || [] };
-            console.log("[ADMIN-DEBUG] auth via DB mod:", decoded.username);
+            auth = { role: mod.role || "admin", permissions: mod.permissions || [] };
+            console.log("[ADMIN-DEBUG] auth via DB mod:", decoded.username, "role:", mod.role);
           } else {
             console.log("[ADMIN-DEBUG] mod not found for:", decoded.username);
           }
