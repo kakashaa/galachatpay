@@ -124,7 +124,7 @@ export async function createTicket(params: CreateTicketParams) {
     if (onDutyAdmin?.phone_number) {
       await sendWhatsAppNotification(
         onDutyAdmin.phone_number,
-        `🎫 تذكرة جديدة!\nمن: ${params.userName}\nالنوع: ${getSubjectFromType(params.requestType)}${params.roomCode ? '\nالغرفة: ' + params.roomCode : ''}`
+        `غلا شات 💬\n\n🎫 تذكرة جديدة!\nمن: ${params.userName}\nالنوع: ${getSubjectFromType(params.requestType)}${params.roomCode ? '\nالغرفة: ' + params.roomCode : ''}`
       );
     }
   } catch {

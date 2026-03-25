@@ -418,7 +418,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const data = await galaApi.salaryWithdrawApprove(approveSheet.id, receiptBase64, approveNote) as any;
       if (data.success) {
         await sendUserNotification(approveSheet.user_uuid, "تم قبول سحب الراتب", `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`);
-        sendWhatsAppNotification(approveSheet.whatsapp, `✅ تم قبول طلب سحب الراتب!\nالمبلغ: $${approveSheet.amount}\nالبنك: ${approveSheet.bank}\nالحساب: ${approveSheet.account_number}`);
+        sendWhatsAppNotification(approveSheet.whatsapp, `غلا شات 💬\n\n✅ تم قبول طلب سحب الراتب!\nالمبلغ: $${approveSheet.amount}\nالبنك: ${approveSheet.bank}\nالحساب: ${approveSheet.account_number}`);
         toast.success("تم قبول الطلب وإرسال الإشعار");
         setRequests(prev => prev.map(r => r.id === approveSheet.id ? { ...r, status: "delivered" } : r));
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
@@ -436,7 +436,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       const data = await galaApi.salaryWithdrawReject(rejectSheet.id, rejectReason, imageBase64) as any;
       if (data.success) {
         await sendUserNotification(rejectSheet.user_uuid, "تم رفض سحب الراتب", `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`);
-        sendWhatsAppNotification(rejectSheet.whatsapp, `❌ تم رفض طلب سحب الراتب\nالسبب: ${rejectReason}`);
+        sendWhatsAppNotification(rejectSheet.whatsapp, `غلا شات 💬\n\n❌ تم رفض طلب سحب الراتب\nالسبب: ${rejectReason}`);
         toast.success("تم رفض الطلب وإرسال الإشعار");
         setRequests(prev => prev.map(r => r.id === rejectSheet.id ? { ...r, status: "rejected", reject_reason: rejectReason } : r));
         setRejectSheet(null); setRejectReason(""); setRejectImage(null);
