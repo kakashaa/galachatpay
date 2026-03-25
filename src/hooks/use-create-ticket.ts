@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { sendWhatsAppNotification } from '@/utils/sendWhatsAppNotification';
 
 interface CreateTicketParams {
   userUuid: string;
@@ -106,6 +107,29 @@ export async function createTicket(params: CreateTicketParams) {
     message: params.messageText,
     attachment_url: params.voiceMessageUrl || params.attachmentUrl || null,
   });
+
+  // Send WhatsApp notification to on-duty admin (silent)
+  try {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Asia/Riyadh' });
+    const { data: onDutyAdmin } = await supabase
+      .from('admin_shifts')
+      .select('admin_username, phone_number')
+      .eq('is_active', true)
+      .lte('shift_start', timeStr)
+      .gte('shift_end', timeStr)
+      .limit(1)
+      .single();
+
+    if (onDutyAdmin?.phone_number) {
+      await sendWhatsAppNotification(
+        onDutyAdmin.phone_number,
+        `🎫 تذكرة جديدة!\nمن: ${params.userName}\nالنوع: ${getSubjectFromType(params.requestType)}${params.roomCode ? '\nالغرفة: ' + params.roomCode : ''}`
+      );
+    }
+  } catch {
+    // Silent — WhatsApp notification is non-critical
+  }
 
   return ticket;
 }

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Send, Loader2, Paperclip, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { sendWhatsAppNotification } from '@/utils/sendWhatsAppNotification';
 import VoiceRecorder from './VoiceRecorder';
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   senderUuid?: string;
   disabled?: boolean;
   onMessageSent?: () => void;
+  adminUsername?: string | null;
+  userName?: string;
 }
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -22,6 +25,8 @@ const TicketReplyInput: React.FC<Props> = ({
   senderUuid,
   disabled = false,
   onMessageSent,
+  adminUsername,
+  userName,
 }) => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -75,6 +80,20 @@ const TicketReplyInput: React.FC<Props> = ({
       setInput('');
       setFile(null);
       onMessageSent?.();
+
+      // WhatsApp notification when user replies (silent)
+      if (senderType === 'user' && adminUsername) {
+        try {
+          const { data: admin } = await supabase
+            .from('admin_accounts')
+            .select('phone')
+            .eq('username', adminUsername)
+            .single();
+          if (admin?.phone) {
+            await sendWhatsAppNotification(admin.phone, `💬 رد جديد على تذكرة من ${userName || senderName}`);
+          }
+        } catch { /* silent */ }
+      }
     } catch {
       toast.error('فشل إرسال الرسالة — حاول مرة ثانية');
     }
