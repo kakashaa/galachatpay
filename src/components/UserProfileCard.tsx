@@ -59,6 +59,8 @@ const UserProfileCard: React.FC = () => {
   const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
+  const { verifiedPhone, unlink: unlinkWa } = useVerifiedWhatsApp(user?.uuid);
+  const { confirm, ConfirmDialog } = useConfirmModal();
 
   // Fetch avatar using centralized helper
   useEffect(() => {
