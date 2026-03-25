@@ -57,7 +57,7 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorB
             boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
           }}
         >
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = active === item.key;
             const Icon = item.icon;
             const isChatTab = item.key === 'chat';
