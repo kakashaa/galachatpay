@@ -22,6 +22,23 @@ const AdminLogin: React.FC = () => {
   const [whatsappReadonly, setWhatsappReadonly] = useState(false);
   const [loginData, setLoginData] = useState<any>(null);
 
+  // Auto-fill WhatsApp from admin_shifts when first-login screen shows
+  useEffect(() => {
+    if (mustChangePassword && username) {
+      supabase
+        .from('admin_shifts')
+        .select('phone_number')
+        .eq('admin_username', username.trim())
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.phone_number) {
+            setWhatsapp(data.phone_number);
+            setWhatsappReadonly(true);
+          }
+        });
+    }
+  }, [mustChangePassword, username]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
