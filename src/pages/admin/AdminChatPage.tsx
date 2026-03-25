@@ -178,7 +178,7 @@ export default function AdminChatPage() {
     }
   };
 
-  const handleVoiceSend = async (url: string, duration: number) => {
+  const handleVoiceSend = async (url: string, _duration: number) => {
     await sendApiMessage('رسالة صوتية', 'voice', url);
   };
 
