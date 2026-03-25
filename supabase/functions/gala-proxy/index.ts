@@ -311,6 +311,19 @@ serve(async (req) => {
     const res = await fetch(url, { ...fetchOptions, signal: AbortSignal.timeout(timeout) });
     const text = await res.text();
 
+    // Normalize upstream 4xx/5xx to 200 with error payload to prevent
+    // the client from treating upstream errors as "edge function not found"
+    if (res.status >= 400) {
+      let parsed: unknown;
+      try { parsed = JSON.parse(text); } catch { parsed = null; }
+      return json({
+        success: false,
+        upstream_status: res.status,
+        error: (parsed as any)?.error || (parsed as any)?.message || `Upstream returned ${res.status}`,
+        data: parsed,
+      }, 200);
+    }
+
     return new Response(text, {
       status: res.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
