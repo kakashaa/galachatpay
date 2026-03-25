@@ -96,6 +96,7 @@ const AdminMonitorPage = lazy(() => import("./pages/admin/AdminMonitorPage"));
 const AdminSupporterClubPage = lazy(() => import("./pages/admin/AdminSupporterClubPage"));
 const AdminLiveDashboardPage = lazy(() => import("./pages/admin/AdminLiveDashboardPage"));
 const AdminDeductionsPage = lazy(() => import("./pages/admin/AdminDeductionsPage"));
+const AdminHealthCheck = lazy(() => import("./pages/admin/AdminHealthCheck"));
 const SupportTicketsEmbed = lazy(() => import("./pages/SupportTicketsEmbed"));
 const SupportChatEmbed = lazy(() => import("./pages/SupportChatEmbed"));
 
@@ -251,6 +252,7 @@ const App = () => {
                   <Route path="/admin/supporter-club" element={<AdminRouteGuard><AdminSupporterClubPage /></AdminRouteGuard>} />
                   <Route path="/admin/live-dashboard" element={<AdminRouteGuard><AdminLiveDashboardPage /></AdminRouteGuard>} />
                   <Route path="/admin/deductions" element={<AdminRouteGuard><AdminDeductionsPage /></AdminRouteGuard>} />
+                  <Route path="/admin/health-check" element={<AdminRouteGuard><AdminHealthCheck /></AdminRouteGuard>} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/supporter-benefits" element={<SupporterBenefits />} />
