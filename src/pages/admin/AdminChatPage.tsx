@@ -178,8 +178,8 @@ export default function AdminChatPage() {
     }
   };
 
-  const handleVoiceSend = async (url: string, duration: number) => {
-    await sendApiMessage(duration > 0 ? `${duration}` : 'رسالة صوتية', 'voice', url);
+  const handleVoiceSend = async (url: string, _duration: number) => {
+    await sendApiMessage('رسالة صوتية', 'voice', url);
   };
 
   const filteredRooms = rooms.filter(room => !(isRegularAdmin && room.type === 'super_group'));
@@ -381,7 +381,7 @@ export default function AdminChatPage() {
                 const embeddedImageUrl = imageFileMatch ? `${API_URLS.MEDIA}${imageFileMatch[1]}` : undefined;
 
                 // Detect voice message from text
-                const isVoiceText = msg.text === 'رسالة صوتية' || msg.text === 'رساله صوتيه' || msg.text === 'voice';
+                const isVoiceText = msg.text === 'رسالة صوتية' || msg.text === 'رساله صوتيه' || msg.text === 'voice' || (!!msg.media_url && /^\d+$/.test((msg.text || '').trim()));
 
                 let inferredMediaUrl = msg.media_url || embeddedImageUrl || (typeof msg.text === 'string' && /^https?:\/\//i.test(msg.text) ? msg.text : undefined);
                 const isAudioUrl = !!inferredMediaUrl && /\.(webm|ogg|mp3|wav|m4a|aac|mp4)(\?|$)/i.test(inferredMediaUrl) && (isVoiceText || msgType.includes('voice'));
