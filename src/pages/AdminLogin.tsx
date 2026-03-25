@@ -187,7 +187,7 @@ const AdminLogin: React.FC = () => {
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                رقم الواتساب {whatsappReadonly ? '(محفوظ)' : '(إجباري)'}
+                رقم الواتساب {whatsappReadonly ? '(📱 محفوظ من النظام)' : '(إجباري)'}
               </label>
               <div className="relative">
                 <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
