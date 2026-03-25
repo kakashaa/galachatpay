@@ -1047,6 +1047,153 @@ const ServiceIcon: React.FC<{
   );
 };
 
+/* ─── Team Performance ─── */
+const TeamPerformance: React.FC = () => {
+  const [perf, setPerf] = useState<Record<string, { handled: number; escalations: number; avgMs: number }>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: actions } = await supabase
+        .from('ticket_audit_log')
+        .select('performed_by_name, action, created_at, ticket_id')
+        .gte('created_at', today + 'T00:00:00')
+        .in('action', ['admin_replied', 'resolved', 'escalated_to_super']);
+
+      // Get tickets created today for avg response time
+      const { data: tickets } = await supabase
+        .from('support_tickets')
+        .select('id, created_at, first_response_at, assigned_to')
+        .gte('created_at', today + 'T00:00:00')
+        .not('first_response_at', 'is', null);
+
+      const map: Record<string, { handled: number; escalations: number; totalMs: number; count: number }> = {};
+
+      for (const a of actions || []) {
+        const name = a.performed_by_name || 'غير معروف';
+        if (name === 'النظام' || name === 'system') continue;
+        if (!map[name]) map[name] = { handled: 0, escalations: 0, totalMs: 0, count: 0 };
+        if (a.action === 'admin_replied' || a.action === 'resolved') map[name].handled++;
+        if (a.action === 'escalated_to_super') map[name].escalations++;
+      }
+
+      // Calculate avg response time per admin from tickets
+      for (const t of (tickets as any[]) || []) {
+        const assignedName = t.assigned_to;
+        if (!assignedName) continue;
+        const created = new Date(t.created_at).getTime();
+        const responded = new Date(t.first_response_at).getTime();
+        const diffMs = responded - created;
+        if (diffMs > 0) {
+          // Try to find by assigned_to matching a name in map
+          for (const name of Object.keys(map)) {
+            // rough match — just add to all admins who handled this ticket
+          }
+          // Simpler: add to generic pool per assigned_to
+          if (!map[assignedName]) map[assignedName] = { handled: 0, escalations: 0, totalMs: 0, count: 0 };
+          map[assignedName].totalMs += diffMs;
+          map[assignedName].count++;
+        }
+      }
+
+      const result: Record<string, { handled: number; escalations: number; avgMs: number }> = {};
+      for (const [name, d] of Object.entries(map)) {
+        result[name] = {
+          handled: d.handled,
+          escalations: d.escalations,
+          avgMs: d.count > 0 ? d.totalMs / d.count : 0,
+        };
+      }
+      setPerf(result);
+      setLoading(false);
+    };
+    load();
+    const interval = setInterval(load, 120000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const entries = Object.entries(perf).sort((a, b) => b[1].handled - a[1].handled);
+
+  if (loading) {
+    return (
+      <section className="animate-pulse space-y-2">
+        <div className="h-5 w-28 bg-muted/20 rounded" />
+        <div className="h-24 bg-muted/10 rounded-2xl" />
+      </section>
+    );
+  }
+
+  if (entries.length === 0) return null;
+
+  const getSpeedColor = (avgMs: number) => {
+    if (avgMs === 0) return 'text-muted-foreground';
+    const mins = avgMs / 60000;
+    if (mins < 2) return 'text-emerald-400';
+    if (mins <= 5) return 'text-amber-400';
+    return 'text-red-400';
+  };
+
+  const getSpeedDot = (avgMs: number) => {
+    if (avgMs === 0) return 'bg-muted-foreground/30';
+    const mins = avgMs / 60000;
+    if (mins < 2) return 'bg-emerald-400';
+    if (mins <= 5) return 'bg-amber-400';
+    return 'bg-red-400';
+  };
+
+  const formatAvg = (ms: number) => {
+    if (ms === 0) return '—';
+    const mins = Math.round(ms / 60000);
+    return `${mins} د`;
+  };
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-3.5 h-3.5 text-primary" />
+          <h2 className="text-[12px] font-semibold text-foreground">أداء الفريق اليوم</h2>
+        </div>
+        <div className="flex items-center gap-3 text-[8px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> &lt;2د</span>
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> 2-5د</span>
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" /> &gt;5د</span>
+        </div>
+      </div>
+      <div className="rounded-2xl overflow-hidden bg-card border border-border/40">
+        {/* Header */}
+        <div className="grid grid-cols-4 px-4 py-2 text-[9px] font-bold text-muted-foreground border-b border-border/20">
+          <span>الأدمن</span>
+          <span className="text-center">أنجز</span>
+          <span className="text-center">متوسط</span>
+          <span className="text-center">تصعيدات</span>
+        </div>
+        {entries.map(([name, d], i) => (
+          <div
+            key={name}
+            className={`grid grid-cols-4 items-center px-4 py-2.5 ${
+              i !== entries.length - 1 ? 'border-b border-border/10' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${getSpeedDot(d.avgMs)}`} />
+              <span className="text-[11px] font-bold text-foreground truncate">{name}</span>
+            </div>
+            <span className="text-center text-[12px] font-bold text-foreground">{d.handled}</span>
+            <span className={`text-center text-[11px] font-bold ${getSpeedColor(d.avgMs)}`}>
+              ⏱ {formatAvg(d.avgMs)}
+            </span>
+            <span className={`text-center text-[12px] font-bold ${d.escalations > 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
+              {d.escalations}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 /* ═════════════════════════════════════════════════════════════
    ═══ MAIN COMPONENT ═══
    ═════════════════════════════════════════════════════════════ */
