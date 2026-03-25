@@ -122,14 +122,25 @@ export default function AdminChatPage() {
         const serverMsgs: ChatMessage[] = data.messages || [];
         // Preserve local media_url for messages the API doesn't return it for
         setMessages(prev => {
-          const localMediaMap = new Map<string, string>();
+          // Build lookup by id AND by sender+text (for local_ ids that don't match server ids)
+          const localMediaById = new Map<string, string>();
+          const localMediaByKey = new Map<string, string>();
           prev.forEach(m => {
-            if (m.media_url) localMediaMap.set(m.id, m.media_url);
+            if (m.media_url) {
+              localMediaById.set(m.id, m.media_url);
+              const key = `${m.sender}|${m.text}|${m.type}`;
+              localMediaByKey.set(key, m.media_url);
+            }
           });
-          return serverMsgs.map(m => ({
-            ...m,
-            media_url: m.media_url || localMediaMap.get(m.id) || undefined,
-          }));
+          return serverMsgs.map(m => {
+            if (m.media_url) return m;
+            const byId = localMediaById.get(m.id);
+            if (byId) return { ...m, media_url: byId };
+            const key = `${m.sender}|${m.text}|${m.type}`;
+            const byKey = localMediaByKey.get(key);
+            if (byKey) return { ...m, media_url: byKey };
+            return m;
+          });
         });
       }
     } catch { }
