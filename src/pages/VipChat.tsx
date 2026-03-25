@@ -154,17 +154,41 @@ const VipChat: React.FC = () => {
     setSending(false);
   };
 
-  const sendMessage = async () => {
-    if (!user || !sessionId || !input.trim()) return;
-    const msg = input.trim();
-    setInput("");
+  const sendMessageWithMedia = async (text: string, mediaUrl?: string) => {
+    if (!user || !sessionId) return;
     await supabase.from("support_chat_messages").insert({
       chat_id: sessionId,
       sender_type: "user",
       sender_name: user.name,
       sender_uuid: user.uuid,
-      message: msg,
+      message: text,
+      media_url: mediaUrl || null,
     });
+  };
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = type === "video" ? 8 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(type === "video" ? "الحد الأقصى 8MB" : "الحد الأقصى 5MB");
+      return;
+    }
+    setUploading(true);
+    setShowAttach(false);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `vip-chat/${sessionId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("chat-media").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      await sendMessageWithMedia(type === "photo" ? "📷 صورة" : "🎥 فيديو", urlData.publicUrl);
+    } catch {
+      toast.error("فشل رفع الملف");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const formatTime = (d: string) => {
