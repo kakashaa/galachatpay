@@ -78,8 +78,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      // Try multiple mime types for compatibility (fallback to browser default)
-      const preferredTypes = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg', 'audio/webm'];
+      // Prefer formats usually accepted by storage; keep webm as last fallback
+      const preferredTypes = ['audio/mp4', 'audio/ogg;codecs=opus', 'audio/ogg', 'audio/webm;codecs=opus', 'audio/webm'];
       const pickedMimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t));
       const recorder = pickedMimeType
         ? new MediaRecorder(stream, { mimeType: pickedMimeType })
@@ -123,22 +123,50 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
         setUploadingVoice(true);
         try {
-          const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-          const fileName = `chat/voice_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-          const { data, error } = await supabase.storage.from("chat-media").upload(fileName, audioBlob, {
-            contentType: mimeType,
-            upsert: true,
-          });
-          if (error) {
-            console.error("Voice upload error:", error.message, error);
-            throw error;
-          }
-          if (data) {
-            const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(fileName);
-            console.log("Voice uploaded:", urlData.publicUrl, "duration:", duration);
-            if (onVoiceSend) {
-              onVoiceSend(urlData.publicUrl, duration);
+          const baseName = `chat/voice_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const uploadAttempts: Array<{ contentType?: string; ext: string }> = [
+            {
+              contentType: mimeType,
+              ext: mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm',
+            },
+            ...(mimeType.includes('webm')
+              ? [
+                  { contentType: 'audio/ogg', ext: 'ogg' },
+                  { contentType: 'audio/mp4', ext: 'm4a' },
+                  { contentType: 'application/octet-stream', ext: 'bin' },
+                ]
+              : []),
+          ];
+
+          let uploadedPath: string | null = null;
+          let lastError: any = null;
+
+          for (const attempt of uploadAttempts) {
+            const fileName = `${baseName}.${attempt.ext}`;
+            const uploadOptions: { contentType?: string; upsert: boolean } = { upsert: true };
+            if (attempt.contentType) uploadOptions.contentType = attempt.contentType;
+
+            const { error } = await supabase.storage.from("chat-media").upload(fileName, audioBlob, uploadOptions);
+            if (!error) {
+              uploadedPath = fileName;
+              break;
             }
+
+            lastError = error;
+            const message = (error.message || '').toLowerCase();
+            const isMimeUnsupported = message.includes('mime type') && message.includes('not supported');
+            if (!isMimeUnsupported) break;
+          }
+
+          if (!uploadedPath) {
+            console.error("Voice upload error:", lastError?.message, lastError);
+            throw lastError || new Error('فشل رفع الرسالة الصوتية');
+          }
+
+          const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(uploadedPath);
+          console.log("Voice uploaded:", urlData.publicUrl, "duration:", duration);
+          if (onVoiceSend) {
+            onVoiceSend(urlData.publicUrl, duration);
           }
         } catch (err: any) {
           console.error("Voice upload failed:", err?.message || err);
