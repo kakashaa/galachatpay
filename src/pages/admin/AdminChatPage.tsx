@@ -11,7 +11,6 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { galaApi } from "@/services/galaApi";
 import { API_URLS } from "@/config/api";
 import GroupVoiceCall from '@/components/GroupVoiceCall';
-import { API_URLS } from "@/config/api";
 
 interface ChatRoom {
   id: string;
