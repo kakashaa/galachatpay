@@ -49,7 +49,20 @@ const AdminVipPage: React.FC = () => {
         `تم تفعيل VIP ${vipLevel} على حسابك بنجاح!`
       );
       toast.dismiss(t);
-      toast.success(`تم إرسال VIP ${vipLevel} بنجاح`);
+      toast.success(`✅ تم إرسال VIP ${vipLevel}`, {
+        action: {
+          label: "تراجع ↩️",
+          onClick: async () => {
+            const undoT = toast.loading("جاري التراجع...");
+            try {
+              await galaApi.giveVip(vipUuid.trim(), 0, "0d");
+              toast.dismiss(undoT);
+              toast.success("تم التراجع عن VIP");
+            } catch { toast.dismiss(undoT); toast.error("فشل التراجع"); }
+          },
+        },
+        duration: 30000,
+      });
       setVipUuid("");
     } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الإرسال"); }
     finally { setSending(false); }
