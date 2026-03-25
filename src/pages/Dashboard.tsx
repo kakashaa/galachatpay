@@ -16,7 +16,7 @@ import MenuGrid from "@/components/MenuGrid";
 import BDInvitationBanner from "@/components/BDInvitationBanner";
 import WorksInvitationBanner from "@/components/WorksInvitationBanner";
 import BottomNav from "@/components/BottomNav";
-
+import WhatsAppBanner, { shouldShowWhatsAppBanner } from "@/components/WhatsAppBanner";
 
 import { toast } from "sonner";
 
