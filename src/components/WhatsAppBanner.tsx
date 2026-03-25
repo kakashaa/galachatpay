@@ -3,16 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, ArrowLeft, Check, Loader2, Send, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { sendWhatsAppNotification } from '@/utils/sendWhatsAppNotification';
 
-// Send WA verification via dedicated edge function (no admin auth needed)
+// Send WA verification using the shared notification utility
 async function sendWaVerification(phone: string, message: string): Promise<void> {
-  try {
-    await supabase.functions.invoke('wa-verify', {
-      body: { phone, message },
-    });
-  } catch {
-    // Silent
-  }
+  await sendWhatsAppNotification(phone, message);
 }
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
