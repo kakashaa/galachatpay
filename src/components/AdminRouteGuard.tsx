@@ -36,12 +36,6 @@ const AdminRouteGuard: React.FC<Props> = ({ children }) => {
   const adminRole = localStorage.getItem("admin_role") || "";
   const loggedRef = useRef(false);
 
-  // No role = not logged in (handled elsewhere)
-  if (!adminRole) return <>{children}</>;
-
-  // Owner sees everything
-  if (adminRole === "owner") return <>{children}</>;
-
   // moderator gets same access as super_admin
   const effectiveRole = adminRole === "moderator" ? "super_admin" : adminRole;
 
@@ -49,18 +43,16 @@ const AdminRouteGuard: React.FC<Props> = ({ children }) => {
   const matchedRoute = Object.keys(PAGE_ROLES).find(r => pathname.startsWith(r));
   const allowed = matchedRoute ? PAGE_ROLES[matchedRoute] : null;
 
-  // If no rule exists for this path, allow (e.g. /admin/dashboard)
-  if (!allowed) return <>{children}</>;
+  const isAllowed =
+    !adminRole ||
+    adminRole === "owner" ||
+    !allowed ||
+    allowed.includes(effectiveRole) ||
+    allowed.includes(adminRole);
 
-  // Check if effective role is allowed
-  if (allowed.includes(effectiveRole) || allowed.includes(adminRole)) {
-    return <>{children}</>;
-  }
-
-  // Unauthorized — log attempt once
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // Log unauthorized attempts once
   useEffect(() => {
-    if (loggedRef.current) return;
+    if (isAllowed || loggedRef.current) return;
     loggedRef.current = true;
     const username = localStorage.getItem("admin_username") || "unknown";
     supabase.from("admin_audit_log").insert({
@@ -69,7 +61,9 @@ const AdminRouteGuard: React.FC<Props> = ({ children }) => {
       action: "unauthorized_access",
       details: { path: pathname, role: adminRole },
     }).then(() => {});
-  }, [pathname, adminRole]);
+  }, [isAllowed, pathname, adminRole]);
+
+  if (isAllowed) return <>{children}</>;
 
   return (
     <div
