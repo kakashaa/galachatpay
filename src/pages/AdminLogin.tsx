@@ -169,16 +169,19 @@ const AdminLogin: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">رقم الواتساب (إجباري)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                رقم الواتساب {whatsappReadonly ? '(محفوظ)' : '(إجباري)'}
+              </label>
               <div className="relative">
                 <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="tel"
                   value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
+                  onChange={(e) => !whatsappReadonly && setWhatsapp(e.target.value)}
                   placeholder="+966XXXXXXXXX"
                   dir="ltr"
-                  className="h-14 rounded-2xl pr-12"
+                  readOnly={whatsappReadonly}
+                  className={`h-14 rounded-2xl pr-12 ${whatsappReadonly ? 'opacity-70 cursor-not-allowed' : ''}`}
                 />
               </div>
             </div>
