@@ -26,7 +26,12 @@ const VipChat: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<string>("idle");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
 
   const vipLevel = Number(user?.vip?.vip_level ?? user?.vip?.level ?? 0);
 
