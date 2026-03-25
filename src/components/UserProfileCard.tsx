@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, Crown } from "lucide-react";
+import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, Crown, Phone, Unlink } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,9 @@ import { getAvatar, fixAvatarUrl, getAvatarUrl } from "@/lib/avatarHelper";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
+import { useVerifiedWhatsApp } from "@/hooks/use-verified-whatsapp";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { toast } from "sonner";
 
 
 const getUserTypeLabel = (type: number): string => {
@@ -56,6 +59,8 @@ const UserProfileCard: React.FC = () => {
   const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
+  const { verifiedPhone, unlink: unlinkWa } = useVerifiedWhatsApp(user?.uuid);
+  const { confirm, ConfirmDialog } = useConfirmModal();
 
   // Fetch avatar using centralized helper
   useEffect(() => {
@@ -204,7 +209,26 @@ const UserProfileCard: React.FC = () => {
           </div>
         </div>
 
-        {/* Levels — inline compact */}
+        {/* WhatsApp Link Status */}
+        {verifiedPhone && (
+          <div className="flex items-center justify-between mb-2 px-1" dir="rtl">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px]">📱</span>
+              <span className="text-[9px] font-mono text-muted-foreground" dir="ltr">{verifiedPhone}</span>
+              <span className="text-[8px] text-emerald-400 font-bold">✅ موثق</span>
+            </div>
+            <button
+              onClick={async () => {
+                const ok = await confirm({ title: "فك ارتباط الواتساب", message: "هل أنت متأكد؟ لن تصلك إشعارات بعد فك الارتباط", danger: true, confirmText: "فك الارتباط" });
+                if (ok) { await unlinkWa(); toast.success("تم فك الارتباط — يمكنك ربط رقم جديد"); }
+              }}
+              className="text-[8px] font-bold text-destructive/70 px-1.5 py-0.5 rounded"
+              style={{ background: 'rgba(244,63,94,0.08)' }}
+            >
+              فك الارتباط
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-3 mb-2 justify-center">
           {[
             { icon: Zap, level: user.level.charger_level, color: "#22c55e" },
@@ -266,6 +290,7 @@ const UserProfileCard: React.FC = () => {
 
       <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} initialView={starWalletView} />
       <StarSystemTutorial open={showTutorial} onClose={() => setShowTutorial(false)} itemType="entry" />
+      {ConfirmDialog}
     </div>
   );
 };

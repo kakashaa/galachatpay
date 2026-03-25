@@ -19,6 +19,8 @@ import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useVerifiedWhatsApp } from "@/hooks/use-verified-whatsapp";
+import { Badge } from "@/components/ui/badge";
 
 const HOST_RATE = 8500;
 const AGENCY_RATE = 7500;
@@ -155,6 +157,7 @@ const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { verifiedPhone } = useVerifiedWhatsApp(user?.uuid);
 
   const pathMode = location.pathname.includes("/salary/charge-other")
     ? "charge_other"
@@ -212,7 +215,12 @@ const SalaryWithdraw: React.FC = () => {
     hasFetchedRef.current = true;
     fetchWithdrawStatus();
     checkCashResetOverrides();
-  }, [user?.uuid]);
+    // Auto-fill verified WhatsApp
+    if (verifiedPhone) {
+      setWhatsappNumber(verifiedPhone);
+      setWhatsappCode("");
+    }
+  }, [user?.uuid, verifiedPhone]);
 
   const checkCashResetOverrides = async () => {
     if (!user?.uuid) return;
@@ -442,7 +450,7 @@ const SalaryWithdraw: React.FC = () => {
         await supabase.from("salary_requests").insert({
           user_uuid: user!.uuid,
           user_name: user!.name,
-          user_phone: pathMode === "cash" ? `${whatsappCode}${whatsappNumber}` : null,
+          user_phone: pathMode === "cash" ? (verifiedPhone || `${whatsappCode}${whatsappNumber}`) : null,
           request_type: requestType,
           amount_usd: amount,
           amount_coins: amount * rate,
@@ -450,7 +458,7 @@ const SalaryWithdraw: React.FC = () => {
           recipient_country: pathMode === "cash" ? (country?.name || selectedCountry) : "coins",
           payment_method: pathMode === "cash" ? (effectiveBankLabel || selectedBank) : "coins_charge",
           payment_details: pathMode === "cash"
-            ? `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`
+            ? `account:${accountNumber || "-"} | whatsapp:${verifiedPhone || `${whatsappCode}${whatsappNumber}`}${notes ? ` | notes:${notes}` : ""}`
             : `target_uuid:${chargeTarget || user!.uuid}`,
           status: pathMode === "cash" ? "pending" : "approved",
           transfer_id: selectedTransfer.reference_id,
@@ -488,7 +496,7 @@ const SalaryWithdraw: React.FC = () => {
   const isOtherBank = selectedBank?.endsWith("_other");
   const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
   const canProceedBank = selectedCountry && selectedBank && (!isOtherBank || customBankName.trim().length >= 2);
-  const canProceedAccount = recipientName.trim().length >= 2 && whatsappNumber.trim().length >= 6;
+  const canProceedAccount = recipientName.trim().length >= 2 && (!!verifiedPhone || whatsappNumber.trim().length >= 6);
 
   const getBackAction = () => {
     switch (step) {
@@ -1241,7 +1249,14 @@ const SalaryWithdraw: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-emerald-400" /> رقم الواتساب *
+                    {verifiedPhone && (
+                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px] px-1.5 py-0">✅ موثق</Badge>
+                    )}
                   </label>
+                  {verifiedPhone ? (
+                    <Input value={verifiedPhone} readOnly
+                      className="bg-muted/20 border-border/30 text-emerald-400 font-mono" dir="ltr" />
+                  ) : (
                   <div className="flex gap-2" dir="ltr">
                     <select value={whatsappCode} onChange={e => setWhatsappCode(e.target.value)}
                       className="bg-muted/20 border border-border/30 rounded-lg px-2 py-2 text-sm w-24 shrink-0">
@@ -1252,6 +1267,7 @@ const SalaryWithdraw: React.FC = () => {
                     <Input value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value.replace(/\D/g, ""))}
                       placeholder="رقم الواتساب" type="tel" className="bg-muted/20 border-border/30 flex-1" dir="ltr" />
                   </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-foreground">ملاحظات (اختياري)</label>

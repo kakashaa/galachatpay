@@ -162,6 +162,22 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
         .update({ verified: true } as any)
         .eq('id', (data as any[])[0].id);
 
+      // Check if phone is already linked to another account
+      const { data: existing } = await supabase
+        .from('user_whatsapp' as any)
+        .select('user_uuid')
+        .eq('phone_number', fullPhone)
+        .eq('is_active', true)
+        .neq('user_uuid', userUuid)
+        .maybeSingle();
+
+      if (existing) {
+        toast.error('هذا الرقم مربوط بحساب آخر! فك الارتباط من الحساب الأول أو استخدم رقم مختلف');
+        setOtpValue('');
+        setVerifying(false);
+        return;
+      }
+
       // Save user whatsapp
       await supabase.from('user_whatsapp' as any).upsert({
         user_uuid: userUuid,
