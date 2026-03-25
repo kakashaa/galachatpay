@@ -118,7 +118,20 @@ export default function AdminChatPage() {
   const fetchMessages = useCallback(async (roomId: string) => {
     try {
       const data = await galaApi.chatMessages(roomId);
-      if (data.success) setMessages(data.messages || []);
+      if (data.success) {
+        const serverMsgs: ChatMessage[] = data.messages || [];
+        // Preserve local media_url for messages the API doesn't return it for
+        setMessages(prev => {
+          const localMediaMap = new Map<string, string>();
+          prev.forEach(m => {
+            if (m.media_url) localMediaMap.set(m.id, m.media_url);
+          });
+          return serverMsgs.map(m => ({
+            ...m,
+            media_url: m.media_url || localMediaMap.get(m.id) || undefined,
+          }));
+        });
+      }
     } catch { }
   }, []);
 
