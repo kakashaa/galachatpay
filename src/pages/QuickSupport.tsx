@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import SupportSessionChat from "@/components/SupportSessionChat";
 import { startSupportSession } from "@/hooks/use-support-session";
 import { createTicket } from "@/hooks/use-create-ticket";
