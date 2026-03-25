@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AdminRouteGuard from "@/components/AdminRouteGuard";
 
@@ -154,6 +154,24 @@ const App = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Server health check
+  const [serverDown, setServerDown] = useState(false);
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const r = await fetch('https://hola-chat.com/health.php', {
+          signal: AbortSignal.timeout(5000),
+        });
+        setServerDown(!r.ok);
+      } catch {
+        setServerDown(true);
+      }
+    };
+    check();
+    const i = setInterval(check, 60000);
+    return () => clearInterval(i);
+  }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -163,6 +181,11 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <ScrollToTop />
+              {serverDown && (
+                <div className="fixed top-0 inset-x-0 bg-destructive text-destructive-foreground text-center py-2 text-sm z-50 font-bold" dir="rtl">
+                  ⚠️ بعض الخدمات غير متاحة مؤقتاً
+                </div>
+              )}
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Login />} />
