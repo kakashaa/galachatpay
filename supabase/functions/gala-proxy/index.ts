@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -310,6 +310,19 @@ serve(async (req) => {
     const timeout = 55000;
     const res = await fetch(url, { ...fetchOptions, signal: AbortSignal.timeout(timeout) });
     const text = await res.text();
+
+    // Normalize upstream 4xx/5xx to 200 with error payload to prevent
+    // the client from treating upstream errors as "edge function not found"
+    if (res.status >= 400) {
+      let parsed: unknown;
+      try { parsed = JSON.parse(text); } catch { parsed = null; }
+      return json({
+        success: false,
+        upstream_status: res.status,
+        error: (parsed as any)?.error || (parsed as any)?.message || `Upstream returned ${res.status}`,
+        data: parsed,
+      }, 200);
+    }
 
     return new Response(text, {
       status: res.status,
