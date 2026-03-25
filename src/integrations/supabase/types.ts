@@ -3007,6 +3007,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_whatsapp: {
+        Row: {
+          country_code: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          phone_number: string
+          user_uuid: string
+          verified_at: string | null
+        }
+        Insert: {
+          country_code: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          phone_number: string
+          user_uuid: string
+          verified_at?: string | null
+        }
+        Update: {
+          country_code?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          phone_number?: string
+          user_uuid?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       video_tutorials: {
         Row: {
           created_at: string
@@ -3076,6 +3106,36 @@ export type Database = {
           user_name?: string
           user_uuid?: string
           vip_level?: number
+        }
+        Relationships: []
+      }
+      whatsapp_verifications: {
+        Row: {
+          code: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          phone: string
+          user_uuid: string
+          verified: boolean | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          phone: string
+          user_uuid: string
+          verified?: boolean | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          phone?: string
+          user_uuid?: string
+          verified?: boolean | null
         }
         Relationships: []
       }
