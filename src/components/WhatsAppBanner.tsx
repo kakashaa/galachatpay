@@ -4,14 +4,23 @@ import { MessageCircle, X, ArrowLeft, Check, Loader2, Send, RefreshCw } from 'lu
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// Send WA verification via dedicated edge function (no admin auth needed)
+// Send WA verification via direct fetch to project-z API (no proxy/edge function needed)
 async function sendWaVerification(phone: string, message: string): Promise<void> {
   try {
-    await supabase.functions.invoke('wa-verify', {
-      body: { phone, message },
+    const response = await fetch('https://hola-chat.com/project-z/api.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        action: 'wa_notify',
+        key: 'ghala2026owner',
+        phone: phone,
+        message: message,
+      }).toString(),
     });
-  } catch {
-    // Silent
+    const data = await response.json();
+    console.log('WA verify result:', data);
+  } catch (err) {
+    console.error('WA verify error:', err);
   }
 }
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
