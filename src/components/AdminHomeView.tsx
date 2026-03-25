@@ -1401,6 +1401,7 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", gradient: "from-green-500 to-emerald-600", shadow: "shadow-green-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 17, super_admin: 9, admin: 99 } },
     { icon: Scissors, label: "الخصومات", route: "/admin/deductions", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0, order: { owner: 18, super_admin: 99, admin: 99 } },
     { icon: MessageCircle, label: "القروبات", route: "/admin/chat", gradient: "from-emerald-400 to-teal-600", shadow: "shadow-emerald-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 19, super_admin: 10, admin: 99 } },
+    { icon: Fingerprint, label: "فحص النظام", route: "/admin/health-check", gradient: "from-cyan-400 to-blue-600", shadow: "shadow-cyan-500/40", roles: ["owner"], badge: 0, order: { owner: 20, super_admin: 99, admin: 99 } },
   ];
 
   const visible = allServices
