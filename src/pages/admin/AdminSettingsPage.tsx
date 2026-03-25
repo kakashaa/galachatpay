@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";

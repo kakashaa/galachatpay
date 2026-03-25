@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
