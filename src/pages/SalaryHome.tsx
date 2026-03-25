@@ -70,10 +70,47 @@ const SalaryHome: React.FC = () => {
     if (!status) setLoading(true);
     setError(false);
     try {
+      // Try salary_check_all first (more reliable)
+      const allData: any = await galaApi.salaryCheckAll(user!.uuid);
+      if (allData?.success || allData?.host_salary || allData?.agency_salary) {
+        const mapped: WithdrawStatus = {
+          ok: true,
+          is_agency_owner: allData.is_agency_owner || false,
+          host_salary: allData.host_salary ? {
+            current_month: allData.host_salary.salary || 0,
+            expected: allData.host_salary.salary || 0,
+            is_valid: true,
+            total_unpaid: 0,
+            total_cut: allData.host_salary.deduction || 0,
+            monthly_cut: allData.host_salary.deduction || 0,
+            available: allData.host_salary.net || 0,
+            cash_used_this_month: false,
+            over_withdrawn: (allData.host_salary.net || 0) <= 0,
+          } : undefined,
+          agency_salary: allData.agency_salary?.has_salary ? {
+            user_share_this_month: allData.agency_salary.amount || 0,
+            pool_total: allData.agency_salary.amount || 0,
+            pool_cut: 0,
+            pool_available: allData.agency_salary.amount || 0,
+            monthly_pool_total: allData.agency_salary.amount || 0,
+            monthly_pool_cut: 0,
+            cash_used_this_month: false,
+            can_withdraw: true,
+          } : undefined,
+          withdrawal_options: {
+            cash_host: (allData.withdrawals?.can_withdraw !== false),
+            cash_agency: allData.is_agency_owner || false,
+            coins_transfer: true,
+            instant: true,
+          },
+        };
+        setStatus(mapped);
+        try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(mapped)); } catch {}
+        return;
+      }
+      // Fallback to withdraw-status
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
-      // Handle transient timeout response from proxy
       if ((data as any)?.transient_error) {
-        // Use cached data if available, otherwise show partial data
         if (!status) setError(true);
         return;
       }
