@@ -14,6 +14,7 @@ import { galaApi } from "@/services/galaApi";
 const tabs = ["إرسال VIP", "الطلبات", "TOP وكلاء"];
 
 const AdminVipPage: React.FC = () => {
+  useAdminPageLog('/admin/vip');
   const { adminCall, handleLogout, isModeratorRole } = useAdminSession();
   const [loading, setLoading] = useState(false);
   const [vipRequests, setVipRequests] = useState<any[]>([]);

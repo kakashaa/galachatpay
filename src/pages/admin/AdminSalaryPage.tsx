@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 const AdminSalaryPage: React.FC = () => {
+  useAdminPageLog('/admin/salary');
   const { handleLogout } = useAdminSession();
   const [subTab, setSubTab] = useState<"withdraw" | "charge" | "instant" | "report" | "tools">("withdraw");
   const [reportLoading, setReportLoading] = useState(false);

@@ -12,6 +12,7 @@ import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { galaApi } from "@/services/galaApi";
 
 const AdminIdChangePage: React.FC = () => {
+  useAdminPageLog('/admin/id-change');
   const { adminCall, handleLogout } = useAdminSession();
   const [loading, setLoading] = useState(false);
   const [idChanges, setIdChanges] = useState<any[]>([]);

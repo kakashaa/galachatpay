@@ -17,6 +17,7 @@ import { Loader2, Plus, Save, X, Edit2, Eye, EyeOff, CheckCircle } from "lucide-
 type SubPage = null | "videos" | "banners" | "elements" | "stars" | "moderators" | "trash";
 
 const AdminSettingsPage: React.FC = () => {
+  useAdminPageLog('/admin/settings');
   const { handleLogout, adminCall, adminSessionToken, adminUsername, uploadFile } = useAdminSession();
   const { confirm, ConfirmDialog } = useConfirmModal();
   const [activeSub, setActiveSub] = useState<SubPage>(null);
