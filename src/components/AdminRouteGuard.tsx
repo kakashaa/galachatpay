@@ -5,6 +5,11 @@ import { ShieldAlert } from "lucide-react";
 /* Routes each role can access */
 const ROLE_ROUTES: Record<string, string[]> = {
   admin: ["/admin/requests", "/admin/support", "/admin/chat", "/admin/host-requests"],
+  moderator: [
+    "/admin/requests", "/admin/support", "/admin/chat", "/admin/host-requests",
+    "/admin/vip", "/admin/ban", "/admin/id-change", "/admin/log",
+    "/admin/monitor", "/admin/live-dashboard",
+  ],
   super_admin: [
     "/admin/requests", "/admin/support", "/admin/chat", "/admin/host-requests",
     "/admin/vip", "/admin/ban", "/admin/id-change", "/admin/log",

@@ -24,6 +24,11 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorB
   const navigate = useNavigate();
   const tap = useTapFeedback();
   const [bouncingKey, setBouncingKey] = useState<string | null>(null);
+  const adminRole = localStorage.getItem('admin_role');
+  const filteredNavItems = navItems.filter(item => {
+    if (item.key === 'monitor' && adminRole === 'admin') return false;
+    return true;
+  });
 
   const handleTap = (item: typeof navItems[0]) => {
     tap();

@@ -1256,7 +1256,11 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: Scissors, label: "الخصومات", route: "/admin/deductions", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0 },
   ];
 
-  const visible = allServices.filter(s => adminRole && s.roles.includes(adminRole));
+  const visible = allServices.filter(s => {
+    if (!adminRole) return false;
+    if (adminRole === 'owner') return true;
+    return s.roles.includes(adminRole) || (adminRole === 'moderator' && s.roles.includes('super_admin'));
+  });
 
   // Smart alerts — filtered by role
   const allAlerts = [
