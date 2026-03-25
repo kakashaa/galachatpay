@@ -1559,6 +1559,9 @@ const AdminHomeView: React.FC<Props> = ({
                 </div>
               </section>
 
+              {/* ── Team Performance ── */}
+              {(isOwner || isSuperAdmin) && <TeamPerformance />}
+
               {/* ── Activity Log ── */}
               {isOwner && recentLogs.length > 0 && (
                 <section>
