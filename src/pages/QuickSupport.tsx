@@ -12,6 +12,7 @@ import SupportSessionChat from "@/components/SupportSessionChat";
 import { startSupportSession } from "@/hooks/use-support-session";
 import { createTicket } from "@/hooks/use-create-ticket";
 import { supabase } from "@/integrations/supabase/client";
+import { notifyOnDutyAdmin } from "@/hooks/use-on-duty-admin";
 import TicketStatusCard from "@/components/support/TicketStatusCard";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -175,22 +176,10 @@ const QuickSupport: React.FC = () => {
 
       // 2. Send WhatsApp notification to on-duty super admin
       try {
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString("en-US", { hour12: false, timeZone: "Asia/Riyadh" });
-        const { data: onDuty } = await supabase
-          .from("admin_shifts")
-          .select("phone_number, admin_display_name")
-          .eq("is_active", true)
-          .eq("role_type", "super_admin")
-          .lte("shift_start", timeStr)
-          .gte("shift_end", timeStr)
-          .limit(1);
-
-        if (onDuty?.[0]?.phone_number) {
-          const waMsg = `🏠 طلب زيارة غرفة #${roomCode.trim()} من ${authUser.name}`;
-          fetch(`https://hola-chat.com/project-z/api.php?action=wa_notify&phone=${encodeURIComponent(onDuty[0].phone_number)}&message=${encodeURIComponent(waMsg)}`)
-            .catch(() => {});
-        }
+        await notifyOnDutyAdmin(
+          `غلا شات 💬\n\n🏠 طلب زيارة غرفة!\nالمستخدم: ${authUser.name}\nالغرفة: #${roomCode.trim()}\n\n📌 ادخل الغرفة الحين!`,
+          'super_admin'
+        );
       } catch { /* silent */ }
 
       setVisitSent(true);
