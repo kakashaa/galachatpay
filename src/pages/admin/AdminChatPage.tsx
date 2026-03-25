@@ -168,28 +168,41 @@ export default function AdminChatPage() {
     try {
       const data = await galaApi.chatMessages(roomId);
       if (data.success) {
-        const serverMsgs: ChatMessage[] = data.messages || [];
-        // Preserve local media_url for messages the API doesn't return it for
+        const serverMsgs = (data.messages || []) as Array<ChatMessage & Record<string, any>>;
+
         setMessages(prev => {
-          // Build lookup by id AND by sender+text (for local_ ids that don't match server ids)
+          const cache = readMediaCache();
           const localMediaById = new Map<string, string>();
-          const localMediaByKey = new Map<string, string>();
+          const localMediaBySignature = new Map<string, string>();
+
           prev.forEach(m => {
-            if (m.media_url) {
-              localMediaById.set(m.id, m.media_url);
-              const key = `${m.sender}|${m.text}|${m.type}`;
-              localMediaByKey.set(key, m.media_url);
-            }
+            if (!m.media_url) return;
+            localMediaById.set(m.id, m.media_url);
+            localMediaBySignature.set(getMessageSignature(roomId, m), m.media_url);
           });
-          return serverMsgs.map(m => {
-            if (m.media_url) return m;
-            const byId = localMediaById.get(m.id);
-            if (byId) return { ...m, media_url: byId };
-            const key = `${m.sender}|${m.text}|${m.type}`;
-            const byKey = localMediaByKey.get(key);
-            if (byKey) return { ...m, media_url: byKey };
-            return m;
+
+          const normalized = serverMsgs.map((m) => {
+            const directMedia = pickMediaUrl(m);
+            const signature = getMessageSignature(roomId, m);
+            const recoveredMedia =
+              directMedia ||
+              localMediaById.get(m.id) ||
+              localMediaBySignature.get(signature) ||
+              cache.byId[m.id] ||
+              cache.bySignature[signature];
+
+            return recoveredMedia ? { ...m, media_url: recoveredMedia } : m;
           });
+
+          normalized.forEach(m => {
+            if (!m.media_url) return;
+            const signature = getMessageSignature(roomId, m);
+            cache.byId[m.id] = m.media_url;
+            cache.bySignature[signature] = m.media_url;
+          });
+          writeMediaCache(cache);
+
+          return normalized;
         });
       }
     } catch { }
@@ -218,7 +231,7 @@ export default function AdminChatPage() {
     try {
       const data = await galaApi.chatSend(activeRoom, payloadText, adminName, mediaUrl, type);
       if (data?.success) {
-        const returned = data?.message || {};
+        const returned = (data?.message || {}) as Record<string, any>;
         const normalizedMessage: ChatMessage = {
           id: returned.id || `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           sender: returned.sender || adminName,
@@ -226,8 +239,17 @@ export default function AdminChatPage() {
           text: returned.text || payloadText,
           type: returned.type || type,
           time: returned.time || new Date().toISOString(),
-          media_url: returned.media_url || mediaUrl,
+          media_url: pickMediaUrl(returned) || mediaUrl,
         };
+
+        if (normalizedMessage.media_url) {
+          const cache = readMediaCache();
+          const signature = getMessageSignature(activeRoom, normalizedMessage);
+          cache.byId[normalizedMessage.id] = normalizedMessage.media_url;
+          cache.bySignature[signature] = normalizedMessage.media_url;
+          writeMediaCache(cache);
+        }
+
         setMessages(prev => [...prev, normalizedMessage]);
       } else {
         toast.error(data?.error || 'فشل الإرسال');
