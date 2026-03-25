@@ -9,8 +9,8 @@ import {
   Headset, Loader2, MessageSquare, Archive, Search, Ticket,
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,
   ShieldAlert, FileText, Phone, Flag, RefreshCw,
-  ArrowRight, Send, ArrowUpCircle, User, Hash, MapPin,
-  Paperclip, X, Image as ImageIcon, Mic,
+  ArrowRight, Send, ArrowUpCircle, Hash, MapPin,
+  Paperclip, X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
