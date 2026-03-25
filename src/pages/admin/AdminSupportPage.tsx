@@ -532,6 +532,46 @@ const AdminSupportPage: React.FC = () => {
     finally { setSearchLoading(false); }
   };
 
+  /* ─── Load avatar for selected ticket user ─── */
+  useEffect(() => {
+    if (!selectedTicket) { setUserAvatar(""); return; }
+    getAvatar(selectedTicket.user_uuid).then(setUserAvatar);
+  }, [selectedTicket?.user_uuid]);
+
+  /* ─── Upload helper ─── */
+  const uploadReplyFile = async (f: File): Promise<string | null> => {
+    try {
+      const ext = f.name.split(".").pop() || "bin";
+      const path = `ticket-attachments/${selectedTicket?.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("attachments").upload(path, f);
+      if (error) throw error;
+      const { data } = supabase.storage.from("attachments").getPublicUrl(path);
+      return data.publicUrl;
+    } catch {
+      toast.error("فشل رفع المرفق");
+      return null;
+    }
+  };
+
+  /* ─── Handle voice sent from admin ─── */
+  const handleAdminVoiceSent = async (voiceUrl: string) => {
+    if (!selectedTicket || sending) return;
+    setSending(true);
+    const now = new Date().toISOString();
+    try {
+      await supabase.from("ticket_messages" as any).insert({
+        ticket_id: selectedTicket.id, message: "رسالة صوتية",
+        sender_name: adminDisplayName || adminUsername || "أدمن",
+        sender_type: "admin", attachment_url: voiceUrl,
+      });
+      const updates: any = { status: "replied", admin_username: adminUsername, replied_at: now };
+      if (!selectedTicket.first_response_at) updates.first_response_at = now;
+      await supabase.from("support_tickets").update(updates).eq("id", selectedTicket.id);
+      toast.success("تم إرسال الرسالة الصوتية");
+    } catch { toast.error("فشل إرسال الرسالة الصوتية"); }
+    setSending(false);
+  };
+
   /* ═══════════════════ TICKET DETAIL VIEW ═══════════════════ */
   if (selectedTicket) {
     const st = STATUS_MAP[selectedTicket.status] || STATUS_MAP.pending;
@@ -539,6 +579,7 @@ const AdminSupportPage: React.FC = () => {
     const tp = TYPE_MAP[tType] || TYPE_MAP.general;
     const TpIcon = tp.icon;
     const isResolved = selectedTicket.status === "resolved" || selectedTicket.status === "closed";
+    const isReadOnly = isResolved || (isRegularAdmin && selectedTicket.status === "transferred");
 
     return (
       <AdminPageLayout title="تفاصيل التذكرة" accentColor="hsl(188 86% 53%)" onLogout={handleLogout}>
@@ -546,23 +587,52 @@ const AdminSupportPage: React.FC = () => {
 
           {/* ─── Header ─── */}
           <div className="px-4 py-3 border-b border-border/20 shrink-0">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <button onClick={() => setSelectedTicket(null)}
                 className="text-xs text-admin-cyan font-bold flex items-center gap-1">
                 <ArrowRight className="w-3.5 h-3.5" /> رجوع
               </button>
-              <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold" style={{ color: st.color, background: st.bg }}>
-                {st.label}
-              </span>
+              <div className="flex items-center gap-2">
+                {!selectedTicket.first_response_at && selectedTicket.status !== "resolved" && selectedTicket.status !== "closed" && (
+                  <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold animate-pulse"
+                    style={{ color: "hsl(0 72% 51%)", background: "rgba(239,68,68,0.12)" }}>
+                    ⏳ لم يرد أحد
+                  </span>
+                )}
+                <span className="text-[9px] px-2 py-0.5 rounded-lg font-bold" style={{ color: st.color, background: st.bg }}>
+                  {st.label}
+                </span>
+              </div>
+            </div>
+
+            {/* ─── User profile card ─── */}
+            <div className="rounded-2xl p-3 mb-3 flex items-center gap-3" style={glassCard}>
+              <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: "rgba(245,158,11,0.3)" }}>
+                <img
+                  src={userAvatar || "/placeholder.svg"}
+                  alt={selectedTicket.user_name}
+                  onError={handleAvatarError}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-foreground truncate">{selectedTicket.user_name || "مستخدم"}</p>
+                <p className="text-[9px] text-muted-foreground font-mono truncate" dir="ltr">{selectedTicket.user_uuid}</p>
+                {(selectedTicket as any).room_code && (
+                  <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3" /> غرفة: {(selectedTicket as any).room_code}
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Ticket info cards */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl p-2.5" style={glassCard}>
                 <div className="flex items-center gap-1.5 mb-1 text-[9px] text-muted-foreground">
                   <Hash className="w-3 h-3" /> رقم التذكرة
                 </div>
-                <p className="text-[10px] font-mono font-bold text-amber-400 truncate" dir="ltr">{selectedTicket.id}</p>
+                <p className="text-[10px] font-mono font-bold text-amber-400 truncate" dir="ltr">{selectedTicket.id.slice(0, 8)}</p>
               </div>
               <div className="rounded-xl p-2.5" style={glassCard}>
                 <div className="flex items-center gap-1.5 mb-1 text-[9px] text-muted-foreground">
@@ -572,39 +642,15 @@ const AdminSupportPage: React.FC = () => {
               </div>
               <div className="rounded-xl p-2.5" style={glassCard}>
                 <div className="flex items-center gap-1.5 mb-1 text-[9px] text-muted-foreground">
-                  <User className="w-3 h-3" /> المستخدم
-                </div>
-                <p className="text-[10px] font-bold text-foreground truncate">{selectedTicket.user_name}</p>
-                <p className="text-[8px] text-muted-foreground font-mono truncate" dir="ltr">{selectedTicket.user_uuid}</p>
-              </div>
-              <div className="rounded-xl p-2.5" style={glassCard}>
-                <div className="flex items-center gap-1.5 mb-1 text-[9px] text-muted-foreground">
                   <Clock className="w-3 h-3" /> الإنشاء
                 </div>
                 <p className="text-[10px] font-bold text-foreground tabular-nums">{formatDate(selectedTicket.created_at)}</p>
               </div>
-              {(selectedTicket as any).room_code && (
-                <div className="rounded-xl p-2.5" style={glassCard}>
-                  <div className="flex items-center gap-1.5 mb-1 text-[9px] text-muted-foreground">
-                    <MapPin className="w-3 h-3" /> الغرفة
-                  </div>
-                  <p className="text-[10px] font-bold text-foreground" dir="ltr">{(selectedTicket as any).room_code}</p>
-                </div>
-              )}
-              {(selectedTicket as any).phone_number && (
-                <div className="rounded-xl p-2.5" style={glassCard}>
-                  <div className="flex items-center gap-1.5 mb-1 text-[9px] text-muted-foreground">
-                    <Phone className="w-3 h-3" /> الهاتف
-                  </div>
-                  <p className="text-[10px] font-bold text-foreground" dir="ltr">{(selectedTicket as any).phone_number}</p>
-                </div>
-              )}
             </div>
 
             {/* Action buttons */}
             {!isResolved && (
               <div className="flex flex-wrap gap-2 mt-3">
-                {/* Resolve & Escalate — hide for regular admin on transferred tickets */}
                 {!(isRegularAdmin && selectedTicket.status === "transferred") && (
                   <>
                     <motion.button whileTap={{ scale: 0.95 }} onClick={handleResolve}
@@ -625,7 +671,6 @@ const AdminSupportPage: React.FC = () => {
                     )}
                   </>
                 )}
-                {/* Regular admin: transfer & help buttons */}
                 {isRegularAdmin && selectedTicket.status !== "transferred" && (
                   <>
                     <motion.button whileTap={{ scale: 0.95 }} onClick={handleTransferToSuper}
@@ -644,7 +689,6 @@ const AdminSupportPage: React.FC = () => {
                     </motion.button>
                   </>
                 )}
-                {/* Regular admin: read-only notice on transferred tickets */}
                 {isRegularAdmin && selectedTicket.status === "transferred" && (
                   <div className="w-full text-center text-[10px] font-bold py-2 rounded-xl"
                     style={{ background: "rgba(168,85,247,0.08)", color: "hsl(270 60% 55%)" }}>
@@ -720,10 +764,24 @@ const AdminSupportPage: React.FC = () => {
             )}
           </div>
 
-          {/* ─── Reply input (hidden for regular admin on transferred tickets) ─── */}
-          {!isResolved && !(isRegularAdmin && selectedTicket.status === "transferred") && (
+          {/* ─── Reply input ─── */}
+          {isReadOnly ? (
+            <div className="px-4 py-3 text-center text-[11px] font-bold text-muted-foreground mb-24" style={{ background: "rgba(255,255,255,0.02)" }}>
+              {isResolved ? "🔒 تم إغلاق التذكرة" : "📤 تم تحويل التذكرة — للقراءة فقط"}
+            </div>
+          ) : (
             <div className="sticky bottom-0 border-t border-border/20 px-4 py-3 shrink-0 mb-24 z-30"
               style={{ background: "rgba(10,10,20,0.95)", backdropFilter: "blur(20px)" }}>
+              {/* File preview */}
+              {replyFile && (
+                <div className="flex items-center gap-2 mb-2 px-2 py-1.5 rounded-lg text-xs" style={{ background: "rgba(255,255,255,0.04)" }}>
+                  <Paperclip className="w-3 h-3 text-muted-foreground" />
+                  <span className="truncate flex-1 text-muted-foreground">{replyFile.name}</span>
+                  <button onClick={() => setReplyFile(null)}>
+                    <X className="w-3 h-3 text-destructive" />
+                  </button>
+                </div>
+              )}
               <div className="flex items-end gap-2">
                 <textarea
                   value={replyText}
@@ -731,11 +789,30 @@ const AdminSupportPage: React.FC = () => {
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleReply(); } }}
                   placeholder="اكتب ردك..."
                   rows={1}
+                  disabled={sending}
                   className="flex-1 rounded-2xl px-4 py-2.5 text-sm resize-none focus:outline-none min-h-[40px] max-h-[120px]"
                   style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
                 />
+                {/* Voice recorder */}
+                <VoiceRecorder
+                  userUuid={adminUsername || "admin"}
+                  onVoiceSent={handleAdminVoiceSent}
+                  disabled={sending}
+                />
+                {/* Image/file upload */}
+                <input ref={replyFileRef} type="file" className="hidden" accept="image/*,audio/*,.pdf"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f && f.size > 10 * 1024 * 1024) { toast.error("الحد الأقصى 10MB"); return; }
+                    if (f) setReplyFile(f);
+                  }} />
+                <button onClick={() => replyFileRef.current?.click()} disabled={sending}
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-95"
+                  style={{ background: "rgba(255,255,255,0.05)" }}>
+                  <Paperclip className="w-4 h-4 text-muted-foreground" />
+                </button>
                 <motion.button whileTap={{ scale: 0.9 }} onClick={handleReply}
-                  disabled={!replyText.trim() || sending}
+                  disabled={(!replyText.trim() && !replyFile) || sending}
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white disabled:opacity-40 shrink-0"
                   style={{ background: "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))" }}>
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -743,7 +820,6 @@ const AdminSupportPage: React.FC = () => {
               </div>
             </div>
           )}
-          {(isResolved || (isRegularAdmin && selectedTicket.status === "transferred")) && <div className="pb-24" />}
         </div>
       </AdminPageLayout>
     );
