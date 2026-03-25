@@ -450,7 +450,7 @@ const SalaryWithdraw: React.FC = () => {
         await supabase.from("salary_requests").insert({
           user_uuid: user!.uuid,
           user_name: user!.name,
-          user_phone: pathMode === "cash" ? `${whatsappCode}${whatsappNumber}` : null,
+          user_phone: pathMode === "cash" ? (verifiedPhone || `${whatsappCode}${whatsappNumber}`) : null,
           request_type: requestType,
           amount_usd: amount,
           amount_coins: amount * rate,
@@ -458,7 +458,7 @@ const SalaryWithdraw: React.FC = () => {
           recipient_country: pathMode === "cash" ? (country?.name || selectedCountry) : "coins",
           payment_method: pathMode === "cash" ? (effectiveBankLabel || selectedBank) : "coins_charge",
           payment_details: pathMode === "cash"
-            ? `account:${accountNumber || "-"} | whatsapp:${whatsappCode}${whatsappNumber}${notes ? ` | notes:${notes}` : ""}`
+            ? `account:${accountNumber || "-"} | whatsapp:${verifiedPhone || `${whatsappCode}${whatsappNumber}`}${notes ? ` | notes:${notes}` : ""}`
             : `target_uuid:${chargeTarget || user!.uuid}`,
           status: pathMode === "cash" ? "pending" : "approved",
           transfer_id: selectedTransfer.reference_id,
@@ -496,7 +496,7 @@ const SalaryWithdraw: React.FC = () => {
   const isOtherBank = selectedBank?.endsWith("_other");
   const effectiveBankLabel = isOtherBank ? customBankName : bank?.label;
   const canProceedBank = selectedCountry && selectedBank && (!isOtherBank || customBankName.trim().length >= 2);
-  const canProceedAccount = recipientName.trim().length >= 2 && whatsappNumber.trim().length >= 6;
+  const canProceedAccount = recipientName.trim().length >= 2 && (!!verifiedPhone || whatsappNumber.trim().length >= 6);
 
   const getBackAction = () => {
     switch (step) {
