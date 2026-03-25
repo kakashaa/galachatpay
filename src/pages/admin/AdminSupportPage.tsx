@@ -478,6 +478,24 @@ const AdminSupportPage: React.FC = () => {
       });
 
       toast.success("تم التصعيد للسوبر أدمن");
+
+      // WhatsApp notification to super admin (silent)
+      try {
+        const now2 = new Date();
+        const timeStr = now2.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Asia/Riyadh' });
+        const { data: superAdmin } = await supabase
+          .from('admin_shifts')
+          .select('phone_number')
+          .eq('role_type', 'super_admin')
+          .eq('is_active', true)
+          .lte('shift_start', timeStr)
+          .gte('shift_end', timeStr)
+          .limit(1)
+          .single();
+        if (superAdmin?.phone_number) {
+          await sendWhatsAppNotification(superAdmin.phone_number, `🔺 تصعيد تذكرة!\nالمستخدم: ${selectedTicket.user_name}\nالموضوع: ${selectedTicket.subject}`);
+        }
+      } catch { /* silent */ }
     } catch { toast.error("فشل التصعيد"); }
     setActionLoading(null);
   };
@@ -506,6 +524,24 @@ const AdminSupportPage: React.FC = () => {
       });
 
       toast.success("تم تحويل التذكرة للسوبر أدمن");
+
+      // WhatsApp notification to super admin (silent)
+      try {
+        const now2 = new Date();
+        const timeStr = now2.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Asia/Riyadh' });
+        const { data: superAdmin } = await supabase
+          .from('admin_shifts')
+          .select('phone_number')
+          .eq('role_type', 'super_admin')
+          .eq('is_active', true)
+          .lte('shift_start', timeStr)
+          .gte('shift_end', timeStr)
+          .limit(1)
+          .single();
+        if (superAdmin?.phone_number) {
+          await sendWhatsAppNotification(superAdmin.phone_number, `📤 تحويل تذكرة!\nمن: ${adminDisplayName || adminUsername}\nالمستخدم: ${selectedTicket.user_name}`);
+        }
+      } catch { /* silent */ }
     } catch { toast.error("فشل التحويل"); }
     setActionLoading(null);
   };
