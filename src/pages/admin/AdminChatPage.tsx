@@ -131,7 +131,7 @@ export default function AdminChatPage() {
     if (!activeRoom) return;
     setSending(true);
     try {
-      const data = await galaApi.chatSend(activeRoom, text, adminName, mediaUrl);
+      const data = await galaApi.chatSend(activeRoom, text, adminName, mediaUrl, type);
       if (data.success) {
         setMessages(prev => [...prev, data.message]);
       }
