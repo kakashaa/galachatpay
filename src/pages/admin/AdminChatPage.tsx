@@ -9,6 +9,7 @@ import ChatInput from '@/components/chat/ChatInput';
 import VoiceMessage from '@/components/chat/VoiceMessage';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { galaApi } from "@/services/galaApi";
+import { API_URLS } from "@/config/api";
 
 interface ChatRoom {
   id: string;
@@ -277,9 +278,23 @@ export default function AdminChatPage() {
     else grouped.push({ date: dateStr, msgs: [msg] });
   });
 
+  // Check who is actually on shift now (Riyadh time)
+  const [onShiftAdmins, setOnShiftAdmins] = useState<string[]>([]);
+  useEffect(() => {
+    supabase.from('admin_shifts').select('admin_username').eq('is_active', true).then(({ data }) => {
+      if (data) {
+        const now = new Date();
+        const riyadhNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
+        const nowStr = riyadhNow.toTimeString().slice(0, 5);
+        // For simplicity, just use is_active admins as "on shift"
+        setOnShiftAdmins(data.map((d: any) => d.admin_username));
+      }
+    });
+  }, []);
+
   const onlineMembers = adminMembers.filter(m => {
-    if (isSuperGroup) return m.role === 'super_admin' || m.role === 'owner';
-    return true;
+    if (isSuperGroup) return (m.role === 'super_admin' || m.role === 'owner') && onShiftAdmins.includes(m.username);
+    return onShiftAdmins.includes(m.username);
   });
 
   return (
@@ -355,13 +370,21 @@ export default function AdminChatPage() {
                 const prevMsg = idx > 0 ? group.msgs[idx - 1] : null;
                 const showSenderHeader = !isMe && (!prevMsg || prevMsg.sender !== msg.sender);
                 const msgType = (msg.type || 'text').toLowerCase();
-                const inferredMediaUrl = msg.media_url || (typeof msg.text === 'string' && /^https?:\/\//i.test(msg.text) ? msg.text : undefined);
-                const isAudioUrl = !!inferredMediaUrl && /\.(webm|ogg|mp3|wav|m4a|aac)(\?|$)/i.test(inferredMediaUrl);
-                const isVideoUrl = !!inferredMediaUrl && /\.(mp4|webm|mov)(\?|$)/i.test(inferredMediaUrl) && !isAudioUrl;
+
+                // Detect embedded image filename in text like "صوره kv_0_20260315194126.png"
+                const imageFileMatch = msg.text?.match(/(?:صور[ةه]?)\s+([\w._-]+\.(?:png|jpg|jpeg|gif|webp))/i);
+                const embeddedImageUrl = imageFileMatch ? `${API_URLS.MEDIA}${imageFileMatch[1]}` : undefined;
+
+                // Detect voice message from text
+                const isVoiceText = msg.text === 'رسالة صوتية' || msg.text === 'رساله صوتيه' || msg.text === 'voice';
+
+                let inferredMediaUrl = msg.media_url || embeddedImageUrl || (typeof msg.text === 'string' && /^https?:\/\//i.test(msg.text) ? msg.text : undefined);
+                const isAudioUrl = !!inferredMediaUrl && /\.(webm|ogg|mp3|wav|m4a|aac|mp4)(\?|$)/i.test(inferredMediaUrl) && (isVoiceText || msgType.includes('voice'));
+                const isVideoUrl = !!inferredMediaUrl && /\.(mp4|webm|mov)(\?|$)/i.test(inferredMediaUrl) && !isAudioUrl && !isVoiceText;
                 const isImageUrl = !!inferredMediaUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(inferredMediaUrl);
 
-                const isVoice = msgType.includes('voice') || msgType.includes('audio') || (isAudioUrl && !msgType.includes('video'));
-                const isImage = msgType.includes('image') || msgType.includes('photo') || isImageUrl;
+                const isVoice = msgType.includes('voice') || msgType.includes('audio') || isVoiceText || isAudioUrl;
+                const isImage = msgType.includes('image') || msgType.includes('photo') || isImageUrl || !!embeddedImageUrl;
                 const isVideo = msgType.includes('video') || isVideoUrl;
                 const senderMember = getAdminMember(msg.sender);
                 const senderRole = senderMember?.role || 'admin';
@@ -425,8 +448,8 @@ export default function AdminChatPage() {
                           <VoiceMessage url={inferredMediaUrl} duration={parseInt(msg.text) || 0} isMine={isMe} />
                         )}
 
-                        {/* Text content */}
-                        {!isVoice && !isImage && !isVideo && msg.text && (
+                        {/* Text content — hide if media was rendered from text */}
+                        {!isVoice && !isImage && !isVideo && msg.text && !embeddedImageUrl && (
                           <p className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
                         )}
 
