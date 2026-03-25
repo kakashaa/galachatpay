@@ -28,12 +28,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Call the external WA API server-side
-    const GALA_API_KEY = Deno.env.get("GALA_API_KEY") || "";
+    // Call the external WA API server-side (project-z uses owner key)
+    const GALA_KEY = Deno.env.get("GALA_OWNER_KEY") || Deno.env.get("GALA_API_KEY") || "ghala2026owner";
     const url = `https://hola-chat.com/project-z/api.php`;
 
     const formData = new URLSearchParams();
-    formData.append("key", GALA_API_KEY);
+    formData.append("key", GALA_KEY);
     formData.append("action", "wa_notify");
     formData.append("phone", phone);
     formData.append("message", message);

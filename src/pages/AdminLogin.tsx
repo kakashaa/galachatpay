@@ -4,7 +4,7 @@ import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User, Phone, KeyRound }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
+import { supabase } from "@/integrations/supabase/client";
 import { galaApi } from "@/services/galaApi";
 
 const AdminLogin: React.FC = () => {
@@ -19,6 +19,7 @@ const AdminLogin: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [whatsappReadonly, setWhatsappReadonly] = useState(false);
   const [loginData, setLoginData] = useState<any>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -42,6 +43,18 @@ const AdminLogin: React.FC = () => {
       if (data.must_change_password) {
         setMustChangePassword(true);
         setLoginData(data);
+        // Pre-fill WhatsApp from admin_shifts
+        try {
+          const { data: shiftData } = await supabase
+            .from('admin_shifts')
+            .select('phone_number')
+            .eq('admin_username', username.trim())
+            .maybeSingle();
+          if (shiftData?.phone_number) {
+            setWhatsapp(shiftData.phone_number);
+            setWhatsappReadonly(true);
+          }
+        } catch { /* silent */ }
         setLoading(false);
         return;
       }
@@ -156,16 +169,19 @@ const AdminLogin: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">رقم الواتساب (إجباري)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                رقم الواتساب {whatsappReadonly ? '(محفوظ)' : '(إجباري)'}
+              </label>
               <div className="relative">
                 <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   type="tel"
                   value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
+                  onChange={(e) => !whatsappReadonly && setWhatsapp(e.target.value)}
                   placeholder="+966XXXXXXXXX"
                   dir="ltr"
-                  className="h-14 rounded-2xl pr-12"
+                  readOnly={whatsappReadonly}
+                  className={`h-14 rounded-2xl pr-12 ${whatsappReadonly ? 'opacity-70 cursor-not-allowed' : ''}`}
                 />
               </div>
             </div>
