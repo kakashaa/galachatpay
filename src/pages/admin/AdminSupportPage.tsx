@@ -493,7 +493,7 @@ const AdminSupportPage: React.FC = () => {
           .limit(1)
           .single();
         if (superAdmin?.phone_number) {
-          await sendWhatsAppNotification(superAdmin.phone_number, `🔺 تصعيد تذكرة!\nالمستخدم: ${selectedTicket.user_name}\nالموضوع: ${selectedTicket.subject}`);
+          await sendWhatsAppNotification(superAdmin.phone_number, `غلا شات 💬\n\n🔺 تصعيد تذكرة!\nالمستخدم: ${selectedTicket.user_name}\nالموضوع: ${selectedTicket.subject}`);
         }
       } catch { /* silent */ }
     } catch { toast.error("فشل التصعيد"); }
@@ -539,7 +539,7 @@ const AdminSupportPage: React.FC = () => {
           .limit(1)
           .single();
         if (superAdmin?.phone_number) {
-          await sendWhatsAppNotification(superAdmin.phone_number, `📤 تحويل تذكرة!\nمن: ${adminDisplayName || adminUsername}\nالمستخدم: ${selectedTicket.user_name}`);
+          await sendWhatsAppNotification(superAdmin.phone_number, `غلا شات 💬\n\n📤 تحويل تذكرة!\nمن: ${adminDisplayName || adminUsername}\nالمستخدم: ${selectedTicket.user_name}`);
         }
       } catch { /* silent */ }
     } catch { toast.error("فشل التحويل"); }

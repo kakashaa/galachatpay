@@ -90,7 +90,7 @@ const TicketReplyInput: React.FC<Props> = ({
             .eq('username', adminUsername)
             .single();
           if (admin?.phone) {
-            await sendWhatsAppNotification(admin.phone, `💬 رد جديد على تذكرة من ${userName || senderName}`);
+            await sendWhatsAppNotification(admin.phone, `غلا شات 💬\n\n💬 رد جديد على تذكرة من ${userName || senderName}`);
           }
         } catch { /* silent */ }
       }
