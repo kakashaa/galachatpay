@@ -328,7 +328,16 @@ const AdminSupportPage: React.FC = () => {
         filter: `ticket_id=eq.${ticketId}`,
       }, (payload) => {
         const msg = payload.new as TicketMessage;
-        setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+        setMessages(prev => {
+          // Skip if already exists by real id
+          if (prev.some(m => m.id === msg.id)) return prev;
+          // Remove optimistic duplicates (local-* with same sender_type + message)
+          const cleaned = prev.filter(m => {
+            if (!m.id.startsWith("local-")) return true;
+            return !(m.sender_type === msg.sender_type && m.message === msg.message);
+          });
+          return [...cleaned, msg];
+        });
         if (msg.sender_type === "user") toast.info(`رسالة جديدة من ${msg.sender_name}`);
       })
       .subscribe();
