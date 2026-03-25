@@ -97,38 +97,58 @@ const ChatInput: React.FC<ChatInputProps> = ({
       };
 
       recorder.onstop = async () => {
-        const duration = recordingTimeRef.current; // use ref, not state
+        const duration = recordingTimeRef.current;
         setRecordingTime(0);
         recordingTimeRef.current = 0;
         if (timerRef.current) clearInterval(timerRef.current);
 
-        if (audioChunksRef.current.length === 0) return;
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        // Small delay to ensure all chunks are collected
+        await new Promise(r => setTimeout(r, 200));
 
-        // Upload to Supabase Storage
+        if (audioChunksRef.current.length === 0) {
+          console.warn("No audio chunks recorded");
+          toast.error("لم يتم تسجيل أي صوت");
+          stream.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log("Audio blob size:", audioBlob.size, "type:", audioBlob.type, "chunks:", audioChunksRef.current.length);
+
+        if (audioBlob.size < 100) {
+          console.warn("Audio blob too small:", audioBlob.size);
+          toast.error("التسجيل قصير جداً");
+          stream.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+          return;
+        }
+
         setUploadingVoice(true);
         try {
           const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-          const path = `chat/voice_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-          const { data, error } = await supabase.storage.from("chat-media").upload(path, audioBlob, { contentType: mimeType });
+          const fileName = `chat/voice_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+          const { data, error } = await supabase.storage.from("chat-media").upload(fileName, audioBlob, {
+            contentType: mimeType,
+            upsert: true,
+          });
           if (error) {
-            console.error("Voice upload error:", error);
+            console.error("Voice upload error:", error.message, error);
             throw error;
           }
           if (data) {
-            const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+            const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(fileName);
             console.log("Voice uploaded:", urlData.publicUrl, "duration:", duration);
             if (onVoiceSend) {
               onVoiceSend(urlData.publicUrl, duration);
             }
           }
-        } catch (err) {
-          console.error("Voice upload failed:", err);
-          toast.error("فشل رفع الرسالة الصوتية");
+        } catch (err: any) {
+          console.error("Voice upload failed:", err?.message || err);
+          toast.error("فشل رفع الرسالة الصوتية: " + (err?.message || "خطأ غير معروف"));
         }
         setUploadingVoice(false);
 
-        // Cleanup stream
         stream.getTracks().forEach(t => t.stop());
         streamRef.current = null;
       };
