@@ -110,6 +110,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_calls: {
+        Row: {
+          chat_room_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          participants: string[]
+          room_id: string
+          started_by: string
+          started_by_name: string
+          status: string
+        }
+        Insert: {
+          chat_room_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          participants?: string[]
+          room_id: string
+          started_by: string
+          started_by_name?: string
+          status?: string
+        }
+        Update: {
+          chat_room_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          participants?: string[]
+          room_id?: string
+          started_by?: string
+          started_by_name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       admin_chat_messages: {
         Row: {
           created_at: string

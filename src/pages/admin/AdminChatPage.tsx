@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, MessageCircle, ArrowRight, Users, Shield, ArrowLeft, Headset, X, Settings, Phone, Video, Lock } from 'lucide-react';
+import { Loader2, MessageCircle, ArrowRight, Users, Shield, ArrowLeft, Headset, X, Settings, Phone, PhoneIncoming, Video, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminSession } from '@/hooks/use-admin-session';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ import VoiceMessage from '@/components/chat/VoiceMessage';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { galaApi } from "@/services/galaApi";
 import { API_URLS } from "@/config/api";
+import GroupVoiceCall from '@/components/GroupVoiceCall';
 
 interface ChatRoom {
   id: string;
@@ -139,6 +140,8 @@ export default function AdminChatPage() {
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [adminMembers, setAdminMembers] = useState<AdminMember[]>([]);
+  const [showVoiceCall, setShowVoiceCall] = useState(false);
+  const [activeCallInRoom, setActiveCallInRoom] = useState<any>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -161,6 +164,41 @@ export default function AdminChatPage() {
       if (data) setOnShiftAdmins(data.map((d: any) => d.admin_username));
     });
   }, []);
+
+  // Listen for active calls in current room
+  useEffect(() => {
+    if (!activeRoom) {
+      setActiveCallInRoom(null);
+      return;
+    }
+    const fetchCall = async () => {
+      const { data } = await supabase
+        .from('admin_calls' as any)
+        .select('*')
+        .eq('chat_room_id', activeRoom)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (data && (data as any[]).length > 0) setActiveCallInRoom((data as any[])[0]);
+      else setActiveCallInRoom(null);
+    };
+    fetchCall();
+
+    const channel = supabase
+      .channel(`call_listen_${activeRoom}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'admin_calls',
+        filter: `chat_room_id=eq.${activeRoom}`,
+      }, (payload) => {
+        const d = payload.new as any;
+        if (d.status === 'active') setActiveCallInRoom(d);
+        else setActiveCallInRoom(null);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeRoom]);
 
   const getAdminMember = (username: string): AdminMember | undefined =>
     adminMembers.find(m => m.username === username);
@@ -435,8 +473,19 @@ export default function AdminChatPage() {
             </div>
 
             <div className="flex items-center gap-1">
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <Phone className="w-3.5 h-3.5 text-white/40" />
+              <button
+                onClick={() => setShowVoiceCall(true)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center relative"
+                style={{ background: activeCallInRoom ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)' }}
+              >
+                {activeCallInRoom ? (
+                  <PhoneIncoming className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                ) : (
+                  <Phone className="w-3.5 h-3.5 text-white/40" />
+                )}
+                {activeCallInRoom && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                )}
               </button>
               <button className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
                 <Video className="w-3.5 h-3.5 text-white/40" />
@@ -446,6 +495,25 @@ export default function AdminChatPage() {
               </button>
             </div>
           </div>
+
+          {/* Active call banner */}
+          {activeCallInRoom && !showVoiceCall && (
+            <motion.button
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setShowVoiceCall(true)}
+              className="mx-4 mb-2 flex items-center gap-3 px-4 py-2.5 rounded-2xl"
+              style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,163,74,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}
+            >
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-emerald-500/20">
+                <PhoneIncoming className="w-4 h-4 text-emerald-400 animate-pulse" />
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-xs font-bold text-emerald-400">مكالمة نشطة</p>
+                <p className="text-[10px] text-white/40">{activeCallInRoom.participants?.length || 0} مشاركين • انقر للانضمام</p>
+              </div>
+            </motion.button>
+          )}
 
           {/* Members strip with stacked avatars */}
           <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
@@ -649,6 +717,18 @@ export default function AdminChatPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Voice Call */}
+      <AnimatePresence>
+        {showVoiceCall && activeRoom && (
+          <GroupVoiceCall
+            chatRoomId={activeRoom}
+            adminUsername={adminName}
+            adminDisplayName={adminDisplayName || adminName}
+            onClose={() => setShowVoiceCall(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
