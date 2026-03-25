@@ -117,6 +117,43 @@ const App = () => {
     return () => window.removeEventListener("unhandledrejection", handler);
   }, []);
 
+  // Auto-check for app updates via version.json
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const r = await fetch('/version.json?t=' + Date.now());
+        const data = await r.json();
+        const saved = localStorage.getItem('app_version');
+        if (saved && saved !== data.version && data.forceRefresh) {
+          localStorage.setItem('app_version', data.version);
+          if ('caches' in window) {
+            const names = await caches.keys();
+            await Promise.all(names.map(n => caches.delete(n)));
+          }
+          window.location.reload();
+        } else {
+          localStorage.setItem('app_version', data.version);
+        }
+      } catch {}
+    };
+    checkVersion();
+    const interval = setInterval(checkVersion, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Check for SW updates every 5 minutes
+  useEffect(() => {
+    const checkSW = () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(reg => reg.update());
+        });
+      }
+    };
+    const interval = setInterval(checkSW, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
