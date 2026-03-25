@@ -254,8 +254,8 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           if (ad.success && ad.avatar) setDetailAvatar(ad.avatar.startsWith("http") ? ad.avatar : getAvatarUrl(ad.avatar));
         } catch { /* silent */ }
       }
-    } catch {
-      toast.error("فشل في جلب بيانات المستخدم");
+    } catch (e) {
+      console.warn("salary report failed — non-critical", e);
     } finally {
       setDetailReportLoading(false);
     }
