@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Loader2, MessageCircle, ArrowRight, Users, Shield, ArrowLeft, Headset, X, Settings, Phone, Video, Lock } from 'lucide-react';
+import { Loader2, MessageCircle, ArrowRight, Users, Shield, ArrowLeft, Headset, X, Settings, Phone, PhoneIncoming, Video, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
@@ -139,6 +139,8 @@ export default function AdminChatPage() {
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [adminMembers, setAdminMembers] = useState<AdminMember[]>([]);
+  const [showVoiceCall, setShowVoiceCall] = useState(false);
+  const [activeCallInRoom, setActiveCallInRoom] = useState<any>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
