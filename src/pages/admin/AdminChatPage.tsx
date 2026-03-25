@@ -267,7 +267,7 @@ export default function AdminChatPage() {
   // ─── Chat View (Executive Board Style) ───
   const currentRoom = rooms.find(r => r.id === activeRoom);
   const isSuperGroup = currentRoom?.type === 'super_group';
-  const headerAccent = isSuperGroup ? '#F5A623' : '#7B8CDE';
+  
 
   const grouped: { date: string; msgs: ChatMessage[] }[] = [];
   messages.forEach(msg => {
@@ -369,7 +369,7 @@ export default function AdminChatPage() {
                     {/* Avatar for others (right side in RTL) */}
                     {!isMe && showSenderHeader && (
                       <div className="flex-shrink-0 ml-2.5 self-start mt-1">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ring-2" style={{ background: senderColor, ringColor: '#0a0e1a' }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-[#0a0e1a]" style={{ background: senderColor }}>
                           {getAdminInitials(senderMember?.display_name || msg.sender_name || msg.sender)}
                         </div>
                       </div>
@@ -435,7 +435,7 @@ export default function AdminChatPage() {
                     {/* Avatar for mine */}
                     {isMe && showSenderHeader && (
                       <div className="flex-shrink-0 mr-2.5 self-start mt-1">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ring-2" style={{ background: '#1a6dff', ringColor: '#0a0e1a' }}>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-[#0a0e1a]" style={{ background: '#1a6dff' }}>
                           {getAdminInitials(adminDisplayName || adminName)}
                         </div>
                       </div>
