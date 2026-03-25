@@ -354,10 +354,15 @@ export default function AdminChatPage() {
                 const isMe = msg.sender === adminName;
                 const prevMsg = idx > 0 ? group.msgs[idx - 1] : null;
                 const showSenderHeader = !isMe && (!prevMsg || prevMsg.sender !== msg.sender);
-                const msgType = msg.type || 'text';
-                const isVoice = msgType === 'voice';
-                const isImage = msgType === 'image' || msgType === 'photo';
-                const isVideo = msgType === 'video';
+                const msgType = (msg.type || 'text').toLowerCase();
+                const inferredMediaUrl = msg.media_url || (typeof msg.text === 'string' && /^https?:\/\//i.test(msg.text) ? msg.text : undefined);
+                const isAudioUrl = !!inferredMediaUrl && /\.(webm|ogg|mp3|wav|m4a|aac)(\?|$)/i.test(inferredMediaUrl);
+                const isVideoUrl = !!inferredMediaUrl && /\.(mp4|webm|mov)(\?|$)/i.test(inferredMediaUrl) && !isAudioUrl;
+                const isImageUrl = !!inferredMediaUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(inferredMediaUrl);
+
+                const isVoice = msgType.includes('voice') || msgType.includes('audio') || (isAudioUrl && !msgType.includes('video'));
+                const isImage = msgType.includes('image') || msgType.includes('photo') || isImageUrl;
+                const isVideo = msgType.includes('video') || isVideoUrl;
                 const senderMember = getAdminMember(msg.sender);
                 const senderRole = senderMember?.role || 'admin';
                 const roleLabel = ROLE_LABELS[senderRole] || 'ADMIN';
