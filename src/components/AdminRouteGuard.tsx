@@ -24,6 +24,7 @@ const PAGE_ROLES: Record<string, string[]> = {
   "/admin/support": ["owner", "super_admin", "admin"],
   "/admin/host-requests": ["owner", "super_admin", "admin"],
   "/admin/chat": ["owner", "super_admin", "admin"],
+  "/admin/health-check": ["owner"],
 };
 
 interface Props {
