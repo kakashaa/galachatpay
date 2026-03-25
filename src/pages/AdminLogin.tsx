@@ -60,18 +60,6 @@ const AdminLogin: React.FC = () => {
       if (data.must_change_password) {
         setMustChangePassword(true);
         setLoginData(data);
-        // Pre-fill WhatsApp from admin_shifts
-        try {
-          const { data: shiftData } = await supabase
-            .from('admin_shifts')
-            .select('phone_number')
-            .eq('admin_username', username.trim())
-            .maybeSingle();
-          if (shiftData?.phone_number) {
-            setWhatsapp(shiftData.phone_number);
-            setWhatsappReadonly(true);
-          }
-        } catch { /* silent */ }
         setLoading(false);
         return;
       }
