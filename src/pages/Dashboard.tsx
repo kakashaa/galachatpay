@@ -17,6 +17,7 @@ import BDInvitationBanner from "@/components/BDInvitationBanner";
 import WorksInvitationBanner from "@/components/WorksInvitationBanner";
 import BottomNav from "@/components/BottomNav";
 import WhatsAppBanner, { shouldShowWhatsAppBanner } from "@/components/WhatsAppBanner";
+import { useVerifiedWhatsApp } from "@/hooks/use-verified-whatsapp";
 
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ const Dashboard: React.FC = () => {
   const prevNotifCountRef = useRef(0);
   const [refreshing, setRefreshing] = useState(false);
   const [showWaBanner, setShowWaBanner] = useState(false);
+  const { verifiedPhone, unlink: unlinkWa, refresh: refreshWa } = useVerifiedWhatsApp(user?.uuid);
 
   // Pull-to-refresh state
   const [pullDistance, setPullDistance] = useState(0);
@@ -42,16 +44,9 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated || !user?.uuid) return;
     if (!shouldShowWhatsAppBanner()) return;
-    supabase
-      .from('user_whatsapp' as any)
-      .select('phone_number')
-      .eq('user_uuid', user.uuid)
-      .eq('is_active', true)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) setShowWaBanner(true);
-      });
-  }, [isAuthenticated, user?.uuid]);
+    if (verifiedPhone) return; // Already has verified number
+    setShowWaBanner(true);
+  }, [isAuthenticated, user?.uuid, verifiedPhone]);
 
   const fetchNotifCount = useCallback(async () => {
     if (!user?.uuid) return;
@@ -256,7 +251,7 @@ const Dashboard: React.FC = () => {
           userUuid={user.uuid}
           userName={user.name || 'مستخدم'}
           onClose={() => setShowWaBanner(false)}
-          onSuccess={() => setShowWaBanner(false)}
+          onSuccess={() => { setShowWaBanner(false); refreshWa(); }}
         />
       )}
     </>
