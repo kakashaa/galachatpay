@@ -84,7 +84,7 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
         verified: false,
       } as any);
 
-      await sendWhatsAppNotification(fullPhone, `غلا شات 💬\n\n🔐 رمز التحقق: ${code}\nلا تشاركه مع أحد`);
+      await sendWaVerification(fullPhone, `غلا شات 💬\n\n🔐 رمز التحقق: ${code}\nلا تشاركه مع أحد`);
 
       setStep('otp');
       setResendTimer(60);
@@ -141,7 +141,7 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
       } as any, { onConflict: 'user_uuid' });
 
       // Send welcome message
-      await sendWhatsAppNotification(fullPhone, `غلا شات 💬\n\n🎉 مرحباً ${userName}! تم تفعيل إشعارات غلا شات\nستصلك العروض والمسابقات مباشرة`);
+      await sendWaVerification(fullPhone, `غلا شات 💬\n\n🎉 مرحباً ${userName}! تم تفعيل إشعارات غلا شات\nستصلك العروض والمسابقات مباشرة`);
 
       toast.success('✅ تم تسجيل رقمك بنجاح!');
       onSuccess();
