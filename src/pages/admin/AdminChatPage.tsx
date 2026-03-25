@@ -473,8 +473,19 @@ export default function AdminChatPage() {
             </div>
 
             <div className="flex items-center gap-1">
-              <button className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <Phone className="w-3.5 h-3.5 text-white/40" />
+              <button
+                onClick={() => setShowVoiceCall(true)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center relative"
+                style={{ background: activeCallInRoom ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)' }}
+              >
+                {activeCallInRoom ? (
+                  <PhoneIncoming className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                ) : (
+                  <Phone className="w-3.5 h-3.5 text-white/40" />
+                )}
+                {activeCallInRoom && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                )}
               </button>
               <button className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
                 <Video className="w-3.5 h-3.5 text-white/40" />
