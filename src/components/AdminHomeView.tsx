@@ -1086,13 +1086,7 @@ const TeamPerformance: React.FC = () => {
         const responded = new Date(t.first_response_at).getTime();
         const diffMs = responded - created;
         if (diffMs > 0) {
-          // Try to find by assigned_to matching a name in map
-          for (const name of Object.keys(map)) {
-            // rough match — just add to all admins who handled this ticket
-          }
-          // Simpler: add to generic pool per assigned_to
           if (!map[assignedName]) map[assignedName] = { handled: 0, escalations: 0, totalMs: 0, count: 0 };
-          map[assignedName].totalMs += diffMs;
           map[assignedName].count++;
         }
       }
