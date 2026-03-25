@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
           if (error) throw error;
           result = blocks ?? [];
         } catch (e) {
-          console.warn("[ADMIN] list_blocked_accounts failed, returning empty:", e.message);
+          console.warn("[ADMIN] list_blocked_accounts failed, returning empty:", (e as Error).message);
           result = [];
         }
         break;

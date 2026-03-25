@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     } catch {
       // MD5 fallback using simple hash
       const { createHash } = await import("https://deno.land/std@0.168.0/node/crypto.ts");
-      sig = createHash("md5").update(sigStr).digest("hex");
+      sig = createHash("md5").update(sigStr).digest("hex") as string;
     }
 
     const url = `https://rtc-api.zego.im?Action=DescribeRoomList&AppId=${APP_ID}&SignatureNonce=${nonce}&Timestamp=${ts}&Signature=${sig}&SignatureVersion=2.0`;
