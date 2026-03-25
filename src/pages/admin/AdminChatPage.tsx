@@ -68,8 +68,6 @@ const formatTime = (t: string) => {
   } catch { return t; }
 };
 
-const isImageUrl = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
-const isVideoUrl = (url: string) => /\.(mp4|webm|mov)(\?|$)/i.test(url);
 
 export default function AdminChatPage() {
   const { adminUsername, adminDisplayName, adminRole, isRegularAdmin } = useAdminSession();
