@@ -221,6 +221,9 @@ const AdminSupportPage: React.FC = () => {
   const [sending, setSending] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [userAvatar, setUserAvatar] = useState<string>("");
+  const [replyFile, setReplyFile] = useState<File | null>(null);
+  const replyFileRef = useRef<HTMLInputElement>(null);
 
   /* ─── Search tab state ─── */
   const [searchTabQuery, setSearchTabQuery] = useState("");
