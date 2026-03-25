@@ -166,6 +166,13 @@ const VipChat: React.FC = () => {
     });
   };
 
+  const handleSendText = async () => {
+    if (!input.trim()) return;
+    const msg = input.trim();
+    setInput("");
+    await sendMessageWithMedia(msg);
+  };
+
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
     const file = e.target.files?.[0];
     if (!file) return;
