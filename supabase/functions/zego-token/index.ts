@@ -9,7 +9,7 @@ function makeNonce(): number {
 
 async function aesGcmEncrypt(plainText: string, key: Uint8Array): Promise<{ encrypted: Uint8Array; nonce: Uint8Array }> {
   const nonce = crypto.getRandomValues(new Uint8Array(12));
-  const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "AES-GCM" }, false, ["encrypt"]);
+  const cryptoKey = await crypto.subtle.importKey("raw", key.buffer as ArrayBuffer, { name: "AES-GCM" }, false, ["encrypt"]);
   const encoded = new TextEncoder().encode(plainText);
   const cipherBuf = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, cryptoKey, encoded);
   return { encrypted: new Uint8Array(cipherBuf), nonce };
