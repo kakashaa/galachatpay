@@ -70,7 +70,7 @@ const formatTime = (t: string) => {
 
 
 export default function AdminChatPage() {
-  const { adminUsername, adminDisplayName, adminRole, isRegularAdmin } = useAdminSession();
+  const { adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
   const navigate = useNavigate();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<string | null>(null);
