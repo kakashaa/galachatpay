@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, MessageCircle, ArrowRight, Users, Shield, ArrowLeft, Headset, X, Settings, Phone, Video, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdminSession } from '@/hooks/use-admin-session';
 import { useNavigate } from 'react-router-dom';
 import ChatInput from '@/components/chat/ChatInput';
-import DateSeparator from '@/components/chat/DateSeparator';
 import VoiceMessage from '@/components/chat/VoiceMessage';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { galaApi } from "@/services/galaApi";
-import { getAvatar } from '@/lib/avatarHelper';
 
 interface ChatRoom {
   id: string;
