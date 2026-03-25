@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Crown, Send, ArrowRight, CheckCheck, Clock } from "lucide-react";
+import { Crown, Send, ArrowRight, CheckCheck, Clock, Paperclip, Image, Video, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import VoiceRecorder from "@/components/support/VoiceRecorder";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface ChatMsg {
   id: string;
@@ -22,7 +26,12 @@ const VipChat: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStatus, setSessionStatus] = useState<string>("idle");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showAttach, setShowAttach] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
 
   const vipLevel = Number(user?.vip?.vip_level ?? user?.vip?.level ?? 0);
 
@@ -145,17 +154,48 @@ const VipChat: React.FC = () => {
     setSending(false);
   };
 
-  const sendMessage = async () => {
-    if (!user || !sessionId || !input.trim()) return;
-    const msg = input.trim();
-    setInput("");
+  const sendMessageWithMedia = async (text: string, mediaUrl?: string) => {
+    if (!user || !sessionId) return;
     await supabase.from("support_chat_messages").insert({
       chat_id: sessionId,
       sender_type: "user",
       sender_name: user.name,
       sender_uuid: user.uuid,
-      message: msg,
+      message: text,
+      media_url: mediaUrl || null,
     });
+  };
+
+  const handleSendText = async () => {
+    if (!input.trim()) return;
+    const msg = input.trim();
+    setInput("");
+    await sendMessageWithMedia(msg);
+  };
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "photo" | "video") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = type === "video" ? 8 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(type === "video" ? "الحد الأقصى 8MB" : "الحد الأقصى 5MB");
+      return;
+    }
+    setUploading(true);
+    setShowAttach(false);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `vip-chat/${sessionId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("chat-media").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
+      await sendMessageWithMedia(type === "photo" ? "📷 صورة" : "🎥 فيديو", urlData.publicUrl);
+    } catch {
+      toast.error("فشل رفع الملف");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const formatTime = (d: string) => {
@@ -243,6 +283,10 @@ const VipChat: React.FC = () => {
         {messages.map((msg) => {
           const isUser = msg.sender_type === "user";
           const isSystem = msg.sender_type === "system";
+          const mediaUrl = (msg as any).media_url;
+          const isImg = mediaUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(mediaUrl);
+          const isVid = mediaUrl && /\.(mp4|webm|mov)(\?|$)/i.test(mediaUrl);
+          const isAudio = mediaUrl && /\.(webm|ogg|mp3|wav|m4a)(\?|$)/i.test(mediaUrl) && !isVid;
 
           if (isSystem) {
             return (
@@ -264,7 +308,18 @@ const VipChat: React.FC = () => {
                 {!isUser && (
                   <p className="text-[10px] font-bold text-primary mb-0.5">{msg.sender_name}</p>
                 )}
-                <p className="text-[13px] leading-relaxed whitespace-pre-line">{msg.message}</p>
+                {isImg && (
+                  <img src={mediaUrl} alt="" className="rounded-lg max-w-full max-h-48 object-cover mb-1 cursor-pointer" onClick={() => setPreviewImage(mediaUrl)} />
+                )}
+                {isVid && (
+                  <video src={mediaUrl} controls className="rounded-lg max-w-full max-h-48 mb-1" />
+                )}
+                {isAudio && (
+                  <audio controls src={mediaUrl} className="max-w-full mb-1" />
+                )}
+                {!(isImg || isVid || isAudio) && (
+                  <p className="text-[13px] leading-relaxed whitespace-pre-line">{msg.message}</p>
+                )}
                 <div className={`flex items-center gap-1 mt-1 ${isUser ? "justify-end" : "justify-start"}`}>
                   <span className="text-[9px] opacity-60">{formatTime(msg.created_at)}</span>
                   {isUser && <CheckCheck className={`w-3 h-3 ${msg.is_read ? "text-blue-300" : "opacity-40"}`} />}
@@ -275,25 +330,69 @@ const VipChat: React.FC = () => {
         })}
       </div>
 
+      {/* Image preview */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-black/90 border-0">
+          {previewImage && <img src={previewImage} alt="" className="w-full h-full object-contain" />}
+        </DialogContent>
+      </Dialog>
+
       {/* Input */}
       {sessionStatus !== "closed" ? (
         <div className="px-3 py-2.5 border-t border-border/30 bg-card/50 backdrop-blur">
+          {/* Attachment sheet */}
+          <AnimatePresence>
+            {showAttach && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                className="flex gap-3 justify-center pb-2">
+                <label className="flex flex-col items-center gap-1 cursor-pointer p-2 rounded-xl hover:bg-muted/20 transition-colors">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10">
+                    <Image className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">صورة</span>
+                  <input ref={photoRef} type="file" accept="image/*" onChange={e => handleMediaUpload(e, "photo")} className="hidden" />
+                </label>
+                <label className="flex flex-col items-center gap-1 cursor-pointer p-2 rounded-xl hover:bg-muted/20 transition-colors">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/10">
+                    <Video className="w-5 h-5 text-accent-foreground" />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">فيديو</span>
+                  <input ref={videoRef} type="file" accept="video/*" onChange={e => handleMediaUpload(e, "video")} className="hidden" />
+                </label>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowAttach(!showAttach)} className="p-2 rounded-full hover:bg-muted/20 transition-colors">
+              {uploading ? <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" /> : <Paperclip className="w-5 h-5 text-muted-foreground" />}
+            </button>
             <input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              onChange={(e) => { setInput(e.target.value); setShowAttach(false); }}
+              onKeyDown={(e) => e.key === "Enter" && handleSendText()}
               placeholder="اكتب رسالتك..."
               className="flex-1 h-10 rounded-full bg-muted/30 border border-border/20 px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary outline-none"
               dir="rtl"
             />
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim()}
-              className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform"
-            >
-              <Send className="w-4 h-4 text-primary-foreground" />
-            </button>
+            {input.trim() ? (
+              <button
+                onClick={handleSendText}
+                disabled={!input.trim()}
+                className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform"
+              >
+                <Send className="w-4 h-4 text-primary-foreground" />
+              </button>
+            ) : (
+              <VoiceRecorder
+                userUuid={user.uuid}
+                onVoiceSent={async (url) => {
+                  await sendMessageWithMedia("🎤 رسالة صوتية", url);
+                }}
+                disabled={sending || uploading}
+              />
+            )}
           </div>
         </div>
       ) : (

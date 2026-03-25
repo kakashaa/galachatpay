@@ -7,6 +7,7 @@ import { useSupportSession } from "@/hooks/use-support-session";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ChatBubble from "@/components/chat/ChatBubble";
+import VoiceRecorder from "@/components/support/VoiceRecorder";
 
 // Wait timer component
 const WaitTimer = ({ startTime }: { startTime: string }) => {
@@ -218,16 +219,35 @@ const SupportSessionChat: React.FC<Props> = ({
             <button onClick={() => setShowAttach(!showAttach)} className="p-2 rounded-full hover:bg-white/5 transition-colors">
               {uploading ? <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" /> : <Paperclip className="w-5 h-5 text-muted-foreground" />}
             </button>
-            <Input value={input} onChange={(e) => { setInput(e.target.value); setShowAttach(false); }}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="اكتب رسالتك..."
-              className="flex-1 rounded-3xl border-0 text-sm py-2.5"
-              style={{ background: "hsl(var(--chat-input-bg))" }} />
-            <motion.button whileTap={{ scale: 0.85 }} onClick={handleSend} disabled={!input.trim() || sending}
-              className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40"
-              style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
-              <Send className="w-4 h-4 text-white rotate-180" />
-            </motion.button>
+            {input.trim() ? (
+              <>
+                <Input value={input} onChange={(e) => { setInput(e.target.value); setShowAttach(false); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  placeholder="اكتب رسالتك..."
+                  className="flex-1 rounded-3xl border-0 text-sm py-2.5"
+                  style={{ background: "hsl(var(--chat-input-bg))" }} />
+                <motion.button whileTap={{ scale: 0.85 }} onClick={handleSend} disabled={!input.trim() || sending}
+                  className="w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, hsl(160 84% 39%), hsl(160 84% 30%))" }}>
+                  <Send className="w-4 h-4 text-white rotate-180" />
+                </motion.button>
+              </>
+            ) : (
+              <>
+                <Input value={input} onChange={(e) => { setInput(e.target.value); setShowAttach(false); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  placeholder="اكتب رسالتك..."
+                  className="flex-1 rounded-3xl border-0 text-sm py-2.5"
+                  style={{ background: "hsl(var(--chat-input-bg))" }} />
+                <VoiceRecorder
+                  userUuid={userUuid}
+                  onVoiceSent={async (url) => {
+                    await sendMessage(userUuid, userName, senderType, "🎤 رسالة صوتية", url);
+                  }}
+                  disabled={sending || uploading}
+                />
+              </>
+            )}
           </div>
         </div>
       )}
