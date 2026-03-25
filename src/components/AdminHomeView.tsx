@@ -1414,15 +1414,34 @@ const AdminHomeView: React.FC<Props> = ({
       return (a.order[role] || 99) - (b.order[role] || 99);
     });
 
-  // Smart alerts — filtered by role
-  const allAlerts = [
-    { label: `${salaryBadge} طلب راتب بحاجة مراجعة`, count: salaryBadge, icon: Wallet, priority: 'high' as const, onClick: () => navigate('/admin/salary'), roles: ['owner'] },
-    { label: `${supportBadge} محادثة دعم بدون رد`, count: supportBadge, icon: Headphones, priority: 'high' as const, onClick: () => navigate('/admin/support'), roles: ['owner', 'super_admin', 'admin'] },
-    { label: `${banBadge} بلاغ أمني جديد`, count: banBadge, icon: ShieldAlert, priority: 'medium' as const, onClick: () => navigate('/admin/ban'), roles: ['owner', 'super_admin'] },
-    { label: `${requestsBadge} طلب معلق`, count: requestsBadge, icon: Inbox, priority: 'medium' as const, onClick: () => navigate('/admin/requests'), roles: ['owner', 'super_admin', 'admin'] },
-    { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low' as const, onClick: () => navigate('/admin/vip'), roles: ['owner', 'super_admin'] },
-  ];
-  const smartAlerts = allAlerts.filter(a => a.count > 0 && adminRole && a.roles.includes(adminRole)) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
+  // Smart alerts — filtered by role with role-specific labels
+  const allAlerts = (() => {
+    const alerts: Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void; roles: string[] }> = [];
+    
+    if (adminRole === 'owner') {
+      alerts.push(
+        { label: `${supportBadge} تذكرة مصعّدة بدون رد`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support'), roles: ['owner'] },
+        { label: `${salaryBadge} طلب راتب معلّق`, count: salaryBadge, icon: Wallet, priority: 'medium', onClick: () => navigate('/admin/salary'), roles: ['owner'] },
+        { label: `${banBadge} بلاغ أمني`, count: banBadge, icon: ShieldAlert, priority: 'medium', onClick: () => navigate('/admin/ban'), roles: ['owner'] },
+        { label: `${requestsBadge} طلب متجر جديد`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['owner'] },
+        { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip'), roles: ['owner'] },
+      );
+    } else if (adminRole === 'super_admin' || adminRole === 'moderator') {
+      alerts.push(
+        { label: `${supportBadge} تذكرة مصعّدة إليك`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support'), roles: ['super_admin'] },
+        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['super_admin'] },
+        { label: `${vipBadge} طلب VIP`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip'), roles: ['super_admin'] },
+      );
+    } else {
+      alerts.push(
+        { label: `${supportBadge} تذكرة جديدة`, count: supportBadge, icon: Headphones, priority: 'medium', onClick: () => navigate('/admin/support'), roles: ['admin'] },
+        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['admin'] },
+      );
+    }
+    
+    return alerts;
+  })();
+  const smartAlerts = allAlerts.filter(a => a.count > 0) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
   /* Floating star particles (reference design) */
   const particles = useMemo(() =>
