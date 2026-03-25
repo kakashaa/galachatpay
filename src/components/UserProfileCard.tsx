@@ -209,7 +209,26 @@ const UserProfileCard: React.FC = () => {
           </div>
         </div>
 
-        {/* Levels — inline compact */}
+        {/* WhatsApp Link Status */}
+        {verifiedPhone && (
+          <div className="flex items-center justify-between mb-2 px-1" dir="rtl">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px]">📱</span>
+              <span className="text-[9px] font-mono text-muted-foreground" dir="ltr">{verifiedPhone}</span>
+              <span className="text-[8px] text-emerald-400 font-bold">✅ موثق</span>
+            </div>
+            <button
+              onClick={async () => {
+                const ok = await confirm({ title: "فك ارتباط الواتساب", message: "هل أنت متأكد؟ لن تصلك إشعارات بعد فك الارتباط", danger: true, confirmText: "فك الارتباط" });
+                if (ok) { await unlinkWa(); toast.success("تم فك الارتباط — يمكنك ربط رقم جديد"); }
+              }}
+              className="text-[8px] font-bold text-destructive/70 px-1.5 py-0.5 rounded"
+              style={{ background: 'rgba(244,63,94,0.08)' }}
+            >
+              فك الارتباط
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-3 mb-2 justify-center">
           {[
             { icon: Zap, level: user.level.charger_level, color: "#22c55e" },
@@ -271,8 +290,12 @@ const UserProfileCard: React.FC = () => {
 
       <StarWalletDialog open={showStarWallet} onClose={() => setShowStarWallet(false)} initialView={starWalletView} />
       <StarSystemTutorial open={showTutorial} onClose={() => setShowTutorial(false)} itemType="entry" />
+      {ConfirmDialog}
     </div>
   );
+};
+
+export default UserProfileCard;
 };
 
 export default UserProfileCard;
