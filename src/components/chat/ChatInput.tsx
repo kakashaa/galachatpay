@@ -146,7 +146,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
             const uploadOptions: { contentType?: string; upsert: boolean } = { upsert: true };
             if (attempt.contentType) uploadOptions.contentType = attempt.contentType;
 
-            const { error } = await supabase.storage.from("chat-media").upload(fileName, audioBlob, uploadOptions);
+            const blobForUpload = attempt.contentType
+              ? new Blob([audioBlob], { type: attempt.contentType })
+              : audioBlob;
+
+            const { error } = await supabase.storage.from("attachments").upload(fileName, blobForUpload, uploadOptions);
             if (!error) {
               uploadedPath = fileName;
               break;
@@ -163,7 +167,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
             throw lastError || new Error('فشل رفع الرسالة الصوتية');
           }
 
-          const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(uploadedPath);
+          const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(uploadedPath);
           console.log("Voice uploaded:", urlData.publicUrl, "duration:", duration);
           if (onVoiceSend) {
             onVoiceSend(urlData.publicUrl, duration);
