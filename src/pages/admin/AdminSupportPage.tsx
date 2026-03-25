@@ -2,12 +2,15 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSupportManager from "@/components/AdminSupportManager";
+import VoiceRecorder from "@/components/support/VoiceRecorder";
 import { supabase } from "@/integrations/supabase/client";
+import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 import {
   Headset, Loader2, MessageSquare, Archive, Search, Ticket,
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,
   ShieldAlert, FileText, Phone, Flag, RefreshCw,
   ArrowRight, Send, ArrowUpCircle, User, Hash, MapPin,
+  Paperclip, X, Image as ImageIcon, Mic,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
