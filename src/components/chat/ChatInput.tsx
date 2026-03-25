@@ -109,14 +109,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
         setUploadingVoice(true);
         try {
           const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
-          const path = `voice/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-          const { data, error } = await supabase.storage.from("attachments").upload(path, audioBlob, { contentType: mimeType });
+          const path = `chat/voice_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+          const { data, error } = await supabase.storage.from("chat-media").upload(path, audioBlob, { contentType: mimeType });
           if (error) {
             console.error("Voice upload error:", error);
             throw error;
           }
           if (data) {
-            const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+            const { data: urlData } = supabase.storage.from("chat-media").getPublicUrl(path);
             console.log("Voice uploaded:", urlData.publicUrl, "duration:", duration);
             if (onVoiceSend) {
               onVoiceSend(urlData.publicUrl, duration);

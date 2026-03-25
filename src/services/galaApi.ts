@@ -260,11 +260,13 @@ class GalaApiService {
     return this.call("project-z", "admin_chat_messages", { chat_id: chatId }, true);
   }
 
-  async chatSend(chatId: string, message: string, senderName?: string, mediaUrl?: string) {
+  async chatSend(chatId: string, message: string, senderName?: string, mediaUrl?: string, messageType?: string) {
     return this.call("project-z", "admin_chat_send", {
-      chat_id: chatId, message,
+      chat_id: chatId,
+      message,
       ...(senderName ? { sender_name: senderName } : {}),
       ...(mediaUrl ? { media_url: mediaUrl } : {}),
+      ...(messageType ? { message_type: messageType } : {}),
     }, true);
   }
 
