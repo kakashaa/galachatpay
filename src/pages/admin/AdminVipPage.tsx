@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,7 @@ import { galaApi } from "@/services/galaApi";
 const tabs = ["إرسال VIP", "الطلبات", "TOP وكلاء"];
 
 const AdminVipPage: React.FC = () => {
+  useAdminPageLog('/admin/vip');
   const { adminCall, handleLogout, isModeratorRole } = useAdminSession();
   const [loading, setLoading] = useState(false);
   const [vipRequests, setVipRequests] = useState<any[]>([]);
@@ -47,7 +49,20 @@ const AdminVipPage: React.FC = () => {
         `تم تفعيل VIP ${vipLevel} على حسابك بنجاح!`
       );
       toast.dismiss(t);
-      toast.success(`تم إرسال VIP ${vipLevel} بنجاح`);
+      toast.success(`✅ تم إرسال VIP ${vipLevel}`, {
+        action: {
+          label: "تراجع ↩️",
+          onClick: async () => {
+            const undoT = toast.loading("جاري التراجع...");
+            try {
+              await galaApi.giveVip(vipUuid.trim(), 0, "0d");
+              toast.dismiss(undoT);
+              toast.success("تم التراجع عن VIP");
+            } catch { toast.dismiss(undoT); toast.error("فشل التراجع"); }
+          },
+        },
+        duration: 30000,
+      });
       setVipUuid("");
     } catch (err: any) { toast.dismiss(t); toast.error(err?.message || "فشل الإرسال"); }
     finally { setSending(false); }

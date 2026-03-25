@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSalaryWithdrawManager from "@/components/AdminSalaryWithdrawManager";
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 const AdminSalaryPage: React.FC = () => {
+  useAdminPageLog('/admin/salary');
   const { handleLogout } = useAdminSession();
   const [subTab, setSubTab] = useState<"withdraw" | "charge" | "instant" | "report" | "tools">("withdraw");
   const [reportLoading, setReportLoading] = useState(false);

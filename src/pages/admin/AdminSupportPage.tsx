@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import PageLoader from "@/components/PageLoader";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
@@ -205,6 +206,7 @@ const AdminRequestsTab: React.FC<{
 };
 
 const AdminSupportPage: React.FC = () => {
+  useAdminPageLog('/admin/support');
   const { handleLogout, adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
   const [mainTab, setMainTab] = useState<"regular" | "quick">(isRegularAdmin ? "regular" : "regular");
   const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search" | "admin_requests" | "transferred">("tickets");

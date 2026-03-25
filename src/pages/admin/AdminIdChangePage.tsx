@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,7 @@ import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { galaApi } from "@/services/galaApi";
 
 const AdminIdChangePage: React.FC = () => {
+  useAdminPageLog('/admin/id-change');
   const { adminCall, handleLogout } = useAdminSession();
   const [loading, setLoading] = useState(false);
   const [idChanges, setIdChanges] = useState<any[]>([]);

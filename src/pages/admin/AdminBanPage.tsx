@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
 import AdminPageLayout from "@/components/AdminPageLayout";
@@ -48,6 +49,7 @@ const glassCard = {
 };
 
 const AdminBanPage: React.FC = () => {
+  useAdminPageLog('/admin/ban');
   const { handleLogout } = useAdminSession();
   const { confirm, ConfirmDialog } = useConfirmModal();
   const adminUsername = localStorage.getItem("admin_username") || "";

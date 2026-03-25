@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
@@ -16,6 +17,7 @@ import { Loader2, Plus, Save, X, Edit2, Eye, EyeOff, CheckCircle } from "lucide-
 type SubPage = null | "videos" | "banners" | "elements" | "stars" | "moderators" | "trash";
 
 const AdminSettingsPage: React.FC = () => {
+  useAdminPageLog('/admin/settings');
   const { handleLogout, adminCall, adminSessionToken, adminUsername, uploadFile } = useAdminSession();
   const { confirm, ConfirmDialog } = useConfirmModal();
   const [activeSub, setActiveSub] = useState<SubPage>(null);
