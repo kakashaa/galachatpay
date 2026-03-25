@@ -276,6 +276,10 @@ const VipChat: React.FC = () => {
         {messages.map((msg) => {
           const isUser = msg.sender_type === "user";
           const isSystem = msg.sender_type === "system";
+          const mediaUrl = (msg as any).media_url;
+          const isImg = mediaUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(mediaUrl);
+          const isVid = mediaUrl && /\.(mp4|webm|mov)(\?|$)/i.test(mediaUrl);
+          const isAudio = mediaUrl && /\.(webm|ogg|mp3|wav|m4a)(\?|$)/i.test(mediaUrl) && !isVid;
 
           if (isSystem) {
             return (
@@ -297,7 +301,18 @@ const VipChat: React.FC = () => {
                 {!isUser && (
                   <p className="text-[10px] font-bold text-primary mb-0.5">{msg.sender_name}</p>
                 )}
-                <p className="text-[13px] leading-relaxed whitespace-pre-line">{msg.message}</p>
+                {isImg && (
+                  <img src={mediaUrl} alt="" className="rounded-lg max-w-full max-h-48 object-cover mb-1 cursor-pointer" onClick={() => setPreviewImage(mediaUrl)} />
+                )}
+                {isVid && (
+                  <video src={mediaUrl} controls className="rounded-lg max-w-full max-h-48 mb-1" />
+                )}
+                {isAudio && (
+                  <audio controls src={mediaUrl} className="max-w-full mb-1" />
+                )}
+                {!(isImg || isVid || isAudio) && (
+                  <p className="text-[13px] leading-relaxed whitespace-pre-line">{msg.message}</p>
+                )}
                 <div className={`flex items-center gap-1 mt-1 ${isUser ? "justify-end" : "justify-start"}`}>
                   <span className="text-[9px] opacity-60">{formatTime(msg.created_at)}</span>
                   {isUser && <CheckCheck className={`w-3 h-3 ${msg.is_read ? "text-blue-300" : "opacity-40"}`} />}
@@ -308,25 +323,69 @@ const VipChat: React.FC = () => {
         })}
       </div>
 
+      {/* Image preview */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] p-0 bg-black/90 border-0">
+          {previewImage && <img src={previewImage} alt="" className="w-full h-full object-contain" />}
+        </DialogContent>
+      </Dialog>
+
       {/* Input */}
       {sessionStatus !== "closed" ? (
         <div className="px-3 py-2.5 border-t border-border/30 bg-card/50 backdrop-blur">
+          {/* Attachment sheet */}
+          <AnimatePresence>
+            {showAttach && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+                className="flex gap-3 justify-center pb-2">
+                <label className="flex flex-col items-center gap-1 cursor-pointer p-2 rounded-xl hover:bg-muted/20 transition-colors">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10">
+                    <Image className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">صورة</span>
+                  <input ref={photoRef} type="file" accept="image/*" onChange={e => handleMediaUpload(e, "photo")} className="hidden" />
+                </label>
+                <label className="flex flex-col items-center gap-1 cursor-pointer p-2 rounded-xl hover:bg-muted/20 transition-colors">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/10">
+                    <Video className="w-5 h-5 text-accent-foreground" />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">فيديو</span>
+                  <input ref={videoRef} type="file" accept="video/*" onChange={e => handleMediaUpload(e, "video")} className="hidden" />
+                </label>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowAttach(!showAttach)} className="p-2 rounded-full hover:bg-muted/20 transition-colors">
+              {uploading ? <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" /> : <Paperclip className="w-5 h-5 text-muted-foreground" />}
+            </button>
             <input
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              onChange={(e) => { setInput(e.target.value); setShowAttach(false); }}
+              onKeyDown={(e) => e.key === "Enter" && handleSendText()}
               placeholder="اكتب رسالتك..."
               className="flex-1 h-10 rounded-full bg-muted/30 border border-border/20 px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary outline-none"
               dir="rtl"
             />
-            <button
-              onClick={sendMessage}
-              disabled={!input.trim()}
-              className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform"
-            >
-              <Send className="w-4 h-4 text-primary-foreground" />
-            </button>
+            {input.trim() ? (
+              <button
+                onClick={handleSendText}
+                disabled={!input.trim()}
+                className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center disabled:opacity-40 active:scale-90 transition-transform"
+              >
+                <Send className="w-4 h-4 text-primary-foreground" />
+              </button>
+            ) : (
+              <VoiceRecorder
+                userUuid={user.uuid}
+                onVoiceSent={async (url) => {
+                  await sendMessageWithMedia("🎤 رسالة صوتية", url);
+                }}
+                disabled={sending || uploading}
+              />
+            )}
           </div>
         </div>
       ) : (
