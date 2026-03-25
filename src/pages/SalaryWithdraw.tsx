@@ -157,6 +157,7 @@ const SalaryWithdraw: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { verifiedPhone } = useVerifiedWhatsApp(user?.uuid);
 
   const pathMode = location.pathname.includes("/salary/charge-other")
     ? "charge_other"
@@ -214,7 +215,12 @@ const SalaryWithdraw: React.FC = () => {
     hasFetchedRef.current = true;
     fetchWithdrawStatus();
     checkCashResetOverrides();
-  }, [user?.uuid]);
+    // Auto-fill verified WhatsApp
+    if (verifiedPhone) {
+      setWhatsappNumber(verifiedPhone);
+      setWhatsappCode("");
+    }
+  }, [user?.uuid, verifiedPhone]);
 
   const checkCashResetOverrides = async () => {
     if (!user?.uuid) return;
@@ -1243,7 +1249,14 @@ const SalaryWithdraw: React.FC = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                     <Phone className="w-3.5 h-3.5 text-emerald-400" /> رقم الواتساب *
+                    {verifiedPhone && (
+                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px] px-1.5 py-0">✅ موثق</Badge>
+                    )}
                   </label>
+                  {verifiedPhone ? (
+                    <Input value={verifiedPhone} readOnly
+                      className="bg-muted/20 border-border/30 text-emerald-400 font-mono" dir="ltr" />
+                  ) : (
                   <div className="flex gap-2" dir="ltr">
                     <select value={whatsappCode} onChange={e => setWhatsappCode(e.target.value)}
                       className="bg-muted/20 border border-border/30 rounded-lg px-2 py-2 text-sm w-24 shrink-0">
@@ -1254,6 +1267,7 @@ const SalaryWithdraw: React.FC = () => {
                     <Input value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value.replace(/\D/g, ""))}
                       placeholder="رقم الواتساب" type="tel" className="bg-muted/20 border-border/30 flex-1" dir="ltr" />
                   </div>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-foreground">ملاحظات (اختياري)</label>
