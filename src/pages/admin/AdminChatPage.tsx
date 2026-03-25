@@ -145,7 +145,17 @@ export default function AdminChatPage() {
     try {
       const data = await galaApi.chatSend(activeRoom, payloadText, adminName, mediaUrl, type);
       if (data?.success) {
-        setMessages(prev => [...prev, data.message]);
+        const returned = data?.message || {};
+        const normalizedMessage: ChatMessage = {
+          id: returned.id || `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          sender: returned.sender || adminName,
+          sender_name: returned.sender_name || adminDisplayName || adminName,
+          text: returned.text || payloadText,
+          type: returned.type || type,
+          time: returned.time || new Date().toISOString(),
+          media_url: returned.media_url || mediaUrl,
+        };
+        setMessages(prev => [...prev, normalizedMessage]);
       } else {
         toast.error(data?.error || 'فشل الإرسال');
       }
@@ -380,17 +390,27 @@ export default function AdminChatPage() {
                 const imageFileMatch = msg.text?.match(/(?:صور[ةه]?)\s+([\w._-]+\.(?:png|jpg|jpeg|gif|webp))/i);
                 const embeddedImageUrl = imageFileMatch ? `${API_URLS.MEDIA}${imageFileMatch[1]}` : undefined;
 
-                // Detect voice message from text
-                const isVoiceText = msg.text === 'رسالة صوتية' || msg.text === 'رساله صوتيه' || msg.text === 'voice' || (!!msg.media_url && /^\d+$/.test((msg.text || '').trim()));
+                // Detect voice message reliably (even if backend returns text-only type)
+                const textValue = (msg.text || '').trim();
+                const isVoiceText = textValue === 'رسالة صوتية' || textValue === 'رساله صوتيه' || textValue.toLowerCase() === 'voice';
 
                 let inferredMediaUrl = msg.media_url || embeddedImageUrl || (typeof msg.text === 'string' && /^https?:\/\//i.test(msg.text) ? msg.text : undefined);
-                const isAudioUrl = !!inferredMediaUrl && /\.(webm|ogg|mp3|wav|m4a|aac|mp4)(\?|$)/i.test(inferredMediaUrl) && (isVoiceText || msgType.includes('voice'));
-                const isVideoUrl = !!inferredMediaUrl && /\.(mp4|webm|mov)(\?|$)/i.test(inferredMediaUrl) && !isAudioUrl && !isVoiceText;
-                const isImageUrl = !!inferredMediaUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(inferredMediaUrl);
+                const mediaLower = (inferredMediaUrl || '').toLowerCase();
+                const numericText = /^\d+$/.test(textValue);
+                const voiceHints = msgType.includes('voice') || msgType.includes('audio') || isVoiceText || numericText || mediaLower.includes('voice_') || mediaLower.includes('/voice-messages/');
+
+                const hasImageExt = !!inferredMediaUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(inferredMediaUrl);
+                const hasVideoExt = !!inferredMediaUrl && /\.(mp4|mov|mkv|avi|webm)(\?|$)/i.test(inferredMediaUrl);
+                const hasAudioExt = !!inferredMediaUrl && /\.(webm|ogg|mp3|wav|m4a|aac|opus|oga|bin)(\?|$)/i.test(inferredMediaUrl);
+
+                const isAudioUrl = !!inferredMediaUrl && (hasAudioExt || (hasVideoExt && voiceHints) || voiceHints);
+                const isVideoUrl = !!inferredMediaUrl && hasVideoExt && !isAudioUrl;
+                const isImageUrl = !!inferredMediaUrl && hasImageExt;
 
                 const isVoice = msgType.includes('voice') || msgType.includes('audio') || isVoiceText || isAudioUrl;
                 const isImage = msgType.includes('image') || msgType.includes('photo') || isImageUrl || !!embeddedImageUrl;
                 const isVideo = msgType.includes('video') || isVideoUrl;
+                const canRenderVoice = isVoice && !!inferredMediaUrl;
                 const senderMember = getAdminMember(msg.sender);
                 const senderRole = senderMember?.role || 'admin';
                 const roleLabel = ROLE_LABELS[senderRole] || 'ADMIN';
@@ -449,12 +469,12 @@ export default function AdminChatPage() {
                         )}
 
                         {/* Voice */}
-                        {isVoice && inferredMediaUrl && (
+                        {canRenderVoice && (
                           <VoiceMessage url={inferredMediaUrl} duration={parseInt(msg.text) || 0} isMine={isMe} />
                         )}
 
                         {/* Text content — hide if media was rendered from text */}
-                        {!isVoice && !isImage && !isVideo && msg.text && !embeddedImageUrl && (
+                        {!canRenderVoice && !isImage && !isVideo && msg.text && !embeddedImageUrl && (
                           <p className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
                         )}
 
