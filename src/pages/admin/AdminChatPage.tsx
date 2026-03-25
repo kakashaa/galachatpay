@@ -138,14 +138,22 @@ export default function AdminChatPage() {
 
   const sendApiMessage = async (text: string, type = 'text', mediaUrl?: string) => {
     if (!activeRoom) return;
+    const fallbackText = type === 'image' ? 'صورة' : type === 'video' ? 'فيديو' : type === 'voice' ? 'رسالة صوتية' : '';
+    const payloadText = (text || '').trim() || fallbackText;
+
     setSending(true);
     try {
-      const data = await galaApi.chatSend(activeRoom, text, adminName, mediaUrl, type);
-      if (data.success) {
+      const data = await galaApi.chatSend(activeRoom, payloadText, adminName, mediaUrl, type);
+      if (data?.success) {
         setMessages(prev => [...prev, data.message]);
+      } else {
+        toast.error(data?.error || 'فشل الإرسال');
       }
-    } catch { toast.error('فشل الإرسال'); }
-    setSending(false);
+    } catch {
+      toast.error('فشل الإرسال');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleSendText = (text: string) => {
@@ -162,13 +170,16 @@ export default function AdminChatPage() {
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('chat-media').getPublicUrl(fileName);
       const msgType = type === 'video' ? 'video' : 'image';
-      await sendApiMessage('', msgType, urlData.publicUrl);
-    } catch { toast.error("فشل رفع الملف"); }
-    setUploading(false);
+      await sendApiMessage(type === 'video' ? 'فيديو' : 'صورة', msgType, urlData.publicUrl);
+    } catch {
+      toast.error("فشل رفع الملف");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleVoiceSend = async (url: string, duration: number) => {
-    await sendApiMessage(`${duration}`, 'voice', url);
+    await sendApiMessage(duration > 0 ? `${duration}` : 'رسالة صوتية', 'voice', url);
   };
 
   const filteredRooms = rooms.filter(room => !(isRegularAdmin && room.type === 'super_group'));
