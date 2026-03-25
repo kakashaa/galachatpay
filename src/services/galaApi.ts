@@ -14,8 +14,23 @@ class GalaApiService {
     const body: Record<string, unknown> = { target, action, ...params };
 
     if (requireAdmin) {
-      const token = localStorage.getItem("admin_session_token");
-      if (token) body._admin_token = token;
+      const sessionToken = localStorage.getItem("admin_session_token");
+      const apiToken = localStorage.getItem("admin_api_token");
+      const token = apiToken || sessionToken;
+
+      if (!token) {
+        throw new Error("جلسة الأدمن غير موجودة، سجّل الدخول مرة أخرى");
+      }
+
+      // Keep both keys aligned for legacy flows
+      if (!sessionToken) {
+        localStorage.setItem("admin_session_token", token);
+      }
+      if (!apiToken) {
+        localStorage.setItem("admin_api_token", token);
+      }
+
+      body._admin_token = token;
     }
 
     const { data, error } = await supabase.functions.invoke("gala-proxy", { body });

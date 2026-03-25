@@ -254,8 +254,8 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
           if (ad.success && ad.avatar) setDetailAvatar(ad.avatar.startsWith("http") ? ad.avatar : getAvatarUrl(ad.avatar));
         } catch { /* silent */ }
       }
-    } catch {
-      toast.error("فشل في جلب بيانات المستخدم");
+    } catch (e) {
+      console.warn("salary report failed — non-critical", e);
     } finally {
       setDetailReportLoading(false);
     }
@@ -424,7 +424,9 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
         fetchData();
       } else toast.error(data.error || "فشل في قبول الطلب");
-    } catch { toast.error("حدث خطأ"); } finally { setActionLoading(false); }
+    } catch (e: any) {
+      toast.error(e?.message || "حدث خطأ");
+    } finally { setActionLoading(false); }
   };
 
   const handleReject = async () => {
@@ -442,7 +444,9 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         setRejectSheet(null); setRejectReason(""); setRejectImage(null);
         fetchData();
       } else toast.error(data.error || "فشل في رفض الطلب");
-    } catch { toast.error("حدث خطأ"); } finally { setActionLoading(false); }
+    } catch (e: any) {
+      toast.error(e?.message || "حدث خطأ");
+    } finally { setActionLoading(false); }
   };
 
   /* ─── Filtering ─── */

@@ -127,7 +127,7 @@ const AdminLogin: React.FC = () => {
     }
 
     // Use HMAC-signed session token from admin-manage if available, otherwise generate legacy
-    const sessionToken = data.token || data.session_token || btoa(JSON.stringify({ 
+    const sessionToken = data.session_token || data.token || btoa(JSON.stringify({ 
       username: data.username || username.trim(), 
       role: data.role, 
       iat: Date.now() 
