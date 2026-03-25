@@ -1375,43 +1375,73 @@ const AdminHomeView: React.FC<Props> = ({
   const supportBadge = badges.support || 0;
   const totalBadge = vipBadge + banBadge + salaryBadge + requestsBadge + supportBadge;
 
-  // Service groups — macOS Launchpad style with gradients
+  // Service groups — ordered by role priority
   const allServices = [
-    { icon: Crown, label: "VIP", route: "/admin/vip", gradient: "from-amber-400 to-yellow-600", shadow: "shadow-amber-500/40", roles: ["owner", "super_admin"], badge: vipBadge },
-    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: banBadge },
-    { icon: Wallet, label: "الرواتب", route: "/admin/salary", gradient: "from-emerald-400 to-green-600", shadow: "shadow-emerald-500/40", roles: ["owner"], badge: salaryBadge },
-    { icon: Inbox, label: "الطلبات", route: "/admin/requests", gradient: "from-purple-500 to-violet-600", shadow: "shadow-purple-500/40", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
-    { icon: Store, label: "المتجر", route: "/admin/gifts", gradient: "from-pink-500 to-rose-600", shadow: "shadow-pink-500/40", roles: ["owner"], badge: 0 },
-    { icon: Headphones, label: "الدعم", route: "/admin/support", gradient: "from-cyan-400 to-blue-500", shadow: "shadow-cyan-500/40", roles: ["owner", "super_admin", "admin"], badge: supportBadge },
-    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", gradient: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/40", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", gradient: "from-orange-400 to-amber-600", shadow: "shadow-orange-500/40", roles: ["owner"], badge: 0 },
-    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", gradient: "from-teal-400 to-cyan-600", shadow: "shadow-teal-500/40", roles: ["owner"], badge: 0 },
-    { icon: Users, label: "المشرفين", route: "/admin/accounts", gradient: "from-blue-500 to-indigo-600", shadow: "shadow-blue-500/40", roles: ["owner"], badge: 0 },
-    { icon: ClipboardList, label: "السجل", route: "/admin/log", gradient: "from-gray-400 to-slate-600", shadow: "shadow-gray-500/30", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Building2, label: "البيدي", route: "/admin/works", gradient: "from-indigo-500 to-purple-700", shadow: "shadow-indigo-500/40", roles: ["owner"], badge: 0 },
-    { icon: Settings, label: "الإعدادات", route: "/admin/settings", gradient: "from-slate-400 to-slate-600", shadow: "shadow-slate-500/30", roles: ["owner"], badge: 0 },
-    { icon: FileText, label: "المضيفات", route: "/admin/host-requests", gradient: "from-rose-400 to-pink-600", shadow: "shadow-rose-500/40", roles: ["owner", "super_admin", "admin"], badge: 0 },
-    { icon: Eye, label: "المراقبة", route: "/admin/monitor", gradient: "from-red-500 to-orange-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", gradient: "from-yellow-400 to-amber-500", shadow: "shadow-yellow-500/40", roles: ["owner"], badge: 0 },
-    { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", gradient: "from-green-500 to-emerald-600", shadow: "shadow-green-500/40", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Scissors, label: "الخصومات", route: "/admin/deductions", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0 },
+    // Row 1 (owner): VIP, Protection, Salary, Requests
+    { icon: Crown, label: "VIP", route: "/admin/vip", gradient: "from-amber-400 to-yellow-600", shadow: "shadow-amber-500/40", roles: ["owner", "super_admin"], badge: vipBadge, order: { owner: 1, super_admin: 1, admin: 99 } },
+    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: banBadge, order: { owner: 2, super_admin: 2, admin: 99 } },
+    { icon: Wallet, label: "الرواتب", route: "/admin/salary", gradient: "from-emerald-400 to-green-600", shadow: "shadow-emerald-500/40", roles: ["owner"], badge: salaryBadge, order: { owner: 3, super_admin: 99, admin: 99 } },
+    { icon: Inbox, label: "الطلبات", route: "/admin/requests", gradient: "from-purple-500 to-violet-600", shadow: "shadow-purple-500/40", roles: ["owner", "super_admin", "admin"], badge: requestsBadge, order: { owner: 4, super_admin: 3, admin: 1 } },
+    // Row 2 (owner): Store, Support, ID, Revenue
+    { icon: Store, label: "المتجر", route: "/admin/gifts", gradient: "from-pink-500 to-rose-600", shadow: "shadow-pink-500/40", roles: ["owner"], badge: 0, order: { owner: 5, super_admin: 99, admin: 99 } },
+    { icon: Headphones, label: "الدعم", route: "/admin/support", gradient: "from-cyan-400 to-blue-500", shadow: "shadow-cyan-500/40", roles: ["owner", "super_admin", "admin"], badge: supportBadge, order: { owner: 6, super_admin: 4, admin: 2 } },
+    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", gradient: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 7, super_admin: 5, admin: 99 } },
+    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", gradient: "from-orange-400 to-amber-600", shadow: "shadow-orange-500/40", roles: ["owner"], badge: 0, order: { owner: 8, super_admin: 99, admin: 99 } },
+    // Row 3 (owner): Agencies, Moderators, Log, BD
+    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", gradient: "from-teal-400 to-cyan-600", shadow: "shadow-teal-500/40", roles: ["owner"], badge: 0, order: { owner: 9, super_admin: 99, admin: 99 } },
+    { icon: Users, label: "المشرفين", route: "/admin/accounts", gradient: "from-blue-500 to-indigo-600", shadow: "shadow-blue-500/40", roles: ["owner"], badge: 0, order: { owner: 10, super_admin: 99, admin: 99 } },
+    { icon: ClipboardList, label: "السجل", route: "/admin/log", gradient: "from-gray-400 to-slate-600", shadow: "shadow-gray-500/30", roles: ["owner", "super_admin"], badge: 0, order: { owner: 11, super_admin: 8, admin: 99 } },
+    { icon: Building2, label: "البيدي", route: "/admin/works", gradient: "from-indigo-500 to-purple-700", shadow: "shadow-indigo-500/40", roles: ["owner"], badge: 0, order: { owner: 12, super_admin: 99, admin: 99 } },
+    // Row 4 (owner): Settings, Hosts, Monitor, Supporter Club
+    { icon: Settings, label: "الإعدادات", route: "/admin/settings", gradient: "from-slate-400 to-slate-600", shadow: "shadow-slate-500/30", roles: ["owner"], badge: 0, order: { owner: 13, super_admin: 99, admin: 99 } },
+    { icon: FileText, label: "المضيفات", route: "/admin/host-requests", gradient: "from-rose-400 to-pink-600", shadow: "shadow-rose-500/40", roles: ["owner", "super_admin", "admin"], badge: 0, order: { owner: 14, super_admin: 6, admin: 3 } },
+    { icon: Eye, label: "المراقبة", route: "/admin/monitor", gradient: "from-red-500 to-orange-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 15, super_admin: 7, admin: 99 } },
+    { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", gradient: "from-yellow-400 to-amber-500", shadow: "shadow-yellow-500/40", roles: ["owner"], badge: 0, order: { owner: 16, super_admin: 99, admin: 99 } },
+    // Row 5 (owner): Live Dashboard, Deductions, Agent Agencies
+    { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", gradient: "from-green-500 to-emerald-600", shadow: "shadow-green-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 17, super_admin: 9, admin: 99 } },
+    { icon: Scissors, label: "الخصومات", route: "/admin/deductions", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0, order: { owner: 18, super_admin: 99, admin: 99 } },
+    { icon: MessageCircle, label: "القروبات", route: "/admin/chat", gradient: "from-emerald-400 to-teal-600", shadow: "shadow-emerald-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 19, super_admin: 10, admin: 99 } },
   ];
 
-  const visible = allServices.filter(s => {
-    if (!adminRole) return false;
-    if (adminRole === 'owner') return true;
-    return s.roles.includes(adminRole) || (adminRole === 'moderator' && s.roles.includes('super_admin'));
-  });
+  const visible = allServices
+    .filter(s => {
+      if (!adminRole) return false;
+      if (adminRole === 'owner') return true;
+      return s.roles.includes(adminRole) || (adminRole === 'moderator' && s.roles.includes('super_admin'));
+    })
+    .sort((a, b) => {
+      const role = (adminRole === 'moderator' ? 'super_admin' : adminRole) as keyof typeof a.order;
+      return (a.order[role] || 99) - (b.order[role] || 99);
+    });
 
-  // Smart alerts — filtered by role
-  const allAlerts = [
-    { label: `${salaryBadge} طلب راتب بحاجة مراجعة`, count: salaryBadge, icon: Wallet, priority: 'high' as const, onClick: () => navigate('/admin/salary'), roles: ['owner'] },
-    { label: `${supportBadge} محادثة دعم بدون رد`, count: supportBadge, icon: Headphones, priority: 'high' as const, onClick: () => navigate('/admin/support'), roles: ['owner', 'super_admin', 'admin'] },
-    { label: `${banBadge} بلاغ أمني جديد`, count: banBadge, icon: ShieldAlert, priority: 'medium' as const, onClick: () => navigate('/admin/ban'), roles: ['owner', 'super_admin'] },
-    { label: `${requestsBadge} طلب معلق`, count: requestsBadge, icon: Inbox, priority: 'medium' as const, onClick: () => navigate('/admin/requests'), roles: ['owner', 'super_admin', 'admin'] },
-    { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low' as const, onClick: () => navigate('/admin/vip'), roles: ['owner', 'super_admin'] },
-  ];
-  const smartAlerts = allAlerts.filter(a => a.count > 0 && adminRole && a.roles.includes(adminRole)) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
+  // Smart alerts — filtered by role with role-specific labels
+  const allAlerts = (() => {
+    const alerts: Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void; roles: string[] }> = [];
+    
+    if (adminRole === 'owner') {
+      alerts.push(
+        { label: `${supportBadge} تذكرة مصعّدة بدون رد`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support'), roles: ['owner'] },
+        { label: `${salaryBadge} طلب راتب معلّق`, count: salaryBadge, icon: Wallet, priority: 'medium', onClick: () => navigate('/admin/salary'), roles: ['owner'] },
+        { label: `${banBadge} بلاغ أمني`, count: banBadge, icon: ShieldAlert, priority: 'medium', onClick: () => navigate('/admin/ban'), roles: ['owner'] },
+        { label: `${requestsBadge} طلب متجر جديد`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['owner'] },
+        { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip'), roles: ['owner'] },
+      );
+    } else if (adminRole === 'super_admin' || adminRole === 'moderator') {
+      alerts.push(
+        { label: `${supportBadge} تذكرة مصعّدة إليك`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support'), roles: ['super_admin'] },
+        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['super_admin'] },
+        { label: `${vipBadge} طلب VIP`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip'), roles: ['super_admin'] },
+      );
+    } else {
+      alerts.push(
+        { label: `${supportBadge} تذكرة جديدة`, count: supportBadge, icon: Headphones, priority: 'medium', onClick: () => navigate('/admin/support'), roles: ['admin'] },
+        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['admin'] },
+      );
+    }
+    
+    return alerts;
+  })();
+  const smartAlerts = allAlerts.filter(a => a.count > 0) as Array<{ label: string; count: number; icon: typeof Bell; priority: 'high' | 'medium' | 'low'; onClick: () => void }>;
 
   /* Floating star particles (reference design) */
   const particles = useMemo(() =>
@@ -1481,11 +1511,21 @@ const AdminHomeView: React.FC<Props> = ({
                 </div>
 
                 <div>
-                  <h1 className="text-base font-semibold text-white leading-tight">أهلاً {adminDisplayName}</h1>
+                  <h1 className="text-base font-semibold text-white leading-tight">أهلاً {adminDisplayName} 👋</h1>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/20">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                      <span className="text-[9px] font-semibold text-amber-400">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${
+                      adminRole === 'owner'
+                        ? 'bg-amber-400/15 border-amber-400/20'
+                        : adminRole === 'super_admin' || adminRole === 'moderator'
+                          ? 'bg-red-500/15 border-red-500/20'
+                          : 'bg-blue-500/15 border-blue-500/20'
+                    }`}>
+                      <span className="text-[10px]">
+                        {adminRole === 'owner' ? '👑' : adminRole === 'super_admin' || adminRole === 'moderator' ? '🔴' : '🔵'}
+                      </span>
+                      <span className={`text-[9px] font-semibold ${
+                        adminRole === 'owner' ? 'text-amber-400' : adminRole === 'super_admin' || adminRole === 'moderator' ? 'text-red-400' : 'text-blue-400'
+                      }`}>{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</span>
                     </span>
                   </div>
                 </div>
@@ -1631,25 +1671,42 @@ const AdminHomeView: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* ── Group Chat — amber pill buttons ── */}
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => navigate('/admin/chat')}
-              className="flex-1 flex items-center justify-center gap-2 h-9 rounded-full bg-gradient-to-l from-amber-500/20 to-amber-600/5 border border-amber-400/15 hover:border-amber-400/30 transition-all group"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] font-medium text-amber-300">قروب المشرفين</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            </button>
-            {isOwner && (
-              <button
-                onClick={() => navigate('/admin/accounts')}
-                className="flex-1 flex items-center justify-center gap-2 h-9 rounded-full bg-white/5 border border-white/8 hover:border-white/15 transition-all group"
-              >
-                <MessageCircle className="w-3.5 h-3.5 text-slate-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-medium text-slate-300">كل الأدمن</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              </button>
+          {/* ── Quick Actions ── */}
+          <div className="grid grid-cols-3 gap-2">
+            {(isOwner || isSuperAdmin) ? (
+              <>
+                <button onClick={() => navigate('/admin/support')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 border border-cyan-500/20 active:scale-95 transition-transform">
+                  <Headphones className="w-5 h-5 text-cyan-400" />
+                  <span className="text-[10px] font-bold text-cyan-300">الدعم السريع</span>
+                  {supportBadge > 0 && <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/20 px-1.5 rounded-full">{supportBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/requests')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 border border-purple-500/20 active:scale-95 transition-transform">
+                  <Inbox className="w-5 h-5 text-purple-400" />
+                  <span className="text-[10px] font-bold text-purple-300">الطلبات المعلقة</span>
+                  {requestsBadge > 0 && <span className="text-[9px] font-bold text-purple-400 bg-purple-500/20 px-1.5 rounded-full">{requestsBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/monitor')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-red-500/15 to-red-500/5 border border-red-500/20 active:scale-95 transition-transform">
+                  <Eye className="w-5 h-5 text-red-400" />
+                  <span className="text-[10px] font-bold text-red-300">المراقبة</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => navigate('/admin/support')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 border border-cyan-500/20 active:scale-95 transition-transform">
+                  <Headphones className="w-5 h-5 text-cyan-400" />
+                  <span className="text-[10px] font-bold text-cyan-300">الدعم العادي</span>
+                  {supportBadge > 0 && <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/20 px-1.5 rounded-full">{supportBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/requests')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 border border-purple-500/20 active:scale-95 transition-transform">
+                  <Inbox className="w-5 h-5 text-purple-400" />
+                  <span className="text-[10px] font-bold text-purple-300">الطلبات</span>
+                  {requestsBadge > 0 && <span className="text-[9px] font-bold text-purple-400 bg-purple-500/20 px-1.5 rounded-full">{requestsBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/host-requests')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-rose-500/15 to-rose-500/5 border border-rose-500/20 active:scale-95 transition-transform">
+                  <FileText className="w-5 h-5 text-rose-400" />
+                  <span className="text-[10px] font-bold text-rose-300">المضيفات</span>
+                </button>
+              </>
             )}
           </div>
 
