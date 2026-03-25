@@ -195,7 +195,7 @@ const AdminLogin: React.FC = () => {
                   type="tel"
                   value={whatsapp}
                   onChange={(e) => !whatsappReadonly && setWhatsapp(e.target.value)}
-                  placeholder="+966XXXXXXXXX"
+                  placeholder={whatsapp || "أدخل رقم الواتساب"}
                   dir="ltr"
                   readOnly={whatsappReadonly}
                   className={`h-14 rounded-2xl pr-12 ${whatsappReadonly ? 'opacity-70 cursor-not-allowed' : ''}`}
