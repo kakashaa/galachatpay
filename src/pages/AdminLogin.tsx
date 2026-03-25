@@ -4,7 +4,7 @@ import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User, Phone, KeyRound }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
+import { supabase } from "@/integrations/supabase/client";
 import { galaApi } from "@/services/galaApi";
 
 const AdminLogin: React.FC = () => {
