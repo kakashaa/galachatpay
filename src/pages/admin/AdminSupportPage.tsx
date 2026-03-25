@@ -365,25 +365,34 @@ const AdminSupportPage: React.FC = () => {
 
   /* ═══ ACTIONS ═══ */
   const handleReply = async () => {
-    if (!replyText.trim() || sending || !selectedTicket) return;
+    if ((!replyText.trim() && !replyFile) || sending || !selectedTicket) return;
     setSending(true);
     const msg = replyText.trim();
     const now = new Date().toISOString();
 
     // Optimistic
+    const optimisticId = `local-${Date.now()}`;
     const optimistic: TicketMessage = {
-      id: `local-${Date.now()}`, ticket_id: selectedTicket.id,
-      message: msg, sender_name: adminDisplayName || adminUsername || "أدمن",
+      id: optimisticId, ticket_id: selectedTicket.id,
+      message: msg || (replyFile ? "مرفق" : ""), sender_name: adminDisplayName || adminUsername || "أدمن",
       sender_type: "admin", created_at: now,
     };
     setMessages(prev => [...prev, optimistic]);
     setReplyText("");
+    const fileToUpload = replyFile;
+    setReplyFile(null);
 
     try {
+      let attachmentUrl: string | null = null;
+      if (fileToUpload) {
+        attachmentUrl = await uploadReplyFile(fileToUpload);
+      }
+
       await supabase.from("ticket_messages" as any).insert({
-        ticket_id: selectedTicket.id, message: msg,
+        ticket_id: selectedTicket.id, message: msg || (fileToUpload ? "مرفق" : ""),
         sender_name: adminDisplayName || adminUsername || "أدمن",
         sender_type: "admin",
+        attachment_url: attachmentUrl,
       });
 
       const updates: any = {
@@ -397,13 +406,13 @@ const AdminSupportPage: React.FC = () => {
       await supabase.from("ticket_audit_log").insert({
         ticket_id: selectedTicket.id, action: "admin_replied",
         performed_by: adminUsername, performed_by_name: adminDisplayName || adminUsername,
-        details: { message_preview: msg.substring(0, 100) },
+        details: { message_preview: (msg || "مرفق").substring(0, 100) },
       });
 
       toast.success("تم إرسال الرد");
     } catch {
       toast.error("فشل إرسال الرد");
-      setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
       setReplyText(msg);
     }
     setSending(false);
