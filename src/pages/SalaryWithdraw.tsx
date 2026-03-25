@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import PageLoader from "@/components/PageLoader";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -519,10 +520,7 @@ const SalaryWithdraw: React.FC = () => {
   if (loading || step === "loading") {
     return (
       <MobileLayout showHeader headerTitle={headerTitle} onBack={() => navigate("/salary")}>
-        <div className="flex flex-col items-center justify-center py-24 gap-4">
-          <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">جاري فحص الراتب...</p>
-        </div>
+        <PageLoader message="جاري تحميل بيانات السحب..." />
       </MobileLayout>
     );
   }

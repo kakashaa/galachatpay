@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import PageLoader from "@/components/PageLoader";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import AdminSupportManager from "@/components/AdminSupportManager";
@@ -1030,9 +1031,7 @@ const AdminSupportPage: React.FC = () => {
               </div>
 
               {loading ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
+                <PageLoader message="جاري تحميل التذاكر..." />
               ) : filtered.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Ticket className="w-10 h-10 mx-auto mb-2 opacity-40" />
