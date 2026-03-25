@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import FancyLoading from "@/components/FancyLoading";
+import PageLoader from "@/components/PageLoader";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lock, Briefcase, Heart, Building2, UserPlus, Wallet, Loader2, ShieldAlert, CheckCircle, Copy, Send, HelpCircle, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -478,15 +478,7 @@ const WorksPage: React.FC = () => {
 
   if (loading) return (
     <div className="min-h-screen bg-background">
-      <FancyLoading
-        title="جاري التحميل"
-        subtitle="نجلب لك بيانات حسابك"
-        tips={[
-          "جاري جلب البيانات...",
-          "نتحقق من حالة حسابك...",
-          "ثواني ويظهر لك كل شي...",
-        ]}
-      />
+      <PageLoader message="جاري تحميل بيانات البيدي..." />
     </div>
   );
 
