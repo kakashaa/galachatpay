@@ -69,6 +69,55 @@ const formatTime = (t: string) => {
   } catch { return t; }
 };
 
+const CHAT_MEDIA_CACHE_KEY = 'admin_chat_media_cache_v1';
+
+type MediaCacheShape = {
+  byId: Record<string, string>;
+  bySignature: Record<string, string>;
+};
+
+const readMediaCache = (): MediaCacheShape => {
+  try {
+    const raw = localStorage.getItem(CHAT_MEDIA_CACHE_KEY);
+    if (!raw) return { byId: {}, bySignature: {} };
+    const parsed = JSON.parse(raw) as MediaCacheShape;
+    return {
+      byId: parsed?.byId && typeof parsed.byId === 'object' ? parsed.byId : {},
+      bySignature: parsed?.bySignature && typeof parsed.bySignature === 'object' ? parsed.bySignature : {},
+    };
+  } catch {
+    return { byId: {}, bySignature: {} };
+  }
+};
+
+const writeMediaCache = (cache: MediaCacheShape) => {
+  try {
+    localStorage.setItem(CHAT_MEDIA_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // ignore storage quota/runtime issues
+  }
+};
+
+const getMessageSignature = (roomId: string, msg: Partial<ChatMessage> & Record<string, unknown>) => {
+  const sender = String(msg.sender || '').trim();
+  const text = String(msg.text || '').trim();
+  const type = String(msg.type || 'text').trim().toLowerCase();
+  const time = String(msg.time || '').trim();
+  return `${roomId}|${sender}|${type}|${text}|${time}`;
+};
+
+const pickMediaUrl = (msg: Record<string, any>): string | undefined => {
+  const candidates = [
+    msg?.media_url,
+    msg?.mediaUrl,
+    msg?.voice_url,
+    msg?.audio_url,
+    msg?.attachment_url,
+    msg?.file_url,
+    msg?.url,
+  ];
+  return candidates.find((value) => typeof value === 'string' && value.startsWith('http'));
+};
 
 export default function AdminChatPage() {
   const { adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
