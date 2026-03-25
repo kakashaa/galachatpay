@@ -32,7 +32,7 @@ const Dashboard: React.FC = () => {
   const prevNotifCountRef = useRef(0);
   const [refreshing, setRefreshing] = useState(false);
   const [showWaBanner, setShowWaBanner] = useState(false);
-  const { verifiedPhone, unlink: unlinkWa, refresh: refreshWa } = useVerifiedWhatsApp(user?.uuid);
+  const { verifiedPhone, loading: waLoading, unlink: unlinkWa, refresh: refreshWa } = useVerifiedWhatsApp(user?.uuid);
 
   // Pull-to-refresh state
   const [pullDistance, setPullDistance] = useState(0);
@@ -40,13 +40,14 @@ const Dashboard: React.FC = () => {
   const startYRef = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Check if user has WhatsApp registered
+  // Check if user has WhatsApp registered - wait for loading to finish
   useEffect(() => {
     if (!isAuthenticated || !user?.uuid) return;
+    if (waLoading) return; // Wait until we know the actual status
     if (!shouldShowWhatsAppBanner()) return;
-    if (verifiedPhone) return; // Already has verified number
+    if (verifiedPhone) { setShowWaBanner(false); return; }
     setShowWaBanner(true);
-  }, [isAuthenticated, user?.uuid, verifiedPhone]);
+  }, [isAuthenticated, user?.uuid, verifiedPhone, waLoading]);
 
   const fetchNotifCount = useCallback(async () => {
     if (!user?.uuid) return;
