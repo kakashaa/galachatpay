@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ClipboardList, Loader2, Upload, Image, Send, CheckCircle, XCircle, Clock,
-  Circle, Crown, Fingerprint, Frame, Gift, Home, Paintbrush, Award, HelpCircle,
-  ArrowUpCircle, Mic, Play, Pause, ChevronLeft, Search
+  Crown, Fingerprint, Frame, Gift, Paintbrush, Award, HelpCircle,
+  Mic, ChevronLeft, Search
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import AdminPageLayout from '@/components/AdminPageLayout';
 import VoiceRecorder from '@/components/support/VoiceRecorder';
-import { notifyOnDutyAdmin } from '@/hooks/use-on-duty-admin';
+
 import { galaApi } from '@/services/galaApi';
 import PageLoader from '@/components/PageLoader';
 
@@ -43,7 +43,7 @@ const AdminHostRequestsPage: React.FC = () => {
   const adminRole = localStorage.getItem('admin_role') || '';
   const isRegularAdmin = adminRole === 'admin';
   const isSuperOrOwner = adminRole === 'super_admin' || adminRole === 'owner' || adminRole === 'moderator';
-  const isOwner = adminRole === 'owner';
+  
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabKey>('submit');
