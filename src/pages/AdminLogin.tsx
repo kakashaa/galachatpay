@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User, Phone, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
