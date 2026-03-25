@@ -407,22 +407,22 @@ export default function AdminChatPage() {
                         }}
                       >
                         {/* Image */}
-                        {isImage && msg.media_url && (
-                          <div className="cursor-pointer rounded-xl overflow-hidden mb-1" onClick={() => setPreviewImage(msg.media_url!)}>
-                            <img src={msg.media_url} alt="" className="max-w-full max-h-[220px] object-cover rounded-xl" loading="lazy" />
+                        {isImage && inferredMediaUrl && (
+                          <div className="cursor-pointer rounded-xl overflow-hidden mb-1" onClick={() => setPreviewImage(inferredMediaUrl)}>
+                            <img src={inferredMediaUrl} alt="" className="max-w-full max-h-[220px] object-cover rounded-xl" loading="lazy" />
                           </div>
                         )}
 
                         {/* Video */}
-                        {isVideo && msg.media_url && (
+                        {isVideo && inferredMediaUrl && (
                           <div className="rounded-xl overflow-hidden mb-1">
-                            <video src={msg.media_url} controls preload="metadata" className="max-w-full max-h-[220px] rounded-xl" playsInline muted />
+                            <video src={inferredMediaUrl} controls preload="metadata" className="max-w-full max-h-[220px] rounded-xl" playsInline muted />
                           </div>
                         )}
 
                         {/* Voice */}
-                        {isVoice && msg.media_url && (
-                          <VoiceMessage url={msg.media_url} duration={parseInt(msg.text) || 0} isMine={isMe} />
+                        {isVoice && inferredMediaUrl && (
+                          <VoiceMessage url={inferredMediaUrl} duration={parseInt(msg.text) || 0} isMine={isMe} />
                         )}
 
                         {/* Text content */}
