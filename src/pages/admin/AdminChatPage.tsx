@@ -496,6 +496,25 @@ export default function AdminChatPage() {
             </div>
           </div>
 
+          {/* Active call banner */}
+          {activeCallInRoom && !showVoiceCall && (
+            <motion.button
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setShowVoiceCall(true)}
+              className="mx-4 mb-2 flex items-center gap-3 px-4 py-2.5 rounded-2xl"
+              style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.15), rgba(16,163,74,0.1))', border: '1px solid rgba(34,197,94,0.2)' }}
+            >
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-emerald-500/20">
+                <PhoneIncoming className="w-4 h-4 text-emerald-400 animate-pulse" />
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-xs font-bold text-emerald-400">مكالمة نشطة</p>
+                <p className="text-[10px] text-white/40">{activeCallInRoom.participants?.length || 0} مشاركين • انقر للانضمام</p>
+              </div>
+            </motion.button>
+          )}
+
           {/* Members strip with stacked avatars */}
           <div className="px-4 pb-3 flex items-center gap-2 overflow-x-auto scrollbar-none">
             <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -698,6 +717,18 @@ export default function AdminChatPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Voice Call */}
+      <AnimatePresence>
+        {showVoiceCall && activeRoom && (
+          <GroupVoiceCall
+            chatRoomId={activeRoom}
+            adminUsername={adminName}
+            adminDisplayName={adminDisplayName || adminName}
+            onClose={() => setShowVoiceCall(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
