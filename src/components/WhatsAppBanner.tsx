@@ -2,8 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, ArrowLeft, Check, Loader2, Send, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { sendWhatsAppNotification } from '@/utils/sendWhatsAppNotification';
 import { toast } from 'sonner';
+
+// Send WA verification via dedicated edge function (no admin auth needed)
+async function sendWaVerification(phone: string, message: string): Promise<void> {
+  try {
+    await supabase.functions.invoke('wa-verify', {
+      body: { phone, message },
+    });
+  } catch {
+    // Silent
+  }
+}
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 interface Props {
@@ -74,7 +84,7 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
         verified: false,
       } as any);
 
-      await sendWhatsAppNotification(fullPhone, `غلا شات 💬\n\n🔐 رمز التحقق: ${code}\nلا تشاركه مع أحد`);
+      await sendWaVerification(fullPhone, `غلا شات 💬\n\n🔐 رمز التحقق: ${code}\nلا تشاركه مع أحد`);
 
       setStep('otp');
       setResendTimer(60);
@@ -131,7 +141,7 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
       } as any, { onConflict: 'user_uuid' });
 
       // Send welcome message
-      await sendWhatsAppNotification(fullPhone, `غلا شات 💬\n\n🎉 مرحباً ${userName}! تم تفعيل إشعارات غلا شات\nستصلك العروض والمسابقات مباشرة`);
+      await sendWaVerification(fullPhone, `غلا شات 💬\n\n🎉 مرحباً ${userName}! تم تفعيل إشعارات غلا شات\nستصلك العروض والمسابقات مباشرة`);
 
       toast.success('✅ تم تسجيل رقمك بنجاح!');
       onSuccess();
