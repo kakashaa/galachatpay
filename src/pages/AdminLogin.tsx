@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Lock, ArrowRight, Loader2, AlertCircle, User, Phone, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,23 @@ const AdminLogin: React.FC = () => {
   const [whatsappReadonly, setWhatsappReadonly] = useState(false);
   const [loginData, setLoginData] = useState<any>(null);
 
+  // Auto-fill WhatsApp from admin_shifts when first-login screen shows
+  useEffect(() => {
+    if (mustChangePassword && username) {
+      supabase
+        .from('admin_shifts')
+        .select('phone_number')
+        .eq('admin_username', username.trim())
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.phone_number) {
+            setWhatsapp(data.phone_number);
+            setWhatsappReadonly(true);
+          }
+        });
+    }
+  }, [mustChangePassword, username]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
@@ -43,18 +60,6 @@ const AdminLogin: React.FC = () => {
       if (data.must_change_password) {
         setMustChangePassword(true);
         setLoginData(data);
-        // Pre-fill WhatsApp from admin_shifts
-        try {
-          const { data: shiftData } = await supabase
-            .from('admin_shifts')
-            .select('phone_number')
-            .eq('admin_username', username.trim())
-            .maybeSingle();
-          if (shiftData?.phone_number) {
-            setWhatsapp(shiftData.phone_number);
-            setWhatsappReadonly(true);
-          }
-        } catch { /* silent */ }
         setLoading(false);
         return;
       }
@@ -170,7 +175,7 @@ const AdminLogin: React.FC = () => {
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                رقم الواتساب {whatsappReadonly ? '(محفوظ)' : '(إجباري)'}
+                رقم الواتساب {whatsappReadonly ? '(📱 محفوظ من النظام)' : '(إجباري)'}
               </label>
               <div className="relative">
                 <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -178,7 +183,7 @@ const AdminLogin: React.FC = () => {
                   type="tel"
                   value={whatsapp}
                   onChange={(e) => !whatsappReadonly && setWhatsapp(e.target.value)}
-                  placeholder="+966XXXXXXXXX"
+                  placeholder={whatsapp || "أدخل رقم الواتساب"}
                   dir="ltr"
                   readOnly={whatsappReadonly}
                   className={`h-14 rounded-2xl pr-12 ${whatsappReadonly ? 'opacity-70 cursor-not-allowed' : ''}`}
