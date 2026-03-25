@@ -7,6 +7,7 @@ import VoiceRecorder from "@/components/support/VoiceRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
 import { sendWhatsAppNotification } from "@/utils/sendWhatsAppNotification";
+import { notifyOnDutyAdmin } from "@/hooks/use-on-duty-admin";
 import {
   Headset, Loader2, MessageSquare, Archive, Search, Ticket,
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,
@@ -293,6 +294,11 @@ const AdminSupportPage: React.FC = () => {
             message: "تم التصعيد تلقائياً للسوبر أدمن بسبب عدم الرد خلال 5 دقائق",
             sender_name: "النظام", sender_type: "system",
           });
+          // Notify on-duty super admin
+          notifyOnDutyAdmin(
+            `غلا شات 💬\n\n🔺 تصعيد تلقائي!\nتذكرة بدون رد من 5 دقائق\nرقم التذكرة: ${ticket.id}`,
+            'super_admin'
+          ).catch(() => {});
         }
       }
     };
