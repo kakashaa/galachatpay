@@ -19,6 +19,7 @@ const AdminLogin: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [whatsappReadonly, setWhatsappReadonly] = useState(false);
   const [loginData, setLoginData] = useState<any>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
