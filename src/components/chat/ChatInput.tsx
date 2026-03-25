@@ -78,17 +78,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       
-      // Try multiple mime types for compatibility
-      let mimeType = 'audio/webm';
-      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        mimeType = 'audio/webm;codecs=opus';
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        mimeType = 'audio/mp4';
-      } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-        mimeType = 'audio/ogg';
-      }
-      
-      const recorder = new MediaRecorder(stream, { mimeType });
+      // Try multiple mime types for compatibility (fallback to browser default)
+      const preferredTypes = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg', 'audio/webm'];
+      const pickedMimeType = preferredTypes.find((t) => MediaRecorder.isTypeSupported(t));
+      const recorder = pickedMimeType
+        ? new MediaRecorder(stream, { mimeType: pickedMimeType })
+        : new MediaRecorder(stream);
+      const mimeType = pickedMimeType || recorder.mimeType || 'audio/webm';
+
       audioChunksRef.current = [];
       recordingTimeRef.current = 0;
 
