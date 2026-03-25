@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, Crown } from "lucide-react";
+import { Copy, Zap, Diamond, Gift, DollarSign, Sparkles, Crown, Phone, Unlink } from "lucide-react";
 import PulsingHelpIcon from "@/components/PulsingHelpIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,9 @@ import { getAvatar, fixAvatarUrl, getAvatarUrl } from "@/lib/avatarHelper";
 import StarWalletDialog from "@/components/StarWalletDialog";
 import StarSystemTutorial from "@/components/StarSystemTutorial";
 import { useVipChime } from "@/hooks/use-vip-chime";
+import { useVerifiedWhatsApp } from "@/hooks/use-verified-whatsapp";
+import { useConfirmModal } from "@/hooks/use-confirm-modal";
+import { toast } from "sonner";
 
 
 const getUserTypeLabel = (type: number): string => {
