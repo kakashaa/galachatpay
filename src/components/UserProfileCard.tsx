@@ -295,3 +295,4 @@ const UserProfileCard: React.FC = () => {
   );
 };
 
+export default UserProfileCard;
