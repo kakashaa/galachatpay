@@ -1492,11 +1492,21 @@ const AdminHomeView: React.FC<Props> = ({
                 </div>
 
                 <div>
-                  <h1 className="text-base font-semibold text-white leading-tight">أهلاً {adminDisplayName}</h1>
+                  <h1 className="text-base font-semibold text-white leading-tight">أهلاً {adminDisplayName} 👋</h1>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/20">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                      <span className="text-[9px] font-semibold text-amber-400">{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border ${
+                      adminRole === 'owner'
+                        ? 'bg-amber-400/15 border-amber-400/20'
+                        : adminRole === 'super_admin' || adminRole === 'moderator'
+                          ? 'bg-red-500/15 border-red-500/20'
+                          : 'bg-blue-500/15 border-blue-500/20'
+                    }`}>
+                      <span className="text-[10px]">
+                        {adminRole === 'owner' ? '👑' : adminRole === 'super_admin' || adminRole === 'moderator' ? '🔴' : '🔵'}
+                      </span>
+                      <span className={`text-[9px] font-semibold ${
+                        adminRole === 'owner' ? 'text-amber-400' : adminRole === 'super_admin' || adminRole === 'moderator' ? 'text-red-400' : 'text-blue-400'
+                      }`}>{adminRole ? roleLabels[adminRole] || adminRole : 'لوحة التحكم'}</span>
                     </span>
                   </div>
                 </div>
@@ -1642,25 +1652,42 @@ const AdminHomeView: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* ── Group Chat — amber pill buttons ── */}
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => navigate('/admin/chat')}
-              className="flex-1 flex items-center justify-center gap-2 h-9 rounded-full bg-gradient-to-l from-amber-500/20 to-amber-600/5 border border-amber-400/15 hover:border-amber-400/30 transition-all group"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span className="text-[11px] font-medium text-amber-300">قروب المشرفين</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            </button>
-            {isOwner && (
-              <button
-                onClick={() => navigate('/admin/accounts')}
-                className="flex-1 flex items-center justify-center gap-2 h-9 rounded-full bg-white/5 border border-white/8 hover:border-white/15 transition-all group"
-              >
-                <MessageCircle className="w-3.5 h-3.5 text-slate-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-medium text-slate-300">كل الأدمن</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              </button>
+          {/* ── Quick Actions ── */}
+          <div className="grid grid-cols-3 gap-2">
+            {(isOwner || isSuperAdmin) ? (
+              <>
+                <button onClick={() => navigate('/admin/support')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 border border-cyan-500/20 active:scale-95 transition-transform">
+                  <Headphones className="w-5 h-5 text-cyan-400" />
+                  <span className="text-[10px] font-bold text-cyan-300">الدعم السريع</span>
+                  {supportBadge > 0 && <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/20 px-1.5 rounded-full">{supportBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/requests')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 border border-purple-500/20 active:scale-95 transition-transform">
+                  <Inbox className="w-5 h-5 text-purple-400" />
+                  <span className="text-[10px] font-bold text-purple-300">الطلبات المعلقة</span>
+                  {requestsBadge > 0 && <span className="text-[9px] font-bold text-purple-400 bg-purple-500/20 px-1.5 rounded-full">{requestsBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/monitor')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-red-500/15 to-red-500/5 border border-red-500/20 active:scale-95 transition-transform">
+                  <Eye className="w-5 h-5 text-red-400" />
+                  <span className="text-[10px] font-bold text-red-300">المراقبة</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => navigate('/admin/support')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-cyan-500/15 to-cyan-500/5 border border-cyan-500/20 active:scale-95 transition-transform">
+                  <Headphones className="w-5 h-5 text-cyan-400" />
+                  <span className="text-[10px] font-bold text-cyan-300">الدعم العادي</span>
+                  {supportBadge > 0 && <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/20 px-1.5 rounded-full">{supportBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/requests')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-purple-500/15 to-purple-500/5 border border-purple-500/20 active:scale-95 transition-transform">
+                  <Inbox className="w-5 h-5 text-purple-400" />
+                  <span className="text-[10px] font-bold text-purple-300">الطلبات</span>
+                  {requestsBadge > 0 && <span className="text-[9px] font-bold text-purple-400 bg-purple-500/20 px-1.5 rounded-full">{requestsBadge}</span>}
+                </button>
+                <button onClick={() => navigate('/admin/host-requests')} className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-gradient-to-b from-rose-500/15 to-rose-500/5 border border-rose-500/20 active:scale-95 transition-transform">
+                  <FileText className="w-5 h-5 text-rose-400" />
+                  <span className="text-[10px] font-bold text-rose-300">المضيفات</span>
+                </button>
+              </>
             )}
           </div>
 

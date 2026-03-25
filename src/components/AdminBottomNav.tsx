@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Search, Bell, Eye, MoreHorizontal } from 'lucide-react';
+import { Home, Search, Bell, Eye, MoreHorizontal, MessageCircle } from 'lucide-react';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
 
 type BottomTab = 'home' | 'search' | 'chat' | 'monitor' | 'favorites';
@@ -12,30 +12,46 @@ interface Props {
   monitorBadge?: number;
 }
 
-const navItems = [
-  { key: 'home' as BottomTab, icon: Home, label: 'الرئيسية', gradient: 'from-amber-400 to-orange-500' },
-  { key: 'search' as BottomTab, icon: Search, label: 'بحث', gradient: 'from-teal-400 to-cyan-500' },
-  { key: 'chat' as BottomTab, icon: Bell, label: 'إشعارات', gradient: 'from-red-400 to-rose-500' },
-  { key: 'monitor' as BottomTab, icon: Eye, label: 'المراقبة', gradient: 'from-blue-400 to-indigo-500' },
-  { key: 'favorites' as BottomTab, icon: MoreHorizontal, label: 'المزيد', gradient: 'from-slate-400 to-slate-500' },
-];
-
 const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorBadge }) => {
   const navigate = useNavigate();
   const tap = useTapFeedback();
   const [bouncingKey, setBouncingKey] = useState<string | null>(null);
   const adminRole = localStorage.getItem('admin_role');
-  const filteredNavItems = navItems.filter(item => {
-    if (item.key === 'monitor' && adminRole === 'admin') return false;
-    return true;
-  });
+  const isRegularAdmin = adminRole === 'admin';
+
+  // Role-based nav items
+  // Owner + Super Admin: Home, Search, Notifications, Monitor, More
+  // Admin: Home, Search, Notifications, Chat, More
+  const navItems: { key: BottomTab; icon: typeof Home; label: string; gradient: string }[] = isRegularAdmin
+    ? [
+        { key: 'home', icon: Home, label: 'الرئيسية', gradient: 'from-amber-400 to-orange-500' },
+        { key: 'search', icon: Search, label: 'بحث', gradient: 'from-teal-400 to-cyan-500' },
+        { key: 'chat', icon: Bell, label: 'إشعارات', gradient: 'from-red-400 to-rose-500' },
+        { key: 'monitor', icon: MessageCircle, label: 'القروب', gradient: 'from-emerald-400 to-teal-500' },
+        { key: 'favorites', icon: MoreHorizontal, label: 'المزيد', gradient: 'from-slate-400 to-slate-500' },
+      ]
+    : [
+        { key: 'home', icon: Home, label: 'الرئيسية', gradient: 'from-amber-400 to-orange-500' },
+        { key: 'search', icon: Search, label: 'بحث', gradient: 'from-teal-400 to-cyan-500' },
+        { key: 'chat', icon: Bell, label: 'إشعارات', gradient: 'from-red-400 to-rose-500' },
+        { key: 'monitor', icon: Eye, label: 'المراقبة', gradient: 'from-blue-400 to-indigo-500' },
+        { key: 'favorites', icon: MoreHorizontal, label: 'المزيد', gradient: 'from-slate-400 to-slate-500' },
+      ];
 
   const handleTap = (item: typeof navItems[0]) => {
     tap();
     setBouncingKey(item.key);
     setTimeout(() => {
       setBouncingKey(null);
-      if (item.key === 'monitor') { navigate('/admin/monitor'); return; }
+      if (item.key === 'monitor') {
+        // For admin: go to chat; for others: go to monitor
+        if (isRegularAdmin) {
+          navigate('/admin/chat');
+        } else {
+          navigate('/admin/monitor');
+        }
+        return;
+      }
       if (item.key === 'chat') { navigate('/admin/chat'); return; }
       onChange(item.key);
     }, 400);
@@ -57,7 +73,7 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorB
             boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
           }}
         >
-          {filteredNavItems.map((item) => {
+          {navItems.map((item) => {
             const isActive = active === item.key;
             const Icon = item.icon;
             const isChatTab = item.key === 'chat';
@@ -89,7 +105,7 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorB
                     {chatBadge > 99 ? '99+' : chatBadge}
                   </span>
                 )}
-                {item.key === 'monitor' && monitorBadge && monitorBadge > 0 && (
+                {item.key === 'monitor' && !isRegularAdmin && monitorBadge && monitorBadge > 0 && (
                   <span
                     className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[8px] text-white font-bold flex items-center justify-center px-1 bg-red-500 shadow-md shadow-red-500/50 animate-pulse"
                     style={{ border: '2px solid rgba(0,0,0,0.6)' }}
