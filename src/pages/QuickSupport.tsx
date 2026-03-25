@@ -11,7 +11,6 @@ import { motion } from "framer-motion";
 import SupportSessionChat from "@/components/SupportSessionChat";
 import { startSupportSession } from "@/hooks/use-support-session";
 import { createTicket } from "@/hooks/use-create-ticket";
-import { supabase } from "@/integrations/supabase/client";
 import { notifyOnDutyAdmin } from "@/hooks/use-on-duty-admin";
 import TicketStatusCard from "@/components/support/TicketStatusCard";
 import { Input } from "@/components/ui/input";
