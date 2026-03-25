@@ -40,6 +40,13 @@ async function checkAdminOnline(): Promise<boolean> {
 }
 
 export async function createTicket(params: CreateTicketParams) {
+  // Anti-spam rate limiting
+  const lastTicket = localStorage.getItem('last_ticket_time');
+  if (lastTicket && Date.now() - parseInt(lastTicket) < 60000) {
+    throw new Error('انتظر دقيقة قبل إنشاء تذكرة جديدة');
+  }
+  localStorage.setItem('last_ticket_time', Date.now().toString());
+
   const now = new Date().toISOString();
 
   // Auto-fill phone from verified WhatsApp if not provided
