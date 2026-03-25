@@ -2,8 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, ArrowLeft, Check, Loader2, Send, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { sendWhatsAppNotification } from '@/utils/sendWhatsAppNotification';
 import { toast } from 'sonner';
+
+// Send WA verification via dedicated edge function (no admin auth needed)
+async function sendWaVerification(phone: string, message: string): Promise<void> {
+  try {
+    await supabase.functions.invoke('wa-verify', {
+      body: { phone, message },
+    });
+  } catch {
+    // Silent
+  }
+}
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 interface Props {
