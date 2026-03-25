@@ -1,21 +1,29 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-/* Routes each role can access */
-const ROLE_ROUTES: Record<string, string[]> = {
-  admin: ["/admin/requests", "/admin/support", "/admin/chat", "/admin/host-requests"],
-  moderator: [
-    "/admin/requests", "/admin/support", "/admin/chat", "/admin/host-requests",
-    "/admin/vip", "/admin/ban", "/admin/id-change", "/admin/log",
-    "/admin/monitor", "/admin/live-dashboard",
-  ],
-  super_admin: [
-    "/admin/requests", "/admin/support", "/admin/chat", "/admin/host-requests",
-    "/admin/vip", "/admin/ban", "/admin/id-change", "/admin/log",
-    "/admin/monitor", "/admin/live-dashboard",
-  ],
-  owner: ["*"], // owner sees everything
+/* Allowed roles per admin route */
+const PAGE_ROLES: Record<string, string[]> = {
+  "/admin/salary": ["owner"],
+  "/admin/settings": ["owner"],
+  "/admin/accounts": ["owner"],
+  "/admin/income": ["owner"],
+  "/admin/agencies": ["owner"],
+  "/admin/works": ["owner"],
+  "/admin/supporter-club": ["owner"],
+  "/admin/deductions": ["owner"],
+  "/admin/gifts": ["owner"],
+  "/admin/vip": ["owner", "super_admin"],
+  "/admin/ban": ["owner", "super_admin"],
+  "/admin/id-change": ["owner", "super_admin"],
+  "/admin/log": ["owner", "super_admin"],
+  "/admin/monitor": ["owner", "super_admin"],
+  "/admin/live-dashboard": ["owner", "super_admin"],
+  "/admin/requests": ["owner", "super_admin", "admin"],
+  "/admin/support": ["owner", "super_admin", "admin"],
+  "/admin/host-requests": ["owner", "super_admin", "admin"],
+  "/admin/chat": ["owner", "super_admin", "admin"],
 };
 
 interface Props {
@@ -24,30 +32,75 @@ interface Props {
 
 const AdminRouteGuard: React.FC<Props> = ({ children }) => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const adminRole = localStorage.getItem("admin_role") || "";
-  const currentPath = window.location.pathname;
+  const loggedRef = useRef(false);
 
-  // No role = not logged in (handled by useAdminSession)
+  // No role = not logged in (handled elsewhere)
   if (!adminRole) return <>{children}</>;
 
-  const allowed = ROLE_ROUTES[adminRole] || [];
-  if (allowed.includes("*") || allowed.some(r => currentPath.startsWith(r))) {
+  // Owner sees everything
+  if (adminRole === "owner") return <>{children}</>;
+
+  // moderator gets same access as super_admin
+  const effectiveRole = adminRole === "moderator" ? "super_admin" : adminRole;
+
+  // Find matching route
+  const matchedRoute = Object.keys(PAGE_ROLES).find(r => pathname.startsWith(r));
+  const allowed = matchedRoute ? PAGE_ROLES[matchedRoute] : null;
+
+  // If no rule exists for this path, allow (e.g. /admin/dashboard)
+  if (!allowed) return <>{children}</>;
+
+  // Check if effective role is allowed
+  if (allowed.includes(effectiveRole) || allowed.includes(adminRole)) {
     return <>{children}</>;
   }
 
+  // Unauthorized — log attempt once
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (loggedRef.current) return;
+    loggedRef.current = true;
+    const username = localStorage.getItem("admin_username") || "unknown";
+    supabase.from("admin_audit_log").insert({
+      admin_username: username,
+      admin_role: adminRole,
+      action: "unauthorized_access",
+      details: { path: pathname, role: adminRole },
+    }).then(() => {});
+  }, [pathname, adminRole]);
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-6" dir="rtl"
-      style={{ background: "linear-gradient(to bottom, #050816, #0a1628)" }}>
+    <div
+      className="min-h-screen flex items-center justify-center p-6"
+      dir="rtl"
+      style={{ background: "linear-gradient(to bottom, #050816, #0a1628)" }}
+    >
       <div className="text-center space-y-4 max-w-xs">
-        <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center"
-          style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <div
+          className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center"
+          style={{
+            background: "rgba(239,68,68,0.12)",
+            border: "1px solid rgba(239,68,68,0.2)",
+          }}
+        >
           <ShieldAlert className="w-8 h-8 text-destructive" />
         </div>
-        <h2 className="text-lg font-bold text-foreground">⛔ لا تملك صلاحية الوصول</h2>
-        <p className="text-sm text-muted-foreground">هذه الصفحة غير متاحة لحسابك</p>
-        <button onClick={() => navigate("/admin/dashboard")}
+        <h2 className="text-lg font-bold text-foreground">
+          ⛔ لا تملك صلاحية الوصول
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          هذه الصفحة غير متاحة لحسابك
+        </p>
+        <button
+          onClick={() => navigate("/admin/dashboard")}
           className="px-6 py-2.5 rounded-xl text-sm font-bold text-white"
-          style={{ background: "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))" }}>
+          style={{
+            background:
+              "linear-gradient(135deg, hsl(188 86% 53%), hsl(188 86% 43%))",
+          }}
+        >
           العودة للرئيسية
         </button>
       </div>
