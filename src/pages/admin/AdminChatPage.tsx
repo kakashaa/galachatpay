@@ -99,11 +99,20 @@ const writeMediaCache = (cache: MediaCacheShape) => {
 };
 
 const getMessageSignature = (roomId: string, msg: Partial<ChatMessage>) => {
-  const sender = String(msg.sender || '').trim();
+  const sender = String(msg.sender || msg.sender_name || '').trim().toLowerCase();
   const text = String(msg.text || '').trim();
-  const type = String(msg.type || 'text').trim().toLowerCase();
-  const time = String(msg.time || '').trim();
-  return `${roomId}|${sender}|${type}|${text}|${time}`;
+  const rawType = String(msg.type || 'text').trim().toLowerCase();
+  const normalizedType = rawType === 'text'
+    ? (text === 'صورة'
+        ? 'image'
+        : text === 'فيديو'
+        ? 'video'
+        : (text === 'رسالة صوتية' || text === 'رساله صوتيه' || /^\d+$/.test(text))
+        ? 'voice'
+        : 'text')
+    : rawType;
+  // Intentionally without timestamp so signature still matches after reload/re-fetch.
+  return `${roomId}|${sender}|${normalizedType}|${text}`;
 };
 
 const pickMediaUrl = (msg: Record<string, any>): string | undefined => {
