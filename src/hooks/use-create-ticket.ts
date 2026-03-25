@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { sendWhatsAppNotification } from '@/utils/sendWhatsAppNotification';
+import { notifyOnDutyAdmin } from '@/hooks/use-on-duty-admin';
 
 interface CreateTicketParams {
   userUuid: string;
