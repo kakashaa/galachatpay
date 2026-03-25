@@ -85,7 +85,7 @@ async function authenticateAdmin(
     .single();
 
   if (!mod) return null;
-  return { role: "moderator", permissions: mod.permissions || [] };
+  return { role: mod.role || "admin", permissions: mod.permissions || [] };
 }
 
 Deno.serve(async (req) => {
@@ -142,8 +142,8 @@ Deno.serve(async (req) => {
             .eq("is_active", true)
             .single();
           if (mod) {
-            auth = { role: "moderator", permissions: mod.permissions || [] };
-            console.log("[ADMIN-DEBUG] auth via DB mod:", decoded.username);
+            auth = { role: mod.role || "admin", permissions: mod.permissions || [] };
+            console.log("[ADMIN-DEBUG] auth via DB mod:", decoded.username, "role:", mod.role);
           } else {
             console.log("[ADMIN-DEBUG] mod not found for:", decoded.username);
           }
@@ -1047,7 +1047,7 @@ Deno.serve(async (req) => {
 
       case "add_moderator": {
         if (!isSuperAdmin && auth.role !== "admin") throw new Error("غير مصرح لك");
-        const { username: modUsername, display_name, password: modPassword, permissions } = data;
+        const { username: modUsername, display_name, password: modPassword, permissions, role: newRole } = data;
         if (!modUsername || !modPassword) throw new Error("اسم المستخدم وكلمة المرور مطلوبان");
         
         // Check if username already exists (including primary admins)
@@ -1064,7 +1064,7 @@ Deno.serve(async (req) => {
           username: modUsername,
           display_name: display_name || modUsername,
           password_hash: pwHash,
-          role: "moderator",
+          role: newRole || "admin",
           permissions: permissions || [],
           created_by: username || "",
         });
