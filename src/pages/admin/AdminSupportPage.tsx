@@ -5,6 +5,7 @@ import AdminSupportManager from "@/components/AdminSupportManager";
 import VoiceRecorder from "@/components/support/VoiceRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { getAvatar, handleAvatarError } from "@/lib/avatarHelper";
+import { sendWhatsAppNotification } from "@/utils/sendWhatsAppNotification";
 import {
   Headset, Loader2, MessageSquare, Archive, Search, Ticket,
   Clock, AlertTriangle, CheckCircle2, Reply, ChevronDown,

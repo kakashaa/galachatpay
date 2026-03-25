@@ -99,6 +99,7 @@ const AgentCharge: React.FC = () => {
         uuid: uuid.trim(),
         coins: parseInt(coins),
         payment_method: selectedPayment,
+        payment_label: AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.label || selectedPayment,
         payment_country: AGENT_PAYMENT_METHODS.find(p => p.id === selectedPayment)?.country || "other",
         receipt_confirmed: receiptConfirmed,
         receipt_image: receiptImage || null,
