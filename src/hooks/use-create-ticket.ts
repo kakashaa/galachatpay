@@ -42,6 +42,18 @@ async function checkAdminOnline(): Promise<boolean> {
 export async function createTicket(params: CreateTicketParams) {
   const now = new Date().toISOString();
 
+  // Auto-fill phone from verified WhatsApp if not provided
+  let phone = params.phoneNumber || null;
+  if (!phone) {
+    const { data: waData } = await supabase
+      .from('user_whatsapp' as any)
+      .select('phone_number')
+      .eq('user_uuid', params.userUuid)
+      .eq('is_active', true)
+      .maybeSingle();
+    phone = (waData as any)?.phone_number || null;
+  }
+
   // Check if any admin is online
   const adminOnline = await checkAdminOnline();
   const directToSuper = !adminOnline;
@@ -60,7 +72,7 @@ export async function createTicket(params: CreateTicketParams) {
       voice_message_url: params.voiceMessageUrl || null,
       attachment_url: params.attachmentUrl || null,
       room_code: params.roomCode || null,
-      phone_number: params.phoneNumber || null,
+      phone_number: phone,
       status: directToSuper ? 'escalated' : 'open',
       priority: params.requestType === 'complaint' ? 'high' : 'normal',
       assigned_role: directToSuper ? 'super_admin' : 'admin',
