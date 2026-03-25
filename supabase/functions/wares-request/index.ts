@@ -125,6 +125,36 @@ serve(async (req) => {
       });
     }
 
+    if (action === "upload-ware") {
+      const { ware_type, name, file_url, uuid, file_format, expire, show_img } = params;
+      if (!file_url || !uuid) {
+        return new Response(JSON.stringify({ ok: false, error: "Missing file_url or uuid" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const formData = new URLSearchParams();
+      formData.append("ware_type", ware_type || "badge");
+      formData.append("name", name || "item");
+      formData.append("file_url", file_url);
+      formData.append("uuid", uuid);
+      formData.append("file_format", file_format || "svga");
+      formData.append("expire", expire || "30");
+      if (show_img) formData.append("show_img", show_img);
+
+      const res = await fetch(`${BASE_URL}?key=${API_KEY}&action=upload-ware`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      });
+
+      const data = await res.json();
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ success: false, error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -137,3 +167,4 @@ serve(async (req) => {
     });
   }
 });
+
