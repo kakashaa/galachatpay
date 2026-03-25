@@ -24,7 +24,7 @@ const TESTS: { name: string; fn: () => Promise<unknown> }[] = [
   { name: "API: salary_report (1000)", fn: () => galaApi.salaryReport("1000") },
   { name: "API: withdraw-status (1000)", fn: () => galaApi.withdrawStatus("1000") },
   { name: "API: salary_withdraw_list", fn: () => galaApi.salaryWithdrawList(new Date().toISOString().slice(0, 7)) },
-  { name: "API: list-requests", fn: () => galaApi.listRequests() },
+  { name: "API: hola-chat wares", fn: () => fetch("https://hola-chat.com/wares-api.php?key=ghala2026actions&action=list-requests", { signal: AbortSignal.timeout(8000) }).then(r => r.text()) },
   { name: "hola-chat health", fn: () => fetch("https://hola-chat.com/health.php", { signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }) },
   { name: "GCS storage", fn: () => fetch("https://storage.googleapis.com/galalivechat-bucket-01/gifts/country_220.jpg", { method: "HEAD", signal: AbortSignal.timeout(8000) }).then(r => { if (!r.ok) throw new Error(`${r.status}`); }) },
 ];

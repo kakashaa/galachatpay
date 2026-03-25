@@ -96,6 +96,7 @@ const AdminMonitorPage = lazy(() => import("./pages/admin/AdminMonitorPage"));
 const AdminSupporterClubPage = lazy(() => import("./pages/admin/AdminSupporterClubPage"));
 const AdminLiveDashboardPage = lazy(() => import("./pages/admin/AdminLiveDashboardPage"));
 const AdminDeductionsPage = lazy(() => import("./pages/admin/AdminDeductionsPage"));
+const AdminHealthCheck = lazy(() => import("./pages/admin/AdminHealthCheck"));
 const SupportTicketsEmbed = lazy(() => import("./pages/SupportTicketsEmbed"));
 const SupportChatEmbed = lazy(() => import("./pages/SupportChatEmbed"));
 
