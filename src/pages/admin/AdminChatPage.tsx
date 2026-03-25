@@ -102,6 +102,7 @@ export default function AdminChatPage() {
     supabase.from('admin_shifts').select('admin_username').eq('is_active', true).then(({ data }) => {
       if (data) setOnShiftAdmins(data.map((d: any) => d.admin_username));
     });
+  }, []);
 
   const getAdminMember = (username: string): AdminMember | undefined =>
     adminMembers.find(m => m.username === username);
