@@ -98,7 +98,7 @@ const writeMediaCache = (cache: MediaCacheShape) => {
   }
 };
 
-const getMessageSignature = (roomId: string, msg: Partial<ChatMessage> & Record<string, unknown>) => {
+const getMessageSignature = (roomId: string, msg: Partial<ChatMessage>) => {
   const sender = String(msg.sender || '').trim();
   const text = String(msg.text || '').trim();
   const type = String(msg.type || 'text').trim().toLowerCase();
