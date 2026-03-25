@@ -96,6 +96,13 @@ export default function AdminChatPage() {
       });
   }, []);
 
+  // Check who is actually on shift now (Riyadh time)
+  const [onShiftAdmins, setOnShiftAdmins] = useState<string[]>([]);
+  useEffect(() => {
+    supabase.from('admin_shifts').select('admin_username').eq('is_active', true).then(({ data }) => {
+      if (data) setOnShiftAdmins(data.map((d: any) => d.admin_username));
+    });
+
   const getAdminMember = (username: string): AdminMember | undefined =>
     adminMembers.find(m => m.username === username);
 
@@ -277,20 +284,6 @@ export default function AdminChatPage() {
     if (last?.date === dateStr) last.msgs.push(msg);
     else grouped.push({ date: dateStr, msgs: [msg] });
   });
-
-  // Check who is actually on shift now (Riyadh time)
-  const [onShiftAdmins, setOnShiftAdmins] = useState<string[]>([]);
-  useEffect(() => {
-    supabase.from('admin_shifts').select('admin_username').eq('is_active', true).then(({ data }) => {
-      if (data) {
-        const now = new Date();
-        const riyadhNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
-        const nowStr = riyadhNow.toTimeString().slice(0, 5);
-        // For simplicity, just use is_active admins as "on shift"
-        setOnShiftAdmins(data.map((d: any) => d.admin_username));
-      }
-    });
-  }, []);
 
   const onlineMembers = adminMembers.filter(m => {
     if (isSuperGroup) return (m.role === 'super_admin' || m.role === 'owner') && onShiftAdmins.includes(m.username);
