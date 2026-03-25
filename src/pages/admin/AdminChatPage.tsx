@@ -165,6 +165,41 @@ export default function AdminChatPage() {
     });
   }, []);
 
+  // Listen for active calls in current room
+  useEffect(() => {
+    if (!activeRoom) {
+      setActiveCallInRoom(null);
+      return;
+    }
+    const fetchCall = async () => {
+      const { data } = await supabase
+        .from('admin_calls' as any)
+        .select('*')
+        .eq('chat_room_id', activeRoom)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (data && (data as any[]).length > 0) setActiveCallInRoom((data as any[])[0]);
+      else setActiveCallInRoom(null);
+    };
+    fetchCall();
+
+    const channel = supabase
+      .channel(`call_listen_${activeRoom}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'admin_calls',
+        filter: `chat_room_id=eq.${activeRoom}`,
+      }, (payload) => {
+        const d = payload.new as any;
+        if (d.status === 'active') setActiveCallInRoom(d);
+        else setActiveCallInRoom(null);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeRoom]);
+
   const getAdminMember = (username: string): AdminMember | undefined =>
     adminMembers.find(m => m.username === username);
 
