@@ -122,23 +122,11 @@ export async function createTicket(params: CreateTicketParams) {
 
   // Send WhatsApp notification to on-duty admin (silent)
   try {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, timeZone: 'Asia/Riyadh' });
-    const { data: onDutyAdmin } = await supabase
-      .from('admin_shifts')
-      .select('admin_username, phone_number')
-      .eq('is_active', true)
-      .lte('shift_start', timeStr)
-      .gte('shift_end', timeStr)
-      .limit(1)
-      .single();
-
-    if (onDutyAdmin?.phone_number) {
-      await sendWhatsAppNotification(
-        onDutyAdmin.phone_number,
-        `غلا شات 💬\n\n🎫 تذكرة جديدة!\nمن: ${params.userName}\nالنوع: ${getSubjectFromType(params.requestType)}${params.roomCode ? '\nالغرفة: ' + params.roomCode : ''}`
-      );
-    }
+    const roleTarget = params.requestType === 'admin_visit' ? 'super_admin' : 'admin';
+    await notifyOnDutyAdmin(
+      `غلا شات 💬\n\n🎫 تذكرة جديدة!\nمن: ${params.userName}\nالنوع: ${getSubjectFromType(params.requestType)}${params.roomCode ? '\nالغرفة: ' + params.roomCode : ''}`,
+      roleTarget as 'admin' | 'super_admin'
+    );
   } catch {
     // Silent — WhatsApp notification is non-critical
   }
