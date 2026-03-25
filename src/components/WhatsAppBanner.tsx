@@ -190,6 +190,9 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
       // Send welcome message
       await sendWaVerification(fullPhone, `غلا شات 💬\n\n🎉 مرحباً ${userName}! تم تفعيل إشعارات غلا شات\nستصلك العروض والمسابقات مباشرة`);
 
+      // Cache verified status in localStorage for instant checks
+      localStorage.setItem('wa_verified_' + userUuid, fullPhone);
+
       toast.success('✅ تم تسجيل رقمك بنجاح!');
       onSuccess();
     } catch {
