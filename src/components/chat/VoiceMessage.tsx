@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import { Play, Pause } from "lucide-react";
 
 interface VoiceMessageProps {
@@ -12,17 +12,48 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({ url, duration = 0, isMine }
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(duration);
+  const [loadError, setLoadError] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const toggle = () => {
+  const toggle = useCallback(() => {
     if (!audioRef.current) return;
+    if (loadError) {
+      // Try reloading
+      audioRef.current.load();
+      setLoadError(false);
+    }
     if (playing) {
       audioRef.current.pause();
+      setPlaying(false);
     } else {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play()
+        .then(() => setPlaying(true))
+        .catch((err) => {
+          console.error("Voice playback failed:", err);
+          // Try with a fresh audio element approach
+          const audio = new Audio(url);
+          audio.crossOrigin = "anonymous";
+          audio.play()
+            .then(() => {
+              setPlaying(true);
+              audio.ontimeupdate = () => {
+                const ct = audio.currentTime;
+                const dur = audio.duration || 1;
+                setProgress((ct / dur) * 100);
+                setCurrentTime(ct);
+              };
+              audio.onended = () => {
+                setPlaying(false);
+                setProgress(0);
+                setCurrentTime(0);
+              };
+            })
+            .catch((e) => {
+              console.error("Fallback playback also failed:", e);
+            });
+        });
     }
-    setPlaying(!playing);
-  };
+  }, [playing, url, loadError]);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -33,7 +64,6 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({ url, duration = 0, isMine }
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!audioRef.current || !totalDuration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    // RTL aware - click position from right
     const clickX = rect.right - e.clientX;
     const pct = Math.max(0, Math.min(1, clickX / rect.width));
     audioRef.current.currentTime = pct * (audioRef.current.duration || totalDuration);
@@ -51,18 +81,18 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({ url, duration = 0, isMine }
     });
   }, [url]);
 
-  const accentColor = isMine ? "hsl(217 91% 70%)" : "hsl(160 84% 50%)";
-  const dimColor = "hsl(0 0% 100% / 0.15)";
+  const accentColor = isMine ? "#4A90D9" : "#00BCD4";
+  const dimColor = "rgba(255,255,255,0.15)";
 
   return (
-    <div className="flex items-center gap-2 min-w-[200px] max-w-[260px] py-0.5">
+    <div className="flex items-center gap-2.5 min-w-[200px] max-w-[280px] py-1">
       {/* Play/Pause button */}
       <button
         onClick={toggle}
-        className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-150 active:scale-95"
+        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all duration-150 active:scale-95"
         style={{
           background: accentColor,
-          boxShadow: `0 2px 8px ${isMine ? "hsl(217 91% 50% / 0.3)" : "hsl(160 84% 39% / 0.3)"}`,
+          boxShadow: `0 2px 10px ${accentColor}40`,
         }}
       >
         {playing ? (
@@ -73,7 +103,7 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({ url, duration = 0, isMine }
       </button>
 
       <div className="flex-1 flex flex-col gap-1.5">
-        {/* Waveform - clickable for seeking */}
+        {/* Waveform */}
         <div
           className="flex items-center gap-[1.5px] h-[22px] cursor-pointer"
           onClick={handleSeek}
@@ -97,16 +127,20 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({ url, duration = 0, isMine }
 
         {/* Duration */}
         <div className="flex items-center justify-between">
-          <span className="text-[9px] text-white/35 font-mono tabular-nums leading-none">
+          <span className="text-[9px] text-white/40 font-mono tabular-nums leading-none">
             {formatTime(displayTime)}
           </span>
+          {loadError && (
+            <span className="text-[8px] text-red-400">⚠</span>
+          )}
         </div>
       </div>
 
       <audio
         ref={audioRef}
         src={url}
-        preload="metadata"
+        crossOrigin="anonymous"
+        preload="auto"
         onTimeUpdate={(e) => {
           const ct = e.currentTarget.currentTime;
           const dur = e.currentTarget.duration || 1;
@@ -117,6 +151,10 @@ const VoiceMessage: React.FC<VoiceMessageProps> = ({ url, duration = 0, isMine }
         onLoadedMetadata={(e) => {
           const dur = e.currentTarget.duration;
           if (dur && isFinite(dur) && dur > 0) setTotalDuration(dur);
+        }}
+        onError={(e) => {
+          console.error("Audio load error:", e);
+          setLoadError(true);
         }}
       />
     </div>

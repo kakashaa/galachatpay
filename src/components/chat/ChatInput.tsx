@@ -32,6 +32,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const recordingTimeRef = useRef(0); // ref to track duration accurately
 
   const handleSend = () => {
     if (previewFile && onAttach) {
@@ -76,17 +77,29 @@ const ChatInput: React.FC<ChatInputProps> = ({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+      
+      // Try multiple mime types for compatibility
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+        mimeType = 'audio/ogg';
+      }
+      
       const recorder = new MediaRecorder(stream, { mimeType });
       audioChunksRef.current = [];
+      recordingTimeRef.current = 0;
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       recorder.onstop = async () => {
-        const duration = recordingTime;
+        const duration = recordingTimeRef.current; // use ref, not state
         setRecordingTime(0);
+        recordingTimeRef.current = 0;
         if (timerRef.current) clearInterval(timerRef.current);
 
         if (audioChunksRef.current.length === 0) return;
@@ -95,11 +108,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
         // Upload to Supabase Storage
         setUploadingVoice(true);
         try {
-          const path = `voice/${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
-          const { data, error } = await supabase.storage.from("attachments").upload(path, audioBlob, { contentType: "audio/webm" });
-          if (error) throw error;
+          const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+          const path = `voice/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+          const { data, error } = await supabase.storage.from("attachments").upload(path, audioBlob, { contentType: mimeType });
+          if (error) {
+            console.error("Voice upload error:", error);
+            throw error;
+          }
           if (data) {
             const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+            console.log("Voice uploaded:", urlData.publicUrl, "duration:", duration);
             if (onVoiceSend) {
               onVoiceSend(urlData.publicUrl, duration);
             }
@@ -115,11 +133,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
         streamRef.current = null;
       };
 
-      recorder.start(100);
+      recorder.start(250); // collect data every 250ms
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingTime(0);
-      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+      recordingTimeRef.current = 0;
+      timerRef.current = setInterval(() => {
+        recordingTimeRef.current += 1;
+        setRecordingTime(t => t + 1);
+      }, 1000);
     } catch (err) {
       console.error("Mic access denied:", err);
       toast.error("لا يمكن الوصول للميكروفون");
@@ -147,6 +169,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     audioChunksRef.current = [];
     setIsRecording(false);
     setRecordingTime(0);
+    recordingTimeRef.current = 0;
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
