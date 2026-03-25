@@ -19,6 +19,8 @@ import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import SubmissionOverlay from "@/components/SubmissionOverlay";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useVerifiedWhatsApp } from "@/hooks/use-verified-whatsapp";
+import { Badge } from "@/components/ui/badge";
 
 const HOST_RATE = 8500;
 const AGENCY_RATE = 7500;
