@@ -1375,33 +1375,44 @@ const AdminHomeView: React.FC<Props> = ({
   const supportBadge = badges.support || 0;
   const totalBadge = vipBadge + banBadge + salaryBadge + requestsBadge + supportBadge;
 
-  // Service groups — macOS Launchpad style with gradients
+  // Service groups — ordered by role priority
   const allServices = [
-    { icon: Crown, label: "VIP", route: "/admin/vip", gradient: "from-amber-400 to-yellow-600", shadow: "shadow-amber-500/40", roles: ["owner", "super_admin"], badge: vipBadge },
-    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: banBadge },
-    { icon: Wallet, label: "الرواتب", route: "/admin/salary", gradient: "from-emerald-400 to-green-600", shadow: "shadow-emerald-500/40", roles: ["owner"], badge: salaryBadge },
-    { icon: Inbox, label: "الطلبات", route: "/admin/requests", gradient: "from-purple-500 to-violet-600", shadow: "shadow-purple-500/40", roles: ["owner", "super_admin", "admin"], badge: requestsBadge },
-    { icon: Store, label: "المتجر", route: "/admin/gifts", gradient: "from-pink-500 to-rose-600", shadow: "shadow-pink-500/40", roles: ["owner"], badge: 0 },
-    { icon: Headphones, label: "الدعم", route: "/admin/support", gradient: "from-cyan-400 to-blue-500", shadow: "shadow-cyan-500/40", roles: ["owner", "super_admin", "admin"], badge: supportBadge },
-    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", gradient: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/40", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", gradient: "from-orange-400 to-amber-600", shadow: "shadow-orange-500/40", roles: ["owner"], badge: 0 },
-    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", gradient: "from-teal-400 to-cyan-600", shadow: "shadow-teal-500/40", roles: ["owner"], badge: 0 },
-    { icon: Users, label: "المشرفين", route: "/admin/accounts", gradient: "from-blue-500 to-indigo-600", shadow: "shadow-blue-500/40", roles: ["owner"], badge: 0 },
-    { icon: ClipboardList, label: "السجل", route: "/admin/log", gradient: "from-gray-400 to-slate-600", shadow: "shadow-gray-500/30", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Building2, label: "البيدي", route: "/admin/works", gradient: "from-indigo-500 to-purple-700", shadow: "shadow-indigo-500/40", roles: ["owner"], badge: 0 },
-    { icon: Settings, label: "الإعدادات", route: "/admin/settings", gradient: "from-slate-400 to-slate-600", shadow: "shadow-slate-500/30", roles: ["owner"], badge: 0 },
-    { icon: FileText, label: "المضيفات", route: "/admin/host-requests", gradient: "from-rose-400 to-pink-600", shadow: "shadow-rose-500/40", roles: ["owner", "super_admin", "admin"], badge: 0 },
-    { icon: Eye, label: "المراقبة", route: "/admin/monitor", gradient: "from-red-500 to-orange-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", gradient: "from-yellow-400 to-amber-500", shadow: "shadow-yellow-500/40", roles: ["owner"], badge: 0 },
-    { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", gradient: "from-green-500 to-emerald-600", shadow: "shadow-green-500/40", roles: ["owner", "super_admin"], badge: 0 },
-    { icon: Scissors, label: "الخصومات", route: "/admin/deductions", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0 },
+    // Row 1 (owner): VIP, Protection, Salary, Requests
+    { icon: Crown, label: "VIP", route: "/admin/vip", gradient: "from-amber-400 to-yellow-600", shadow: "shadow-amber-500/40", roles: ["owner", "super_admin"], badge: vipBadge, order: { owner: 1, super_admin: 1, admin: 99 } },
+    { icon: ShieldAlert, label: "الحماية", route: "/admin/ban", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: banBadge, order: { owner: 2, super_admin: 2, admin: 99 } },
+    { icon: Wallet, label: "الرواتب", route: "/admin/salary", gradient: "from-emerald-400 to-green-600", shadow: "shadow-emerald-500/40", roles: ["owner"], badge: salaryBadge, order: { owner: 3, super_admin: 99, admin: 99 } },
+    { icon: Inbox, label: "الطلبات", route: "/admin/requests", gradient: "from-purple-500 to-violet-600", shadow: "shadow-purple-500/40", roles: ["owner", "super_admin", "admin"], badge: requestsBadge, order: { owner: 4, super_admin: 3, admin: 1 } },
+    // Row 2 (owner): Store, Support, ID, Revenue
+    { icon: Store, label: "المتجر", route: "/admin/gifts", gradient: "from-pink-500 to-rose-600", shadow: "shadow-pink-500/40", roles: ["owner"], badge: 0, order: { owner: 5, super_admin: 99, admin: 99 } },
+    { icon: Headphones, label: "الدعم", route: "/admin/support", gradient: "from-cyan-400 to-blue-500", shadow: "shadow-cyan-500/40", roles: ["owner", "super_admin", "admin"], badge: supportBadge, order: { owner: 6, super_admin: 4, admin: 2 } },
+    { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", gradient: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 7, super_admin: 5, admin: 99 } },
+    { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", gradient: "from-orange-400 to-amber-600", shadow: "shadow-orange-500/40", roles: ["owner"], badge: 0, order: { owner: 8, super_admin: 99, admin: 99 } },
+    // Row 3 (owner): Agencies, Moderators, Log, BD
+    { icon: Landmark, label: "الوكالات", route: "/admin/agencies", gradient: "from-teal-400 to-cyan-600", shadow: "shadow-teal-500/40", roles: ["owner"], badge: 0, order: { owner: 9, super_admin: 99, admin: 99 } },
+    { icon: Users, label: "المشرفين", route: "/admin/accounts", gradient: "from-blue-500 to-indigo-600", shadow: "shadow-blue-500/40", roles: ["owner"], badge: 0, order: { owner: 10, super_admin: 99, admin: 99 } },
+    { icon: ClipboardList, label: "السجل", route: "/admin/log", gradient: "from-gray-400 to-slate-600", shadow: "shadow-gray-500/30", roles: ["owner", "super_admin"], badge: 0, order: { owner: 11, super_admin: 8, admin: 99 } },
+    { icon: Building2, label: "البيدي", route: "/admin/works", gradient: "from-indigo-500 to-purple-700", shadow: "shadow-indigo-500/40", roles: ["owner"], badge: 0, order: { owner: 12, super_admin: 99, admin: 99 } },
+    // Row 4 (owner): Settings, Hosts, Monitor, Supporter Club
+    { icon: Settings, label: "الإعدادات", route: "/admin/settings", gradient: "from-slate-400 to-slate-600", shadow: "shadow-slate-500/30", roles: ["owner"], badge: 0, order: { owner: 13, super_admin: 99, admin: 99 } },
+    { icon: FileText, label: "المضيفات", route: "/admin/host-requests", gradient: "from-rose-400 to-pink-600", shadow: "shadow-rose-500/40", roles: ["owner", "super_admin", "admin"], badge: 0, order: { owner: 14, super_admin: 6, admin: 3 } },
+    { icon: Eye, label: "المراقبة", route: "/admin/monitor", gradient: "from-red-500 to-orange-600", shadow: "shadow-red-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 15, super_admin: 7, admin: 99 } },
+    { icon: Crown, label: "نادي الداعم", route: "/admin/supporter-club", gradient: "from-yellow-400 to-amber-500", shadow: "shadow-yellow-500/40", roles: ["owner"], badge: 0, order: { owner: 16, super_admin: 99, admin: 99 } },
+    // Row 5 (owner): Live Dashboard, Deductions, Agent Agencies
+    { icon: BarChart3, label: "البيانات الحية", route: "/admin/live-dashboard", gradient: "from-green-500 to-emerald-600", shadow: "shadow-green-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 17, super_admin: 9, admin: 99 } },
+    { icon: Scissors, label: "الخصومات", route: "/admin/deductions", gradient: "from-red-500 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0, order: { owner: 18, super_admin: 99, admin: 99 } },
+    { icon: MessageCircle, label: "القروبات", route: "/admin/chat", gradient: "from-emerald-400 to-teal-600", shadow: "shadow-emerald-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 19, super_admin: 10, admin: 99 } },
   ];
 
-  const visible = allServices.filter(s => {
-    if (!adminRole) return false;
-    if (adminRole === 'owner') return true;
-    return s.roles.includes(adminRole) || (adminRole === 'moderator' && s.roles.includes('super_admin'));
-  });
+  const visible = allServices
+    .filter(s => {
+      if (!adminRole) return false;
+      if (adminRole === 'owner') return true;
+      return s.roles.includes(adminRole) || (adminRole === 'moderator' && s.roles.includes('super_admin'));
+    })
+    .sort((a, b) => {
+      const role = (adminRole === 'moderator' ? 'super_admin' : adminRole) as keyof typeof a.order;
+      return (a.order[role] || 99) - (b.order[role] || 99);
+    });
 
   // Smart alerts — filtered by role
   const allAlerts = [
