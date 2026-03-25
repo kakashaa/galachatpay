@@ -2,11 +2,20 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useVerifiedWhatsApp(userUuid: string | undefined) {
-  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Check localStorage first for instant result
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(() => {
+    if (!userUuid) return null;
+    const cached = localStorage.getItem('wa_verified_' + userUuid);
+    return cached || null;
+  });
+  const [loading, setLoading] = useState(() => {
+    if (!userUuid) return false;
+    return !localStorage.getItem('wa_verified_' + userUuid);
+  });
 
   useEffect(() => {
     if (!userUuid) { setLoading(false); return; }
+    // Always verify against DB even if we have cached value
     supabase
       .from('user_whatsapp' as any)
       .select('phone_number')
@@ -14,7 +23,13 @@ export function useVerifiedWhatsApp(userUuid: string | undefined) {
       .eq('is_active', true)
       .maybeSingle()
       .then(({ data }) => {
-        setVerifiedPhone((data as any)?.phone_number || null);
+        const phone = (data as any)?.phone_number || null;
+        setVerifiedPhone(phone);
+        if (phone) {
+          localStorage.setItem('wa_verified_' + userUuid, phone);
+        } else {
+          localStorage.removeItem('wa_verified_' + userUuid);
+        }
         setLoading(false);
       });
   }, [userUuid]);
@@ -27,7 +42,13 @@ export function useVerifiedWhatsApp(userUuid: string | undefined) {
       .eq('user_uuid', userUuid)
       .eq('is_active', true)
       .maybeSingle();
-    setVerifiedPhone((data as any)?.phone_number || null);
+    const phone = (data as any)?.phone_number || null;
+    setVerifiedPhone(phone);
+    if (phone) {
+      localStorage.setItem('wa_verified_' + userUuid, phone);
+    } else {
+      localStorage.removeItem('wa_verified_' + userUuid);
+    }
   };
 
   const unlink = async () => {
@@ -37,6 +58,7 @@ export function useVerifiedWhatsApp(userUuid: string | undefined) {
       .update({ is_active: false } as any)
       .eq('user_uuid', userUuid);
     setVerifiedPhone(null);
+    localStorage.removeItem('wa_verified_' + userUuid);
   };
 
   return { verifiedPhone, loading, refresh, unlink };
