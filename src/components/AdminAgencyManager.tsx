@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import AgencyDetailsSheet from "./AgencyDetailsSheet";
 import { galaApi } from "@/services/galaApi";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Agency {
   username: string;
@@ -73,6 +74,13 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
 
   // Toggle loading
   const [toggleLoading, setToggleLoading] = useState<string | null>(null);
+
+  // Charge history
+  const [chargeHistory, setChargeHistory] = useState<any[]>([]);
+  const [chargeReceipts, setChargeReceipts] = useState<any[]>([]);
+  const [chargeLoading, setChargeLoading] = useState(false);
+  const [showCharges, setShowCharges] = useState<string | null>(null);
+  const [fullImage, setFullImage] = useState<string | null>(null);
 
   // Edit agency
   const [editAgency, setEditAgency] = useState<Agency | null>(null);
@@ -213,6 +221,43 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
     } finally {
       setEditLoading(false);
     }
+  };
+
+  const fetchAgencyCharges = async (agencyUuid: string) => {
+    setChargeLoading(true);
+    try {
+      const res = await fetch(
+        `https://ybvlxzpioteopcemkngp.supabase.co/functions/v1/gala-proxy`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlidmx4enBpb3Rlb3BjZW1rbmdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MDIxNjAsImV4cCI6MjA4NjI3ODE2MH0.zrxQsfLqKPsPWoK4p_0yt1yFmlMdxYD1WDlTByt7oNQ",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlidmx4enBpb3Rlb3BjZW1rbmdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3MDIxNjAsImV4cCI6MjA4NjI3ODE2MH0.zrxQsfLqKPsPWoK4p_0yt1yFmlMdxYD1WDlTByt7oNQ",
+          },
+          body: JSON.stringify({ target: "project-z", action: "user_transfers", uuid: agencyUuid }),
+        }
+      );
+      const data = await res.json();
+      setChargeHistory(data?.transfers || data?.data || []);
+    } catch {
+      setChargeHistory([]);
+    }
+
+    // Also fetch receipts from salary_requests
+    try {
+      const { data: receipts } = await supabase
+        .from("salary_requests")
+        .select("*")
+        .eq("agency_uuid", agencyUuid)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setChargeReceipts(receipts || []);
+    } catch {
+      setChargeReceipts([]);
+    }
+
+    setChargeLoading(false);
   };
 
   const openEditSheet = (agency: Agency) => {
@@ -479,6 +524,126 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
                             <Receipt className="w-3.5 h-3.5 text-muted-foreground/60" />
                             <span>الرصيد الأصلي: <strong className="text-foreground font-mono">{agency.original_balance?.toLocaleString() || "—"}</strong></span>
                           </div>
+
+                          {/* Charge History Button */}
+                          <button
+                            onClick={() => {
+                              if (showCharges === agency.username) {
+                                setShowCharges(null);
+                              } else {
+                                setShowCharges(agency.username);
+                                fetchAgencyCharges(agency.agency_id);
+                              }
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 mt-2 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-bold hover:bg-violet-500/15 transition-colors"
+                          >
+                            <Receipt className="w-4 h-4" />
+                            سجل الشحنات
+                          </button>
+
+                          {/* Charge History List */}
+                          <AnimatePresence>
+                            {showCharges === agency.username && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="mt-2 space-y-2">
+                                  {chargeLoading ? (
+                                    <div className="flex items-center justify-center py-6">
+                                      <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+                                      <span className="text-xs text-muted-foreground mr-2">جاري التحميل...</span>
+                                    </div>
+                                  ) : chargeHistory.length === 0 && chargeReceipts.length === 0 ? (
+                                    <div className="text-center py-4 text-xs text-muted-foreground">
+                                      لا توجد شحنات مسجلة
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {/* Transfers from proxy */}
+                                      {chargeHistory.map((charge: any, idx: number) => (
+                                        <div key={idx} className="bg-white/[0.03] border border-white/5 rounded-xl p-3 space-y-1.5">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                                              {charge.uuid || charge.user_uuid || charge.target_uuid || "—"}
+                                            </span>
+                                            <span className="text-[10px] text-muted-foreground">
+                                              {charge.created_at || charge.date ? new Date(charge.created_at || charge.date).toLocaleString("ar-EG") : "—"}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-sm font-bold text-amber-400 font-mono">
+                                              {(charge.amount || charge.coins || 0).toLocaleString()} كوينز
+                                            </span>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                              ${((charge.amount || charge.coins || 0) / 8500).toFixed(2)}
+                                            </span>
+                                          </div>
+                                          {(charge.reference_id || charge.ref) && (
+                                            <div className="text-[10px] text-muted-foreground">
+                                              المرجع: <span className="font-mono text-foreground">{charge.reference_id || charge.ref}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+
+                                      {/* Receipts from salary_requests */}
+                                      {chargeReceipts.length > 0 && (
+                                        <div className="mt-3 pt-3 border-t border-white/5">
+                                          <p className="text-[10px] text-muted-foreground mb-2 font-bold">الإيصالات</p>
+                                          {chargeReceipts.map((receipt: any, idx: number) => (
+                                            <div key={idx} className="bg-white/[0.03] border border-white/5 rounded-xl p-3 mb-2 space-y-1.5">
+                                              <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-foreground">
+                                                  {(receipt.amount || 0).toLocaleString()} كوينز
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                  {receipt.created_at ? new Date(receipt.created_at).toLocaleString("ar-EG") : "—"}
+                                                </span>
+                                              </div>
+                                              {receipt.status && (
+                                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                                  receipt.status === "approved" ? "bg-emerald-500/10 text-emerald-400" :
+                                                  receipt.status === "rejected" ? "bg-red-500/10 text-red-400" :
+                                                  "bg-amber-500/10 text-amber-400"
+                                                }`}>
+                                                  {receipt.status === "approved" ? "مقبول" : receipt.status === "rejected" ? "مرفوض" : "معلّق"}
+                                                </span>
+                                              )}
+                                              {receipt.evidence_url && (
+                                                <div
+                                                  onClick={() => setFullImage(receipt.evidence_url)}
+                                                  className="cursor-pointer mt-1"
+                                                >
+                                                  <img
+                                                    src={receipt.evidence_url}
+                                                    alt="إيصال"
+                                                    className="w-16 h-16 object-cover rounded-lg border border-white/10 hover:border-amber-500/30 transition-colors"
+                                                  />
+                                                  <span className="text-[9px] text-violet-400 mt-0.5 block">اضغط للتكبير</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Charge from this agency button */}
+                                      <button
+                                        onClick={() => setAddBalanceTarget(addBalanceTarget === agency.username ? null : agency.username)}
+                                        className="w-full flex items-center justify-center gap-2 py-2.5 mt-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold hover:bg-amber-500/15 transition-colors"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                        شحن من هذه الوكالة
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </motion.div>
                     )}
@@ -606,6 +771,34 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
         open={!!detailsAgency}
         onClose={() => setDetailsAgency(null)}
       />
+
+      {/* Full Image Overlay */}
+      <AnimatePresence>
+        {fullImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setFullImage(null)}
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          >
+            <motion.img
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={fullImage}
+              alt="إيصال كامل"
+              className="max-w-full max-h-[85vh] rounded-2xl border border-white/10 shadow-2xl"
+            />
+            <button
+              onClick={() => setFullImage(null)}
+              className="absolute top-6 left-6 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Edit Agency Sheet */}
       <Sheet open={!!editAgency} onOpenChange={() => setEditAgency(null)}>
