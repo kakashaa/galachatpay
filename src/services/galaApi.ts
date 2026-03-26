@@ -350,6 +350,11 @@ class GalaApiService {
     return this.call("hola-chat", "unban-user-real", { uuid, unban_type: unbanType }, true);
   }
 
+  // OTP verify (public wrapper for VerifyPhone page)
+  async otpVerify(uuid: string, code: string) {
+    return this.call("project-z", "otp_verify", { uuid, code });
+  }
+
   async userMonthlyCharges(uuid: string, month: string) {
     return this.call("hola-chat", "user-monthly-charges", { uuid, month });
   }
