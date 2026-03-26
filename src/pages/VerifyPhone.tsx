@@ -109,11 +109,13 @@ const VerifyPhone: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res: any = await (galaApi as any).call("project-z", "otp_send", {
-        uuid: user!.uuid,
-        phone: fullPhone,
+      const response = await fetch("https://hola-chat.com/project-z/api.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "otp_send", uuid: user!.uuid, phone: fullPhone }),
       });
-      if (res?.success || res?.ok) {
+      const res = await response.json();
+      if (res?.success) {
         setStep("code");
         startTimer();
         setTimeout(() => otpRefs.current[0]?.focus(), 100);
@@ -144,11 +146,13 @@ const VerifyPhone: React.FC = () => {
     setLoading(true);
     setError("");
     try {
-      const res: any = await (galaApi as any).call("project-z", "otp_verify", {
-        uuid: user!.uuid,
-        code,
+      const response2 = await fetch("https://hola-chat.com/project-z/api.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "otp_verify", uuid: user!.uuid, code }),
       });
-      if (res?.success || res?.ok) {
+      const res = await response2.json();
+      if (res?.success) {
         if (timerRef.current) clearInterval(timerRef.current);
         setVerifiedPhone(fullPhone);
         setStep("success");
