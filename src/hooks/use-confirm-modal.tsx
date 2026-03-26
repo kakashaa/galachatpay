@@ -30,5 +30,6 @@ export function useConfirmModal() {
     />
   ) : null;
 
-  return { confirm, ConfirmDialog: modal };
+  const ConfirmDialog = () => modal;
+  return { confirm, ConfirmDialog };
 }
