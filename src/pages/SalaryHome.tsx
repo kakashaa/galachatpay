@@ -117,9 +117,9 @@ const SalaryHome: React.FC = () => {
           .gte("created_at", monthStart.toISOString());
 
         if (withdrawals && withdrawals.length > 0) {
-          const hostTypes = ["cash", "host", "charge_self", "charge_other"];
-          const hostWithdrawn = withdrawals.filter((w: any) => hostTypes.includes(w.request_type)).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
-          const agencyWithdrawn = withdrawals.filter((w: any) => w.request_type?.startsWith("agency")).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+          // Only deduct cash withdrawals (not coin charges — those are already reflected)
+          const hostWithdrawn = withdrawals.filter((w: any) => w.request_type === "cash").reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+          const agencyWithdrawn = withdrawals.filter((w: any) => w.request_type === "agency_cash").reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
 
           if (data.host_salary) {
             data.host_salary.available = Math.max(0, (data.host_salary.available || 0) - hostWithdrawn);
