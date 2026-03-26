@@ -77,6 +77,31 @@ const AdminWorksPage: React.FC = () => {
   const [notifSending, setNotifSending] = useState(false);
   const [notifHistory, setNotifHistory] = useState<any[]>([]);
 
+  // UUID Search
+  const [uuidSearch, setUuidSearch] = useState("");
+  const [uuidSearchLoading, setUuidSearchLoading] = useState(false);
+  const [uuidSearchResults, setUuidSearchResults] = useState<{ account: any; member: any; earnings: any[] } | null>(null);
+
+  const searchByUuid = useCallback(async () => {
+    const uuid = uuidSearch.trim();
+    if (!uuid) return;
+    setUuidSearchLoading(true);
+    setUuidSearchResults(null);
+    try {
+      const [accRes, memRes, earnRes] = await Promise.all([
+        supabase.from("works_accounts").select("*").eq("user_uuid", uuid).maybeSingle(),
+        supabase.from("works_members" as any).select("*").eq("user_uuid", uuid).maybeSingle(),
+        supabase.from("works_earnings" as any).select("*").eq("user_uuid", uuid).order("created_at", { ascending: false }).limit(10),
+      ]);
+      setUuidSearchResults({
+        account: accRes.data || null,
+        member: memRes.data || null,
+        earnings: earnRes.data || [],
+      });
+    } catch { toast.error("فشل البحث"); }
+    setUuidSearchLoading(false);
+  }, [uuidSearch]);
+
   // Portal ban
   const [portalBanUuid, setPortalBanUuid] = useState("");
   const [portalBanType, setPortalBanType] = useState<"full" | "service">("full");
@@ -540,6 +565,75 @@ const AdminWorksPage: React.FC = () => {
               className="text-[10px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 bg-destructive/10 text-destructive border border-destructive/20">
               <Lock className="w-3 h-3" /> تجميد
             </button>
+          </div>
+        )}
+
+        {/* UUID Search */}
+        <div className="flex gap-2 mb-4">
+          <Input
+            placeholder="بحث UUID..."
+            value={uuidSearch}
+            onChange={e => { setUuidSearch(e.target.value); if (!e.target.value.trim()) setUuidSearchResults(null); }}
+            onKeyDown={e => { if (e.key === "Enter") searchByUuid(); }}
+            dir="ltr"
+            className="flex-1 h-10 rounded-xl text-sm"
+          />
+          <button
+            onClick={searchByUuid}
+            disabled={uuidSearchLoading || !uuidSearch.trim()}
+            className="h-10 px-4 rounded-xl text-xs font-bold bg-primary/10 text-primary disabled:opacity-50 flex items-center gap-1"
+          >
+            {uuidSearchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "بحث"}
+          </button>
+        </div>
+
+        {/* UUID Search Results */}
+        {uuidSearchResults && (
+          <div className="mb-4 space-y-3 p-4 rounded-2xl border border-primary/20 bg-primary/5">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold">نتائج البحث: {uuidSearch}</p>
+              <button onClick={() => { setUuidSearchResults(null); setUuidSearch(""); }} className="text-[10px] text-muted-foreground">✕ إغلاق</button>
+            </div>
+
+            {/* BD Account */}
+            <div className="rounded-xl p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-[11px] font-bold text-primary">حساب البيدي</p>
+              {uuidSearchResults.account ? (
+                <div className="text-[10px] space-y-0.5">
+                  <p>الاسم: <span className="font-bold">{uuidSearchResults.account.user_name || "—"}</span></p>
+                  <p>الكود: <span className="font-bold">{uuidSearchResults.account.works_code || "—"}</span></p>
+                  <p>الحالة: <span className="font-bold">{uuidSearchResults.account.status}</span></p>
+                  <p>الرصيد: <span className="font-bold">${Number(uuidSearchResults.account.balance_usd || 0).toFixed(2)}</span></p>
+                </div>
+              ) : <p className="text-[10px] text-muted-foreground">لا يوجد حساب بيدي</p>}
+            </div>
+
+            {/* Membership */}
+            <div className="rounded-xl p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-[11px] font-bold text-cyan-400">العضوية</p>
+              {uuidSearchResults.member ? (
+                <div className="text-[10px] space-y-0.5">
+                  <p>النوع: <span className="font-bold">{uuidSearchResults.member.member_type === "supporter" ? "داعم" : "وكيل"}</span></p>
+                  <p>الحالة: <span className="font-bold">{uuidSearchResults.member.status}</span></p>
+                  <p>النسبة: <span className="font-bold">{uuidSearchResults.member.commission_pct || 0}%</span></p>
+                </div>
+              ) : <p className="text-[10px] text-muted-foreground">لا توجد عضوية</p>}
+            </div>
+
+            {/* Earnings */}
+            <div className="rounded-xl p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-[11px] font-bold text-emerald-400">الأرباح</p>
+              {uuidSearchResults.earnings.length > 0 ? (
+                <div className="text-[10px] space-y-1">
+                  {uuidSearchResults.earnings.map((e: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between">
+                      <span>{new Date(e.created_at).toLocaleDateString("ar-EG")}</span>
+                      <span className="font-bold text-emerald-400">${Number(e.amount || 0).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-[10px] text-muted-foreground">لا توجد أرباح</p>}
+            </div>
           </div>
         )}
 

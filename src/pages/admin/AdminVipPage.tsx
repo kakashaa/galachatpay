@@ -23,6 +23,9 @@ const AdminVipPage: React.FC = () => {
   const [vipLevel, setVipLevel] = useState(1);
   const [sending, setSending] = useState(false);
 
+  const adminUsername = localStorage.getItem("admin_username") || "admin";
+  const adminRole = localStorage.getItem("admin_role") || "admin";
+
   useEffect(() => { if (activeTab === 1) loadRequests(); }, [activeTab]);
 
   const loadRequests = async () => {
@@ -43,6 +46,13 @@ const AdminVipPage: React.FC = () => {
     try {
       const data = await galaApi.giveVip(vipUuid.trim(), vipLevel, "30d");
       if (!data.success) throw new Error(data.error || "فشل");
+      // Audit log
+      await supabase.from("admin_audit_log").insert({
+        admin_username: adminUsername,
+        admin_role: adminRole,
+        action: "vip_grant",
+        details: { uuid: vipUuid.trim(), vip_level: vipLevel, duration: "30d" },
+      });
       await sendUserNotification(
         vipUuid.trim(),
         "تم قبول طلب VIP",

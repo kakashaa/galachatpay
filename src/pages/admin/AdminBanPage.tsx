@@ -80,6 +80,8 @@ const AdminBanPage: React.FC = () => {
   const [banLoading, setBanLoading] = useState(false);
   const imgRef = useRef<HTMLInputElement>(null);
 
+  const adminRole = localStorage.getItem("admin_role") || "admin";
+
   const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
@@ -167,6 +169,13 @@ const AdminBanPage: React.FC = () => {
         : adminNotes || null;
 
       await doBan(report.reported_user_id, reason, banHours, banType);
+      // Audit log
+      await supabase.from("admin_audit_log").insert({
+        admin_username: adminUsername || "admin",
+        admin_role: adminRole,
+        action: "ban",
+        details: { uuid: report.reported_user_id, reason, duration: banHours, ban_type: banType, from_report: true },
+      });
       await supabase.from("ban_reports").update({
         is_verified: true,
         admin_notes: notesWithAdmin,
@@ -225,16 +234,21 @@ const AdminBanPage: React.FC = () => {
     });
     if (!ok) return;
     setActionInProgress(report.id);
-    const t = toast.loading("جاري فك الحظر...");
     try {
-      const unbanType = report.ban_type === "promotion" ? "device" : "normal";
-      await doUnban(report.reported_user_id, unbanType);
+      // Call direct unban API
+      await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${report.reported_user_id}`);
+      // Audit log
+      await supabase.from("admin_audit_log").insert({
+        admin_username: adminUsername || "admin",
+        admin_role: adminRole,
+        action: "unban",
+        details: { uuid: report.reported_user_id },
+      });
       await supabase.from("ban_reports").delete().eq("reported_user_id", report.reported_user_id).eq("is_verified", true);
-      toast.dismiss(t);
       toast.success("تم فك الحظر!");
       setSelectedReport(null);
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch { toast.error("فشل"); }
     finally { setActionInProgress(null); }
   };
 
@@ -270,6 +284,14 @@ const AdminBanPage: React.FC = () => {
       const isPromo = banReason === "promotion";
       const hours = isPromo ? 999999 : banDuration;
       await doBan(uuid, reason, hours, isPromo ? "device" : "normal");
+
+      // Audit log
+      await supabase.from("admin_audit_log").insert({
+        admin_username: adminUsername || "admin",
+        admin_role: adminRole,
+        action: "ban",
+        details: { uuid, reason, duration: hours, ban_type: isPromo ? "device" : "normal" },
+      });
 
       const expiresAt = isPromo ? null : new Date(Date.now() + hours * 3600 * 1000).toISOString();
       let evidenceUrl = "";
@@ -309,16 +331,22 @@ const AdminBanPage: React.FC = () => {
     if (!uuid) { toast.error("أدخل UUID"); return; }
     const ok = await confirm({ title: "فك الحظر", message: `فك حظر ${uuid}؟`, confirmText: "فك الحظر" });
     if (!ok) return;
-    const t = toast.loading("جاري فك الحظر...");
     try {
-      await doUnban(uuid);
+      // Call direct unban API
+      await fetch(`https://hola-chat.com/wares-api.php?key=ghala2026actions&action=unban-user-real&uuid=${uuid}`);
+      // Audit log
+      await supabase.from("admin_audit_log").insert({
+        admin_username: adminUsername || "admin",
+        admin_role: adminRole,
+        action: "unban",
+        details: { uuid },
+      });
       // Also clean up from ban_reports
       await supabase.from("ban_reports").delete().eq("reported_user_id", uuid).eq("is_verified", true);
-      toast.dismiss(t);
       toast.success("تم فك الحظر!");
       setBanUuid(""); setBanTarget(null);
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch { toast.error("فشل"); }
   };
 
   const getTypeInfo = (type: string) => BAN_TYPE_INFO[type] || BAN_TYPE_INFO.other;

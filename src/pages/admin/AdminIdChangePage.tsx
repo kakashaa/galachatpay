@@ -16,12 +16,34 @@ const AdminIdChangePage: React.FC = () => {
   const { adminCall, handleLogout } = useAdminSession();
   const [loading, setLoading] = useState(false);
   const [idChanges, setIdChanges] = useState<any[]>([]);
-  const [subTab, setSubTab] = useState<"change" | "requests" | "history">("change");
+  const [subTab, setSubTab] = useState<"change" | "requests" | "history" | "audit">("change");
   const [oldUuid, setOldUuid] = useState("");
   const [newUuid, setNewUuid] = useState("");
   const [changing, setChanging] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
 
-  useEffect(() => { if (subTab === "requests" || subTab === "history") loadData(); }, [subTab]);
+  const adminUsername = localStorage.getItem("admin_username") || "admin";
+  const adminRole = localStorage.getItem("admin_role") || "admin";
+
+  useEffect(() => {
+    if (subTab === "requests" || subTab === "history") loadData();
+    if (subTab === "audit") loadAuditLogs();
+  }, [subTab]);
+
+  const loadAuditLogs = async () => {
+    setLoadingAudit(true);
+    try {
+      const { data } = await supabase
+        .from("admin_audit_log")
+        .select("*")
+        .eq("action", "uuid_change")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      setAuditLogs(data || []);
+    } catch { }
+    setLoadingAudit(false);
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -41,6 +63,13 @@ const AdminIdChangePage: React.FC = () => {
     try {
       const data = await galaApi.changeUuid(oldUuid.trim(), newUuid.trim());
       if (!data.success) throw new Error(data.error || "فشل التغيير");
+      // Audit log
+      await supabase.from("admin_audit_log").insert({
+        admin_username: adminUsername,
+        admin_role: adminRole,
+        action: "uuid_change",
+        details: { old_uuid: oldUuid.trim(), new_uuid: newUuid.trim() },
+      });
       await sendUserNotification(
         newUuid.trim(),
         "تم تغيير المعرف",
@@ -61,11 +90,12 @@ const AdminIdChangePage: React.FC = () => {
     <AdminPageLayout title="تغيير آيدي" accentColor="hsl(271 81% 56%)" onLogout={handleLogout}>
       <div className="max-w-[448px] mx-auto p-4 space-y-4" dir="rtl">
         <div className="flex gap-1 rounded-2xl p-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(139,92,246,0.1)' }}>
-          {[
+          {([
             { key: "change" as const, label: "تغيير آيدي", icon: Hash },
             { key: "requests" as const, label: "الطلبات", icon: ClipboardList },
             { key: "history" as const, label: "السجل", icon: ScrollText },
-          ].map(t => {
+            { key: "audit" as const, label: "سجل التغييرات", icon: ScrollText },
+          ] as const).map(t => {
             const Icon = t.icon;
             return (
               <motion.button key={t.key} onClick={() => setSubTab(t.key)} whileTap={{ scale: 0.96 }}
@@ -102,6 +132,34 @@ const AdminIdChangePage: React.FC = () => {
                 style={{ background: 'linear-gradient(135deg, hsl(271 81% 56%), hsl(271 81% 46%))', boxShadow: '0 4px 16px rgba(139,92,246,0.35)' }}>
                 {changing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Hash className="w-4 h-4" />تنفيذ التغيير</>}
               </motion.button>
+            </motion.div>
+          )}
+
+          {subTab === "audit" && (
+            <motion.div key="audit" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground">سجل تغييرات الآيدي (من admin_audit_log)</p>
+              {loadingAudit ? (
+                <div className="flex items-center justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-admin-purple" /></div>
+              ) : auditLogs.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground"><Hash className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد سجلات</p></div>
+              ) : auditLogs.map((log: any, i: number) => (
+                <motion.div key={log.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                  className="rounded-2xl p-3.5" style={glassCard}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold" style={{ background: 'rgba(139,92,246,0.12)', color: 'hsl(271 81% 56%)' }}>تغيير</span>
+                      <span className="text-[11px] font-bold">{log.admin_username}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{new Date(log.created_at).toLocaleDateString("ar-EG")}</span>
+                  </div>
+                  {log.details && (
+                    <div className="mt-1.5 text-[11px] space-y-0.5">
+                      <p><span className="text-muted-foreground">القديم:</span> <span className="tabular-nums font-bold">{log.details.old_uuid}</span></p>
+                      <p><span className="text-muted-foreground">الجديد:</span> <span className="tabular-nums font-bold">{log.details.new_uuid}</span></p>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
             </motion.div>
           )}
 

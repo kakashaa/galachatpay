@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Users, UserPlus, Shield, Clock, Star, AlertTriangle, MessageSquare, Eye } from "lucide-react";
+import { Loader2, Users, UserPlus, Shield, Clock, Star, AlertTriangle, MessageSquare, Eye, ChevronDown, ChevronUp, Settings, ScrollText, Key, Phone, ToggleLeft, UserCog, Ban } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 type TabType = "admins" | "complaints" | "ratings";
+type AdminSubTab = "super_admins" | "admins";
 
 const AdminAccountsPage: React.FC = () => {
   const { adminCall, handleLogout, isOwner } = useAdminSession();
@@ -17,6 +18,11 @@ const AdminAccountsPage: React.FC = () => {
   const [newAdmin, setNewAdmin] = useState({ username: "", password: "", display_name: "", role: "admin" });
   const [adding, setAdding] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("admins");
+  const [adminSubTab, setAdminSubTab] = useState<AdminSubTab>("super_admins");
+  const [expandedAdminId, setExpandedAdminId] = useState<string | null>(null);
+  const [expandedTab, setExpandedTab] = useState<"log" | "settings">("log");
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
 
   // Complaints & Ratings state
   const [complaints, setComplaints] = useState<any[]>([]);
@@ -60,6 +66,30 @@ const AdminAccountsPage: React.FC = () => {
       setRatings(data || []);
     } catch { }
     setLoadingRatings(false);
+  };
+
+  const fetchAuditLog = useCallback(async (username: string) => {
+    setLoadingAudit(true);
+    try {
+      const { data } = await supabase
+        .from("admin_audit_log")
+        .select("*")
+        .eq("admin_username", username)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setAuditLogs(data || []);
+    } catch { }
+    setLoadingAudit(false);
+  }, []);
+
+  const toggleExpandAdmin = (admin: any) => {
+    if (expandedAdminId === admin.id) {
+      setExpandedAdminId(null);
+    } else {
+      setExpandedAdminId(admin.id);
+      setExpandedTab("log");
+      fetchAuditLog(admin.username);
+    }
   };
 
   const [complaintActionId, setComplaintActionId] = useState<string | null>(null);
@@ -155,8 +185,33 @@ const AdminAccountsPage: React.FC = () => {
         )}
 
         <AnimatePresence mode="wait">
-          {activeTab === "admins" && (
+          {activeTab === "admins" && (() => {
+            const superAdmins = admins.filter(a => a.role === "super_admin" || a.role === "owner");
+            const regularAdmins = admins.filter(a => a.role === "admin" || a.role === "moderator");
+            const filteredAdmins = adminSubTab === "super_admins" ? superAdmins : regularAdmins;
+
+            return (
             <motion.div key="admins" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
+              {/* Admin Sub-Tabs */}
+              <div className="flex gap-2">
+                <motion.button whileTap={{ scale: 0.95 }}
+                  onClick={() => setAdminSubTab("super_admins")}
+                  className="flex-1 relative flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                  style={adminSubTab === "super_admins" ? { background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)', color: 'hsl(271 81% 56%)' } : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'hsl(var(--muted-foreground))' }}>
+                  <Shield className="w-4 h-4" />
+                  المشرفون
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: 'rgba(139,92,246,0.15)', color: 'hsl(271 81% 56%)' }}>{superAdmins.length}</span>
+                </motion.button>
+                <motion.button whileTap={{ scale: 0.95 }}
+                  onClick={() => setAdminSubTab("admins")}
+                  className="flex-1 relative flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                  style={adminSubTab === "admins" ? { background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)', color: 'hsl(217 91% 60%)' } : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'hsl(var(--muted-foreground))' }}>
+                  <UserCog className="w-4 h-4" />
+                  المسؤولون
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: 'rgba(59,130,246,0.15)', color: 'hsl(217 91% 60%)' }}>{regularAdmins.length}</span>
+                </motion.button>
+              </div>
+
               {isOwner && (
                 <motion.button whileTap={{ scale: 0.96 }} onClick={() => setShowAdd(!showAdd)}
                   className="w-full h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2"
@@ -193,46 +248,148 @@ const AdminAccountsPage: React.FC = () => {
 
               {loading ? (
                 <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-admin-emerald" /></div>
-              ) : admins.length === 0 ? (
+              ) : filteredAdmins.length === 0 ? (
                 <div className="text-center py-10 text-muted-foreground"><Users className="w-10 h-10 mx-auto mb-2 opacity-50" /><p>لا توجد حسابات</p></div>
               ) : (
                 <div className="space-y-3">
-                  {admins.map((admin: any, i: number) => {
+                  {filteredAdmins.map((admin: any, i: number) => {
                     const rl = roleLabel(admin.role);
+                    const isExpanded = expandedAdminId === admin.id;
                     return (
                       <motion.div key={admin.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                        className="rounded-2xl p-4" style={glassCard}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)' }}>
-                              <Shield className="w-5 h-5 text-admin-emerald" />
+                        className="rounded-2xl overflow-hidden" style={glassCard}>
+                        <div className="p-4 cursor-pointer" onClick={() => toggleExpandAdmin(admin)}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.1)' }}>
+                                <Shield className="w-5 h-5 text-admin-emerald" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold">{admin.display_name || admin.username}</p>
+                                <p className="text-[10px] text-muted-foreground tabular-nums">@{admin.username}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-bold">{admin.display_name || admin.username}</p>
-                              <p className="text-[10px] text-muted-foreground tabular-nums">@{admin.username}</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex flex-col items-end gap-1">
+                                <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold" style={{ background: rl.bg, color: rl.color }}>{rl.text}</span>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full" style={{ background: admin.is_active ? 'hsl(160 84% 39%)' : 'hsl(350 89% 60%)' }} />
+                                  <span className="text-[9px] text-muted-foreground">{admin.is_active ? "نشط" : "معطل"}</span>
+                                </div>
+                              </div>
+                              {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold" style={{ background: rl.bg, color: rl.color }}>{rl.text}</span>
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full" style={{ background: admin.is_active ? 'hsl(160 84% 39%)' : 'hsl(350 89% 60%)' }} />
-                              <span className="text-[9px] text-muted-foreground">{admin.is_active ? "نشط" : "معطل"}</span>
-                            </div>
+                          <div className="flex items-center gap-3 mt-2 text-[9px] text-muted-foreground">
+                            {admin.created_at && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>انضم: {new Date(admin.created_at).toLocaleDateString("ar-EG")}</span>
+                              </div>
+                            )}
+                            {admin.id && (
+                              <span className="tabular-nums">ID: {admin.id}</span>
+                            )}
                           </div>
                         </div>
-                        {admin.created_at && (
-                          <div className="flex items-center gap-1 mt-2">
-                            <Clock className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-[9px] text-muted-foreground">انضم: {new Date(admin.created_at).toLocaleDateString("ar-EG")}</span>
-                          </div>
-                        )}
+
+                        {/* Expanded section */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="border-t border-white/5"
+                            >
+                              <div className="p-4 space-y-3">
+                                {/* Inner tabs */}
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => { setExpandedTab("log"); fetchAuditLog(admin.username); }}
+                                    className="flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1"
+                                    style={expandedTab === "log" ? { background: 'rgba(139,92,246,0.12)', color: 'hsl(271 81% 56%)' } : { background: 'rgba(255,255,255,0.03)', color: 'hsl(var(--muted-foreground))' }}
+                                  >
+                                    <ScrollText className="w-3.5 h-3.5" /> السجل
+                                  </button>
+                                  <button
+                                    onClick={() => setExpandedTab("settings")}
+                                    className="flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1"
+                                    style={expandedTab === "settings" ? { background: 'rgba(59,130,246,0.12)', color: 'hsl(217 91% 60%)' } : { background: 'rgba(255,255,255,0.03)', color: 'hsl(var(--muted-foreground))' }}
+                                  >
+                                    <Settings className="w-3.5 h-3.5" /> الإعدادات
+                                  </button>
+                                </div>
+
+                                {expandedTab === "log" && (
+                                  <div className="space-y-2">
+                                    {loadingAudit ? (
+                                      <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-admin-emerald" /></div>
+                                    ) : auditLogs.length === 0 ? (
+                                      <p className="text-center text-[11px] text-muted-foreground py-4">لا توجد سجلات</p>
+                                    ) : auditLogs.map((log: any) => (
+                                      <div key={log.id} className="rounded-xl p-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[11px] font-bold">{log.action}</span>
+                                          <span className="text-[9px] text-muted-foreground">{new Date(log.created_at).toLocaleDateString("ar-EG")}</span>
+                                        </div>
+                                        {log.details && (
+                                          <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                                            {typeof log.details === "object" ? JSON.stringify(log.details) : log.details}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {expandedTab === "settings" && (
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <button className="py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                                      style={{ background: 'rgba(245,158,11,0.1)', color: 'hsl(38 92% 50%)', border: '1px solid rgba(245,158,11,0.15)' }}
+                                      onClick={() => toast.info("قريباً")}>
+                                      <Key className="w-3.5 h-3.5" /> تغيير كلمة المرور
+                                    </button>
+                                    <button className="py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                                      style={{ background: 'rgba(59,130,246,0.1)', color: 'hsl(217 91% 60%)', border: '1px solid rgba(59,130,246,0.15)' }}
+                                      onClick={() => toast.info("قريباً")}>
+                                      <Phone className="w-3.5 h-3.5" /> تغيير الهاتف
+                                    </button>
+                                    <button className="py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                                      style={{ background: 'rgba(16,185,129,0.1)', color: 'hsl(160 84% 39%)', border: '1px solid rgba(16,185,129,0.15)' }}
+                                      onClick={() => toast.info("قريباً")}>
+                                      <ToggleLeft className="w-3.5 h-3.5" /> الصلاحيات
+                                    </button>
+                                    <button className="py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                                      style={{ background: 'rgba(139,92,246,0.1)', color: 'hsl(271 81% 56%)', border: '1px solid rgba(139,92,246,0.15)' }}
+                                      onClick={() => toast.info("قريباً")}>
+                                      <UserCog className="w-3.5 h-3.5" /> تغيير الدور
+                                    </button>
+                                    <button className="col-span-2 py-2.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1"
+                                      style={{ background: 'rgba(244,63,94,0.1)', color: 'hsl(350 89% 60%)', border: '1px solid rgba(244,63,94,0.15)' }}
+                                      onClick={async () => {
+                                        try {
+                                          await supabase.from("admin_accounts").update({ is_active: !admin.is_active }).eq("id", admin.id);
+                                          toast.success(admin.is_active ? "تم تعطيل الحساب" : "تم تفعيل الحساب");
+                                          loadAdmins();
+                                        } catch { toast.error("فشل"); }
+                                      }}>
+                                      <Ban className="w-3.5 h-3.5" /> {admin.is_active ? "تعطيل الحساب" : "تفعيل الحساب"}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </motion.div>
                     );
                   })}
                 </div>
               )}
             </motion.div>
-          )}
+            );
+          })()}
 
           {activeTab === "complaints" && (
             <motion.div key="complaints" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-3">
