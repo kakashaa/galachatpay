@@ -77,6 +77,7 @@ const ALLOWED: Record<string, string[]> = {
     "user_transfers", "get_avatar", "get_avatars",
     "update_user_avatar", "upload_custom_gift",
     "admin_charges_report", "admin_gift_logs",
+    "otp_send", "otp_verify",
   ],
   "hola-chat": [
     "check-supporter", "check-agency",
