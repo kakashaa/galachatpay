@@ -85,7 +85,7 @@ const SalaryHome: React.FC = () => {
       .eq("is_verified", true)
       .maybeSingle()
       .then(({ data }) => setIsPhoneVerified(!!data))
-      .catch(() => setIsPhoneVerified(false));
+      .then(undefined, () => setIsPhoneVerified(false));
     const handleVisibility = () => {
       if (document.visibilityState === "visible") fetchStatus();
     };
