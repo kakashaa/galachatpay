@@ -302,6 +302,15 @@ const AdminBanPage: React.FC = () => {
         admin_notes: `حظر يدوي بواسطة: ${adminUsername}`,
       });
 
+      logAdminAction("ban_user", {
+        target_uuid: uuid,
+        ban_type: isPromo ? "device" : "normal",
+        duration_hours: hours,
+        reason,
+        source: "manual",
+        user_name: banTarget?.name || "",
+      });
+
       toast.dismiss(t);
       toast.success("تم الحظر!");
       setBanUuid(""); setBanTarget(null); setBanReason("insult"); setBanCustom(""); setBanImage(null);
@@ -319,8 +328,8 @@ const AdminBanPage: React.FC = () => {
     const t = toast.loading("جاري فك الحظر...");
     try {
       await doUnban(uuid);
-      // Also clean up from ban_reports
       await supabase.from("ban_reports").delete().eq("reported_user_id", uuid).eq("is_verified", true);
+      logAdminAction("unban_user", { target_uuid: uuid, source: "manual" });
       toast.dismiss(t);
       toast.success("تم فك الحظر!");
       setBanUuid(""); setBanTarget(null);
