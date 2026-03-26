@@ -13,12 +13,11 @@ export const logAdminAction = (
 
   supabase
     .from("admin_audit_log")
-    .insert({
+    .insert([{
       admin_username: adminUsername,
       admin_role: adminRole,
       action,
-      details,
-    })
-    .then(() => {})
-    .catch(() => {});
+      details: details as any,
+    }])
+    .then(() => {});
 };
