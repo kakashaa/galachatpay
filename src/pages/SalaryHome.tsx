@@ -91,53 +91,52 @@ const SalaryHome: React.FC = () => {
     if (!status) setLoading(true);
     setError(false);
     try {
-      const allData: any = await galaApi.salaryCheckAll(user!.uuid);
-      if (allData?.success || allData?.host_salary || allData?.agency_salary) {
-        const mapped: WithdrawStatus = {
-          ok: true,
-          is_agency_owner: allData.is_agency_owner || false,
-          host_salary: allData.host_salary ? {
-            current_month: allData.host_salary.salary || 0,
-            expected: allData.host_salary.salary || 0,
-            is_valid: true,
-            total_unpaid: 0,
-            total_cut: allData.host_salary.deduction || 0,
-            monthly_cut: allData.host_salary.deduction || 0,
-            available: allData.host_salary.net || 0,
-            cash_used_this_month: false,
-            over_withdrawn: (allData.host_salary.net || 0) <= 0,
-          } : undefined,
-          agency_salary: (allData.agency_salary?.has_salary || allData.agency_salary?.user_share_this_month > 0 || allData.agency_salary?.can_withdraw || allData.is_agency_owner) ? {
-            user_share_this_month: allData.agency_salary?.user_share_this_month || allData.agency_salary?.amount || 0,
-            pool_total: allData.agency_salary?.pool_total || allData.agency_salary?.amount || 0,
-            pool_cut: allData.agency_salary?.pool_cut || 0,
-            pool_available: allData.agency_salary?.pool_available || allData.agency_salary?.amount || 0,
-            monthly_pool_total: allData.agency_salary?.monthly_pool_total || allData.agency_salary?.amount || 0,
-            monthly_pool_cut: allData.agency_salary?.monthly_pool_cut || 0,
-            cash_used_this_month: allData.agency_salary?.cash_used_this_month || false,
-            can_withdraw: allData.agency_salary?.can_withdraw || false,
-          } : undefined,
-          withdrawal_options: {
-            cash_host: (allData.withdrawals?.can_withdraw !== false),
-            cash_agency: allData.is_agency_owner || false,
-            coins_transfer: true,
-            instant: true,
-          },
-        };
-        setStatus(mapped);
-        try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(mapped)); } catch {}
-        try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(mapped)); } catch {}
-        return;
-      }
+      // Use withdrawStatus FIRST (fast — 0.1s) for accurate numbers
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
-      if ((data as any)?.transient_error) {
-        if (!status) setError(true);
-        return;
+      if (data && !(data as any)?.transient_error) {
+        setStatus(data);
+        try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(data)); } catch {}
+        try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
+      } else if (!status) {
+        setError(true);
       }
-      setStatus(data);
-      try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
     } catch {
-      if (!status) setError(true);
+      // Fallback to salaryCheckAll if withdrawStatus fails
+      try {
+        const allData: any = await galaApi.salaryCheckAll(user!.uuid);
+        if (allData?.success || allData?.host_salary || allData?.agency_salary) {
+          const mapped: WithdrawStatus = {
+            ok: true,
+            is_agency_owner: allData.is_agency_owner || false,
+            host_salary: allData.host_salary ? {
+              current_month: allData.host_salary.salary || 0,
+              expected: allData.host_salary.salary || 0,
+              is_valid: true,
+              total_unpaid: 0,
+              total_cut: allData.host_salary.deduction || 0,
+              monthly_cut: allData.host_salary.deduction || 0,
+              available: allData.host_salary.net || 0,
+              cash_used_this_month: false,
+              over_withdrawn: (allData.host_salary.net || 0) <= 0,
+            } : undefined,
+            agency_salary: allData.agency_salary ? {
+              user_share_this_month: allData.agency_salary?.amount || 0,
+              pool_total: allData.agency_salary?.pool_total || 0,
+              pool_cut: allData.agency_salary?.pool_cut || 0,
+              pool_available: allData.agency_salary?.amount || 0,
+              monthly_pool_total: allData.agency_salary?.amount || 0,
+              monthly_pool_cut: 0,
+              cash_used_this_month: false,
+              can_withdraw: true,
+            } : undefined,
+            withdrawal_options: { cash_host: true, cash_agency: allData.is_agency_owner || false, coins_transfer: true, instant: true },
+          };
+          setStatus(mapped);
+          try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(mapped)); } catch {}
+        }
+      } catch {
+        if (!status) setError(true);
+      }
     } finally {
       setLoading(false);
     }
