@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendUserNotification } from "@/utils/sendUserNotification";
+import { logAdminAction } from "@/utils/auditLog";
 import { useConfirmModal } from "@/hooks/use-confirm-modal";
 import { galaApi } from "@/services/galaApi";
 import { Input } from "@/components/ui/input";
@@ -171,6 +172,15 @@ const AdminBanPage: React.FC = () => {
         admin_notes: notesWithAdmin,
       } as any).eq("id", report.id);
 
+      logAdminAction("ban_user", {
+        target_uuid: report.reported_user_id,
+        ban_type: banType,
+        duration_hours: banHours,
+        reason,
+        source: "report",
+        report_id: report.id,
+      });
+
       toast.success("تم الحظر!");
       setSelectedReport(null);
       setAdminNotes("");
@@ -226,6 +236,7 @@ const AdminBanPage: React.FC = () => {
       const unbanType = report.ban_type === "promotion" ? "device" : "normal";
       await doUnban(report.reported_user_id, unbanType);
       await supabase.from("ban_reports").delete().eq("reported_user_id", report.reported_user_id).eq("is_verified", true);
+      logAdminAction("unban_user", { target_uuid: report.reported_user_id, unban_type: unbanType });
       toast.dismiss(t);
       toast.success("تم فك الحظر!");
       setSelectedReport(null);
