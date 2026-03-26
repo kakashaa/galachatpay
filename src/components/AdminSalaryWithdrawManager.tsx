@@ -228,6 +228,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   const [approveNote, setApproveNote] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [rejectImage, setRejectImage] = useState<File | null>(null);
+  const [isFinalRejection, setIsFinalRejection] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -437,11 +438,19 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       if (rejectImage) imageBase64 = await fileToBase64(rejectImage);
       const data = await galaApi.salaryWithdrawReject(rejectSheet.id, rejectReason, imageBase64) as any;
       if (data.success) {
-        await sendUserNotification(rejectSheet.user_uuid, "تم رفض سحب الراتب", `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.`);
-        sendWhatsAppNotification(rejectSheet.whatsapp, `غلا شات 💬\n\n❌ تم رفض طلب سحب الراتب\nالسبب: ${rejectReason}`);
-        toast.success("تم رفض الطلب وإرسال الإشعار");
+        // If final rejection, update salary_request to mark transfer_id as permanently locked
+        if (isFinalRejection) {
+          await supabase
+            .from("salary_requests")
+            .update({ is_final_rejection: true } as any)
+            .eq("id", rejectSheet.id);
+        }
+        const notifSuffix = isFinalRejection ? "\n⛔ رفض نهائي — لا يمكن إعادة الإرسال" : "\nيمكنك تعديل الطلب وإعادة الإرسال";
+        await sendUserNotification(rejectSheet.user_uuid, "تم رفض سحب الراتب", `تم رفض طلب سحب الراتب. السبب: ${rejectReason}.${notifSuffix}`);
+        sendWhatsAppNotification(rejectSheet.whatsapp, `غلا شات 💬\n\n❌ تم رفض طلب سحب الراتب\nالسبب: ${rejectReason}${notifSuffix}`);
+        toast.success(isFinalRejection ? "تم الرفض النهائي وتسكير الحوالة" : "تم رفض الطلب وإرسال الإشعار");
         setRequests(prev => prev.map(r => r.id === rejectSheet.id ? { ...r, status: "rejected", reject_reason: rejectReason } : r));
-        setRejectSheet(null); setRejectReason(""); setRejectImage(null);
+        setRejectSheet(null); setRejectReason(""); setRejectImage(null); setIsFinalRejection(false);
         fetchData();
       } else toast.error(data.error || "فشل في رفض الطلب");
     } catch (e: any) {
@@ -1138,12 +1147,30 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                   onChange={e => { if (e.target.files?.[0]) setRejectImage(e.target.files[0]); }} />
               </label>
             </div>
+            {/* Final rejection checkbox */}
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isFinalRejection}
+                onChange={e => setIsFinalRejection(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded accent-rose-500"
+              />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-rose-400">رفض نهائي (تسكير الحوالة)</p>
+                <p className="text-[10px] text-rose-400/70 mt-0.5">
+                  {isFinalRejection
+                    ? "⛔ المستخدم لن يتمكن من إعادة الإرسال بنفس رقم الحوالة"
+                    : "المستخدم يقدر يعدل ويعيد الإرسال بنفس الحوالة"}
+                </p>
+              </div>
+            </label>
+
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 flex items-center gap-2 text-[10px] text-amber-400">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              سيتم إرجاع المبلغ لحساب المستخدم تلقائياً
+              {isFinalRejection ? "سيتم تسكير الحوالة نهائياً — لا يمكن استخدامها مرة أخرى" : "سيتم إرجاع المبلغ لحساب المستخدم تلقائياً"}
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setRejectSheet(null)} className="flex-1 h-12 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.08] text-sm transition-all duration-200 text-foreground">إلغاء</button>
+              <button onClick={() => { setRejectSheet(null); setIsFinalRejection(false); }} className="flex-1 h-12 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.08] text-sm transition-all duration-200 text-foreground">إلغاء</button>
               <button onClick={handleReject} disabled={actionLoading || !rejectReason.trim()}
                 className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold h-12 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 text-sm">
                 {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><XCircle className="w-4 h-4" /> تأكيد الرفض</>}

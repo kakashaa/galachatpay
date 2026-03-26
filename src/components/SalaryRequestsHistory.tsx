@@ -137,18 +137,41 @@ const handleSaveReceipt = (request: SalaryRequest) => {
   }
 };
 
+const getMonthOptions = () => {
+  const months: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
+    months.push({ value, label });
+  }
+  return months;
+};
+
+const getCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
 const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdrawnCalculated }) => {
   const [requests, setRequests] = useState<SalaryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReq, setSelectedReq] = useState<SalaryRequest | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const monthOptions = getMonthOptions();
 
   useEffect(() => {
-    const fetchAll = async () => {
+    fetchAll();
+  }, [userUuid, selectedMonth]);
+
+  const fetchAll = async () => {
+      setLoading(true);
       try {
-        const now = new Date();
-        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const [year, monthNum] = selectedMonth.split("-").map(Number);
+        const month = selectedMonth;
         const monthStart = `${month}-01T00:00:00`;
-        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const nextMonth = new Date(year, monthNum, 1);
         const monthEnd = nextMonth.toISOString();
 
         const [externalRes, localRes, transfersRes] = await Promise.all([
@@ -227,9 +250,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
       } finally {
         setLoading(false);
       }
-    };
-    fetchAll();
-  }, [userUuid]);
+  };
 
   if (loading) {
     return (
@@ -263,86 +284,64 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
   return (
     <>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-        <h3 className="text-xs font-bold text-foreground flex items-center gap-2 px-1">
-          <FileText className="w-3.5 h-3.5 text-primary" /> طلباتي السابقة
-          <span className="text-[10px] text-muted-foreground font-normal">({requests.length})</span>
-        </h3>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+        {/* Header with month selector */}
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-primary" /> طلباتي
+            <span className="text-[10px] text-muted-foreground font-normal">({requests.length})</span>
+          </h3>
+          <select
+            value={selectedMonth}
+            onChange={e => setSelectedMonth(e.target.value)}
+            className="bg-muted/20 border border-border/20 rounded-lg text-[10px] px-2 py-1 text-foreground font-bold"
+          >
+            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </div>
 
-        {requests.map((req, i) => {
-          const st = getStatus(req.status);
-          const coins = isCoinsRequest(req);
-          return (
-            <motion.div
-              key={`${req.id}-${i}`}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              className="rounded-2xl border border-border/10 bg-card/30 overflow-hidden"
-            >
-              {/* Receipt card top bar with status color */}
-              <div className={`h-1 w-full ${st.dotColor}`} />
-              
-              <div className="p-4 space-y-3">
-                {/* Top row: status badge + amount */}
-                <div className="flex items-center justify-between">
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${st.bg}`}>
-                    <span className={st.color}>{st.icon}</span>
-                    <span className={`text-[11px] font-bold ${st.color}`}>{st.label}</span>
-                  </div>
-                  <p className="text-lg font-black text-foreground tabular-nums" dir="ltr">${req.amount.toFixed(2)}</p>
-                </div>
+        {/* Compact one-line per request */}
+        <div className="space-y-1">
+          {requests.map((req, i) => {
+            const st = getStatus(req.status);
+            const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" });
+            const bankLabel = getRequestTypeLabel(req.request_type) || req.bank || "";
+            const shortBank = bankLabel.length > 15 ? bankLabel.slice(0, 15) + "…" : bankLabel;
+            return (
+              <motion.button
+                key={`${req.id}-${i}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.02 }}
+                onClick={() => setSelectedReq(req)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-border/10 bg-card/20 active:bg-card/40 transition-all text-right"
+              >
+                {/* Status dot */}
+                <div className={`w-2 h-2 rounded-full shrink-0 ${st.dotColor}`} />
+                
+                {/* Amount */}
+                <span className="text-xs font-black text-foreground tabular-nums min-w-[50px]" dir="ltr">
+                  ${req.amount.toFixed(0)}
+                </span>
 
-                {/* Info rows */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">
-                      {getRequestTypeLabel(req.request_type) || req.bank}{req.country && !coins ? ` — ${req.country}` : ""}
-                    </span>
-                    <span className="text-muted-foreground/70">{formatDateAr(req.created_at)}</span>
-                  </div>
-                  
-                  {req.reference_id && (
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="text-muted-foreground/60">المرجعي:</span>
-                      <span className="text-muted-foreground font-mono">{req.reference_id}</span>
-                    </div>
-                  )}
+                {/* Bank/type */}
+                <span className="text-[10px] text-muted-foreground truncate flex-1">
+                  {shortBank}
+                </span>
 
-                  {coins && req.amount_coins && (
-                    <div className="flex items-center gap-1.5 text-[11px] text-amber-400">
-                      <Coins className="w-3 h-3" />
-                      <span className="font-bold">{req.amount_coins.toLocaleString()} كوينز</span>
-                      {req.target_name && (
-                        <span className="text-muted-foreground mr-1">← {req.target_name}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {/* Date */}
+                <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
+                  {dateStr}
+                </span>
 
-                {/* Bottom row: view details + save as image */}
-                <div className="flex items-center justify-between pt-1 border-t border-border/5">
-                  <button
-                    onClick={() => setSelectedReq(req)}
-                    className="text-[10px] text-primary flex items-center gap-1 active:opacity-70 transition-opacity"
-                  >
-                    عرض التفاصيل <ChevronLeft className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSaveReceipt(req);
-                    }}
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground active:scale-95 transition-all px-2 py-1 rounded-lg bg-muted/20"
-                  >
-                    <Camera className="w-3 h-3" />
-                    حفظ كصورة
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
+                {/* Status label */}
+                <span className={`text-[10px] font-bold shrink-0 ${st.color}`}>
+                  {st.label === "تم التسليم" ? "✓" : st.label === "مرفوض" ? "✗" : "⏳"}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
       </motion.div>
 
       {/* Detail Sheet */}

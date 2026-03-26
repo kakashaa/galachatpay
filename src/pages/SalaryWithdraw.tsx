@@ -181,9 +181,11 @@ const SalaryWithdraw: React.FC = () => {
 
   // Transfers list
   const [transfers, setTransfers] = useState<TransferItem[]>([]);
+  const [expiredTransfers, setExpiredTransfers] = useState<TransferItem[]>([]);
   const [expiredCashCount, setExpiredCashCount] = useState(0);
   const [transfersLoading, setTransfersLoading] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<TransferItem | null>(null);
+  const [localUsedIds, setLocalUsedIds] = useState<Set<string>>(new Set());
 
   // Bank (cash mode)
   const [selectedCountry, setSelectedCountry] = useState("");
@@ -313,27 +315,52 @@ const SalaryWithdraw: React.FC = () => {
         galaApi.userTransfers(user.uuid) as any,
         supabase
           .from("salary_requests")
-          .select("transfer_id")
+          .select("transfer_id, status, is_final_rejection")
           .eq("user_uuid", user.uuid),
       ]);
 
-      const usedIds = new Set((usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean));
+      // Build used IDs set:
+      // - All non-rejected requests → transfer_id is locked
+      // - Rejected with is_final_rejection → transfer_id is PERMANENTLY locked
+      // - Rejected WITHOUT is_final_rejection → transfer_id is AVAILABLE (user can resubmit)
+      const usedIds = new Set([
+        ...(usedRes.data || [])
+          .filter((r: any) => {
+            if (r.status === "rejected") {
+              return r.is_final_rejection === true; // Only lock if final rejection
+            }
+            return true; // All other statuses lock the transfer_id
+          })
+          .map((r: any) => r.transfer_id)
+          .filter(Boolean),
+        ...localUsedIds,
+      ]);
 
       // Filter: transfers to UUID 10000, not already used
       // Cash: today only | Other methods: all dates
       const today = new Date().toISOString().slice(0, 10);
       const isCashMode = pathMode === "cash";
-      const list: TransferItem[] = (apiData?.transfers || apiData?.data || [])
+      const allTransfers = (apiData?.transfers || apiData?.data || []);
+      
+      const mapTransfer = (t: any): TransferItem => ({
+        reference_id: t.reference_id || t.id || "",
+        amount: t.amount || t.amount_usd || t.usd || 0,
+        usd: t.usd || t.amount_usd || t.amount || 0,
+        coins: t.coins || t.amount_coins || 0,
+        time: t.time || t.created_at || "",
+        to_uuid: String(t.to_uuid || t.receiver_uuid || "10000"),
+        from_uuid: String(t.from_uuid || t.sender_uuid || ""),
+      });
+
+      const list: TransferItem[] = allTransfers
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
           const date = (t.time || t.created_at || "").slice(0, 10);
           const refId = String(t.reference_id || t.id || "");
-          // user_transfers API already filters to UUID 10000 only
           if (toUuid && toUuid !== "10000") return false;
           if (usedIds.has(refId)) return false;
-          if (t.is_used) return false; // Already used
-          if (isCashMode && date !== today) return false; // Cash: today only
-          // 2-hour limit for cash withdrawals
+          if (t.is_used) return false;
+          if (isCashMode && date !== today) return false;
           if (isCashMode) {
             const transferTime = new Date(t.time || t.created_at || "");
             const now = new Date();
@@ -342,27 +369,25 @@ const SalaryWithdraw: React.FC = () => {
           }
           return true;
         })
-        .map((t: any) => ({
-          reference_id: t.reference_id || t.id || "",
-          amount: t.amount || t.amount_usd || t.usd || 0,
-          usd: t.usd || t.amount_usd || t.amount || 0,
-          coins: t.coins || t.amount_coins || 0,
-          time: t.time || t.created_at || "",
-          to_uuid: String(t.to_uuid || t.receiver_uuid || "10000"),
-          from_uuid: String(t.from_uuid || t.sender_uuid || ""),
-        }));
+        .map(mapTransfer);
       setTransfers(list);
 
-      // Count expired cash transfers (old transfers that can't be used for cash)
+      // Expired transfers: old (not today), NOT in salary_requests — show as expired
+      const expiredList: TransferItem[] = allTransfers
+        .filter((t: any) => {
+          const toUuid = String(t.to_uuid || t.receiver_uuid || "");
+          const date = (t.time || t.created_at || "").slice(0, 10);
+          const refId = String(t.reference_id || t.id || "");
+          if (toUuid && toUuid !== "10000") return false;
+          if (usedIds.has(refId)) return false;
+          if (t.is_used) return false;
+          return date !== today;
+        })
+        .map(mapTransfer);
+      setExpiredTransfers(expiredList);
+
       if (isCashMode) {
-        const expiredCount = (apiData?.transfers || apiData?.data || [])
-          .filter((t: any) => {
-            const toUuid = String(t.to_uuid || t.receiver_uuid || "");
-            const date = (t.time || t.created_at || "").slice(0, 10);
-            const refId = String(t.reference_id || t.id || "");
-            return toUuid === "10000" && !usedIds.has(refId) && date !== today;
-          }).length;
-        setExpiredCashCount(expiredCount);
+        setExpiredCashCount(expiredList.length);
       } else {
         setExpiredCashCount(0);
       }
@@ -518,7 +543,11 @@ const SalaryWithdraw: React.FC = () => {
         toast.warning("تم السحب لكن فشل حفظ السجل — تواصل مع الأدمن");
       }
 
-      // Layer 3: Go to receipt step (no re-submit)
+      // Layer 3: Mark transfer as used locally so it disappears immediately
+      setLocalUsedIds(prev => new Set([...prev, selectedTransfer.reference_id]));
+      setTransfers(prev => prev.filter(t => t.reference_id !== selectedTransfer.reference_id));
+
+      // Go to receipt step (no re-submit)
       setStep("receipt");
 
     } catch (err: any) {
@@ -800,10 +829,10 @@ const SalaryWithdraw: React.FC = () => {
                 {expiredCashCount > 0 && (
                   <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                     <p className="text-[11px] text-amber-400 font-bold">
-                      لقد بلغت {expiredCashCount} عملية تحويل الحد المسموح للانتظار (ساعتين).
+                      يوجد {expiredCashCount} حوالة منتهية الصلاحية
                     </p>
                     <p className="text-[10px] text-amber-400/70 mt-1">
-                      لا يمكن استخدامها في السحب النقدي. يمكنك استخدامها في الشحن أو السحب الفوري.
+                      لا يمكن استخدامها. تواصل مع الإدارة للمساعدة.
                     </p>
                   </div>
                 )}
@@ -849,6 +878,40 @@ const SalaryWithdraw: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Expired transfers (not selectable) */}
+          {expiredTransfers.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold text-amber-400/80 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                حوالات منتهية الصلاحية ({expiredTransfers.length})
+              </h3>
+              {expiredTransfers.map((t, i) => {
+                const timeStr = t.time ? new Date(t.time).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
+                return (
+                  <div
+                    key={t.reference_id || i}
+                    className="w-full rounded-xl border border-amber-500/15 bg-amber-500/5 p-3 text-right opacity-60"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-400/60" />
+                        <div className="text-right">
+                          <p className="text-xs font-bold text-foreground/60" dir="ltr">${(t.usd || t.amount || 0).toFixed(2)}</p>
+                          <p className="text-[9px] text-muted-foreground font-mono">#{t.reference_id}</p>
+                        </div>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[10px] text-amber-400 font-bold">منتهية الصلاحية</p>
+                        <p className="text-[9px] text-muted-foreground">{timeStr}</p>
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-amber-400/60 mt-1">تواصل مع الإدارة للمساعدة</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Proceed button */}
           {selectedTransfer && (

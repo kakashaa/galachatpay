@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Wallet, Coins, Gift, Zap, DollarSign,
   Building2, CheckCircle, XCircle, AlertCircle,
-  ChevronDown, Lock,
+  Lock,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,11 +62,8 @@ const SalaryHome: React.FC = () => {
   const [error, setError] = useState(false);
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
 
-  // Load cached data instantly, then refresh in background
   useEffect(() => {
     if (!user) { navigate("/"); return; }
-    
-    // Show cached data immediately (no waiting)
     const cached = localStorage.getItem(`salary_cache_${user.uuid}`);
     if (cached) {
       try {
@@ -77,18 +74,13 @@ const SalaryHome: React.FC = () => {
         }
       } catch {}
     }
-    
-    // Then refresh in background
     fetchStatus();
-
     const handleVisibility = () => {
       if (document.visibilityState === "visible") fetchStatus();
     };
     document.addEventListener("visibilitychange", handleVisibility);
-
     const handleFocus = () => fetchStatus();
     window.addEventListener("focus", handleFocus);
-
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleFocus);
@@ -99,7 +91,6 @@ const SalaryHome: React.FC = () => {
     if (!status) setLoading(true);
     setError(false);
     try {
-      // Force no-cache fetch
       const allData: any = await galaApi.salaryCheckAll(user!.uuid);
       if (allData?.success || allData?.host_salary || allData?.agency_salary) {
         const mapped: WithdrawStatus = {
@@ -134,7 +125,6 @@ const SalaryHome: React.FC = () => {
           },
         };
         setStatus(mapped);
-        // Cache for instant load next time
         try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(mapped)); } catch {}
         try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(mapped)); } catch {}
         return;
@@ -172,67 +162,26 @@ const SalaryHome: React.FC = () => {
   const cashUsedThisMonth = (host?.cash_used_this_month || false) || (agency?.cash_used_this_month || false);
 
   const options = [
-    {
-      id: "cash",
-      icon: Wallet,
-      label: "سحب نقدي",
-      desc: "تحويل بنكي",
-      color: "text-emerald-400",
-      bg: "bg-emerald-500/10 border-emerald-500/20",
-      route: "/salary/cash",
-      locked: cashUsedThisMonth,
-    },
-    {
-      id: "charge_self",
-      icon: Coins,
-      label: "شحن لحسابي",
-      desc: "كوينزات بحسابك",
-      color: "text-amber-400",
-      bg: "bg-amber-500/10 border-amber-500/20",
-      route: "/salary/charge-self",
-      locked: false,
-    },
-    {
-      id: "charge_other",
-      icon: Gift,
-      label: "شحن لحساب آخر",
-      desc: "أرسل لصديقك",
-      color: "text-violet-400",
-      bg: "bg-violet-500/10 border-violet-500/20",
-      route: "/salary/charge-other",
-      locked: false,
-    },
-    {
-      id: "instant",
-      icon: Zap,
-      label: "سحب فوري",
-      desc: "بيع كوينزاتك",
-      color: "text-orange-400",
-      bg: "bg-orange-500/10 border-orange-500/20",
-      route: "/salary/instant",
-      locked: false,
-    },
+    { id: "cash", icon: Wallet, label: "سحب نقدي", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", route: "/salary/cash", locked: cashUsedThisMonth },
+    { id: "charge_self", icon: Coins, label: "شحن لحسابي", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", route: "/salary/charge-self", locked: false },
+    { id: "charge_other", icon: Gift, label: "شحن لآخر", color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20", route: "/salary/charge-other", locked: false },
+    { id: "instant", icon: Zap, label: "سحب فوري", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20", route: "/salary/instant", locked: false },
   ];
 
   return (
     <MobileLayout showHeader headerTitle="راتبي" onBack={() => navigate("/dashboard")}>
-      <div className="px-4 py-4 space-y-3">
+      <div className="px-4 py-3 space-y-3">
 
         {/* Loading skeleton */}
         {loading && !status && (
-          <div className="space-y-3">
-            <div className="glass-card p-4 text-center space-y-2">
-              <div className="h-2.5 w-28 mx-auto rounded bg-muted animate-pulse" />
-              <div className="h-8 w-32 mx-auto rounded bg-muted animate-pulse" />
-              <div className="h-2.5 w-20 mx-auto rounded bg-muted animate-pulse" />
+          <div className="space-y-2">
+            <div className="text-center py-3">
+              <div className="h-2.5 w-24 mx-auto rounded bg-muted animate-pulse mb-2" />
+              <div className="h-7 w-28 mx-auto rounded bg-muted animate-pulse" />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex gap-2">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="rounded-xl border border-border/20 bg-card/30 p-2.5 space-y-1.5">
-                  <div className="h-6 w-6 rounded-lg bg-muted animate-pulse mx-auto" />
-                  <div className="h-2.5 w-14 rounded bg-muted animate-pulse mx-auto" />
-                  <div className="h-2 w-10 rounded bg-muted animate-pulse mx-auto" />
-                </div>
+                <div key={i} className="flex-1 h-9 rounded-full bg-muted animate-pulse" />
               ))}
             </div>
           </div>
@@ -240,7 +189,7 @@ const SalaryHome: React.FC = () => {
 
         {/* Error */}
         {!loading && error && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
             <AlertCircle className="w-10 h-10 text-destructive" />
             <p className="text-sm text-destructive font-bold">فشل جلب الراتب</p>
             <p className="text-xs text-muted-foreground text-center px-4">السيرفر قد يكون مشغول — حاول مرة ثانية</p>
@@ -252,219 +201,140 @@ const SalaryHome: React.FC = () => {
 
         {!error && status && (
           <>
-            {/* ══════ 1. Total Available - Hero Card ══════ */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/10 to-transparent p-4 text-center space-y-0.5"
-            >
-              <p className="text-[10px] text-muted-foreground">المبلغ المتاح للسحب</p>
+            {/* ══════ 1. Balance - Simple hero ══════ */}
+            <div className="text-center py-2">
+              <p className="text-[10px] text-muted-foreground mb-0.5">المبلغ المتاح للسحب</p>
               {totalAvailable > 0 ? (
                 <>
-                  <div className="flex items-center justify-center gap-1.5">
-                    <DollarSign className="w-5 h-5 text-emerald-400" />
-                    <p className="text-3xl font-black text-emerald-400 tabular-nums" dir="ltr">
-                      {totalAvailable.toFixed(2)}
-                    </p>
-                  </div>
-                  <p className="text-xs text-emerald-400/70 tabular-nums font-semibold">
-                    {(totalAvailable * USD_TO_COINS).toLocaleString()} كوينز
+                  <p className="text-3xl font-black text-emerald-400 tabular-nums leading-none" dir="ltr">
+                    ${totalAvailable.toFixed(2)}
                   </p>
-
-                  {/* Quick host/agency split */}
-                  <div className="flex items-center justify-center gap-3 pt-1">
+                  <div className="flex items-center justify-center gap-2 mt-1">
                     <span className="text-[10px] text-muted-foreground">
-                      مضيف: <span className="text-emerald-400 font-bold" dir="ltr">${hostAvailable.toFixed(2)}</span>
+                      مضيف <span className="text-emerald-400 font-bold" dir="ltr">${hostAvailable.toFixed(2)}</span>
                     </span>
                     {isAgencyOwner && (
-                      <span className="text-[10px] text-muted-foreground">
-                        وكالة: <span className="text-violet-400 font-bold" dir="ltr">${agencyAvailable.toFixed(2)}</span>
-                      </span>
+                      <>
+                        <span className="text-muted-foreground/30">|</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          وكالة <span className="text-violet-400 font-bold" dir="ltr">${agencyAvailable.toFixed(2)}</span>
+                        </span>
+                      </>
                     )}
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground py-2">لا يوجد رصيد متاح</p>
+                <p className="text-sm text-muted-foreground py-1">لا يوجد رصيد متاح</p>
               )}
-            </motion.div>
-
-            {/* ══════ 2. Previous Requests (moved to top) ══════ */}
-            <SalaryRequestsHistory userUuid={user.uuid} />
-
-            {/* ══════ 3. Withdrawal Options - 2x2 Grid ══════ */}
-            <div className="space-y-2">
-              <h3 className="text-[11px] font-bold text-foreground px-1">خيارات السحب</h3>
-              
-              {cashUsedThisMonth && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <Lock className="w-3 h-3 text-amber-400 shrink-0" />
-                  <p className="text-[10px] text-amber-400 font-semibold">تم استخدام السحب النقدي هذا الشهر</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                {options.map((opt, i) => {
-                  const Icon = opt.icon;
-                  const isLocked = opt.locked;
-                  return (
-                    <motion.button
-                      key={opt.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.05 + i * 0.04, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                      onClick={() => !isLocked && navigate(opt.route)}
-                      disabled={isLocked}
-                      className={`relative rounded-xl p-2.5 text-center space-y-1 border ${opt.bg} transition-all ${
-                        isLocked
-                          ? "opacity-40 cursor-not-allowed"
-                          : "active:scale-[0.97]"
-                      }`}
-                    >
-                      {isLocked && (
-                        <div className="absolute top-1.5 left-1.5">
-                          <Lock className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className={`w-8 h-8 rounded-xl ${opt.bg} flex items-center justify-center mx-auto`}>
-                        <Icon className={`w-4 h-4 ${opt.color}`} />
-                      </div>
-                      <p className="font-bold text-xs text-foreground">{opt.label}</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight">{opt.desc}</p>
-                    </motion.button>
-                  );
-                })}
-              </div>
             </div>
 
-            {/* ══════ 4. Salary Details - Merged with Tabs ══════ */}
-            <div className="space-y-2">
-              <h3 className="text-[11px] font-bold text-foreground px-1">تفاصيل الراتب</h3>
-
-              {/* Tab switcher (only if agency owner) */}
-              {isAgencyOwner && (
-                <div className="flex rounded-xl bg-muted/20 p-1 gap-1">
-                  <button
-                    onClick={() => setSalaryTab("host")}
-                    className={`flex-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
-                      salaryTab === "host"
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20"
-                        : "text-muted-foreground"
+            {/* ══════ 2. Withdrawal buttons - Pill row ══════ */}
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {options.map((opt, i) => {
+                const Icon = opt.icon;
+                return (
+                  <motion.button
+                    key={opt.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.03 + i * 0.03 }}
+                    onClick={() => !opt.locked && navigate(opt.route)}
+                    disabled={opt.locked}
+                    className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-bold transition-all ${opt.bg} ${
+                      opt.locked ? "opacity-40 cursor-not-allowed" : "active:scale-[0.96]"
                     }`}
                   >
-                    <Wallet className="w-3.5 h-3.5 inline-block ml-1" />
+                    {opt.locked && <Lock className="w-3 h-3 text-muted-foreground" />}
+                    <Icon className={`w-3.5 h-3.5 ${opt.color}`} />
+                    <span className="text-foreground">{opt.label}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {cashUsedThisMonth && (
+              <div className="flex items-center justify-center gap-1 text-[10px] text-amber-400">
+                <Lock className="w-3 h-3" />
+                <span>تم استخدام السحب النقدي هذا الشهر</span>
+              </div>
+            )}
+
+            {/* ══════ 3. Salary Details - Simple table ══════ */}
+            <div className="space-y-1.5">
+              {isAgencyOwner && (
+                <div className="flex rounded-lg bg-muted/15 p-0.5 gap-0.5">
+                  <button
+                    onClick={() => setSalaryTab("host")}
+                    className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
+                      salaryTab === "host" ? "bg-emerald-500/15 text-emerald-400" : "text-muted-foreground"
+                    }`}
+                  >
                     المضيف
                   </button>
                   <button
                     onClick={() => setSalaryTab("agency")}
-                    className={`flex-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
-                      salaryTab === "agency"
-                        ? "bg-violet-500/20 text-violet-400 border border-violet-500/20"
-                        : "text-muted-foreground"
+                    className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
+                      salaryTab === "agency" ? "bg-violet-500/15 text-violet-400" : "text-muted-foreground"
                     }`}
                   >
-                    <Building2 className="w-3.5 h-3.5 inline-block ml-1" />
                     الوكالة
                   </button>
                 </div>
               )}
 
-              {/* Host Details */}
+              {/* Host details */}
               {(salaryTab === "host" || !isAgencyOwner) && host && host.current_month > 0 && (
-                <motion.div
-                  key="host-details"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-border/10 bg-card/30 p-3 space-y-2"
-                >
-                  <div className="grid grid-cols-3 gap-1.5 text-center">
-                    <div className="rounded-lg bg-background/40 p-2">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">الراتب</p>
-                      <p className="text-xs font-black text-foreground tabular-nums" dir="ltr">${host.current_month.toFixed(2)}</p>
-                    </div>
-                    <div className="rounded-lg bg-background/40 p-2">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">الخصم</p>
-                      {hostCutInvalid ? (
-                        <p className="text-[10px] font-bold text-amber-400">⚠️ مراجعة</p>
-                      ) : (
-                        <p className="text-xs font-black text-red-400 tabular-nums" dir="ltr">${hostCut.toFixed(2)}</p>
-                      )}
-                    </div>
-                    <div className="rounded-lg bg-background/40 p-2">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">المتبقي</p>
-                      <p className="text-xs font-black text-emerald-400 tabular-nums" dir="ltr">${hostAvailable.toFixed(2)}</p>
-                    </div>
+                <div className="rounded-xl border border-border/10 bg-card/20 p-2.5 space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">الراتب</span>
+                    <span className="font-bold text-foreground tabular-nums" dir="ltr">${host.current_month.toFixed(2)}</span>
                   </div>
-
-                  {hostCutInvalid && (
-                    <p className="text-[10px] text-amber-400 text-center">
-                      {host.note_ar || (host.deficit ? `⚠️ عجز $${host.deficit.toFixed(2)}` : "⚠️ تحت المراجعة")}
-                    </p>
-                  )}
-
-                  {host.is_valid && (
-                    <div className="flex justify-center">
-                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                        <CheckCircle className="w-2.5 h-2.5" /> متطابق
-                      </span>
-                    </div>
-                  )}
-
-                  {host.cash_used_this_month && (
-                    <p className="text-[10px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Agency Details */}
-              {salaryTab === "agency" && isAgencyOwner && (
-                <motion.div
-                  key="agency-details"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-border/10 bg-card/30 p-3 space-y-2"
-                >
-                  <div className="grid grid-cols-3 gap-1.5 text-center">
-                    <div className="rounded-lg bg-background/40 p-2">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">الإجمالي</p>
-                      <p className="text-xs font-black text-foreground tabular-nums" dir="ltr">${agencyPoolTotal.toFixed(2)}</p>
-                    </div>
-                    <div className="rounded-lg bg-background/40 p-2">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">المسحوبات</p>
-                      <p className="text-xs font-black text-red-400 tabular-nums" dir="ltr">${agencyPoolCut.toFixed(2)}</p>
-                    </div>
-                    <div className="rounded-lg bg-background/40 p-2">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">المتبقي</p>
-                      <p className="text-xs font-black text-emerald-400 tabular-nums" dir="ltr">${agencyAvailable.toFixed(2)}</p>
-                    </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">الخصم</span>
+                    {hostCutInvalid ? (
+                      <span className="text-amber-400 text-[10px] font-bold">⚠️ مراجعة</span>
+                    ) : (
+                      <span className="font-bold text-red-400 tabular-nums" dir="ltr">-${hostCut.toFixed(2)}</span>
+                    )}
                   </div>
-
-                  {(agency?.user_share_this_month || 0) > 0 && (
-                    <p className="text-[10px] text-muted-foreground text-center">
-                      حصتك: <span className="font-bold text-foreground" dir="ltr">${agency?.user_share_this_month?.toFixed(2)}</span>
-                    </p>
+                  <div className="h-px bg-border/10" />
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground font-bold">المتبقي</span>
+                    <span className="font-black text-emerald-400 tabular-nums" dir="ltr">${hostAvailable.toFixed(2)}</span>
+                  </div>
+                  {hostCutInvalid && host.note_ar && (
+                    <p className="text-[9px] text-amber-400 text-center">{host.note_ar}</p>
                   )}
-
-                  {agency?.can_withdraw && (
-                    <div className="flex justify-center">
-                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                        <CheckCircle className="w-2.5 h-2.5" /> متاح للسحب
-                      </span>
-                    </div>
-                  )}
-
-                  {agency?.cash_used_this_month && (
-                    <p className="text-[10px] text-amber-400 text-center">✅ تم السحب النقدي هذا الشهر</p>
-                  )}
-                </motion.div>
-              )}
-
-              {/* No host salary message */}
-              {(salaryTab === "host" || !isAgencyOwner) && (!host || host.current_month <= 0) && (
-                <div className="rounded-xl border border-border/10 bg-card/20 p-3 text-center">
-                  <p className="text-[10px] text-muted-foreground">لا يوجد راتب مضيف هذا الشهر</p>
                 </div>
               )}
+
+              {/* Agency details */}
+              {salaryTab === "agency" && isAgencyOwner && (
+                <div className="rounded-xl border border-border/10 bg-card/20 p-2.5 space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">الإجمالي</span>
+                    <span className="font-bold text-foreground tabular-nums" dir="ltr">${agencyPoolTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">المسحوبات</span>
+                    <span className="font-bold text-red-400 tabular-nums" dir="ltr">-${agencyPoolCut.toFixed(2)}</span>
+                  </div>
+                  <div className="h-px bg-border/10" />
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground font-bold">المتبقي</span>
+                    <span className="font-black text-emerald-400 tabular-nums" dir="ltr">${agencyAvailable.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* No host salary */}
+              {(salaryTab === "host" || !isAgencyOwner) && (!host || host.current_month <= 0) && (
+                <p className="text-[10px] text-muted-foreground text-center py-2">لا يوجد راتب مضيف هذا الشهر</p>
+              )}
             </div>
+
+            {/* ══════ 4. Previous Requests ══════ */}
+            <SalaryRequestsHistory userUuid={user.uuid} />
           </>
         )}
       </div>
