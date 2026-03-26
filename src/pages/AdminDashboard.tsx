@@ -277,6 +277,7 @@ const AdminDashboardPage: React.FC = () => {
               { label: 'الدعم الفني', route: '/admin/support', count: badgeData.supportOpen + badgeData.chatWaiting + badgeData.quickSupportPending, roles: ['owner', 'super_admin', 'admin'] },
               { label: 'الحماية', route: '/admin/ban', count: badgeData.banReportsUnverified, roles: ['owner', 'super_admin'] },
               { label: 'تغيير آيدي', route: '/admin/id-change', count: 0, roles: ['owner', 'super_admin'] },
+              { label: 'الحسابات الموثقة', route: '/admin/verified-phones', count: 0, roles: ['owner', 'super_admin'] },
             ].filter(item => adminRole && (item as any).roles.includes(adminRole)).map(item => (
               <button
                 key={item.label}
