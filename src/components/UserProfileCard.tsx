@@ -59,6 +59,15 @@ const UserProfileCard: React.FC = () => {
   const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (user?.uuid) {
+      supabase.from("verified_phones").select("is_verified").eq("user_uuid", user.uuid).eq("is_verified", true).maybeSingle()
+        .then(({ data }) => setIsPhoneVerified(!!data))
+        .catch(() => setIsPhoneVerified(false));
+    }
+  }, [user?.uuid]);
   const { verifiedPhone, unlink: unlinkWa } = useVerifiedWhatsApp(user?.uuid);
   const { confirm, ConfirmDialog } = useConfirmModal();
 
@@ -188,6 +197,12 @@ const UserProfileCard: React.FC = () => {
               <span className="text-[9px] font-mono">UUID: {user.uuid}</span>
               <Copy className="w-2 h-2" />
             </button>
+            {isPhoneVerified === true && (
+              <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[8px] font-bold">✅ موثق</span>
+            )}
+            {isPhoneVerified === false && (
+              <button onClick={() => window.location.href = "/verify"} className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[8px] font-bold">⚠️ غير موثق</button>
+            )}
           </div>
         </div>
 
