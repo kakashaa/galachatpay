@@ -488,10 +488,15 @@ const SalaryWithdraw: React.FC = () => {
       // 2. For coin charges (host OR agency), charge the target
       if (pathMode === "charge_self" || pathMode === "charge_other") {
         const chargeTargetUuid = chargeTarget || user!.uuid;
+        const chargeRequestType = salaryType === "agency"
+          ? `agency_${pathMode}`
+          : pathMode;
         const chargeData = await galaApi.chargeCoins(
           chargeTargetUuid,
           amount,
           selectedTransfer.reference_id || "manual",
+          chargeTargetUuid,
+          chargeRequestType,
         );
         if (!(chargeData as any).success) {
           throw new Error("فشل شحن الكوينز — تواصل مع الأدمن");
