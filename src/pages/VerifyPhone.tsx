@@ -21,7 +21,7 @@ const VerifyPhone = () => {
 
     const verify = async () => {
       try {
-        const res: any = await galaApi.call("project-z", "otp_verify", { uuid, code });
+        const res: any = await galaApi.otpVerify(uuid, code);
         if (res?.success) {
           setStatus("success");
           setMessage("مبروك! تم توثيق حسابك بنجاح 🎉");
