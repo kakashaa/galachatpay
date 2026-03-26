@@ -488,9 +488,6 @@ const SalaryWithdraw: React.FC = () => {
       // 2. For coin charges (host OR agency), charge the target
       if (pathMode === "charge_self" || pathMode === "charge_other") {
         const chargeTargetUuid = chargeTarget || user!.uuid;
-        const chargeRequestType = salaryType === "agency"
-          ? `agency_${pathMode}`
-          : pathMode;
         const chargeResponse = await fetch("https://hola-chat.com/project-z/api.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
