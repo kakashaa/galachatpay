@@ -64,8 +64,8 @@ const UserProfileCard: React.FC = () => {
   useEffect(() => {
     if (user?.uuid) {
       supabase.from("verified_phones").select("is_verified").eq("user_uuid", user.uuid).eq("is_verified", true).maybeSingle()
-        .then(({ data }) => setIsPhoneVerified(!!data))
-        .catch(() => setIsPhoneVerified(false));
+        .then(({ data }) => { setIsPhoneVerified(!!data); })
+        .then(undefined, () => { setIsPhoneVerified(false); });
     }
   }, [user?.uuid]);
   const { verifiedPhone, unlink: unlinkWa } = useVerifiedWhatsApp(user?.uuid);
