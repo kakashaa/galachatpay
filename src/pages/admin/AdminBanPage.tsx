@@ -144,7 +144,6 @@ const AdminBanPage: React.FC = () => {
   /* ── Accept report ── */
   const acceptReport = async (report: any, hours: number) => {
     setActionInProgress(report.id);
-    const t = toast.loading("جاري التأكيد والحظر...");
     try {
       const isPromo = report.ban_type === "promotion";
       const banType = isPromo ? "device" : "normal";
@@ -159,7 +158,7 @@ const AdminBanPage: React.FC = () => {
           title: "تنبيه", message: "هذا المستخدم محظور من قبل! هل تريد زيادة المدة؟",
           danger: true, confirmText: "نعم، حظر",
         });
-        if (!proceed) { toast.dismiss(t); setActionInProgress(null); setDurationPick(null); return; }
+        if (!proceed) { setActionInProgress(null); setDurationPick(null); return; }
       }
 
       const notesWithAdmin = adminUsername
@@ -172,20 +171,18 @@ const AdminBanPage: React.FC = () => {
         admin_notes: notesWithAdmin,
       } as any).eq("id", report.id);
 
-      toast.dismiss(t);
       toast.success("تم الحظر!");
       setSelectedReport(null);
       setAdminNotes("");
       setDurationPick(null);
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch { toast.error("فشل"); }
     finally { setActionInProgress(null); }
   };
 
   /* ── Reject report ── */
   const rejectReport = async (report: any) => {
     setActionInProgress(report.id + "_r");
-    const t = toast.loading("جاري الرفض...");
     try {
       const notesWithAdmin = adminUsername
         ? `[معالج بواسطة: ${adminUsername}] ${adminNotes || ""}`.trim()
@@ -195,12 +192,11 @@ const AdminBanPage: React.FC = () => {
         admin_notes: notesWithAdmin || "مرفوض",
       } as any).eq("id", report.id);
 
-      toast.dismiss(t);
       toast.success("تم الرفض");
       setSelectedReport(null);
       setAdminNotes("");
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch { toast.error("فشل"); }
     finally { setActionInProgress(null); }
   };
 
@@ -738,6 +734,7 @@ const AdminBanPage: React.FC = () => {
                 placeholder="UUID المستخدم"
                 value={banUuid}
                 onChange={e => { setBanUuid(e.target.value); setBanTarget(null); }}
+                onKeyDown={e => { if (e.key === "Enter") lookupBanUser(); }}
                 className="flex-1 h-12 rounded-xl px-4 text-sm tabular-nums focus:outline-none"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
                 dir="ltr"
