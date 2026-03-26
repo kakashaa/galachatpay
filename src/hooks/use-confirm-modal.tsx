@@ -18,7 +18,7 @@ export function useConfirmModal() {
     });
   }, []);
 
-  const ConfirmDialog: React.FC = () => state ? (
+  const modal = state ? (
     <ConfirmModal
       title={state.title}
       message={state.message}
@@ -30,5 +30,5 @@ export function useConfirmModal() {
     />
   ) : null;
 
-  return { confirm, ConfirmDialog };
+  return { confirm, ConfirmDialog: modal };
 }
