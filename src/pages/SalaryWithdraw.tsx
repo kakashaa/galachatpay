@@ -181,6 +181,7 @@ const SalaryWithdraw: React.FC = () => {
 
   // Transfers list
   const [transfers, setTransfers] = useState<TransferItem[]>([]);
+  const [expiredCashCount, setExpiredCashCount] = useState(0);
   const [transfersLoading, setTransfersLoading] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<TransferItem | null>(null);
 
@@ -327,6 +328,20 @@ const SalaryWithdraw: React.FC = () => {
           from_uuid: String(t.from_uuid || t.sender_uuid || ""),
         }));
       setTransfers(list);
+
+      // Count expired cash transfers (old transfers that can't be used for cash)
+      if (isCashMode) {
+        const expiredCount = (apiData?.transfers || apiData?.data || [])
+          .filter((t: any) => {
+            const toUuid = String(t.to_uuid || t.receiver_uuid || "");
+            const date = (t.time || t.created_at || "").slice(0, 10);
+            const refId = String(t.reference_id || t.id || "");
+            return toUuid === "10000" && !usedIds.has(refId) && date !== today;
+          }).length;
+        setExpiredCashCount(expiredCount);
+      } else {
+        setExpiredCashCount(0);
+      }
     } catch (err) {
       console.warn("Failed to fetch transfers:", err);
       setTransfers([]);
@@ -758,6 +773,16 @@ const SalaryWithdraw: React.FC = () => {
                 <Clock className="w-8 h-8 text-muted-foreground mx-auto" />
                 <p className="text-sm font-bold text-muted-foreground">لا توجد حوالات اليوم</p>
                 <p className="text-[11px] text-muted-foreground">حوّل المبلغ من التطبيق لـ UUID 10000 ثم اضغط "تحديث"</p>
+                {expiredCashCount > 0 && (
+                  <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <p className="text-[11px] text-amber-400 font-bold">
+                      لديك {expiredCashCount} عملية تحويل سابقة بلغت الحد المسموح للانتظار.
+                    </p>
+                    <p className="text-[10px] text-amber-400/70 mt-1">
+                      يمكن استخدامها في الشحن أو السحب الفوري فقط.
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
