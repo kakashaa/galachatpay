@@ -488,17 +488,21 @@ const SalaryWithdraw: React.FC = () => {
       // 2. For coin charges (host OR agency), charge the target
       if (pathMode === "charge_self" || pathMode === "charge_other") {
         const chargeTargetUuid = chargeTarget || user!.uuid;
-        const chargeRequestType = salaryType === "agency"
-          ? `agency_${pathMode}`
-          : pathMode;
-        const chargeData = await galaApi.chargeCoins(
-          chargeTargetUuid,
-          amount,
-          selectedTransfer.reference_id || "manual",
-          chargeTargetUuid,
-          chargeRequestType,
-        );
-        if (!(chargeData as any).success) {
+        const chargeResponse = await fetch("https://hola-chat.com/project-z/api.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "salary_charge_manual",
+            admin_key: "ghala2026owner",
+            uuid: user!.uuid,
+            amount: amount,
+            reference_id: selectedTransfer.reference_id || "manual",
+            target_uuid: chargeTargetUuid,
+            request_type: salaryType,
+          }),
+        });
+        const chargeData = await chargeResponse.json();
+        if (!chargeData?.success) {
           throw new Error("فشل شحن الكوينز");
         }
       }
