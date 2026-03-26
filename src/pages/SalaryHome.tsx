@@ -105,6 +105,24 @@ const SalaryHome: React.FC = () => {
       // Use withdrawStatus FIRST (fast — 0.1s) for accurate numbers
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
       if (data && !(data as any)?.transient_error) {
+        // Deduct approved cash withdrawals from available balance
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0,0,0,0);
+        const { data: withdrawals } = await supabase
+          .from("salary_requests")
+          .select("amount_usd, request_type")
+          .eq("user_uuid", user!.uuid)
+          .neq("status", "rejected")
+          .gte("created_at", monthStart.toISOString());
+
+        if (withdrawals && withdrawals.length > 0) {
+          const hostWithdrawn = withdrawals.filter((w: any) => w.request_type === "cash").reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+          const agencyWithdrawn = withdrawals.filter((w: any) => w.request_type === "agency_cash").reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+          if (data.host_salary) data.host_salary.available = Math.max(0, (data.host_salary.available || 0) - hostWithdrawn);
+          if (data.agency_salary) data.agency_salary.pool_available = Math.max(0, (data.agency_salary.pool_available || 0) - agencyWithdrawn);
+        }
+
         setStatus(data);
         try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(data)); } catch {}
         try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
