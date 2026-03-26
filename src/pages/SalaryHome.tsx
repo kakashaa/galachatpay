@@ -84,6 +84,7 @@ const SalaryHome: React.FC = () => {
     if (!status) setLoading(true);
     setError(false);
     try {
+      // Force no-cache fetch
       const allData: any = await galaApi.salaryCheckAll(user!.uuid);
       if (allData?.success || allData?.host_salary || allData?.agency_salary) {
         const mapped: WithdrawStatus = {
