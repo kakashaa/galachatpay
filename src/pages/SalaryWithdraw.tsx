@@ -485,8 +485,8 @@ const SalaryWithdraw: React.FC = () => {
         throw new Error(`المبلغ أكبر من المتبقي ($${available.toFixed(2)})`);
       }
 
-      // 2. For coin charges (host), charge the target
-      if (salaryType === "host" && (pathMode === "charge_self" || pathMode === "charge_other")) {
+      // 2. For coin charges (host OR agency), charge the target
+      if (pathMode === "charge_self" || pathMode === "charge_other") {
         const chargeTargetUuid = chargeTarget || user!.uuid;
         const chargeData = await galaApi.chargeCoins(
           chargeTargetUuid,
@@ -494,7 +494,7 @@ const SalaryWithdraw: React.FC = () => {
           selectedTransfer.reference_id || "manual",
         );
         if (!(chargeData as any).success) {
-          console.warn("chargeCoins response:", chargeData);
+          throw new Error("فشل شحن الكوينز — تواصل مع الأدمن");
         }
       }
 
