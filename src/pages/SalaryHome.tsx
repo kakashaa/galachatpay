@@ -10,6 +10,7 @@ import MobileLayout from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { galaApi } from "@/services/galaApi";
+import { supabase } from "@/integrations/supabase/client";
 const USD_TO_COINS = 7500;
 
 interface WithdrawStatus {
@@ -61,6 +62,7 @@ const SalaryHome: React.FC = () => {
   const [loading, setLoading] = useState(!status);
   const [error, setError] = useState(false);
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
@@ -75,6 +77,15 @@ const SalaryHome: React.FC = () => {
       } catch {}
     }
     fetchStatus();
+    // Check phone verification status
+    supabase
+      .from("verified_phones")
+      .select("*")
+      .eq("user_uuid", user.uuid)
+      .eq("is_verified", true)
+      .maybeSingle()
+      .then(({ data }) => setIsPhoneVerified(!!data))
+      .catch(() => setIsPhoneVerified(false));
     const handleVisibility = () => {
       if (document.visibilityState === "visible") fetchStatus();
     };
@@ -170,6 +181,28 @@ const SalaryHome: React.FC = () => {
   return (
     <MobileLayout showHeader headerTitle="راتبي" onBack={() => navigate("/dashboard")}>
       <div className="px-4 py-3 space-y-3">
+
+        {/* Phone verification banner */}
+        {isPhoneVerified === false && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base shrink-0">⚠️</span>
+              <p className="text-xs text-amber-300 font-bold truncate">
+                حسابك غير موثق — وثّق عشان تسحب
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/verify")}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 text-[10px] font-black active:scale-95 transition-transform"
+            >
+              وثّق الآن
+            </button>
+          </motion.div>
+        )}
 
         {/* Loading skeleton */}
         {loading && !status && (
