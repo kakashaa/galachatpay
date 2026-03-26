@@ -77,7 +77,7 @@ interface WithdrawRequest {
   account_number: string;
   whatsapp: string;
   notes?: string;
-  status: "pending" | "delivered" | "rejected" | "reserved" | "review";
+  status: "pending" | "delivered" | "approved" | "rejected" | "reserved" | "review";
   admin_note?: string;
   receipt_image?: string;
   created_at: string;
@@ -420,7 +420,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
         await sendUserNotification(approveSheet.user_uuid, "تم قبول سحب الراتب", `تم قبول طلب سحب الراتب بمبلغ $${approveSheet.amount}. سيتم التحويل قريباً.`);
         sendWhatsAppNotification(approveSheet.whatsapp, `غلا شات 💬\n\n✅ تم قبول طلب سحب الراتب!\nالمبلغ: $${approveSheet.amount}\nالبنك: ${approveSheet.bank}\nالحساب: ${approveSheet.account_number}`);
         toast.success("تم قبول الطلب وإرسال الإشعار");
-        setRequests(prev => prev.map(r => r.id === approveSheet.id ? { ...r, status: "delivered" } : r));
+        setRequests(prev => prev.map(r => r.id === approveSheet.id ? { ...r, status: "approved" as any } : r));
         setApproveSheet(null); setReceiptFile(null); setReceiptPreview(""); setApproveNote("");
         fetchData();
       } else toast.error(data.error || "فشل في قبول الطلب");
