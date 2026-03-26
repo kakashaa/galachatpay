@@ -322,11 +322,11 @@ const SalaryWithdraw: React.FC = () => {
         })
         .map((t: any) => ({
           reference_id: t.reference_id || t.id || "",
-          amount: t.amount || t.usd || 0,
-          usd: t.usd || t.amount || 0,
-          coins: t.coins || 0,
+          amount: t.amount || t.amount_usd || t.usd || 0,
+          usd: t.usd || t.amount_usd || t.amount || 0,
+          coins: t.coins || t.amount_coins || 0,
           time: t.time || t.created_at || "",
-          to_uuid: String(t.to_uuid || t.receiver_uuid || ""),
+          to_uuid: String(t.to_uuid || t.receiver_uuid || "10000"),
           from_uuid: String(t.from_uuid || t.sender_uuid || ""),
         }));
       setTransfers(list);
