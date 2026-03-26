@@ -303,14 +303,19 @@ const SalaryWithdraw: React.FC = () => {
 
       const usedIds = new Set((usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean));
 
-      // Filter: only transfers to UUID 10000, today only, not already used
+      // Filter: transfers to UUID 10000, not already used
+      // Cash: today only | Other methods: all dates
       const today = new Date().toISOString().slice(0, 10);
+      const isCashMode = pathMode === "cash";
       const list: TransferItem[] = (apiData?.transfers || apiData?.data || [])
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
           const date = (t.time || t.created_at || "").slice(0, 10);
           const refId = String(t.reference_id || t.id || "");
-          return toUuid === "10000" && date === today && !usedIds.has(refId);
+          if (toUuid !== "10000") return false;
+          if (usedIds.has(refId)) return false;
+          if (isCashMode && date !== today) return false; // Cash: today only
+          return true;
         })
         .map((t: any) => ({
           reference_id: t.reference_id || t.id || "",
