@@ -114,10 +114,11 @@ const SalaryHome: React.FC = () => {
           .neq("status", "rejected")
           .gte("created_at", monthStart);
         
-        // Deduct ALL approved withdrawals from total (regardless of type)
-        const totalWithdrawn = (withdrawals || []).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
-        const hostWithdrawn = totalWithdrawn; // Deduct from host first
-        const agencyWithdrawn = 0; // Already reflected in pool_available from API
+        // Deduct withdrawals by type
+        const hostTypes = ["cash", "host", "charge_self", "charge_other"];
+        const agencyTypes = ["agency_cash", "agency_charge_self", "agency_charge_other"];
+        const hostWithdrawn = (withdrawals || []).filter((w: any) => hostTypes.includes(w.request_type)).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+        const agencyWithdrawn = (withdrawals || []).filter((w: any) => agencyTypes.includes(w.request_type) || w.request_type?.startsWith("agency")).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
         
         if (data.host_salary) {
           data.host_salary.available = Math.max(0, (data.host_salary.available || 0) - hostWithdrawn);
