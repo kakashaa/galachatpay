@@ -22,6 +22,9 @@ interface SalaryRequest {
   transfer_image_url?: string;
   rejection_image_url?: string;
   request_type?: string;
+  is_final_rejection?: boolean;
+  transfer_id?: string;
+  amount_usd?: number;
   notes?: string;
   target_name?: string;
   target_uuid?: string;
