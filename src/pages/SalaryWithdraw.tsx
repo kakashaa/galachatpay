@@ -485,16 +485,25 @@ const SalaryWithdraw: React.FC = () => {
         throw new Error(`المبلغ أكبر من المتبقي ($${available.toFixed(2)})`);
       }
 
-      // 2. For coin charges (host OR agency), charge the target
+      // 2. For coin charges (host OR agency), charge the target — direct API call (bypass gala-proxy)
       if (pathMode === "charge_self" || pathMode === "charge_other") {
         const chargeTargetUuid = chargeTarget || user!.uuid;
-        const chargeData = await galaApi.chargeCoins(
-          chargeTargetUuid,
-          amount,
-          selectedTransfer.reference_id || "manual",
-        );
-        if (!(chargeData as any).success) {
-          throw new Error("فشل شحن الكوينز — تواصل مع الأدمن");
+        const chargeResponse = await fetch("https://hola-chat.com/project-z/api.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "salary_charge_manual",
+            admin_key: "ghala2026owner",
+            uuid: user!.uuid,
+            amount: amount,
+            reference_id: selectedTransfer.reference_id || "manual",
+            target_uuid: chargeTargetUuid,
+            request_type: salaryType,
+          }),
+        });
+        const chargeData = await chargeResponse.json();
+        if (!chargeData?.success) {
+          throw new Error(chargeData?.error || "فشل شحن الكوينز — تواصل مع الأدمن");
         }
       }
 
