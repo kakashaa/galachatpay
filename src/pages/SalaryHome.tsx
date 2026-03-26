@@ -216,22 +216,22 @@ const SalaryHome: React.FC = () => {
 
   return (
     <MobileLayout showHeader headerTitle="راتبي" onBack={() => navigate("/dashboard")}>
-      <div className="px-5 py-6 space-y-5">
+      <div className="px-4 py-4 space-y-3">
 
         {/* Loading skeleton */}
         {loading && !status && (
-          <div className="space-y-4">
-            <div className="glass-card p-5 text-center space-y-3">
-              <div className="h-3 w-32 mx-auto rounded bg-muted animate-pulse" />
-              <div className="h-10 w-40 mx-auto rounded bg-muted animate-pulse" />
-              <div className="h-3 w-24 mx-auto rounded bg-muted animate-pulse" />
+          <div className="space-y-3">
+            <div className="glass-card p-4 text-center space-y-2">
+              <div className="h-2.5 w-28 mx-auto rounded bg-muted animate-pulse" />
+              <div className="h-8 w-32 mx-auto rounded bg-muted animate-pulse" />
+              <div className="h-2.5 w-20 mx-auto rounded bg-muted animate-pulse" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="rounded-2xl border border-border/20 bg-card/30 p-4 space-y-2">
-                  <div className="h-8 w-8 rounded-xl bg-muted animate-pulse" />
-                  <div className="h-3 w-16 rounded bg-muted animate-pulse" />
-                  <div className="h-2 w-12 rounded bg-muted animate-pulse" />
+                <div key={i} className="rounded-xl border border-border/20 bg-card/30 p-2.5 space-y-1.5">
+                  <div className="h-6 w-6 rounded-lg bg-muted animate-pulse mx-auto" />
+                  <div className="h-2.5 w-14 rounded bg-muted animate-pulse mx-auto" />
+                  <div className="h-2 w-10 rounded bg-muted animate-pulse mx-auto" />
                 </div>
               ))}
             </div>
@@ -254,25 +254,25 @@ const SalaryHome: React.FC = () => {
           <>
             {/* ══════ 1. Total Available - Hero Card ══════ */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-3xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/10 to-transparent p-6 text-center space-y-1"
+              className="rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-500/10 to-transparent p-4 text-center space-y-0.5"
             >
-              <p className="text-xs text-muted-foreground">المبلغ المتاح للسحب</p>
+              <p className="text-[10px] text-muted-foreground">المبلغ المتاح للسحب</p>
               {totalAvailable > 0 ? (
                 <>
-                  <div className="flex items-center justify-center gap-2">
-                    <DollarSign className="w-8 h-8 text-emerald-400" />
-                    <p className="text-5xl font-black text-emerald-400 tabular-nums" dir="ltr">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <DollarSign className="w-5 h-5 text-emerald-400" />
+                    <p className="text-3xl font-black text-emerald-400 tabular-nums" dir="ltr">
                       {totalAvailable.toFixed(2)}
                     </p>
                   </div>
-                  <p className="text-sm text-emerald-400/70 tabular-nums font-semibold">
+                  <p className="text-xs text-emerald-400/70 tabular-nums font-semibold">
                     {(totalAvailable * USD_TO_COINS).toLocaleString()} كوينز
                   </p>
 
                   {/* Quick host/agency split */}
-                  <div className="flex items-center justify-center gap-4 pt-2">
+                  <div className="flex items-center justify-center gap-3 pt-1">
                     <span className="text-[10px] text-muted-foreground">
                       مضيف: <span className="text-emerald-400 font-bold" dir="ltr">${hostAvailable.toFixed(2)}</span>
                     </span>
@@ -284,7 +284,7 @@ const SalaryHome: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground py-3">لا يوجد رصيد متاح</p>
+                <p className="text-xs text-muted-foreground py-2">لا يوجد رصيد متاح</p>
               )}
             </motion.div>
 
@@ -292,44 +292,44 @@ const SalaryHome: React.FC = () => {
             <SalaryRequestsHistory userUuid={user.uuid} />
 
             {/* ══════ 3. Withdrawal Options - 2x2 Grid ══════ */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-foreground px-1">خيارات السحب</h3>
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-bold text-foreground px-1">خيارات السحب</h3>
               
               {cashUsedThisMonth && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                  <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <p className="text-[11px] text-amber-400 font-semibold">تم استخدام السحب النقدي هذا الشهر</p>
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                  <p className="text-[10px] text-amber-400 font-semibold">تم استخدام السحب النقدي هذا الشهر</p>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {options.map((opt, i) => {
                   const Icon = opt.icon;
                   const isLocked = opt.locked;
                   return (
                     <motion.button
                       key={opt.id}
-                      initial={{ opacity: 0, y: 16 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + i * 0.06, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ delay: 0.05 + i * 0.04, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                       onClick={() => !isLocked && navigate(opt.route)}
                       disabled={isLocked}
-                      className={`relative rounded-2xl p-5 text-center space-y-2 border ${opt.bg} transition-all ${
+                      className={`relative rounded-xl p-2.5 text-center space-y-1 border ${opt.bg} transition-all ${
                         isLocked
                           ? "opacity-40 cursor-not-allowed"
                           : "active:scale-[0.97]"
                       }`}
                     >
                       {isLocked && (
-                        <div className="absolute top-2 left-2">
-                          <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <div className="absolute top-1.5 left-1.5">
+                          <Lock className="w-3 h-3 text-muted-foreground" />
                         </div>
                       )}
-                      <div className={`w-12 h-12 rounded-2xl ${opt.bg} flex items-center justify-center mx-auto`}>
-                        <Icon className={`w-6 h-6 ${opt.color}`} />
+                      <div className={`w-8 h-8 rounded-xl ${opt.bg} flex items-center justify-center mx-auto`}>
+                        <Icon className={`w-4 h-4 ${opt.color}`} />
                       </div>
-                      <p className="font-bold text-sm text-foreground">{opt.label}</p>
-                      <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
+                      <p className="font-bold text-xs text-foreground">{opt.label}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">{opt.desc}</p>
                     </motion.button>
                   );
                 })}
@@ -337,8 +337,8 @@ const SalaryHome: React.FC = () => {
             </div>
 
             {/* ══════ 4. Salary Details - Merged with Tabs ══════ */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold text-foreground px-1">تفاصيل الراتب</h3>
+            <div className="space-y-2">
+              <h3 className="text-[11px] font-bold text-foreground px-1">تفاصيل الراتب</h3>
 
               {/* Tab switcher (only if agency owner) */}
               {isAgencyOwner && (
@@ -374,24 +374,24 @@ const SalaryHome: React.FC = () => {
                   key="host-details"
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl border border-border/10 bg-card/30 p-4 space-y-3"
+                  className="rounded-xl border border-border/10 bg-card/30 p-3 space-y-2"
                 >
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-xl bg-background/40 p-3">
-                      <p className="text-[9px] text-muted-foreground mb-1">الراتب</p>
-                      <p className="text-sm font-black text-foreground tabular-nums" dir="ltr">${host.current_month.toFixed(2)}</p>
+                  <div className="grid grid-cols-3 gap-1.5 text-center">
+                    <div className="rounded-lg bg-background/40 p-2">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">الراتب</p>
+                      <p className="text-xs font-black text-foreground tabular-nums" dir="ltr">${host.current_month.toFixed(2)}</p>
                     </div>
-                    <div className="rounded-xl bg-background/40 p-3">
-                      <p className="text-[9px] text-muted-foreground mb-1">الخصم</p>
+                    <div className="rounded-lg bg-background/40 p-2">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">الخصم</p>
                       {hostCutInvalid ? (
                         <p className="text-[10px] font-bold text-amber-400">⚠️ مراجعة</p>
                       ) : (
-                        <p className="text-sm font-black text-red-400 tabular-nums" dir="ltr">${hostCut.toFixed(2)}</p>
+                        <p className="text-xs font-black text-red-400 tabular-nums" dir="ltr">${hostCut.toFixed(2)}</p>
                       )}
                     </div>
-                    <div className="rounded-xl bg-background/40 p-3">
-                      <p className="text-[9px] text-muted-foreground mb-1">المتبقي</p>
-                      <p className="text-sm font-black text-emerald-400 tabular-nums" dir="ltr">${hostAvailable.toFixed(2)}</p>
+                    <div className="rounded-lg bg-background/40 p-2">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">المتبقي</p>
+                      <p className="text-xs font-black text-emerald-400 tabular-nums" dir="ltr">${hostAvailable.toFixed(2)}</p>
                     </div>
                   </div>
 
@@ -421,20 +421,20 @@ const SalaryHome: React.FC = () => {
                   key="agency-details"
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl border border-border/10 bg-card/30 p-4 space-y-3"
+                  className="rounded-xl border border-border/10 bg-card/30 p-3 space-y-2"
                 >
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-xl bg-background/40 p-3">
-                      <p className="text-[9px] text-muted-foreground mb-1">الإجمالي</p>
-                      <p className="text-sm font-black text-foreground tabular-nums" dir="ltr">${agencyPoolTotal.toFixed(2)}</p>
+                  <div className="grid grid-cols-3 gap-1.5 text-center">
+                    <div className="rounded-lg bg-background/40 p-2">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">الإجمالي</p>
+                      <p className="text-xs font-black text-foreground tabular-nums" dir="ltr">${agencyPoolTotal.toFixed(2)}</p>
                     </div>
-                    <div className="rounded-xl bg-background/40 p-3">
-                      <p className="text-[9px] text-muted-foreground mb-1">المسحوبات</p>
-                      <p className="text-sm font-black text-red-400 tabular-nums" dir="ltr">${agencyPoolCut.toFixed(2)}</p>
+                    <div className="rounded-lg bg-background/40 p-2">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">المسحوبات</p>
+                      <p className="text-xs font-black text-red-400 tabular-nums" dir="ltr">${agencyPoolCut.toFixed(2)}</p>
                     </div>
-                    <div className="rounded-xl bg-background/40 p-3">
-                      <p className="text-[9px] text-muted-foreground mb-1">المتبقي</p>
-                      <p className="text-sm font-black text-emerald-400 tabular-nums" dir="ltr">${agencyAvailable.toFixed(2)}</p>
+                    <div className="rounded-lg bg-background/40 p-2">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">المتبقي</p>
+                      <p className="text-xs font-black text-emerald-400 tabular-nums" dir="ltr">${agencyAvailable.toFixed(2)}</p>
                     </div>
                   </div>
 
@@ -460,8 +460,8 @@ const SalaryHome: React.FC = () => {
 
               {/* No host salary message */}
               {(salaryTab === "host" || !isAgencyOwner) && (!host || host.current_month <= 0) && (
-                <div className="rounded-2xl border border-border/10 bg-card/20 p-4 text-center">
-                  <p className="text-[11px] text-muted-foreground">لا يوجد راتب مضيف هذا الشهر</p>
+                <div className="rounded-xl border border-border/10 bg-card/20 p-3 text-center">
+                  <p className="text-[10px] text-muted-foreground">لا يوجد راتب مضيف هذا الشهر</p>
                 </div>
               )}
             </div>

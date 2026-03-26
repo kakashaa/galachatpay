@@ -314,8 +314,7 @@ const SalaryWithdraw: React.FC = () => {
         supabase
           .from("salary_requests")
           .select("transfer_id")
-          .eq("user_uuid", user.uuid)
-          .neq("status", "rejected"),
+          .eq("user_uuid", user.uuid),
       ]);
 
       const usedIds = new Set((usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean));
