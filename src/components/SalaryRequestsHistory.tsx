@@ -242,7 +242,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
         setRequests(all);
 
         const withdrawn = all
-          .filter(r => r.status !== "rejected")
+          // Show ALL requests including rejected
           .reduce((sum, r) => sum + (r.amount || 0), 0);
         onWithdrawnCalculated?.(withdrawn);
       } catch {
