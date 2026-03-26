@@ -320,17 +320,9 @@ const SalaryWithdraw: React.FC = () => {
       ]);
 
       // Build used IDs set:
-      // - All non-rejected requests → transfer_id is locked
-      // - Rejected with is_final_rejection → transfer_id is PERMANENTLY locked
-      // - Rejected WITHOUT is_final_rejection → transfer_id is AVAILABLE (user can resubmit)
+      // ALL transfer_ids in salary_requests are LOCKED — no reuse ever
       const usedIds = new Set([
         ...(usedRes.data || [])
-          .filter((r: any) => {
-            if (r.status === "rejected") {
-              return r.is_final_rejection === true; // Only lock if final rejection
-            }
-            return true; // All other statuses lock the transfer_id
-          })
           .map((r: any) => r.transfer_id)
           .filter(Boolean),
         ...localUsedIds,
