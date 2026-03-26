@@ -38,6 +38,7 @@ const EntryRequest = lazy(() => import("./pages/EntryRequest"));
 const FramesRequest = lazy(() => import("./pages/FramesRequest"));
 const ReportPage = lazy(() => import("./pages/ReportPage"));
 const SalaryHome = lazy(() => import("./pages/SalaryHome"));
+const VerifyPhone = lazy(() => import("./pages/VerifyPhone"));
 const SalaryWithdraw = lazy(() => import("./pages/SalaryWithdraw"));
 
 const MyRequests = lazy(() => import("./pages/MyRequests"));
@@ -198,6 +199,7 @@ const App = () => {
                   <Route path="/support/tickets" element={<SupportTickets />} />
                   <Route path="/support-chat" element={<SupportChat />} />
                   <Route path="/salary" element={<SalaryHome />} />
+                  <Route path="/verify" element={<VerifyPhone />} />
                   <Route path="/salary/cash" element={<SalaryWithdraw />} />
                   <Route path="/salary/charge-self" element={<SalaryWithdraw />} />
                   <Route path="/salary/charge-other" element={<SalaryWithdraw />} />
