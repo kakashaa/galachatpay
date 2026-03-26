@@ -313,8 +313,10 @@ const SalaryWithdraw: React.FC = () => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
           const date = (t.time || t.created_at || "").slice(0, 10);
           const refId = String(t.reference_id || t.id || "");
-          if (toUuid !== "10000") return false;
+          // user_transfers API already filters to UUID 10000 only
+          if (toUuid && toUuid !== "10000") return false;
           if (usedIds.has(refId)) return false;
+          if (t.is_used) return false; // Already used
           if (isCashMode && date !== today) return false; // Cash: today only
           return true;
         })
@@ -753,7 +755,7 @@ const SalaryWithdraw: React.FC = () => {
           {/* Transfers list */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground">حوالاتك اليوم لـ 10000</h3>
+              <h3 className="text-sm font-bold text-foreground">{pathMode === "cash" ? "حوالاتك اليوم لـ 10000" : "حوالاتك لـ 10000"}</h3>
               <button
                 onClick={fetchTransfers}
                 disabled={transfersLoading}
