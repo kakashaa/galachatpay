@@ -3037,6 +3037,33 @@ export type Database = {
         }
         Relationships: []
       }
+      verified_phones: {
+        Row: {
+          created_at: string
+          id: string
+          is_verified: boolean
+          phone: string
+          updated_at: string
+          user_uuid: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          phone: string
+          updated_at?: string
+          user_uuid: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          phone?: string
+          updated_at?: string
+          user_uuid?: string
+        }
+        Relationships: []
+      }
       video_tutorials: {
         Row: {
           created_at: string
