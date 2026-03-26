@@ -64,6 +64,21 @@ const SalaryHome: React.FC = () => {
   useEffect(() => {
     if (!user) { navigate("/"); return; }
     fetchStatus();
+
+    // Auto-refresh when page becomes visible (user returns to tab)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") fetchStatus();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // Auto-refresh when navigating back
+    const handleFocus = () => fetchStatus();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [user?.uuid]);
 
   const fetchStatus = async () => {

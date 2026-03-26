@@ -217,6 +217,22 @@ const SalaryWithdraw: React.FC = () => {
     hasFetchedRef.current = true;
     fetchWithdrawStatus();
     checkCashResetOverrides();
+
+    // Auto-refresh when returning to page
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchWithdrawStatus();
+        fetchTransfers();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+
     // Auto-fill verified WhatsApp
     if (verifiedPhone) {
       setWhatsappNumber(verifiedPhone);
