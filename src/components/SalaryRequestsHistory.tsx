@@ -394,6 +394,29 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                 </div>
               )}
 
+              {selectedReq.status === "rejected" && !selectedReq.is_final_rejection && (
+                <button
+                  onClick={() => {
+                    // Navigate to salary withdraw with pre-filled data for editing
+                    const params = new URLSearchParams({
+                      edit: selectedReq.id,
+                      transfer_id: selectedReq.transfer_id || "",
+                      amount: String(selectedReq.amount_usd || ""),
+                    });
+                    window.location.href = `/salary/cash?${params.toString()}`;
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold hover:bg-amber-500/30 transition-colors"
+                >
+                  تعديل وإعادة الطلب
+                </button>
+              )}
+
+              {selectedReq.status === "rejected" && selectedReq.is_final_rejection && (
+                <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-xl text-center">
+                  <p className="text-[10px] text-red-400">رفض نهائي — لا يمكن إعادة الطلب</p>
+                </div>
+              )}
+
               {selectedReq.status === "rejected" && selectedReq.rejection_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] text-muted-foreground font-bold">صورة توضيحية:</p>
