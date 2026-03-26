@@ -62,8 +62,23 @@ const SalaryHome: React.FC = () => {
   const [error, setError] = useState(false);
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
 
+  // Load cached data instantly, then refresh in background
   useEffect(() => {
     if (!user) { navigate("/"); return; }
+    
+    // Show cached data immediately (no waiting)
+    const cached = localStorage.getItem(`salary_cache_${user.uuid}`);
+    if (cached) {
+      try {
+        const cachedData = JSON.parse(cached);
+        if (cachedData && !status) {
+          setStatus(cachedData);
+          setLoading(false);
+        }
+      } catch {}
+    }
+    
+    // Then refresh in background
     fetchStatus();
 
     const handleVisibility = () => {
@@ -119,6 +134,8 @@ const SalaryHome: React.FC = () => {
           },
         };
         setStatus(mapped);
+        // Cache for instant load next time
+        try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(mapped)); } catch {}
         try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(mapped)); } catch {}
         return;
       }
