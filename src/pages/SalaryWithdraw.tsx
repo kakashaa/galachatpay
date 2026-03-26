@@ -499,7 +499,7 @@ const SalaryWithdraw: React.FC = () => {
           chargeRequestType,
         );
         if (!(chargeData as any).success) {
-          throw new Error("فشل شحن الكوينز — تواصل مع الأدمن");
+          throw new Error("فشل شحن الكوينز");
         }
       }
 
