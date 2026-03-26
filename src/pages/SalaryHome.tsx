@@ -106,25 +106,27 @@ const SalaryHome: React.FC = () => {
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
       if (data && !(data as any)?.transient_error) {
         // Deduct approved salary_requests from available balance
-        const monthStart = new Date().toISOString().slice(0, 8) + "01";
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0,0,0,0);
         const { data: withdrawals } = await supabase
           .from("salary_requests")
           .select("amount_usd, request_type")
           .eq("user_uuid", user!.uuid)
           .neq("status", "rejected")
-          .gte("created_at", monthStart);
-        
-        // Deduct withdrawals by type
-        const hostTypes = ["cash", "host", "charge_self", "charge_other"];
-        const agencyTypes = ["agency_cash", "agency_charge_self", "agency_charge_other"];
-        const hostWithdrawn = (withdrawals || []).filter((w: any) => hostTypes.includes(w.request_type)).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
-        const agencyWithdrawn = (withdrawals || []).filter((w: any) => agencyTypes.includes(w.request_type) || w.request_type?.startsWith("agency")).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
-        
-        if (data.host_salary) {
-          data.host_salary.available = Math.max(0, (data.host_salary.available || 0) - hostWithdrawn);
-        }
-        if (data.agency_salary) {
-          data.agency_salary.pool_available = Math.max(0, (data.agency_salary.pool_available || 0) - agencyWithdrawn);
+          .gte("created_at", monthStart.toISOString());
+
+        if (withdrawals && withdrawals.length > 0) {
+          const hostTypes = ["cash", "host", "charge_self", "charge_other"];
+          const hostWithdrawn = withdrawals.filter((w: any) => hostTypes.includes(w.request_type)).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+          const agencyWithdrawn = withdrawals.filter((w: any) => w.request_type?.startsWith("agency")).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+
+          if (data.host_salary) {
+            data.host_salary.available = Math.max(0, (data.host_salary.available || 0) - hostWithdrawn);
+          }
+          if (data.agency_salary) {
+            data.agency_salary.pool_available = Math.max(0, (data.agency_salary.pool_available || 0) - agencyWithdrawn);
+          }
         }
         
         setStatus(data);
