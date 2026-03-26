@@ -364,18 +364,29 @@ const SalaryWithdraw: React.FC = () => {
         .map(mapTransfer);
       setTransfers(list);
 
-      // Expired transfers: old (not today), NOT in salary_requests — show as expired
+      // Build map of used transfer statuses
+      const usedStatusMap = new Map<string, string>();
+      (usedRes.data || []).forEach((r: any) => {
+        if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), r.status || "pending");
+      });
+
+      // Show ALL old transfers with their status
       const expiredList: TransferItem[] = allTransfers
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
           const date = (t.time || t.created_at || "").slice(0, 10);
-          const refId = String(t.reference_id || t.id || "");
           if (toUuid && toUuid !== "10000") return false;
-          if (usedIds.has(refId)) return false;
-          if (t.is_used) return false;
-          return date !== today;
+          return date !== today || usedIds.has(String(t.reference_id || t.id || ""));
         })
-        .map(mapTransfer);
+        .filter((t: any) => !list.some((l: any) => l.reference_id === String(t.reference_id || t.id || "")))
+        .map((t: any) => {
+          const refId = String(t.reference_id || t.id || "");
+          const usedStatus = usedStatusMap.get(refId);
+          return {
+            ...mapTransfer(t),
+            usedStatus: usedStatus || (t.is_used ? "used" : "expired"),
+          };
+        });
       setExpiredTransfers(expiredList);
 
       if (isCashMode) {
@@ -876,29 +887,34 @@ const SalaryWithdraw: React.FC = () => {
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-amber-400/80 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" />
-                حوالات منتهية الصلاحية ({expiredTransfers.length})
+                حوالات سابقة ({expiredTransfers.length})
               </h3>
-              {expiredTransfers.map((t, i) => {
+              {expiredTransfers.map((t: any, i: number) => {
                 const timeStr = t.time ? new Date(t.time).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
+                const us = t.usedStatus;
+                const isApproved = us === "approved" || us === "delivered";
+                const isRejected = us === "rejected";
+                const isPending = us === "pending" || us === "review";
+                const statusLabel = isApproved ? "تم الاستلام" : isRejected ? "تم الرفض" : isPending ? "قيد المراجعة" : "منتهية الصلاحية";
+                const statusColor = isApproved ? "text-emerald-400" : isRejected ? "text-red-400" : isPending ? "text-yellow-400" : "text-amber-400";
+                const borderColor = isApproved ? "border-emerald-500/15 bg-emerald-500/5" : isRejected ? "border-red-500/15 bg-red-500/5" : isPending ? "border-yellow-500/15 bg-yellow-500/5" : "border-amber-500/15 bg-amber-500/5";
                 return (
                   <div
                     key={t.reference_id || i}
-                    className="w-full rounded-xl border border-amber-500/15 bg-amber-500/5 p-3 text-right opacity-60"
+                    className={`w-full rounded-xl border ${borderColor} p-3 text-right opacity-70`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-400/60" />
                         <div className="text-right">
-                          <p className="text-xs font-bold text-foreground/60" dir="ltr">${(t.usd || t.amount || 0).toFixed(2)}</p>
+                          <p className="text-xs font-bold text-foreground/70" dir="ltr">${(t.usd || t.amount || 0).toFixed(2)}</p>
                           <p className="text-[9px] text-muted-foreground font-mono">#{t.reference_id}</p>
                         </div>
                       </div>
                       <div className="text-left">
-                        <p className="text-[10px] text-amber-400 font-bold">منتهية الصلاحية</p>
+                        <p className={`text-[10px] font-bold ${statusColor}`}>{statusLabel}</p>
                         <p className="text-[9px] text-muted-foreground">{timeStr}</p>
                       </div>
                     </div>
-                    <p className="text-[9px] text-amber-400/60 mt-1">تواصل مع الإدارة للمساعدة</p>
                   </div>
                 );
               })}
