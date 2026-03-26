@@ -352,6 +352,7 @@ const SalaryWithdraw: React.FC = () => {
           if (toUuid && toUuid !== "10000") return false;
           if (usedIds.has(refId)) return false;
           if (t.is_used) return false;
+          if (t.selectable === false) return false; // API says not selectable
           if (isCashMode && date !== today) return false;
           if (isCashMode) {
             const transferTime = new Date(t.time || t.created_at || "");
