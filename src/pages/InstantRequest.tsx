@@ -86,10 +86,16 @@ const InstantRequest: React.FC = () => {
     const fetchTransfers = async () => {
       setLoadingTransfers(true);
       try {
-        const data = await galaApi.userTransfers(user.uuid) as any;
+        // Fetch transfers AND used IDs from salary_requests
+        const [data, usedRes] = await Promise.all([
+          galaApi.userTransfers(user.uuid) as any,
+          supabase.from("salary_requests").select("transfer_id").eq("user_uuid", user.uuid),
+        ]);
+        const usedIds = new Set((usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean));
         const today = new Date().toISOString().slice(0, 10);
         const available = (data.transfers || []).filter((t: Transfer) => {
           if (t.is_used || !t.selectable) return false;
+          if (usedIds.has(String(t.reference_id))) return false; // Block used ref IDs
           const transferDay = (t.time || "").slice(0, 10);
           if (transferDay && transferDay < today) return false;
           return true;
