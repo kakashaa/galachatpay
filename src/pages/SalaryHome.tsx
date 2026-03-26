@@ -114,8 +114,10 @@ const SalaryHome: React.FC = () => {
           .neq("status", "rejected")
           .gte("created_at", monthStart);
         
-        const hostWithdrawn = (withdrawals || []).filter((w: any) => w.request_type === "host" || w.request_type === "cash").reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
-        const agencyWithdrawn = (withdrawals || []).filter((w: any) => w.request_type === "agency" || w.request_type === "agency_cash").reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+        // Deduct ALL approved withdrawals from total (regardless of type)
+        const totalWithdrawn = (withdrawals || []).reduce((s: number, w: any) => s + (w.amount_usd || 0), 0);
+        const hostWithdrawn = totalWithdrawn; // Deduct from host first
+        const agencyWithdrawn = 0; // Already reflected in pool_available from API
         
         if (data.host_salary) {
           data.host_salary.available = Math.max(0, (data.host_salary.available || 0) - hostWithdrawn);
