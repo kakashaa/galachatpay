@@ -27,8 +27,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 flex items-center justify-center"
-        style={{ zIndex: 9999 }}
-        style={{ background: "rgba(0,0,0,0.7)" }}
+        style={{ background: "rgba(0,0,0,0.7)", zIndex: 9999 }}
         onClick={onCancel}
       >
         <motion.div
