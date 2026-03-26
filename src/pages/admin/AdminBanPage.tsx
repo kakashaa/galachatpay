@@ -734,6 +734,7 @@ const AdminBanPage: React.FC = () => {
                 placeholder="UUID المستخدم"
                 value={banUuid}
                 onChange={e => { setBanUuid(e.target.value); setBanTarget(null); }}
+                onKeyDown={e => { if (e.key === "Enter") lookupBanUser(); }}
                 className="flex-1 h-12 rounded-xl px-4 text-sm tabular-nums focus:outline-none"
                 style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
                 dir="ltr"
