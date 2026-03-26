@@ -318,6 +318,13 @@ const SalaryWithdraw: React.FC = () => {
           if (usedIds.has(refId)) return false;
           if (t.is_used) return false; // Already used
           if (isCashMode && date !== today) return false; // Cash: today only
+          // 2-hour limit for cash withdrawals
+          if (isCashMode) {
+            const transferTime = new Date(t.time || t.created_at || "");
+            const now = new Date();
+            const hoursOld = (now.getTime() - transferTime.getTime()) / (1000 * 60 * 60);
+            if (hoursOld > 2) return false;
+          }
           return true;
         })
         .map((t: any) => ({
@@ -778,10 +785,10 @@ const SalaryWithdraw: React.FC = () => {
                 {expiredCashCount > 0 && (
                   <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                     <p className="text-[11px] text-amber-400 font-bold">
-                      لديك {expiredCashCount} عملية تحويل سابقة بلغت الحد المسموح للانتظار.
+                      لقد بلغت {expiredCashCount} عملية تحويل الحد المسموح للانتظار (ساعتين).
                     </p>
                     <p className="text-[10px] text-amber-400/70 mt-1">
-                      يمكن استخدامها في الشحن أو السحب الفوري فقط.
+                      لا يمكن استخدامها في السحب النقدي. يمكنك استخدامها في الشحن أو السحب الفوري.
                     </p>
                   </div>
                 )}
