@@ -170,7 +170,22 @@ const SalaryHome: React.FC = () => {
   const agencyAvailable = agency ? (agency.pool_available ?? Math.max(0, agencyPoolTotal - agencyPoolCut)) : 0;
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
 
-  const cashUsedThisMonth = (host?.cash_used_this_month || false) || (agency?.cash_used_this_month || false);
+  const [cashResetOverride, setCashResetOverride] = useState(false);
+  
+  useEffect(() => {
+    if (user?.uuid) {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      supabase.from("app_settings").select("key").in("key", [
+        `cash_reset:${user.uuid}:host:${monthKey}`,
+        `cash_reset:${user.uuid}:agency:${monthKey}`,
+      ]).then(({ data }) => {
+        if (data && data.length > 0) setCashResetOverride(true);
+      });
+    }
+  }, [user?.uuid]);
+
+  const cashUsedThisMonth = cashResetOverride ? false : ((host?.cash_used_this_month || false) || (agency?.cash_used_this_month || false));
 
   const options = [
     { id: "cash", icon: Wallet, label: "سحب نقدي", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", route: "/salary/cash", locked: cashUsedThisMonth },
