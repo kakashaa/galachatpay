@@ -249,7 +249,7 @@ const AdminAgencyManager: React.FC<AdminAgencyManagerProps> = ({ canAct }) => {
       const { data: receipts } = await supabase
         .from("salary_requests")
         .select("*")
-        .eq("agency_uuid", agencyUuid)
+        .eq("user_uuid", agencyUuid)
         .order("created_at", { ascending: false })
         .limit(20);
       setChargeReceipts(receipts || []);
