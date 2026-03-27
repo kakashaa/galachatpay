@@ -65,7 +65,7 @@ const AdminUserFinancePage: React.FC = () => {
         galaApi.userFull(uuid.trim()).catch(() => null),
         (supabase as any).from("salary_requests")
           .select("*")
-          .eq("uuid", uuid.trim())
+          .eq("user_uuid", uuid.trim())
           .gte("created_at", `${selectedMonth}-01`)
           .lt("created_at", `${selectedMonth}-32`)
           .order("created_at", { ascending: false }),
