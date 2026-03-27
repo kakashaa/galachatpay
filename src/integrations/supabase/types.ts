@@ -1160,6 +1160,42 @@ export type Database = {
         }
         Relationships: []
       }
+      chargeback_alerts: {
+        Row: {
+          amount_usd: number
+          created_at: string
+          description: string
+          id: string
+          notified: boolean
+          platform: string
+          status: string
+          user_name: string
+          uuid: string
+        }
+        Insert: {
+          amount_usd?: number
+          created_at?: string
+          description?: string
+          id?: string
+          notified?: boolean
+          platform?: string
+          status?: string
+          user_name?: string
+          uuid: string
+        }
+        Update: {
+          amount_usd?: number
+          created_at?: string
+          description?: string
+          id?: string
+          notified?: boolean
+          platform?: string
+          status?: string
+          user_name?: string
+          uuid?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
