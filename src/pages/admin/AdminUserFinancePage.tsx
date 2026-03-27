@@ -87,6 +87,7 @@ const AdminUserFinancePage: React.FC = () => {
       const totalGiftsReceived = giftsRecRes?.data?.total_received || userInfo.total_received || 0;
       const totalGiftsSent = giftsSentRes?.data?.total_sent || userInfo.total_sent || 0;
       
+      // الربح = الدعم المستلم - الشحن (لو استلم أكثر مما شحن = كاسب)
       const profit = totalGiftsReceived - totalCharged;
       const monthDate = new Date(selectedMonth + "-01");
       const monthLabel = monthDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' });
