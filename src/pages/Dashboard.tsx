@@ -44,8 +44,10 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated || !user?.uuid) return;
     if (waLoading) return; // Wait until we know the actual status
+    // Check localStorage cache first for instant result (prevents flash after verification)
+    const cachedPhone = localStorage.getItem('wa_verified_' + user.uuid);
+    if (cachedPhone || verifiedPhone) { setShowWaBanner(false); return; }
     if (!shouldShowWhatsAppBanner()) return;
-    if (verifiedPhone) { setShowWaBanner(false); return; }
     setShowWaBanner(true);
   }, [isAuthenticated, user?.uuid, verifiedPhone, waLoading]);
 
