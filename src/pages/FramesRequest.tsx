@@ -105,7 +105,7 @@ const FramesRequest: React.FC = () => {
         status: "pending",
         file_url: selectedFrame.file_url,
         title: selectedFrame.title,
-        duration_days: 30,
+        duration_days: 7,
       } as any);
       if (claimError) throw claimError;
 
@@ -129,7 +129,7 @@ const FramesRequest: React.FC = () => {
           ware_type: "frame",
           image_type: selectedFrame.file_url?.endsWith(".svga") ? "svga" : "mp4",
           file_url: selectedFrame.file_url,
-          days: "30",
+          days: "7",
         });
         const waresRes = await fetch("https://hola-chat.com/wares-api.php", { method: "POST", body: waresBody });
         const waresData = await waresRes.json();

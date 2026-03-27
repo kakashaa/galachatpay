@@ -144,7 +144,7 @@ const EntryRequest: React.FC = () => {
          status: "pending",
          file_url: selectedGift.video_url,
          title: selectedGift.title,
-         duration_days: 30,
+         duration_days: 7,
          ware_type: giftUsage === "room" ? "entry_room" : "entry_profile",
        } as any);
        if (claimError) throw claimError;
@@ -169,7 +169,7 @@ const EntryRequest: React.FC = () => {
            ware_type: giftUsage === "room" ? "entry_room" : "entry_profile",
            image_type: selectedGift.video_url?.endsWith(".svga") ? "svga" : "mp4",
            file_url: selectedGift.video_url,
-           days: "30",
+           days: "7",
          });
          const waresRes = await fetch("https://hola-chat.com/wares-api.php", { method: "POST", body: waresBody });
          const waresData = await waresRes.json();
