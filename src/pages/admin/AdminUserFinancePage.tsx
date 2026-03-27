@@ -37,13 +37,13 @@ const AdminUserFinancePage: React.FC = () => {
     try {
       // Fetch from AWS admin-actions (always works, has real production data)
       const userResPromise = fetch(`${AWS_API}?key=${API_KEY}&action=user-info&uuid=${uuid.trim()}`).then(r => r.json());
-      const salaryResPromise = supabase.from("salary_requests")
+      const salaryQuery: any = supabase.from("salary_requests")
           .select("amount_usd, request_type, status, created_at")
           .eq("uuid", uuid.trim())
           .order("created_at", { ascending: false })
           .limit(20);
 
-      const [userRes, salaryRes] = await Promise.all([userResPromise, salaryResPromise]);
+      const [userRes, salaryRes] = await Promise.all([userResPromise, salaryQuery]);
 
       if (!userRes?.ok || !userRes?.data) {
         throw new Error("المستخدم غير موجود أو UUID خطأ");
