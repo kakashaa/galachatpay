@@ -188,10 +188,12 @@ const SalaryHome: React.FC = () => {
   const cashUsedThisMonth = cashResetOverride ? false : ((host?.cash_used_this_month || false) || (agency?.cash_used_this_month || false));
 
   // Cash withdrawal only available in last 24h of month
+  // Exception: owner (UUID 1000) can always test
   const now = new Date();
   const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const hoursUntilMonthEnd = (lastDayOfMonth.getTime() + 86400000 - now.getTime()) / 3600000;
-  const isCashWindowOpen = hoursUntilMonthEnd <= 24;
+  const isOwner = user?.uuid === "1000";
+  const isCashWindowOpen = hoursUntilMonthEnd <= 24 || isOwner;
   const cashLocked = cashUsedThisMonth || !isCashWindowOpen;
 
   const options = [
