@@ -1170,6 +1170,51 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "works_accept_member": {
+        const { member_id } = data;
+        if (!member_id) throw new Error("member_id required");
+        const { data: member, error: mErr } = await supabase
+          .from("works_members")
+          .select("*")
+          .eq("id", member_id)
+          .single();
+        if (mErr || !member) throw new Error("العضو غير موجود");
+        await supabase.from("works_members")
+          .update({ status: "active", joined_at: new Date().toISOString() })
+          .eq("id", member_id);
+        await supabase.from("notifications").insert({
+          user_uuid: member.member_uuid,
+          title: "تم قبول طلب الانضمام ✅",
+          body: "تم قبولك كداعم! يمكنك الآن البدء.",
+          is_read: false,
+        });
+        result = { success: true };
+        break;
+      }
+
+      case "works_reject_member": {
+        const { member_id: rmId, reason: rmReason } = data;
+        if (!rmId) throw new Error("member_id required");
+        const { data: rmMember } = await supabase
+          .from("works_members")
+          .select("member_uuid")
+          .eq("id", rmId)
+          .single();
+        await supabase.from("works_members")
+          .update({ status: "rejected" })
+          .eq("id", rmId);
+        if (rmMember) {
+          await supabase.from("notifications").insert({
+            user_uuid: rmMember.member_uuid,
+            title: "تم رفض طلب الانضمام ❌",
+            body: rmReason || "للأسف تم رفض طلبك.",
+            is_read: false,
+          });
+        }
+        result = { success: true };
+        break;
+      }
+
       case "works_reject_request": {
         const { id, reason } = data;
         await supabase.from("works_requests").update({ status: "rejected", admin_note: reason }).eq("id", id);

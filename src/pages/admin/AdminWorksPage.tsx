@@ -1246,9 +1246,34 @@ const AdminWorksPage: React.FC = () => {
                   const supporterPct = Number(selectedAccount?.supporter_pct ?? selectedAccount?.supporter_commission_pct ?? 0);
                   const agentPct = Number(selectedAccount?.agent_pct ?? selectedAccount?.agent_commission_pct ?? 0);
 
+                  const acceptMember = async (memberId: string) => {
+                    if (processingId) return; setProcessingId(memberId);
+                    try { await adminCall("works_accept_member", { member_id: memberId }); toast.success("تم قبول العضو ✅"); if (selectedWorksId) fetchMembers(selectedWorksId); }
+                    catch { toast.error("فشل القبول"); }
+                    setProcessingId(null);
+                  };
+                  const rejectMember = async (memberId: string) => {
+                    if (processingId) return; setProcessingId(memberId);
+                    try { await adminCall("works_reject_member", { member_id: memberId }); toast.success("تم رفض العضو"); if (selectedWorksId) fetchMembers(selectedWorksId); }
+                    catch { toast.error("فشل الرفض"); }
+                    setProcessingId(null);
+                  };
+
                   const renderMemberActions = (m: any) => (
                     <div className="flex gap-2 mt-1">
-                      {m.status !== "removed" && (
+                      {m.status === "pending" && (
+                        <>
+                          <button onClick={() => acceptMember(m.id)} disabled={!!processingId}
+                            className="flex-1 bg-emerald-500 text-black py-2 rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1">
+                            {processingId === m.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} قبول
+                          </button>
+                          <button onClick={() => rejectMember(m.id)} disabled={!!processingId}
+                            className="flex-1 bg-destructive/10 text-destructive py-2 rounded-lg text-xs font-bold disabled:opacity-50 flex items-center justify-center gap-1">
+                            <X className="w-3 h-3" /> رفض
+                          </button>
+                        </>
+                      )}
+                      {m.status !== "removed" && m.status !== "pending" && (
                         <button onClick={() => removeMember(m.id)}
                           className="flex-1 bg-destructive/10 text-destructive py-1.5 rounded-lg text-[10px] font-bold">
                           إزالة
