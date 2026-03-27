@@ -193,7 +193,8 @@ const SalaryHome: React.FC = () => {
   const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const hoursUntilMonthEnd = (lastDayOfMonth.getTime() + 86400000 - now.getTime()) / 3600000;
   const isOwner = user?.uuid === "1000";
-  const isCashWindowOpen = hoursUntilMonthEnd <= 24 || isOwner;
+  // Window open if: last 24h OR owner UUID OR admin granted override via app_settings
+  const isCashWindowOpen = hoursUntilMonthEnd <= 24 || isOwner || cashResetOverride;
   const cashLocked = cashUsedThisMonth || !isCashWindowOpen;
 
   const options = [
