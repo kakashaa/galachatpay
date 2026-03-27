@@ -84,6 +84,7 @@ const SupporterBenefits: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [, setApiMonthlyCharges] = useState<number | null>(null);
+  const [coinsLoading, setCoinsLoading] = useState(true);
   const [monthlyDiamonds, setMonthlyDiamonds] = useState(0);
   const [couponTab, setCouponTab] = useState<"available" | "used" | "expired">("available");
   const [specialOffers, setSpecialOffers] = useState<any[]>([]);
@@ -216,14 +217,20 @@ const SupporterBenefits: React.FC = () => {
 
       // Background: API calls for fresh data
       if (user?.uuid) {
-        // Fresh monthly charges from wares-api
-        galaApi.userMonthlyCharges(user.uuid, currentMonth).then(res => {
-          const charges = res?.data?.total_charges || res?.total_charges || 0;
-          if (charges > 0) {
-            setMonthlyCoins(prev => Math.max(prev, charges));
-            setApiMonthlyCharges(charges);
-          }
-        }).catch(() => {});
+        // Fresh monthly charges — direct fetch (faster, no proxy)
+        (async () => {
+          try {
+            const url = `https://hola-chat.com/wares-api.php?key=ghala2026actions&action=user-monthly-charges&uuid=${user.uuid}&month=${currentMonth}`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(35000) });
+            const data = await res.json();
+            const charges = data?.data?.total_charges || data?.total_charges || 0;
+            if (charges > 0) {
+              setMonthlyCoins(prev => Math.max(prev, charges));
+              setApiMonthlyCharges(charges);
+            }
+          } catch { /* timeout or error — keep Supabase value */ }
+          finally { setCoinsLoading(false); }
+        })();
 
         // User diamonds (monthly_diamond_received)
         galaApi.userDiamonds(user.uuid).then(res => {
@@ -455,7 +462,7 @@ const SupporterBenefits: React.FC = () => {
               {/* Stats row */}
               <div className="grid grid-cols-3 gap-0 divide-x divide-border" style={{ direction: "ltr" }}>
                 {[
-                  { v: formatCoins(monthlyCoins), l: "شحن الشهر", icon: TrendingUp, color: currentTier?.color || "hsl(var(--primary))" },
+                  { v: coinsLoading && monthlyCoins === 0 ? "..." : formatCoins(monthlyCoins), l: "شحن الشهر", icon: TrendingUp, color: currentTier?.color || "hsl(var(--primary))" },
                   { v: userRank ? `#${userRank}` : "—", l: "ترتيبك", icon: Trophy, color: "#ffd700" },
                   { v: currentTier?.name || "—", l: "مستواك", icon: Star, color: currentTier?.color || "hsl(var(--muted-foreground))" },
                 ].map((s, i) => (
@@ -481,7 +488,9 @@ const SupporterBenefits: React.FC = () => {
               {/* Current month charges */}
               <div className="rounded-xl p-3" style={{ background: "hsl(var(--muted) / 0.3)" }}>
                 <p className="text-[9px] text-muted-foreground mb-1">شحن هذا الشهر</p>
-                <p className="text-base font-bold text-foreground tabular-nums">{formatCoins(monthlyCoins)}</p>
+                <p className={`text-base font-bold text-foreground tabular-nums ${coinsLoading && monthlyCoins === 0 ? "animate-pulse text-muted-foreground" : ""}`}>
+                  {coinsLoading && monthlyCoins === 0 ? "جاري التحميل..." : formatCoins(monthlyCoins)}
+                </p>
                 <p className="text-[8px] text-muted-foreground">${(monthlyCoins / 7500).toFixed(0)}</p>
               </div>
 

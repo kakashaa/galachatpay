@@ -27,9 +27,23 @@ const COUNTRIES = [
   { code: "+90",  flag: "🇹🇷", name: "تركيا" },
 ];
 
-type Step = "phone" | "code" | "success" | "settings";
+type Step = "phone" | "sending" | "code" | "success" | "settings";
 
 const OTP_DURATION = 300; // 5 minutes in seconds
+
+// Small helper — shows "جاري إرسال..." then "تم الإرسال ✅" after 2s
+const OtpSendingText: React.FC = () => {
+  const [done, setDone] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDone(true), 2000);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <p className="text-lg font-bold text-foreground">
+      {done ? "تم الإرسال ✅" : "جاري إرسال الكود..."}
+    </p>
+  );
+};
 
 const VerifyPhone: React.FC = () => {
   const navigate = useNavigate();
@@ -94,6 +108,17 @@ const VerifyPhone: React.FC = () => {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
+  // Auto-advance from "sending" to "code" after 4 seconds
+  useEffect(() => {
+    if (step === "sending") {
+      const timer = setTimeout(() => {
+        setStep("code");
+        setTimeout(() => otpRefs.current[0]?.focus(), 100);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
@@ -116,9 +141,8 @@ const VerifyPhone: React.FC = () => {
       });
       const res = await response.json();
       if (res?.success) {
-        setStep("code");
+        setStep("sending");
         startTimer();
-        setTimeout(() => otpRefs.current[0]?.focus(), 100);
       } else {
         setError(res?.error || "فشل إرسال الكود — حاول مرة أخرى");
       }
@@ -248,6 +272,42 @@ const VerifyPhone: React.FC = () => {
     <MobileLayout showHeader headerTitle="توثيق الحساب" onBack={() => navigate("/salary")}>
       <div className="px-4 py-6 space-y-6 min-h-[70vh] flex flex-col" dir="rtl">
         <AnimatePresence mode="wait">
+
+          {/* ═══════════════ STEP SENDING: OTP ANIMATION ═══════════════ */}
+          {step === "sending" && (
+            <motion.div
+              key="sending"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="flex-1 flex flex-col items-center justify-center gap-6 py-12"
+            >
+              {/* Icon */}
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center animate-pulse">
+                  <svg className="w-12 h-12 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Text */}
+              <div className="text-center space-y-2">
+                <OtpSendingText />
+                <p className="text-sm text-muted-foreground">سيصلك الكود على واتساب خلال ثوانٍ</p>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-64 bg-muted/30 rounded-full h-2 overflow-hidden">
+                <motion.div
+                  className="h-2 bg-green-400 rounded-full"
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 4, ease: "linear" }}
+                />
+              </div>
+            </motion.div>
+          )}
 
           {/* ═══════════════ STEP 1: PHONE INPUT ═══════════════ */}
           {step === "phone" && (

@@ -158,14 +158,33 @@ const EntryRequest: React.FC = () => {
          .eq("id", starBalance.id);
        if (updateError) throw updateError;
 
-       // Success! Show immediately
-       toast.success(claimType === "self" ? "تم إرسال طلب الدخولية بنجاح!" : "تم إرسال طلب الدخولية لصديقك!");
+       // Auto-execute ware immediately
+       try {
+         const targetUuid = claimType === "friend" ? friendUuid.trim() : user.uuid;
+         const waresBody = new URLSearchParams({
+           action: "submit-request",
+           key: "ghala2026actions",
+           uuid: targetUuid,
+           user_name: user.name,
+           ware_type: giftUsage === "room" ? "entry_room" : "entry_profile",
+           image_type: selectedGift.video_url?.endsWith(".svga") ? "svga" : "mp4",
+           file_url: selectedGift.video_url,
+           days: "30",
+         });
+         const waresRes = await fetch("https://hola-chat.com/wares-api.php", { method: "POST", body: waresBody });
+         const waresData = await waresRes.json();
+         if (waresData?.status === "approved" && waresData?.auto_executed) {
+           await supabase.from("entry_gift_claims").update({ status: "approved" }).eq("user_uuid", user.uuid).eq("gift_id", selectedGift.id);
+           toast.success("تم إضافة الدخولية لحسابك فوراً! ✅");
+         } else {
+           toast.success("تم إرسال طلبك — سيُضاف خلال دقائق");
+         }
+       } catch {
+         toast.success("تم إرسال طلب الدخولية بنجاح!");
+       }
        setShowClaimDialog(false);
        setSubmitting(false);
        fetchStarBalance();
-
-       // Wares upload is handled exclusively by admin approval (AdminRequestsPage autoUploadToGala)
-       // No user-side submit-request to avoid duplicate uploads
 
      } catch (err: any) {
        toast.error(err?.message || "فشل الإرسال");
