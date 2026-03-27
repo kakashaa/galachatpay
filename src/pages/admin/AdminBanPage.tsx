@@ -140,7 +140,12 @@ const AdminBanPage: React.FC = () => {
     const banRes = await supabase.functions.invoke("wares-request", {
       body: { action: "ban-user-real", uuid, reason, hours: String(hours), ban_type: banType },
     });
-    if (banRes.error) throw new Error("فشل الحظر");
+    if (banRes.error) throw new Error("فشل الحظر: خطأ في الاتصال");
+    // Check API response data
+    const resData = banRes.data;
+    if (resData && resData.ok === false) {
+      throw new Error(resData.error || "فشل الحظر من السيرفر");
+    }
     const durText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
     await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
   };
@@ -152,7 +157,6 @@ const AdminBanPage: React.FC = () => {
     if (res.error) throw new Error("فشل فك الحظر");
   };
 
-  /* ── Accept report ── */
   const acceptReport = async (report: any, hours: number) => {
     setActionInProgress(report.id);
     const t = toast.loading("جاري التأكيد والحظر...");
@@ -185,18 +189,27 @@ const AdminBanPage: React.FC = () => {
         action: "ban",
         details: { uuid: report.reported_user_id, reason, duration: banHours, ban_type: banType, from_report: true },
       });
-      await supabase.from("ban_reports").update({
+      const { error: updateError } = await supabase.from("ban_reports").update({
         is_verified: true,
         admin_notes: notesWithAdmin,
       } as any).eq("id", report.id);
 
+      if (updateError) {
+        console.error("Ban report update error:", updateError);
+        toast.dismiss(t);
+        toast.error("تم الحظر لكن فشل تحديث البلاغ: " + updateError.message);
+        fetchReports();
+        setActionInProgress(null);
+        return;
+      }
+
       toast.dismiss(t);
-      toast.success("تم الحظر!");
+      toast.success("تم الحظر بنجاح! ✅");
       setSelectedReport(null);
       setAdminNotes("");
       setDurationPick(null);
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل العملية"); }
     finally { setActionInProgress(null); }
   };
 
@@ -209,16 +222,23 @@ const AdminBanPage: React.FC = () => {
         ? `[معالج بواسطة: ${adminUsername}] ${adminNotes || ""}`.trim()
         : adminNotes || null;
 
-      await supabase.from("ban_reports").update({
+      const { error: updateError } = await supabase.from("ban_reports").update({
         admin_notes: notesWithAdmin || "مرفوض",
       } as any).eq("id", report.id);
+
+      if (updateError) {
+        toast.dismiss(t);
+        toast.error("فشل تحديث البلاغ: " + updateError.message);
+        setActionInProgress(null);
+        return;
+      }
 
       toast.dismiss(t);
       toast.success("تم الرفض");
       setSelectedReport(null);
       setAdminNotes("");
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
     finally { setActionInProgress(null); }
   };
 
