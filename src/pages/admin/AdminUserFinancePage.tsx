@@ -59,13 +59,20 @@ const AdminUserFinancePage: React.FC = () => {
     
     try {
       // Fetch all data in parallel using WORKING APIs
+      // Direct call to wares-api (bypasses gala-proxy which may not have the action yet)
+      const waresUrl = "https://hola-chat.com/wares-api.php";
+      const waresKey = "ghala2026actions";
+      
       const [totalRes, chargesRes, giftsRecRes, giftsSentRes, userFullRes, salaryRes] = await Promise.all([
-        // Total charges (charges + coin_logs) — same number as production dashboard
-        galaApi.userTotalCharges(uuid.trim(), selectedMonth).catch(() => null),
-        galaApi.userMonthlyCharges(uuid.trim(), selectedMonth).catch(() => null),
-        galaApi.giftReceivedTotal(uuid.trim(), selectedMonth).catch(() => null),
-        galaApi.giftSentTotal(uuid.trim(), selectedMonth).catch(() => null),
-        galaApi.userFull(uuid.trim()).catch(() => null),
+        // Total charges — direct call to wares-api (same numbers as production dashboard)
+        fetch(`${waresUrl}?key=${waresKey}&action=user-total-charges&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
+        // Monthly charges detail
+        fetch(`${waresUrl}?key=${waresKey}&action=user-monthly-charges&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
+        // Gifts
+        fetch(`${waresUrl}?key=${waresKey}&action=gift-received-total&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
+        fetch(`${waresUrl}?key=${waresKey}&action=gift-sent-total&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
+        // User info
+        fetch(`${waresUrl}?key=${waresKey}&action=user-full&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
         (supabase as any).from("salary_requests")
           .select("*")
           .eq("user_uuid", uuid.trim())
