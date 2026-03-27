@@ -61,8 +61,8 @@ const AdminUserFinancePage: React.FC = () => {
         galaApi.giftReceivedTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.giftSentTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.userFull(uuid.trim()).catch(() => null),
-        // AWS user-info has 'di' (balance) that user-full doesn't have
-        fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
+        // AWS user-info has 'di' (balance) via gala-proxy (HTTPS)
+        galaApi.awsUserInfo(uuid.trim()).catch(() => null),
         supabase.from("salary_requests")
           .select("*")
           .eq("uuid", uuid.trim())
