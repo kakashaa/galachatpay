@@ -63,15 +63,18 @@ const AdminUserFinancePage: React.FC = () => {
       const waresUrl = "https://hola-chat.com/wares-api.php";
       const waresKey = "ghala2026actions";
       
-      const [totalRes, chargesRes, giftsSentRes, userFullRes, salaryRes] = await Promise.all([
-        // Total charges — direct call to wares-api (same numbers as production dashboard)
-        fetch(`${waresUrl}?key=${waresKey}&action=user-total-charges&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
-        // Monthly charges detail
-        fetch(`${waresUrl}?key=${waresKey}&action=user-monthly-charges&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
-        // Gifts sent (scraped from production dashboard gift-logs)
-        fetch(`${waresUrl}?key=${waresKey}&action=user-gifts-total&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
-        // User info
-        fetch(`${waresUrl}?key=${waresKey}&action=user-full&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
+      // Build the finance API URL based on search mode
+      const financeBase = "https://hola-chat.com/user-finance-api.php";
+      const financeParams = searchMode === "date" && dateFrom
+        ? `key=${waresKey}&uuid=${uuid.trim()}&from=${dateFrom}&to=${dateTo || dateFrom}`
+        : `key=${waresKey}&uuid=${uuid.trim()}&month=${selectedMonth}`;
+      
+      const [financeRes, chargesRes, salaryRes] = await Promise.all([
+        // Combined finance API (charges + gifts + balance in one call)
+        fetch(`${financeBase}?${financeParams}`).then(r => r.json()).catch(() => null),
+        // Monthly charges detail (for the charge list)
+        fetch(`${waresUrl}?key=${waresKey}&action=user-monthly-charges&uuid=${uuid.trim()}&month=${searchMode === "date" && dateFrom ? dateFrom.slice(0,7) : selectedMonth}`).then(r => r.json()).catch(() => null),
+        // (user info included in finance API)
         (supabase as any).from("salary_requests")
           .select("*")
           .eq("user_uuid", uuid.trim())
@@ -80,10 +83,13 @@ const AdminUserFinancePage: React.FC = () => {
           .order("created_at", { ascending: false }),
       ]);
 
-      // Total charges from production dashboard (charges + coin_logs)
-      const totalData = totalRes?.data || {};
-      const totalCharged = totalData.total_charges || 0;
-      const currentBalance = totalData.balance || 0;
+      // All data from combined finance API
+      const fd = financeRes?.data || {};
+      const totalCharged = fd.total_charges || 0;
+      const totalGiftsSent = fd.total_gifts_sent || 0;
+      const currentBalance = fd.balance || 0;
+      const realLoss = fd.loss ?? (totalCharged - totalGiftsSent - currentBalance);
+      const profit = -realLoss;
       
       // Detailed charges from monthly API
       const chargesData = chargesRes?.data || {};
@@ -96,32 +102,22 @@ const AdminUserFinancePage: React.FC = () => {
           return cDate >= dateFrom && cDate <= (dateTo || dateFrom);
         });
       }
-      
-      // Gifts sent
-      const userInfo = userFullRes?.data || {};
-      const totalGiftsSent = giftsSentRes?.data?.total_gifts_sent || 0;
-      const giftCount = giftsSentRes?.data?.gift_count || 0;
-      const totalGiftsReceived = 0; // Not needed for loss calc
-      
-      // الخسارة الحقيقية = الشحن - الهدايا المرسلة - الرصيد الباقي
-      const realLoss = totalCharged - totalGiftsSent - currentBalance;
-      const profit = -realLoss; // negative = خاسر
       const monthDate = new Date(selectedMonth + "-01");
       const monthLabel = monthDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' });
 
       setData({
         uuid: uuid.trim(),
-        name: userInfo.name || "—",
-        vipLevel: userInfo.vip_level || 0,
-        senderLevel: userInfo.sender_level || 0,
-        chargerLevel: userInfo.charger_level || 0,
+        name: fd.name || "—",
+        vipLevel: fd.vip || 0,
+        senderLevel: fd.sender_level || 0,
+        chargerLevel: fd.charger_level || 0,
         totalCharged,
         charges,
         totalGiftsReceived,
         totalGiftsSent,
         currentBalance,
         profit,
-        isWinner: realLoss <= 0, // If loss is 0 or negative = winner (got more than charged)
+        isWinner: fd.is_winner ?? realLoss <= 0,
         monthLabel,
         salaryRequests: salaryRes?.data || [],
       });
