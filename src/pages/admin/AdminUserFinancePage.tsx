@@ -56,11 +56,13 @@ const AdminUserFinancePage: React.FC = () => {
     
     try {
       // Fetch all data in parallel using WORKING APIs
-      const [chargesRes, giftsRecRes, giftsSentRes, userFullRes, salaryRes] = await Promise.all([
+      const [chargesRes, giftsRecRes, giftsSentRes, userFullRes, awsUserRes, salaryRes] = await Promise.all([
         galaApi.userMonthlyCharges(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.giftReceivedTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.giftSentTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.userFull(uuid.trim()).catch(() => null),
+        // AWS user-info has 'di' (balance) that user-full doesn't have
+        fetch(`https://18.219.229.240/website/admin-actions.php?key=ghala2026actions&action=user-info&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
         supabase.from("salary_requests")
           .select("*")
           .eq("uuid", uuid.trim())
@@ -73,11 +75,14 @@ const AdminUserFinancePage: React.FC = () => {
       const totalCharged = chargesData.total_charges || 0;
       const charges: ChargeItem[] = chargesData.charges || [];
       
-      const totalGiftsReceived = giftsRecRes?.data?.total_received || 0;
-      const totalGiftsSent = giftsSentRes?.data?.total_sent || 0;
-      
+      // Gifts from user-full (has total_received/total_sent) + gift-received-total API
       const userInfo = userFullRes?.data || {};
-      const currentBalance = userInfo.di || userInfo.diamonds || userInfo.balance || 0;
+      const totalGiftsReceived = giftsRecRes?.data?.total_received || userInfo.total_received || 0;
+      const totalGiftsSent = giftsSentRes?.data?.total_sent || userInfo.total_sent || 0;
+      
+      // Balance from AWS user-info (has 'di' field)
+      const awsData = awsUserRes?.data || {};
+      const currentBalance = awsData.di || userInfo.di || userInfo.diamonds || userInfo.balance || 0;
       
       const profit = totalGiftsReceived - totalCharged;
       const monthDate = new Date(selectedMonth + "-01");
@@ -264,7 +269,7 @@ const AdminUserFinancePage: React.FC = () => {
                     {data.charges.map((c, i) => (
                       <div key={c.id || i} className="flex items-center justify-between py-1.5 border-b border-border/10 last:border-0">
                         <div>
-                          <p className="text-[10px] text-muted-foreground">{c.charger_type || '—'}</p>
+                          <p className="text-[10px] text-muted-foreground">{(c.charger_type || '—').replace('freight forwarder', 'وكيل شحن').replace('admin', 'أدمن').replace('google', 'جوجل').replace('apple', 'آبل')}</p>
                           <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <div className="text-left">
