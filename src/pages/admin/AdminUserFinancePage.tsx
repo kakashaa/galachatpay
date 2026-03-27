@@ -40,7 +40,8 @@ const AdminUserFinancePage: React.FC = () => {
   
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
-  const [customDate, setCustomDate] = useState("");
+  const [dateFrom, setDateFrom] = useState(now.toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(now.toISOString().slice(0, 10));
   const [searchMode, setSearchMode] = useState<"month" | "date">("month");
 
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -80,15 +81,23 @@ const AdminUserFinancePage: React.FC = () => {
       
       // Detailed charges from monthly API
       const chargesData = chargesRes?.data || {};
-      const charges: ChargeItem[] = chargesData.charges || [];
+      let charges: ChargeItem[] = chargesData.charges || [];
+      
+      // If date mode, filter charges by date range
+      if (searchMode === "date" && dateFrom) {
+        charges = charges.filter(c => {
+          const cDate = c.created_at?.slice(0, 10) || "";
+          return cDate >= dateFrom && cDate <= (dateTo || dateFrom);
+        });
+      }
       
       // Gifts
       const userInfo = userFullRes?.data || {};
       const totalGiftsReceived = giftsRecRes?.data?.total_received || userInfo.total_received || 0;
       const totalGiftsSent = giftsSentRes?.data?.total_sent || userInfo.total_sent || 0;
       
-      // الربح = الدعم المستلم - الشحن (لو استلم أكثر مما شحن = كاسب)
-      const profit = totalGiftsReceived - totalCharged;
+      // الخسارة = الشحن - الدعم المرسل (الباقي اللي ما راح كدعم)
+      const profit = totalGiftsSent > 0 ? totalGiftsSent - totalCharged : -totalCharged;
       const monthDate = new Date(selectedMonth + "-01");
       const monthLabel = monthDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' });
 
@@ -175,18 +184,28 @@ const AdminUserFinancePage: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <label className="text-[10px] text-muted-foreground">اختر تاريخ محدد</label>
-              <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)}
-                className="w-full bg-background/50 border border-border/30 rounded-lg px-2 py-1.5 text-xs text-foreground" />
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground">من تاريخ</label>
+                  <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                    className="w-full bg-background/50 border border-border/30 rounded-lg px-2 py-1.5 text-xs text-foreground" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground">إلى تاريخ</label>
+                  <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                    className="w-full bg-background/50 border border-border/30 rounded-lg px-2 py-1.5 text-xs text-foreground" />
+                </div>
+              </div>
               <div className="flex items-center gap-1.5">
                 {[
-                  { label: "اليوم", date: new Date().toISOString().slice(0, 10) },
-                  { label: "أمس", date: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() },
-                  { label: "آخر 7 أيام", date: (() => { const d = new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })() },
+                  { label: "اليوم", from: now.toISOString().slice(0,10), to: now.toISOString().slice(0,10) },
+                  { label: "أمس", from: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })(), to: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() },
+                  { label: "آخر 7 أيام", from: (() => { const d = new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })(), to: now.toISOString().slice(0,10) },
+                  { label: "هذا الأسبوع", from: (() => { const d = new Date(); d.setDate(d.getDate()-d.getDay()); return d.toISOString().slice(0,10); })(), to: now.toISOString().slice(0,10) },
                 ].map(p => (
-                  <button key={p.label} onClick={() => setCustomDate(p.date)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${customDate === p.date ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20'}`}>
+                  <button key={p.label} onClick={() => { setDateFrom(p.from); setDateTo(p.to); }}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${dateFrom === p.from && dateTo === p.to ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20'}`}>
                     {p.label}
                   </button>
                 ))}
@@ -248,7 +267,7 @@ const AdminUserFinancePage: React.FC = () => {
                 <p className="text-xs text-muted-foreground mt-1">
                   {data.profit >= 0 ? '+' : ''}{formatUsd(data.profit)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">الدعم - الشحن</p>
+                <p className="text-[10px] text-muted-foreground">الهدايا المرسلة - الشحن</p>
               </div>
 
               {/* Stats Grid */}
