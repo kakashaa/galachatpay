@@ -157,7 +157,6 @@ const AdminBanPage: React.FC = () => {
     if (res.error) throw new Error("فشل فك الحظر");
   };
 
-  /* ── Accept report ── */
   const acceptReport = async (report: any, hours: number) => {
     setActionInProgress(report.id);
     const t = toast.loading("جاري التأكيد والحظر...");
@@ -190,18 +189,27 @@ const AdminBanPage: React.FC = () => {
         action: "ban",
         details: { uuid: report.reported_user_id, reason, duration: banHours, ban_type: banType, from_report: true },
       });
-      await supabase.from("ban_reports").update({
+      const { error: updateError } = await supabase.from("ban_reports").update({
         is_verified: true,
         admin_notes: notesWithAdmin,
       } as any).eq("id", report.id);
 
+      if (updateError) {
+        console.error("Ban report update error:", updateError);
+        toast.dismiss(t);
+        toast.error("تم الحظر لكن فشل تحديث البلاغ: " + updateError.message);
+        fetchReports();
+        setActionInProgress(null);
+        return;
+      }
+
       toast.dismiss(t);
-      toast.success("تم الحظر!");
+      toast.success("تم الحظر بنجاح! ✅");
       setSelectedReport(null);
       setAdminNotes("");
       setDurationPick(null);
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل العملية"); }
     finally { setActionInProgress(null); }
   };
 
@@ -214,16 +222,23 @@ const AdminBanPage: React.FC = () => {
         ? `[معالج بواسطة: ${adminUsername}] ${adminNotes || ""}`.trim()
         : adminNotes || null;
 
-      await supabase.from("ban_reports").update({
+      const { error: updateError } = await supabase.from("ban_reports").update({
         admin_notes: notesWithAdmin || "مرفوض",
       } as any).eq("id", report.id);
+
+      if (updateError) {
+        toast.dismiss(t);
+        toast.error("فشل تحديث البلاغ: " + updateError.message);
+        setActionInProgress(null);
+        return;
+      }
 
       toast.dismiss(t);
       toast.success("تم الرفض");
       setSelectedReport(null);
       setAdminNotes("");
       fetchReports();
-    } catch { toast.dismiss(t); toast.error("فشل"); }
+    } catch (e: any) { toast.dismiss(t); toast.error(e?.message || "فشل"); }
     finally { setActionInProgress(null); }
   };
 
