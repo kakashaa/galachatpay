@@ -1,23 +1,33 @@
 import React, { useState } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
-import { Loader2, Search, TrendingUp, TrendingDown, Wallet, Gift, CreditCard, Calendar, User, AlertTriangle, Star } from "lucide-react";
+import { Loader2, Search, TrendingUp, TrendingDown, Wallet, Gift, CreditCard, Calendar, User, AlertTriangle, Star, ArrowDown, ArrowUp } from "lucide-react";
+import { galaApi } from "@/services/galaApi";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 
-const AWS_API = "https://18.219.229.240/website/admin-actions.php";
-const API_KEY = "ghala2026actions";
+interface ChargeItem {
+  id: number;
+  amount: number;
+  usd: number;
+  charger_type: string;
+  created_at: string;
+}
 
 interface UserFinanceData {
   uuid: string;
   name: string;
-  balance: number;       // di (current coins)
-  chargerExp: number;    // total lifetime charges
-  chargerLevel: number;
+  vipLevel: number;
   senderLevel: number;
-  receivedLevel: number;
-  vip: number;
-  createdAt: string;
+  chargerLevel: number;
+  totalCharged: number;
+  charges: ChargeItem[];
+  totalGiftsReceived: number;
+  totalGiftsSent: number;
+  currentBalance: number;
+  profit: number;
+  isWinner: boolean;
+  monthLabel: string;
   salaryRequests: any[];
 }
 
@@ -27,6 +37,16 @@ const AdminUserFinancePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<UserFinanceData | null>(null);
   const [error, setError] = useState("");
+  
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' });
+    return { val, label };
+  });
 
   const search = async () => {
     if (!uuid.trim()) return;
@@ -35,36 +55,52 @@ const AdminUserFinancePage: React.FC = () => {
     setData(null);
     
     try {
-      // Fetch from AWS admin-actions (always works, has real production data)
-      const [userRes, salaryRes] = await Promise.all([
-        fetch(`${AWS_API}?key=${API_KEY}&action=user-info&uuid=${uuid.trim()}`).then(r => r.json()),
+      // Fetch all data in parallel using WORKING APIs
+      const [chargesRes, giftsRecRes, giftsSentRes, userFullRes, salaryRes] = await Promise.all([
+        galaApi.userMonthlyCharges(uuid.trim(), selectedMonth).catch(() => null),
+        galaApi.giftReceivedTotal(uuid.trim(), selectedMonth).catch(() => null),
+        galaApi.giftSentTotal(uuid.trim(), selectedMonth).catch(() => null),
+        galaApi.userFull(uuid.trim()).catch(() => null),
         supabase.from("salary_requests")
           .select("*")
           .eq("uuid", uuid.trim())
-          .order("created_at", { ascending: false })
-          .limit(20),
+          .gte("created_at", `${selectedMonth}-01`)
+          .lt("created_at", `${selectedMonth}-32`)
+          .order("created_at", { ascending: false }),
       ]);
 
-      if (!userRes?.ok || !userRes?.data) {
-        throw new Error("المستخدم غير موجود أو UUID خطأ");
-      }
-
-      const u = userRes.data;
+      const chargesData = chargesRes?.data || {};
+      const totalCharged = chargesData.total_charges || 0;
+      const charges: ChargeItem[] = chargesData.charges || [];
+      
+      const totalGiftsReceived = giftsRecRes?.data?.total_received || 0;
+      const totalGiftsSent = giftsSentRes?.data?.total_sent || 0;
+      
+      const userInfo = userFullRes?.data || {};
+      const currentBalance = userInfo.di || userInfo.diamonds || userInfo.balance || 0;
+      
+      const profit = totalGiftsReceived - totalCharged;
+      const monthDate = new Date(selectedMonth + "-01");
+      const monthLabel = monthDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' });
 
       setData({
-        uuid: String(u.uuid),
-        name: u.name || "—",
-        balance: u.di || 0,
-        chargerExp: u.charger_exp || 0,
-        chargerLevel: u.charger_level || 0,
-        senderLevel: u.sender_level || 0,
-        receivedLevel: u.received_level || 0,
-        vip: u.vip || 0,
-        createdAt: u.created_at || "",
+        uuid: uuid.trim(),
+        name: userInfo.name || "—",
+        vipLevel: userInfo.vip_level || 0,
+        senderLevel: userInfo.sender_level || 0,
+        chargerLevel: userInfo.charger_level || 0,
+        totalCharged,
+        charges,
+        totalGiftsReceived,
+        totalGiftsSent,
+        currentBalance,
+        profit,
+        isWinner: profit >= 0,
+        monthLabel,
         salaryRequests: salaryRes?.data || [],
       });
     } catch (e: any) {
-      setError(e.message || "فشل جلب البيانات");
+      setError(e.message || "فشل جلب البيانات — تأكد من UUID");
     } finally {
       setLoading(false);
     }
@@ -92,7 +128,7 @@ const AdminUserFinancePage: React.FC = () => {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.15)' }}>
               <Search className="w-4 h-4 text-purple-400" />
             </div>
-            <h3 className="text-sm font-bold text-foreground">بحث بـ UUID</h3>
+            <h3 className="text-sm font-bold text-foreground">بحث مالي بـ UUID</h3>
           </div>
           
           <input
@@ -102,6 +138,21 @@ const AdminUserFinancePage: React.FC = () => {
             placeholder="أدخل UUID المستخدم..."
             className="w-full bg-background/50 border border-border/30 rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500/40"
           />
+          
+          {/* Month selector */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Calendar className="w-3 h-3" /> اختر الشهر
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {months.map(m => (
+                <button key={m.val} onClick={() => setSelectedMonth(m.val)}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${selectedMonth === m.val ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20 hover:bg-muted/20'}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <button onClick={search} disabled={loading || !uuid.trim()}
             className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-all"
@@ -120,110 +171,117 @@ const AdminUserFinancePage: React.FC = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="space-y-3">
               
-              {/* User Info Header */}
+              {/* User Header */}
               <div className="rounded-2xl p-4" style={{
                 background: 'linear-gradient(145deg, rgba(168,85,247,0.12), rgba(168,85,247,0.03))',
                 border: '1px solid rgba(168,85,247,0.2)',
               }}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-purple-500/20">
-                    <User className="w-6 h-6 text-purple-400" />
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-purple-500/20">
+                    <User className="w-5 h-5 text-purple-400" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-bold text-foreground">{data.name}</p>
-                    <p className="text-[10px] text-muted-foreground">UUID: {data.uuid}</p>
-                    <p className="text-[10px] text-muted-foreground">منذ: {data.createdAt ? new Date(data.createdAt).toLocaleDateString('ar-SA') : '—'}</p>
+                    <p className="text-[10px] text-muted-foreground">UUID: {data.uuid} • {data.monthLabel}</p>
                   </div>
-                  {data.vip > 0 && (
-                    <span className="mr-auto px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center gap-1">
-                      <Star className="w-3 h-3" /> VIP
+                  {data.vipLevel > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold flex items-center gap-1">
+                      <Star className="w-3 h-3" /> VIP {data.vipLevel}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Financial Stats */}
+              {/* Profit/Loss Summary */}
+              <div className="rounded-2xl p-4 text-center" style={{
+                background: data.isWinner 
+                  ? 'linear-gradient(145deg, rgba(34,197,94,0.12), rgba(34,197,94,0.03))'
+                  : 'linear-gradient(145deg, rgba(239,68,68,0.12), rgba(239,68,68,0.03))',
+                border: `1px solid ${data.isWinner ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+              }}>
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 ${data.isWinner ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {data.isWinner ? "✅ كاسب" : "❌ خاسر"}
+                </span>
+                <p className={`text-3xl font-black ${data.isWinner ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {data.profit >= 0 ? '+' : ''}{formatCoins(data.profit)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {data.profit >= 0 ? '+' : ''}{formatUsd(data.profit)} • الدعم - الشحن
+                </p>
+              </div>
+
+              {/* Stats Grid */}
               <div className="grid grid-cols-2 gap-2">
-                {/* Current Balance */}
-                <div className="rounded-xl p-3 space-y-1 col-span-2" style={{
+                <div className="rounded-xl p-3 space-y-1" style={glassCard}>
+                  <div className="flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="text-[10px] text-muted-foreground">شحن الشهر</span>
+                  </div>
+                  <p className="text-lg font-black text-blue-400">{formatCoins(data.totalCharged)}</p>
+                  <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalCharged)}</p>
+                  <p className="text-[10px] text-muted-foreground">{data.charges.length} عملية</p>
+                </div>
+
+                <div className="rounded-xl p-3 space-y-1" style={glassCard}>
+                  <div className="flex items-center gap-1.5">
+                    <ArrowDown className="w-3.5 h-3.5 text-pink-400" />
+                    <span className="text-[10px] text-muted-foreground">دعم مستلم</span>
+                  </div>
+                  <p className="text-lg font-black text-pink-400">{formatCoins(data.totalGiftsReceived)}</p>
+                  <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalGiftsReceived)}</p>
+                </div>
+
+                <div className="rounded-xl p-3 space-y-1" style={glassCard}>
+                  <div className="flex items-center gap-1.5">
+                    <ArrowUp className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-[10px] text-muted-foreground">هدايا أرسلها</span>
+                  </div>
+                  <p className="text-lg font-black text-amber-400">{formatCoins(data.totalGiftsSent)}</p>
+                  <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalGiftsSent)}</p>
+                </div>
+
+                <div className="rounded-xl p-3 space-y-1" style={{
                   ...glassCard,
                   background: 'linear-gradient(145deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02))',
                   borderColor: 'rgba(34,197,94,0.15)',
                 }}>
                   <div className="flex items-center gap-1.5">
                     <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-[10px] text-muted-foreground">رصيد المحفظة الحالي</span>
+                    <span className="text-[10px] text-muted-foreground">رصيد المحفظة</span>
                   </div>
-                  <p className="text-2xl font-black text-emerald-400">{formatCoins(data.balance)}</p>
-                  <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.balance)}</p>
-                </div>
-
-                {/* Total Charged (Lifetime) */}
-                <div className="rounded-xl p-3 space-y-1" style={glassCard}>
-                  <div className="flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-[10px] text-muted-foreground">إجمالي الشحن</span>
-                  </div>
-                  <p className="text-lg font-black text-blue-400">{formatCoins(data.chargerExp)}</p>
-                  <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.chargerExp)}</p>
-                  <p className="text-[10px] text-muted-foreground">مستوى {data.chargerLevel}</p>
-                </div>
-
-                {/* Sender Level */}
-                <div className="rounded-xl p-3 space-y-1" style={glassCard}>
-                  <div className="flex items-center gap-1.5">
-                    <Gift className="w-3.5 h-3.5 text-pink-400" />
-                    <span className="text-[10px] text-muted-foreground">مستوى الإرسال</span>
-                  </div>
-                  <p className="text-lg font-black text-pink-400">LV {data.senderLevel}</p>
-                  <p className="text-[10px] text-muted-foreground">الاستقبال: LV {data.receivedLevel}</p>
+                  <p className="text-lg font-black text-emerald-400">{formatCoins(data.currentBalance)}</p>
+                  <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.currentBalance)}</p>
                 </div>
               </div>
 
-              {/* Analysis */}
-              <div className="rounded-2xl p-4" style={{
-                ...glassCard,
-                background: data.chargerExp > 0 && data.balance < data.chargerExp * 0.1
-                  ? 'linear-gradient(145deg, rgba(239,68,68,0.08), rgba(239,68,68,0.02))'
-                  : 'linear-gradient(145deg, rgba(34,197,94,0.08), rgba(34,197,94,0.02))',
-                borderColor: data.chargerExp > 0 && data.balance < data.chargerExp * 0.1
-                  ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
-              }}>
-                <div className="flex items-center gap-2 mb-2">
-                  {data.chargerExp > 0 && data.balance < data.chargerExp * 0.1 ? (
-                    <TrendingDown className="w-4 h-4 text-red-400" />
-                  ) : (
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  )}
-                  <span className="text-xs font-bold text-foreground">تحليل مالي</span>
-                </div>
-                <div className="space-y-1.5 text-[11px]">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">شحن إجمالي:</span>
-                    <span className="text-blue-400 font-bold">{formatCoins(data.chargerExp)} ({formatUsd(data.chargerExp)})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">باقي بالمحفظة:</span>
-                    <span className="text-emerald-400 font-bold">{formatCoins(data.balance)} ({formatUsd(data.balance)})</span>
-                  </div>
-                  <div className="flex justify-between border-t border-border/10 pt-1.5">
-                    <span className="text-muted-foreground">مصروف/مُرسل:</span>
-                    <span className="text-red-400 font-bold">{formatCoins(data.chargerExp - data.balance)} ({formatUsd(data.chargerExp - data.balance)})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">نسبة الاستهلاك:</span>
-                    <span className={`font-bold ${data.chargerExp > 0 ? (((data.chargerExp - data.balance) / data.chargerExp) > 0.9 ? 'text-red-400' : 'text-amber-400') : 'text-muted-foreground'}`}>
-                      {data.chargerExp > 0 ? `${(((data.chargerExp - data.balance) / data.chargerExp) * 100).toFixed(1)}%` : '—'}
-                    </span>
+              {/* Charge History */}
+              {data.charges.length > 0 && (
+                <div className="rounded-2xl p-4 space-y-2" style={glassCard}>
+                  <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                    <CreditCard className="w-3.5 h-3.5 text-blue-400" /> سجل الشحن ({data.charges.length})
+                  </h4>
+                  <div className="max-h-52 overflow-y-auto space-y-1.5">
+                    {data.charges.map((c, i) => (
+                      <div key={c.id || i} className="flex items-center justify-between py-1.5 border-b border-border/10 last:border-0">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">{c.charger_type || '—'}</p>
+                          <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-blue-400">{formatCoins(c.amount)}</p>
+                          <p className="text-[10px] text-muted-foreground">≈ {formatUsd(c.amount)}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Salary Requests from Supabase */}
+              {/* Salary Requests */}
               {data.salaryRequests.length > 0 && (
                 <div className="rounded-2xl p-4 space-y-2" style={glassCard}>
                   <h4 className="text-xs font-bold text-foreground">💵 طلبات الراتب ({data.salaryRequests.length})</h4>
-                  <div className="max-h-48 overflow-y-auto space-y-1.5">
+                  <div className="max-h-40 overflow-y-auto space-y-1.5">
                     {data.salaryRequests.map((r: any, i: number) => (
                       <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/10 last:border-0">
                         <div>

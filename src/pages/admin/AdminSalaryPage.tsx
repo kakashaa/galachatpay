@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
@@ -15,7 +16,10 @@ import { toast } from "sonner";
 
 const AdminSalaryPage: React.FC = () => {
   useAdminPageLog('/admin/salary');
+  const location = useLocation();
   const { handleLogout } = useAdminSession();
+
+  /* If navigated with ?status=pending, ensure we're on the withdraw tab (default) */
   const [subTab, setSubTab] = useState<"withdraw" | "charge" | "instant" | "report" | "tools">("withdraw");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportStats, setReportStats] = useState({ total: 0, approved: 0, pending: 0, rejected: 0, totalUsd: 0, approvedUsd: 0, pendingUsd: 0 });

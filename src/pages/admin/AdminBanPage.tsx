@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,11 +51,19 @@ const glassCard = {
 
 const AdminBanPage: React.FC = () => {
   useAdminPageLog('/admin/ban');
+  const location = useLocation();
   const { handleLogout } = useAdminSession();
   const { confirm, ConfirmDialog } = useConfirmModal();
   const adminUsername = localStorage.getItem("admin_username") || "";
 
-  const [filter, setFilter] = useState<"pending" | "verified" | "rejected" | "all">("pending");
+  /* Read initial filter from URL query param */
+  const initialFilter = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const s = params.get('status');
+    if (s === 'pending' || s === 'verified' || s === 'rejected' || s === 'all') return s;
+    return 'pending';
+  }, []);
+  const [filter, setFilter] = useState<"pending" | "verified" | "rejected" | "all">(initialFilter);
   const [loading, setLoading] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");

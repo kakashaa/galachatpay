@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import PageLoader from "@/components/PageLoader";
 import { useAdminSession } from "@/hooks/use-admin-session";
@@ -207,14 +208,21 @@ const AdminRequestsTab: React.FC<{
 
 const AdminSupportPage: React.FC = () => {
   useAdminPageLog('/admin/support');
+  const location = useLocation();
   const { handleLogout, adminUsername, adminDisplayName, isRegularAdmin } = useAdminSession();
   const [mainTab, setMainTab] = useState<"regular" | "quick">(isRegularAdmin ? "regular" : "regular");
   const [subTab, setSubTab] = useState<"tickets" | "chats" | "archive" | "search" | "admin_requests" | "transferred">("tickets");
 
+  /* ─── Read initial status from URL query param ─── */
+  const initialStatus = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('status') || 'all';
+  }, []);
+
   /* ─── Ticket list state ─── */
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [typeFilter, setTypeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 

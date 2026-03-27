@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { useAdminPageLog } from "@/hooks/use-admin-page-log";
 import { useAdminSession } from "@/hooks/use-admin-session";
 import AdminPageLayout from "@/components/AdminPageLayout";
@@ -15,10 +16,17 @@ const tabs = ["إرسال VIP", "الطلبات", "TOP وكلاء"];
 
 const AdminVipPage: React.FC = () => {
   useAdminPageLog('/admin/vip');
+  const location = useLocation();
   const { adminCall, handleLogout, isModeratorRole } = useAdminSession();
   const [loading, setLoading] = useState(false);
   const [vipRequests, setVipRequests] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState(0);
+
+  /* If navigated with ?status=pending, auto-switch to الطلبات tab (index 1) */
+  const initialTab = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('status') === 'pending' ? 1 : 0;
+  }, []);
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [vipUuid, setVipUuid] = useState("");
   const [vipLevel, setVipLevel] = useState(1);
   const [sending, setSending] = useState(false);

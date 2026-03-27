@@ -845,7 +845,15 @@ const UserIdCard: React.FC<{ user: any; onClose: () => void; adminUsername: stri
 };
 
 /* ─── Delay Monitor (Owner only) ─── */
+const delayRouteMap: Record<string, string> = {
+  "صور متحركة": "/admin/requests?status=pending",
+  "هدايا مخصصة": "/admin/requests?status=pending",
+  "رواتب": "/admin/salary?status=pending",
+  "دعم بدون رد": "/admin/support?status=escalated",
+};
+
 const DelayMonitor: React.FC = () => {
+  const navigate = useNavigate();
   const [alerts, setAlerts] = useState<DelayAlert[]>([]);
 
   useEffect(() => {
@@ -863,10 +871,10 @@ const DelayMonitor: React.FC = () => {
         <p className="text-[11px] font-bold text-destructive">طلبات متأخرة (+30 دقيقة)</p>
       </div>
       {alerts.map(a => (
-        <div key={a.type} className="flex justify-between text-[10px] px-1 py-0.5">
+        <button key={a.type} onClick={() => { const route = delayRouteMap[a.type]; if (route) navigate(route); }} className="w-full flex justify-between text-[10px] px-1 py-1 rounded hover:bg-destructive/10 transition-colors">
           <span className="text-muted-foreground">{a.type}</span>
           <span className="text-destructive font-bold">{a.count} طلب</span>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -1423,22 +1431,24 @@ const AdminHomeView: React.FC<Props> = ({
     
     if (adminRole === 'owner') {
       alerts.push(
-        { label: `${supportBadge} تذكرة مصعّدة بدون رد`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support'), roles: ['owner'] },
-        { label: `${salaryBadge} طلب راتب معلّق`, count: salaryBadge, icon: Wallet, priority: 'medium', onClick: () => navigate('/admin/salary'), roles: ['owner'] },
-        { label: `${banBadge} بلاغ أمني`, count: banBadge, icon: ShieldAlert, priority: 'medium', onClick: () => navigate('/admin/ban'), roles: ['owner'] },
-        { label: `${requestsBadge} طلب متجر جديد`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['owner'] },
-        { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip'), roles: ['owner'] },
+        { label: `${supportBadge} تذكرة مصعّدة بدون رد`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support?status=escalated'), roles: ['owner'] },
+        { label: `${salaryBadge} طلب راتب معلّق`, count: salaryBadge, icon: Wallet, priority: 'medium', onClick: () => navigate('/admin/salary?status=pending'), roles: ['owner'] },
+        { label: `${banBadge} بلاغ أمني`, count: banBadge, icon: ShieldAlert, priority: 'medium', onClick: () => navigate('/admin/ban?status=pending'), roles: ['owner'] },
+        { label: `${requestsBadge} طلب متجر جديد`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests?status=pending'), roles: ['owner'] },
+        { label: `${vipBadge} طلب VIP جديد`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip?status=pending'), roles: ['owner'] },
       );
     } else if (adminRole === 'super_admin' || adminRole === 'moderator') {
       alerts.push(
-        { label: `${supportBadge} تذكرة مصعّدة إليك`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support'), roles: ['super_admin'] },
-        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['super_admin'] },
-        { label: `${vipBadge} طلب VIP`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip'), roles: ['super_admin'] },
+        { label: `${supportBadge} تذكرة مصعّدة إليك`, count: supportBadge, icon: Headphones, priority: 'high', onClick: () => navigate('/admin/support?status=escalated'), roles: ['super_admin'] },
+        { label: `${salaryBadge} طلب راتب معلّق`, count: salaryBadge, icon: Wallet, priority: 'medium', onClick: () => navigate('/admin/salary?status=pending'), roles: ['super_admin'] },
+        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests?status=pending'), roles: ['super_admin'] },
+        { label: `${vipBadge} طلب VIP`, count: vipBadge, icon: Crown, priority: 'low', onClick: () => navigate('/admin/vip?status=pending'), roles: ['super_admin'] },
+        { label: `${banBadge} بلاغ أمني`, count: banBadge, icon: ShieldAlert, priority: 'medium', onClick: () => navigate('/admin/ban?status=pending'), roles: ['super_admin'] },
       );
     } else {
       alerts.push(
-        { label: `${supportBadge} تذكرة جديدة`, count: supportBadge, icon: Headphones, priority: 'medium', onClick: () => navigate('/admin/support'), roles: ['admin'] },
-        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests'), roles: ['admin'] },
+        { label: `${supportBadge} تذكرة جديدة`, count: supportBadge, icon: Headphones, priority: 'medium', onClick: () => navigate('/admin/support?status=escalated'), roles: ['admin'] },
+        { label: `${requestsBadge} طلب متجر`, count: requestsBadge, icon: Inbox, priority: 'low', onClick: () => navigate('/admin/requests?status=pending'), roles: ['admin'] },
       );
     }
     

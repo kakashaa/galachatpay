@@ -375,6 +375,14 @@ class GalaApiService {
     return this.call("hola-chat", "user-full", { uuid });
   }
 
+  async giftReceivedTotal(uuid: string, month?: string) {
+    return this.call("hola-chat", "gift-received-total", { uuid, ...(month ? { month } : {}) });
+  }
+
+  async giftSentTotal(uuid: string, month?: string) {
+    return this.call("hola-chat", "gift-sent-total", { uuid, ...(month ? { month } : {}) });
+  }
+
   // bd-data
   async bdUserMonthlyCharges(uuid: string, month: string) {
     return this.call("bd-data", "user-monthly-charges", { uuid, month });
