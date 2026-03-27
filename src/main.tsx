@@ -2,79 +2,51 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-const VAPID_PUBLIC_KEY = "BETvT-492lkzUXOQyxmQe07e8LmA7xsK_8cpzjkYqq2MMzHs5JMvUU2mZmQHk-LK3QNB1q6ZLlPG5GgXUkTNI4E";
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+// ── Unregister ALL old service workers to fix cached blank screens ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(reg => reg.unregister());
+  });
 }
 
-// Register push notification service worker
+// ── Clear ALL old caches to prevent stale content ──
+if ('caches' in window) {
+  caches.keys().then(names => {
+    names.forEach(name => caches.delete(name));
+  });
+}
+
+// ── Register push notification SW (only for push, no caching) ──
 async function registerPushSW() {
   try {
+    // Don't register in iframes or preview hosts
+    const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
+    const isPreviewHost = window.location.hostname.includes("id-preview--") || window.location.hostname.includes("lovableproject.com");
+    if (isInIframe || isPreviewHost) return;
+
+    if (!('Notification' in window)) return;
+
     const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-    
-    // Request notification permission
+
     if (Notification.permission === "default") {
       await Notification.requestPermission();
     }
 
     if (Notification.permission === "granted") {
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-      console.log("Push subscription:", JSON.stringify(subscription));
-    }
+      const VAPID_PUBLIC_KEY = "BETvT-492lkzUXOQyxmQe07e8LmA7xsK_8cpzjkYqq2MMzHs5JMvUU2mZmQHk-LK3QNB1q6ZLlPG5GgXUkTNI4E";
+      const padding = "=".repeat((4 - (VAPID_PUBLIC_KEY.length % 4)) % 4);
+      const base64 = (VAPID_PUBLIC_KEY + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = window.atob(base64);
+      const applicationServerKey = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) applicationServerKey[i] = rawData.charCodeAt(i);
 
-    // Handle updates
-    registration.addEventListener("updatefound", () => {
-      const newWorker = registration.installing;
-      if (newWorker) {
-        newWorker.addEventListener("statechange", () => {
-          if (newWorker.state === "activated") {
-            window.location.reload();
-          }
-        });
-      }
-    });
+      await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    }
   } catch (err) {
     console.warn("Push SW registration failed:", err);
   }
 }
 
-// Force service worker update & clear ALL old caches
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(reg => {
-      reg.update();
-      if (reg.waiting) {
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      }
-    });
-  });
-
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    window.location.reload();
-  });
-
-  // Register push SW
-  registerPushSW();
-}
-
-// Clear ALL old caches on load to prevent stale content
-if ('caches' in window) {
-  caches.keys().then(names => {
-    names.forEach(name => {
-      caches.delete(name);
-    });
-  });
-}
+registerPushSW();
 
 createRoot(document.getElementById("root")!).render(<App />);
