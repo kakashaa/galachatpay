@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, Search, Bell, Eye, MoreHorizontal, MessageCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTapFeedback } from '@/hooks/use-tap-feedback';
 
 type BottomTab = 'home' | 'search' | 'chat' | 'monitor' | 'favorites';
@@ -12,114 +13,186 @@ interface Props {
   monitorBadge?: number;
 }
 
-const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge, monitorBadge }) => {
+interface NavItem {
+  key: BottomTab;
+  icon: typeof Home;
+  label: string;
+}
+
+const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, monitorBadge = 0 }) => {
   const navigate = useNavigate();
   const tap = useTapFeedback();
-  const [bouncingKey, setBouncingKey] = useState<string | null>(null);
   const adminRole = localStorage.getItem('admin_role');
   const isRegularAdmin = adminRole === 'admin';
 
-  // Role-based nav items
-  // Owner + Super Admin: Home, Search, Notifications, Monitor, More
-  // Admin: Home, Search, Notifications, Chat, More
-  const navItems: { key: BottomTab; icon: typeof Home; label: string; gradient: string }[] = isRegularAdmin
+  const navItems: NavItem[] = isRegularAdmin
     ? [
-        { key: 'home', icon: Home, label: 'الرئيسية', gradient: 'from-amber-400 to-orange-500' },
-        { key: 'search', icon: Search, label: 'بحث', gradient: 'from-teal-400 to-cyan-500' },
-        { key: 'chat', icon: Bell, label: 'إشعارات', gradient: 'from-red-400 to-rose-500' },
-        { key: 'monitor', icon: MessageCircle, label: 'القروب', gradient: 'from-emerald-400 to-teal-500' },
-        { key: 'favorites', icon: MoreHorizontal, label: 'المزيد', gradient: 'from-slate-400 to-slate-500' },
+        { key: 'favorites', icon: MoreHorizontal, label: 'المزيد' },
+        { key: 'monitor', icon: MessageCircle, label: 'القروب' },
+        { key: 'home', icon: Home, label: 'الرئيسية' },
+        { key: 'chat', icon: Bell, label: 'الإشعارات' },
+        { key: 'search', icon: Search, label: 'بحث' },
       ]
     : [
-        { key: 'home', icon: Home, label: 'الرئيسية', gradient: 'from-amber-400 to-orange-500' },
-        { key: 'search', icon: Search, label: 'بحث', gradient: 'from-teal-400 to-cyan-500' },
-        { key: 'chat', icon: Bell, label: 'إشعارات', gradient: 'from-red-400 to-rose-500' },
-        { key: 'monitor', icon: Eye, label: 'المراقبة', gradient: 'from-blue-400 to-indigo-500' },
-        { key: 'favorites', icon: MoreHorizontal, label: 'المزيد', gradient: 'from-slate-400 to-slate-500' },
+        { key: 'favorites', icon: MoreHorizontal, label: 'المزيد' },
+        { key: 'monitor', icon: Eye, label: 'المراقبة' },
+        { key: 'home', icon: Home, label: 'الرئيسية' },
+        { key: 'chat', icon: Bell, label: 'الإشعارات' },
+        { key: 'search', icon: Search, label: 'بحث' },
       ];
 
-  const handleTap = (item: typeof navItems[0]) => {
+  const handleTap = (item: NavItem) => {
     tap();
-    setBouncingKey(item.key);
-    setTimeout(() => {
-      setBouncingKey(null);
-      if (item.key === 'monitor') {
-        // For admin: go to chat; for others: go to monitor
-        if (isRegularAdmin) {
-          navigate('/admin/chat');
-        } else {
-          navigate('/admin/monitor');
-        }
-        return;
+
+    if (item.key === 'monitor') {
+      if (isRegularAdmin) {
+        navigate('/admin/chat');
+      } else {
+        navigate('/admin/monitor');
       }
-      if (item.key === 'chat') { navigate('/admin/chat'); return; }
-      onChange(item.key);
-    }, 400);
+      return;
+    }
+
+    if (item.key === 'chat') {
+      navigate('/admin/chat');
+      return;
+    }
+
+    onChange(item.key);
+  };
+
+  const getBadge = (key: BottomTab) => {
+    if (key === 'chat') return chatBadge;
+    if (key === 'monitor' && !isRegularAdmin) return monitorBadge;
+    return 0;
   };
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 pointer-events-none z-50"
+      className="fixed inset-x-0 bottom-0 z-50 pointer-events-none"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <div className="pointer-events-auto max-w-[448px] mx-auto px-6 mb-4">
-        <div
-          className="flex items-center justify-evenly rounded-[28px] px-3 py-2.5"
+      <div className="pointer-events-auto mx-auto mb-3 max-w-[460px] px-4">
+        <motion.nav
+          initial={{ y: 70, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.05 }}
+          className="relative flex items-end justify-between rounded-[30px] border border-border/50 px-2 py-2"
           style={{
-            background: 'rgba(0,0,0,0.6)',
-            backdropFilter: 'blur(40px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(40px) saturate(180%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+            background: 'linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.95))',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+            boxShadow: '0 18px 50px -16px hsl(var(--background) / 0.9), 0 0 0 1px hsl(var(--foreground) / 0.05) inset',
           }}
         >
           {navItems.map((item) => {
-            const isActive = active === item.key;
             const Icon = item.icon;
-            const isChatTab = item.key === 'chat';
-            const isBouncing = bouncingKey === item.key;
+            const isActive = item.key === active;
+            const isHome = item.key === 'home';
+            const badge = getBadge(item.key);
+
+            if (isHome) {
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => handleTap(item)}
+                  className="relative -mt-6 flex flex-col items-center"
+                >
+                  <motion.div
+                    whileTap={{ scale: 0.88 }}
+                    whileHover={{ scale: 1.06 }}
+                    animate={{ y: isActive ? -1 : 0 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+                    className="relative flex h-14 w-14 items-center justify-center rounded-full"
+                    style={{
+                      background: 'linear-gradient(140deg, hsl(var(--primary)), hsl(var(--primary) / 0.72))',
+                      boxShadow: '0 12px 26px -10px hsl(var(--primary) / 0.8)',
+                    }}
+                  >
+                    <Home className="h-6 w-6 text-primary-foreground" strokeWidth={2.2} />
+                    <AnimatePresence>
+                      {isActive && (
+                        <motion.span
+                          initial={{ scale: 0.7, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.7, opacity: 0 }}
+                          className="absolute inset-[-4px] rounded-full border-2 border-primary/40"
+                        />
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                  <span className="mt-1 text-[10px] font-bold text-primary">{item.label}</span>
+                </button>
+              );
+            }
 
             return (
               <button
                 key={item.key}
                 onClick={() => handleTap(item)}
-                className="relative flex flex-col items-center gap-1.5"
+                className="relative flex min-w-[66px] flex-col items-center"
               >
-                <div
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 ${
-                    isActive
-                      ? `bg-gradient-to-br ${item.gradient} shadow-lg`
-                      : 'bg-white/[0.07] hover:bg-white/[0.12]'
-                  } ${isBouncing ? 'animate-mac-bounce' : ''}`}
+                <motion.div
+                  whileTap={{ scale: 0.84 }}
+                  animate={{ y: isActive ? -2 : 0 }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 22 }}
+                  className="relative flex h-11 w-11 items-center justify-center rounded-2xl"
                 >
+                  <AnimatePresence>
+                    {isActive && (
+                      <motion.span
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.7, opacity: 0 }}
+                        className="absolute inset-0 rounded-2xl bg-primary/15"
+                      />
+                    )}
+                  </AnimatePresence>
+
                   <Icon
-                    className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-500'}`}
-                    strokeWidth={1.8}
+                    className={`relative h-5 w-5 transition-colors duration-200 ${
+                      isActive ? 'text-primary' : 'text-muted-foreground'
+                    }`}
+                    strokeWidth={isActive ? 2.2 : 1.8}
                   />
-                </div>
-                {isChatTab && chatBadge && chatBadge > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[8px] text-white font-bold flex items-center justify-center px-1 bg-red-500 shadow-md shadow-red-500/50"
-                    style={{ border: '2px solid rgba(0,0,0,0.6)' }}
-                  >
-                    {chatBadge > 99 ? '99+' : chatBadge}
-                  </span>
-                )}
-                {item.key === 'monitor' && !isRegularAdmin && monitorBadge && monitorBadge > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 min-w-[16px] h-[16px] rounded-full text-[8px] text-white font-bold flex items-center justify-center px-1 bg-red-500 shadow-md shadow-red-500/50 animate-pulse"
-                    style={{ border: '2px solid rgba(0,0,0,0.6)' }}
-                  >
-                    {monitorBadge > 99 ? '99+' : monitorBadge}
-                  </span>
-                )}
-                {isActive && (
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
-                )}
+
+                  <AnimatePresence>
+                    {badge > 0 && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        className="absolute -right-1 top-0 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[8px] font-black text-destructive-foreground"
+                        style={{ boxShadow: '0 4px 10px -4px hsl(var(--destructive) / 0.8)' }}
+                      >
+                        {badge > 99 ? '99+' : badge}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                <span
+                  className={`mt-0.5 text-[9px] font-bold transition-colors duration-200 ${
+                    isActive ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {item.label}
+                </span>
+
+                <AnimatePresence>
+                  {isActive && (
+                    <motion.span
+                      initial={{ width: 0, opacity: 0 }}
+                      animate={{ width: 16, opacity: 1 }}
+                      exit={{ width: 0, opacity: 0 }}
+                      className="mt-1 h-[2px] rounded-full bg-primary"
+                    />
+                  )}
+                </AnimatePresence>
               </button>
             );
           })}
-        </div>
+        </motion.nav>
       </div>
     </div>
   );
