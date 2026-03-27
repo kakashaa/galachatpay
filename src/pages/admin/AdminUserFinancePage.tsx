@@ -56,13 +56,13 @@ const AdminUserFinancePage: React.FC = () => {
     
     try {
       // Fetch all data in parallel using WORKING APIs
-      const [chargesRes, giftsRecRes, giftsSentRes, userFullRes, awsUserRes, salaryRes] = await Promise.all([
+      const [totalRes, chargesRes, giftsRecRes, giftsSentRes, userFullRes, salaryRes] = await Promise.all([
+        // Total charges (charges + coin_logs) — same number as production dashboard
+        galaApi.userTotalCharges(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.userMonthlyCharges(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.giftReceivedTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.giftSentTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.userFull(uuid.trim()).catch(() => null),
-        // AWS user-info has 'di' (balance) via gala-proxy (HTTPS)
-        galaApi.awsUserInfo(uuid.trim()).catch(() => null),
         supabase.from("salary_requests")
           .select("*")
           .eq("uuid", uuid.trim())
@@ -71,18 +71,19 @@ const AdminUserFinancePage: React.FC = () => {
           .order("created_at", { ascending: false }),
       ]);
 
+      // Total charges from production dashboard (charges + coin_logs)
+      const totalData = totalRes?.data || {};
+      const totalCharged = totalData.total_charges || 0;
+      const currentBalance = totalData.balance || 0;
+      
+      // Detailed charges from monthly API
       const chargesData = chargesRes?.data || {};
-      const totalCharged = chargesData.total_charges || 0;
       const charges: ChargeItem[] = chargesData.charges || [];
       
-      // Gifts from user-full (has total_received/total_sent) + gift-received-total API
+      // Gifts
       const userInfo = userFullRes?.data || {};
       const totalGiftsReceived = giftsRecRes?.data?.total_received || userInfo.total_received || 0;
       const totalGiftsSent = giftsSentRes?.data?.total_sent || userInfo.total_sent || 0;
-      
-      // Balance from AWS user-info (has 'di' field)
-      const awsData = awsUserRes?.data || {};
-      const currentBalance = awsData.di || userInfo.di || userInfo.diamonds || userInfo.balance || 0;
       
       const profit = totalGiftsReceived - totalCharged;
       const monthDate = new Date(selectedMonth + "-01");
