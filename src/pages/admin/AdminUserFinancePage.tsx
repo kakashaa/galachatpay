@@ -61,7 +61,7 @@ const AdminUserFinancePage: React.FC = () => {
         galaApi.giftReceivedTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.giftSentTotal(uuid.trim(), selectedMonth).catch(() => null),
         galaApi.userFull(uuid.trim()).catch(() => null),
-        supabase.from("salary_requests")
+        (supabase as any).from("salary_requests")
           .select("*")
           .eq("uuid", uuid.trim())
           .gte("created_at", `${selectedMonth}-01`)
