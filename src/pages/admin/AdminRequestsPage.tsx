@@ -44,9 +44,18 @@ const isVideo = (url: string) => {
 };
 
 const AdminRequestsPage: React.FC = () => {
+  const location = useLocation();
   const { adminCall, handleLogout } = useAdminSession();
   const [activeTab, setActiveTab] = useState<ReqTab>("entries");
-  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected">("pending");
+
+  /* Read initial status filter from URL query param */
+  const initialStatusFilter = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const s = params.get('status');
+    if (s === 'pending' || s === 'approved' || s === 'rejected') return s;
+    return 'pending';
+  }, []);
+  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected">(initialStatusFilter);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
