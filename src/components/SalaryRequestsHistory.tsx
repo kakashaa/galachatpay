@@ -209,7 +209,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             account_name: r.recipient_name || undefined,
             account_number: r.payment_details || undefined,
             admin_note: r.admin_note || undefined,
-            transfer_image_url: r.transfer_image_url || undefined,
+            transfer_image_url: r.receipt_url || r.transfer_image_url || undefined,
             rejection_image_url: r.rejection_image_url || undefined,
             request_type: r.request_type || undefined,
             target_name: r.target_name || undefined,

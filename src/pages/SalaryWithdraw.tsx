@@ -717,10 +717,19 @@ const SalaryWithdraw: React.FC = () => {
                   <Wallet className="w-5 h-5 text-emerald-400" />
                   <span className="font-bold text-foreground">راتب المضيف</span>
                 </div>
-                <span className="text-lg font-black text-emerald-400" dir="ltr">${hostAvail.toFixed(2)}</span>
+                <div className="flex items-center gap-2">
+                  {pathMode === "cash" && hostCashUsed && <span className="text-base">🔒</span>}
+                  <span className="text-lg font-black text-emerald-400" dir="ltr">${hostAvail.toFixed(2)}</span>
+                </div>
               </div>
               {pathMode === "cash" && hostCashUsed && (
-                <p className="text-[10px] text-amber-400">⚠️ تم السحب النقدي هذا الشهر</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px]">🔒</span>
+                  <p className="text-[10px] text-amber-400 font-bold">استخدمت سحب راتب المضيف هذا الشهر</p>
+                </div>
+              )}
+              {pathMode === "cash" && !hostCashUsed && (
+                <p className="text-[10px] text-emerald-400">✅ متاح للسحب</p>
               )}
             </motion.button>
 
@@ -739,7 +748,7 @@ const SalaryWithdraw: React.FC = () => {
               className={cn(
                 "w-full rounded-2xl border p-5 text-right space-y-2 transition-all",
                 pathMode === "cash" && agencyCashUsed
-                  ? "opacity-50 border-border/20 bg-muted/5"
+                  ? "opacity-50 border-border/20 bg-muted/5 cursor-not-allowed"
                   : "border-violet-500/20 bg-violet-500/5 active:scale-[0.98]"
               )}
             >
@@ -748,10 +757,19 @@ const SalaryWithdraw: React.FC = () => {
                   <Building2 className="w-5 h-5 text-violet-400" />
                   <span className="font-bold text-foreground">راتب الوكالة</span>
                 </div>
-                <span className="text-lg font-black text-violet-400" dir="ltr">${agencyAvail.toFixed(2)}</span>
+                <div className="flex items-center gap-2">
+                  {pathMode === "cash" && agencyCashUsed && <span className="text-base">🔒</span>}
+                  <span className="text-lg font-black text-violet-400" dir="ltr">${agencyAvail.toFixed(2)}</span>
+                </div>
               </div>
               {pathMode === "cash" && agencyCashUsed && (
-                <p className="text-[10px] text-amber-400">⚠️ تم السحب النقدي هذا الشهر</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px]">🔒</span>
+                  <p className="text-[10px] text-amber-400 font-bold">استخدمت سحب راتب الوكالة هذا الشهر</p>
+                </div>
+              )}
+              {pathMode === "cash" && !agencyCashUsed && (
+                <p className="text-[10px] text-violet-400">✅ متاح للسحب</p>
               )}
             </motion.button>
           </div>
