@@ -43,21 +43,14 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, moni
 
   const handleTap = (item: NavItem) => {
     tap();
-
     if (item.key === 'monitor') {
-      if (isRegularAdmin) {
-        navigate('/admin/chat');
-      } else {
-        navigate('/admin/monitor');
-      }
+      navigate(isRegularAdmin ? '/admin/chat' : '/admin/monitor');
       return;
     }
-
     if (item.key === 'chat') {
       navigate('/admin/chat');
       return;
     }
-
     onChange(item.key);
   };
 
@@ -74,15 +67,16 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, moni
     >
       <div className="pointer-events-auto mx-auto mb-3 max-w-[460px] px-4">
         <motion.nav
-          initial={{ y: 70, opacity: 0 }}
+          initial={{ y: 60, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.05 }}
-          className="relative flex items-end justify-between rounded-[30px] border border-border/50 px-2 py-2"
+          transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.05 }}
+          className="relative flex items-end justify-evenly rounded-[28px] px-1.5 py-2"
           style={{
-            background: 'linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--background) / 0.95))',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-            boxShadow: '0 18px 50px -16px hsl(var(--background) / 0.9), 0 0 0 1px hsl(var(--foreground) / 0.05) inset',
+            background: 'linear-gradient(170deg, rgba(20, 16, 8, 0.94), rgba(10, 8, 4, 0.97))',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid rgba(245, 158, 11, 0.15)',
+            boxShadow: '0 20px 50px -12px rgba(0,0,0,0.8), 0 0 0 1px rgba(245,158,11,0.08) inset, 0 -4px 20px -4px rgba(245,158,11,0.06) inset',
           }}
         >
           {navItems.map((item) => {
@@ -96,32 +90,41 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, moni
                 <button
                   key={item.key}
                   onClick={() => handleTap(item)}
-                  className="relative -mt-6 flex flex-col items-center"
+                  className="relative -mt-5 flex flex-col items-center"
                 >
                   <motion.div
                     whileTap={{ scale: 0.88 }}
-                    whileHover={{ scale: 1.06 }}
-                    animate={{ y: isActive ? -1 : 0 }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 20 }}
-                    className="relative flex h-14 w-14 items-center justify-center rounded-full"
+                    whileHover={{ scale: 1.05 }}
+                    animate={isActive ? {
+                      boxShadow: [
+                        '0 8px 28px -6px rgba(245,158,11,0.6)',
+                        '0 8px 36px -6px rgba(245,158,11,0.8)',
+                        '0 8px 28px -6px rgba(245,158,11,0.6)',
+                      ],
+                    } : {
+                      boxShadow: '0 8px 24px -6px rgba(245,158,11,0.5)',
+                    }}
+                    transition={isActive ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : { type: 'spring' }}
+                    className="relative flex h-[52px] w-[52px] items-center justify-center rounded-full"
                     style={{
-                      background: 'linear-gradient(140deg, hsl(var(--primary)), hsl(var(--primary) / 0.72))',
-                      boxShadow: '0 12px 26px -10px hsl(var(--primary) / 0.8)',
+                      background: 'linear-gradient(140deg, #f59e0b, #d97706)',
                     }}
                   >
-                    <Home className="h-6 w-6 text-primary-foreground" strokeWidth={2.2} />
+                    <Home className="h-6 w-6 text-black" strokeWidth={2.2} />
+
                     <AnimatePresence>
                       {isActive && (
                         <motion.span
-                          initial={{ scale: 0.7, opacity: 0 }}
+                          initial={{ scale: 0.8, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.7, opacity: 0 }}
-                          className="absolute inset-[-4px] rounded-full border-2 border-primary/40"
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          className="absolute inset-[-3px] rounded-full"
+                          style={{ border: '2px solid rgba(245,158,11,0.4)' }}
                         />
                       )}
                     </AnimatePresence>
                   </motion.div>
-                  <span className="mt-1 text-[10px] font-bold text-primary">{item.label}</span>
+                  <span className="mt-1 text-[10px] font-bold" style={{ color: '#f59e0b' }}>{item.label}</span>
                 </button>
               );
             }
@@ -130,30 +133,30 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, moni
               <button
                 key={item.key}
                 onClick={() => handleTap(item)}
-                className="relative flex min-w-[66px] flex-col items-center"
+                className="relative flex min-w-[58px] flex-col items-center"
               >
                 <motion.div
-                  whileTap={{ scale: 0.84 }}
+                  whileTap={{ scale: 0.85 }}
                   animate={{ y: isActive ? -2 : 0 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 22 }}
-                  className="relative flex h-11 w-11 items-center justify-center rounded-2xl"
+                  transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+                  className="relative flex h-10 w-10 items-center justify-center rounded-2xl"
                 >
                   <AnimatePresence>
                     {isActive && (
                       <motion.span
-                        initial={{ scale: 0.7, opacity: 0 }}
+                        initial={{ scale: 0.6, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.7, opacity: 0 }}
-                        className="absolute inset-0 rounded-2xl bg-primary/15"
+                        exit={{ scale: 0.6, opacity: 0 }}
+                        className="absolute inset-0 rounded-2xl"
+                        style={{ background: 'rgba(245,158,11,0.12)' }}
                       />
                     )}
                   </AnimatePresence>
 
                   <Icon
-                    className={`relative h-5 w-5 transition-colors duration-200 ${
-                      isActive ? 'text-primary' : 'text-muted-foreground'
-                    }`}
-                    strokeWidth={isActive ? 2.2 : 1.8}
+                    className="relative h-5 w-5 transition-colors duration-200"
+                    style={{ color: isActive ? '#f59e0b' : 'rgba(255,255,255,0.4)' }}
+                    strokeWidth={isActive ? 2.2 : 1.7}
                   />
 
                   <AnimatePresence>
@@ -162,8 +165,11 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, moni
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         exit={{ scale: 0 }}
-                        className="absolute -right-1 top-0 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[8px] font-black text-destructive-foreground"
-                        style={{ boxShadow: '0 4px 10px -4px hsl(var(--destructive) / 0.8)' }}
+                        className="absolute -right-1 top-0 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[8px] font-black text-white"
+                        style={{
+                          background: '#ef4444',
+                          boxShadow: '0 4px 12px -3px rgba(239,68,68,0.7)',
+                        }}
                       >
                         {badge > 99 ? '99+' : badge}
                       </motion.span>
@@ -172,9 +178,8 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, moni
                 </motion.div>
 
                 <span
-                  className={`mt-0.5 text-[9px] font-bold transition-colors duration-200 ${
-                    isActive ? 'text-foreground' : 'text-muted-foreground'
-                  }`}
+                  className="mt-0.5 text-[9px] font-bold transition-colors duration-200"
+                  style={{ color: isActive ? '#fbbf24' : 'rgba(255,255,255,0.35)' }}
                 >
                   {item.label}
                 </span>
@@ -183,9 +188,10 @@ const AdminBottomNav: React.FC<Props> = ({ active, onChange, chatBadge = 0, moni
                   {isActive && (
                     <motion.span
                       initial={{ width: 0, opacity: 0 }}
-                      animate={{ width: 16, opacity: 1 }}
+                      animate={{ width: 14, opacity: 1 }}
                       exit={{ width: 0, opacity: 0 }}
-                      className="mt-1 h-[2px] rounded-full bg-primary"
+                      className="mt-0.5 h-[2px] rounded-full"
+                      style={{ background: '#f59e0b' }}
                     />
                   )}
                 </AnimatePresence>
