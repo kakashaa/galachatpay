@@ -187,8 +187,15 @@ const SalaryHome: React.FC = () => {
 
   const cashUsedThisMonth = cashResetOverride ? false : ((host?.cash_used_this_month || false) || (agency?.cash_used_this_month || false));
 
+  // Cash withdrawal only available in last 24h of month
+  const now = new Date();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const hoursUntilMonthEnd = (lastDayOfMonth.getTime() + 86400000 - now.getTime()) / 3600000;
+  const isCashWindowOpen = hoursUntilMonthEnd <= 24;
+  const cashLocked = cashUsedThisMonth || !isCashWindowOpen;
+
   const options = [
-    { id: "cash", icon: Wallet, label: "سحب نقدي", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", route: "/salary/cash", locked: cashUsedThisMonth },
+    { id: "cash", icon: Wallet, label: "سحب نقدي", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", route: "/salary/cash", locked: cashLocked },
     { id: "charge_self", icon: Coins, label: "شحن لحسابي", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", route: "/salary/charge-self", locked: false },
     { id: "charge_other", icon: Gift, label: "شحن لآخر", color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20", route: "/salary/charge-other", locked: false },
     { id: "instant", icon: Zap, label: "سحب فوري", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20", route: "/salary/instant", locked: false },
@@ -300,10 +307,15 @@ const SalaryHome: React.FC = () => {
               })}
             </div>
 
-            {cashUsedThisMonth && (
+            {cashLocked && (
               <div className="flex items-center justify-center gap-1 text-[10px] text-amber-400">
                 <Lock className="w-3 h-3" />
-                <span>تم استخدام السحب النقدي هذا الشهر</span>
+                <span>
+                  {cashUsedThisMonth
+                    ? "تم استخدام السحب النقدي هذا الشهر"
+                    : `السحب النقدي يفتح آخر 24 ساعة من الشهر (${lastDayOfMonth.getDate()}/${lastDayOfMonth.getMonth() + 1})`
+                  }
+                </span>
               </div>
             )}
 

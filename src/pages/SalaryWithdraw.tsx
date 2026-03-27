@@ -936,13 +936,18 @@ const SalaryWithdraw: React.FC = () => {
                 const isApproved = us === "approved" || us === "delivered";
                 const isRejected = us === "rejected";
                 const isPending = us === "pending" || us === "review";
-                const statusLabel = isApproved ? "تم الاستلام" : isRejected ? "تم الرفض" : isPending ? "قيد المراجعة" : "منتهية الصلاحية";
-                const statusColor = isApproved ? "text-emerald-400" : isRejected ? "text-red-400" : isPending ? "text-yellow-400" : "text-amber-400";
-                const borderColor = isApproved ? "border-emerald-500/15 bg-emerald-500/5" : isRejected ? "border-red-500/15 bg-red-500/5" : isPending ? "border-yellow-500/15 bg-yellow-500/5" : "border-amber-500/15 bg-amber-500/5";
+                const isExpiredTime = !isApproved && !isRejected && !isPending && (t.hours_old === undefined || (t.hours_old || 0) > 2);
+                const statusLabel = isApproved ? "تم الاستلام" : isRejected ? "تم الرفض" : isPending ? "قيد المراجعة" : isExpiredTime ? "⏰ انتهى الوقت" : "منتهية الصلاحية";
+                const statusColor = isApproved ? "text-emerald-400" : isRejected ? "text-red-400" : isPending ? "text-yellow-400" : isExpiredTime ? "text-red-500" : "text-amber-400";
+                const borderColor = isApproved ? "border-emerald-500/15 bg-emerald-500/5" : isRejected ? "border-red-500/15 bg-red-500/5" : isPending ? "border-yellow-500/15 bg-yellow-500/5" : isExpiredTime ? "border-red-500/20 bg-red-500/5" : "border-amber-500/15 bg-amber-500/5";
                 return (
                   <div
                     key={t.reference_id || i}
-                    className={`w-full rounded-xl border ${borderColor} p-3 text-right opacity-70`}
+                    className={`w-full rounded-xl border ${borderColor} p-3 text-right`}
+                    onClick={() => {
+                      if (isExpiredTime) navigate("/support");
+                    }}
+                    style={{ cursor: isExpiredTime ? "pointer" : "default" }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -954,6 +959,9 @@ const SalaryWithdraw: React.FC = () => {
                       <div className="text-left">
                         <p className={`text-[10px] font-bold ${statusColor}`}>{statusLabel}</p>
                         <p className="text-[9px] text-muted-foreground">{timeStr}</p>
+                        {isExpiredTime && (
+                          <p className="text-[9px] text-red-400 font-bold mt-0.5">اضغط للتواصل مع الإدارة →</p>
+                        )}
                       </div>
                     </div>
                   </div>
