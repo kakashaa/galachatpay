@@ -39,10 +39,10 @@ const AdminUserFinancePage: React.FC = () => {
       const [userRes, salaryRes] = await Promise.all([
         fetch(`${AWS_API}?key=${API_KEY}&action=user-info&uuid=${uuid.trim()}`).then(r => r.json()),
         supabase.from("salary_requests")
-          .select("*")
+          .select("amount_usd, request_type, status, created_at")
           .eq("uuid", uuid.trim())
           .order("created_at", { ascending: false })
-          .limit(20),
+          .limit(20) as any,
       ]);
 
       if (!userRes?.ok || !userRes?.data) {
