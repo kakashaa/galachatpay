@@ -64,6 +64,8 @@ interface TransferItem {
   time: string;
   to_uuid?: string;
   from_uuid?: string;
+  within_2h?: boolean;
+  hours_old?: number;
 }
 
 interface SalaryCountry {
@@ -342,6 +344,8 @@ const SalaryWithdraw: React.FC = () => {
         time: t.time || t.created_at || "",
         to_uuid: String(t.to_uuid || t.receiver_uuid || "10000"),
         from_uuid: String(t.from_uuid || t.sender_uuid || ""),
+        within_2h: t.within_2h,
+        hours_old: t.hours_old,
       });
 
       const list: TransferItem[] = allTransfers
@@ -353,12 +357,16 @@ const SalaryWithdraw: React.FC = () => {
           if (usedIds.has(refId)) return false;
           if (t.is_used) return false;
           if (t.selectable === false) return false; // API says not selectable
-          if (isCashMode && date !== today) return false;
           if (isCashMode) {
-            const transferTime = new Date(t.time || t.created_at || "");
-            const now = new Date();
-            const hoursOld = (now.getTime() - transferTime.getTime()) / (1000 * 60 * 60);
-            if (hoursOld > 2) return false;
+            // Server-side time check (within_2h from API) — most reliable
+            if (t.within_2h === false) return false;
+            // Fallback: client-side check if server didn't provide within_2h
+            if (t.within_2h === undefined) {
+              const transferTime = new Date(t.time || t.created_at || "");
+              const now = new Date();
+              const hoursOld = (now.getTime() - transferTime.getTime()) / (1000 * 60 * 60);
+              if (hoursOld > 2) return false;
+            }
           }
           return true;
         })
@@ -901,6 +909,11 @@ const SalaryWithdraw: React.FC = () => {
                         </div>
                         <div className="text-left">
                           <p className="text-xs text-muted-foreground">{timeStr}</p>
+                          {t.hours_old !== undefined && (
+                            <p className={`text-[9px] font-bold ${(t.hours_old || 0) <= 2 ? "text-emerald-400" : "text-amber-400"}`}>
+                              {(t.hours_old || 0) <= 2 ? `منذ ${t.hours_old}س ✅` : `منذ ${t.hours_old}س ⚠️`}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </motion.button>
