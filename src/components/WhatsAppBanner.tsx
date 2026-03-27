@@ -193,6 +193,9 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
       // Cache verified status in localStorage for instant checks
       localStorage.setItem('wa_verified_' + userUuid, fullPhone);
 
+      // Permanently dismiss the banner since user is now verified
+      dismissWhatsAppBanner();
+
       toast.success('✅ تم تسجيل رقمك بنجاح!');
       onSuccess();
     } catch {
