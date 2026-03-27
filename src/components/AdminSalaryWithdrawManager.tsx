@@ -925,6 +925,19 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                     <Eye className="w-3.5 h-3.5" /> عرض الإيصال
                   </button>
                 )}
+
+                {/* User-uploaded supporter receipt from Supabase */}
+                {(detailReq as any).transfer_image_url && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-amber-400 flex items-center gap-1.5">
+                      <Upload className="w-3 h-3" /> إيصال تحويل الداعم (مرفق من المستخدم)
+                    </p>
+                    <button onClick={() => setImagePreview((detailReq as any).transfer_image_url)}
+                      className="w-full rounded-xl overflow-hidden border border-amber-500/20 hover:border-amber-500/40 transition-colors">
+                      <img src={(detailReq as any).transfer_image_url} alt="supporter receipt" className="w-full h-40 object-cover" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Salary report */}

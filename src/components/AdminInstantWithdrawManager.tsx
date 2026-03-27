@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  CheckCircle, XCircle, Clock, Search, Upload,
+  CheckCircle, XCircle, Clock, Search, Upload, FileText,
   Loader2, Image, User, Hash,
   MessageSquare, ClipboardList, Zap,
   Eye, Phone, Building2, Coins,
@@ -545,10 +545,47 @@ const AdminInstantWithdrawManager: React.FC<Props> = ({ canAct }) => {
                 </div>
               )}
 
-              {detailReq.transfer_image_url && (
+              {/* User-uploaded receipt (supporter receipt from payment_details) */}
+              {(() => {
+                let supporterReceipt = "";
+                try {
+                  const pd = JSON.parse(detailReq.payment_details || "{}");
+                  supporterReceipt = pd.supporter_receipt_url || "";
+                } catch {}
+                // Fall back to transfer_image_url if no admin has overwritten it yet
+                const receiptUrl = supporterReceipt || (detailReq.status === "pending" ? detailReq.transfer_image_url : "");
+                if (!receiptUrl) return null;
+                return (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider border-b border-white/5 pb-1 flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5 text-amber-400" /> إيصال تحويل الداعم
+                    </p>
+                    {receiptUrl.endsWith(".pdf") ? (
+                      <a href={receiptUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-amber-500/5 border border-amber-500/15 rounded-xl text-xs text-amber-400 hover:bg-amber-500/10 transition-colors">
+                        <Eye className="w-4 h-4" /> عرض إيصال الداعم (PDF)
+                      </a>
+                    ) : (
+                      <div className="space-y-2">
+                        <button onClick={() => setImagePreview(receiptUrl)}
+                          className="w-full rounded-xl overflow-hidden border border-amber-500/20 hover:border-amber-500/40 transition-colors">
+                          <img src={receiptUrl} alt="supporter receipt" className="w-full h-40 object-cover" />
+                        </button>
+                        <button onClick={() => setImagePreview(receiptUrl)}
+                          className="flex items-center gap-2 text-xs text-amber-400 hover:underline">
+                          <Eye className="w-3.5 h-3.5" /> عرض الإيصال بالحجم الكامل
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Admin transfer receipt */}
+              {detailReq.transfer_image_url && detailReq.status !== "pending" && (
                 <button onClick={() => setImagePreview(detailReq.transfer_image_url)}
                   className="flex items-center gap-2 text-xs text-primary hover:underline">
-                  <Eye className="w-3.5 h-3.5" /> عرض إيصال التحويل
+                  <Eye className="w-3.5 h-3.5" /> عرض إيصال التحويل (الأدمن)
                 </button>
               )}
 

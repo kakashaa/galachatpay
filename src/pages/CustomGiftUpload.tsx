@@ -91,13 +91,35 @@ const CustomGiftUpload: React.FC = () => {
     setThumbnailPreview(URL.createObjectURL(file));
   };
 
+  const [videoError, setVideoError] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const SUPPORTED_VIDEO_FORMATS = [
+    "video/mp4", "video/quicktime", "video/webm", "video/x-m4v",
+  ];
+  const MAX_VIDEO_SIZE_MB = 50;
+
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("حجم الفيديو يجب أن لا يتجاوز 8 ميغابايت");
+    setVideoError("");
+
+    // Validate format
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const isValidType = SUPPORTED_VIDEO_FORMATS.includes(file.type) || ["mp4", "mov", "webm", "m4v"].includes(ext);
+    if (!isValidType) {
+      setVideoError(`الصيغة غير مدعومة (${ext || file.type}) — الصيغ المقبولة: MP4, MOV, WebM`);
+      toast.error("الصيغة غير مدعومة — يجب أن يكون الفيديو MP4 أو MOV أو WebM");
       return;
     }
+
+    // Validate size (max 50MB now)
+    if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+      setVideoError(`حجم الفيديو ${(file.size / 1024 / 1024).toFixed(1)} MB — الحد الأقصى ${MAX_VIDEO_SIZE_MB} ميغابايت`);
+      toast.error(`حجم الفيديو يجب أن لا يتجاوز ${MAX_VIDEO_SIZE_MB} ميغابايت`);
+      return;
+    }
+
     setVideoFile(file);
     setVideoDuration(0);
     // Get video duration
@@ -138,25 +160,56 @@ const CustomGiftUpload: React.FC = () => {
     }
 
     setUploading(true);
+    setUploadProgress(0);
+    setVideoError("");
     try {
       let uploadedVideoUrl: string | null = null;
       let uploadedThumbnailUrl: string | null = null;
 
       // Upload video file if provided
       if (videoFile) {
-        const { secureUpload } = await import("@/utils/secureUpload");
-        const ext = videoFile.name.split(".").pop();
-        const videoPath = `custom-gifts/${user.uuid}_${Date.now()}.${ext}`;
-        uploadedVideoUrl = await secureUpload({
-          file: videoFile,
-          bucket: "videos",
-          path: videoPath,
-          userUuid: user.uuid,
-        });
+        setUploadProgress(5);
+        try {
+          // For video files, upload directly to Supabase storage (skip secureUpload which compresses images)
+          const ext = videoFile.name.split(".").pop() || "mp4";
+          const videoPath = `custom-gifts/${user.uuid}_${Date.now()}.${ext}`;
+          setUploadProgress(15);
+
+          const { error: uploadError } = await supabase.storage
+            .from("videos")
+            .upload(videoPath, videoFile, {
+              contentType: videoFile.type || "video/mp4",
+              upsert: false,
+            });
+
+          if (uploadError) {
+            // Fallback to secureUpload if direct upload fails
+            console.warn("Direct upload failed, trying secureUpload:", uploadError);
+            const { secureUpload } = await import("@/utils/secureUpload");
+            setUploadProgress(30);
+            uploadedVideoUrl = await secureUpload({
+              file: videoFile,
+              bucket: "videos",
+              path: videoPath,
+              userUuid: user.uuid,
+            });
+          } else {
+            const { data: urlData } = supabase.storage.from("videos").getPublicUrl(videoPath);
+            uploadedVideoUrl = urlData?.publicUrl || null;
+          }
+          setUploadProgress(70);
+        } catch (videoErr: any) {
+          const errMsg = videoErr?.message || "";
+          if (errMsg.includes("Payload too large") || errMsg.includes("413")) {
+            throw new Error(`حجم الفيديو كبير جداً للخادم (${(videoFile.size / 1024 / 1024).toFixed(1)} MB) — جرب فيديو أصغر أو ارفع رابط`);
+          }
+          throw new Error(`فشل رفع الفيديو: ${errMsg || "خطأ غير معروف"}`);
+        }
       }
 
       // Upload thumbnail file if provided
       if (thumbnailFile) {
+        setUploadProgress(80);
         const { secureUpload } = await import("@/utils/secureUpload");
         const thumbExt = thumbnailFile.name.split(".").pop();
         const thumbPath = `custom-gifts/thumb_${user.uuid}_${Date.now()}.${thumbExt}`;
@@ -167,6 +220,7 @@ const CustomGiftUpload: React.FC = () => {
           userUuid: user.uuid,
         });
       }
+      setUploadProgress(90);
 
       // Use uploaded file URL as primary, fall back to manual URL
       const finalVideoUrl = uploadedVideoUrl || videoUrl.trim();
@@ -231,11 +285,15 @@ const CustomGiftUpload: React.FC = () => {
         });
       } catch { /* silent - trigger is backup */ }
 
+      setUploadProgress(100);
       setSubmitted(true);
     } catch (err: any) {
-      toast.error(err?.message || "فشل الرفع");
+      const errMsg = err?.message || "فشل الرفع";
+      setVideoError(errMsg);
+      toast.error(errMsg);
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -436,15 +494,15 @@ const CustomGiftUpload: React.FC = () => {
             فيديو الهدية *
           </h3>
           <ul className="text-[11px] text-muted-foreground space-y-1">
-            <li>• صيغة الفيديو: MP4 فقط</li>
-            <li>• الحد الأقصى للحجم: 8 ميغابايت</li>
+            <li>• صيغة الفيديو: MP4, MOV, WebM</li>
+            <li>• الحد الأقصى للحجم: {MAX_VIDEO_SIZE_MB} ميغابايت</li>
             <li>• الحد الأقصى للمدة: {maxDuration} ثانية (حسب مستواك)</li>
             <li>• هدية واحدة لكل مستوى</li>
             <li>• سعر الهدية: 20,000 كوينز</li>
           </ul>
           <input
             type="file"
-            accept="video/mp4,video/webm"
+            accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
             onChange={handleVideoChange}
             className="w-full text-sm file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 bg-muted/20 border border-border/30 rounded-lg p-1"
           />
@@ -470,6 +528,28 @@ const CustomGiftUpload: React.FC = () => {
                   {videoDuration > maxDuration && " يتجاوز الحد"}
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Upload progress bar */}
+          {uploading && uploadProgress > 0 && (
+            <div className="space-y-1">
+              <div className="h-2.5 bg-muted/30 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-primary to-emerald-500 rounded-full transition-all duration-700 ease-out"
+                  style={{ width: `${uploadProgress}%` }} />
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center">
+                {uploadProgress < 70 ? "جاري رفع الفيديو..." : uploadProgress < 90 ? "جاري رفع الصورة..." : "جاري حفظ البيانات..."}
+                {" "}{uploadProgress}%
+              </p>
+            </div>
+          )}
+
+          {/* Video error */}
+          {videoError && (
+            <div className="flex items-start gap-2 p-2.5 bg-destructive/10 border border-destructive/30 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+              <p className="text-[11px] text-destructive leading-relaxed">{videoError}</p>
             </div>
           )}
         </div>

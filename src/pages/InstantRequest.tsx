@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Zap, CheckCircle, AlertCircle, Loader2,
   Globe, UserCheck, Send, Wallet, User, Search, Coins, Phone,
+  Upload, FileText,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,13 @@ const InstantRequest: React.FC = () => {
   const [accountInfo, setAccountInfo] = useState("");
   const [whatsappCode, setWhatsappCode] = useState("+966");
   const [whatsappNumber, setWhatsappNumber] = useState("");
+
+  // Receipt upload
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptProgress, setReceiptProgress] = useState(0);
+  const [receiptError, setReceiptError] = useState("");
 
   const selectedCountry: CountryConfig | undefined = countries.find((c) => c.id === selectedCountryId);
   const selectedMethod: PaymentMethod | undefined = selectedCountry?.methods.find((m) => m.id === selectedMethodId);
@@ -177,6 +185,73 @@ const InstantRequest: React.FC = () => {
     }
   };
 
+  const handleReceiptChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReceiptError("");
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setReceiptError("الصيغة غير مدعومة — يجب أن تكون صورة (JPG/PNG/WebP) أو PDF");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setReceiptError("حجم الملف كبير جداً — الحد الأقصى 10 ميغابايت");
+      return;
+    }
+
+    setReceiptFile(file);
+    if (file.type.startsWith("image/")) {
+      setReceiptPreview(URL.createObjectURL(file));
+    } else {
+      setReceiptPreview(null); // PDF — no preview
+    }
+  };
+
+  const uploadReceipt = async (): Promise<string | null> => {
+    if (!receiptFile || !user) return null;
+    setReceiptUploading(true);
+    setReceiptProgress(10);
+    try {
+      const ext = receiptFile.name.split(".").pop() || "jpg";
+      const filePath = `receipts/instant_receipt_${user.uuid}_${Date.now()}.${ext}`;
+
+      setReceiptProgress(30);
+
+      // For images, use secureUpload (compresses). For PDF, upload directly.
+      if (receiptFile.type.startsWith("image/")) {
+        const { secureUpload } = await import("@/utils/secureUpload");
+        setReceiptProgress(50);
+        const url = await secureUpload({
+          file: receiptFile,
+          bucket: "attachments",
+          path: filePath,
+          userUuid: user.uuid,
+        });
+        setReceiptProgress(100);
+        return url;
+      } else {
+        // PDF — direct upload
+        setReceiptProgress(50);
+        const { error: uploadError } = await supabase.storage
+          .from("attachments")
+          .upload(filePath, receiptFile, { contentType: receiptFile.type });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(filePath);
+        setReceiptProgress(100);
+        return urlData?.publicUrl || null;
+      }
+    } catch (err: any) {
+      setReceiptError("فشل رفع الإيصال: " + (err?.message || "حاول مرة أخرى"));
+      return null;
+    } finally {
+      setReceiptUploading(false);
+    }
+  };
+
   const handleExitAttempt = () => {
     if (step !== "transfers" || selectedTransfer || supporterInfo) {
       setShowExitDialog(true);
@@ -187,9 +262,24 @@ const InstantRequest: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!selectedTransfer || !supporterInfo) return;
+
+    // Validate receipt is uploaded
+    if (!receiptFile) {
+      setError("يجب رفع إيصال تحويل الداعم قبل طلب السحب");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
+      // Upload receipt first
+      const receiptUrl = await uploadReceipt();
+      if (!receiptUrl) {
+        setError("فشل رفع الإيصال — حاول مرة أخرى");
+        setLoading(false);
+        return;
+      }
+
       // Save to local DB
       const { error: insertError } = await supabase.from("salary_requests").insert({
         user_uuid: user.uuid,
@@ -207,12 +297,14 @@ const InstantRequest: React.FC = () => {
           country: `${selectedCountry?.flag} ${selectedCountry?.name}`,
           bank: selectedMethod?.label || "",
           account_name: fullName,
+          supporter_receipt_url: receiptUrl,
         }),
         status: "pending",
         transfer_id: selectedTransfer.reference_id,
         transaction_date: selectedTransfer.time || new Date().toISOString(),
         target_uuid: supporterInfo.uuid,
         target_name: supporterInfo.name,
+        transfer_image_url: receiptUrl,
       } as any);
 
       if (insertError) {
@@ -555,11 +647,72 @@ const InstantRequest: React.FC = () => {
               <p className="text-[11px] text-muted-foreground">بنرسل لك تحديثات الطلب على الواتساب</p>
             </motion.div>
 
+            {/* Receipt Upload — REQUIRED */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-4 space-y-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Upload className="w-4 h-4 text-amber-400" /> رفع إيصال التحويل *
+              </h3>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-400 font-bold leading-relaxed">
+                  يجب رفع إيصال تحويل الداعم قبل طلب السحب
+                </p>
+              </div>
+
+              <label className={`flex items-center justify-center gap-3 p-5 border-2 border-dashed rounded-2xl cursor-pointer transition-colors ${
+                receiptFile ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/20 hover:bg-amber-500/5"
+              }`}>
+                {receiptFile ? (
+                  <>
+                    {receiptFile.type === "application/pdf" ? (
+                      <FileText className="w-6 h-6 text-primary" />
+                    ) : (
+                      <Upload className="w-6 h-6 text-emerald-400" />
+                    )}
+                    <div className="text-right flex-1">
+                      <span className="text-xs font-bold text-foreground block">{receiptFile.name}</span>
+                      <span className="text-[10px] text-muted-foreground">({(receiptFile.size / 1024 / 1024).toFixed(1)} MB)</span>
+                    </div>
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-6 h-6 text-amber-400" />
+                    <span className="text-xs text-muted-foreground">اضغط لرفع إيصال (صورة أو PDF)</span>
+                  </>
+                )}
+                <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                  onChange={handleReceiptChange} />
+              </label>
+
+              {receiptPreview && (
+                <img src={receiptPreview} alt="receipt preview" className="w-full h-40 object-cover rounded-xl border border-white/10" />
+              )}
+
+              {receiptUploading && (
+                <div className="space-y-1">
+                  <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${receiptProgress}%` }} />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center">جاري رفع الإيصال... {receiptProgress}%</p>
+                </div>
+              )}
+
+              {receiptError && (
+                <div className="flex items-start gap-2 p-2 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-destructive">{receiptError}</p>
+                </div>
+              )}
+
+              <p className="text-[10px] text-muted-foreground">الصيغ المقبولة: JPG, PNG, WebP, PDF — الحد الأقصى: 10 MB</p>
+            </motion.div>
+
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep("supporter")} className="flex-1 h-12 border-border/30">رجوع</Button>
               <Button
                 onClick={() => { setStep("confirm"); setError(""); }}
-                disabled={!isNameValid || !selectedCountryId || !selectedMethodId || !isAccountValid()}
+                disabled={!isNameValid || !selectedCountryId || !selectedMethodId || !isAccountValid() || !receiptFile}
                 className="flex-1 gold-gradient text-primary-foreground font-bold h-12 disabled:opacity-40"
               >
                 متابعة
@@ -632,6 +785,27 @@ const InstantRequest: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Receipt confirmation */}
+              {receiptFile && (
+                <div className="p-3 bg-amber-500/5 border border-amber-500/15 rounded-xl space-y-2">
+                  <p className="text-[10px] text-muted-foreground font-bold flex items-center gap-1.5">
+                    <Upload className="w-3 h-3 text-amber-400" /> إيصال التحويل
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {receiptFile.type === "application/pdf" ? (
+                      <FileText className="w-8 h-8 text-primary" />
+                    ) : receiptPreview ? (
+                      <img src={receiptPreview} alt="receipt" className="w-12 h-12 rounded-lg object-cover border border-white/10" />
+                    ) : null}
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{receiptFile.name}</p>
+                      <p className="text-[10px] text-muted-foreground">({(receiptFile.size / 1024 / 1024).toFixed(1)} MB)</p>
+                    </div>
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mr-auto" />
+                  </div>
+                </div>
+              )}
             </motion.div>
 
             <div className="flex gap-3">

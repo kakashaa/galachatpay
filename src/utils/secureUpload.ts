@@ -9,8 +9,10 @@ interface UploadOptions {
 }
 
 export async function secureUpload({ file, bucket, path, userUuid }: UploadOptions): Promise<string> {
-  // Compress image files before uploading
-  const processedFile = await compressImage(file, 1200, 1200, 0.7);
+  // Compress image files before uploading (skip video/pdf files)
+  const processedFile = file.type.startsWith("image/")
+    ? await compressImage(file, 1200, 1200, 0.7)
+    : file;
 
   const formData = new FormData();
   formData.append("file", processedFile);
