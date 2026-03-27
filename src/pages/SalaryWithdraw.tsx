@@ -936,10 +936,12 @@ const SalaryWithdraw: React.FC = () => {
                 const isApproved = us === "approved" || us === "delivered";
                 const isRejected = us === "rejected";
                 const isPending = us === "pending" || us === "review";
-                const isExpiredTime = !isApproved && !isRejected && !isPending && (t.hours_old === undefined || (t.hours_old || 0) > 2);
-                const statusLabel = isApproved ? "تم الاستلام" : isRejected ? "تم الرفض" : isPending ? "قيد المراجعة" : isExpiredTime ? "⏰ انتهى الوقت" : "منتهية الصلاحية";
-                const statusColor = isApproved ? "text-emerald-400" : isRejected ? "text-red-400" : isPending ? "text-yellow-400" : isExpiredTime ? "text-red-500" : "text-amber-400";
-                const borderColor = isApproved ? "border-emerald-500/15 bg-emerald-500/5" : isRejected ? "border-red-500/15 bg-red-500/5" : isPending ? "border-yellow-500/15 bg-yellow-500/5" : isExpiredTime ? "border-red-500/20 bg-red-500/5" : "border-amber-500/15 bg-amber-500/5";
+                // is_used from API = spent (in used-references.json on server)
+                const isSpent = t.is_used === true || us === "used";
+                const isExpiredTime = !isApproved && !isRejected && !isPending && !isSpent && (t.hours_old !== undefined && (t.hours_old || 0) > 2);
+                const statusLabel = isApproved ? "✅ تم الاستلام" : isRejected ? "❌ تم الرفض" : isPending ? "⏳ قيد المراجعة" : isSpent ? "✅ تم الصرف" : isExpiredTime ? "⏰ انتهى الوقت" : "منتهية الصلاحية";
+                const statusColor = isApproved ? "text-emerald-400" : isRejected ? "text-red-400" : isPending ? "text-yellow-400" : isSpent ? "text-emerald-400" : isExpiredTime ? "text-red-500" : "text-amber-400";
+                const borderColor = isApproved ? "border-emerald-500/15 bg-emerald-500/5" : isRejected ? "border-red-500/15 bg-red-500/5" : isPending ? "border-yellow-500/15 bg-yellow-500/5" : isSpent ? "border-emerald-500/15 bg-emerald-500/5" : isExpiredTime ? "border-red-500/20 bg-red-500/5" : "border-amber-500/15 bg-amber-500/5";
                 return (
                   <div
                     key={t.reference_id || i}
