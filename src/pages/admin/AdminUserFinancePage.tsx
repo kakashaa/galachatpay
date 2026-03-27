@@ -113,7 +113,7 @@ const AdminUserFinancePage: React.FC = () => {
         chargerLevel: fd.charger_level || 0,
         totalCharged,
         charges,
-        totalGiftsReceived,
+        totalGiftsReceived: 0,
         totalGiftsSent,
         currentBalance,
         profit,
