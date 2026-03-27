@@ -63,14 +63,13 @@ const AdminUserFinancePage: React.FC = () => {
       const waresUrl = "https://hola-chat.com/wares-api.php";
       const waresKey = "ghala2026actions";
       
-      const [totalRes, chargesRes, giftsRecRes, giftsSentRes, userFullRes, salaryRes] = await Promise.all([
+      const [totalRes, chargesRes, giftsSentRes, userFullRes, salaryRes] = await Promise.all([
         // Total charges — direct call to wares-api (same numbers as production dashboard)
         fetch(`${waresUrl}?key=${waresKey}&action=user-total-charges&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
         // Monthly charges detail
         fetch(`${waresUrl}?key=${waresKey}&action=user-monthly-charges&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
-        // Gifts
-        fetch(`${waresUrl}?key=${waresKey}&action=gift-received-total&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
-        fetch(`${waresUrl}?key=${waresKey}&action=gift-sent-total&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
+        // Gifts sent (scraped from production dashboard gift-logs)
+        fetch(`${waresUrl}?key=${waresKey}&action=user-gifts-total&uuid=${uuid.trim()}&month=${selectedMonth}`).then(r => r.json()).catch(() => null),
         // User info
         fetch(`${waresUrl}?key=${waresKey}&action=user-full&uuid=${uuid.trim()}`).then(r => r.json()).catch(() => null),
         (supabase as any).from("salary_requests")
@@ -98,13 +97,15 @@ const AdminUserFinancePage: React.FC = () => {
         });
       }
       
-      // Gifts
+      // Gifts sent
       const userInfo = userFullRes?.data || {};
-      const totalGiftsReceived = giftsRecRes?.data?.total_received || userInfo.total_received || 0;
-      const totalGiftsSent = giftsSentRes?.data?.total_sent || userInfo.total_sent || 0;
+      const totalGiftsSent = giftsSentRes?.data?.total_gifts_sent || 0;
+      const giftCount = giftsSentRes?.data?.gift_count || 0;
+      const totalGiftsReceived = 0; // Not needed for loss calc
       
-      // الخسارة = الشحن - الدعم المرسل (الباقي اللي ما راح كدعم)
-      const profit = totalGiftsSent > 0 ? totalGiftsSent - totalCharged : -totalCharged;
+      // الخسارة الحقيقية = الشحن - الهدايا المرسلة - الرصيد الباقي
+      const realLoss = totalCharged - totalGiftsSent - currentBalance;
+      const profit = -realLoss; // negative = خاسر
       const monthDate = new Date(selectedMonth + "-01");
       const monthLabel = monthDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' });
 
@@ -120,7 +121,7 @@ const AdminUserFinancePage: React.FC = () => {
         totalGiftsSent,
         currentBalance,
         profit,
-        isWinner: profit >= 0,
+        isWinner: realLoss <= 0, // If loss is 0 or negative = winner (got more than charged)
         monthLabel,
         salaryRequests: salaryRes?.data || [],
       });
@@ -274,7 +275,7 @@ const AdminUserFinancePage: React.FC = () => {
                 <p className="text-xs text-muted-foreground mt-1">
                   {data.profit >= 0 ? '+' : ''}{formatUsd(data.profit)}
                 </p>
-                <p className="text-[10px] text-muted-foreground">الهدايا المرسلة - الشحن</p>
+                <p className="text-[10px] text-muted-foreground">الشحن - الهدايا - الرصيد</p>
               </div>
 
               {/* Stats Grid */}
@@ -291,19 +292,10 @@ const AdminUserFinancePage: React.FC = () => {
 
                 <div className="rounded-xl p-3 space-y-1" style={glassCard}>
                   <div className="flex items-center gap-1.5">
-                    <ArrowDown className="w-3.5 h-3.5 text-pink-400" />
-                    <span className="text-[10px] text-muted-foreground">دعم مستلم</span>
+                    <Gift className="w-3.5 h-3.5 text-pink-400" />
+                    <span className="text-[10px] text-muted-foreground">هدايا أرسلها (دعم)</span>
                   </div>
-                  <p className="text-lg font-black text-pink-400">{data.totalGiftsReceived.toLocaleString()}</p>
-                  <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalGiftsReceived)}</p>
-                </div>
-
-                <div className="rounded-xl p-3 space-y-1" style={glassCard}>
-                  <div className="flex items-center gap-1.5">
-                    <ArrowUp className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-[10px] text-muted-foreground">هدايا أرسلها</span>
-                  </div>
-                  <p className="text-lg font-black text-amber-400">{data.totalGiftsSent.toLocaleString()}</p>
+                  <p className="text-lg font-black text-pink-400">{data.totalGiftsSent.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalGiftsSent)}</p>
                 </div>
 
