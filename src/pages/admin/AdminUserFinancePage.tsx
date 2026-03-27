@@ -40,8 +40,10 @@ const AdminUserFinancePage: React.FC = () => {
   
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+  const [customDate, setCustomDate] = useState("");
+  const [searchMode, setSearchMode] = useState<"month" | "date">("month");
 
-  const months = Array.from({ length: 6 }, (_, i) => {
+  const months = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const label = d.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long' });
@@ -118,7 +120,7 @@ const AdminUserFinancePage: React.FC = () => {
     return n.toLocaleString();
   };
 
-  const formatUsd = (coins: number) => `$${(coins / 7500).toFixed(2)}`;
+  const formatUsd = (coins: number) => `$${(coins / 8500).toFixed(2)}`;
 
   const glassCard = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.3)' };
 
@@ -145,20 +147,51 @@ const AdminUserFinancePage: React.FC = () => {
             className="w-full bg-background/50 border border-border/30 rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500/40"
           />
           
-          {/* Month selector */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> اختر الشهر
-            </label>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {months.map(m => (
-                <button key={m.val} onClick={() => setSelectedMonth(m.val)}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${selectedMonth === m.val ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20 hover:bg-muted/20'}`}>
-                  {m.label}
-                </button>
-              ))}
-            </div>
+          {/* Search mode toggle */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => setSearchMode("month")}
+              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${searchMode === "month" ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20'}`}>
+              📅 بالشهر
+            </button>
+            <button onClick={() => setSearchMode("date")}
+              className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${searchMode === "date" ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20'}`}>
+              📆 بالتاريخ
+            </button>
           </div>
+
+          {searchMode === "month" ? (
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> اختر الشهر
+              </label>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {months.slice(0, 6).map(m => (
+                  <button key={m.val} onClick={() => setSelectedMonth(m.val)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${selectedMonth === m.val ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20 hover:bg-muted/20'}`}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label className="text-[10px] text-muted-foreground">اختر تاريخ محدد</label>
+              <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)}
+                className="w-full bg-background/50 border border-border/30 rounded-lg px-2 py-1.5 text-xs text-foreground" />
+              <div className="flex items-center gap-1.5">
+                {[
+                  { label: "اليوم", date: new Date().toISOString().slice(0, 10) },
+                  { label: "أمس", date: (() => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })() },
+                  { label: "آخر 7 أيام", date: (() => { const d = new Date(); d.setDate(d.getDate()-7); return d.toISOString().slice(0,10); })() },
+                ].map(p => (
+                  <button key={p.label} onClick={() => setCustomDate(p.date)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-colors ${customDate === p.date ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-muted/10 text-muted-foreground border border-border/20'}`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button onClick={search} disabled={loading || !uuid.trim()}
             className="w-full py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-all"
@@ -209,11 +242,12 @@ const AdminUserFinancePage: React.FC = () => {
                   {data.isWinner ? "✅ كاسب" : "❌ خاسر"}
                 </span>
                 <p className={`text-3xl font-black ${data.isWinner ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {data.profit >= 0 ? '+' : ''}{formatCoins(data.profit)}
+                  {data.profit >= 0 ? '+' : ''}{data.profit.toLocaleString()}
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {data.profit >= 0 ? '+' : ''}{formatUsd(data.profit)} • الدعم - الشحن
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.profit >= 0 ? '+' : ''}{formatUsd(data.profit)}
                 </p>
+                <p className="text-[10px] text-muted-foreground">الدعم - الشحن</p>
               </div>
 
               {/* Stats Grid */}
@@ -223,9 +257,9 @@ const AdminUserFinancePage: React.FC = () => {
                     <CreditCard className="w-3.5 h-3.5 text-blue-400" />
                     <span className="text-[10px] text-muted-foreground">شحن الشهر</span>
                   </div>
-                  <p className="text-lg font-black text-blue-400">{formatCoins(data.totalCharged)}</p>
+                  <p className="text-lg font-black text-blue-400">{data.totalCharged.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalCharged)}</p>
-                  <p className="text-[10px] text-muted-foreground">{data.charges.length} عملية</p>
+                  {data.charges.length > 0 && <p className="text-[10px] text-muted-foreground">{data.charges.length} عملية تفصيلية</p>}
                 </div>
 
                 <div className="rounded-xl p-3 space-y-1" style={glassCard}>
@@ -233,7 +267,7 @@ const AdminUserFinancePage: React.FC = () => {
                     <ArrowDown className="w-3.5 h-3.5 text-pink-400" />
                     <span className="text-[10px] text-muted-foreground">دعم مستلم</span>
                   </div>
-                  <p className="text-lg font-black text-pink-400">{formatCoins(data.totalGiftsReceived)}</p>
+                  <p className="text-lg font-black text-pink-400">{data.totalGiftsReceived.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalGiftsReceived)}</p>
                 </div>
 
@@ -242,7 +276,7 @@ const AdminUserFinancePage: React.FC = () => {
                     <ArrowUp className="w-3.5 h-3.5 text-amber-400" />
                     <span className="text-[10px] text-muted-foreground">هدايا أرسلها</span>
                   </div>
-                  <p className="text-lg font-black text-amber-400">{formatCoins(data.totalGiftsSent)}</p>
+                  <p className="text-lg font-black text-amber-400">{data.totalGiftsSent.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.totalGiftsSent)}</p>
                 </div>
 
@@ -255,7 +289,7 @@ const AdminUserFinancePage: React.FC = () => {
                     <Wallet className="w-3.5 h-3.5 text-emerald-400" />
                     <span className="text-[10px] text-muted-foreground">رصيد المحفظة</span>
                   </div>
-                  <p className="text-lg font-black text-emerald-400">{formatCoins(data.currentBalance)}</p>
+                  <p className="text-lg font-black text-emerald-400">{data.currentBalance.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground">≈ {formatUsd(data.currentBalance)}</p>
                 </div>
               </div>
@@ -274,7 +308,7 @@ const AdminUserFinancePage: React.FC = () => {
                           <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                         <div className="text-left">
-                          <p className="text-xs font-bold text-blue-400">{formatCoins(c.amount)}</p>
+                          <p className="text-xs font-bold text-blue-400">{c.amount.toLocaleString()}</p>
                           <p className="text-[10px] text-muted-foreground">≈ {formatUsd(c.amount)}</p>
                         </div>
                       </div>
