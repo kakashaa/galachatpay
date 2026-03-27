@@ -79,6 +79,8 @@ const AgentStats = lazy(() => import("./pages/agent/AgentStats"));
 // Admin sub-pages
 const AdminGiftsPage = lazy(() => import("./pages/admin/AdminGiftsPage"));
 const AdminIncomePage = lazy(() => import("./pages/admin/AdminIncomePage"));
+const AdminUserFinancePage = lazy(() => import("./pages/admin/AdminUserFinancePage"));
+const AdminChargebackPage = lazy(() => import("./pages/admin/AdminChargebackPage"));
 const AdminBDPage = lazy(() => import("./pages/admin/AdminBDPage"));
 const AdminVipPage = lazy(() => import("./pages/admin/AdminVipPage"));
 const AdminBanPage = lazy(() => import("./pages/admin/AdminBanPage"));
@@ -221,6 +223,8 @@ const App = () => {
                   <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                   <Route path="/admin/gifts" element={<AdminRouteGuard><AdminGiftsPage /></AdminRouteGuard>} />
                   <Route path="/admin/income" element={<AdminRouteGuard><AdminIncomePage /></AdminRouteGuard>} />
+                  <Route path="/admin/user-finance" element={<AdminRouteGuard><AdminUserFinancePage /></AdminRouteGuard>} />
+                  <Route path="/admin/chargebacks" element={<AdminRouteGuard><AdminChargebackPage /></AdminRouteGuard>} />
                   <Route path="/admin/bd" element={<AdminRouteGuard><AdminBDPage /></AdminRouteGuard>} />
                   <Route path="/admin/vip" element={<AdminRouteGuard><AdminVipPage /></AdminRouteGuard>} />
                   <Route path="/admin/ban" element={<AdminRouteGuard><AdminBanPage /></AdminRouteGuard>} />

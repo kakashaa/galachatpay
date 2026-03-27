@@ -1387,6 +1387,8 @@ const AdminHomeView: React.FC<Props> = ({
     { icon: Headphones, label: "الدعم", route: "/admin/support", gradient: "from-cyan-400 to-blue-500", shadow: "shadow-cyan-500/40", roles: ["owner", "super_admin", "admin"], badge: supportBadge, order: { owner: 6, super_admin: 4, admin: 2 } },
     { icon: Fingerprint, label: "الآيدي", route: "/admin/id-change", gradient: "from-violet-500 to-purple-600", shadow: "shadow-violet-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 7, super_admin: 5, admin: 99 } },
     { icon: TrendingUp, label: "الإيرادات", route: "/admin/income", gradient: "from-orange-400 to-amber-600", shadow: "shadow-orange-500/40", roles: ["owner"], badge: 0, order: { owner: 8, super_admin: 99, admin: 99 } },
+    { icon: Search, label: "بحث مالي", route: "/admin/user-finance", gradient: "from-purple-400 to-violet-600", shadow: "shadow-purple-500/40", roles: ["owner", "super_admin"], badge: 0, order: { owner: 9, super_admin: 9, admin: 99 } },
+    { icon: AlertTriangle, label: "تنبيهات الاسترجاع", route: "/admin/chargebacks", gradient: "from-red-400 to-rose-600", shadow: "shadow-red-500/40", roles: ["owner"], badge: 0, order: { owner: 10, super_admin: 99, admin: 99 } },
     // Row 3 (owner): Agencies, Moderators, Log, BD
     { icon: Landmark, label: "الوكالات", route: "/admin/agencies", gradient: "from-teal-400 to-cyan-600", shadow: "shadow-teal-500/40", roles: ["owner"], badge: 0, order: { owner: 9, super_admin: 99, admin: 99 } },
     { icon: Users, label: "المشرفين", route: "/admin/accounts", gradient: "from-blue-500 to-indigo-600", shadow: "shadow-blue-500/40", roles: ["owner"], badge: 0, order: { owner: 10, super_admin: 99, admin: 99 } },
