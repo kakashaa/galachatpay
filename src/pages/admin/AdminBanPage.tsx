@@ -140,7 +140,12 @@ const AdminBanPage: React.FC = () => {
     const banRes = await supabase.functions.invoke("wares-request", {
       body: { action: "ban-user-real", uuid, reason, hours: String(hours), ban_type: banType },
     });
-    if (banRes.error) throw new Error("فشل الحظر");
+    if (banRes.error) throw new Error("فشل الحظر: خطأ في الاتصال");
+    // Check API response data
+    const resData = banRes.data;
+    if (resData && resData.ok === false) {
+      throw new Error(resData.error || "فشل الحظر من السيرفر");
+    }
     const durText = hours === 999999 ? "أبدي" : `${hours} ساعة`;
     await sendUserNotification(uuid, "تم تعليق حسابك", `تم تعليق حسابك بسبب: ${reason}. المدة: ${durText}.`).catch(() => {});
   };
