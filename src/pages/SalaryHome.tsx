@@ -82,6 +82,19 @@ const SalaryHome: React.FC = () => {
     };
   }, [user?.uuid]);
 
+  useEffect(() => {
+    if (user?.uuid) {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      supabase.from("app_settings").select("key").in("key", [
+        `cash_reset:${user.uuid}:host:${monthKey}`,
+        `cash_reset:${user.uuid}:agency:${monthKey}`,
+      ]).then(({ data }) => {
+        if (data && data.length > 0) setCashResetOverride(true);
+      });
+    }
+  }, [user?.uuid]);
+
   const fetchStatus = async () => {
     if (!status) setLoading(true);
     setError(false);
