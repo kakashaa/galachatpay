@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Clock, XCircle, ChevronLeft, Loader2, FileText, Coins, Camera } from "lucide-react";
+import { CheckCircle, Clock, XCircle, FileText, Camera } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { formatDateAr } from "@/utils/dateFormat";
@@ -284,13 +284,10 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
   return (
     <>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-        {/* Header with month selector */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        {/* Header: العمليات الأخيرة */}
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-bold flex items-center gap-1.5" style={{ color: "#dfe2eb" }}>
-            <FileText className="w-3.5 h-3.5" style={{ color: "#bbc6e2" }} /> طلباتي
-            <span className="text-[10px] font-normal" style={{ color: "#78839c" }}>({requests.length})</span>
-          </h3>
+          <h3 className="text-sm font-bold" style={{ color: "#dfe2eb" }}>العمليات الأخيرة</h3>
           <select
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
@@ -301,7 +298,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
           </select>
         </div>
 
-        {/* Cards per request */}
+        {/* Transaction cards — reference layout: icon right, title+date center, amount+status left */}
         <div className="space-y-3">
           {requests.map((req, i) => {
             const st = getStatus(req.status);
@@ -311,7 +308,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             const isRejected = req.status === "rejected";
             const isPending = !isApproved && !isRejected;
             const hasReceipt = isApproved && req.transfer_image_url;
-            
+
             return (
               <motion.button
                 key={`${req.id}-${i}`}
@@ -319,59 +316,38 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => setSelectedReq(req)}
-                className="w-full rounded-2xl p-4 text-right transition-all active:scale-[0.98] relative overflow-hidden"
+                className="w-full rounded-2xl p-4 text-right transition-all active:scale-[0.98] relative overflow-hidden flex items-center gap-3"
                 style={{
-                  background: "linear-gradient(145deg, #0f1a2e, #1c2028)",
-                  boxShadow: isApproved
-                    ? "inset 3px 0 0 #4ae183, 0 4px 20px -8px rgba(0,0,0,0.3)"
-                    : isPending
-                    ? "inset 3px 0 0 #e9c176, 0 4px 20px -8px rgba(0,0,0,0.3)"
-                    : "inset 3px 0 0 #ffb4ab, 0 4px 20px -8px rgba(0,0,0,0.3)",
+                  background: "#181c22",
+                  borderRight: isApproved ? "3px solid #4ae183" : isPending ? "3px solid #e9c176" : "3px solid #ffb4ab",
                 }}
               >
-                {/* Top row: status badge + amount */}
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold"
-                    style={{ background: st.bg, color: st.color }}>
-                    <span>{isApproved ? "✅" : isRejected ? "❌" : "⏳"}</span>
-                    <span>{st.label}</span>
-                  </div>
-                  <span className="text-lg font-extrabold tabular-nums" dir="ltr"
+                {/* Icon circle (right side in RTL) */}
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: st.bg }}>
+                  <span style={{ color: st.color }}>{st.icon}</span>
+                </div>
+
+                {/* Center: title + date */}
+                <div className="flex-1 min-w-0 text-right">
+                  <p className="text-xs font-bold truncate" style={{ color: "#dfe2eb" }}>{bankLabel || "عملية"}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "#78839c" }}>{dateStr}</p>
+                  {isPending && (
+                    <p className="text-[9px] mt-1 animate-pulse" style={{ color: "rgba(233,193,118,0.7)" }}>جاري المراجعة...</p>
+                  )}
+                  {isRejected && req.admin_note && (
+                    <p className="text-[9px] mt-1 truncate" style={{ color: "#ffb4ab" }}>السبب: {req.admin_note}</p>
+                  )}
+                </div>
+
+                {/* Left: amount + status */}
+                <div className="text-left shrink-0">
+                  <p className="text-sm font-extrabold tabular-nums" dir="ltr"
                     style={{ color: isApproved ? "#e9c176" : "#dfe2eb", fontFamily: "'Manrope', sans-serif" }}>
                     ${req.amount.toFixed(2)}
-                  </span>
+                  </p>
+                  <p className="text-[9px] font-bold" style={{ color: st.color }}>{st.label}</p>
                 </div>
-
-                {/* Details row */}
-                <div className="flex items-center justify-between text-[10px]" style={{ color: "#78839c" }}>
-                  <div className="flex items-center gap-3">
-                    <span>{bankLabel}</span>
-                    {req.reference_id && <span className="font-mono opacity-60">#{req.reference_id}</span>}
-                  </div>
-                  <span className="opacity-60">{dateStr}</span>
-                </div>
-
-                {/* Receipt indicator for approved */}
-                {hasReceipt && (
-                  <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-bold" style={{ color: "#e9c176" }}>
-                    <span>📄</span>
-                    <span>إيصال التحويل متاح — اضغط للعرض</span>
-                  </div>
-                )}
-
-                {/* Rejection reason */}
-                {isRejected && req.admin_note && (
-                  <div className="mt-2.5 p-2.5 rounded-xl text-[10px]" style={{ background: "rgba(255,180,171,0.06)", color: "#ffb4ab" }}>
-                    السبب: {req.admin_note}
-                  </div>
-                )}
-
-                {/* Pending message */}
-                {isPending && (
-                  <div className="mt-2.5 text-[10px] animate-pulse" style={{ color: "rgba(233,193,118,0.7)" }}>
-                    جاري المراجعة من قبل الإدارة...
-                  </div>
-                )}
               </motion.button>
             );
           })}

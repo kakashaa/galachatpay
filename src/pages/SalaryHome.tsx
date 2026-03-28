@@ -2,16 +2,15 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, Coins, Gift, Zap, DollarSign,
-  Building2, CheckCircle, XCircle, AlertCircle,
-  Lock,
+  Wallet, Coins, Gift, Zap,
+  AlertCircle, Lock, TrendingUp,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { galaApi } from "@/services/galaApi";
 import { supabase } from "@/integrations/supabase/client";
-const USD_TO_COINS = 7500;
+
 
 interface WithdrawStatus {
   ok: boolean;
@@ -55,10 +54,10 @@ const SalaryHome: React.FC = () => {
   const SALARY_CACHE_KEY = `salary_cache_${user?.uuid}`;
   const [status, setStatus] = useState<WithdrawStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
+  const [cashResetOverride, setCashResetOverride] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
@@ -81,6 +80,19 @@ const SalaryHome: React.FC = () => {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("focus", handleFocus);
     };
+  }, [user?.uuid]);
+
+  useEffect(() => {
+    if (user?.uuid) {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      supabase.from("app_settings").select("key").in("key", [
+        `cash_reset:${user.uuid}:host:${monthKey}`,
+        `cash_reset:${user.uuid}:agency:${monthKey}`,
+      ]).then(({ data }) => {
+        if (data && data.length > 0) setCashResetOverride(true);
+      });
+    }
   }, [user?.uuid]);
 
   const fetchStatus = async () => {
@@ -152,20 +164,6 @@ const SalaryHome: React.FC = () => {
   const agencyAvailable = agency ? (agency.pool_available ?? Math.max(0, agencyPoolTotal - agencyPoolCut)) : 0;
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
 
-  const [cashResetOverride, setCashResetOverride] = useState(false);
-  
-  useEffect(() => {
-    if (user?.uuid) {
-      const now = new Date();
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      supabase.from("app_settings").select("key").in("key", [
-        `cash_reset:${user.uuid}:host:${monthKey}`,
-        `cash_reset:${user.uuid}:agency:${monthKey}`,
-      ]).then(({ data }) => {
-        if (data && data.length > 0) setCashResetOverride(true);
-      });
-    }
-  }, [user?.uuid]);
 
   const cashUsedThisMonth = cashResetOverride ? false : ((host?.cash_used_this_month || false) || (agency?.cash_used_this_month || false));
 
@@ -177,15 +175,15 @@ const SalaryHome: React.FC = () => {
   const cashLocked = cashUsedThisMonth || !isCashWindowOpen;
 
   const options = [
-    { id: "cash", icon: Wallet, label: "سحب نقدي", route: "/salary/cash", locked: cashLocked },
-    { id: "charge_self", icon: Coins, label: "شحن لحسابي", route: "/salary/charge-self", locked: false },
-    { id: "charge_other", icon: Gift, label: "شحن لآخر", route: "/salary/charge-other", locked: false },
-    { id: "instant", icon: Zap, label: "سحب فوري", route: "/salary/instant", locked: false },
+    { id: "cash", icon: Wallet, label: "سحب نقدي", route: "/salary/cash", locked: cashLocked, gold: false },
+    { id: "charge_self", icon: Coins, label: "شحن لحسابي", route: "/salary/charge-self", locked: false, gold: false },
+    { id: "charge_other", icon: Gift, label: "شحن لمستخدم آخر", route: "/salary/charge-other", locked: false, gold: false },
+    { id: "instant", icon: Zap, label: "سحب راتبي الفوري", route: "/salary/instant", locked: false, gold: true },
   ];
 
   return (
     <MobileLayout showHeader headerTitle="راتبي" onBack={() => navigate("/dashboard")}>
-      <div className="px-4 py-3 space-y-4" style={{ fontFamily: "'Tajawal', sans-serif" }}>
+      <div className="px-4 py-3 space-y-5" style={{ fontFamily: "'Tajawal', sans-serif" }}>
 
         {/* Phone verification banner */}
         {isPhoneVerified === false && (
@@ -247,75 +245,115 @@ const SalaryHome: React.FC = () => {
 
         {!error && status && (
           <>
+            {/* ══════ Progress Horizon ══════ */}
+            <div className="w-full opacity-40" style={{
+              height: "2px",
+              background: "linear-gradient(90deg, transparent, #4ae183, transparent)",
+              boxShadow: "0 0 8px #4ae183",
+            }} />
+
             {/* ══════ 1. Hero Balance Card ══════ */}
-            <motion.div
+            <motion.section
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="relative rounded-3xl p-6 text-center overflow-hidden"
+              className="relative rounded-3xl p-6 overflow-hidden"
               style={{
-                background: "linear-gradient(145deg, rgba(15,26,46,0.9), rgba(28,32,40,0.7))",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                boxShadow: "0 8px 40px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(187,198,226,0.05)",
+                background: "linear-gradient(135deg, #0f1a2e 0%, #1c2026 100%)",
+                boxShadow: "0 24px 48px rgba(0,0,0,0.4)",
+                border: "1px solid rgba(255,255,255,0.05)",
               }}
             >
               {/* Ambient gold glow */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 rounded-full opacity-20 blur-3xl" style={{ background: "#e9c176" }} />
-              
-              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: "#78839c", fontFamily: "'Manrope', sans-serif" }}>المبلغ المتاح للسحب</p>
-              {totalAvailable > 0 ? (
-                <>
-                  <p className="text-4xl font-extrabold tabular-nums leading-none" dir="ltr"
-                    style={{ color: "#e9c176", fontFamily: "'Manrope', sans-serif", textShadow: "0 0 40px rgba(233,193,118,0.2)" }}>
-                    ${totalAvailable.toFixed(2)}
-                  </p>
-                  <div className="flex items-center justify-center gap-3 mt-3">
-                    <span className="text-[11px]" style={{ color: "#78839c" }}>
-                      مضيف <span className="font-bold" dir="ltr" style={{ color: "#4ae183", fontFamily: "'Manrope', sans-serif" }}>${hostAvailable.toFixed(2)}</span>
-                    </span>
-                    {isAgencyOwner && (
-                      <>
-                        <span style={{ color: "rgba(120,131,156,0.3)" }}>|</span>
-                        <span className="text-[11px]" style={{ color: "#78839c" }}>
-                          وكالة <span className="font-bold" dir="ltr" style={{ color: "#bbc6e2", fontFamily: "'Manrope', sans-serif" }}>${agencyAvailable.toFixed(2)}</span>
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm py-2" style={{ color: "#78839c" }}>لا يوجد رصيد متاح</p>
-              )}
-            </motion.div>
+              <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-10 blur-3xl" style={{ background: "#e9c176" }} />
 
-            {/* ══════ 2. Withdrawal buttons ══════ */}
-            <div className="flex flex-wrap gap-2 justify-center">
+              {/* Top: label + badge */}
+              <div className="flex justify-between items-start mb-8">
+                <div className="space-y-1">
+                  <p className="text-[10px] tracking-widest opacity-80" style={{ color: "#c4c6cc", fontFamily: "'Manrope', sans-serif" }}>الإجمالي المستحق</p>
+                  {totalAvailable > 0 ? (
+                    <h2 className="text-4xl font-extrabold tracking-tight" dir="ltr"
+                      style={{ color: "#e9c176", fontFamily: "'Manrope', sans-serif" }}>
+                      <span className="text-lg ml-1 font-medium" style={{ color: "#bbc6e2" }}>$</span>
+                      {totalAvailable.toFixed(2)}
+                    </h2>
+                  ) : (
+                    <p className="text-sm py-2" style={{ color: "#78839c" }}>لا يوجد رصيد متاح</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ background: "rgba(74,225,131,0.1)", border: "1px solid rgba(74,225,131,0.2)" }}>
+                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#4ae183" }} />
+                  <span className="text-[10px] font-bold" style={{ color: "#4ae183" }}>نشط</span>
+                </div>
+              </div>
+
+              {/* Sub-cards: host + agency salary */}
+              <div className="grid grid-cols-2 gap-3 relative z-10">
+                <div className="rounded-2xl p-4 transition-transform duration-300"
+                  style={{ background: "rgba(49,53,60,0.4)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                  <p className="text-[10px] mb-1 font-medium opacity-70" style={{ color: "#c4c6cc" }}>راتب المضيف</p>
+                  <p className="text-lg font-bold tracking-tight" dir="ltr" style={{ color: "#bbc6e2", fontFamily: "'Manrope', sans-serif" }}>
+                    {hostAvailable > 0 ? `$${hostAvailable.toFixed(2)}` : "—"}
+                  </p>
+                </div>
+                {isAgencyOwner && (
+                  <div className="rounded-2xl p-4 transition-transform duration-300"
+                    style={{ background: "rgba(49,53,60,0.4)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <p className="text-[10px] mb-1 font-medium opacity-70" style={{ color: "#c4c6cc" }}>راتب الوكالة</p>
+                    <p className="text-lg font-bold tracking-tight" dir="ltr" style={{ color: "#bbc6e2", fontFamily: "'Manrope', sans-serif" }}>
+                      {agencyAvailable > 0 ? `$${agencyAvailable.toFixed(2)}` : "—"}
+                    </p>
+                  </div>
+                )}
+                {!isAgencyOwner && (
+                  <div className="rounded-2xl p-4"
+                    style={{ background: "rgba(49,53,60,0.4)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <p className="text-[10px] mb-1 font-medium opacity-70" style={{ color: "#c4c6cc" }}>الراتب</p>
+                    <p className="text-lg font-bold tracking-tight" dir="ltr" style={{ color: "#bbc6e2", fontFamily: "'Manrope', sans-serif" }}>
+                      {host?.current_month ? `$${host.current_month.toFixed(2)}` : "—"}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-6 pt-4 flex justify-between items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                <span className="text-[10px]" style={{ color: "rgba(196,198,204,0.5)" }}>آخر تحديث: الآن</span>
+                <TrendingUp className="w-4 h-4" style={{ color: "rgba(233,193,118,0.6)" }} />
+              </div>
+            </motion.section>
+
+            {/* ══════ 2. Action Grid (2x2 Bento) ══════ */}
+            <section className="grid grid-cols-2 gap-2">
               {options.map((opt, i) => {
                 const Icon = opt.icon;
                 return (
                   <motion.button
                     key={opt.id}
-                    initial={{ opacity: 0, y: 6 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.03 + i * 0.04 }}
+                    transition={{ delay: 0.05 + i * 0.04 }}
                     onClick={() => !opt.locked && navigate(opt.route)}
                     disabled={opt.locked}
-                    className={`relative flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
-                      opt.locked ? "opacity-35 cursor-not-allowed" : "active:scale-[0.96]"
+                    className={`relative p-3.5 rounded-2xl flex flex-col items-start gap-2 transition-all ${
+                      opt.locked ? "opacity-40 cursor-not-allowed" : "active:scale-95"
                     }`}
                     style={{
-                      background: opt.locked ? "rgba(15,26,46,0.4)" : "rgba(15,26,46,0.6)",
-                      backdropFilter: "blur(12px)",
-                      boxShadow: opt.locked ? "none" : "0 2px 12px -4px rgba(0,0,0,0.3)",
+                      background: opt.gold ? "rgba(233,193,118,0.05)" : "#181c22",
+                      border: opt.gold ? "1px solid rgba(233,193,118,0.2)" : "1px solid rgba(255,255,255,0.05)",
                     }}
                   >
-                    {opt.locked && <Lock className="w-3 h-3" style={{ color: "#78839c" }} />}
-                    <Icon className="w-3.5 h-3.5" style={{ color: "#bbc6e2" }} />
-                    <span style={{ color: "#dfe2eb" }}>{opt.label}</span>
+                    {opt.locked && (
+                      <Lock className="absolute top-3 left-3 w-3.5 h-3.5" style={{ color: "#78839c" }} />
+                    )}
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: opt.gold ? "#e9c176" : "rgba(187,198,226,0.1)" }}>
+                      <Icon className="w-4 h-4" style={{ color: opt.gold ? "#10141a" : "#bbc6e2" }} />
+                    </div>
+                    <span className="text-xs font-medium" style={{ color: "#dfe2eb" }}>{opt.label}</span>
                   </motion.button>
                 );
               })}
-            </div>
+            </section>
 
             {cashLocked && (
               <div className="flex items-center justify-center gap-1.5 text-[10px] px-4" style={{ color: "#e9c176" }}>
