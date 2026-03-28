@@ -364,7 +364,7 @@ const SalaryWithdraw: React.FC = () => {
             const transferTime = new Date(hasTz ? rawT : rawT + " UTC");
             const now = new Date();
             const diffMins = (now.getTime() - transferTime.getTime()) / 60000;
-            if (diffMins > 120) return false;
+            if (diffMins > 1440) return false; // 24 hours = 1440 minutes
           }
           return true;
         })
@@ -918,7 +918,7 @@ const SalaryWithdraw: React.FC = () => {
                               const diffMins = Math.floor(diffMs / 60000);
                               const diffHours = Math.floor(diffMins / 60);
                               const remainMins = diffMins % 60;
-                              const isOk = diffMins <= 120;
+                              const isOk = diffMins <= 1440; // 24h
                               const timeText = diffHours > 0 ? `${diffHours}س ${remainMins}د` : `${diffMins}د`;
                               return (
                                 <p className={`text-[9px] font-bold ${isOk ? "text-emerald-400" : "text-amber-400"}`}>
