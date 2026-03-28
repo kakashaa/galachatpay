@@ -62,9 +62,7 @@ const SalaryHome: React.FC = () => {
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
-    // Always fetch fresh data — no cache
     fetchStatus();
-    // Check phone verification status
     supabase
       .from("verified_phones")
       .select("*")
@@ -89,10 +87,8 @@ const SalaryHome: React.FC = () => {
     if (!status) setLoading(true);
     setError(false);
     try {
-      // Use withdrawStatus FIRST (fast — 0.1s) for accurate numbers
       const data: WithdrawStatus = await galaApi.withdrawStatus(user!.uuid) as any;
       if (data && !(data as any)?.transient_error) {
-        // API returns correct available balance — no deductions needed
         setStatus(data);
         try { localStorage.setItem(`salary_cache_${user!.uuid}`, JSON.stringify(data)); } catch {}
         try { localStorage.setItem(SALARY_CACHE_KEY, JSON.stringify(data)); } catch {}
@@ -100,7 +96,6 @@ const SalaryHome: React.FC = () => {
         setError(true);
       }
     } catch {
-      // Fallback to salaryCheckAll if withdrawStatus fails
       try {
         const allData: any = await galaApi.salaryCheckAll(user!.uuid);
         if (allData?.success || allData?.host_salary || allData?.agency_salary) {
@@ -174,43 +169,42 @@ const SalaryHome: React.FC = () => {
 
   const cashUsedThisMonth = cashResetOverride ? false : ((host?.cash_used_this_month || false) || (agency?.cash_used_this_month || false));
 
-  // Cash withdrawal only available in last 24h of month
-  // Exception: owner (UUID 1000) can always test
   const now = new Date();
   const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const hoursUntilMonthEnd = (lastDayOfMonth.getTime() + 86400000 - now.getTime()) / 3600000;
   const isOwner = user?.uuid === "1000";
-  // Window open if: last 24h OR owner UUID OR admin granted override via app_settings
   const isCashWindowOpen = hoursUntilMonthEnd <= 24 || isOwner || cashResetOverride;
   const cashLocked = cashUsedThisMonth || !isCashWindowOpen;
 
   const options = [
-    { id: "cash", icon: Wallet, label: "سحب نقدي", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", route: "/salary/cash", locked: cashLocked },
-    { id: "charge_self", icon: Coins, label: "شحن لحسابي", color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", route: "/salary/charge-self", locked: false },
-    { id: "charge_other", icon: Gift, label: "شحن لآخر", color: "text-violet-400", bg: "bg-violet-500/10 border-violet-500/20", route: "/salary/charge-other", locked: false },
-    { id: "instant", icon: Zap, label: "سحب فوري", color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/20", route: "/salary/instant", locked: false },
+    { id: "cash", icon: Wallet, label: "سحب نقدي", route: "/salary/cash", locked: cashLocked },
+    { id: "charge_self", icon: Coins, label: "شحن لحسابي", route: "/salary/charge-self", locked: false },
+    { id: "charge_other", icon: Gift, label: "شحن لآخر", route: "/salary/charge-other", locked: false },
+    { id: "instant", icon: Zap, label: "سحب فوري", route: "/salary/instant", locked: false },
   ];
 
   return (
     <MobileLayout showHeader headerTitle="راتبي" onBack={() => navigate("/dashboard")}>
-      <div className="px-4 py-3 space-y-3">
+      <div className="px-4 py-3 space-y-4" style={{ fontFamily: "'Tajawal', sans-serif" }}>
 
         {/* Phone verification banner */}
         {isPhoneVerified === false && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20"
+            className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl"
+            style={{ background: "rgba(233,193,118,0.08)" }}
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base shrink-0">⚠️</span>
-              <p className="text-xs text-amber-300 font-bold truncate">
+              <p className="text-xs font-bold truncate" style={{ color: "#e9c176" }}>
                 حسابك غير موثق — وثّق عشان تسحب
               </p>
             </div>
             <button
               onClick={() => navigate("/verify")}
-              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 text-[10px] font-black active:scale-95 transition-transform"
+              className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-black active:scale-95 transition-transform"
+              style={{ background: "rgba(233,193,118,0.15)", color: "#e9c176" }}
             >
               وثّق الآن
             </button>
@@ -219,16 +213,21 @@ const SalaryHome: React.FC = () => {
 
         {/* Loading animation */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-12 gap-4">
+          <div className="flex flex-col items-center justify-center py-16 gap-5">
             <div className="relative">
-              <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="w-16 h-16 rounded-full"
+                style={{ border: "3px solid rgba(233,193,118,0.1)", borderTopColor: "#e9c176" }}
+              />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-lg">💰</span>
               </div>
             </div>
             <div className="text-center space-y-1">
-              <p className="text-sm font-bold text-foreground animate-pulse">جاري تحميل بيانات الراتب...</p>
-              <p className="text-[10px] text-muted-foreground">يتم جلب البيانات الحقيقية من السيرفر</p>
+              <p className="text-sm font-bold animate-pulse" style={{ color: "#e9c176" }}>جاري تحميل بيانات الراتب...</p>
+              <p className="text-[10px]" style={{ color: "#78839c" }}>يتم جلب البيانات الحقيقية من السيرفر</p>
             </div>
           </div>
         )}
@@ -236,10 +235,11 @@ const SalaryHome: React.FC = () => {
         {/* Error */}
         {!loading && error && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <AlertCircle className="w-10 h-10 text-destructive" />
-            <p className="text-sm text-destructive font-bold">فشل جلب الراتب</p>
-            <p className="text-xs text-muted-foreground text-center px-4">السيرفر قد يكون مشغول — حاول مرة ثانية</p>
-            <button onClick={fetchStatus} className="mt-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform">
+            <AlertCircle className="w-10 h-10" style={{ color: "#ffb4ab" }} />
+            <p className="text-sm font-bold" style={{ color: "#ffb4ab" }}>فشل جلب الراتب</p>
+            <p className="text-xs text-center px-4" style={{ color: "#78839c" }}>السيرفر قد يكون مشغول — حاول مرة ثانية</p>
+            <button onClick={fetchStatus} className="mt-2 px-5 py-2.5 rounded-2xl text-sm font-bold active:scale-95 transition-transform"
+              style={{ background: "rgba(187,198,226,0.12)", color: "#bbc6e2" }}>
               إعادة المحاولة
             </button>
           </div>
@@ -247,35 +247,49 @@ const SalaryHome: React.FC = () => {
 
         {!error && status && (
           <>
-            {/* ══════ 1. Balance - Simple hero ══════ */}
-            <div className="text-center py-2">
-              <p className="text-[10px] text-muted-foreground mb-0.5">المبلغ المتاح للسحب</p>
+            {/* ══════ 1. Hero Balance Card ══════ */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative rounded-3xl p-6 text-center overflow-hidden"
+              style={{
+                background: "linear-gradient(145deg, rgba(15,26,46,0.9), rgba(28,32,40,0.7))",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                boxShadow: "0 8px 40px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(187,198,226,0.05)",
+              }}
+            >
+              {/* Ambient gold glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 rounded-full opacity-20 blur-3xl" style={{ background: "#e9c176" }} />
+              
+              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: "#78839c", fontFamily: "'Manrope', sans-serif" }}>المبلغ المتاح للسحب</p>
               {totalAvailable > 0 ? (
                 <>
-                  <p className="text-3xl font-black text-emerald-400 tabular-nums leading-none" dir="ltr">
+                  <p className="text-4xl font-extrabold tabular-nums leading-none" dir="ltr"
+                    style={{ color: "#e9c176", fontFamily: "'Manrope', sans-serif", textShadow: "0 0 40px rgba(233,193,118,0.2)" }}>
                     ${totalAvailable.toFixed(2)}
                   </p>
-                  <div className="flex items-center justify-center gap-2 mt-1">
-                    <span className="text-[10px] text-muted-foreground">
-                      مضيف <span className="text-emerald-400 font-bold" dir="ltr">${hostAvailable.toFixed(2)}</span>
+                  <div className="flex items-center justify-center gap-3 mt-3">
+                    <span className="text-[11px]" style={{ color: "#78839c" }}>
+                      مضيف <span className="font-bold" dir="ltr" style={{ color: "#4ae183", fontFamily: "'Manrope', sans-serif" }}>${hostAvailable.toFixed(2)}</span>
                     </span>
                     {isAgencyOwner && (
                       <>
-                        <span className="text-muted-foreground/30">|</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          وكالة <span className="text-violet-400 font-bold" dir="ltr">${agencyAvailable.toFixed(2)}</span>
+                        <span style={{ color: "rgba(120,131,156,0.3)" }}>|</span>
+                        <span className="text-[11px]" style={{ color: "#78839c" }}>
+                          وكالة <span className="font-bold" dir="ltr" style={{ color: "#bbc6e2", fontFamily: "'Manrope', sans-serif" }}>${agencyAvailable.toFixed(2)}</span>
                         </span>
                       </>
                     )}
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground py-1">لا يوجد رصيد متاح</p>
+                <p className="text-sm py-2" style={{ color: "#78839c" }}>لا يوجد رصيد متاح</p>
               )}
-            </div>
+            </motion.div>
 
-            {/* ══════ 2. Withdrawal buttons - Pill row ══════ */}
-            <div className="flex flex-wrap gap-1.5 justify-center">
+            {/* ══════ 2. Withdrawal buttons ══════ */}
+            <div className="flex flex-wrap gap-2 justify-center">
               {options.map((opt, i) => {
                 const Icon = opt.icon;
                 return (
@@ -283,23 +297,28 @@ const SalaryHome: React.FC = () => {
                     key={opt.id}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.03 + i * 0.03 }}
+                    transition={{ delay: 0.03 + i * 0.04 }}
                     onClick={() => !opt.locked && navigate(opt.route)}
                     disabled={opt.locked}
-                    className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-bold transition-all ${opt.bg} ${
-                      opt.locked ? "opacity-40 cursor-not-allowed" : "active:scale-[0.96]"
+                    className={`relative flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                      opt.locked ? "opacity-35 cursor-not-allowed" : "active:scale-[0.96]"
                     }`}
+                    style={{
+                      background: opt.locked ? "rgba(15,26,46,0.4)" : "rgba(15,26,46,0.6)",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: opt.locked ? "none" : "0 2px 12px -4px rgba(0,0,0,0.3)",
+                    }}
                   >
-                    {opt.locked && <Lock className="w-3 h-3 text-muted-foreground" />}
-                    <Icon className={`w-3.5 h-3.5 ${opt.color}`} />
-                    <span className="text-foreground">{opt.label}</span>
+                    {opt.locked && <Lock className="w-3 h-3" style={{ color: "#78839c" }} />}
+                    <Icon className="w-3.5 h-3.5" style={{ color: "#bbc6e2" }} />
+                    <span style={{ color: "#dfe2eb" }}>{opt.label}</span>
                   </motion.button>
                 );
               })}
             </div>
 
             {cashLocked && (
-              <div className="flex items-center justify-center gap-1 text-[10px] text-amber-400">
+              <div className="flex items-center justify-center gap-1.5 text-[10px] px-4" style={{ color: "#e9c176" }}>
                 <Lock className="w-3 h-3" />
                 <span>
                   {cashUsedThisMonth
@@ -310,23 +329,21 @@ const SalaryHome: React.FC = () => {
               </div>
             )}
 
-            {/* ══════ 3. Salary Details - Simple table ══════ */}
-            <div className="space-y-1.5">
+            {/* ══════ 3. Salary Details ══════ */}
+            <div className="space-y-2">
               {isAgencyOwner && (
-                <div className="flex rounded-lg bg-muted/15 p-0.5 gap-0.5">
+                <div className="flex rounded-2xl p-1 gap-1" style={{ background: "rgba(15,26,46,0.5)" }}>
                   <button
                     onClick={() => setSalaryTab("host")}
-                    className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-                      salaryTab === "host" ? "bg-emerald-500/15 text-emerald-400" : "text-muted-foreground"
-                    }`}
+                    className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all"
+                    style={salaryTab === "host" ? { background: "rgba(74,225,131,0.1)", color: "#4ae183" } : { color: "#78839c" }}
                   >
                     المضيف
                   </button>
                   <button
                     onClick={() => setSalaryTab("agency")}
-                    className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all ${
-                      salaryTab === "agency" ? "bg-violet-500/15 text-violet-400" : "text-muted-foreground"
-                    }`}
+                    className="flex-1 py-2 rounded-xl text-[11px] font-bold transition-all"
+                    style={salaryTab === "agency" ? { background: "rgba(187,198,226,0.1)", color: "#bbc6e2" } : { color: "#78839c" }}
                   >
                     الوكالة
                   </button>
@@ -335,52 +352,62 @@ const SalaryHome: React.FC = () => {
 
               {/* Host details */}
               {(salaryTab === "host" || !isAgencyOwner) && host && host.current_month > 0 && (
-                <div className="rounded-xl border border-border/10 bg-card/20 p-2.5 space-y-1">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="rounded-2xl p-4 space-y-2"
+                  style={{ background: "linear-gradient(145deg, #0f1a2e, #1c2028)" }}
+                >
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground">الراتب</span>
-                    <span className="font-bold text-foreground tabular-nums" dir="ltr">${host.current_month.toFixed(2)}</span>
+                    <span style={{ color: "#78839c" }}>الراتب</span>
+                    <span className="font-bold tabular-nums" dir="ltr" style={{ color: "#dfe2eb", fontFamily: "'Manrope', sans-serif" }}>${host.current_month.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground">الخصم</span>
+                    <span style={{ color: "#78839c" }}>الخصم</span>
                     {hostCutInvalid ? (
-                      <span className="text-amber-400 text-[10px] font-bold">⚠️ مراجعة</span>
+                      <span className="text-[10px] font-bold" style={{ color: "#e9c176" }}>⚠️ مراجعة</span>
                     ) : (
-                      <span className="font-bold text-red-400 tabular-nums" dir="ltr">-${hostCut.toFixed(2)}</span>
+                      <span className="font-bold tabular-nums" dir="ltr" style={{ color: "#ffb4ab", fontFamily: "'Manrope', sans-serif" }}>-${hostCut.toFixed(2)}</span>
                     )}
                   </div>
-                  <div className="h-px bg-border/10" />
+                  <div className="h-px" style={{ background: "rgba(187,198,226,0.06)" }} />
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground font-bold">المتبقي</span>
-                    <span className="font-black text-emerald-400 tabular-nums" dir="ltr">${hostAvailable.toFixed(2)}</span>
+                    <span className="font-bold" style={{ color: "#78839c" }}>المتبقي</span>
+                    <span className="font-extrabold tabular-nums" dir="ltr" style={{ color: "#e9c176", fontFamily: "'Manrope', sans-serif" }}>${hostAvailable.toFixed(2)}</span>
                   </div>
                   {hostCutInvalid && host.note_ar && (
-                    <p className="text-[9px] text-amber-400 text-center">{host.note_ar}</p>
+                    <p className="text-[9px] text-center" style={{ color: "#e9c176" }}>{host.note_ar}</p>
                   )}
-                </div>
+                </motion.div>
               )}
 
               {/* Agency details */}
               {salaryTab === "agency" && isAgencyOwner && (
-                <div className="rounded-xl border border-border/10 bg-card/20 p-2.5 space-y-1">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="rounded-2xl p-4 space-y-2"
+                  style={{ background: "linear-gradient(145deg, #0f1a2e, #1c2028)" }}
+                >
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground">الإجمالي</span>
-                    <span className="font-bold text-foreground tabular-nums" dir="ltr">${agencyPoolTotal.toFixed(2)}</span>
+                    <span style={{ color: "#78839c" }}>الإجمالي</span>
+                    <span className="font-bold tabular-nums" dir="ltr" style={{ color: "#dfe2eb", fontFamily: "'Manrope', sans-serif" }}>${agencyPoolTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground">المسحوبات</span>
-                    <span className="font-bold text-red-400 tabular-nums" dir="ltr">-${agencyPoolCut.toFixed(2)}</span>
+                    <span style={{ color: "#78839c" }}>المسحوبات</span>
+                    <span className="font-bold tabular-nums" dir="ltr" style={{ color: "#ffb4ab", fontFamily: "'Manrope', sans-serif" }}>-${agencyPoolCut.toFixed(2)}</span>
                   </div>
-                  <div className="h-px bg-border/10" />
+                  <div className="h-px" style={{ background: "rgba(187,198,226,0.06)" }} />
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground font-bold">المتبقي</span>
-                    <span className="font-black text-emerald-400 tabular-nums" dir="ltr">${agencyAvailable.toFixed(2)}</span>
+                    <span className="font-bold" style={{ color: "#78839c" }}>المتبقي</span>
+                    <span className="font-extrabold tabular-nums" dir="ltr" style={{ color: "#e9c176", fontFamily: "'Manrope', sans-serif" }}>${agencyAvailable.toFixed(2)}</span>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* No host salary */}
               {(salaryTab === "host" || !isAgencyOwner) && (!host || host.current_month <= 0) && (
-                <p className="text-[10px] text-muted-foreground text-center py-2">لا يوجد راتب مضيف هذا الشهر</p>
+                <p className="text-[10px] text-center py-2" style={{ color: "#78839c" }}>لا يوجد راتب مضيف هذا الشهر</p>
               )}
             </div>
 
@@ -394,4 +421,3 @@ const SalaryHome: React.FC = () => {
 };
 
 export default SalaryHome;
-// Force sync 1774521745
