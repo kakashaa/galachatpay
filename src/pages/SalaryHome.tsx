@@ -53,29 +53,16 @@ const SalaryHome: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const SALARY_CACHE_KEY = `salary_cache_${user?.uuid}`;
-  const [status, setStatus] = useState<WithdrawStatus | null>(() => {
-    try {
-      const cached = localStorage.getItem(SALARY_CACHE_KEY);
-      return cached ? JSON.parse(cached) : null;
-    } catch { return null; }
-  });
-  const [loading, setLoading] = useState(!status);
+  const [status, setStatus] = useState<WithdrawStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
-    const cached = localStorage.getItem(`salary_cache_${user.uuid}`);
-    if (cached) {
-      try {
-        const cachedData = JSON.parse(cached);
-        if (cachedData && !status) {
-          setStatus(cachedData);
-          setLoading(false);
-        }
-      } catch {}
-    }
+    // Always fetch fresh data — no cache
     fetchStatus();
     // Check phone verification status
     supabase
@@ -230,17 +217,18 @@ const SalaryHome: React.FC = () => {
           </motion.div>
         )}
 
-        {/* Loading skeleton */}
-        {loading && !status && (
-          <div className="space-y-2">
-            <div className="text-center py-3">
-              <div className="h-2.5 w-24 mx-auto rounded bg-muted animate-pulse mb-2" />
-              <div className="h-7 w-28 mx-auto rounded bg-muted animate-pulse" />
+        {/* Loading animation */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg">💰</span>
+              </div>
             </div>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="flex-1 h-9 rounded-full bg-muted animate-pulse" />
-              ))}
+            <div className="text-center space-y-1">
+              <p className="text-sm font-bold text-foreground animate-pulse">جاري تحميل بيانات الراتب...</p>
+              <p className="text-[10px] text-muted-foreground">يتم جلب البيانات الحقيقية من السيرفر</p>
             </div>
           </div>
         )}
