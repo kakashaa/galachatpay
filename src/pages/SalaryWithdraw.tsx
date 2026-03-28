@@ -358,8 +358,10 @@ const SalaryWithdraw: React.FC = () => {
           if (t.is_used) return false;
           if (t.selectable === false) return false; // API says not selectable
           if (isCashMode) {
-            // Always use client-side time check (most accurate for user's timezone)
-            const transferTime = new Date(t.time || t.created_at || "");
+            // Server time is UTC — parse correctly
+            const rawT = t.time || t.created_at || "";
+            const hasTz = rawT.includes("+") || rawT.includes("Z") || rawT.includes("UTC");
+            const transferTime = new Date(hasTz ? rawT : rawT + " UTC");
             const now = new Date();
             const diffMins = (now.getTime() - transferTime.getTime()) / 60000;
             if (diffMins > 120) return false;
@@ -907,7 +909,10 @@ const SalaryWithdraw: React.FC = () => {
                           <p className="text-xs text-muted-foreground">{timeStr}</p>
                           {t.time && (
                             (() => {
-                              const transferDate = new Date(t.time);
+                              // Server time is UTC — append UTC if no timezone info
+                              const rawTime = t.time || "";
+                              const hasTimezone = rawTime.includes("+") || rawTime.includes("Z") || rawTime.includes("UTC");
+                              const transferDate = new Date(hasTimezone ? rawTime : rawTime + " UTC");
                               const nowDate = new Date();
                               const diffMs = nowDate.getTime() - transferDate.getTime();
                               const diffMins = Math.floor(diffMs / 60000);
