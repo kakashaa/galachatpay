@@ -209,6 +209,7 @@ const SalaryWithdraw: React.FC = () => {
 
   // Processing
   const [processing, setProcessing] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [processStage, setProcessStage] = useState<"check" | "save">("check");
 
   const hasFetchedRef = useRef(false);
@@ -579,7 +580,49 @@ const SalaryWithdraw: React.FC = () => {
 
   if (!user) return null;
 
+  // Terms dialog
+  const termsDialog = showTerms && (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowTerms(false)}>
+      <div className="bg-card border border-border rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto p-5 space-y-3" onClick={e => e.stopPropagation()}>
+        <h3 className="text-base font-bold text-foreground text-center">📄 شروط وأحكام السحب</h3>
+        <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+          <p className="font-bold text-foreground">⏰ مهلة الحوالة:</p>
+          <p>• كل حوالة صالحة لمدة <b className="text-amber-400">24 ساعة</b> فقط من وقت إرسالها</p>
+          <p>• بعد انتهاء المهلة لا يمكن استخدامها — تواصل مع الإدارة</p>
+          
+          <p className="font-bold text-foreground mt-3">🔒 عدد مرات السحب:</p>
+          <p>• <b>المضيف:</b> سحب نقدي مرة واحدة في الشهر</p>
+          <p>• <b>وكيل المضيفين:</b> مرتين — مرة لراتب المضيف ومرة لراتب الوكالة</p>
+          <p>• شحن الكوينز والسحب الفوري متاح طوال الشهر</p>
+          
+          <p className="font-bold text-foreground mt-3">💰 الرقم المرجعي:</p>
+          <p>• كل رقم مرجعي يُستخدم <b className="text-red-400">مرة واحدة فقط</b></p>
+          <p>• لا يمكن إعادة استخدام نفس الرقم في أي خدمة أخرى</p>
+          <p>• حتى لو الطلب معلق أو قيد المراجعة — الرقم محجوز</p>
+          
+          <p className="font-bold text-foreground mt-3">📲 إشعارات:</p>
+          <p>• تصلك رسالة واتساب عند رفع الطلب</p>
+          <p>• تصلك رسالة عند قبول أو رفض الطلب مع الإيصال</p>
+          
+          <p className="font-bold text-foreground mt-3">❌ حالات الرفض:</p>
+          <p>• الحوالة أقدم من 24 ساعة</p>
+          <p>• الرقم المرجعي مستخدم مسبقاً</p>
+          <p>• المبلغ أكبر من الراتب المتاح</p>
+          <p>• تجاوز حد السحب الشهري</p>
+        </div>
+        <button onClick={() => setShowTerms(false)} className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm active:scale-95 transition-transform">
+          فهمت ✅
+        </button>
+      </div>
+    </div>
+  );
+
   const headerTitle = modeConfig[pathMode]?.title || "سحب الراتب";
+
+  // Render terms dialog globally
+  if (typeof document !== "undefined" && showTerms) {
+    // Will render via termsDialog variable below
+  }
   const transferAmount = selectedTransfer?.usd || selectedTransfer?.amount || 0;
   const remaining = getAvailableForType();
   const coinsRate = getCoinsRate();
@@ -830,15 +873,29 @@ const SalaryWithdraw: React.FC = () => {
             <p className="text-sm text-muted-foreground">= {(remaining * coinsRate).toLocaleString()} كوينز</p>
           </div>
 
-          {/* Instructions */}
-          <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-2">
+          {/* Instructions + Timer Warning */}
+          <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-3">
             <p className="text-xs font-bold text-primary">📋 خطوات السحب:</p>
             <ol className="text-[11px] text-muted-foreground space-y-1 list-decimal list-inside">
               <li>حوّل المبلغ في التطبيق لـ UUID <span className="font-mono font-bold text-foreground">10000</span></li>
               <li>ارجع هنا واضغط "تحديث" لعرض الحوالة</li>
               <li>اختر الحوالة وأكمل طلب السحب</li>
             </ol>
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 space-y-1.5">
+              <p className="text-[11px] font-bold text-amber-400 flex items-center gap-1">⏰ مهلة الحوالة: 24 ساعة</p>
+              <p className="text-[10px] text-amber-300/80 leading-relaxed">
+                عندك 24 ساعة من وقت إرسال الحوالة لاستخدامها. بعد 24 ساعة تنتهي صلاحيتها ولا يمكن استخدامها في السحب.
+              </p>
+            </div>
           </div>
+
+          {/* Terms Button */}
+          <button
+            onClick={() => setShowTerms && setShowTerms(true)}
+            className="w-full text-center text-[10px] text-primary/70 underline"
+          >
+            📄 شروط وأحكام السحب
+          </button>
 
           {/* Transfers list */}
           <div className="space-y-3">
@@ -1032,6 +1089,7 @@ const SalaryWithdraw: React.FC = () => {
               { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
             ]}
           />
+          {termsDialog}
         </div>
       </MobileLayout>
     );
@@ -1515,6 +1573,7 @@ const SalaryWithdraw: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+        {termsDialog}
       </div>
     </MobileLayout>
   );
