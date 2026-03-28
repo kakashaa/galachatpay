@@ -41,23 +41,23 @@ const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; colo
   pending: {
     icon: <Clock className="w-4 h-4" />,
     label: "قيد المراجعة",
-    color: "text-amber-400",
-    bg: "bg-amber-500/10 border-amber-500/20",
-    dotColor: "bg-amber-400",
+    color: "#e9c176",
+    bg: "rgba(233,193,118,0.08)",
+    dotColor: "#e9c176",
   },
   approved: {
     icon: <CheckCircle className="w-4 h-4" />,
     label: "تم التسليم",
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10 border-emerald-500/20",
-    dotColor: "bg-emerald-400",
+    color: "#4ae183",
+    bg: "rgba(74,225,131,0.08)",
+    dotColor: "#4ae183",
   },
   rejected: {
     icon: <XCircle className="w-4 h-4" />,
     label: "مرفوض",
-    color: "text-red-400",
-    bg: "bg-red-500/10 border-red-500/20",
-    dotColor: "bg-red-400",
+    color: "#ffb4ab",
+    bg: "rgba(255,180,171,0.08)",
+    dotColor: "#ffb4ab",
   },
 };
 
@@ -96,24 +96,23 @@ const handleSaveReceipt = (request: SalaryRequest) => {
       <head><title>إيصال سحب الراتب</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Manrope:wght@400;600;700;800&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Cairo',sans-serif;background:#0a0a0f;color:#fff;padding:24px;display:flex;justify-content:center;align-items:center;min-height:100vh}
-        .card{background:linear-gradient(145deg,#1a1a2e,#16162a);border:1px solid #2a2a4a;border-radius:20px;padding:28px;max-width:360px;width:100%;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
-        .logo{font-size:22px;font-weight:900;color:#e50914;margin-bottom:8px;text-align:center}
-        .subtitle{font-size:11px;color:#666;text-align:center;margin-bottom:20px}
-        .amount{font-size:36px;font-weight:900;color:#10b981;margin:16px 0;text-align:center;letter-spacing:-1px}
-        .divider{height:1px;background:linear-gradient(90deg,transparent,#333,transparent);margin:16px 0}
-        .row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #1a1a2e;font-size:13px}
-        .row:last-child{border-bottom:none}
-        .label{color:#666;font-weight:600}
-        .value{color:#eee;font-weight:700}
-        .status{display:inline-block;padding:4px 14px;border-radius:10px;font-size:11px;font-weight:800}
-        .delivered,.approved,.completed,.done{background:rgba(16,185,129,0.15);color:#10b981}
-        .pending{background:rgba(245,158,11,0.15);color:#f59e0b}
-        .rejected{background:rgba(239,68,68,0.15);color:#ef4444}
-        .footer{color:#444;font-size:9px;margin-top:20px;text-align:center;letter-spacing:0.5px}
-        .save-hint{color:#555;font-size:10px;text-align:center;margin-top:12px}
+        body{font-family:'Cairo',sans-serif;background:#10141a;color:#dfe2eb;padding:24px;display:flex;justify-content:center;align-items:center;min-height:100vh}
+        .card{background:linear-gradient(145deg,#0f1a2e,#1c2028);border-radius:24px;padding:28px;max-width:360px;width:100%;margin:auto;box-shadow:0 8px 40px rgba(0,0,0,0.5)}
+        .logo{font-size:22px;font-weight:900;color:#e9c176;margin-bottom:8px;text-align:center}
+        .subtitle{font-size:11px;color:#78839c;text-align:center;margin-bottom:20px;letter-spacing:0.1em;text-transform:uppercase}
+        .amount{font-size:36px;font-weight:800;color:#e9c176;margin:16px 0;text-align:center;letter-spacing:-1px;font-family:'Manrope',sans-serif}
+        .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(187,198,226,0.1),transparent);margin:16px 0}
+        .row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:13px}
+        .label{color:#78839c;font-weight:600}
+        .value{color:#dfe2eb;font-weight:700}
+        .status{display:inline-block;padding:4px 14px;border-radius:12px;font-size:11px;font-weight:800}
+        .delivered,.approved,.completed,.done{background:rgba(74,225,131,0.12);color:#4ae183}
+        .pending{background:rgba(233,193,118,0.12);color:#e9c176}
+        .rejected{background:rgba(255,180,171,0.12);color:#ffb4ab}
+        .footer{color:#78839c;font-size:9px;margin-top:20px;text-align:center;letter-spacing:0.5px}
+        .save-hint{color:#78839c;font-size:10px;text-align:center;margin-top:12px}
       </style></head>
       <body>
       <div class="card">
@@ -245,7 +244,6 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
         setRequests(all);
 
         const withdrawn = all
-          // Show ALL requests including rejected
           .reduce((sum, r) => sum + (r.amount || 0), 0);
         onWithdrawnCalculated?.(withdrawn);
       } catch {
@@ -259,17 +257,16 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2 px-1">
-          <div className="h-4 w-4 rounded bg-muted animate-pulse" />
-          <div className="h-4 w-32 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-4 rounded" style={{ background: "rgba(15,26,46,0.6)" }} />
+          <div className="h-4 w-32 rounded" style={{ background: "rgba(15,26,46,0.6)" }} />
         </div>
         {[1, 2].map(n => (
-          <div key={n} className="rounded-2xl border border-border/10 bg-card/30 p-4 space-y-3">
+          <div key={n} className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(15,26,46,0.4)" }}>
             <div className="flex justify-between">
-              <div className="h-5 w-20 rounded-full bg-muted animate-pulse" />
-              <div className="h-5 w-16 rounded bg-muted animate-pulse" />
+              <div className="h-5 w-20 rounded-full animate-pulse" style={{ background: "rgba(187,198,226,0.06)" }} />
+              <div className="h-5 w-16 rounded animate-pulse" style={{ background: "rgba(187,198,226,0.06)" }} />
             </div>
-            <div className="h-3 w-full rounded bg-muted animate-pulse" />
-            <div className="h-3 w-2/3 rounded bg-muted animate-pulse" />
+            <div className="h-3 w-full rounded animate-pulse" style={{ background: "rgba(187,198,226,0.04)" }} />
           </div>
         ))}
       </div>
@@ -278,33 +275,34 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
   if (requests.length === 0) {
     return (
-      <div className="rounded-2xl border border-border/10 bg-card/20 p-6 text-center">
-        <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-        <p className="text-xs text-muted-foreground">لا توجد طلبات سحب سابقة هذا الشهر</p>
+      <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(15,26,46,0.4)" }}>
+        <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: "rgba(120,131,156,0.3)" }} />
+        <p className="text-xs" style={{ color: "#78839c" }}>لا توجد طلبات سحب سابقة هذا الشهر</p>
       </div>
     );
   }
 
   return (
     <>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
         {/* Header with month selector */}
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5 text-primary" /> طلباتي
-            <span className="text-[10px] text-muted-foreground font-normal">({requests.length})</span>
+          <h3 className="text-xs font-bold flex items-center gap-1.5" style={{ color: "#dfe2eb" }}>
+            <FileText className="w-3.5 h-3.5" style={{ color: "#bbc6e2" }} /> طلباتي
+            <span className="text-[10px] font-normal" style={{ color: "#78839c" }}>({requests.length})</span>
           </h3>
           <select
             value={selectedMonth}
             onChange={e => setSelectedMonth(e.target.value)}
-            className="bg-muted/20 border border-border/20 rounded-lg text-[10px] px-2 py-1 text-foreground font-bold"
+            className="rounded-xl text-[10px] px-2.5 py-1.5 font-bold"
+            style={{ background: "rgba(15,26,46,0.6)", color: "#dfe2eb", border: "none", outline: "none" }}
           >
             {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
         </div>
 
         {/* Cards per request */}
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {requests.map((req, i) => {
             const st = getStatus(req.status);
             const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -312,7 +310,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             const isApproved = req.status === "approved" || req.status === "delivered";
             const isRejected = req.status === "rejected";
             const isPending = !isApproved && !isRejected;
-            const hasReceipt = isApproved && (req.transfer_image_url || req.receipt_url);
+            const hasReceipt = isApproved && req.transfer_image_url;
             
             return (
               <motion.button
@@ -321,29 +319,31 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
                 onClick={() => setSelectedReq(req)}
-                className={`w-full rounded-2xl border p-3.5 text-right transition-all active:scale-[0.98] ${
-                  isApproved ? "border-emerald-500/20 bg-emerald-500/5" :
-                  isRejected ? "border-red-500/20 bg-red-500/5" :
-                  "border-amber-500/15 bg-amber-500/5"
-                }`}
+                className="w-full rounded-2xl p-4 text-right transition-all active:scale-[0.98] relative overflow-hidden"
+                style={{
+                  background: "linear-gradient(145deg, #0f1a2e, #1c2028)",
+                  boxShadow: isApproved
+                    ? "inset 3px 0 0 #4ae183, 0 4px 20px -8px rgba(0,0,0,0.3)"
+                    : isPending
+                    ? "inset 3px 0 0 #e9c176, 0 4px 20px -8px rgba(0,0,0,0.3)"
+                    : "inset 3px 0 0 #ffb4ab, 0 4px 20px -8px rgba(0,0,0,0.3)",
+                }}
               >
                 {/* Top row: status badge + amount */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                    isApproved ? "bg-emerald-500/15 text-emerald-400" :
-                    isRejected ? "bg-red-500/15 text-red-400" :
-                    "bg-amber-500/15 text-amber-400"
-                  }`}>
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold"
+                    style={{ background: st.bg, color: st.color }}>
                     <span>{isApproved ? "✅" : isRejected ? "❌" : "⏳"}</span>
                     <span>{st.label}</span>
                   </div>
-                  <span className="text-lg font-black text-foreground tabular-nums" dir="ltr">
+                  <span className="text-lg font-extrabold tabular-nums" dir="ltr"
+                    style={{ color: isApproved ? "#e9c176" : "#dfe2eb", fontFamily: "'Manrope', sans-serif" }}>
                     ${req.amount.toFixed(2)}
                   </span>
                 </div>
 
                 {/* Details row */}
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <div className="flex items-center justify-between text-[10px]" style={{ color: "#78839c" }}>
                   <div className="flex items-center gap-3">
                     <span>{bankLabel}</span>
                     {req.reference_id && <span className="font-mono opacity-60">#{req.reference_id}</span>}
@@ -353,7 +353,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
                 {/* Receipt indicator for approved */}
                 {hasReceipt && (
-                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-emerald-400 font-bold">
+                  <div className="flex items-center gap-1.5 mt-2.5 text-[10px] font-bold" style={{ color: "#e9c176" }}>
                     <span>📄</span>
                     <span>إيصال التحويل متاح — اضغط للعرض</span>
                   </div>
@@ -361,14 +361,14 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
                 {/* Rejection reason */}
                 {isRejected && req.admin_note && (
-                  <div className="mt-2 p-2 rounded-lg bg-red-500/10 text-[10px] text-red-300">
+                  <div className="mt-2.5 p-2.5 rounded-xl text-[10px]" style={{ background: "rgba(255,180,171,0.06)", color: "#ffb4ab" }}>
                     السبب: {req.admin_note}
                   </div>
                 )}
 
                 {/* Pending message */}
                 {isPending && (
-                  <div className="mt-2 text-[10px] text-amber-300/70 animate-pulse">
+                  <div className="mt-2.5 text-[10px] animate-pulse" style={{ color: "rgba(233,193,118,0.7)" }}>
                     جاري المراجعة من قبل الإدارة...
                   </div>
                 )}
@@ -380,19 +380,21 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
       {/* Detail Sheet */}
       <Sheet open={!!selectedReq} onOpenChange={() => setSelectedReq(null)}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto"
+          style={{ background: "#10141a", border: "none" }}>
           {selectedReq && (
             <div className="space-y-4 pb-6">
               <SheetHeader>
-                <SheetTitle className="text-center text-sm">تفاصيل الطلب</SheetTitle>
+                <SheetTitle className="text-center text-sm" style={{ color: "#dfe2eb" }}>تفاصيل الطلب</SheetTitle>
               </SheetHeader>
 
               {(() => {
                 const st = getStatus(selectedReq.status);
                 return (
-                  <div className={`flex items-center justify-center gap-2 p-3 rounded-xl border ${st.bg}`}>
-                    <span className={st.color}>{st.icon}</span>
-                    <span className={`text-sm font-bold ${st.color}`}>{st.label}</span>
+                  <div className="flex items-center justify-center gap-2 p-3 rounded-2xl"
+                    style={{ background: st.bg }}>
+                    <span style={{ color: st.color }}>{st.icon}</span>
+                    <span className="text-sm font-bold" style={{ color: st.color }}>{st.label}</span>
                   </div>
                 );
               })()}
@@ -414,24 +416,24 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                   { label: "الرقم المرجعي", value: selectedReq.reference_id },
                   { label: "التاريخ", value: formatDateAr(selectedReq.created_at) },
                 ].filter(r => r.value).map(r => (
-                  <div key={r.label} className="flex justify-between items-center bg-muted/20 rounded-xl p-3">
-                    <span className="text-xs text-muted-foreground">{r.label}</span>
-                    <span className="text-xs font-bold text-foreground" dir="auto">{r.value}</span>
+                  <div key={r.label} className="flex justify-between items-center rounded-2xl p-3"
+                    style={{ background: "rgba(15,26,46,0.6)" }}>
+                    <span className="text-xs" style={{ color: "#78839c" }}>{r.label}</span>
+                    <span className="text-xs font-bold" dir="auto" style={{ color: "#dfe2eb" }}>{r.value}</span>
                   </div>
                 ))}
               </div>
 
               {selectedReq.status === "rejected" && selectedReq.admin_note && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl space-y-1">
-                  <p className="text-[10px] text-red-400 font-bold">سبب الرفض:</p>
-                  <p className="text-xs text-foreground">{selectedReq.admin_note}</p>
+                <div className="p-3 rounded-2xl space-y-1" style={{ background: "rgba(255,180,171,0.06)" }}>
+                  <p className="text-[10px] font-bold" style={{ color: "#ffb4ab" }}>سبب الرفض:</p>
+                  <p className="text-xs" style={{ color: "#dfe2eb" }}>{selectedReq.admin_note}</p>
                 </div>
               )}
 
               {selectedReq.status === "rejected" && !selectedReq.is_final_rejection && (
                 <button
                   onClick={() => {
-                    // Navigate to salary withdraw with pre-filled data for editing
                     const params = new URLSearchParams({
                       edit: selectedReq.id,
                       transfer_id: selectedReq.transfer_id || "",
@@ -439,29 +441,30 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                     });
                     window.location.href = `/salary/cash?${params.toString()}`;
                   }}
-                  className="w-full py-2.5 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold hover:bg-amber-500/30 transition-colors"
+                  className="w-full py-2.5 rounded-2xl text-xs font-bold transition-colors"
+                  style={{ background: "rgba(233,193,118,0.1)", color: "#e9c176" }}
                 >
                   تعديل وإعادة الطلب
                 </button>
               )}
 
               {selectedReq.status === "rejected" && selectedReq.is_final_rejection && (
-                <div className="p-2 bg-red-500/5 border border-red-500/10 rounded-xl text-center">
-                  <p className="text-[10px] text-red-400">رفض نهائي — لا يمكن إعادة الطلب</p>
+                <div className="p-2.5 rounded-2xl text-center" style={{ background: "rgba(255,180,171,0.04)" }}>
+                  <p className="text-[10px]" style={{ color: "#ffb4ab" }}>رفض نهائي — لا يمكن إعادة الطلب</p>
                 </div>
               )}
 
               {selectedReq.status === "rejected" && selectedReq.rejection_image_url && (
                 <div className="space-y-1">
-                  <p className="text-[10px] text-muted-foreground font-bold">صورة توضيحية:</p>
-                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full rounded-xl border border-border/20" />
+                  <p className="text-[10px] font-bold" style={{ color: "#78839c" }}>صورة توضيحية:</p>
+                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full rounded-2xl" />
                 </div>
               )}
 
               {selectedReq.status === "approved" && selectedReq.transfer_image_url && (
                 <div className="space-y-1">
-                  <p className="text-[10px] text-emerald-400 font-bold">إيصال التحويل:</p>
-                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full rounded-xl border border-emerald-500/20" />
+                  <p className="text-[10px] font-bold" style={{ color: "#4ae183" }}>إيصال التحويل:</p>
+                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full rounded-2xl" />
                 </div>
               )}
 
@@ -469,7 +472,8 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
               <Button
                 onClick={() => handleSaveReceipt(selectedReq)}
                 variant="outline"
-                className="w-full h-11 text-sm font-bold gap-2"
+                className="w-full h-11 text-sm font-bold gap-2 rounded-2xl"
+                style={{ background: "rgba(187,198,226,0.06)", borderColor: "rgba(187,198,226,0.1)", color: "#bbc6e2" }}
               >
                 <Camera className="w-4 h-4" />
                 حفظ كصورة
@@ -481,7 +485,8 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
                     onResubmit(selectedReq);
                     setSelectedReq(null);
                   }}
-                  className="w-full gold-gradient text-primary-foreground font-bold h-12"
+                  className="w-full font-bold h-12 rounded-2xl"
+                  style={{ background: "linear-gradient(135deg, #e9c176, #d4a853)", color: "#10141a" }}
                 >
                   تعديل وإعادة الإرسال
                 </Button>
