@@ -2,16 +2,15 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Wallet, Coins, Gift, Zap, DollarSign,
-  Building2, CheckCircle, XCircle, AlertCircle,
-  Lock, TrendingUp,
+  Wallet, Coins, Gift, Zap,
+  AlertCircle, Lock, TrendingUp,
 } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import SalaryRequestsHistory from "@/components/SalaryRequestsHistory";
 import { galaApi } from "@/services/galaApi";
 import { supabase } from "@/integrations/supabase/client";
-const USD_TO_COINS = 7500;
+
 
 interface WithdrawStatus {
   ok: boolean;
@@ -55,7 +54,6 @@ const SalaryHome: React.FC = () => {
   const SALARY_CACHE_KEY = `salary_cache_${user?.uuid}`;
   const [status, setStatus] = useState<WithdrawStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
