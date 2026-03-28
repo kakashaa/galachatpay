@@ -156,11 +156,22 @@ const getCurrentMonth = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 };
 
+type FilterTab = "all" | "delivered" | "pending" | "rejected" | "coins";
+
+const FILTER_TABS: { key: FilterTab; label: string }[] = [
+  { key: "all", label: "الكل" },
+  { key: "delivered", label: "تم التسليم" },
+  { key: "pending", label: "قيد المراجعة" },
+  { key: "rejected", label: "مرفوض" },
+  { key: "coins", label: "شحنات" },
+];
+
 const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdrawnCalculated }) => {
   const [requests, setRequests] = useState<SalaryRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReq, setSelectedReq] = useState<SalaryRequest | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth);
+  const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
   const monthOptions = getMonthOptions();
 
   useEffect(() => {
