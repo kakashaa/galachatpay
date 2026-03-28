@@ -303,44 +303,75 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
           </select>
         </div>
 
-        {/* Compact one-line per request */}
-        <div className="space-y-1">
+        {/* Cards per request */}
+        <div className="space-y-2.5">
           {requests.map((req, i) => {
             const st = getStatus(req.status);
-            const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" });
+            const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
             const bankLabel = getRequestTypeLabel(req.request_type) || req.bank || "";
-            const shortBank = bankLabel.length > 15 ? bankLabel.slice(0, 15) + "…" : bankLabel;
+            const isApproved = req.status === "approved" || req.status === "delivered";
+            const isRejected = req.status === "rejected";
+            const isPending = !isApproved && !isRejected;
+            const hasReceipt = isApproved && (req.transfer_image_url || req.receipt_url);
+            
             return (
               <motion.button
                 key={`${req.id}-${i}`}
-                initial={{ opacity: 0, y: 4 }}
+                initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.02 }}
+                transition={{ delay: i * 0.03 }}
                 onClick={() => setSelectedReq(req)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-border/10 bg-card/20 active:bg-card/40 transition-all text-right"
+                className={`w-full rounded-2xl border p-3.5 text-right transition-all active:scale-[0.98] ${
+                  isApproved ? "border-emerald-500/20 bg-emerald-500/5" :
+                  isRejected ? "border-red-500/20 bg-red-500/5" :
+                  "border-amber-500/15 bg-amber-500/5"
+                }`}
               >
-                {/* Status dot */}
-                <div className={`w-2 h-2 rounded-full shrink-0 ${st.dotColor}`} />
-                
-                {/* Amount */}
-                <span className="text-xs font-black text-foreground tabular-nums min-w-[50px]" dir="ltr">
-                  ${req.amount.toFixed(0)}
-                </span>
+                {/* Top row: status badge + amount */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                    isApproved ? "bg-emerald-500/15 text-emerald-400" :
+                    isRejected ? "bg-red-500/15 text-red-400" :
+                    "bg-amber-500/15 text-amber-400"
+                  }`}>
+                    <span>{isApproved ? "✅" : isRejected ? "❌" : "⏳"}</span>
+                    <span>{st.label}</span>
+                  </div>
+                  <span className="text-lg font-black text-foreground tabular-nums" dir="ltr">
+                    ${req.amount.toFixed(2)}
+                  </span>
+                </div>
 
-                {/* Bank/type */}
-                <span className="text-[10px] text-muted-foreground truncate flex-1">
-                  {shortBank}
-                </span>
+                {/* Details row */}
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-3">
+                    <span>{bankLabel}</span>
+                    {req.reference_id && <span className="font-mono opacity-60">#{req.reference_id}</span>}
+                  </div>
+                  <span className="opacity-60">{dateStr}</span>
+                </div>
 
-                {/* Date */}
-                <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
-                  {dateStr}
-                </span>
+                {/* Receipt indicator for approved */}
+                {hasReceipt && (
+                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-emerald-400 font-bold">
+                    <span>📄</span>
+                    <span>إيصال التحويل متاح — اضغط للعرض</span>
+                  </div>
+                )}
 
-                {/* Status label */}
-                <span className={`text-[10px] font-bold shrink-0 ${st.color}`}>
-                  {st.label === "تم التسليم" ? "✓" : st.label === "مرفوض" ? "✗" : "⏳"}
-                </span>
+                {/* Rejection reason */}
+                {isRejected && req.admin_note && (
+                  <div className="mt-2 p-2 rounded-lg bg-red-500/10 text-[10px] text-red-300">
+                    السبب: {req.admin_note}
+                  </div>
+                )}
+
+                {/* Pending message */}
+                {isPending && (
+                  <div className="mt-2 text-[10px] text-amber-300/70 animate-pulse">
+                    جاري المراجعة من قبل الإدارة...
+                  </div>
+                )}
               </motion.button>
             );
           })}
