@@ -309,9 +309,37 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
           </select>
         </div>
 
-        {/* Transaction cards — reference layout: icon right, title+date center, amount+status left */}
+        {/* Filter Tabs */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 px-1">
+          {FILTER_TABS.map(tab => {
+            const isActive = activeFilter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveFilter(tab.key)}
+                className="shrink-0 px-4 py-2 rounded-2xl text-[11px] font-bold transition-all whitespace-nowrap"
+                style={{
+                  background: isActive ? "rgba(233,193,118,0.12)" : "#181c22",
+                  color: isActive ? "#e9c176" : "#78839c",
+                  border: isActive ? "1px solid rgba(233,193,118,0.25)" : "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Transaction cards */}
         <div className="space-y-3">
-          {requests.map((req, i) => {
+          {requests.filter(req => {
+            if (activeFilter === "all") return true;
+            if (activeFilter === "delivered") return ["approved", "completed", "done", "delivered"].includes(req.status);
+            if (activeFilter === "pending") return !["approved", "completed", "done", "delivered", "rejected"].includes(req.status);
+            if (activeFilter === "rejected") return req.status === "rejected";
+            if (activeFilter === "coins") return isCoinsRequest(req);
+            return true;
+          }).map((req, i) => {
             const st = getStatus(req.status);
             const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
             const bankLabel = getRequestTypeLabel(req.request_type) || req.bank || "";
