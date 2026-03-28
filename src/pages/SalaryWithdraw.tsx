@@ -358,15 +358,11 @@ const SalaryWithdraw: React.FC = () => {
           if (t.is_used) return false;
           if (t.selectable === false) return false; // API says not selectable
           if (isCashMode) {
-            // Server-side time check (within_2h from API) — most reliable
-            if (t.within_2h === false) return false;
-            // Fallback: client-side check if server didn't provide within_2h
-            if (t.within_2h === undefined) {
-              const transferTime = new Date(t.time || t.created_at || "");
-              const now = new Date();
-              const hoursOld = (now.getTime() - transferTime.getTime()) / (1000 * 60 * 60);
-              if (hoursOld > 2) return false;
-            }
+            // Always use client-side time check (most accurate for user's timezone)
+            const transferTime = new Date(t.time || t.created_at || "");
+            const now = new Date();
+            const diffMins = (now.getTime() - transferTime.getTime()) / 60000;
+            if (diffMins > 120) return false;
           }
           return true;
         })
@@ -909,10 +905,22 @@ const SalaryWithdraw: React.FC = () => {
                         </div>
                         <div className="text-left">
                           <p className="text-xs text-muted-foreground">{timeStr}</p>
-                          {t.hours_old !== undefined && (
-                            <p className={`text-[9px] font-bold ${(t.hours_old || 0) <= 2 ? "text-emerald-400" : "text-amber-400"}`}>
-                              {(t.hours_old || 0) <= 2 ? `منذ ${t.hours_old}س ✅` : `منذ ${t.hours_old}س ⚠️`}
-                            </p>
+                          {t.time && (
+                            (() => {
+                              const transferDate = new Date(t.time);
+                              const nowDate = new Date();
+                              const diffMs = nowDate.getTime() - transferDate.getTime();
+                              const diffMins = Math.floor(diffMs / 60000);
+                              const diffHours = Math.floor(diffMins / 60);
+                              const remainMins = diffMins % 60;
+                              const isOk = diffMins <= 120;
+                              const timeText = diffHours > 0 ? `${diffHours}س ${remainMins}د` : `${diffMins}د`;
+                              return (
+                                <p className={`text-[9px] font-bold ${isOk ? "text-emerald-400" : "text-amber-400"}`}>
+                                  {isOk ? `منذ ${timeText} ✅` : `منذ ${timeText} ⚠️`}
+                                </p>
+                              );
+                            })()
                           )}
                         </div>
                       </div>
