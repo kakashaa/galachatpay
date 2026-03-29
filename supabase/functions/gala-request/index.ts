@@ -156,7 +156,7 @@ serve(async (req) => {
             }
           }
         } else {
-          // === SELF MODE: one request per month for VIP 1-5 ===
+          // === SELF MODE: one request per month for VIP 1-6 ===
           const selfRequests = allReqs.filter(r => !r.recipient_uuid).length;
           if (selfRequests >= 1) {
             return new Response(
