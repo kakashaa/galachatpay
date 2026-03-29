@@ -702,7 +702,7 @@ const WorksPage: React.FC = () => {
 
           {/* Last updated + countdown */}
           {myWorks?.updated_at && (
-            <WorksCountdown updatedAt={myWorks.updated_at} />
+            <WorksCountdown updatedAt={myWorks.updated_at} onExpire={() => { setTimeout(fetchData, 2000); }} />
           )}
         </div>
 
