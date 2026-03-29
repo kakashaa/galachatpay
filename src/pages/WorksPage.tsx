@@ -328,19 +328,32 @@ const WorksPage: React.FC = () => {
   // Validate agent by agency code
   const validateAgent = async (agencyId: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
     try {
+      // Validate input is a number (agency code)
+      if (!/^\d+$/.test(agencyId.trim())) {
+        return { ok: false, reason: "أدخل رقم الوكالة (كود الوكالة) — مو UUID المستخدم" };
+      }
+
       const data = await galaApi.checkAgency(agencyId);
 
       if (!data.ok) {
         return { ok: false, reason: data.error || "الوكالة غير موجودة — تأكد من الكود" };
       }
 
-      if (data.data?.has_salary) {
-        return { ok: false, reason: `هذه الوكالة قديمة (راتب: $${data.data.salary?.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
+      // Block ANY agency that has salary > 0 (old agency)
+      const salary = parseFloat(data.data?.salary || "0");
+      if (data.data?.has_salary || salary > 0) {
+        return { ok: false, reason: `هذه الوكالة قديمة (راتب: $${salary.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
+      }
+
+      // Block if agency has members (not truly new)
+      const membersCount = parseInt(data.data?.members_count || "0");
+      if (membersCount > 5) {
+        return { ok: false, reason: `هذه الوكالة عندها ${membersCount} عضو — فقط الوكالات الجديدة مسموحة` };
       }
 
       // Use owner_uuid from API (fixed by backend), fallback to owner_internal_id
       const ownerUuid = data.data.owner_uuid || String(data.data.owner_internal_id);
-      if (!ownerUuid) {
+      if (!ownerUuid || ownerUuid === "undefined" || ownerUuid === "0") {
         return { ok: false, reason: "لم يتم العثور على UUID صاحب الوكالة" };
       }
 
