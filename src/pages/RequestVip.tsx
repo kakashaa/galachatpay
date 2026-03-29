@@ -330,7 +330,7 @@ const RequestVip: React.FC = () => {
             ) : (
               <button
                 onClick={handleRequest}
-                disabled={selectedVip === null || loading || regularLimitReached}
+                disabled={selectedVip === null || loading || selfLimitReached}
                 className="w-full h-10 gold-gradient rounded-xl text-primary-foreground font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-transform"
               >
                 {loading ? (
@@ -338,7 +338,7 @@ const RequestVip: React.FC = () => {
                 ) : (
                   <>
                     {mode === "gift" ? <Gift className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
-                    {regularLimitReached ? "تم استخدام طلبك" : mode === "gift" ? "إهداء VIP" : "تقديم الطلب"}
+                    {selfLimitReached ? "تم استخدام طلبك" : mode === "gift" ? "إهداء VIP" : "تقديم الطلب"}
                   </>
                 )}
               </button>
