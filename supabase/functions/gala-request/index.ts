@@ -46,7 +46,7 @@ serve(async (req) => {
       const vipLevel = Number(value);
       if (isNaN(vipLevel) || vipLevel < 1 || vipLevel > 6) {
         return new Response(
-          JSON.stringify({ success: false, error: "Invalid VIP level. VIP 6 غير متاح." }),
+          JSON.stringify({ success: false, error: "مستوى VIP غير صالح." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -123,6 +123,7 @@ serve(async (req) => {
 
           const vip4Limit = override?.vip4_limit ?? 3;
           const vip5Limit = override?.vip5_limit ?? 5;
+          const vip6Limit = override?.vip6_limit ?? 1;
 
           // Total gifting limit: 100/month (only for non-TOP agents)
           const totalGifts = allReqs.filter(r => r.recipient_uuid).length;
@@ -134,11 +135,11 @@ serve(async (req) => {
           }
 
           if (vipLevel >= 4) {
-            const usedPerLevel: Record<number, number> = { 4: 0, 5: 0 };
+            const usedPerLevel: Record<number, number> = { 4: 0, 5: 0, 6: 0 };
             for (const r of allReqs) {
-              if (r.vip_level >= 4 && r.vip_level <= 5 && r.recipient_uuid) usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
+              if (r.vip_level >= 4 && r.vip_level <= 6 && r.recipient_uuid) usedPerLevel[r.vip_level] = (usedPerLevel[r.vip_level] || 0) + 1;
             }
-            const limitForLevel = vipLevel === 4 ? vip4Limit : vip5Limit;
+            const limitForLevel = vipLevel === 4 ? vip4Limit : vipLevel === 5 ? vip5Limit : vip6Limit;
             const usedForLevel = usedPerLevel[vipLevel] || 0;
 
             if (limitForLevel <= 0) {
