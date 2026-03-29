@@ -261,7 +261,7 @@ const RequestVip: React.FC = () => {
             )}
 
             {/* Self limit status */}
-            {mode === "self" && selfLimitReached && (
+            {!isHostAgencyOwner && selfLimitReached && (
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center">
                 <p className="text-xs font-bold text-amber-400">🔒 تم استخدام طلبك هذا الشهر</p>
                 <p className="text-[10px] text-muted-foreground mt-1">يمكنك اللبس مرة واحدة فقط في الشهر</p>
