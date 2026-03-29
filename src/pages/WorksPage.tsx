@@ -301,7 +301,8 @@ const WorksPage: React.FC = () => {
   // Validate supporter
   const validateSupporter = async (uuid: string): Promise<{ ok: boolean; reason?: string; name?: string }> => {
     try {
-      const data = await galaApi.checkSupporter(uuid);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000));
+      const data = await Promise.race([galaApi.checkSupporter(uuid), timeoutPromise]) as any;
 
       if (!data.ok) {
         return { ok: false, reason: data.error || "المستخدم غير موجود" };
@@ -321,7 +322,7 @@ const WorksPage: React.FC = () => {
 
       return { ok: true, name: data.data.name };
     } catch {
-      return { ok: false, reason: "فشل الاتصال بالسيرفر" };
+      return { ok: false, reason: "فشل الاتصال — حاول مرة ثانية" };
     }
   };
 
@@ -333,7 +334,9 @@ const WorksPage: React.FC = () => {
         return { ok: false, reason: "أدخل رقم الوكالة (كود الوكالة) — مو UUID المستخدم" };
       }
 
-      const data = await galaApi.checkAgency(agencyId);
+      // Timeout after 15 seconds
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000));
+      const data = await Promise.race([galaApi.checkAgency(agencyId), timeoutPromise]) as any;
 
       if (!data.ok) {
         return { ok: false, reason: data.error || "الوكالة غير موجودة — تأكد من الكود" };
@@ -366,8 +369,11 @@ const WorksPage: React.FC = () => {
       }
 
       return { ok: true, uuid: ownerUuid, name: data.data.name, agency_id: agencyId };
-    } catch {
-      return { ok: false, reason: "فشل الاتصال بالسيرفر" };
+    } catch (e: any) {
+      if (e?.message === "timeout") {
+        return { ok: false, reason: "انتهت مهلة الاتصال — حاول مرة ثانية" };
+      }
+      return { ok: false, reason: "فشل الاتصال بالسيرفر — حاول مرة ثانية" };
     }
   };
 
@@ -380,6 +386,7 @@ const WorksPage: React.FC = () => {
       if (memberType === "supporter") {
         const result = await validateSupporter(memberInput.trim());
         if (!result.ok) {
+          setModal({ type: "error", message: result.reason || "فشل التحقق" });
           await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
           return;
@@ -407,6 +414,7 @@ const WorksPage: React.FC = () => {
       } else {
         const result = await validateAgent(memberInput.trim());
         if (!result.ok) {
+          setModal({ type: "error", message: result.reason || "فشل التحقق" });
           await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
           return;
