@@ -103,20 +103,20 @@ const RequestVip: React.FC = () => {
   // Determine which tiers to show and their state
   const getTierState = (level: number) => {
     if (!isAgent) {
+      // Regular users: self only, VIP 1-3, once per month
       if (level >= 4) return "locked_agent_only";
       if (usedSelf >= 1) return "used_up";
       return "available";
     }
-    // Agents: different rules for self vs gift
+    // Agents: can gift + self
     if (mode === "gift") {
-      if (!isTopAgent && usedGiftTotal >= 100) return "used_up";
-      if (level >= 4) {
-        const limit = limitsPerLevel[level] ?? 0;
-        if (limit <= 0) return "locked";
-        if ((usedPerLevel[level] || 0) >= limit) return "used_up";
-      }
+      // Gift mode: check per-level limits
+      const limit = limitsPerLevel[level] ?? 0;
+      if (limit <= 0) return "locked";
+      if ((usedPerLevel[level] || 0) >= limit) return "used_up";
     } else {
-      // Self: once per month, VIP 1-5 only
+      // Self: once per month, VIP 1-3 only
+      if (level >= 4) return "locked_agent_only";
       if (usedSelf >= 1) return "used_up";
     }
     return "available";
@@ -153,9 +153,7 @@ const RequestVip: React.FC = () => {
       // Update local state
       if (mode === "gift") {
         setUsedGiftTotal(prev => prev + 1);
-        if (selectedVip >= 4) {
-          setUsedPerLevel(prev => ({ ...prev, [selectedVip]: (prev[selectedVip] || 0) + 1 }));
-        }
+        setUsedPerLevel(prev => ({ ...prev, [selectedVip]: (prev[selectedVip] || 0) + 1 }));
         if (recipientId.trim()) {
           setGiftedRecipients(prev => [...prev, recipientId.trim()]);
         }
