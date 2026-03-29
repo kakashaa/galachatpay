@@ -98,28 +98,31 @@ const RequestVip: React.FC = () => {
 
   if (!user) { navigate("/"); return null; }
 
-  const isAgent = user.type_user >= 2;
+  // Only host agency owners (type_user >= 2) can GIFT VIP
+  const isHostAgencyOwner = user.type_user >= 2;
 
-  // Determine which tiers to show and their state
+  // Rules:
+  // SELF (everyone): VIP 1-3 only, once per month, 7 days
+  // GIFT (host agency owners only): VIP 1-6 with limits per level
   const getTierState = (level: number) => {
-    if (!isAgent) {
-      // Regular users: self only, VIP 1-3, once per month
-      if (level >= 4) return "locked_agent_only";
-      if (usedSelf >= 1) return "used_up";
-      return "available";
-    }
-    // Agents: can gift + self
     if (mode === "gift") {
-      // Gift mode: check per-level limits
+      if (!isHostAgencyOwner) return "locked_agent_only";
       const limit = limitsPerLevel[level] ?? 0;
       if (limit <= 0) return "locked";
       if ((usedPerLevel[level] || 0) >= limit) return "used_up";
+      return "available";
     } else {
-      // Self: once per month, VIP 1-3 only
-      if (level >= 4) return "locked_agent_only";
+      // Self mode: VIP 1-3 only, once per month
+      if (level >= 4) return "locked";
       if (usedSelf >= 1) return "used_up";
+      return "available";
     }
-    return "available";
+  };
+
+  const getRemainingGifts = (level: number) => {
+    const limit = limitsPerLevel[level] ?? 0;
+    const used = usedPerLevel[level] || 0;
+    return Math.max(0, limit - used);
   };
 
   const handleRequest = async () => {
@@ -164,42 +167,35 @@ const RequestVip: React.FC = () => {
     } catch { setError("حدث خطأ غير متوقع."); } finally { setLoading(false); }
   };
 
-  const regularLimitReached = !isAgent && usedSelf >= 1;
+  const selfLimitReached = usedSelf >= 1;
 
   return (
     <MobileLayout showHeader headerTitle="طلب VIP" onBack={() => navigate("/dashboard")}>
       <div className="px-4 py-3 space-y-3">
         <ServicePreviousRequests userUuid={user.uuid} serviceType="vip" />
 
-        {/* Account type + limits */}
-        <div className="glass-card p-3" dir="rtl">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full gold-gradient flex items-center justify-center flex-shrink-0">
-              <Users className="w-4 h-4 text-primary-foreground" />
+        {/* Header card */}
+        <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 to-yellow-600/5 border border-amber-500/15 p-4" dir="rtl">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-amber-500/15 flex items-center justify-center">
+              <Crown className="w-5 h-5 text-amber-400" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-foreground">{userTypeLabels[user.type_user] || "مستخدم"}</p>
-              <div className="flex items-center gap-1 mt-0.5">
-                <Calendar className="w-3 h-3 text-primary" />
-                <p className="text-[10px] text-primary">
-                  {isAgent
-                    ? mode === "gift"
-                      ? `إهداء: ${usedGiftTotal} • ` + [1,2,3,4,5,6].map(l => `V${l}: ${Math.max(0, (limitsPerLevel[l]||0) - (usedPerLevel[l]||0))}/${limitsPerLevel[l]||0}`).join(' • ')
-                      : `لنفسك: ${usedSelf >= 1 ? "تم الاستخدام" : "متاح (مرة واحدة شهرياً)"}`
-                    : `مرة واحدة شهرياً (10 أيام) • ${usedSelf >= 1 ? "تم الاستخدام" : "متاح"}`}
-                </p>
-              </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-foreground">{userTypeLabels[user.type_user] || "مستخدم"}</p>
+              <p className="text-[10px] text-amber-400/80 mt-0.5">
+                {isHostAgencyOwner ? "وكيل مضيفين — يمكنك الإهداء واللبس" : "يمكنك لبس VIP 1-3 فقط (مرة/شهر)"}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Already used warning (regular users) */}
-        {regularLimitReached && (
-          <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-[11px] font-bold text-foreground" dir="rtl">تم استخدام طلبك هذا الشهر</p>
-          </div>
-        )}
+        {/* Rules info */}
+        <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 space-y-1.5" dir="rtl">
+          <p className="text-[10px] font-bold text-primary flex items-center gap-1">📋 القواعد:</p>
+          <p className="text-[9px] text-muted-foreground">• <b>اللبس (الكل):</b> VIP 1-3 فقط، مرة واحدة/شهر، 7 أيام</p>
+          {isHostAgencyOwner && <p className="text-[9px] text-muted-foreground">• <b>الإهداء (وكيل فقط):</b> VIP 1-6 حسب الحدود أدناه</p>}
+          {!isHostAgencyOwner && <p className="text-[9px] text-muted-foreground">• <b>الإهداء:</b> غير متاح — خاص بوكلاء المضيفين فقط</p>}
+        </div>
 
         {checking ? (
           <div className="flex justify-center py-8">
@@ -207,26 +203,57 @@ const RequestVip: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Self/Gift toggle (agents only) */}
-            {isAgent && (
-              <div className="flex gap-2" dir="rtl">
-                <button
-                  onClick={() => { setMode("self"); setSubmitted(false); setError(""); }}
-                  className={`flex-1 h-9 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${mode === "self" ? "gold-gradient text-primary-foreground" : "glass-card text-muted-foreground"}`}
-                >
-                  <User className="w-3.5 h-3.5" /> لنفسي
+            {/* Self/Gift toggle */}
+            <div className="flex gap-2" dir="rtl">
+              <button
+                onClick={() => { setMode("self"); setSubmitted(false); setError(""); }}
+                className={`flex-1 h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${mode === "self" ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" : "bg-muted/10 text-muted-foreground border border-border/10"}`}
+              >
+                <Crown className="w-3.5 h-3.5" /> لبس لنفسي
                 </button>
                 <button
-                  onClick={() => { setMode("gift"); setSubmitted(false); setError(""); }}
-                  className={`flex-1 h-9 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${mode === "gift" ? "gold-gradient text-primary-foreground" : "glass-card text-muted-foreground"}`}
+                  onClick={() => {
+                    if (!isHostAgencyOwner) return;
+                    setMode("gift"); setSubmitted(false); setError("");
+                  }}
+                  disabled={!isHostAgencyOwner}
+                  className={`flex-1 h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                    !isHostAgencyOwner ? "bg-muted/5 text-muted-foreground/30 cursor-not-allowed" :
+                    mode === "gift" ? "bg-violet-500/15 text-violet-400 border border-violet-500/30" : "bg-muted/10 text-muted-foreground border border-border/10"
+                  }`}
                 >
-                  <Gift className="w-3.5 h-3.5" /> إهداء لمستخدم
+                  <Gift className="w-3.5 h-3.5" /> {isHostAgencyOwner ? "إهداء لمستخدم" : "🔒 وكيل فقط"}
                 </button>
+              </div>
+
+            {/* Gift limits summary (agents in gift mode) */}
+            {isHostAgencyOwner && mode === "gift" && (
+              <div className="grid grid-cols-3 gap-1.5" dir="rtl">
+                {allVipTiers.map(tier => {
+                  const remaining = getRemainingGifts(tier.level);
+                  const limit = limitsPerLevel[tier.level] || 0;
+                  const used = usedPerLevel[tier.level] || 0;
+                  return (
+                    <div key={tier.level} className={`rounded-xl p-2 text-center ${remaining > 0 ? "bg-emerald-500/10 border border-emerald-500/15" : "bg-muted/10 border border-border/10"}`}>
+                      <p className="text-[10px] font-bold text-foreground">{tier.label}</p>
+                      <p className={`text-xs font-black ${remaining > 0 ? "text-emerald-400" : "text-muted-foreground"}`}>{remaining}/{limit}</p>
+                      <p className="text-[8px] text-muted-foreground">متبقي</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Self limit status */}
+            {mode === "self" && selfLimitReached && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center">
+                <p className="text-xs font-bold text-amber-400">🔒 تم استخدام طلبك هذا الشهر</p>
+                <p className="text-[10px] text-muted-foreground mt-1">يمكنك اللبس مرة واحدة فقط في الشهر</p>
               </div>
             )}
 
             {/* Recipient ID input (gift mode) */}
-            {isAgent && mode === "gift" && (
+            {isHostAgencyOwner && mode === "gift" && (
               <div dir="rtl">
                 <label className="text-[10px] text-muted-foreground mb-1 block">أدخل معرف المستلم (UUID)</label>
                 <input
@@ -248,7 +275,7 @@ const RequestVip: React.FC = () => {
                   const state = getTierState(tier.level);
                   const isLocked = state === "locked_agent_only" || state === "locked";
                   const isUsedUp = state === "used_up";
-                  const isDisabled = isLocked || isUsedUp || regularLimitReached;
+                  const isDisabled = isLocked || isUsedUp || (mode === "self" && selfLimitReached);
                   const isSelected = selectedVip === tier.level;
 
                   return (
@@ -265,12 +292,14 @@ const RequestVip: React.FC = () => {
                       <p className="text-xs font-bold text-foreground">{tier.label}</p>
                       <span className="text-[9px] text-muted-foreground">
                         {state === "locked_agent_only"
-                          ? "متاح فقط للوكلاء"
+                          ? "🔒 وكيل مضيفين فقط"
                           : state === "locked"
-                            ? "غير متاح"
+                            ? "🔒 غير متاح"
                             : isUsedUp
-                              ? "تم استخدام الحد"
-                              : `مجاني • ${tier.days} أيام`}
+                              ? "❌ تم استخدام الحد"
+                              : mode === "gift"
+                                ? `متبقي: ${getRemainingGifts(tier.level)} • ${tier.days} أيام`
+                                : `مرة واحدة • ${tier.days} أيام`}
                       </span>
                       {isSelected && !isDisabled && <Check className="w-4 h-4 text-primary" />}
                     </button>
