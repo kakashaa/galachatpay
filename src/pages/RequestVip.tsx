@@ -105,15 +105,15 @@ const RequestVip: React.FC = () => {
   // SELF (everyone): VIP 1-3 only, once per month, 7 days
   // GIFT (host agency owners only): VIP 1-6 with limits per level
   const getTierState = (level: number) => {
-    if (mode === "gift") {
-      if (!isHostAgencyOwner) return "locked_agent_only";
+    if (isHostAgencyOwner) {
+      // Agent: same page for self+gift — uses per-level limits
       const limit = limitsPerLevel[level] ?? 0;
       if (limit <= 0) return "locked";
       if ((usedPerLevel[level] || 0) >= limit) return "used_up";
       return "available";
     } else {
-      // Self mode: VIP 1-3 only, once per month
-      if (level >= 4) return "locked";
+      // Regular user / host / shipping agent: self only
+      if (level >= 4) return "locked_vip_high"; // VIP 4-6 locked
       if (usedSelf >= 1) return "used_up";
       return "available";
     }
@@ -127,17 +127,19 @@ const RequestVip: React.FC = () => {
 
   const handleRequest = async () => {
     if (selectedVip === null) return;
-    if (mode === "gift" && !recipientId.trim()) {
-      setError("أدخل معرف المستلم.");
-      return;
-    }
-    if (mode === "gift" && giftedRecipients.includes(recipientId.trim())) {
+
+    // For agents: if UUID entered = gift, if empty = self
+    const isGifting = isHostAgencyOwner && recipientId.trim().length > 0;
+    
+    if (isGifting && giftedRecipients.includes(recipientId.trim())) {
       setError("لقد أهديت هذا المستخدم بالفعل هذا الشهر.");
       return;
     }
 
     setLoading(true); setError("");
     try {
+      const targetUuid = isGifting ? recipientId.trim() : user.uuid;
+      
       const payload: any = {
         uuid: user.uuid,
         type: "vip",
@@ -145,8 +147,8 @@ const RequestVip: React.FC = () => {
         user_name: user.name,
         type_user: user.type_user,
       };
-      if (mode === "gift" && recipientId.trim()) {
-        payload.recipient_uuid = recipientId.trim();
+      if (isGifting) {
+        payload.recipient_uuid = targetUuid;
       }
 
       const { data, error: fnError } = await supabase.functions.invoke("gala-request", { body: payload });
@@ -154,12 +156,10 @@ const RequestVip: React.FC = () => {
       if (!data?.success) { setError(data?.error || "فشل الطلب."); setLoading(false); return; }
 
       // Update local state
-      if (mode === "gift") {
+      setUsedPerLevel(prev => ({ ...prev, [selectedVip]: (prev[selectedVip] || 0) + 1 }));
+      if (isGifting) {
         setUsedGiftTotal(prev => prev + 1);
-        setUsedPerLevel(prev => ({ ...prev, [selectedVip]: (prev[selectedVip] || 0) + 1 }));
-        if (recipientId.trim()) {
-          setGiftedRecipients(prev => [...prev, recipientId.trim()]);
-        }
+        setGiftedRecipients(prev => [...prev, recipientId.trim()]);
       } else {
         setUsedSelf(prev => prev + 1);
       }
@@ -192,9 +192,18 @@ const RequestVip: React.FC = () => {
         {/* Rules info */}
         <div className="rounded-xl bg-primary/5 border border-primary/15 p-3 space-y-1.5" dir="rtl">
           <p className="text-[10px] font-bold text-primary flex items-center gap-1">📋 القواعد:</p>
-          <p className="text-[9px] text-muted-foreground">• <b>اللبس (الكل):</b> VIP 1-3 فقط، مرة واحدة/شهر، 7 أيام</p>
-          {isHostAgencyOwner && <p className="text-[9px] text-muted-foreground">• <b>الإهداء (وكيل فقط):</b> VIP 1-6 حسب الحدود أدناه</p>}
-          {!isHostAgencyOwner && <p className="text-[9px] text-muted-foreground">• <b>الإهداء:</b> غير متاح — خاص بوكلاء المضيفين فقط</p>}
+          {isHostAgencyOwner ? (
+            <>
+              <p className="text-[9px] text-muted-foreground">• VIP 1-6 — تقدر تلبسه لنفسك أو ترسله لمستخدم آخر</p>
+              <p className="text-[9px] text-muted-foreground">• كل مستوى عنده حد شهري (موضح أدناه)</p>
+              <p className="text-[9px] text-muted-foreground">• المدة: 7 أيام لكل طلب</p>
+            </>
+          ) : (
+            <>
+              <p className="text-[9px] text-muted-foreground">• تقدر تلبس VIP 1-3 فقط — مرة واحدة بالشهر، 7 أيام</p>
+              <p className="text-[9px] text-muted-foreground">• VIP 4-5-6 — اطلب من وكيل مضيفينك يرسل لك</p>
+            </>
+          )}
         </div>
 
         {checking ? (
@@ -203,11 +212,17 @@ const RequestVip: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Self/Gift toggle */}
+            {/* Self/Gift toggle — agents see unified view, others see self-only */}
+            {isHostAgencyOwner ? (
+              <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-3 text-center" dir="rtl">
+                <p className="text-xs font-bold text-violet-400">👑 وكيل مضيفين — اختر VIP واكتب UUID المستلم (أو اتركه فارغ للبس لنفسك)</p>
+              </div>
+            ) : null}
+            {!isHostAgencyOwner && (
             <div className="flex gap-2" dir="rtl">
               <button
                 onClick={() => { setMode("self"); setSubmitted(false); setError(""); }}
-                className={`flex-1 h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${mode === "self" ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" : "bg-muted/10 text-muted-foreground border border-border/10"}`}
+                className="flex-1 h-10 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 bg-amber-500/15 text-amber-400 border border-amber-500/30"
               >
                 <Crown className="w-3.5 h-3.5" /> لبس لنفسي
                 </button>
@@ -222,12 +237,13 @@ const RequestVip: React.FC = () => {
                     mode === "gift" ? "bg-violet-500/15 text-violet-400 border border-violet-500/30" : "bg-muted/10 text-muted-foreground border border-border/10"
                   }`}
                 >
-                  <Gift className="w-3.5 h-3.5" /> {isHostAgencyOwner ? "إهداء لمستخدم" : "🔒 وكيل فقط"}
+                  <Gift className="w-3.5 h-3.5" /> 🔒 وكيل فقط
                 </button>
               </div>
+            )}
 
-            {/* Gift limits summary (agents in gift mode) */}
-            {isHostAgencyOwner && mode === "gift" && (
+            {/* Gift limits summary (agents always show) */}
+            {isHostAgencyOwner && (
               <div className="grid grid-cols-3 gap-1.5" dir="rtl">
                 {allVipTiers.map(tier => {
                   const remaining = getRemainingGifts(tier.level);
@@ -252,8 +268,8 @@ const RequestVip: React.FC = () => {
               </div>
             )}
 
-            {/* Recipient ID input (gift mode) */}
-            {isHostAgencyOwner && mode === "gift" && (
+            {/* Recipient ID input (agents always, others never) */}
+            {isHostAgencyOwner && (
               <div dir="rtl">
                 <label className="text-[10px] text-muted-foreground mb-1 block">أدخل معرف المستلم (UUID)</label>
                 <input
@@ -273,9 +289,9 @@ const RequestVip: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 {allVipTiers.map((tier) => {
                   const state = getTierState(tier.level);
-                  const isLocked = state === "locked_agent_only" || state === "locked";
+                  const isLocked = state === "locked_agent_only" || state === "locked" || state === "locked_vip_high";
                   const isUsedUp = state === "used_up";
-                  const isDisabled = isLocked || isUsedUp || (mode === "self" && selfLimitReached);
+                  const isDisabled = isLocked || isUsedUp;
                   const isSelected = selectedVip === tier.level;
 
                   return (
@@ -291,13 +307,13 @@ const RequestVip: React.FC = () => {
                       </div>
                       <p className="text-xs font-bold text-foreground">{tier.label}</p>
                       <span className="text-[9px] text-muted-foreground">
-                        {state === "locked_agent_only"
-                          ? "🔒 وكيل مضيفين فقط"
+                        {state === "locked_agent_only" || state === "locked_vip_high"
+                          ? "🔒 اطلب من وكيلك يرسل لك"
                           : state === "locked"
                             ? "🔒 غير متاح"
                             : isUsedUp
                               ? "❌ تم استخدام الحد"
-                              : mode === "gift"
+                              : isHostAgencyOwner
                                 ? `متبقي: ${getRemainingGifts(tier.level)} • ${tier.days} أيام`
                                 : `مرة واحدة • ${tier.days} أيام`}
                       </span>
