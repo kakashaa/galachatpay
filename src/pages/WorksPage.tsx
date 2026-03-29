@@ -341,7 +341,7 @@ const WorksPage: React.FC = () => {
       }
 
       // Step 1: Get user info to find their agency
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000));
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000));
       const userInfo = await Promise.race([galaApi.checkSupporter(ownerUuidInput.trim()), timeoutPromise]) as any;
 
       if (!userInfo.ok) {
@@ -400,9 +400,11 @@ const WorksPage: React.FC = () => {
       if (memberType === "supporter") {
         const result = await validateSupporter(memberInput.trim());
         if (!result.ok) {
+          setShowAddMember(false);
           setModal({ type: "error", message: result.reason || "فشل التحقق" });
           await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
+          setMemberInput("");
           return;
         }
 
@@ -428,9 +430,11 @@ const WorksPage: React.FC = () => {
       } else {
         const result = await validateAgent(memberInput.trim());
         if (!result.ok) {
+          setShowAddMember(false);
           setModal({ type: "error", message: result.reason || "فشل التحقق" });
           await handleFailedAttempt(result.reason!, memberInput.trim());
           setSending(false);
+          setMemberInput("");
           return;
         }
 
