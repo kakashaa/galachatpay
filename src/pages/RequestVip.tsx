@@ -15,11 +15,12 @@ interface VipTier {
 }
 
 const allVipTiers: VipTier[] = [
-  { level: 1, label: "VIP 1", days: 10, color: "from-amber-600/20 to-amber-800/5" },
-  { level: 2, label: "VIP 2", days: 10, color: "from-amber-500/20 to-orange-700/5" },
-  { level: 3, label: "VIP 3", days: 10, color: "from-yellow-500/20 to-amber-700/5" },
-  { level: 4, label: "VIP 4", days: 10, color: "from-yellow-400/20 to-yellow-700/5" },
-  { level: 5, label: "VIP 5", days: 10, color: "from-yellow-300/20 to-yellow-600/5" },
+  { level: 1, label: "VIP 1", days: 7, color: "from-amber-600/20 to-amber-800/5" },
+  { level: 2, label: "VIP 2", days: 7, color: "from-amber-500/20 to-orange-700/5" },
+  { level: 3, label: "VIP 3", days: 7, color: "from-yellow-500/20 to-amber-700/5" },
+  { level: 4, label: "VIP 4", days: 7, color: "from-yellow-400/20 to-yellow-700/5" },
+  { level: 5, label: "VIP 5", days: 7, color: "from-yellow-300/20 to-yellow-600/5" },
+  { level: 6, label: "VIP 6", days: 7, color: "from-yellow-200/20 to-yellow-500/5" },
 ];
 
 const getCurrentMonth = () => {
@@ -41,8 +42,8 @@ const RequestVip: React.FC = () => {
   // Limits state
   const [usedSelf, setUsedSelf] = useState(0);            // self requests this month
   const [usedGiftTotal, setUsedGiftTotal] = useState(0);  // total gifts this month
-  const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({4: 0, 5: 0});
-  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({4: 3, 5: 5});
+  const [usedPerLevel, setUsedPerLevel] = useState<Record<number, number>>({1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0});
+  const [limitsPerLevel, setLimitsPerLevel] = useState<Record<number, number>>({1: 10, 2: 10, 3: 7, 4: 4, 5: 2, 6: 1});
   const [isTopAgent, setIsTopAgent] = useState(false);     // has custom overrides
   const [giftedRecipients, setGiftedRecipients] = useState<string[]>([]); // already gifted IDs
 
@@ -80,8 +81,10 @@ const RequestVip: React.FC = () => {
       if (overrideResult.data) {
         setIsTopAgent(true);
         setLimitsPerLevel({
-          4: overrideResult.data.vip4_limit,
-          5: overrideResult.data.vip5_limit,
+          1: 10, 2: 10, 3: 7,
+          4: overrideResult.data.vip4_limit ?? 4,
+          5: overrideResult.data.vip5_limit ?? 2,
+          6: overrideResult.data.vip6_limit ?? 1,
         });
       } else {
         setIsTopAgent(false);
@@ -183,7 +186,7 @@ const RequestVip: React.FC = () => {
                 <p className="text-[10px] text-primary">
                   {isAgent
                     ? mode === "gift"
-                      ? `${isTopAgent ? `إهداء: ${usedGiftTotal}` : `إهداء: ${usedGiftTotal}/100`} • VIP 4: ${Math.max(0, limitsPerLevel[4] - (usedPerLevel[4]||0))}/${limitsPerLevel[4]} • VIP 5: ${Math.max(0, limitsPerLevel[5] - (usedPerLevel[5]||0))}/${limitsPerLevel[5]}`
+                      ? `إهداء: ${usedGiftTotal} • ` + [1,2,3,4,5,6].map(l => `V${l}: ${Math.max(0, (limitsPerLevel[l]||0) - (usedPerLevel[l]||0))}/${limitsPerLevel[l]||0}`).join(' • ')
                       : `لنفسك: ${usedSelf >= 1 ? "تم الاستخدام" : "متاح (مرة واحدة شهرياً)"}`
                     : `مرة واحدة شهرياً (10 أيام) • ${usedSelf >= 1 ? "تم الاستخدام" : "متاح"}`}
                 </p>
