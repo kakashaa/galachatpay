@@ -97,20 +97,30 @@ export function useAdminSession() {
   const uploadFile = useCallback(async (file: File) => {
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     const isVideo = ["mp4", "webm", "mov", "avi"].includes(ext);
-    const maxSize = isVideo ? 100 * 1024 * 1024 : 50 * 1024 * 1024;
-    if (file.size > maxSize) throw new Error(`حجم الملف كبير جداً (الحد: ${isVideo ? "100" : "50"}MB)`);
+    const maxSize = isVideo ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (file.size > maxSize) throw new Error(`حجم الملف كبير جداً (الحد: ${isVideo ? "200" : "50"}MB)`);
 
-    // Use edge function for videos (supports larger files reliably)
+    // Videos: try edge function first, fallback to direct upload
     if (isVideo) {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("session_token", adminSessionToken || "");
-      const { data, error } = await supabase.functions.invoke("admin-upload-video", {
-        body: formData,
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("session_token", adminSessionToken || "");
+        const { data, error } = await supabase.functions.invoke("admin-upload-video", {
+          body: formData,
+        });
+        if (!error && data?.url) return data.url as string;
+      } catch { /* fallback to direct upload */ }
+
+      // Fallback: direct upload to storage bucket
+      const bucket = "attachments";
+      const fileName = `videos/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, file, {
+        contentType: file.type || "video/mp4", upsert: false,
       });
-      if (error) throw new Error("فشل الرفع: " + (error.message || error));
-      if (data?.error) throw new Error(data.error);
-      return data.url as string;
+      if (uploadError) throw new Error("فشل الرفع: " + uploadError.message);
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+      return urlData.publicUrl;
     }
 
     // Images/assets: direct upload
