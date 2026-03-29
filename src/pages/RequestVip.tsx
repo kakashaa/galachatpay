@@ -289,7 +289,7 @@ const RequestVip: React.FC = () => {
               <div className="grid grid-cols-2 gap-2">
                 {allVipTiers.map((tier) => {
                   const state = getTierState(tier.level);
-                  const isLocked = state === "locked_agent_only" || state === "locked" || state === "locked_vip_high";
+                  const isLocked = state === "locked" || state === "locked_vip_high";
                   const isUsedUp = state === "used_up";
                   const isDisabled = isLocked || isUsedUp;
                   const isSelected = selectedVip === tier.level;
@@ -307,7 +307,7 @@ const RequestVip: React.FC = () => {
                       </div>
                       <p className="text-xs font-bold text-foreground">{tier.label}</p>
                       <span className="text-[9px] text-muted-foreground">
-                        {state === "locked_agent_only" || state === "locked_vip_high"
+                        {state === "locked_vip_high"
                           ? "🔒 اطلب من وكيلك يرسل لك"
                           : state === "locked"
                             ? "🔒 غير متاح"
