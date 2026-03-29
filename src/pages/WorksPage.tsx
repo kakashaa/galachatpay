@@ -261,7 +261,7 @@ const WorksPage: React.FC = () => {
     setLoading(false);
   }, [user?.uuid, checkBanStatus]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); }, [user?.uuid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const uuids = [...new Set(members.map((m) => m.member_uuid).filter(Boolean))];
@@ -676,7 +676,7 @@ const WorksPage: React.FC = () => {
 
           {/* Last updated + countdown */}
           {myWorks?.updated_at && (
-            <WorksCountdown updatedAt={myWorks.updated_at} onExpire={fetchData} />
+            <WorksCountdown updatedAt={myWorks.updated_at} />
           )}
         </div>
 
