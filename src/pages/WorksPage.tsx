@@ -186,9 +186,8 @@ const WorksPage: React.FC = () => {
     if (!user?.uuid) return;
     setLoading(true);
     try {
-      // Check ban status first
-      const banned = await checkBanStatus();
-      if (banned) { setLoading(false); return; }
+      // Check ban status (with timeout)
+      try { await checkBanStatus(); } catch { /* ignore ban check failure */ }
 
       const { data: works } = await supabase
         .from("works_accounts").select("*")
@@ -257,9 +256,9 @@ const WorksPage: React.FC = () => {
           .eq("status", "pending").maybeSingle();
         setPendingRequest(!!req);
       }
-    } catch { /* silent */ }
-    setLoading(false);
-  }, [user?.uuid, checkBanStatus]);
+    } catch (err) { console.warn("Works fetchData error:", err); }
+    finally { setLoading(false); }
+  }, [user?.uuid]);
 
   useEffect(() => { fetchData(); }, [user?.uuid]); // eslint-disable-line react-hooks/exhaustive-deps
 
