@@ -312,6 +312,12 @@ const WorksPage: React.FC = () => {
         return { ok: false, reason: "لا يمكن إضافة هذا المستخدم:\n" + (data.data?.reason || "غير مؤهل") };
       }
 
+      // Block: if user has agency_id = they are an agency owner (not a supporter!)
+      const agencyId = data.data?.agency_id;
+      if (agencyId && agencyId !== "0" && String(agencyId) !== "0") {
+        return { ok: false, reason: "هذا المستخدم وكيل مضيفين — لا يُضاف كداعم.\nأضفه كـ وكيل بدلاً من ذلك." };
+      }
+
       // Check not registered with another BD
       const { data: existing } = await supabase
         .from("works_members").select("id")
@@ -343,8 +349,16 @@ const WorksPage: React.FC = () => {
       }
 
       const agencyId = userInfo.data?.agency_id;
-      if (!agencyId || agencyId === "0") {
+      if (!agencyId || agencyId === "0" || String(agencyId) === "0") {
         return { ok: false, reason: "هذا المستخدم ليس صاحب وكالة مضيفين" };
+      }
+
+      // Check owner levels = all 0 (new agency owner)
+      const senderLvl = parseInt(userInfo.data?.sender_level || "0");
+      const receiverLvl = parseInt(userInfo.data?.receiver_level || "0");
+      const chargerLvl = parseInt(userInfo.data?.charger_level || "0");
+      if (senderLvl > 0 || receiverLvl > 0 || chargerLvl > 0) {
+        return { ok: false, reason: `صاحب الوكالة مستواه مو 0 (مرسل:${senderLvl} مستقبل:${receiverLvl} شاحن:${chargerLvl})\nفقط الوكالات الجديدة مسموحة` };
       }
 
       // Step 2: Check agency details
