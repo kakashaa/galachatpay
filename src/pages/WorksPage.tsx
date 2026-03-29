@@ -327,53 +327,53 @@ const WorksPage: React.FC = () => {
   };
 
   // Validate agent by agency code
-  const validateAgent = async (agencyId: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
+  // Validate agent by owner UUID (not agency code)
+  const validateAgent = async (ownerUuidInput: string): Promise<{ ok: boolean; reason?: string; name?: string; uuid?: string; agency_id?: string }> => {
     try {
-      // Validate input is a number (agency code)
-      if (!/^\d+$/.test(agencyId.trim())) {
-        return { ok: false, reason: "أدخل رقم الوكالة (كود الوكالة) — مو UUID المستخدم" };
+      if (!/^\d+$/.test(ownerUuidInput.trim())) {
+        return { ok: false, reason: "أدخل UUID صاحب الوكالة" };
       }
 
-      // Timeout after 15 seconds
+      // Step 1: Get user info to find their agency
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 15000));
-      const data = await Promise.race([galaApi.checkAgency(agencyId), timeoutPromise]) as any;
+      const userInfo = await Promise.race([galaApi.checkSupporter(ownerUuidInput.trim()), timeoutPromise]) as any;
 
-      if (!data.ok) {
-        return { ok: false, reason: data.error || "الوكالة غير موجودة — تأكد من الكود" };
+      if (!userInfo.ok) {
+        return { ok: false, reason: "المستخدم غير موجود" };
       }
 
-      // Block ANY agency that has salary > 0 (old agency)
-      const salary = parseFloat(data.data?.salary || "0");
-      if (data.data?.has_salary || salary > 0) {
-        return { ok: false, reason: `هذه الوكالة قديمة (راتب: $${salary.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
+      const agencyId = userInfo.data?.agency_id;
+      if (!agencyId || agencyId === "0") {
+        return { ok: false, reason: "هذا المستخدم ليس صاحب وكالة مضيفين" };
       }
 
-      // Block if agency has members (not truly new)
-      const membersCount = parseInt(data.data?.members_count || "0");
-      if (membersCount > 5) {
-        return { ok: false, reason: `هذه الوكالة عندها ${membersCount} عضو — فقط الوكالات الجديدة مسموحة` };
+      // Step 2: Check agency details
+      const agencyData = await Promise.race([galaApi.checkAgency(String(agencyId)), timeoutPromise]) as any;
+
+      if (!agencyData.ok) {
+        return { ok: false, reason: "فشل جلب بيانات الوكالة" };
       }
 
-      // Use owner_uuid from API (fixed by backend), fallback to owner_internal_id
-      const ownerUuid = data.data.owner_uuid || String(data.data.owner_internal_id);
-      if (!ownerUuid || ownerUuid === "undefined" || ownerUuid === "0") {
-        return { ok: false, reason: "لم يتم العثور على UUID صاحب الوكالة" };
+      // Block old agency with salary
+      const salary = parseFloat(agencyData.data?.salary || "0");
+      if (agencyData.data?.has_salary || salary > 0) {
+        return { ok: false, reason: `وكالة قديمة (راتب: $${salary.toFixed(2)})\nفقط الإدارة تقدر تضيفها` };
       }
 
       // Check not registered with another BD
       const { data: existing } = await supabase
         .from("works_members").select("id")
-        .eq("agency_id", agencyId).eq("status", "active").maybeSingle();
+        .eq("agency_id", String(agencyId)).eq("status", "active").maybeSingle();
       if (existing) {
         return { ok: false, reason: "هذه الوكالة مسجّلة بفريق بيدي آخر" };
       }
 
-      return { ok: true, uuid: ownerUuid, name: data.data.name, agency_id: agencyId };
+      return { ok: true, uuid: ownerUuidInput.trim(), name: userInfo.data?.name || agencyData.data?.name, agency_id: String(agencyId) };
     } catch (e: any) {
       if (e?.message === "timeout") {
         return { ok: false, reason: "انتهت مهلة الاتصال — حاول مرة ثانية" };
       }
-      return { ok: false, reason: "فشل الاتصال بالسيرفر — حاول مرة ثانية" };
+      return { ok: false, reason: "فشل الاتصال — حاول مرة ثانية" };
     }
   };
 
@@ -877,12 +877,12 @@ const WorksPage: React.FC = () => {
                 </button>
                 <button onClick={() => { setMemberType("agent"); setMemberInput(""); }}
                   className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-colors ${memberType === "agent" ? "bg-orange-500/20 text-orange-400 border border-orange-500/20" : "bg-muted text-muted-foreground"}`}>
-                  وكيل (كود الوكالة)
+                  وكيل (UUID صاحب الوكالة)
                 </button>
               </div>
 
               <Input
-                placeholder={memberType === "agent" ? "كود الوكالة (مثال: 2, 3, 5...)" : "معرف المستخدم (UUID)"}
+                placeholder={memberType === "agent" ? "UUID صاحب الوكالة" : "معرف المستخدم (UUID)"}
                 value={memberInput}
                 onChange={e => setMemberInput(e.target.value)}
                 dir="ltr"
