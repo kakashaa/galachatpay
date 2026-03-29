@@ -346,7 +346,7 @@ const RequestVip: React.FC = () => {
             ) : (
               <button
                 onClick={handleRequest}
-                disabled={selectedVip === null || loading || selfLimitReached}
+                disabled={selectedVip === null || loading || (!isHostAgencyOwner && selfLimitReached)}
                 className="w-full h-10 gold-gradient rounded-xl text-primary-foreground font-bold text-sm flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition-transform"
               >
                 {loading ? (
@@ -354,7 +354,7 @@ const RequestVip: React.FC = () => {
                 ) : (
                   <>
                     {mode === "gift" ? <Gift className="w-4 h-4" /> : <Crown className="w-4 h-4" />}
-                    {selfLimitReached ? "تم استخدام طلبك" : mode === "gift" ? "إهداء VIP" : "تقديم الطلب"}
+                    {!isHostAgencyOwner && selfLimitReached ? "تم استخدام طلبك" : isHostAgencyOwner && recipientId.trim() ? "إهداء VIP" : isHostAgencyOwner ? "ارتداء VIP" : "تقديم الطلب"}
                   </>
                 )}
               </button>
