@@ -340,9 +340,16 @@ const SalaryWithdraw: React.FC = () => {
       const expiredList: TransferItem[] = allTransfers
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
-          const date = (t.time || t.created_at || "").slice(0, 10);
           if (toUuid && toUuid !== "10000") return false;
-          return date !== today || usedIds.has(String(t.reference_id || t.id || ""));
+          const refId = String(t.reference_id || t.id || "");
+          // It's expired if: used OR older than 24h OR in salary_requests
+          const rawT = t.time || t.created_at || "";
+          const hasTz = rawT.includes("+") || rawT.includes("Z") || rawT.includes("UTC");
+          const transferTime = new Date(hasTz ? rawT : rawT + " UTC");
+          const diffMins = (Date.now() - transferTime.getTime()) / 60000;
+          const isOlderThan24h = diffMins > 1440;
+          const isUsed = usedIds.has(refId) || t.is_used;
+          return isOlderThan24h || isUsed;
         })
         .filter((t: any) => !list.some((l: any) => l.reference_id === String(t.reference_id || t.id || "")))
         .map((t: any) => {
