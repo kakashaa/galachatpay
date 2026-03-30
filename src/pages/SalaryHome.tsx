@@ -271,7 +271,7 @@ const SalaryHome: React.FC = () => {
               <div className="flex justify-between items-start mb-8">
                 <div className="space-y-1">
                   <p className="text-[10px] tracking-widest opacity-80" style={{ color: "#c4c6cc", fontFamily: "'Manrope', sans-serif" }}>الإجمالي المستحق</p>
-                  {totalAvailable > 0 ? (
+                  {totalAvailable >= 0 ? (
                     <h2 className="text-4xl font-extrabold tracking-tight" dir="ltr"
                       style={{ color: "#e9c176", fontFamily: "'Manrope', sans-serif" }}>
                       <span className="text-lg ml-1 font-medium" style={{ color: "#bbc6e2" }}>$</span>

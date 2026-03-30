@@ -364,8 +364,11 @@ const SalaryWithdraw: React.FC = () => {
   };
 
   const getAvailableForType = (): number => {
-    if (salaryType === "agency") return statusData?.agency_salary?.pool_available || 0;
-    return statusData?.host_salary?.available || 0;
+    // Floor to dollar — ignore cents
+    const raw = salaryType === "agency" 
+      ? (statusData?.agency_salary?.pool_available || 0) 
+      : (statusData?.host_salary?.available || 0);
+    return Math.floor(raw);
   };
   const getCoinsRate = (): number => salaryType === "agency" ? AGENCY_RATE : HOST_RATE;
   const isCashUsed = (): boolean => {
@@ -408,7 +411,8 @@ const SalaryWithdraw: React.FC = () => {
       const check: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
       const available = salaryType === "agency" ? (check.agency_salary?.pool_available || 0) : (check.host_salary?.available || 0);
       // Floor both to nearest dollar — ignore cents
-      if (Math.floor(amount) > Math.floor(available) + 1) throw new Error(`المبلغ أكبر من المتبقي ($${Math.floor(available)})`);
+      // Transfer to 10000 counts as "cut" — so available may be 0 even though salary exists
+      // Don't block — admin handles approval
       if (pathMode === "charge_self" || pathMode === "charge_other") {
         const chargeTargetUuid = chargeTarget || user!.uuid;
         const chargeResponse = await fetch("https://hola-chat.com/project-z/api.php", {
