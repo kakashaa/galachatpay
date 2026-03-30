@@ -1,0 +1,1 @@
+UPDATE login_attempts SET failed_attempts = 0, blocked_until = NULL, block_count = 0, is_permanently_blocked = false, admin_unblocked_at = now() WHERE target_uuid = '9982967';
