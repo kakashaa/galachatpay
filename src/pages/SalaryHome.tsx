@@ -154,14 +154,15 @@ const SalaryHome: React.FC = () => {
   const agency = status?.agency_salary;
   const isAgencyOwner = status?.is_agency_owner || false;
 
-  const hostCut = host ? (host.monthly_cut ?? host.total_cut) : 0;
+  const hostCut = host ? Math.max(0, host.monthly_cut ?? host.total_cut ?? 0) : 0;
   const hostOverWithdrawn = host?.over_withdrawn === true;
   const hostCutInvalid = host ? (hostOverWithdrawn || hostCut > host.current_month) : false;
-  const hostAvailable = host ? (host.available ?? Math.max(0, host.current_month - (hostCutInvalid ? 0 : hostCut))) : 0;
+  // Floor to dollar — ignore cents
+  const hostAvailable = Math.floor(host ? (host.available ?? Math.max(0, host.current_month - (hostCutInvalid ? 0 : hostCut))) : 0);
 
   const agencyPoolTotal = agency ? (agency.monthly_pool_total ?? agency.pool_total) : 0;
   const agencyPoolCut = agency ? (agency.monthly_pool_cut ?? agency.pool_cut) : 0;
-  const agencyAvailable = agency ? (agency.pool_available ?? Math.max(0, agencyPoolTotal - agencyPoolCut)) : 0;
+  const agencyAvailable = Math.floor(agency ? (agency.pool_available ?? Math.max(0, agencyPoolTotal - agencyPoolCut)) : 0);
   const totalAvailable = hostAvailable + (isAgencyOwner ? agencyAvailable : 0);
 
 
@@ -405,7 +406,7 @@ const SalaryHome: React.FC = () => {
                     {hostCutInvalid ? (
                       <span className="text-[10px] font-bold" style={{ color: "#e9c176" }}>⚠️ مراجعة</span>
                     ) : (
-                      <span className="font-bold tabular-nums" dir="ltr" style={{ color: "#ffb4ab", fontFamily: "'Manrope', sans-serif" }}>-${hostCut.toFixed(2)}</span>
+                      <span className="font-bold tabular-nums" dir="ltr" style={{ color: "#ffb4ab", fontFamily: "'Manrope', sans-serif" }}>${hostCut > 0 ? `-$${Math.floor(hostCut)}` : "$0"}</span>
                     )}
                   </div>
                   <div className="h-px" style={{ background: "rgba(187,198,226,0.06)" }} />
