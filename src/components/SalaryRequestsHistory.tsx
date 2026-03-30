@@ -471,15 +471,15 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
               {selectedReq.status === "rejected" && selectedReq.rejection_image_url && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold" style={{ color: "#78839c" }}>صورة توضيحية:</p>
-                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full rounded-2xl" />
+                  <p className="text-[10px] font-bold" style={{ color: "#ffb4ab" }}>صورة توضيحية:</p>
+                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full max-h-[200px] object-contain rounded-xl border border-red-500/20" />
                 </div>
               )}
 
               {selectedReq.status === "approved" && selectedReq.transfer_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold" style={{ color: "#4ae183" }}>إيصال التحويل:</p>
-                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full rounded-2xl" />
+                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full max-h-[200px] object-contain rounded-xl border border-emerald-500/20" />
                 </div>
               )}
 
