@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
+import BDBansTab from "@/components/bd/BDBansTab";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
