@@ -324,7 +324,7 @@ const SalaryWithdraw: React.FC = () => {
           if (usedIds.has(refId)) return false;
           if (t.is_used) return false;
           if (t.selectable === false) return false;
-          if (isCashMode) {
+          {
             const rawT = t.time || t.created_at || "";
             const hasTz = rawT.includes("+") || rawT.includes("Z") || rawT.includes("UTC");
             const transferTime = new Date(hasTz ? rawT : rawT + " UTC");
