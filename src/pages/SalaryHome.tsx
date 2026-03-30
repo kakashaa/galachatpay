@@ -58,6 +58,7 @@ const SalaryHome: React.FC = () => {
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
   const [cashResetOverride, setCashResetOverride] = useState(false);
+  const [cashGloballyEnabled, setCashGloballyEnabled] = useState(true);
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
