@@ -368,7 +368,9 @@ const SalaryHome: React.FC = () => {
               <div className="flex items-center justify-center gap-1.5 text-[10px] px-4" style={{ color: "#e9c176" }}>
                 <Lock className="w-3 h-3" />
                 <span>
-                  {cashUsedThisMonth
+                  {!cashGloballyEnabled
+                    ? "السحب النقدي مغلق حالياً من الإدارة"
+                    : cashUsedThisMonth
                     ? "تم استخدام السحب النقدي هذا الشهر"
                     : `السحب النقدي يفتح آخر 24 ساعة من الشهر (${lastDayOfMonth.getDate()}/${lastDayOfMonth.getMonth() + 1})`
                   }
