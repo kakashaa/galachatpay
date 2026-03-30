@@ -273,9 +273,8 @@ const SalaryWithdraw: React.FC = () => {
     try {
       const data: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
       setStatusData(data);
-      // Use salary (not available) to avoid old deduction bug — available sometimes includes old months
-      const hostAvail = data.host_salary?.available || data.host_salary?.current_month || 0;
-      const agencyAvail = data.agency_salary?.pool_available || data.agency_salary?.pool_total || 0;
+      const hostAvail = data.host_salary?.available || 0;
+      const agencyAvail = data.agency_salary?.pool_available || 0;
       const isAgency = data.is_agency_owner || false;
       if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
       if (pathMode === "cash") {
