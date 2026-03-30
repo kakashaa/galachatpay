@@ -407,7 +407,8 @@ const SalaryWithdraw: React.FC = () => {
       setProcessStage("check");
       const check: WithdrawStatusData = await galaApi.withdrawStatus(user!.uuid) as any;
       const available = salaryType === "agency" ? (check.agency_salary?.pool_available || 0) : (check.host_salary?.available || 0);
-      if (amount > available) throw new Error(`المبلغ أكبر من المتبقي ($${available.toFixed(2)})`);
+      // Floor both to nearest dollar — ignore cents
+      if (Math.floor(amount) > Math.floor(available) + 1) throw new Error(`المبلغ أكبر من المتبقي ($${Math.floor(available)})`);
       if (pathMode === "charge_self" || pathMode === "charge_other") {
         const chargeTargetUuid = chargeTarget || user!.uuid;
         const chargeResponse = await fetch("https://hola-chat.com/project-z/api.php", {
