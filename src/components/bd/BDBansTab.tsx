@@ -12,10 +12,11 @@ const BDBansTab: React.FC = () => {
   const fetchBans = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
-        .from("works_ban_requests" as any)
+      const { data, error } = await supabase
+        .from("works_ban_requests")
         .select("*")
         .order("created_at", { ascending: false });
+      if (error) { console.error("BDBansTab fetch error:", error); toast.error("فشل تحميل المحظورين"); }
       setBans(data || []);
     } catch {
       toast.error("فشل تحميل المحظورين");
