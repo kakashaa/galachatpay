@@ -71,6 +71,13 @@ const SalaryHome: React.FC = () => {
       .maybeSingle()
       .then(({ data }) => setIsPhoneVerified(!!data))
       .then(undefined, () => setIsPhoneVerified(false));
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "salary_cash_enabled")
+      .maybeSingle()
+      .then(({ data }) => setCashGloballyEnabled(data?.value !== "false"))
+      .then(undefined, () => {});
     const handleVisibility = () => {
       if (document.visibilityState === "visible") fetchStatus();
     };
