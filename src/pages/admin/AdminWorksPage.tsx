@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAdminSession } from "@/hooks/use-admin-session";
+import BDBansTab from "@/components/bd/BDBansTab";
 import AdminPageLayout from "@/components/AdminPageLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -656,6 +657,9 @@ const AdminWorksPage: React.FC = () => {
             </TabsTrigger>
             <TabsTrigger value="members" className="flex items-center gap-1" disabled={!selectedWorksId}>
               <Users className="w-3 h-3" /> الأعضاء
+            </TabsTrigger>
+            <TabsTrigger value="bd_bans" className="flex items-center gap-1">
+              <UserX className="w-3 h-3" /> محظورين البيدي
             </TabsTrigger>
           </TabsList>
 
@@ -1461,6 +1465,11 @@ const AdminWorksPage: React.FC = () => {
                 })()}
               </div>
             )}
+          </TabsContent>
+
+          {/* BD Bans Tab */}
+          <TabsContent value="bd_bans">
+            <BDBansTab />
           </TabsContent>
         </Tabs>
 
