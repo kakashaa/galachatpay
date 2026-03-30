@@ -658,6 +658,9 @@ const AdminWorksPage: React.FC = () => {
             <TabsTrigger value="members" className="flex items-center gap-1" disabled={!selectedWorksId}>
               <Users className="w-3 h-3" /> الأعضاء
             </TabsTrigger>
+            <TabsTrigger value="bd_bans" className="flex items-center gap-1">
+              <UserX className="w-3 h-3" /> محظورين البيدي
+            </TabsTrigger>
           </TabsList>
 
           {/* Requests Tab */}
