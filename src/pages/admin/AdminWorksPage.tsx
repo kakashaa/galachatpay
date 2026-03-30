@@ -1466,6 +1466,11 @@ const AdminWorksPage: React.FC = () => {
               </div>
             )}
           </TabsContent>
+
+          {/* BD Bans Tab */}
+          <TabsContent value="bd_bans">
+            <BDBansTab />
+          </TabsContent>
         </Tabs>
 
         {/* Owner: Manual Add Dialog */}
