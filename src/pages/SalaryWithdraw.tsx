@@ -336,7 +336,7 @@ const SalaryWithdraw: React.FC = () => {
           return true;
         }).map(mapTransfer);
       setTransfers(list);
-      const usedStatusMap = new Map<string, string>();
+      const usedStatusMap = new Map<string, any>();
       (usedRes.data || []).forEach((r: any) => { if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), { status: r.status || "pending", transfer_image_url: r.transfer_image_url || null, rejection_image_url: r.rejection_image_url || null, admin_note: r.admin_note || null }); });
       const expiredList: TransferItem[] = allTransfers
         .filter((t: any) => {
