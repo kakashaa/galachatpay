@@ -391,7 +391,7 @@ const SalaryWithdraw: React.FC = () => {
     setTargetSearching(true); setTargetInfo(null); setTargetConfirmed(false);
     try {
       // Try user-finance-api first (reliable)
-      const resp = await fetch(\`https://hola-chat.com/user-finance-api.php?key=ghala2026actions&uuid=\${targetUuid.trim()}&month=\${new Date().getFullYear()}-\${String(new Date().getMonth()+1).padStart(2,"0")}\`);
+      const resp = await fetch(`https://hola-chat.com/user-finance-api.php?key=ghala2026actions&uuid=${targetUuid.trim()}&month=${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}`);
       const finData = await resp.json();
       if (finData.ok && finData.data?.name) {
         setTargetInfo({ name: finData.data.name, avatar: "", uuid: targetUuid.trim() });
