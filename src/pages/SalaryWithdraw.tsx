@@ -197,7 +197,8 @@ const SalaryWithdraw: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusData, setStatusData] = useState<WithdrawStatusData | null>(null);
-  const [salaryType, setSalaryType] = useState<SalaryType>("host");
+  const urlType = new URLSearchParams(location.search).get("type");
+  const [salaryType, setSalaryType] = useState<SalaryType>(urlType === "agency" ? "agency" : "host");
   const [transfers, setTransfers] = useState<TransferItem[]>([]);
   const [expiredTransfers, setExpiredTransfers] = useState<TransferItem[]>([]);
   const [expiredCashCount, setExpiredCashCount] = useState(0);
@@ -276,13 +277,19 @@ const SalaryWithdraw: React.FC = () => {
       const hostAvail = data.host_salary?.available || 0;
       const agencyAvail = data.agency_salary?.pool_available || 0;
       const isAgency = data.is_agency_owner || false;
-      if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
+      if (urlType === "agency" && isAgency && agencyAvail > 0) {
+        setSalaryType("agency");
+      } else if (hostAvail <= 0 && isAgency && agencyAvail > 0) {
+        setSalaryType("agency");
+      }
       if (pathMode === "cash") {
         // Skip no_salary check — user may have valid transfers
       } else {
         // Skip no_salary check
       }
-      if (isAgency && agencyAvail > 0 && hostAvail > 0) {
+      if (urlType === "agency" && isAgency && agencyAvail > 0) {
+        setSalaryType("agency"); setStep("select_transfer"); fetchTransfers();
+      } else if (isAgency && agencyAvail > 0 && hostAvail > 0 && !urlType) {
         setStep("select_type");
       } else if (isAgency && agencyAvail > 0 && hostAvail <= 0) {
         setSalaryType("agency"); setStep("select_transfer"); fetchTransfers();
