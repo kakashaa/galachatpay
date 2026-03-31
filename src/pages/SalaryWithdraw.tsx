@@ -278,9 +278,9 @@ const SalaryWithdraw: React.FC = () => {
       const isAgency = data.is_agency_owner || false;
       if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
       if (pathMode === "cash") {
-        if (hostAvail <= 0 && (!isAgency || agencyAvail <= 0)) { setStep("no_salary"); return; }
+        // Skip no_salary check — user may have valid transfers
       } else {
-        if (hostAvail <= 0 && (!isAgency || agencyAvail <= 0)) { setStep("no_salary"); return; }
+        // Skip no_salary check
       }
       if (isAgency && agencyAvail > 0 && hostAvail > 0) {
         setStep("select_type");
