@@ -778,6 +778,7 @@ const SalaryWithdraw: React.FC = () => {
                             const diffHours = Math.floor(diffMins / 60);
                             const remainMins = diffMins % 60;
                             const isOk = diffMins <= 1440;
+                            if (isNaN(diffMins) || diffMins < 0) return null;
                             const timeText = diffHours > 0 ? `${diffHours}س ${remainMins}د` : `${diffMins}د`;
                             return <p className="text-[9px] font-bold" style={isOk ? successText : goldText}>{isOk ? `منذ ${timeText} ✅` : `منذ ${timeText} ⚠️`}</p>;
                           })()}
