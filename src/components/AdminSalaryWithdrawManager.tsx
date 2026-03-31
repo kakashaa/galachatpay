@@ -808,6 +808,12 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 pt-1">
+                      {req.status === "pending" && canAct && isCurrentMonth && isSuperAdmin && (
+                        <button onClick={(e) => { e.stopPropagation(); setEditSheet(req); setEditAmount(String(req.amount)); }}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all active:scale-95">
+                          <FileText className="w-3 h-3" /> تعديل
+                        </button>
+                      )}
                       {req.status === "pending" && canAct && isCurrentMonth && isSuperAdmin ? (
                         <button onClick={() => openDetailSheet(req)}
                           className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold bg-gradient-to-br from-amber-500/15 to-amber-600/10 text-amber-400 border border-amber-500/20 hover:from-amber-500/25 transition-all active:scale-95">
