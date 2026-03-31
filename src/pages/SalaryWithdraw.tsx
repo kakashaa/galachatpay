@@ -205,6 +205,7 @@ const SalaryWithdraw: React.FC = () => {
   const [selectedTransfer, setSelectedTransfer] = useState<TransferItem | null>(null);
   const [localUsedIds, setLocalUsedIds] = useState<Set<string>>(new Set());
   const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedExpired, setSelectedExpired] = useState<any>(null);
   const [selectedBank, setSelectedBank] = useState("");
   const [customBankName, setCustomBankName] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -300,7 +301,7 @@ const SalaryWithdraw: React.FC = () => {
     try {
       const [apiData, usedRes] = await Promise.all([
         galaApi.userTransfers(user.uuid) as any,
-        supabase.from("salary_requests").select("transfer_id, status, is_final_rejection").eq("user_uuid", user.uuid),
+        supabase.from("salary_requests").select("transfer_id, status, is_final_rejection, transfer_image_url, rejection_image_url, admin_note, receipt_url").eq("user_uuid", user.uuid),
       ]);
       const usedIds = new Set([...(usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean), ...localUsedIds]);
       const today = new Date().toISOString().slice(0, 10);
@@ -336,7 +337,7 @@ const SalaryWithdraw: React.FC = () => {
         }).map(mapTransfer);
       setTransfers(list);
       const usedStatusMap = new Map<string, string>();
-      (usedRes.data || []).forEach((r: any) => { if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), r.status || "pending"); });
+      (usedRes.data || []).forEach((r: any) => { if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), { status: r.status || "pending", transfer_image_url: r.transfer_image_url || r.receipt_url || null, rejection_image_url: r.rejection_image_url || null, admin_note: r.admin_note || null }); });
       const expiredList: TransferItem[] = allTransfers
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
@@ -354,8 +355,8 @@ const SalaryWithdraw: React.FC = () => {
         .filter((t: any) => !list.some((l: any) => l.reference_id === String(t.reference_id || t.id || "")))
         .map((t: any) => {
           const refId = String(t.reference_id || t.id || "");
-          const usedStatus = usedStatusMap.get(refId);
-          return { ...mapTransfer(t), usedStatus: usedStatus || (t.is_used ? "used" : "expired") };
+          const usedData = usedStatusMap.get(refId);
+          return { ...mapTransfer(t), usedStatus: usedData?.status || (t.is_used ? "used" : "expired"), transfer_image_url: usedData?.transfer_image_url || null, rejection_image_url: usedData?.rejection_image_url || null, admin_note: usedData?.admin_note || null };
         });
       setExpiredTransfers(expiredList);
       if (isCashMode) { setExpiredCashCount(expiredList.length); } else { setExpiredCashCount(0); }
@@ -745,7 +746,8 @@ const SalaryWithdraw: React.FC = () => {
               <div className="space-y-2.5">
                 {transfers.map((t, i) => {
                   const isSelected = selectedTransfer?.reference_id === t.reference_id;
-                  const timeStr = t.time ? new Date(t.time).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
+                  const _dt1 = t.time ? new Date(t.time) : null;
+                  const timeStr = (_dt1 && !isNaN(_dt1.getTime())) ? _dt1.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
                   return (
                     <motion.button key={t.reference_id || i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                       onClick={() => setSelectedTransfer(isSelected ? null : t)}
@@ -798,7 +800,8 @@ const SalaryWithdraw: React.FC = () => {
                 <Clock className="w-3.5 h-3.5" /> حوالات سابقة ({expiredTransfers.length})
               </h3>
               {expiredTransfers.map((t: any, i: number) => {
-                const timeStr = t.time ? new Date(t.time).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
+                const _dt2 = t.time ? new Date(t.time) : null;
+                const timeStr = (_dt2 && !isNaN(_dt2.getTime())) ? _dt2.toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
                 const us = t.usedStatus;
                 const isApproved = us === "approved" || us === "delivered";
                 const isRejected = us === "rejected";
@@ -809,8 +812,8 @@ const SalaryWithdraw: React.FC = () => {
                 const statusColor = isApproved ? successText : isRejected ? errorText : isPending ? goldText : isSpent ? successText : isExpiredTime ? errorText : goldText;
                 return (
                   <div key={t.reference_id || i} className="w-full rounded-xl p-3 text-right"
-                    onClick={() => { if (isExpiredTime) navigate("/support"); }}
-                    style={{ ...cardSurface, cursor: isExpiredTime ? "pointer" : "default", opacity: 0.7 }}>
+                    onClick={() => setSelectedExpired(t)}
+                    style={{ ...cardSurface, cursor: "pointer", opacity: 0.85 }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="text-right">
@@ -860,6 +863,47 @@ const SalaryWithdraw: React.FC = () => {
               { label: "جاري تسجيل العملية...", completedLabel: "تم التسجيل ✓", icon: <></> },
             ]} />
           {termsDialog}
+          {/* Detail popup for expired transfers */}
+          {selectedExpired && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(0,0,0,0.6)" }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedExpired(null); }}>
+              <div className="w-full max-w-md rounded-t-3xl p-5 space-y-3 max-h-[80vh] overflow-y-auto" style={{ background: "#10141a" }}>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold" style={{ color: "#dfe2eb" }}>تفاصيل الحوالة</h3>
+                  <button onClick={() => setSelectedExpired(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.06)", color: "#dfe2eb" }}>✕</button>
+                </div>
+                <div className="text-center py-2">
+                  <p className="text-2xl font-extrabold" dir="ltr" style={{ color: "#e9c176" }}>${(selectedExpired.usd || selectedExpired.amount || 0).toFixed(2)}</p>
+                  <p className="text-xs font-mono mt-1" style={{ color: "#78839c" }}>#{selectedExpired.reference_id}</p>
+                </div>
+                <div className="flex justify-between items-center rounded-2xl p-3" style={{ background: "rgba(15,26,46,0.6)" }}>
+                  <span className="text-xs" style={{ color: "#78839c" }}>الحالة</span>
+                  <span className="text-xs font-bold" style={{ color: "#dfe2eb" }}>{selectedExpired.usedStatus === "approved" || selectedExpired.usedStatus === "delivered" ? "✅ تم الاستلام" : selectedExpired.usedStatus === "rejected" ? "❌ مرفوض" : selectedExpired.usedStatus === "pending" || selectedExpired.usedStatus === "review" ? "⏳ قيد المراجعة" : "✅ تم الصرف"}</span>
+                </div>
+                {selectedExpired.admin_note && (
+                  <div className="rounded-2xl p-3" style={{ background: "rgba(255,180,171,0.06)" }}>
+                    <p className="text-[10px] font-bold" style={{ color: "#ffb4ab" }}>ملاحظة:</p>
+                    <p className="text-xs" style={{ color: "#dfe2eb" }}>{selectedExpired.admin_note}</p>
+                  </div>
+                )}
+                {selectedExpired.transfer_image_url && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold" style={{ color: "#4ae183" }}>إيصال التحويل:</p>
+                    <a href={selectedExpired.transfer_image_url} target="_blank" rel="noopener noreferrer">
+                      <img src={selectedExpired.transfer_image_url} alt="receipt" className="w-full max-h-[400px] object-contain rounded-xl" style={{ border: "1px solid rgba(74,225,131,0.2)" }} />
+                    </a>
+                  </div>
+                )}
+                {selectedExpired.rejection_image_url && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold" style={{ color: "#ffb4ab" }}>صورة الرفض:</p>
+                    <a href={selectedExpired.rejection_image_url} target="_blank" rel="noopener noreferrer">
+                      <img src={selectedExpired.rejection_image_url} alt="rejection" className="w-full max-h-[400px] object-contain rounded-xl" style={{ border: "1px solid rgba(255,180,171,0.2)" }} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </MobileLayout>
     );
@@ -869,7 +913,7 @@ const SalaryWithdraw: React.FC = () => {
   if (step === "receipt" && selectedTransfer) {
     const receiptCode = `GC-${selectedTransfer.reference_id || "MAN"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
     const receiptDate = selectedTransfer.time
-      ? new Date(selectedTransfer.time).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
+      ? (() => { const _d = new Date(selectedTransfer.time); return isNaN(_d.getTime()) ? new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }) : _d.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" }); })()
       : new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
     const receiptItems = [
