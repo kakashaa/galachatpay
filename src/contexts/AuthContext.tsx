@@ -102,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = useCallback(async () => {
     if (!user?.uuid) return;
+    if (sessionStorage.getItem("gala_logged_out") === "true") return;
     const sessionToken = localStorage.getItem("gala_session_token");
     if (!sessionToken) return;
     if (checkSessionExpiry()) return;
@@ -134,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Refresh the session token if server returned a new one
       if (data.session_token) {
         localStorage.setItem("gala_session_token", data.session_token);
+        sessionStorage.removeItem("gala_logged_out");
         localStorage.setItem("gala_login_time", Date.now().toString());
       }
 
@@ -252,6 +254,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user?.uuid, verifyPassword]);
 
   const logout = () => {
+    // Stop all timers FIRST to prevent re-login
+    if (refreshTimerRef.current) { clearInterval(refreshTimerRef.current); refreshTimerRef.current = null; }
+    if (verifyTimerRef.current) { clearInterval(verifyTimerRef.current); verifyTimerRef.current = null; }
+
     if (user) {
       try {
         const savedRaw = localStorage.getItem("gala_saved_accounts");
@@ -271,8 +277,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem("gala_session_token");
     localStorage.removeItem("gala_login_time");
     localStorage.removeItem("gala_avatar");
-    // Clean up old key if still present from previous version
     localStorage.removeItem("gala_session_key");
+    // Mark as explicitly logged out to prevent auto-relogin
+    sessionStorage.setItem("gala_logged_out", "true");
   };
 
   return (
