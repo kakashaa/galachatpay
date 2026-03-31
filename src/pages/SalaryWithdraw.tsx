@@ -207,6 +207,7 @@ const SalaryWithdraw: React.FC = () => {
   const [localUsedIds, setLocalUsedIds] = useState<Set<string>>(new Set());
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedExpired, setSelectedExpired] = useState<any>(null);
+  const [expiredFilter, setExpiredFilter] = useState("all");
   const [selectedBank, setSelectedBank] = useState("");
   const [customBankName, setCustomBankName] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -806,7 +807,31 @@ const SalaryWithdraw: React.FC = () => {
               <h3 className="text-xs font-bold flex items-center gap-1.5" style={{ color: "rgba(233,193,118,0.6)" }}>
                 <Clock className="w-3.5 h-3.5" /> حوالات سابقة ({expiredTransfers.length})
               </h3>
-              {expiredTransfers.map((t: any, i: number) => {
+              {/* Filter tabs */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {[
+                  { key: "all", label: "الكل" },
+                  { key: "approved", label: "✅ مقبول" },
+                  { key: "pending", label: "⏳ قيد المراجعة" },
+                  { key: "rejected", label: "❌ مرفوض" },
+                ].map(tab => (
+                  <button key={tab.key} onClick={() => setExpiredFilter(tab.key)}
+                    className="shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all"
+                    style={{
+                      background: expiredFilter === tab.key ? "rgba(233,193,118,0.12)" : "rgba(255,255,255,0.03)",
+                      color: expiredFilter === tab.key ? "#e9c176" : "#78839c",
+                      border: expiredFilter === tab.key ? "1px solid rgba(233,193,118,0.25)" : "1px solid rgba(255,255,255,0.05)",
+                    }}>{tab.label}</button>
+                ))}
+              </div>
+              {expiredTransfers.filter((t: any) => {
+                if (expiredFilter === "all") return true;
+                const us = t.usedStatus;
+                if (expiredFilter === "approved") return us === "approved" || us === "delivered" || us === "used" || t.is_used;
+                if (expiredFilter === "pending") return us === "pending" || us === "review";
+                if (expiredFilter === "rejected") return us === "rejected";
+                return true;
+              }).map((t: any, i: number) => {
                 const _td2 = t.time ? new Date(t.time) : null;
                 const timeStr = (_td2 && !isNaN(_td2.getTime())) ? _td2.toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
                 const us = t.usedStatus;
