@@ -16,6 +16,16 @@ if ('caches' in window) {
   });
 }
 
+// ── Force reload if app version changed ──
+const APP_VERSION = "2026.03.31.1";
+const storedVersion = localStorage.getItem("app_version");
+if (storedVersion && storedVersion !== APP_VERSION) {
+  localStorage.setItem("app_version", APP_VERSION);
+  window.location.reload();
+} else {
+  localStorage.setItem("app_version", APP_VERSION);
+}
+
 // ── Register push notification SW (only for push, no caching) ──
 async function registerPushSW() {
   try {
