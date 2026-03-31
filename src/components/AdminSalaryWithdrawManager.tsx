@@ -538,7 +538,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     const delivered = requests.filter(r => r.status === "delivered" && applySearchFilters(r));
     const rejected = requests.filter(r => r.status === "rejected" && applySearchFilters(r));
     const reserved = requests.filter(r => r.status === "reserved" && applySearchFilters(r));
-    const edited = requests.filter(r => r.status === "edited" && applySearchFilters(r));
+    const edited = requests.filter(r => r.user_edited === true && applySearchFilters(r));
     return {
       pending: { count: pending.length, amount: pending.reduce((s, r) => s + r.amount, 0) },
       delivered: { count: delivered.length, amount: delivered.reduce((s, r) => s + r.amount, 0) },
