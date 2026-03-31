@@ -287,7 +287,7 @@ const AdminLoginBansPage: React.FC = () => {
           )}
         </div>
       </AdminPageLayout>
-      <ConfirmDialog />
+      {ConfirmDialog}
     </>
   );
 };

@@ -262,6 +262,7 @@ const App = () => {
                   <Route path="/admin/deductions" element={<AdminRouteGuard><AdminDeductionsPage /></AdminRouteGuard>} />
                   <Route path="/admin/health-check" element={<AdminRouteGuard><AdminHealthCheck /></AdminRouteGuard>} />
                   <Route path="/admin/verified-phones" element={<AdminRouteGuard><AdminVerifiedPhonesPage /></AdminRouteGuard>} />
+                  <Route path="/admin/login-bans" element={<AdminRouteGuard><AdminLoginBansPage /></AdminRouteGuard>} />
                   <Route path="/admin/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/profile/:uuid" element={<AdminProfilePage />} />
                   <Route path="/supporter-benefits" element={<SupporterBenefits />} />
