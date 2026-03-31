@@ -153,7 +153,12 @@ const getMonthOptions = () => {
 
 const getCurrentMonth = () => {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  // On first 3 days of month, default to previous month (users still checking old requests)
+  if (now.getDate() <= 3 && now.getMonth() > 0) {
+    return `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}`;
+  }
+  return current;
 };
 
 type FilterTab = "all" | "delivered" | "pending" | "rejected" | "coins";
@@ -286,9 +291,19 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
   if (requests.length === 0) {
     return (
-      <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(15,26,46,0.4)" }}>
-        <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: "rgba(120,131,156,0.3)" }} />
-        <p className="text-xs" style={{ color: "#78839c" }}>لا توجد طلبات سحب سابقة هذا الشهر</p>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-sm font-bold" style={{ color: "#dfe2eb" }}>العمليات الأخيرة</h3>
+          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}
+            className="rounded-xl text-[10px] px-2.5 py-1.5 font-bold"
+            style={{ background: "rgba(15,26,46,0.6)", color: "#dfe2eb", border: "none", outline: "none" }}>
+            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </div>
+        <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(15,26,46,0.4)" }}>
+          <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: "rgba(120,131,156,0.3)" }} />
+          <p className="text-xs" style={{ color: "#78839c" }}>لا توجد طلبات في هذا الشهر — جرب اختيار شهر آخر</p>
+        </div>
       </div>
     );
   }
