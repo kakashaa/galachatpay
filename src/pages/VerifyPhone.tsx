@@ -232,7 +232,7 @@ const VerifyPhone: React.FC = () => {
   const changeNumber = () => {
     setVerifiedPhone(null);
     setPhoneNumber("");
-    setOtpDigits(["", "", "", "", "", ""]);
+    setOtpDigits(["", "", "", ""]);
     setError("");
     setStep("phone");
   };
