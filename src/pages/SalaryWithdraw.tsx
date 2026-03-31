@@ -895,7 +895,7 @@ const SalaryWithdraw: React.FC = () => {
             </motion.div>
           )}
 
-          <SalaryRequestsHistory userUuid={user.uuid} />
+          {/* SalaryRequestsHistory removed — expired transfers section above already shows all history */}
 
           <SubmissionOverlay visible={processing} title="جاري تنفيذ العملية" activeStep={processStage === "check" ? 0 : 1}
             steps={[
