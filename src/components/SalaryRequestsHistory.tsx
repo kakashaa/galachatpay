@@ -304,6 +304,17 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
         </div>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 px-1">
+          {FILTER_TABS.map(tab => (
+            <button key={tab.key} onClick={() => setActiveFilter(tab.key)}
+              className="shrink-0 px-4 py-2 rounded-2xl text-[11px] font-bold whitespace-nowrap"
+              style={{
+                background: activeFilter === tab.key ? "rgba(233,193,118,0.12)" : "#181c22",
+                color: activeFilter === tab.key ? "#e9c176" : "#78839c",
+                border: activeFilter === tab.key ? "1px solid rgba(233,193,118,0.25)" : "1px solid rgba(255,255,255,0.05)",
+              }}>{tab.label}</button>
+          ))}
+        </div>
         <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(15,26,46,0.4)" }}>
           <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: "rgba(120,131,156,0.3)" }} />
           <p className="text-xs" style={{ color: "#78839c" }}>لا توجد طلبات سحب في هذا الشهر</p>
