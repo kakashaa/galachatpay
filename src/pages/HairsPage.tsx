@@ -92,7 +92,7 @@ const HairsPage: React.FC = () => {
           .eq("user_uuid", user.uuid)
           .eq("selection_week", weekKey);
         if (selections) {
-          const ids = new Set(selections.map(s => s.hair_id));
+          const ids = new Set(selections.map((s: any) => s.hair_id as string));
           setSelectedIds(ids);
           setSavedIds(ids);
         }
