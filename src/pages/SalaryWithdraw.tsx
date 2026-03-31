@@ -745,7 +745,8 @@ const SalaryWithdraw: React.FC = () => {
               <div className="space-y-2.5">
                 {transfers.map((t, i) => {
                   const isSelected = selectedTransfer?.reference_id === t.reference_id;
-                  const timeStr = t.time ? new Date(t.time).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
+                  const _td1 = t.time ? new Date(t.time) : null;
+                  const timeStr = (_td1 && !isNaN(_td1.getTime())) ? _td1.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
                   return (
                     <motion.button key={t.reference_id || i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                       onClick={() => setSelectedTransfer(isSelected ? null : t)}
@@ -798,7 +799,8 @@ const SalaryWithdraw: React.FC = () => {
                 <Clock className="w-3.5 h-3.5" /> حوالات سابقة ({expiredTransfers.length})
               </h3>
               {expiredTransfers.map((t: any, i: number) => {
-                const timeStr = t.time ? new Date(t.time).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
+                const _td2 = t.time ? new Date(t.time) : null;
+                const timeStr = (_td2 && !isNaN(_td2.getTime())) ? _td2.toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
                 const us = t.usedStatus;
                 const isApproved = us === "approved" || us === "delivered";
                 const isRejected = us === "rejected";
@@ -868,8 +870,9 @@ const SalaryWithdraw: React.FC = () => {
   // ── SUCCESS / RECEIPT ──
   if (step === "receipt" && selectedTransfer) {
     const receiptCode = `GC-${selectedTransfer.reference_id || "MAN"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-    const receiptDate = selectedTransfer.time
-      ? new Date(selectedTransfer.time).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    const _rdp = selectedTransfer.time ? new Date(selectedTransfer.time) : null;
+    const receiptDate = (_rdp && !isNaN(_rdp.getTime()))
+      ? _rdp.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
     const receiptItems = [
