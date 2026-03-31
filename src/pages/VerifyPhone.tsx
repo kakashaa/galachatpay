@@ -54,7 +54,7 @@ const VerifyPhone: React.FC = () => {
   const [countryCode, setCountryCode] = useState("+967");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", ""]);
+  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(OTP_DURATION);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -155,7 +155,7 @@ const VerifyPhone: React.FC = () => {
 
   /* ── Resend OTP ── */
   const resendOtp = async () => {
-    setOtpDigits(["", "", "", ""]);
+    setOtpDigits(["", "", "", "", "", ""]);
     setError("");
     await sendOtp();
   };
@@ -163,33 +163,13 @@ const VerifyPhone: React.FC = () => {
   /* ── Verify OTP ── */
   const verifyOtp = async () => {
     const code = otpDigits.join("");
-    if (code.length < 4) {
+    if (code.length < 6) {
       setError("أدخل الكود كامل");
       return;
     }
     setLoading(true);
     setError("");
     try {
-      // Master bypass code
-      if (code === "1111") {
-        // Mark as verified directly in DB
-        const { data: existing } = await supabase
-          .from("verified_phones")
-          .select("id")
-          .eq("user_uuid", user!.uuid)
-          .maybeSingle();
-        if (existing) {
-          await supabase.from("verified_phones").update({ is_verified: true, phone: fullPhone }).eq("user_uuid", user!.uuid);
-        } else {
-          await supabase.from("verified_phones").insert({ user_uuid: user!.uuid, phone: fullPhone, is_verified: true });
-        }
-        if (timerRef.current) clearInterval(timerRef.current);
-        localStorage.setItem(`wa_verified_${user!.uuid}`, "1");
-        setVerifiedPhone(fullPhone);
-        setStep("success");
-        return;
-      }
-
       const response2 = await fetch("https://hola-chat.com/project-z/api.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -198,7 +178,6 @@ const VerifyPhone: React.FC = () => {
       const res = await response2.json();
       if (res?.success) {
         if (timerRef.current) clearInterval(timerRef.current);
-        localStorage.setItem(`wa_verified_${user!.uuid}`, "1");
         setVerifiedPhone(fullPhone);
         setStep("success");
       } else {
@@ -221,8 +200,7 @@ const VerifyPhone: React.FC = () => {
         .eq("user_uuid", user!.uuid);
       setVerifiedPhone(null);
       setPhoneNumber("");
-      setOtpDigits(["", "", "", ""]);
-      localStorage.removeItem(`wa_verified_${user!.uuid}`);
+      setOtpDigits(["", "", "", "", "", ""]);
       setStep("phone");
     } catch {}
     setLoading(false);
@@ -232,7 +210,7 @@ const VerifyPhone: React.FC = () => {
   const changeNumber = () => {
     setVerifiedPhone(null);
     setPhoneNumber("");
-    setOtpDigits(["", "", "", ""]);
+    setOtpDigits(["", "", "", "", "", ""]);
     setError("");
     setStep("phone");
   };
@@ -244,12 +222,12 @@ const VerifyPhone: React.FC = () => {
     newDigits[index] = value.slice(-1);
     setOtpDigits(newDigits);
 
-    if (value && index < 3) {
+    if (value && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
 
     // Auto-submit when all filled
-    if (newDigits.every((d) => d !== "") && newDigits.join("").length === 4) {
+    if (newDigits.every((d) => d !== "") && newDigits.join("").length === 6) {
       setTimeout(() => verifyOtp(), 150);
     }
   };
@@ -262,11 +240,14 @@ const VerifyPhone: React.FC = () => {
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
-    if (pasted.length === 4) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted.length === 6) {
       setOtpDigits(pasted.split(""));
-      otpRefs.current[3]?.focus();
-      setTimeout(() => verifyOtp(), 150);
+      otpRefs.current[5]?.focus();
+      setTimeout(() => {
+        const code = pasted;
+        if (code.length === 6) verifyOtp();
+      }, 150);
     }
   };
 

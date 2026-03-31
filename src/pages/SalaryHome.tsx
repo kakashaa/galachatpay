@@ -58,7 +58,6 @@ const SalaryHome: React.FC = () => {
   const [salaryTab, setSalaryTab] = useState<"host" | "agency">("host");
   const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
   const [cashResetOverride, setCashResetOverride] = useState(false);
-  const [cashGloballyEnabled, setCashGloballyEnabled] = useState(true);
 
   useEffect(() => {
     if (!user) { navigate("/"); return; }
@@ -71,13 +70,6 @@ const SalaryHome: React.FC = () => {
       .maybeSingle()
       .then(({ data }) => setIsPhoneVerified(!!data))
       .then(undefined, () => setIsPhoneVerified(false));
-    supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "salary_cash_enabled")
-      .maybeSingle()
-      .then(({ data }) => setCashGloballyEnabled(data?.value !== "false"))
-      .then(undefined, () => {});
     const handleVisibility = () => {
       if (document.visibilityState === "visible") fetchStatus();
     };
@@ -180,7 +172,7 @@ const SalaryHome: React.FC = () => {
   const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const hoursUntilMonthEnd = (lastDayOfMonth.getTime() + 86400000 - now.getTime()) / 3600000;
   const isOwner = user?.uuid === "1000";
-  const isCashWindowOpen = (hoursUntilMonthEnd <= 24 || isOwner || cashResetOverride) && (cashGloballyEnabled || isOwner);
+  const isCashWindowOpen = hoursUntilMonthEnd <= 24 || isOwner || cashResetOverride;
   const cashLocked = cashUsedThisMonth || !isCashWindowOpen;
 
   const options = [
@@ -368,9 +360,7 @@ const SalaryHome: React.FC = () => {
               <div className="flex items-center justify-center gap-1.5 text-[10px] px-4" style={{ color: "#e9c176" }}>
                 <Lock className="w-3 h-3" />
                 <span>
-                  {!cashGloballyEnabled
-                    ? "السحب النقدي مغلق حالياً من الإدارة"
-                    : cashUsedThisMonth
+                  {cashUsedThisMonth
                     ? "تم استخدام السحب النقدي هذا الشهر"
                     : `السحب النقدي يفتح آخر 24 ساعة من الشهر (${lastDayOfMonth.getDate()}/${lastDayOfMonth.getMonth() + 1})`
                   }

@@ -59,20 +59,14 @@ const UserProfileCard: React.FC = () => {
   const [salaryDisplay, setSalaryDisplay] = useState(0);
   const [salaryLoading, setSalaryLoading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem("gala_avatar") || "");
-  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(() => {
-    if (user?.uuid && localStorage.getItem(`wa_verified_${user.uuid}`)) return true;
-    return null;
-  });
+  const [isPhoneVerified, setIsPhoneVerified] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!user?.uuid) return;
-    if (localStorage.getItem(`wa_verified_${user.uuid}`)) { setIsPhoneVerified(true); return; }
-    supabase.from("verified_phones").select("is_verified").eq("user_uuid", user.uuid).eq("is_verified", true).maybeSingle()
-      .then(({ data }) => { 
-        setIsPhoneVerified(!!data);
-        if (data) localStorage.setItem(`wa_verified_${user.uuid}`, "1");
-      })
-      .then(undefined, () => { setIsPhoneVerified(false); });
+    if (user?.uuid) {
+      supabase.from("verified_phones").select("is_verified").eq("user_uuid", user.uuid).eq("is_verified", true).maybeSingle()
+        .then(({ data }) => { setIsPhoneVerified(!!data); })
+        .then(undefined, () => { setIsPhoneVerified(false); });
+    }
   }, [user?.uuid]);
   const { verifiedPhone, unlink: unlinkWa } = useVerifiedWhatsApp(user?.uuid);
   const { confirm, ConfirmDialog } = useConfirmModal();

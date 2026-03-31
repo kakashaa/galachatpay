@@ -138,27 +138,6 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
     setAttempts(a => a + 1);
 
     try {
-      // Master bypass code
-      if (value === '1111') {
-        // Mark verified directly in verified_phones
-        const { data: existingVp } = await supabase
-          .from('verified_phones')
-          .select('id')
-          .eq('user_uuid', userUuid)
-          .maybeSingle();
-        if (existingVp) {
-          await supabase.from('verified_phones').update({ is_verified: true, phone: fullPhone }).eq('user_uuid', userUuid);
-        } else {
-          await supabase.from('verified_phones').insert({ user_uuid: userUuid, phone: fullPhone, is_verified: true });
-        }
-        localStorage.setItem(`wa_verified_${userUuid}`, '1');
-        toast.success('تم التوثيق بنجاح ✅');
-        setVerifying(false);
-        onSuccess?.();
-        onClose?.();
-        return;
-      }
-
       const { data } = await supabase
         .from('whatsapp_verifications' as any)
         .select('*')
