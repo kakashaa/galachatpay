@@ -278,9 +278,9 @@ const SalaryWithdraw: React.FC = () => {
       const isAgency = data.is_agency_owner || false;
       if (hostAvail <= 0 && isAgency && agencyAvail > 0) setSalaryType("agency");
       if (pathMode === "cash") {
-        // Skip no_salary check — user may have valid transfers
+        if (hostAvail <= 0 && (!isAgency || agencyAvail <= 0)) { setStep("no_salary"); return; }
       } else {
-        // Skip no_salary check
+        if (hostAvail <= 0 && (!isAgency || agencyAvail <= 0)) { setStep("no_salary"); return; }
       }
       if (isAgency && agencyAvail > 0 && hostAvail > 0) {
         setStep("select_type");
@@ -745,8 +745,7 @@ const SalaryWithdraw: React.FC = () => {
               <div className="space-y-2.5">
                 {transfers.map((t, i) => {
                   const isSelected = selectedTransfer?.reference_id === t.reference_id;
-                  const _td1 = t.time ? new Date(t.time) : null;
-                  const timeStr = (_td1 && !isNaN(_td1.getTime())) ? _td1.toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
+                  const timeStr = t.time ? new Date(t.time).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" }) : "";
                   return (
                     <motion.button key={t.reference_id || i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                       onClick={() => setSelectedTransfer(isSelected ? null : t)}
@@ -779,7 +778,6 @@ const SalaryWithdraw: React.FC = () => {
                             const diffHours = Math.floor(diffMins / 60);
                             const remainMins = diffMins % 60;
                             const isOk = diffMins <= 1440;
-                            if (isNaN(diffMins) || diffMins < 0) return null;
                             const timeText = diffHours > 0 ? `${diffHours}س ${remainMins}د` : `${diffMins}د`;
                             return <p className="text-[9px] font-bold" style={isOk ? successText : goldText}>{isOk ? `منذ ${timeText} ✅` : `منذ ${timeText} ⚠️`}</p>;
                           })()}
@@ -799,8 +797,7 @@ const SalaryWithdraw: React.FC = () => {
                 <Clock className="w-3.5 h-3.5" /> حوالات سابقة ({expiredTransfers.length})
               </h3>
               {expiredTransfers.map((t: any, i: number) => {
-                const _td2 = t.time ? new Date(t.time) : null;
-                const timeStr = (_td2 && !isNaN(_td2.getTime())) ? _td2.toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
+                const timeStr = t.time ? new Date(t.time).toLocaleDateString("ar-EG", { day: "2-digit", month: "2-digit" }) : "";
                 const us = t.usedStatus;
                 const isApproved = us === "approved" || us === "delivered";
                 const isRejected = us === "rejected";
@@ -870,9 +867,8 @@ const SalaryWithdraw: React.FC = () => {
   // ── SUCCESS / RECEIPT ──
   if (step === "receipt" && selectedTransfer) {
     const receiptCode = `GC-${selectedTransfer.reference_id || "MAN"}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-    const _rdp = selectedTransfer.time ? new Date(selectedTransfer.time) : null;
-    const receiptDate = (_rdp && !isNaN(_rdp.getTime()))
-      ? _rdp.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    const receiptDate = selectedTransfer.time
+      ? new Date(selectedTransfer.time).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
     const receiptItems = [

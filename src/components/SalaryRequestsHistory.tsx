@@ -122,7 +122,7 @@ const handleSaveReceipt = (request: SalaryRequest) => {
         <div class="divider"></div>
         <div class="row"><span class="label">الحالة</span><span class="value"><span class="status ${statusClass}">${statusLabel}</span></span></div>
         <div class="row"><span class="label">رقم الطلب</span><span class="value">${request.id || '-'}</span></div>
-        <div class="row"><span class="label">التاريخ</span><span class="value">${isNaN(new Date(request.created_at).getTime()) ? '—' : new Date(request.created_at).toLocaleDateString('ar-EG')}</span></div>
+        <div class="row"><span class="label">التاريخ</span><span class="value">${new Date(request.created_at).toLocaleDateString('ar-SA')}</span></div>
         <div class="row"><span class="label">نوع الطلب</span><span class="value">${getRequestTypeLabel(request.request_type) || request.bank || '-'}</span></div>
         ${request.reference_id ? `<div class="row"><span class="label">المرجعي</span><span class="value">${request.reference_id}</span></div>` : ''}
         ${request.account_name ? `<div class="row"><span class="label">المستلم</span><span class="value">${request.account_name}</span></div>` : ''}
@@ -145,7 +145,7 @@ const getMonthOptions = () => {
   for (let i = 0; i < 6; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = d.toLocaleDateString("ar-EG", { year: "numeric", month: "long" });
+    const label = d.toLocaleDateString("ar-SA", { year: "numeric", month: "long" });
     months.push({ value, label });
   }
   return months;
@@ -228,31 +228,25 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
           }));
 
         const usedTransfers: SalaryRequest[] = ((transfersRes.transfers || []) as any[])
+          .filter((t: any) => t.is_used)
           .filter((t: any) => {
             const ref = String(t.reference_id);
             return !externalIds.has(ref) && !externalRefs.has(ref)
               && !localData.some((l: any) => l.transfer_id === ref || l.transaction_id === ref);
           })
-          .map((t: any) => {
-            const usedStatus = t.usedStatus || (t.is_used ? "approved" : "pending");
-            const statusMap: Record<string, string> = { approved: "approved", delivered: "approved", rejected: "rejected", pending: "pending", review: "pending", used: "approved" };
-            return {
-              id: `#${t.reference_id}`,
-              amount: t.amount_usd || 0,
-              status: statusMap[usedStatus] || (t.is_used ? "approved" : "pending"),
-              bank: t.request_type === "cash" ? "سحب نقدي" : "شحن كوينزات",
-              country: "",
-              created_at: t.time ? new Date(t.time).toISOString() : new Date().toISOString(),
-              reference_id: String(t.reference_id),
-              amount_coins: t.amount_coins || undefined,
-              request_type: t.request_type || "charge_self",
-              target_name: t.target_name || undefined,
-              target_uuid: t.target_uuid || undefined,
-              admin_note: t.admin_note || undefined,
-              transfer_image_url: t.transfer_image_url || t.receipt_url || undefined,
-              rejection_image_url: t.rejection_image_url || undefined,
-            };
-          });
+          .map((t: any) => ({
+            id: `#${t.reference_id}`,
+            amount: t.amount_usd || 0,
+            status: "approved",
+            bank: "شحن كوينزات",
+            country: "",
+            created_at: t.time ? new Date(t.time).toISOString() : new Date().toISOString(),
+            reference_id: String(t.reference_id),
+            amount_coins: t.amount_coins || undefined,
+            request_type: t.request_type || "charge_self",
+            target_name: t.target_name || undefined,
+            target_uuid: t.target_uuid || undefined,
+          }));
 
         const all = [...externalRequests, ...localRequests, ...usedTransfers].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -292,22 +286,9 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
 
   if (requests.length === 0) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-bold" style={{ color: "#dfe2eb" }}>العمليات الأخيرة</h3>
-          <select
-            value={selectedMonth}
-            onChange={e => setSelectedMonth(e.target.value)}
-            className="rounded-xl text-[10px] px-2.5 py-1.5 font-bold"
-            style={{ background: "rgba(15,26,46,0.6)", color: "#dfe2eb", border: "none", outline: "none" }}
-          >
-            {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
-        </div>
-        <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(15,26,46,0.4)" }}>
-          <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: "rgba(120,131,156,0.3)" }} />
-          <p className="text-xs" style={{ color: "#78839c" }}>لا توجد طلبات سحب في هذا الشهر</p>
-        </div>
+      <div className="rounded-2xl p-6 text-center" style={{ background: "rgba(15,26,46,0.4)" }}>
+        <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: "rgba(120,131,156,0.3)" }} />
+        <p className="text-xs" style={{ color: "#78839c" }}>لا توجد طلبات سحب سابقة هذا الشهر</p>
       </div>
     );
   }
@@ -360,8 +341,7 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
             return true;
           }).map((req, i) => {
             const st = getStatus(req.status);
-            const _d = new Date(req.created_at);
-            const dateStr = isNaN(_d.getTime()) ? "—" : _d.toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+            const dateStr = new Date(req.created_at).toLocaleDateString("ar-EG", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
             const bankLabel = getRequestTypeLabel(req.request_type) || req.bank || "";
             const isApproved = req.status === "approved" || req.status === "delivered";
             const isRejected = req.status === "rejected";
@@ -492,18 +472,14 @@ const SalaryRequestsHistory: React.FC<Props> = ({ userUuid, onResubmit, onWithdr
               {selectedReq.status === "rejected" && selectedReq.rejection_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold" style={{ color: "#ffb4ab" }}>صورة توضيحية:</p>
-                  <a href={selectedReq.rejection_image_url} target="_blank" rel="noopener noreferrer">
-                    <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full max-h-[400px] object-contain rounded-xl border border-red-500/20 cursor-pointer active:opacity-80" />
-                  </a>
+                  <img src={selectedReq.rejection_image_url} alt="rejection" className="w-full max-h-[200px] object-contain rounded-xl border border-red-500/20" />
                 </div>
               )}
 
-              {(selectedReq.status === "approved" || selectedReq.status === "delivered" || selectedReq.status === "completed" || selectedReq.status === "done") && selectedReq.transfer_image_url && (
+              {selectedReq.status === "approved" && selectedReq.transfer_image_url && (
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold" style={{ color: "#4ae183" }}>إيصال التحويل:</p>
-                  <a href={selectedReq.transfer_image_url} target="_blank" rel="noopener noreferrer">
-                    <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full max-h-[400px] object-contain rounded-xl border border-emerald-500/20 cursor-pointer active:opacity-80" />
-                  </a>
+                  <img src={selectedReq.transfer_image_url} alt="receipt" className="w-full max-h-[200px] object-contain rounded-xl border border-emerald-500/20" />
                 </div>
               )}
 
