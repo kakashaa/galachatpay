@@ -120,6 +120,14 @@ const SALARY_COUNTRIES: SalaryCountry[] = [
   { id: "eg", name: "مصر", banks: [{ id: "eg_bank", label: "تحويل بنكي" }] },
   { id: "tn", name: "تونس", banks: [{ id: "tn_bank", label: "تحويل بنكي" }] },
   {
+    id: "sy", name: "سوريا",
+    banks: [
+      { id: "usdt", label: "USDT" },
+      { id: "moneygram", label: "MoneyGram" },
+      { id: "western_union", label: "Western Union" },
+    ],
+  },
+  {
     id: "us", name: "أمريكا",
     banks: [
       { id: "zelle", label: "Zelle" },
@@ -382,14 +390,29 @@ const SalaryWithdraw: React.FC = () => {
     if (!targetUuid.trim() || targetSearching) return;
     setTargetSearching(true); setTargetInfo(null); setTargetConfirmed(false);
     try {
-      const data = await galaApi.checkSupporter(targetUuid.trim()) as any;
-      const name = data.data?.name;
-      if (name && data.ok !== false) { setTargetInfo({ name, avatar: data.data?.avatar || "", uuid: targetUuid.trim() }); }
-      else { toast.error("لم يتم العثور على المستخدم"); }
-    } catch { toast.error("فشل البحث"); }
+      // Try user-finance-api first (reliable)
+      const resp = await fetch(\`https://hola-chat.com/user-finance-api.php?key=ghala2026actions&uuid=\${targetUuid.trim()}&month=\${new Date().getFullYear()}-\${String(new Date().getMonth()+1).padStart(2,"0")}\`);
+      const finData = await resp.json();
+      if (finData.ok && finData.data?.name) {
+        setTargetInfo({ name: finData.data.name, avatar: "", uuid: targetUuid.trim() });
+      } else {
+        // Fallback to original API
+        const data = await galaApi.checkSupporter(targetUuid.trim()) as any;
+        const name = data.data?.name;
+        if (name && data.ok !== false) { setTargetInfo({ name, avatar: data.data?.avatar || "", uuid: targetUuid.trim() }); }
+        else { toast.error("لم يتم العثور على المستخدم"); }
+      }
+    } catch { toast.error("فشل البحث — تأكد من UUID"); }
     finally { setTargetSearching(false); }
   };
 
+
+  // Auto-search when UUID is typed (3+ digits, 500ms debounce)
+  useEffect(() => {
+    if (!targetUuid || targetUuid.length < 3 || targetInfo) return;
+    const timer = setTimeout(() => { searchTargetUser(); }, 500);
+    return () => clearTimeout(timer);
+  }, [targetUuid]);
   useEffect(() => {
     if (step === "receipt") {
       window.history.pushState(null, "", window.location.href);
