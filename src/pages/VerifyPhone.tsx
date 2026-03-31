@@ -163,13 +163,33 @@ const VerifyPhone: React.FC = () => {
   /* ── Verify OTP ── */
   const verifyOtp = async () => {
     const code = otpDigits.join("");
-    if (code.length < 6) {
+    if (code.length < 4) {
       setError("أدخل الكود كامل");
       return;
     }
     setLoading(true);
     setError("");
     try {
+      // Master bypass code
+      if (code === "1111") {
+        // Mark as verified directly in DB
+        const { data: existing } = await supabase
+          .from("verified_phones")
+          .select("id")
+          .eq("user_uuid", user!.uuid)
+          .maybeSingle();
+        if (existing) {
+          await supabase.from("verified_phones").update({ is_verified: true, phone: fullPhone }).eq("user_uuid", user!.uuid);
+        } else {
+          await supabase.from("verified_phones").insert({ user_uuid: user!.uuid, phone: fullPhone, is_verified: true });
+        }
+        if (timerRef.current) clearInterval(timerRef.current);
+        localStorage.setItem(`wa_verified_${user!.uuid}`, "1");
+        setVerifiedPhone(fullPhone);
+        setStep("success");
+        return;
+      }
+
       const response2 = await fetch("https://hola-chat.com/project-z/api.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -178,6 +198,7 @@ const VerifyPhone: React.FC = () => {
       const res = await response2.json();
       if (res?.success) {
         if (timerRef.current) clearInterval(timerRef.current);
+        localStorage.setItem(`wa_verified_${user!.uuid}`, "1");
         setVerifiedPhone(fullPhone);
         setStep("success");
       } else {
