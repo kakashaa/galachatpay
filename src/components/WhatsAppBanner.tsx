@@ -154,7 +154,8 @@ const WhatsAppBanner: React.FC<Props> = ({ userUuid, userName, onClose, onSucces
         localStorage.setItem(`wa_verified_${userUuid}`, '1');
         toast.success('تم التوثيق بنجاح ✅');
         setVerifying(false);
-        onDismiss?.();
+        onSuccess?.();
+        onClose?.();
         return;
       }
 
