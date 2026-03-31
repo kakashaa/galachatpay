@@ -190,13 +190,14 @@ const getUserSecurityChecks = (data: any, req: WithdrawRequest) => {
 /* ═══════════════════════════════════════════════════
    TAB CONFIG
    ═══════════════════════════════════════════════════ */
-type TabKey = "pending" | "delivered" | "rejected" | "reserved";
+type TabKey = "pending" | "delivered" | "rejected" | "reserved" | "edited";
 
 const TAB_CONFIG: { key: TabKey; label: string; icon: React.ReactNode; color: string; border: string; bg: string; glow: string }[] = [
   { key: "pending",   label: "انتظار",  icon: <Clock className="w-3.5 h-3.5" />,       color: "text-amber-400",   border: "border-amber-500/30",   bg: "bg-amber-500/10",   glow: "shadow-amber-500/20" },
   { key: "delivered",  label: "تحويل",  icon: <CheckCircle className="w-3.5 h-3.5" />,  color: "text-emerald-400", border: "border-emerald-500/30", bg: "bg-emerald-500/10", glow: "shadow-emerald-500/20" },
   { key: "rejected",  label: "مرفوض",   icon: <XCircle className="w-3.5 h-3.5" />,      color: "text-rose-400",    border: "border-rose-500/30",    bg: "bg-rose-500/10",    glow: "shadow-rose-500/20" },
   { key: "reserved",  label: "محجوز",   icon: <Lock className="w-3.5 h-3.5" />,         color: "text-orange-400",  border: "border-orange-500/30",  bg: "bg-orange-500/10",  glow: "shadow-orange-500/20" },
+  { key: "edited",    label: "معدل",    icon: <FileText className="w-3.5 h-3.5" />,     color: "text-yellow-400",  border: "border-yellow-500/30",  bg: "bg-yellow-500/10",  glow: "shadow-yellow-500/20" },
 ];
 
 const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
@@ -223,6 +224,8 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
   // Approve/Reject sheets
   const [approveSheet, setApproveSheet] = useState<WithdrawRequest | null>(null);
   const [rejectSheet, setRejectSheet] = useState<WithdrawRequest | null>(null);
+  const [editSheet, setEditSheet] = useState<WithdrawRequest | null>(null);
+  const [editAmount, setEditAmount] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState("");
   const [approveNote, setApproveNote] = useState("");
@@ -411,6 +414,25 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
     return compressImageToBase64(file, 1200, 0.7);
   };
 
+  const handleEditAmount = async () => {
+    if (!editSheet || !editAmount.trim()) { toast.error("أدخل المبلغ الجديد"); return; }
+    const newAmount = parseFloat(editAmount);
+    if (isNaN(newAmount) || newAmount <= 0) { toast.error("مبلغ غير صالح"); return; }
+    setActionLoading(true);
+    try {
+      const { error } = await supabase
+        .from("salary_requests")
+        .update({ amount_usd: newAmount, admin_note: `تعديل المبلغ: $${editSheet.amount} → $${newAmount}`, updated_at: new Date().toISOString() } as any)
+        .eq("id", editSheet.id);
+      if (error) throw error;
+      toast.success(`تم تعديل المبلغ: $${editSheet.amount} → $${newAmount}`);
+      setRequests(prev => prev.map(r => r.id === editSheet.id ? { ...r, amount: newAmount, admin_note: `تعديل: $${editSheet.amount}→$${newAmount}` } : r));
+      setEditSheet(null); setEditAmount("");
+      fetchData();
+    } catch (e: any) { toast.error(e?.message || "فشل التعديل"); }
+    finally { setActionLoading(false); }
+  };
+
   const handleApprove = async () => {
     if (!approveSheet || !receiptFile) { toast.error("يجب رفع إيصال التحويل"); return; }
     setActionLoading(true);
@@ -466,6 +488,7 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
       if (activeTab === "delivered" && r.status !== "delivered") return false;
       if (activeTab === "rejected" && r.status !== "rejected") return false;
       if (activeTab === "reserved" && r.status !== "reserved") return false;
+      if (activeTab === "edited" && !(r.admin_note || "").includes("تعديل")) return false;
 
       if (search) {
         const q = search.toLowerCase();
@@ -1054,6 +1077,10 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
                     className="flex-1 bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-xs h-10 rounded-xl active:scale-[0.98] transition-all">
                     <CheckCircle className="w-4 h-4 ml-1.5" /> تأكيد الدفع
                   </Button>
+                  <button onClick={() => { setEditSheet(detailReq); setEditAmount(String(detailReq.amount)); setDetailReq(null); }}
+                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 font-bold text-xs h-10 px-3 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1">
+                    <FileText className="w-3.5 h-3.5" /> تعديل
+                  </button>
                   <button onClick={() => { setRejectSheet(detailReq); setDetailReq(null); setRejectReason(""); setRejectImage(null); }}
                     className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold text-xs h-10 rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
                     <XCircle className="w-4 h-4" /> رفض
@@ -1190,6 +1217,35 @@ const AdminSalaryWithdrawManager: React.FC<Props> = ({ canAct }) => {
               </button>
             </div>
           </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ═══ EDIT AMOUNT SHEET ═══ */}
+      <Sheet open={!!editSheet} onOpenChange={() => setEditSheet(null)}>
+        <SheetContent side="bottom" className="rounded-t-3xl" style={{ background: "#0c0e14", border: "none" }}>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2 text-amber-400">
+              <FileText className="w-5 h-5" /> تعديل المبلغ
+            </SheetTitle>
+          </SheetHeader>
+          {editSheet && (
+            <div className="space-y-4 pt-4">
+              <div className="rounded-2xl p-3 bg-white/[0.03] space-y-1 text-sm">
+                <p><strong>{editSheet.user_name}</strong> — UUID: {editSheet.user_uuid}</p>
+                <p>المبلغ الحالي: <strong className="text-primary">${editSheet.amount}</strong></p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">المبلغ الجديد ($)</label>
+                <Input value={editAmount} onChange={e => setEditAmount(e.target.value)} type="number" step="0.01" min="0" placeholder="أدخل المبلغ الجديد" className="h-12 rounded-xl text-lg font-bold text-center" dir="ltr" />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleEditAmount} disabled={actionLoading || !editAmount.trim()} className="flex-1 h-12 bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-bold rounded-xl">
+                  {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "حفظ التعديل"}
+                </Button>
+                <button onClick={() => setEditSheet(null)} className="flex-1 h-12 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.08] text-sm text-foreground">إلغاء</button>
+              </div>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
 
