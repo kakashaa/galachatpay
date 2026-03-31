@@ -221,7 +221,8 @@ const VerifyPhone: React.FC = () => {
         .eq("user_uuid", user!.uuid);
       setVerifiedPhone(null);
       setPhoneNumber("");
-      setOtpDigits(["", "", "", "", "", ""]);
+      setOtpDigits(["", "", "", ""]);
+      localStorage.removeItem(`wa_verified_${user!.uuid}`);
       setStep("phone");
     } catch {}
     setLoading(false);
