@@ -155,7 +155,7 @@ const VerifyPhone: React.FC = () => {
 
   /* ── Resend OTP ── */
   const resendOtp = async () => {
-    setOtpDigits(["", "", "", "", "", ""]);
+    setOtpDigits(["", "", "", ""]);
     setError("");
     await sendOtp();
   };
