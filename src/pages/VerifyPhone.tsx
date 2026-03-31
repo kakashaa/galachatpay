@@ -54,7 +54,7 @@ const VerifyPhone: React.FC = () => {
   const [countryCode, setCountryCode] = useState("+967");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
+  const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", ""]);
   const [timer, setTimer] = useState(OTP_DURATION);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
