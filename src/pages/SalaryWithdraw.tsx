@@ -301,7 +301,7 @@ const SalaryWithdraw: React.FC = () => {
     try {
       const [apiData, usedRes] = await Promise.all([
         galaApi.userTransfers(user.uuid) as any,
-        supabase.from("salary_requests").select("transfer_id, status, is_final_rejection, transfer_image_url, rejection_image_url, admin_note, receipt_url").eq("user_uuid", user.uuid),
+        supabase.from("salary_requests").select("transfer_id, status, is_final_rejection, transfer_image_url, rejection_image_url, admin_note").eq("user_uuid", user.uuid),
       ]);
       const usedIds = new Set([...(usedRes.data || []).map((r: any) => r.transfer_id).filter(Boolean), ...localUsedIds]);
       const today = new Date().toISOString().slice(0, 10);
@@ -337,7 +337,7 @@ const SalaryWithdraw: React.FC = () => {
         }).map(mapTransfer);
       setTransfers(list);
       const usedStatusMap = new Map<string, string>();
-      (usedRes.data || []).forEach((r: any) => { if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), { status: r.status || "pending", transfer_image_url: r.transfer_image_url || r.receipt_url || null, rejection_image_url: r.rejection_image_url || null, admin_note: r.admin_note || null }); });
+      (usedRes.data || []).forEach((r: any) => { if (r.transfer_id) usedStatusMap.set(String(r.transfer_id), { status: r.status || "pending", transfer_image_url: r.transfer_image_url || null, rejection_image_url: r.rejection_image_url || null, admin_note: r.admin_note || null }); });
       const expiredList: TransferItem[] = allTransfers
         .filter((t: any) => {
           const toUuid = String(t.to_uuid || t.receiver_uuid || "");
