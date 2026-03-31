@@ -402,15 +402,15 @@ const SalaryWithdraw: React.FC = () => {
         if (name && data.ok !== false) { setTargetInfo({ name, avatar: data.data?.avatar || "", uuid: targetUuid.trim() }); }
         else { toast.error("لم يتم العثور على المستخدم"); }
       }
-    } catch { toast.error("فشل البحث — تأكد من UUID"); }
+    } catch { /* silent on auto-search */ }
     finally { setTargetSearching(false); }
   };
 
 
-  // Auto-search when UUID is typed (3+ digits, 500ms debounce)
+  // Auto-search when UUID is typed (4+ digits, 800ms debounce)
   useEffect(() => {
-    if (!targetUuid || targetUuid.length < 3 || targetInfo) return;
-    const timer = setTimeout(() => { searchTargetUser(); }, 500);
+    if (!targetUuid || targetUuid.length < 4 || targetInfo || targetSearching) return;
+    const timer = setTimeout(() => { searchTargetUser(); }, 800);
     return () => clearTimeout(timer);
   }, [targetUuid]);
   useEffect(() => {
