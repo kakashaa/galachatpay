@@ -241,14 +241,16 @@ const SalaryWithdraw: React.FC = () => {
     };
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", handleVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("focus", handleVisibility);
-    };
+    // Set verified phone if available
     if (verifiedPhone) {
       setWhatsappNumber(verifiedPhone);
       setWhatsappCode("");
     }
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
   }, [user?.uuid, verifiedPhone]);
 
   // Auto-refresh timer every 30 seconds to keep countdown live
